@@ -1,99 +1,125 @@
 package monero
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"time"
+	"strings"
 )
 
-var (
-	contentTypeJSON   = "application/json"
-	dialTimeout       = 60 * time.Second
-	httpClientTimeout = 120 * time.Second
+// defaultEndpoint is the default monero-wallet-rpc endpoint for stagenet
+const defaultEndpoint = "http://127.0.0.1:18082/json_rpc"
 
-	transport = &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: dialTimeout,
-		}).Dial,
-	}
-	httpClient = &http.Client{
-		Transport: transport,
-		Timeout:   httpClientTimeout,
-	}
-)
+// Address represents a base58-encoded string
+type Address string
 
-// ServerResponse is the JSON format of a response
-type ServerResponse struct {
-	// JSON-RPC Version
-	Version string `json:"jsonrpc"`
-	// Resulting values
-	Result json.RawMessage `json:"result"`
-	// Any generated errors
-	Error *Error `json:"error"`
-	// Request id
-	ID *json.RawMessage `json:"id"`
+type generateFromKeysRequest struct {
+	Filename string `json:"filename"`
+	Address  string `json:"address"`
+	SpendKey string `json:"spendkey"`
+	ViewKey  string `json:"viewkey"`
+	Password string `json:"password"`
 }
 
-// ErrCode is a int type used for the rpc error codes
-type ErrCode int
-
-// Error is a struct that holds the error message and the error code for a error
-type Error struct {
-	Message   string                 `json:"message"`
-	ErrorCode ErrCode                `json:"code"`
-	Data      map[string]interface{} `json:"data"`
+type generateFromKeysResponse struct {
+	Address string `json:"address"`
+	Info    string `json:"info`
 }
 
-// Error ...
-func (e *Error) Error() string {
-	return fmt.Sprintf("message=%s; code=%d; data=%v", e.Message, e.ErrorCode, e.Data)
+func (c *client) callGenerateFromKeys(kp *PrivateKeyPair, filename, password string) error {
+	const (
+		method         = "generate_from_keys"
+		successMessage = "Wallet has been generated successfully."
+	)
+
+	req := &generateFromKeysRequest{
+		Filename: filename,
+		Address:  string(kp.Address()),
+		SpendKey: kp.sk.Hex(),
+		ViewKey:  kp.vk.Hex(),
+		Password: password,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := postRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	var res *generateFromKeysResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return err
+	}
+
+	if strings.Compare(successMessage, res.Info) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf("got unexpected Info string: %s", res.Info)
 }
 
-func postRPC(endpoint, method, params string) (*ServerResponse, error) {
-	data := []byte(`{"jsonrpc":"2.0","method":"` + method + `","params":` + params + `,"id":0}`)
-	buf := &bytes.Buffer{}
-	_, err := buf.Write(data)
+type Destination struct {
+	Amount uint `json:"amount"`
+	Address string `json:"address"`
+}
+
+type transferRequest struct {
+	Destinations []Destination `json:"destinations"`
+	// AccountIndex uint // optional
+	Priority uint `json:"priority"`
+	//Mixin uint  `json:"mixin"`
+	//RingSize uint  `json:"ring_size"`
+	//UnlockTime uint  `json:"unlock_time"`
+	// GetTxKey bool
+}
+
+type transferResponse struct {
+	Amount uint  `json:"amount"`
+	Fee uint `json:"fee"`
+	MultisigTxset interface{} `json:"multisig_txset"`
+	TxBlob string `json:"tx_blob"`
+	TxHash string `json:"tx_hash"`
+	TxKey string `json:"tx_key"`
+	TxMetadata string `json:"tx_metadata"`
+	UnsignedTxset string `json:"unsigned_txset"`
+}
+
+func (c *client) callTransfer(destinations []Destination) (string, error) {
+	const (
+		method         = "transfer"
+	)
+
+	req := &transferRequest{
+		Destinations: destinations,
+		Priority: 0,
+		//RingSize: 11,
+	}
+
+	params, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	fmt.Println(string(data))
-
-	r, err := http.NewRequest("POST", endpoint, buf)
+	resp, err := postRPC(c.endpoint, method, string(params))
 	if err != nil {
-		return nil, err
-	}
-	r.Header.Set("Content-Type", contentTypeJSON)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	r = r.WithContext(ctx)
-
-	resp, err := httpClient.Do(r)
-	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if resp.Error != nil {
+		return "", resp.Error
 	}
 
-	fmt.Println(string(body))
+	var res *transferResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return "", err
+	}	
 
-	var sv *ServerResponse
-	if err = json.Unmarshal(body, &sv); err != nil {
-		return nil, err
-	}
-
-	return sv, nil
+	return res.TxHash, nil
 }

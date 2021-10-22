@@ -6,9 +6,17 @@ import (
 	"errors"
 	"fmt"
 
-	ed25519 "filippo.io/edwards25519"
 	"github.com/ebfe/keccak"
+	ed25519 "filippo.io/edwards25519"
 )
+
+// Sum sums two public keys (points)
+func Sum(a, b *PublicKey) *PublicKey {
+	s := ed25519.NewIdentityPoint().Add(a.key, b.key) 
+	return &PublicKey{
+		key: s,
+	}
+}
 
 func Keccak256(data ...[]byte) (result [32]byte) {
 	h := keccak.New256()
@@ -50,7 +58,7 @@ func NewPrivateKeyPair(skBytes, vkBytes []byte) (*PrivateKeyPair, error) {
 	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes)
 	if err != nil {
 		return nil, err
-	}
+	}	
 
 	return &PrivateKeyPair{
 		sk: &PrivateSpendKey{key: sk},
@@ -64,7 +72,7 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 	c := append(psk, pvk...)
 
 	// address encoding is:
-	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
+	// 0x12+(32-byte public spend key) + (32-byte-byte public view key) 
 	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
 	checksum := getChecksum(append([]byte{0x18}, c...))
 	addr := append(append([]byte{0x18}, c...), checksum[:4]...)
@@ -73,6 +81,13 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 
 func (kp *PrivateKeyPair) Address() Address {
 	return Address(EncodeMoneroBase58(kp.AddressBytes()))
+}
+
+func (kp *PrivateKeyPair) PublicKeyPair() *PublicKeyPair {
+	return &PublicKeyPair{
+		sk: kp.sk.Public(),
+		vk: kp.vk.Public(),
+	}
 }
 
 type PrivateSpendKey struct {
@@ -137,6 +152,38 @@ type PublicKey struct {
 type PublicKeyPair struct {
 	sk *PublicKey
 	vk *PublicKey
+}
+
+func NewPublicKeyPair(sk, vk *PublicKey) *PublicKeyPair {
+	return &PublicKeyPair{
+		sk: sk,
+		vk: vk,
+	}
+}
+
+func (kp *PublicKeyPair) SpendKey() *PublicKey {
+	return kp.sk
+}
+
+func (kp *PublicKeyPair) ViewKey() *PublicKey {
+	return kp.vk
+}
+
+func (kp *PublicKeyPair) AddressBytes() []byte {
+	psk := kp.sk.key.Bytes()
+	pvk := kp.vk.key.Bytes()
+	c := append(psk, pvk...)
+
+	// address encoding is:
+	// 0x12+(32-byte public spend key) + (32-byte-byte public view key) 
+	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
+	checksum := getChecksum(append([]byte{0x18}, c...))
+	addr := append(append([]byte{0x18}, c...), checksum[:4]...)
+	return addr
+}
+
+func (kp *PublicKeyPair) Address() Address {
+	return Address(EncodeMoneroBase58(kp.AddressBytes()))
 }
 
 // GenerateKeys returns a private spend key and view key
