@@ -1,0 +1,1276 @@
+{
+  "contractName": "Secp256k1",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "AA",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "BB",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "GX",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "GY",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "PP",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "privKey",
+          "type": "uint256"
+        }
+      ],
+      "name": "derivePubKey",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.6.12+commit.27d51765\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"AA\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BB\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"GX\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"GY\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"PP\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"privKey\",\"type\":\"uint256\"}],\"name\":\"derivePubKey\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}],\"devdoc\":{\"author\":\"Witnet Foundation\",\"kind\":\"dev\",\"methods\":{\"derivePubKey(uint256)\":{\"params\":{\"privKey\":\"The private key\"},\"returns\":{\"_0\":\"(qx, qy) The Public Key\"}}},\"title\":\"Secp256k1 Elliptic Curve\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"derivePubKey(uint256)\":{\"notice\":\"Public Key derivation from private key Warning: this is just an example. Do not expose your private key.\"}},\"notice\":\"Example of particularization of Elliptic Curve for secp256k1 curve\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/elliptic-curve-solidity/examples/Secp256k1.sol\":\"Secp256k1\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/elliptic-curve-solidity/contracts/EllipticCurve.sol\":{\"keccak256\":\"0x17e46490ffbad196911decd3dce8d56b2f80679eecace9ab6eb165321d0aa92c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://6fade35aa573ac92c2b9068b3cd43a6350a503fabccfcba7c17d90121b65e152\",\"dweb:/ipfs/QmPEAjFnqPW3diGHj5bZVYyZizT2xqWS8S1Z9QnvB4Mtx5\"]},\"project:/contracts/elliptic-curve-solidity/examples/Secp256k1.sol\":{\"keccak256\":\"0x0a2b757e6943f03d475f0963fec8b55a4cf434f40ef5044bb4b377e3b2c23f0e\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://564a9ff066b673fbb2b99c08e3d6422c8467f037b6b8d13d72b9e39ed3a35fab\",\"dweb:/ipfs/QmRhQ1wxZkJgeQ1i6ew4RBMKYhXoAiTNG5WChFS3JAzant\"]}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50610aa5806100206000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c806303a507be146100675780635727dc5c146100855780637a308a4c146100a3578063997da8d4146100c1578063bc9e2bcf146100df578063eeeac01e14610128575b600080fd5b61006f610146565b6040518082815260200191505060405180910390f35b61008d61016a565b6040518082815260200191505060405180910390f35b6100ab61016f565b6040518082815260200191505060405180910390f35b6100c9610193565b6040518082815260200191505060405180910390f35b61010b600480360360208110156100f557600080fd5b8101908080359060200190929190505050610198565b604051808381526020018281526020019250505060405180910390f35b610130610212565b6040518082815260200191505060405180910390f35b7f79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f8179881565b600781565b7f483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b881565b600081565b600080610209837f79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817987f483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b860007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f610236565b91509150915091565b7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f81565b600080600080600061024d8a8a8a60018b8b610270565b92509250925061025f8383838961030e565b945094505050509550959350505050565b60008060008089141561028b57878787925092509250610302565b60008990506000806000600190505b600084146102f457600060018516146102c9576102bc8383838f8f8f8e610369565b8093508194508295505050505b600284816102d357fe5b0493506102e38c8c8c8c8c61083a565b809c50819d50829e5050505061029a565b828282965096509650505050505b96509650969350505050565b600080600061031d8585610959565b90506000848061032957fe5b82830990506000858061033857fe5b828a0990506000868061034757fe5b878061034f57fe5b8486098a0990508181955095505050505094509492505050565b6000806000808a14801561037d5750600089145b156103905786868692509250925061082d565b6000871480156103a05750600086145b156103b35789898992509250925061082d565b6103bb610a4d565b84806103c357fe5b898a09816000600481106103d357fe5b60200201818152505084806103e457fe5b816000600481106103f157fe5b60200201518a098160016004811061040557fe5b602002018181525050848061041657fe5b8687098160026004811061042657fe5b602002018181525050848061043757fe5b8160026004811061044457fe5b602002015187098160036004811061045857fe5b6020020181815250506040518060800160405280868061047457fe5b8360026004811061048157fe5b60200201518e098152602001868061049557fe5b836003600481106104a257fe5b60200201518d09815260200186806104b657fe5b836000600481106104c357fe5b60200201518b09815260200186806104d757fe5b836001600481106104e457fe5b60200201518a098152509050806002600481106104fd57fe5b60200201518160006004811061050f57fe5b602002015114158061054357508060036004811061052957fe5b60200201518160016004811061053b57fe5b602002015114155b6105b5576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252601e8152602001807f557365206a6163446f75626c652066756e6374696f6e20696e7374656164000081525060200191505060405180910390fd5b6105bd610a4d565b85806105c557fe5b826000600481106105d257fe5b60200201518703836002600481106105e657fe5b602002015108816000600481106105f957fe5b602002018181525050858061060a57fe5b8260016004811061061757fe5b602002015187038360036004811061062b57fe5b6020020151088160016004811061063e57fe5b602002018181525050858061064f57fe5b8160006004811061065c57fe5b60200201518260006004811061066e57fe5b6020020151098160026004811061068157fe5b602002018181525050858061069257fe5b8160006004811061069f57fe5b6020020151826002600481106106b157fe5b602002015109816003600481106106c457fe5b602002018181525050600086806106d757fe5b826003600481106106e457fe5b6020020151880388806106f357fe5b8460016004811061070057fe5b60200201518560016004811061071257fe5b602002015109089050868061072357fe5b878061072b57fe5b888061073357fe5b8460026004811061074057fe5b60200201518660006004811061075257fe5b6020020151096002098803820890506000878061076b57fe5b888061077357fe5b838a038a8061077e57fe5b8660026004811061078b57fe5b60200201518860006004811061079d57fe5b60200201510908846001600481106107b157fe5b602002015109905087806107c157fe5b88806107c957fe5b846003600481106107d657fe5b6020020151866001600481106107e857fe5b602002015109890382089050600088806107fe57fe5b898061080657fe5b8b8f098560006004811061081657fe5b602002015109905082828297509750975050505050505b9750975097945050505050565b6000806000808614156108555787878792509250925061094e565b6000848061085f57fe5b898a0990506000858061086e57fe5b898a0990506000868061087d57fe5b898a0990506000878061088c57fe5b888061089457fe5b848e096004099050600088806108a657fe5b89806108ae57fe5b8a806108b657fe5b8586098c098a806108c357fe5b8760030908905088806108d257fe5b89806108da57fe5b8384088a038a806108e757fe5b83840908945088806108f557fe5b89806108fd57fe5b8a8061090557fe5b8687096008098a038a8061091557fe5b8b8061091d57fe5b888d0386088409089350888061092f57fe5b898061093757fe5b8c8e09600209925084848497509750975050505050505b955095509592505050565b600080831415801561096b5750818314155b8015610978575060008214155b6109ea576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252600e8152602001807f496e76616c6964206e756d62657200000000000000000000000000000000000081525060200191505060405180910390fd5b60008060019050600084905060005b60008714610a4057868281610a0a57fe5b049050828680610a1657fe5b8780610a1e57fe5b85840988038608809450819550505086878202830380985081935050506109f9565b8394505050505092915050565b604051806080016040528060049060208202803683378082019150509050509056fea26469706673582212209858ef6d9c6f8ed5a392a32879031f4b594e90147d549f5a4f171956fd04abbf64736f6c634300060c0033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100625760003560e01c806303a507be146100675780635727dc5c146100855780637a308a4c146100a3578063997da8d4146100c1578063bc9e2bcf146100df578063eeeac01e14610128575b600080fd5b61006f610146565b6040518082815260200191505060405180910390f35b61008d61016a565b6040518082815260200191505060405180910390f35b6100ab61016f565b6040518082815260200191505060405180910390f35b6100c9610193565b6040518082815260200191505060405180910390f35b61010b600480360360208110156100f557600080fd5b8101908080359060200190929190505050610198565b604051808381526020018281526020019250505060405180910390f35b610130610212565b6040518082815260200191505060405180910390f35b7f79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f8179881565b600781565b7f483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b881565b600081565b600080610209837f79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817987f483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b860007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f610236565b91509150915091565b7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f81565b600080600080600061024d8a8a8a60018b8b610270565b92509250925061025f8383838961030e565b945094505050509550959350505050565b60008060008089141561028b57878787925092509250610302565b60008990506000806000600190505b600084146102f457600060018516146102c9576102bc8383838f8f8f8e610369565b8093508194508295505050505b600284816102d357fe5b0493506102e38c8c8c8c8c61083a565b809c50819d50829e5050505061029a565b828282965096509650505050505b96509650969350505050565b600080600061031d8585610959565b90506000848061032957fe5b82830990506000858061033857fe5b828a0990506000868061034757fe5b878061034f57fe5b8486098a0990508181955095505050505094509492505050565b6000806000808a14801561037d5750600089145b156103905786868692509250925061082d565b6000871480156103a05750600086145b156103b35789898992509250925061082d565b6103bb610a4d565b84806103c357fe5b898a09816000600481106103d357fe5b60200201818152505084806103e457fe5b816000600481106103f157fe5b60200201518a098160016004811061040557fe5b602002018181525050848061041657fe5b8687098160026004811061042657fe5b602002018181525050848061043757fe5b8160026004811061044457fe5b602002015187098160036004811061045857fe5b6020020181815250506040518060800160405280868061047457fe5b8360026004811061048157fe5b60200201518e098152602001868061049557fe5b836003600481106104a257fe5b60200201518d09815260200186806104b657fe5b836000600481106104c357fe5b60200201518b09815260200186806104d757fe5b836001600481106104e457fe5b60200201518a098152509050806002600481106104fd57fe5b60200201518160006004811061050f57fe5b602002015114158061054357508060036004811061052957fe5b60200201518160016004811061053b57fe5b602002015114155b6105b5576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252601e8152602001807f557365206a6163446f75626c652066756e6374696f6e20696e7374656164000081525060200191505060405180910390fd5b6105bd610a4d565b85806105c557fe5b826000600481106105d257fe5b60200201518703836002600481106105e657fe5b602002015108816000600481106105f957fe5b602002018181525050858061060a57fe5b8260016004811061061757fe5b602002015187038360036004811061062b57fe5b6020020151088160016004811061063e57fe5b602002018181525050858061064f57fe5b8160006004811061065c57fe5b60200201518260006004811061066e57fe5b6020020151098160026004811061068157fe5b602002018181525050858061069257fe5b8160006004811061069f57fe5b6020020151826002600481106106b157fe5b602002015109816003600481106106c457fe5b602002018181525050600086806106d757fe5b826003600481106106e457fe5b6020020151880388806106f357fe5b8460016004811061070057fe5b60200201518560016004811061071257fe5b602002015109089050868061072357fe5b878061072b57fe5b888061073357fe5b8460026004811061074057fe5b60200201518660006004811061075257fe5b6020020151096002098803820890506000878061076b57fe5b888061077357fe5b838a038a8061077e57fe5b8660026004811061078b57fe5b60200201518860006004811061079d57fe5b60200201510908846001600481106107b157fe5b602002015109905087806107c157fe5b88806107c957fe5b846003600481106107d657fe5b6020020151866001600481106107e857fe5b602002015109890382089050600088806107fe57fe5b898061080657fe5b8b8f098560006004811061081657fe5b602002015109905082828297509750975050505050505b9750975097945050505050565b6000806000808614156108555787878792509250925061094e565b6000848061085f57fe5b898a0990506000858061086e57fe5b898a0990506000868061087d57fe5b898a0990506000878061088c57fe5b888061089457fe5b848e096004099050600088806108a657fe5b89806108ae57fe5b8a806108b657fe5b8586098c098a806108c357fe5b8760030908905088806108d257fe5b89806108da57fe5b8384088a038a806108e757fe5b83840908945088806108f557fe5b89806108fd57fe5b8a8061090557fe5b8687096008098a038a8061091557fe5b8b8061091d57fe5b888d0386088409089350888061092f57fe5b898061093757fe5b8c8e09600209925084848497509750975050505050505b955095509592505050565b600080831415801561096b5750818314155b8015610978575060008214155b6109ea576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040180806020018281038252600e8152602001807f496e76616c6964206e756d62657200000000000000000000000000000000000081525060200191505060405180910390fd5b60008060019050600084905060005b60008714610a4057868281610a0a57fe5b049050828680610a1657fe5b8780610a1e57fe5b85840988038608809450819550505086878202830380985081935050506109f9565b8394505050505092915050565b604051806080016040528060049060208202803683378082019150509050509056fea26469706673582212209858ef6d9c6f8ed5a392a32879031f4b594e90147d549f5a4f171956fd04abbf64736f6c634300060c0033",
+  "immutableReferences": {},
+  "sourceMap": "251:770:10:-:0;;;;;;;;;;;;;;;;;;;",
+  "deployedSourceMap": "251:770:10:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;275:95;;;:::i;:::-;;;;;;;;;;;;;;;;;;;507:30;;;:::i;:::-;;;;;;;;;;;;;;;;;;;374:95;;;:::i;:::-;;;;;;;;;;;;;;;;;;;473:30;;;:::i;:::-;;;;;;;;;;;;;;;;;;;841:178;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;;;;;;;541:95;;;:::i;:::-;;;;;;;;;;;;;;;;;;;275;304:66;275:95;:::o;507:30::-;536:1;507:30;:::o;374:95::-;403:66;374:95;:::o;473:30::-;502:1;473:30;:::o;841:178::-;903:7;912;934:80;961:7;304:66;403;502:1;570:66;934:19;:80::i;:::-;927:87;;;;841:178;;;:::o;541:95::-;570:66;541:95;:::o;6785:380:6:-;6907:7;6916;6965:10;6977;6989;7003:68;7017:2;7027;7037;7047:1;7056:3;7067;7003:6;:68::i;:::-;6964:107;;;;;;7110:50;7126:2;7136;7146;7156:3;7110:8;:50::i;:::-;7103:57;;;;;;;6785:380;;;;;;;;:::o;10999:752::-;11139:7;11148;11157;11227:1;11221:2;:7;11217:47;;;11246:2;11250;11254;11238:19;;;;;;;;11217:47;11270:17;11290:2;11270:22;;11298:10;11318;11338;11351:1;11338:14;;11391:331;11411:1;11398:9;:14;11391:331;;11445:1;11439;11427:9;:13;11426:20;11422:166;;11473:106;11491:2;11505;11519;11533;11547;11561;11575:3;11473:6;:106::i;:::-;11458:121;;;;;;;;;;;;11422:166;11619:1;11607:9;:13;;;;;;11595:25;;11643:72;11662:2;11674;11686;11698:3;11711;11643:9;:72::i;:::-;11628:87;;;;;;;;;;;;11391:331;;;11735:2;11739;11743;11727:19;;;;;;;;;;10999:752;;;;;;;;;;;:::o;2406:338::-;2515:7;2524;2541:12;2556:15;2563:2;2567:3;2556:6;:15::i;:::-;2541:30;;2577:13;2612:3;2593:23;;;;;2606:4;2600;2593:23;2577:39;;2622:10;2653:3;2635:22;;;;;2646:5;2642:2;2635:22;2622:35;;2663:10;2713:3;2676:41;;;;;2707:3;2687:24;;;;;2700:5;2694:4;2687:24;2683:2;2676:41;2663:54;;2732:2;2736;2724:15;;;;;;;;2406:338;;;;;;;:::o;7532:1655::-;7693:7;7702;7711;7737:1;7732:3;:6;:16;;;;;7747:1;7742:3;:6;7732:16;7728:50;;;7764:3;7769;7774;7756:22;;;;;;;;7728:50;7793:1;7788:3;:6;:16;;;;;7803:1;7798:3;:6;7788:16;7784:50;;;7820:3;7825;7830;7812:22;;;;;;;;7784:50;7974:17;;:::i;:::-;8048:3;8031:21;;;;;8043:3;8038;8031:21;8023:2;8026:1;8023:5;;;;;;;;;;:29;;;;;8085:3;8066:23;;;;;8078:2;8081:1;8078:5;;;;;;;;;;;8073:3;8066:23;8058:2;8061:1;8058:5;;;;;;;;;;:31;;;;;8120:3;8103:21;;;;;8115:3;8110;8103:21;8095:2;8098:1;8095:5;;;;;;;;;;:29;;;;;8157:3;8138:23;;;;;8150:2;8153:1;8150:5;;;;;;;;;;;8145:3;8138:23;8130:2;8133:1;8130:5;;;;;;;;;;:31;;;;;8190:135;;;;;;;;8222:3;8203:23;;;;;8215:2;8218:1;8215:5;;;;;;;;;;;8210:3;8203:23;8190:135;;;;8253:3;8234:23;;;;;8246:2;8249:1;8246:5;;;;;;;;;;;8241:3;8234:23;8190:135;;;;8284:3;8265:23;;;;;8277:2;8280:1;8277:5;;;;;;;;;;;8272:3;8265:23;8190:135;;;;8315:3;8296:23;;;;;8308:2;8311:1;8308:5;;;;;;;;;;;8303:3;8296:23;8190:135;;;;;8432:2;8435:1;8432:5;;;;;;;;;;;8423:2;8426:1;8423:5;;;;;;;;;;;:14;;:32;;;;8450:2;8453:1;8450:5;;;;;;;;;;;8441:2;8444:1;8441:5;;;;;;;;;;;:14;;8423:32;8415:75;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;8497:17;;:::i;:::-;8563:3;8536:31;;;;;8556:2;8559:1;8556:5;;;;;;;;;;;8550:3;:11;8543:2;8546:1;8543:5;;;;;;;;;;;8536:31;8528:2;8531:1;8528:5;;;;;;;;;;:39;;;;;8616:3;8589:31;;;;;8609:2;8612:1;8609:5;;;;;;;;;;;8603:3;:11;8596:2;8599:1;8596:5;;;;;;;;;;;8589:31;8581:2;8584:1;8581:5;;;;;;;;;;:39;;;;;8665:3;8644:25;;;;;8658:2;8661:1;8658:5;;;;;;;;;;;8651:2;8654:1;8651:5;;;;;;;;;;;8644:25;8636:2;8639:1;8636:5;;;;;;;;;;:33;;;;;8715:3;8694:25;;;;;8708:2;8711:1;8708:5;;;;;;;;;;;8701:2;8704:1;8701:5;;;;;;;;;;;8694:25;8686:2;8689:1;8686:5;;;;;;;;;;:33;;;;;8755:10;8815:3;8768:51;;;;;8808:2;8811:1;8808:5;;;;;;;;;;;8802:3;:11;8796:3;8775:25;;;;;8789:2;8792:1;8789:5;;;;;;;;;;;8782:2;8785:1;8782:5;;;;;;;;;;;8775:25;8768:51;8755:64;;8890:3;8830:64;;;;;8884:3;8847:41;;;;;8878:3;8857:25;;;;;8871:2;8874:1;8871:5;;;;;;;;;;;8864:2;8867:1;8864:5;;;;;;;;;;;8857:25;8854:1;8847:41;8841:3;:47;8837:2;8830:64;8825:69;;8938:10;9015:3;8951:68;;;;;9009:3;8965:48;;;;;9005:2;8999:3;:8;8993:3;8972:25;;;;;8986:2;8989:1;8986:5;;;;;;;;;;;8979:2;8982:1;8979:5;;;;;;;;;;;8972:25;8965:48;8958:2;8961:1;8958:5;;;;;;;;;;;8951:68;8938:81;;9074:3;9030:48;;;;;9068:3;9047:25;;;;;9061:2;9064:1;9061:5;;;;;;;;;;;9054:2;9057:1;9054:5;;;;;;;;;;;9047:25;9041:3;:31;9037:2;9030:48;9025:53;;9104:10;9154:3;9117:41;;;;;9148:3;9131:21;;;;;9143:3;9138;9131:21;9124:2;9127:1;9124:5;;;;;;;;;;;9117:41;9104:54;;9171:2;9175;9179;9164:18;;;;;;;;;;;7532:1655;;;;;;;;;;;;:::o;9458:1244::-;9585:7;9594;9603;9630:1;9624:2;:7;9620:38;;;9647:2;9651;9655;9639:19;;;;;;;;9620:38;9951:9;9978:3;9963:19;;;;;9974:2;9970;9963:19;9951:31;;9995:9;10022:3;10007:19;;;;;10018:2;10014;10007:19;9995:31;;10039:9;10066:3;10051:19;;;;;10062:2;10058;10051:19;10039:31;;10093:6;10132:3;10102:34;;;;;10126:3;10112:18;;;;;10123:1;10119:2;10112:18;10109:1;10102:34;10093:43;;10151:6;10223:3;10160:67;;;;;10217:3;10186:35;;;;;10211:3;10198:17;;;;;10208:1;10205;10198:17;10193:3;10186:35;10180:3;10167:17;;;;;10177:1;10174;10167:17;10160:67;10151:76;;10473:3;10422:55;;;;;10467:3;10454:17;;;;;10464:1;10461;10454:17;10448:3;:23;10442:3;10429:17;;;;;10439:1;10436;10429:17;10422:55;10418:59;;10605:3;10516:93;;;;;10599:3;10570:33;;;;;10593:3;10580:17;;;;;10590:1;10587;10580:17;10577:1;10570:33;10564:3;:39;10558:3;10523:39;;;;;10552:3;10533:23;;;;;10549:1;10543:3;:7;10540:1;10533:23;10530:1;10523:39;10516:93;10512:97;;10670:3;10639:35;;;;;10664:3;10649:19;;;;;10660:2;10656;10649:19;10646:1;10639:35;10635:39;;10689:1;10692;10695;10681:16;;;;;;;;;;;9458:1244;;;;;;;;;;:::o;734:387::-;798:7;827:1;821:2;:7;;:20;;;;;838:3;832:2;:9;;821:20;:32;;;;;852:1;845:3;:8;;821:32;813:59;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;878:9;897:12;912:1;897:16;;919:9;931:3;919:15;;940:9;955:147;968:1;962:2;:7;955:147;;987:2;983:1;:6;;;;;;979:10;;1010:4;1056:3;1016:44;;;;;1049:3;1033:20;;;;;1043:4;1040:1;1033:20;1027:3;:26;1023:1;1016:44;997:64;;;;;;;;1080:2;1092;1088:1;:6;1084:1;:10;1069:26;;;;;;;;955:147;;;1115:1;1108:8;;;;;;734:387;;;;:::o;-1:-1:-1:-;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::o",
+  "source": "// SPDX-License-Identifier: MIT\n\npragma solidity 0.6.12;\n\nimport \"../contracts/EllipticCurve.sol\";\n\n\n/**\n * @title Secp256k1 Elliptic Curve\n * @notice Example of particularization of Elliptic Curve for secp256k1 curve\n * @author Witnet Foundation\n */\ncontract Secp256k1 {\n\n  uint256 public constant GX = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;\n  uint256 public constant GY = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;\n  uint256 public constant AA = 0;\n  uint256 public constant BB = 7;\n  uint256 public constant PP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;\n\n  /// @notice Public Key derivation from private key\n  /// Warning: this is just an example. Do not expose your private key.\n  /// @param privKey The private key\n  /// @return (qx, qy) The Public Key\n  function derivePubKey(uint256 privKey) external pure returns (uint256, uint256) {\n    return EllipticCurve.ecMul(\n      privKey,\n      GX,\n      GY,\n      AA,\n      PP\n    );\n  }\n}",
+  "sourcePath": "/home/elizabeth/atomic-swap/contracts/contracts/elliptic-curve-solidity/examples/Secp256k1.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/elliptic-curve-solidity/examples/Secp256k1.sol",
+    "exportedSymbols": {
+      "Secp256k1": [
+        4159
+      ]
+    },
+    "id": 4160,
+    "license": "MIT",
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 4121,
+        "literals": [
+          "solidity",
+          "0.6",
+          ".12"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "33:23:10"
+      },
+      {
+        "absolutePath": "project:/contracts/elliptic-curve-solidity/contracts/EllipticCurve.sol",
+        "file": "../contracts/EllipticCurve.sol",
+        "id": 4122,
+        "nodeType": "ImportDirective",
+        "scope": 4160,
+        "sourceUnit": 1439,
+        "src": "58:40:10",
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": {
+          "id": 4123,
+          "nodeType": "StructuredDocumentation",
+          "src": "101:149:10",
+          "text": " @title Secp256k1 Elliptic Curve\n @notice Example of particularization of Elliptic Curve for secp256k1 curve\n @author Witnet Foundation"
+        },
+        "fullyImplemented": true,
+        "id": 4159,
+        "linearizedBaseContracts": [
+          4159
+        ],
+        "name": "Secp256k1",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "constant": true,
+            "functionSelector": "03a507be",
+            "id": 4126,
+            "mutability": "constant",
+            "name": "GX",
+            "nodeType": "VariableDeclaration",
+            "overrides": null,
+            "scope": 4159,
+            "src": "275:95:10",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 4124,
+              "name": "uint256",
+              "nodeType": "ElementaryTypeName",
+              "src": "275:7:10",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "307837394245363637454639444342424143353541303632393543453837304230373032394246434442324443453238443935394632383135423136463831373938",
+              "id": 4125,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "304:66:10",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_55066263022277343669578718895168534326250603453777594175500187360389116729240_by_1",
+                "typeString": "int_const 5506...(69 digits omitted)...9240"
+              },
+              "value": "0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"
+            },
+            "visibility": "public"
+          },
+          {
+            "constant": true,
+            "functionSelector": "7a308a4c",
+            "id": 4129,
+            "mutability": "constant",
+            "name": "GY",
+            "nodeType": "VariableDeclaration",
+            "overrides": null,
+            "scope": 4159,
+            "src": "374:95:10",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 4127,
+              "name": "uint256",
+              "nodeType": "ElementaryTypeName",
+              "src": "374:7:10",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "307834383341444137373236413343343635354441344642464330453131303841384644313742343438413638353534313939433437443038464642313044344238",
+              "id": 4128,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "403:66:10",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_32670510020758816978083085130507043184471273380659243275938904335757337482424_by_1",
+                "typeString": "int_const 3267...(69 digits omitted)...2424"
+              },
+              "value": "0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"
+            },
+            "visibility": "public"
+          },
+          {
+            "constant": true,
+            "functionSelector": "997da8d4",
+            "id": 4132,
+            "mutability": "constant",
+            "name": "AA",
+            "nodeType": "VariableDeclaration",
+            "overrides": null,
+            "scope": 4159,
+            "src": "473:30:10",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 4130,
+              "name": "uint256",
+              "nodeType": "ElementaryTypeName",
+              "src": "473:7:10",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "30",
+              "id": 4131,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "502:1:10",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_0_by_1",
+                "typeString": "int_const 0"
+              },
+              "value": "0"
+            },
+            "visibility": "public"
+          },
+          {
+            "constant": true,
+            "functionSelector": "5727dc5c",
+            "id": 4135,
+            "mutability": "constant",
+            "name": "BB",
+            "nodeType": "VariableDeclaration",
+            "overrides": null,
+            "scope": 4159,
+            "src": "507:30:10",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 4133,
+              "name": "uint256",
+              "nodeType": "ElementaryTypeName",
+              "src": "507:7:10",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "37",
+              "id": 4134,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "536:1:10",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_7_by_1",
+                "typeString": "int_const 7"
+              },
+              "value": "7"
+            },
+            "visibility": "public"
+          },
+          {
+            "constant": true,
+            "functionSelector": "eeeac01e",
+            "id": 4138,
+            "mutability": "constant",
+            "name": "PP",
+            "nodeType": "VariableDeclaration",
+            "overrides": null,
+            "scope": 4159,
+            "src": "541:95:10",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 4136,
+              "name": "uint256",
+              "nodeType": "ElementaryTypeName",
+              "src": "541:7:10",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "307846464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646454646464646433246",
+              "id": 4137,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "570:66:10",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_115792089237316195423570985008687907853269984665640564039457584007908834671663_by_1",
+                "typeString": "int_const 1157...(70 digits omitted)...1663"
+              },
+              "value": "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"
+            },
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 4157,
+              "nodeType": "Block",
+              "src": "921:98:10",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "arguments": [
+                      {
+                        "argumentTypes": null,
+                        "id": 4150,
+                        "name": "privKey",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 4141,
+                        "src": "961:7:10",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      {
+                        "argumentTypes": null,
+                        "id": 4151,
+                        "name": "GX",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 4126,
+                        "src": "976:2:10",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      {
+                        "argumentTypes": null,
+                        "id": 4152,
+                        "name": "GY",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 4129,
+                        "src": "986:2:10",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      {
+                        "argumentTypes": null,
+                        "id": 4153,
+                        "name": "AA",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 4132,
+                        "src": "996:2:10",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      {
+                        "argumentTypes": null,
+                        "id": 4154,
+                        "name": "PP",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 4138,
+                        "src": "1006:2:10",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      }
+                    ],
+                    "expression": {
+                      "argumentTypes": [
+                        {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      ],
+                      "expression": {
+                        "argumentTypes": null,
+                        "id": 4148,
+                        "name": "EllipticCurve",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 1438,
+                        "src": "934:13:10",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_type$_t_contract$_EllipticCurve_$1438_$",
+                          "typeString": "type(library EllipticCurve)"
+                        }
+                      },
+                      "id": 4149,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": false,
+                      "lValueRequested": false,
+                      "memberName": "ecMul",
+                      "nodeType": "MemberAccess",
+                      "referencedDeclaration": 864,
+                      "src": "934:19:10",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_function_internal_pure$_t_uint256_$_t_uint256_$_t_uint256_$_t_uint256_$_t_uint256_$returns$_t_uint256_$_t_uint256_$",
+                        "typeString": "function (uint256,uint256,uint256,uint256,uint256) pure returns (uint256,uint256)"
+                      }
+                    },
+                    "id": 4155,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "kind": "functionCall",
+                    "lValueRequested": false,
+                    "names": [],
+                    "nodeType": "FunctionCall",
+                    "src": "934:80:10",
+                    "tryCall": false,
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_tuple$_t_uint256_$_t_uint256_$",
+                      "typeString": "tuple(uint256,uint256)"
+                    }
+                  },
+                  "functionReturnParameters": 4147,
+                  "id": 4156,
+                  "nodeType": "Return",
+                  "src": "927:87:10"
+                }
+              ]
+            },
+            "documentation": {
+              "id": 4139,
+              "nodeType": "StructuredDocumentation",
+              "src": "641:197:10",
+              "text": "@notice Public Key derivation from private key\n Warning: this is just an example. Do not expose your private key.\n @param privKey The private key\n @return (qx, qy) The Public Key"
+            },
+            "functionSelector": "bc9e2bcf",
+            "id": 4158,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "derivePubKey",
+            "nodeType": "FunctionDefinition",
+            "overrides": null,
+            "parameters": {
+              "id": 4142,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 4141,
+                  "mutability": "mutable",
+                  "name": "privKey",
+                  "nodeType": "VariableDeclaration",
+                  "overrides": null,
+                  "scope": 4158,
+                  "src": "863:15:10",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 4140,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "863:7:10",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "862:17:10"
+            },
+            "returnParameters": {
+              "id": 4147,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 4144,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "overrides": null,
+                  "scope": 4158,
+                  "src": "903:7:10",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 4143,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "903:7:10",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 4146,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "overrides": null,
+                  "scope": 4158,
+                  "src": "912:7:10",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 4145,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "912:7:10",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "902:18:10"
+            },
+            "scope": 4159,
+            "src": "841:178:10",
+            "stateMutability": "pure",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "scope": 4160,
+        "src": "251:770:10"
+      }
+    ],
+    "src": "33:988:10"
+  },
+  "legacyAST": {
+    "attributes": {
+      "absolutePath": "project:/contracts/elliptic-curve-solidity/examples/Secp256k1.sol",
+      "exportedSymbols": {
+        "Secp256k1": [
+          4159
+        ]
+      },
+      "license": "MIT"
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            "0.6",
+            ".12"
+          ]
+        },
+        "id": 4121,
+        "name": "PragmaDirective",
+        "src": "33:23:10"
+      },
+      {
+        "attributes": {
+          "SourceUnit": 1439,
+          "absolutePath": "project:/contracts/elliptic-curve-solidity/contracts/EllipticCurve.sol",
+          "file": "../contracts/EllipticCurve.sol",
+          "scope": 4160,
+          "symbolAliases": [
+            null
+          ],
+          "unitAlias": ""
+        },
+        "id": 4122,
+        "name": "ImportDirective",
+        "src": "58:40:10"
+      },
+      {
+        "attributes": {
+          "abstract": false,
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            null
+          ],
+          "contractKind": "contract",
+          "fullyImplemented": true,
+          "linearizedBaseContracts": [
+            4159
+          ],
+          "name": "Secp256k1",
+          "scope": 4160
+        },
+        "children": [
+          {
+            "attributes": {
+              "text": " @title Secp256k1 Elliptic Curve\n @notice Example of particularization of Elliptic Curve for secp256k1 curve\n @author Witnet Foundation"
+            },
+            "id": 4123,
+            "name": "StructuredDocumentation",
+            "src": "101:149:10"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "functionSelector": "03a507be",
+              "mutability": "constant",
+              "name": "GX",
+              "overrides": null,
+              "scope": 4159,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint256",
+                  "type": "uint256"
+                },
+                "id": 4124,
+                "name": "ElementaryTypeName",
+                "src": "275:7:10"
+              },
+              {
+                "attributes": {
+                  "argumentTypes": null,
+                  "hexvalue": "307837394245363637454639444342424143353541303632393543453837304230373032394246434442324443453238443935394632383135423136463831373938",
+                  "isConstant": false,
+                  "isLValue": false,
+                  "isPure": true,
+                  "lValueRequested": false,
+                  "subdenomination": null,
+                  "token": "number",
+                  "type": "int_const 5506...(69 digits omitted)...9240",
+                  "value": "0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"
+                },
+                "id": 4125,
+                "name": "Literal",
+                "src": "304:66:10"
+              }
+            ],
+            "id": 4126,
+            "name": "VariableDeclaration",
+            "src": "275:95:10"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "functionSelector": "7a308a4c",
+              "mutability": "constant",
+              "name": "GY",
+              "overrides": null,
+              "scope": 4159,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint256",
+                  "type": "uint256"
+                },
+                "id": 4127,
+                "name": "ElementaryTypeName",
+                "src": "374:7:10"
+              },
+              {
+                "attributes": {
+                  "argumentTypes": null,
+                  "hexvalue": "307834383341444137373236413343343635354441344642464330453131303841384644313742343438413638353534313939433437443038464642313044344238",
+                  "isConstant": false,
+                  "isLValue": false,
+                  "isPure": true,
+                  "lValueRequested": false,
+                  "subdenomination": null,
+                  "token": "number",
+                  "type": "int_const 3267...(69 digits omitted)...2424",
+                  "value": "0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"
+                },
+                "id": 4128,
+                "name": "Literal",
+                "src": "403:66:10"
+              }
+            ],
+            "id": 4129,
+            "name": "VariableDeclaration",
+            "src": "374:95:10"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "functionSelector": "997da8d4",
+              "mutability": "constant",
+              "name": "AA",
+              "overrides": null,
+              "scope": 4159,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint256",
+                  "type": "uint256"
+                },
+                "id": 4130,
+                "name": "ElementaryTypeName",
+                "src": "473:7:10"
+              },
+              {
+                "attributes": {
+                  "argumentTypes": null,
+                  "hexvalue": "30",
+                  "isConstant": false,
+                  "isLValue": false,
+                  "isPure": true,
+                  "lValueRequested": false,
+                  "subdenomination": null,
+                  "token": "number",
+                  "type": "int_const 0",
+                  "value": "0"
+                },
+                "id": 4131,
+                "name": "Literal",
+                "src": "502:1:10"
+              }
+            ],
+            "id": 4132,
+            "name": "VariableDeclaration",
+            "src": "473:30:10"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "functionSelector": "5727dc5c",
+              "mutability": "constant",
+              "name": "BB",
+              "overrides": null,
+              "scope": 4159,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint256",
+                  "type": "uint256"
+                },
+                "id": 4133,
+                "name": "ElementaryTypeName",
+                "src": "507:7:10"
+              },
+              {
+                "attributes": {
+                  "argumentTypes": null,
+                  "hexvalue": "37",
+                  "isConstant": false,
+                  "isLValue": false,
+                  "isPure": true,
+                  "lValueRequested": false,
+                  "subdenomination": null,
+                  "token": "number",
+                  "type": "int_const 7",
+                  "value": "7"
+                },
+                "id": 4134,
+                "name": "Literal",
+                "src": "536:1:10"
+              }
+            ],
+            "id": 4135,
+            "name": "VariableDeclaration",
+            "src": "507:30:10"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "functionSelector": "eeeac01e",
+              "mutability": "constant",
+              "name": "PP",
+              "overrides": null,
+              "scope": 4159,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint256",
+                  "type": "uint256"
+                },
+                "id": 4136,
+                "name": "ElementaryTypeName",
+                "src": "541:7:10"
+              },
+              {
+                "attributes": {
+                  "argumentTypes": null,
+                  "hexvalue": "307846464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646454646464646433246",
+                  "isConstant": false,
+                  "isLValue": false,
+                  "isPure": true,
+                  "lValueRequested": false,
+                  "subdenomination": null,
+                  "token": "number",
+                  "type": "int_const 1157...(70 digits omitted)...1663",
+                  "value": "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"
+                },
+                "id": 4137,
+                "name": "Literal",
+                "src": "570:66:10"
+              }
+            ],
+            "id": 4138,
+            "name": "VariableDeclaration",
+            "src": "541:95:10"
+          },
+          {
+            "attributes": {
+              "functionSelector": "bc9e2bcf",
+              "implemented": true,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "derivePubKey",
+              "overrides": null,
+              "scope": 4159,
+              "stateMutability": "pure",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": "@notice Public Key derivation from private key\n Warning: this is just an example. Do not expose your private key.\n @param privKey The private key\n @return (qx, qy) The Public Key"
+                },
+                "id": 4139,
+                "name": "StructuredDocumentation",
+                "src": "641:197:10"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "privKey",
+                      "overrides": null,
+                      "scope": 4158,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint256",
+                          "type": "uint256"
+                        },
+                        "id": 4140,
+                        "name": "ElementaryTypeName",
+                        "src": "863:7:10"
+                      }
+                    ],
+                    "id": 4141,
+                    "name": "VariableDeclaration",
+                    "src": "863:15:10"
+                  }
+                ],
+                "id": 4142,
+                "name": "ParameterList",
+                "src": "862:17:10"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "overrides": null,
+                      "scope": 4158,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint256",
+                          "type": "uint256"
+                        },
+                        "id": 4143,
+                        "name": "ElementaryTypeName",
+                        "src": "903:7:10"
+                      }
+                    ],
+                    "id": 4144,
+                    "name": "VariableDeclaration",
+                    "src": "903:7:10"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "overrides": null,
+                      "scope": 4158,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint256",
+                          "type": "uint256"
+                        },
+                        "id": 4145,
+                        "name": "ElementaryTypeName",
+                        "src": "912:7:10"
+                      }
+                    ],
+                    "id": 4146,
+                    "name": "VariableDeclaration",
+                    "src": "912:7:10"
+                  }
+                ],
+                "id": 4147,
+                "name": "ParameterList",
+                "src": "902:18:10"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "functionReturnParameters": 4147
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "isStructConstructorCall": false,
+                          "lValueRequested": false,
+                          "names": [
+                            null
+                          ],
+                          "tryCall": false,
+                          "type": "tuple(uint256,uint256)",
+                          "type_conversion": false
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": [
+                                {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                },
+                                {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                },
+                                {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                },
+                                {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                },
+                                {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                }
+                              ],
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "member_name": "ecMul",
+                              "referencedDeclaration": 864,
+                              "type": "function (uint256,uint256,uint256,uint256,uint256) pure returns (uint256,uint256)"
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 1438,
+                                  "type": "type(library EllipticCurve)",
+                                  "value": "EllipticCurve"
+                                },
+                                "id": 4148,
+                                "name": "Identifier",
+                                "src": "934:13:10"
+                              }
+                            ],
+                            "id": 4149,
+                            "name": "MemberAccess",
+                            "src": "934:19:10"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 4141,
+                              "type": "uint256",
+                              "value": "privKey"
+                            },
+                            "id": 4150,
+                            "name": "Identifier",
+                            "src": "961:7:10"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 4126,
+                              "type": "uint256",
+                              "value": "GX"
+                            },
+                            "id": 4151,
+                            "name": "Identifier",
+                            "src": "976:2:10"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 4129,
+                              "type": "uint256",
+                              "value": "GY"
+                            },
+                            "id": 4152,
+                            "name": "Identifier",
+                            "src": "986:2:10"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 4132,
+                              "type": "uint256",
+                              "value": "AA"
+                            },
+                            "id": 4153,
+                            "name": "Identifier",
+                            "src": "996:2:10"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 4138,
+                              "type": "uint256",
+                              "value": "PP"
+                            },
+                            "id": 4154,
+                            "name": "Identifier",
+                            "src": "1006:2:10"
+                          }
+                        ],
+                        "id": 4155,
+                        "name": "FunctionCall",
+                        "src": "934:80:10"
+                      }
+                    ],
+                    "id": 4156,
+                    "name": "Return",
+                    "src": "927:87:10"
+                  }
+                ],
+                "id": 4157,
+                "name": "Block",
+                "src": "921:98:10"
+              }
+            ],
+            "id": 4158,
+            "name": "FunctionDefinition",
+            "src": "841:178:10"
+          }
+        ],
+        "id": 4159,
+        "name": "ContractDefinition",
+        "src": "251:770:10"
+      }
+    ],
+    "id": 4160,
+    "name": "SourceUnit",
+    "src": "33:988:10"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.6.12+commit.27d51765.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.3",
+  "updatedAt": "2021-10-22T10:40:12.164Z",
+  "devdoc": {
+    "author": "Witnet Foundation",
+    "kind": "dev",
+    "methods": {
+      "derivePubKey(uint256)": {
+        "params": {
+          "privKey": "The private key"
+        },
+        "returns": {
+          "_0": "(qx, qy) The Public Key"
+        }
+      }
+    },
+    "title": "Secp256k1 Elliptic Curve",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "derivePubKey(uint256)": {
+        "notice": "Public Key derivation from private key Warning: this is just an example. Do not expose your private key."
+      }
+    },
+    "notice": "Example of particularization of Elliptic Curve for secp256k1 curve",
+    "version": 1
+  }
+}
