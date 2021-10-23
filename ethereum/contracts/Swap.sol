@@ -91,7 +91,7 @@ contract Swap {
                 (isReady && block.timestamp >= timeout_1)
         );
 
-        verifySecret(_s, pubKeyRefund);
+        verifySecret(_s,  x_alice, y_alice);
         emit Refunded(_s);
 
         // send eth back to owner==caller (Alice)
