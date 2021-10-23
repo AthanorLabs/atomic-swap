@@ -417,6 +417,7 @@ dependencies = [
 [[package]]
 name = "farcaster_core"
 version = "0.1.0"
+source = "git+https://github.com/Lederstrumpf/farcaster-core?branch=pub_hack#fd50af5c47e107427ae916960039be07e1e970fc"
 dependencies = [
  "amplify",
  "bincode",
