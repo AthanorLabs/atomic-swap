@@ -168,3 +168,33 @@ func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
 
 	return res, nil
 }
+
+type generateBlocksRequest struct {
+	Address        string `json:"wallet_address"`
+	AmountOfBlocks uint   `json:"amount_of_blocks"`
+}
+
+func (c *client) callGenerateBlocks(address string, amount uint) error {
+	const method = "get_balance"
+
+	req := &generateBlocksRequest{
+		Address:        address,
+		AmountOfBlocks: amount,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := postRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	return nil
+}

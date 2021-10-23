@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{ "wallet_address":"44GBHzv...","amount_of_blocks":1000000}}' -H 'Content-Type: application/json'
+
 func TestClient_Transfer(t *testing.T) {
 	// start RPC server with wallet w/ balance:
 	//
@@ -55,7 +57,8 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 
 	for {
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 10)
+		t.Log("checking balance...")
 		balance, err = cB.GetBalance(0)
 		require.NoError(t, err)
 
