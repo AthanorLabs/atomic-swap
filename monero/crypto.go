@@ -113,6 +113,10 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 	return addr
 }
 
+func (kp *PrivateKeyPair) Bytes() []byte {
+	return kp.sk.key.Bytes()
+}
+
 func (kp *PrivateKeyPair) Address() Address {
 	return Address(EncodeMoneroBase58(kp.AddressBytes()))
 }
