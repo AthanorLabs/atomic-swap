@@ -56,10 +56,11 @@ type alice struct {
 	ctx    context.Context
 	t0, t1 time.Time
 
-	privkeys   *monero.PrivateKeyPair
-	pubkeys    *monero.PublicKeyPair
-	bobpubkeys *monero.PublicKey
-	client     monero.Client
+	privkeys    *monero.PrivateKeyPair
+	pubkeys     *monero.PublicKeyPair
+	bobSpendKey *monero.PublicKey
+	bobViewKey  *monero.PrivateViewKey
+	client      monero.Client
 
 	contract   *swap.Swap
 	ethPrivKey *ecdsa.PrivateKey
@@ -105,14 +106,15 @@ func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
 	return a.pubkeys, nil
 }
 
-func (a *alice) SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey) {
-
+func (a *alice) SetBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
+	a.bobSpendKey = sk
+	a.bobViewKey = vk
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 
 	pkAlice := a.pubkeys.SpendKey().Bytes()
-	pkBob := a.bobpubkeys.Bytes()
+	pkBob := a.bobSpendKey.Bytes()
 
 	var pka, pkb [32]byte
 	copy(pka[:], pkAlice)
