@@ -51,7 +51,7 @@ fn main() {
     f.read(&mut buffer).expect("buffer overflow");
     let dleq2 = DLEQProof::from_canonical_bytes(bytes.as_slice()).unwrap();
 
-    let commitment_agg_ed25519 = dleq2.c_g.iter().sum();
+    // let commitment_agg_ed25519 = dleq2.c_g.iter().sum();
 
     // dleq2.verify()
 }
