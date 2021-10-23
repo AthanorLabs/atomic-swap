@@ -1,0 +1,15 @@
+[package]
+name = "dleq-gen"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+farcaster_core = { path = "../farcaster-core", features = ["serde"] }
+# farcaster_core = { git = "https://github.com/farcaster-project/farcaster-core", branch = "main", features = ["serde"] }
+ecdsa_fun = { version = "0.6", default-features = false, features = ["all"] }
+secp256kfun = { version = "0.6", default-features = false, features = ["std", "serde", "libsecp_compat"] }
+curve25519-dalek = "3.0.2"
+rand = { version = "0.8.4" }
+
