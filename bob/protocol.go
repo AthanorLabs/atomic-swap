@@ -52,7 +52,7 @@ type Bob interface {
 	// TODO: units
 	LockFunds(amount uint) error
 
-	// RedeemFunds redeem's Bob's funds on ethereum
+	// ClaimFunds redeem's Bob's funds on ethereum
 	ClaimFunds() error
 }
 

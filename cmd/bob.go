@@ -57,7 +57,7 @@ func (n *node) doProtocolBob() error {
 			fmt.Println("Alice called Ready!")
 
 			// contract ready, let's claim our ether
-			if err := n.bob.RedeemFunds(); err != nil {
+			if err := n.bob.ClaimFunds(); err != nil {
 				return fmt.Errorf("failed to redeem ether: %w", err)
 			}
 		case kp := <-refund:
