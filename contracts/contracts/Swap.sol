@@ -51,32 +51,21 @@ contract Swap {
 	function claim(
 		uint256 _s
 	) public {
-		require(isReady == true, "contract is not ready!");
+      // Bob can claim either when:
+      // Alice never calls ready, and timeout_0 has passed, or
+      // Alice called ready and Bob is within timeframe timeout_1
+    require((block.timestamp <= timeout_1 && isReady == true) || block.timestamp >= timeout_0);
 		// confirm that provided secret `_s` was used to derive pubKeyClaim
     (uint px, uint py) = ed25519.scalarMultBase(_s);
-
-		emit DerivedPubKeyClaim(_s);
 		bytes32 ph = keccak256(abi.encode(px, py));
     require(ph == pubKeyClaim, "provided secret does not match the expected pubKey");
+		emit DerivedPubKeyClaim(_s);
 
 		// // send eth to caller
 		payable(msg.sender).transfer(address(this).balance);
 	}
 
-  function refund_bob(
-    uint256 _s
-  ) public {
-      require(isReady == false && block.timestamp <= timeout_1);
-      (uint px, uint py) = ed25519.scalarMultBase(_s);
-      bytes32 ph = keccak256(abi.encode(px, py));
-      require(ph == pubKeyClaim, "provided secret does not match the expected pubKey");
-
-      emit DerivedPubKeyClaim(_s);
-
-      require(block.timestamp < timeout_0);
-  }
-
-	function refund_alice(
+	function refund(
 		uint256 _s
 	) public {
       require((block.timestamp <= timeout_0 && isReady == false) || block.timestamp <= timeout_1);
