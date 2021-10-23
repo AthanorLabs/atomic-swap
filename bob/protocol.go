@@ -1,8 +1,11 @@
 package bob
 
 import (
+	"crypto/ecdsa"
 	"fmt"
+	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/swap-contract"
 )
@@ -17,6 +20,10 @@ type Bob interface {
 
 	// SetContract sets the contract in which Alice has locked her ETH.
 	SetContract(*swap.Swap)
+
+	// WatchForReady watches for Alice to call Ready() on the swap contract, allowing
+	// Bob to call Claim().
+	WatchForReady() (<-chan struct{}, error)
 
 	// WatchForRefund watches for the Refund event in the contract.
 	// This should be called before LockFunds.
@@ -35,19 +42,33 @@ type Bob interface {
 	LockFunds(aliceKeys *monero.PublicKeyPair, amount uint) error
 
 	// RedeemFunds redeem's Bob's funds on ethereum
-	// It accepts an instance of the Swap contract (as deployed by Alice)
 	RedeemFunds() error
 }
 
 type bob struct {
-	privkeys *monero.PrivateKeyPair
-	pubkeys  *monero.PublicKeyPair
-	client   monero.Client
-	contract *swap.Swap
+	t0, t1 time.Time
+
+	privkeys   *monero.PrivateKeyPair
+	pubkeys    *monero.PublicKeyPair
+	client     monero.Client
+	contract   *swap.Swap
+	ethPrivKey *ecdsa.PrivateKey
 }
 
-func NewBob() *bob {
-	return &bob{}
+// NewBob returns a new instance of Bob.
+// It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
+func NewBob(endpoint string, ethPrivKey string, t0, t1 time.Time) (*bob, error) {
+	pk, err := crypto.HexToECDSA(ethPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &bob{
+		t0:         t0,
+		t1:         t1,
+		client:     monero.NewClient(endpoint),
+		ethPrivKey: pk,
+	}, nil
 }
 
 // GenerateKeys generates Bob's public spend and view keys (S_b, V_b)
@@ -66,7 +87,12 @@ func (b *bob) SetContract(contract *swap.Swap) {
 	b.contract = contract
 }
 
+func (b *bob) WatchForReady() (<-chan struct{}, error) {
+	return nil, nil
+}
+
 func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
+	// watch for Refund() event on chain, calculate unlock key as result
 	return nil, nil
 }
 
@@ -74,7 +100,7 @@ func (b *bob) LockFunds(akp *monero.PublicKeyPair, amount uint) error {
 	kp := monero.SumSpendAndViewKeys(akp, b.pubkeys)
 
 	address := kp.Address()
-	if err := b.client.Transfer(address, amount); err != nil {
+	if err := b.client.Transfer(address, 0, amount); err != nil {
 		return err
 	}
 
@@ -84,5 +110,6 @@ func (b *bob) LockFunds(akp *monero.PublicKeyPair, amount uint) error {
 }
 
 func (b *bob) RedeemFunds() error {
+	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	return nil
 }

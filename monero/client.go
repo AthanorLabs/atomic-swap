@@ -5,7 +5,7 @@ import (
 )
 
 type Client interface {
-	Transfer(to Address, amount uint) error
+	Transfer(to Address, accountIdx, amount uint) error
 }
 
 type client struct {

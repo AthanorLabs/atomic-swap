@@ -41,6 +41,7 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 
 	// start RPC server with wallet-dir
+	// `./monero-wallet-rpc  --stagenet --rpc-bind-port 18082 --password "" --disable-rpc-login --wallet-dir .`
 	// TODO: it seems the wallet CLI fails to generate from keys when wallet-dir is not set,
 	// but it fails to load the wallet if wallet-file is not set (and these two flags cannot be used together)
 	cB := NewClient(defaultEndpoint)
