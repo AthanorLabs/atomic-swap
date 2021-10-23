@@ -21,6 +21,10 @@ func (n *node) doProtocolAlice() error {
 	n.outCh = outCh
 	n.inCh = n.host.ReceivedMessageCh()
 
+	// closed when we have received all the expected network messages, and we
+	// can move on to just watching the contract
+	setupDone := make(chan struct{})
+
 	for {
 		select {
 		case <-n.done:
@@ -28,6 +32,29 @@ func (n *node) doProtocolAlice() error {
 			if err := n.handleMessageAlice(msg.Who, msg.Message); err != nil {
 				fmt.Printf("failed to handle message: error=%s\n", err)
 			}
+		case <-setupDone:
+			break
+		}
+	}
+
+	claim, err := n.alice.WatchForClaim()
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-n.done:
+			return nil
+		case kp := <-claim:
+			fmt.Printf("Bob claimed ether! got secret: %v", kp)
+			address, err := n.alice.CreateMoneroWallet(kp)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("successfully created monero wallet from our secrets: address=%s", address)
+			// TODO: get and print balance
 		}
 	}
 
@@ -88,6 +115,10 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message) error {
 		if msg.Address == "" {
 			return errors.New("got empty address for locked XMR")
 		}
+
+		// check that XMR was locked in expected account, and confirm amount
+
+		n.host.SetNextExpectedMessage(nil)
 	default:
 		return errors.New("unexpected message type")
 	}
