@@ -21,13 +21,15 @@ Start monero-wallet-rpc:
 
 ##### Compiling contract bindings
 
-Download solc v0.6.12
+Download solc v0.8.9
 
+Set `SOLC_BIN` to the downloaded binary
 ```
-./solc-static-linux --bin contracts/contracts/Swap.sol -o contracts/bin/ --overwrite
-./solc-static-linux --abi contracts/contracts/Swap.sol -o contracts/abi/ --overwrite
+export SOLC_BIN=solc
 ```
 
+
+Generate the bindings
 ```
-abigen --abi contracts/abi/Swap.abi --pkg swap --type Swap --out swap.go --bin contracts/bin/Swap.bin 
+./scripts/generate-bindings.sh
 ```
