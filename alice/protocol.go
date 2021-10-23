@@ -188,5 +188,12 @@ func (a *alice) WatchForClaim() (<-chan *monero.PrivateKeyPair, error) {
 }
 
 func (a *alice) Refund() error {
-	return nil
+	txOpts := &bind.TransactOpts{
+		From:   a.auth.From,
+		Signer: a.auth.Signer,
+	}
+	secret := a.privkeys.Bytes()
+	s := big.NewInt(0).SetBytes(secret)
+	_, err := a.contract.Refund(txOpts, s)
+	return err
 }
