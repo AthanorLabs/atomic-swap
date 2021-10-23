@@ -3,9 +3,9 @@ package alice
 import (
 	"crypto/ecdsa"
 	"time"
-	//"math/big"
+	"math/big"
 
-	//"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -99,27 +99,21 @@ func (a *alice) SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey) {
 
 }
 
-<<<<<<< HEAD
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 	// pk_a, err := crypto.HexToECDSA(keyAlice)
-	// authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
-=======
+	authAlice, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, big.NewInt(1337)) // ganache chainID
 	pkAlice := a.pubkeys.SpendKey().Bytes()
 	pkBob := a.bobpubkeys.Bytes()
-	_, _, swap, err := swap.DeploySwap(authAlice, conn, pkAlice, pkBob)
+	var pkAliceFixed [32]byte
+	copy(pkAliceFixed [:], pkAlice)
+	var pkBobFixed [32]byte
+	copy(pkBobFixed [:], pkBob)
+	address, _, _, err := swap.DeploySwap(authAlice, a.ethClient, pkAliceFixed, pkBobFixed)
 	if err != nil {
-		return nil, err
+		// return nil, err
 	}
->>>>>>> 5717030 (Use Alice's and Bob's pubkeys to deploy the contract)
 
-	// pxAlice := a.pubkeys.SpendKey().X.Bytes()
-	// pyAlice := a.pubkeys.SpendKey().Y.Bytes()
-	// _, _, swap, err := swap.DeploySwap(authAlice, a.ethClient, pxAlice, pyAlice, pxBob, pyBob)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	return ethcommon.Address{}, nil
+	return address, nil
 }
 
 func (a *alice) Ready() error {
