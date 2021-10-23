@@ -2,7 +2,6 @@ package swap
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
 	"math/big"
 	"testing"
 
@@ -28,13 +27,13 @@ func TestDeploySwap(t *testing.T) {
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(keyAlice)
 	require.NoError(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(auth, conn, [32]byte{}, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -51,51 +50,65 @@ func encodePublicKey(pub *ecdsa.PublicKey) [64]byte {
 	return p
 }
 
-func TestSwap_Redeem(t *testing.T) {
+func TestSwap_Claim(t *testing.T) {
+	// Alice generates key
+	keyPairAlice, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	pubBytesAlice := encodePublicKey(keyPairAlice.Public().(*ecdsa.PublicKey))
+	pubhashAlice := crypto.Keccak256Hash(pubBytesAlice[:])
+
 	// Bob generates key
-	kp, err := crypto.GenerateKey()
+	keyPairBob, err := crypto.GenerateKey()
 	require.NoError(t, err)
+	pubBytesBob := encodePublicKey(keyPairBob.Public().(*ecdsa.PublicKey))
+	pubhashBob := crypto.Keccak256Hash(pubBytesBob[:])
 
-	// Bob's encoded pubkey
-	pubBytes := encodePublicKey(kp.Public().(*ecdsa.PublicKey))
-	pubhash := crypto.Keccak256Hash(pubBytes[:])
-
-	// Bob's secret key, to be revealed with `Redeem()`
-	kb := kp.D.Bytes()
-	var sk [32]byte
-	copy(sk[:], kb)
-
-	// Alice's refund secret
-	var sr [32]byte
-	_, err = rand.Read(sr[:])
-	require.NoError(t, err)
+	secretBob := keyPairBob.D.Bytes()
 
 	// setup
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(keyAlice)
 	require.NoError(t, err)
-	//alicePub := pk.Public().(*ecdsa.PublicKey)
-	//address := crypto.PubkeyToAddress(*alicePub)
-
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	pk_b, err := crypto.HexToECDSA(keyBob)
 	require.NoError(t, err)
 
-	_, _, swap, err := DeploySwap(auth, conn, sk, pubhash, sr)
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	require.NoError(t, err)
+	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
+	require.NoError(t, err)
+
+	_, _, swap, err := DeploySwap(authAlice, conn, pubhashAlice, pubhashBob)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
-		From:   auth.From,
-		Signer: auth.Signer,
+		From:   authAlice.From,
+		Signer: authAlice.Signer,
+	}
+
+	txOptsBob := &bind.TransactOpts{
+		From:   authBob.From,
+		Signer: authBob.Signer,
 	}
 
 	// callOpts := &bind.CallOpts{From: address}
 
-	_, err = swap.Ready(txOpts)
+	// Bob tries to claim before Alice has called ready, should fail
+	_, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
+	require.Errorf(t, err, "'isReady == false' cannot claim yet!")
+
+	// Alice calls set_ready on the contract
+	_, err = swap.SetReady(txOpts)
 	require.NoError(t, err)
 
-	_, err = swap.Redeem(txOpts, setBigIntLE(kb))
+	// Bob tries to claim before Alice has called ready, should fail
+	_, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
 	require.NoError(t, err)
+
+	// TODO check whether Bob's account balance has increased
+}
+
+func TestSwap_Refund(t *testing.T) {
 
 }
