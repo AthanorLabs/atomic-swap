@@ -18,6 +18,13 @@ import (
 
 const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
+func reverse(s []byte) []byte {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
+}
+
 var _ Bob = &bob{}
 
 // Bob contains the functions that will be called by a user who owns XMR
@@ -258,7 +265,7 @@ func (b *bob) ClaimFunds() error {
 	}
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	secret := b.privkeys.Bytes()
-	s := big.NewInt(0).SetBytes(secret)
+	s := big.NewInt(0).SetBytes(reverse(secret))
 	tx, err := b.contract.Claim(txOpts, s)
 	if err != nil {
 		return err
