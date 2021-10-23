@@ -11,13 +11,13 @@ contract Swap {
     // contract creator, Alice
     address payable owner;
 
-    // the expected public key for which the secret `s_b` corresponds.
-    // this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
+    // the expected public key derived from the secret `s_b`.
+    // this public key is a point on the ed25519 curve
     bytes32 public x_bob;
     bytes32 public y_bob;
 
-    // the expected public key for which the secret `s_a` corresponds.
-    // this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
+    // the expected public key derived from the secret `s_a`.
+    // this public key is a point on the ed25519 curve
     bytes32 public x_alice;
     bytes32 public y_alice;
 
@@ -29,7 +29,7 @@ contract Swap {
     // during which Bob can claim. After this, Alice can refund again
     uint256 public timeout_1;
 
-    // ready is set to true when Alice sees the funds locked on the other chain.
+    // Alice sets ready to true when she sees the funds locked on the other chain.
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     bool isReady = false;
 
@@ -55,7 +55,7 @@ contract Swap {
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
-    function set_ready() public {
+    function set_ready() external {
         require(msg.sender == owner && block.timestamp < timeout_0);
         isReady = true;
         timeout_1 = block.timestamp + 1 days;
