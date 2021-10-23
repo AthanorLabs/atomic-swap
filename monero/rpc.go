@@ -6,8 +6,10 @@ import (
 	"strings"
 )
 
-// defaultEndpoint is the default monero-wallet-rpc endpoint for stagenet
-const defaultEndpoint = "http://127.0.0.1:18082/json_rpc"
+// defaultEndpoint is the default monero-wallet-rpc endpoint
+const defaultEndpoint = "http://127.0.0.1:18083/json_rpc"
+
+const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
 // Address represents a base58-encoded string
 type Address string
@@ -135,9 +137,10 @@ type getBalanceRequest struct {
 }
 
 type getBalanceResponse struct {
-	Balance         float64 `json:"balance"`
-	BlocksToUnlock  uint    `json:"blocks_to_unlock"`
-	UnlockedBalance float64 `json:"unlocked_balance"`
+	Balance         float64                  `json:"balance"`
+	BlocksToUnlock  uint                     `json:"blocks_to_unlock"`
+	UnlockedBalance float64                  `json:"unlocked_balance"`
+	PerSubaddress   []map[string]interface{} `json:"per_subaddress"`
 }
 
 func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
@@ -169,13 +172,50 @@ func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
 	return res, nil
 }
 
+type getAddressRequest struct {
+	AccountIndex uint `json:"account_index"`
+}
+
+type getAddressResponse struct {
+	Address string `json:"address"`
+}
+
+func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
+	const method = "get_address"
+
+	req := &getAddressRequest{
+		AccountIndex: idx,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := postRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+
+	var res *getAddressResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 type generateBlocksRequest struct {
 	Address        string `json:"wallet_address"`
 	AmountOfBlocks uint   `json:"amount_of_blocks"`
 }
 
 func (c *client) callGenerateBlocks(address string, amount uint) error {
-	const method = "get_balance"
+	const method = "generateblocks"
 
 	req := &generateBlocksRequest{
 		Address:        address,
@@ -188,6 +228,21 @@ func (c *client) callGenerateBlocks(address string, amount uint) error {
 	}
 
 	resp, err := postRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	return nil
+}
+
+func (c *client) refresh() error {
+	const method = "refresh"
+
+	resp, err := postRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return err
 	}

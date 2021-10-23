@@ -10,14 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{ "wallet_address":"44GBHzv...","amount_of_blocks":1000000}}' -H 'Content-Type: application/json'
-
 func TestClient_Transfer(t *testing.T) {
 	// start RPC server with wallet w/ balance:
 	//
 	// `./monero-wallet-rpc  --stagenet --rpc-bind-port 18080 --password "" --disable-rpc-login --wallet-file stagenet-wallet`
-	const amount = 33
+	const amount = 3000000000000
 	cA := NewClient("http://127.0.0.1:18080/json_rpc")
+
+	aliceAddress, err := cA.callGetAddress(0)
+	require.NoError(t, err)
+	t.Log("aliceAddress", aliceAddress)
+
+	daemon := NewClient(defaultDaemonEndpoint)
 
 	balance, err := cA.GetBalance(0)
 	require.NoError(t, err)
@@ -25,7 +29,7 @@ func TestClient_Transfer(t *testing.T) {
 	t.Log("unlocked balance: ", balance.UnlockedBalance)
 	t.Log("blocks to unlock: ", balance.BlocksToUnlock)
 
-	if balance.BlocksToUnlock > 0 {
+	if balance.BlocksToUnlock > 0 && balance.UnlockedBalance == 0 {
 		t.Fatal("need to wait for balance to unlock")
 	}
 
@@ -39,7 +43,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	vkABPriv := SumPrivateViewKeys(kpA.vk, kpB.vk)
 
-	r, err := rand.Int(rand.Reader, big.NewInt(999))
+	r, err := rand.Int(rand.Reader, big.NewInt(10000))
 	require.NoError(t, err)
 
 	// start RPC server with wallet-dir
@@ -55,9 +59,9 @@ func TestClient_Transfer(t *testing.T) {
 	// transfer to account A+B
 	err = cA.Transfer(kpABPub.Address(), 0, amount)
 	require.NoError(t, err)
+	daemon.callGenerateBlocks(aliceAddress.Address, 1)
 
 	for {
-		time.Sleep(time.Second * 10)
 		t.Log("checking balance...")
 		balance, err = cB.GetBalance(0)
 		require.NoError(t, err)
@@ -67,14 +71,30 @@ func TestClient_Transfer(t *testing.T) {
 			t.Log("unlocked balance of AB: ", balance.UnlockedBalance)
 			break
 		}
+
+		daemon.callGenerateBlocks(aliceAddress.Address, 1)
+		time.Sleep(time.Second)
 	}
+
+	daemon.callGenerateBlocks(aliceAddress.Address, 16)
+
+	cC := NewClient("http://127.0.0.1:18084/json_rpc")
 
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
-	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-%d", r), "")
+	err = cC.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-spaghet%d", r), "")
 	require.NoError(t, err)
 
-	// transfer from account A+B back to original address
-	err = cB.Transfer(kpABPub.Address(), 1, amount)
+	err = cC.refresh()
+	require.NoError(t, err)
+
+	balance, err = cC.GetBalance(0)
+	require.NoError(t, err)
+	if balance.Balance == 0 {
+		t.Fatal("no balance in account 0")
+	}
+
+	// transfer from account A+B back to Alice's address
+	err = cC.Transfer(Address(aliceAddress.Address), 0, 1)
 	require.NoError(t, err)
 }
