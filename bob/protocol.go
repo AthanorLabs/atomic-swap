@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -52,7 +53,7 @@ type Bob interface {
 	LockFunds(amount uint) error
 
 	// RedeemFunds redeem's Bob's funds on ethereum
-	RedeemFunds() error
+	ClaimFunds() error
 }
 
 type bob struct {
@@ -66,6 +67,7 @@ type bob struct {
 	ethPrivKey      *ecdsa.PrivateKey
 	alicePublicKeys *monero.PublicKeyPair
 	ethClient       *ethclient.Client
+	auth            *bind.TransactOpts
 }
 
 // NewBob returns a new instance of Bob.
@@ -81,11 +83,17 @@ func NewBob(moneroEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
 		return nil, err
 	}
 
+	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	if err != nil {
+		return nil, err
+	}
+
 	return &bob{
 		ctx:        context.Background(), // TODO: add cancel
 		client:     monero.NewClient(moneroEndpoint),
 		ethClient:  ec,
 		ethPrivKey: pk,
+		auth:       auth,
 	}, nil
 }
 
@@ -203,7 +211,14 @@ func (b *bob) LockFunds(amount uint) error {
 	return nil
 }
 
-func (b *bob) RedeemFunds() error {
+func (b *bob) ClaimFunds() error {
+	txOpts := &bind.TransactOpts{
+		From:   b.auth.From,
+		Signer: b.auth.Signer,
+	}
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	return nil
+	secret := b.privkeys.Bytes()
+	s := big.NewInt(0).SetBytes(secret)
+	_, err := b.contract.Claim(txOpts, s)
+	return err
 }
