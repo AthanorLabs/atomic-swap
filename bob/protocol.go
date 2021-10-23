@@ -1,10 +1,12 @@
 package bob
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -54,6 +56,7 @@ type Bob interface {
 }
 
 type bob struct {
+	ctx    context.Context
 	t0, t1 time.Time
 
 	privkeys        *monero.PrivateKeyPair
@@ -79,6 +82,7 @@ func NewBob(moneroEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
 	}
 
 	return &bob{
+		ctx:        context.Background(), // TODO: add cancel
 		client:     monero.NewClient(moneroEndpoint),
 		ethClient:  ec,
 		ethPrivKey: pk,
@@ -112,8 +116,52 @@ func (b *bob) WatchForReady() (<-chan struct{}, error) {
 }
 
 func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
+	watchOpts := &bind.WatchOpts{
+		Context: b.ctx,
+	}
+
+	out := make(chan *monero.PrivateKeyPair)
+	ch := make(chan *swap.SwapRefunded)
+	defer close(out)
+
 	// watch for Refund() event on chain, calculate unlock key as result
-	return nil, nil
+	sub, err := b.contract.WatchRefunded(watchOpts, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	defer sub.Unsubscribe()
+
+	go func() {
+		select {
+		case refund := <-ch:
+			// got Alice's secret
+			saBytes := refund.S.Bytes()
+			var sa [32]byte
+			copy(sa[:], saBytes)
+
+			skA, err := monero.NewPrivateSpendKey(sa[:])
+			if err != nil {
+				fmt.Printf("failed to convert Alice's secret into a key: %w", err)
+				return
+			}
+
+			vkA, err := skA.View()
+			if err != nil {
+				fmt.Printf("failed to get view key from Alice's secret spend key: %w", err)
+				return
+			}
+
+			skAB := monero.SumPrivateSpendKeys(skA, b.privkeys.SpendKey())
+			vkAB := monero.SumPrivateViewKeys(vkA, b.privkeys.ViewKey())
+			kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+			out <- kpAB
+		case <-b.ctx.Done():
+			return
+		}
+	}()
+
+	return out, nil
 }
 
 func (b *bob) LockFunds(amount uint) error {
