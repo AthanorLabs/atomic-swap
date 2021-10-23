@@ -1,8 +1,9 @@
 pragma solidity 0.8.9;
 
+import "./Ed25519_mock.sol";
 
 contract Swap {
-
+  Ed25519 ed25519;
 	// the hash of the expected public key for which the secret `s_b` corresponds.
 	// this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
   bytes32 public pubKeyClaim;
@@ -27,8 +28,8 @@ contract Swap {
 	// this prevents Bob from withdrawing funds without locking funds on the other chain first
 	bool isReady = false;
 
-	event DerivedPubKeyClaim(uint256 x, uint256 y);
-	event DerivedPubKeyRefund(uint256 x, uint256 y);
+	event DerivedPubKeyClaim(uint256 s);
+	event DerivedPubKeyRefund(uint256 s);
 
 	constructor(
 		bytes32 _pubKeyClaim,
@@ -38,6 +39,7 @@ contract Swap {
 		pubKeyClaim = _pubKeyClaim;
 		pubKeyRefund = _pubKeyRefund;
 		timeout_0 = block.timestamp + 1 days; // TODO: make configurable
+    ed25519 = new Ed25519();
 	}
 
 	function set_ready() public {
@@ -51,11 +53,11 @@ contract Swap {
 	) public {
 		require(isReady == true, "contract is not ready!");
 		// confirm that provided secret `_s` was used to derive pubKeyClaim
-    /* Ed25519(_s) */
+    (uint px, uint py) = ed25519.scalarMultBase(_s);
 
-		/* emit DerivedPubKeyClaim(px, py); */
-		/* bytes32 ph = keccak256(abi.encode(px, py)); */
-		/* require(ph == pubKeyClaim, "provided public key does not match expected"); */
+		emit DerivedPubKeyClaim(_s);
+		bytes32 ph = keccak256(abi.encode(px, py));
+    require(ph == pubKeyClaim, "provided secret does not match the expected pubKey");
 
 		// // send eth to caller
 		payable(msg.sender).transfer(address(this).balance);
@@ -64,9 +66,12 @@ contract Swap {
   function refund_bob(
     uint256 _s
   ) public {
-      // TODO required that secret provided corresponds to expectedPubKeyClaim
+      require(isReady == false && block.timestamp <= timeout_1);
+      (uint px, uint py) = ed25519.scalarMultBase(_s);
+      bytes32 ph = keccak256(abi.encode(px, py));
+      require(ph == pubKeyClaim, "provided secret does not match the expected pubKey");
 
-      /* emit DerivedPubKeyClaim(px, py); */
+      emit DerivedPubKeyClaim(_s);
 
       require(block.timestamp < timeout_0);
   }
@@ -76,9 +81,10 @@ contract Swap {
 	) public {
       require((block.timestamp <= timeout_0 && isReady == false) || block.timestamp <= timeout_1);
 
-      // TODO require that the provided secret matches `pubKeyRefund`
-
-      /* emit DerivedPubKeyRefund(px, py); */
+      (uint px, uint py) = ed25519.scalarMultBase(_s);
+      bytes32 ph = keccak256(abi.encode(px, py));
+      require(ph == pubKeyRefund, "provided secret does not match the expected pubKey");
+      emit DerivedPubKeyRefund(_s);
 
       // send eth back to owner
       owner.transfer(address(this).balance);
