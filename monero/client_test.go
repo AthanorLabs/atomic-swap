@@ -78,23 +78,21 @@ func TestClient_Transfer(t *testing.T) {
 
 	daemon.callGenerateBlocks(aliceAddress.Address, 16)
 
-	cC := NewClient("http://127.0.0.1:18084/json_rpc")
-
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
-	err = cC.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-spaghet%d", r), "")
+	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-spaghet%d", r), "")
 	require.NoError(t, err)
 
-	err = cC.refresh()
+	err = cB.refresh()
 	require.NoError(t, err)
 
-	balance, err = cC.GetBalance(0)
+	balance, err = cB.GetBalance(0)
 	require.NoError(t, err)
 	if balance.Balance == 0 {
 		t.Fatal("no balance in account 0")
 	}
 
 	// transfer from account A+B back to Alice's address
-	err = cC.Transfer(Address(aliceAddress.Address), 0, 1)
+	err = cB.Transfer(Address(aliceAddress.Address), 0, 1)
 	require.NoError(t, err)
 }

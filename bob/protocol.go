@@ -112,7 +112,33 @@ func (b *bob) SetContract(address ethcommon.Address) error {
 }
 
 func (b *bob) WatchForReady() (<-chan struct{}, error) {
-	return nil, nil
+	watchOpts := &bind.WatchOpts{
+		Context: b.ctx,
+	}
+
+	done := make(chan struct{})
+	ch := make(chan *swap.SwapIsReady)
+	defer close(done)
+
+	// watch for Refund() event on chain, calculate unlock key as result
+	sub, err := b.contract.WatchIsReady(watchOpts, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	defer sub.Unsubscribe()
+
+	go func() {
+		select {
+		case <-ch:
+			// contract is ready!!
+			close(done)
+		case <-b.ctx.Done():
+			return
+		}
+	}()
+
+	return done, nil
 }
 
 func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {

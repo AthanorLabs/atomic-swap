@@ -55,6 +55,8 @@ func (n *node) doProtocolBob() error {
 			return nil
 		case <-ready:
 			fmt.Println("Alice called Ready!")
+
+			// contract ready, let's claim our ether
 		case kp := <-refund:
 			fmt.Println("Alice refunded, got monero account key", kp)
 		}
