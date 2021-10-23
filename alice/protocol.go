@@ -64,6 +64,7 @@ type alice struct {
 	contract   *swap.Swap
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
+	auth       *bind.TransactOpts
 }
 
 // NewAlice returns a new instance of Alice.
@@ -79,12 +80,17 @@ func NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
 	if err != nil {
 		return nil, err
 	}
+	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	if err != nil {
+		return nil, err
+	}
 
 	return &alice{
 		ctx:        context.Background(), // TODO: add cancel
 		ethPrivKey: pk,
 		ethClient:  ec,
 		client:     monero.NewClient(moneroEndpoint),
+		auth:       auth,
 	}, nil
 }
 
@@ -104,8 +110,6 @@ func (a *alice) SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey) {
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
-	pk_a, err := crypto.HexToECDSA(keyAlice)
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 
 	pkAlice := a.pubkeys.SpendKey().Bytes()
 	pkBob := a.bobpubkeys.Bytes()
@@ -114,7 +118,7 @@ func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 	copy(pka[:], pkAlice)
 	copy(pkb[:], pkBob)
 
-	address, _, swap, err := swap.DeploySwap(authAlice, a.ethClient, pka, pkb)
+	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
@@ -124,7 +128,12 @@ func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 }
 
 func (a *alice) Ready() error {
-	return nil
+	txOpts := &bind.TransactOpts{
+		From:   a.auth.From,
+		Signer: a.auth.Signer,
+	}
+	_, err := a.contract.SetReady(txOpts)
+	return err
 }
 
 func (a *alice) WatchForClaim() (<-chan *monero.PrivateKeyPair, error) {
