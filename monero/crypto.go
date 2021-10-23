@@ -72,7 +72,14 @@ type PrivateKeyPair struct {
 	vk *PrivateViewKey
 }
 
-func NewPrivateKeyPair(skBytes, vkBytes []byte) (*PrivateKeyPair, error) {
+func NewPrivateKeyPair(sk *PrivateSpendKey, vk *PrivateViewKey) *PrivateKeyPair {
+	return &PrivateKeyPair{
+		sk: sk,
+		vk: vk,
+	}
+}
+
+func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error) {
 	if len(skBytes) != privateKeySize || len(vkBytes) != privateKeySize {
 		return nil, errInvalidInput
 	}
@@ -117,12 +124,31 @@ func (kp *PrivateKeyPair) PublicKeyPair() *PublicKeyPair {
 	}
 }
 
+func (kp *PrivateKeyPair) SpendKey() *PrivateSpendKey {
+	return kp.sk
+}
+
 func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
 	return kp.vk
 }
 
 type PrivateSpendKey struct {
 	key *ed25519.Scalar
+}
+
+func NewPrivateSpendKey(b []byte) (*PrivateSpendKey, error) {
+	if len(b) != privateKeySize {
+		return nil, errors.New("input is not 32 bytes")
+	}
+
+	sk, err := ed25519.NewScalar().SetCanonicalBytes(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PrivateSpendKey{
+		key: sk,
+	}, nil
 }
 
 func (k *PrivateSpendKey) Public() *PublicKey {
