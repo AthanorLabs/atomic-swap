@@ -17,6 +17,6 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	c := NewClient(defaultEndpoint)
-	err = c.callGenerateFromKeys(kp, fmt.Sprintf("test-wallet-%d", r), "")
+	err = c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(), fmt.Sprintf("test-wallet-%d", r), "")
 	require.NoError(t, err)
 }

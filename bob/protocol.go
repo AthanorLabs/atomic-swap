@@ -42,7 +42,7 @@ type Bob interface {
 type bob struct {
 	privkeys *monero.PrivateKeyPair
 	pubkeys  *monero.PublicKeyPair
-	client monero.Client
+	client   monero.Client
 	contract *swap.Swap
 }
 
@@ -71,10 +71,9 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 }
 
 func (b *bob) LockFunds(akp *monero.PublicKeyPair, amount uint) error {
-	sk := monero.Sum(akp.SpendKey(), b.pubkeys.SpendKey())
-	vk := monero.Sum(akp.ViewKey(), b.pubkeys.ViewKey())
+	kp := monero.SumSpendAndViewKeys(akp, b.pubkeys)
 
-	address := monero.NewPublicKeyPair(sk, vk).Address()
+	address := kp.Address()
 	if err := b.client.Transfer(address, amount); err != nil {
 		return err
 	}

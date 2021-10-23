@@ -18,13 +18,17 @@ func NewClient(endpoint string) *client {
 	}
 }
 
-func (c *client) Transfer(to Address, amount uint) error {
+func (c *client) GetBalance(idx uint) (*getBalanceResponse, error) {
+	return c.callGetBalance(idx)
+}
+
+func (c *client) Transfer(to Address, accountIdx, amount uint) error {
 	destination := Destination{
-		Amount: amount,
+		Amount:  amount,
 		Address: string(to),
 	}
 
-	txhash, err := c.callTransfer([]Destination{destination})
+	txhash, err := c.callTransfer([]Destination{destination}, accountIdx)
 	fmt.Println("Bob: locked XMR", txhash)
 	return err
 }

@@ -62,8 +62,6 @@ func postRPC(endpoint, method, params string) (*ServerResponse, error) {
 		return nil, err
 	}
 
-	fmt.Println(string(data))
-
 	r, err := http.NewRequest("POST", endpoint, buf)
 	if err != nil {
 		return nil, err

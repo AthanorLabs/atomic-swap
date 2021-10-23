@@ -25,18 +25,22 @@ type generateFromKeysResponse struct {
 	Info    string `json:"info`
 }
 
-func (c *client) callGenerateFromKeys(kp *PrivateKeyPair, filename, password string) error {
+func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, address Address, filename, password string) error {
 	const (
-		method         = "generate_from_keys"
-		successMessage = "Wallet has been generated successfully."
+		method                 = "generate_from_keys"
+		successMessage         = "Wallet has been generated successfully."
+		viewOnlySuccessMessage = "Watch-only wallet has been generated successfully."
 	)
 
 	req := &generateFromKeysRequest{
 		Filename: filename,
-		Address:  string(kp.Address()),
-		SpendKey: kp.sk.Hex(),
-		ViewKey:  kp.vk.Hex(),
+		Address:  string(address),
+		ViewKey:  vk.Hex(),
 		Password: password,
+	}
+
+	if sk != nil {
+		req.SpendKey = sk.Hex()
 	}
 
 	params, err := json.Marshal(req)
@@ -58,7 +62,8 @@ func (c *client) callGenerateFromKeys(kp *PrivateKeyPair, filename, password str
 		return err
 	}
 
-	if strings.Compare(successMessage, res.Info) == 0 {
+	// TODO: check for if we passed spend key or not
+	if strings.Compare(successMessage, res.Info) == 0 || strings.Compare(viewOnlySuccessMessage, res.Info) == 0 {
 		return nil
 	}
 
@@ -66,39 +71,40 @@ func (c *client) callGenerateFromKeys(kp *PrivateKeyPair, filename, password str
 }
 
 type Destination struct {
-	Amount uint `json:"amount"`
+	Amount  uint   `json:"amount"`
 	Address string `json:"address"`
 }
 
 type transferRequest struct {
 	Destinations []Destination `json:"destinations"`
-	// AccountIndex uint // optional
-	Priority uint `json:"priority"`
-	//Mixin uint  `json:"mixin"`
-	//RingSize uint  `json:"ring_size"`
-	//UnlockTime uint  `json:"unlock_time"`
+	AccountIndex uint          // optional
+	Priority     uint          `json:"priority"`
+	// Mixin uint  `json:"mixin"`
+	// RingSize uint  `json:"ring_size"`
+	// UnlockTime uint  `json:"unlock_time"`
 	// GetTxKey bool
 }
 
 type transferResponse struct {
-	Amount uint  `json:"amount"`
-	Fee uint `json:"fee"`
+	Amount        uint        `json:"amount"`
+	Fee           uint        `json:"fee"`
 	MultisigTxset interface{} `json:"multisig_txset"`
-	TxBlob string `json:"tx_blob"`
-	TxHash string `json:"tx_hash"`
-	TxKey string `json:"tx_key"`
-	TxMetadata string `json:"tx_metadata"`
-	UnsignedTxset string `json:"unsigned_txset"`
+	TxBlob        string      `json:"tx_blob"`
+	TxHash        string      `json:"tx_hash"`
+	TxKey         string      `json:"tx_key"`
+	TxMetadata    string      `json:"tx_metadata"`
+	UnsignedTxset string      `json:"unsigned_txset"`
 }
 
-func (c *client) callTransfer(destinations []Destination) (string, error) {
+func (c *client) callTransfer(destinations []Destination, accountIdx uint) (string, error) {
 	const (
-		method         = "transfer"
+		method = "transfer"
 	)
 
 	req := &transferRequest{
 		Destinations: destinations,
-		Priority: 0,
+		AccountIndex: accountIdx,
+		Priority:     0,
 		//RingSize: 11,
 	}
 
@@ -119,7 +125,46 @@ func (c *client) callTransfer(destinations []Destination) (string, error) {
 	var res *transferResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return "", err
-	}	
+	}
 
 	return res.TxHash, nil
+}
+
+type getBalanceRequest struct {
+	AccountIndex uint `json:"account_index"`
+}
+
+type getBalanceResponse struct {
+	Balance         float64 `json:"balance"`
+	BlocksToUnlock  uint    `json:"blocks_to_unlock"`
+	UnlockedBalance float64 `json:"unlocked_balance"`
+}
+
+func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
+	const method = "get_balance"
+
+	req := &getBalanceRequest{
+		AccountIndex: idx,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := postRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+
+	var res *getBalanceResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
