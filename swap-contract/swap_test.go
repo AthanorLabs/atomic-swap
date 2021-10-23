@@ -54,14 +54,16 @@ func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := crypto.GenerateKey()
 	require.NoError(t, err)
-	pubBytesAlice := encodePublicKey(keyPairAlice.Public().(*ecdsa.PublicKey))
-	pubhashAlice := crypto.Keccak256Hash(pubBytesAlice[:])
+	pubKeyAlice := keyPairAlice.Public().(*ecdsa.PublicKey)
+	pxAlice := pubKeyAlice.X.Bytes()
+	pyAlice := pubKeyAlice.Y.Bytes()
 
 	// Bob generates key
 	keyPairBob, err := crypto.GenerateKey()
 	require.NoError(t, err)
-	pubBytesBob := encodePublicKey(keyPairBob.Public().(*ecdsa.PublicKey))
-	pubhashBob := crypto.Keccak256Hash(pubBytesBob[:])
+	pubKeyBob := keyPairBob.Public().(*ecdsa.PublicKey)
+	pxBob := pubKeyBob.X.Bytes()
+	pyBob := pubKeyBob.Y.Bytes()
 
 	secretBob := keyPairBob.D.Bytes()
 
@@ -79,7 +81,7 @@ func TestSwap_Claim(t *testing.T) {
 	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	_, _, swap, err := DeploySwap(authAlice, conn, pubhashAlice, pubhashBob)
+	_, _, swap, err := DeploySwap(authAlice, conn, pxAlice, pyAlice, pxBob, pyBob)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -95,7 +97,8 @@ func TestSwap_Claim(t *testing.T) {
 	// callOpts := &bind.CallOpts{From: address}
 
 	// Bob tries to claim before Alice has called ready, should fail
-	_, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
+	// _, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
+	_, err = swap.Claim(txOptsBob, secretBob)
 	require.Errorf(t, err, "'isReady == false' cannot claim yet!")
 
 	// Alice calls set_ready on the contract
@@ -103,7 +106,7 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	// Bob tries to claim before Alice has called ready, should fail
-	_, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
+	_, err = swap.Claim(txOptsBob, secretBob)
 	require.NoError(t, err)
 
 	// TODO check whether Bob's account balance has increased
