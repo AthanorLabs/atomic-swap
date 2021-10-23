@@ -2,7 +2,8 @@
 
 pragma solidity 0.8.9;
 
-import "./Ed25519.sol";
+// import "./Ed25519.sol";
+import "./Ed25519_alt.sol";
 
 contract Swap {
     // Ed25519 library
@@ -42,7 +43,7 @@ contract Swap {
         pubKeyRefund = _pubKeyRefund;
         timeout_0 = block.timestamp + 1 days;
         ed25519 = new Ed25519();
-        emit Constructed(pubKeyRefund);
+        emit Constructed(_pubKeyRefund);
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
@@ -93,8 +94,9 @@ contract Swap {
         selfdestruct(owner);
     }
 
-    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
-        (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
+    function verifySecret(uint256 _s, bytes32 pubKey) public view {
+        // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
+        (uint256 px, uint256 py) = ed25519.scalarMultBase(_s);
         uint256 canonical_p = py | ((px >> (8 * 30 + 1)) & 0x80);
         require(
             bytes32(canonical_p) == pubKey,
