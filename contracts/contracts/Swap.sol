@@ -31,8 +31,10 @@ contract Swap {
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     bool isReady = false;
 
-    event DerivedPubKeyClaim(uint256 s);
-    event DerivedPubKeyRefund(uint256 s);
+    event Constructed(bytes32 p);
+    event IsReady(bool b);
+    event Claimed(uint256 s);
+    event Refunded(uint256 s);
 
     constructor(
         bytes32 _pubKeyClaim,
@@ -44,6 +46,7 @@ contract Swap {
         pubKeyRefund = _pubKeyRefund;
         timeout_0 = block.timestamp + 1 days;
         ed25519 = _ed25519;
+        emit Constructed(pubKeyRefund);
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
@@ -51,6 +54,7 @@ contract Swap {
         require(msg.sender == owner && block.timestamp < timeout_0);
         isReady = true;
         timeout_1 = block.timestamp + 1 days;
+        emit IsReady(true);
     }
 
     // Bob can claim if:
@@ -67,7 +71,7 @@ contract Swap {
         }
 
         verifySecret(_s, pubKeyClaim);
-        emit DerivedPubKeyClaim(_s);
+        emit Claimed(_s);
 
         // send eth to caller (Bob)
         selfdestruct(payable(msg.sender));
@@ -83,7 +87,7 @@ contract Swap {
         );
 
         verifySecret(_s, pubKeyRefund);
-        emit DerivedPubKeyRefund(_s);
+        emit Refunded(_s);
 
         // send eth back to owner==caller (Alice)
         selfdestruct(owner);
