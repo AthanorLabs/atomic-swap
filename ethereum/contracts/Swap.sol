@@ -11,13 +11,15 @@ contract Swap {
     // contract creator, Alice
     address payable owner;
 
-    // the hash of the expected public key for which the secret `s_b` corresponds.
+    // the expected public key for which the secret `s_b` corresponds.
     // this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
-    bytes32 public pubKeyClaim;
+    bytes32 public x_bob;
+    bytes32 public y_bob;
 
-    // the hash of the expected public key for which the secret `s_a` corresponds.
+    // the expected public key for which the secret `s_a` corresponds.
     // this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
-    bytes32 public pubKeyRefund;
+    bytes32 public x_alice;
+    bytes32 public y_alice;
 
     // time period from contract creation
     // during which Alice can call either set_ready or refund
@@ -31,21 +33,25 @@ contract Swap {
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     bool isReady = false;
 
-    event Constructed(bytes32 p);
+    event Constructed(bytes32 x, bytes32 y);
     event IsReady(bool b);
     event Claimed(uint256 s);
     event Refunded(uint256 s);
 
     constructor(
-        bytes32 _pubKeyClaim,
-        bytes32 _pubKeyRefund
+        bytes32 _x_alice,
+        bytes32 _y_alice,
+        bytes32 _x_bob,
+        bytes32 _y_bob
     ) payable {
         owner = payable(msg.sender);
-        pubKeyClaim = _pubKeyClaim;
-        pubKeyRefund = _pubKeyRefund;
+        x_alice = _x_alice;
+        y_alice = _y_alice;
+        x_bob = _x_bob;
+        y_bob = _y_bob;
         timeout_0 = block.timestamp + 1 days;
         ed25519 = new Ed25519();
-        emit Constructed(pubKeyRefund);
+        emit Constructed(x_alice, y_alice);
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
@@ -69,7 +75,7 @@ contract Swap {
             );
         }
 
-        verifySecret(_s, pubKeyClaim);
+        verifySecret(_s, x_bob, y_bob);
         emit Claimed(_s);
 
         // send eth to caller (Bob)
@@ -92,11 +98,14 @@ contract Swap {
         selfdestruct(owner);
     }
 
-    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
+    function verifySecret(
+        uint256 _s,
+        bytes32 x,
+        bytes32 y
+    ) internal view {
         (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
-        bytes32 ph = keccak256(abi.encode(px, py));
         require(
-            ph == pubKey,
+            bytes32(px) == x && bytes32(py) == y,
             "provided secret does not match the expected pubKey"
         );
     }
