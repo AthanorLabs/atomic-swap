@@ -84,7 +84,7 @@ func TestSwap_Claim(t *testing.T) {
 	copy(pkAliceFixed [:], pubKeyAlice)
 	var pkBobFixed [32]byte
 	copy(pkBobFixed [:], pubKeyBob)
-	_, _, swap, err := DeploySwap(authAlice, conn, pkAliceFixed, pkAliceFixed)
+	_, _, swap, err := DeploySwap(authAlice, conn, pkAliceFixed, pkBobFixed)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
