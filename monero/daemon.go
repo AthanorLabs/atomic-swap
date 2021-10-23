@@ -41,18 +41,3 @@ func (c *client) callGenerateBlocks(address string, amount uint) error {
 
 	return nil
 }
-
-func (c *client) refresh() error {
-	const method = "refresh"
-
-	resp, err := postRPC(c.endpoint, method, "{}")
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return resp.Error
-	}
-
-	return nil
-}

@@ -9,6 +9,7 @@ type Client interface {
 	GetBalance(idx uint) (*getBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) error
 	GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error
+	Refresh() error
 }
 
 type client struct {
@@ -43,4 +44,23 @@ func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string)
 
 func (c *client) GetAddress(idx uint) (*getAddressResponse, error) {
 	return c.callGetAddress(idx)
+}
+
+func (c *client) Refresh() error {
+	return c.refresh()
+}
+
+func (c *client) refresh() error {
+	const method = "refresh"
+
+	resp, err := postRPC(c.endpoint, method, "{}")
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	return nil
 }

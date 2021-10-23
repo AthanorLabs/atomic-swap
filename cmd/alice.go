@@ -37,28 +37,6 @@ func (n *node) doProtocolAlice() error {
 		}
 	}
 
-	claim, err := n.alice.WatchForClaim()
-	if err != nil {
-		return err
-	}
-
-	for {
-		// TODO: add t1 timeout case
-		select {
-		case <-n.done:
-			return nil
-		case kp := <-claim:
-			fmt.Printf("Bob claimed ether! got secret: %v", kp)
-			address, err := n.alice.CreateMoneroWallet(kp)
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("successfully created monero wallet from our secrets: address=%s", address)
-			// TODO: get and print balance
-		}
-	}
-
 	n.wait()
 	return nil
 }
@@ -112,6 +90,36 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 		}
 
 		fmt.Printf("deployed Swap contract: address=%s\n", address)
+
+		claim, err := n.alice.WatchForClaim()
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			for {
+				// TODO: add t1 timeout case
+				select {
+				case <-n.done:
+					fmt.Println("done")
+					return
+				case kp := <-claim:
+					if kp == nil {
+						continue
+					}
+
+					fmt.Printf("Bob claimed ether! got secret: %v", kp)
+					address, err := n.alice.CreateMoneroWallet(kp)
+					if err != nil {
+						fmt.Println("failed to create monero address: %w", err)
+						return
+					}
+
+					fmt.Printf("successfully created monero wallet from our secrets: address=%s", address)
+					// TODO: get and print balance
+				}
+			}
+		}()
 
 		out := &net.NotifyContractDeployed{
 			Address: address.String(),

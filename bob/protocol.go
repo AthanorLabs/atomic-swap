@@ -141,12 +141,18 @@ func (b *bob) WatchForReady() (<-chan struct{}, error) {
 	defer sub.Unsubscribe()
 
 	go func() {
-		select {
-		case <-ch:
-			// contract is ready!!
-			close(done)
-		case <-b.ctx.Done():
-			return
+		for {
+			select {
+			case event := <-ch:
+				if !event.B {
+					continue
+				}
+
+				// contract is ready!!
+				close(done)
+			case <-b.ctx.Done():
+				return
+			}
 		}
 	}()
 
@@ -236,6 +242,10 @@ func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 		return "", err
 	}
 
+	if err := b.client.Refresh(); err != nil {
+		return "", err
+	}
+
 	fmt.Println("Bob: successfully locked funds")
 	fmt.Println("address: ", address)
 	return address, nil
@@ -249,6 +259,21 @@ func (b *bob) ClaimFunds() error {
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	secret := b.privkeys.Bytes()
 	s := big.NewInt(0).SetBytes(secret)
-	_, err := b.contract.Claim(txOpts, s)
-	return err
+	tx, err := b.contract.Claim(txOpts, s)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("success! Bob claimed funds")
+	fmt.Println("tx hash: ", tx.Hash())
+
+	receipt, err := b.ethClient.TransactionReceipt(b.ctx, tx.Hash())
+	if err != nil {
+		return err
+	}
+
+	//fmt.Println("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
+	fmt.Println("included in block number: ", receipt.Logs[0].BlockNumber)
+	//fmt.Println("expected secret: ", fmt.Sprintf("0x%x", secret))
+	return nil
 }
