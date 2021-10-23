@@ -17,7 +17,7 @@ var _ Alice = &alice{}
 type Alice interface {
 	// GenerateKeys generates Alice's monero spend and view keys (S_b, V_b)
 	// It returns Alice's public spend key
-	GenerateKeys() (*monero.PublicKey, error)
+	GenerateKeys() (*monero.PublicKeyPair, error)
 
 	// DeployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
 	DeployAndLockETH(amount uint) (*swap.Swap, error)
@@ -66,7 +66,7 @@ func NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
 	}, nil
 }
 
-func (a *alice) GenerateKeys() (*monero.PublicKey, error) {
+func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
 	var err error
 	a.privkeys, err = monero.GenerateKeys()
 	if err != nil {
@@ -74,7 +74,7 @@ func (a *alice) GenerateKeys() (*monero.PublicKey, error) {
 	}
 
 	a.pubkeys = a.privkeys.PublicKeyPair()
-	return a.pubkeys.SpendKey(), nil
+	return a.pubkeys, nil
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (*swap.Swap, error) {

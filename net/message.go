@@ -25,13 +25,15 @@ func (m *WantMessage) Encode() ([]byte, error) {
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
 	PublicSpendKey string
+	PublicViewKey  string
 	PrivateViewKey string
 }
 
 func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage PublicSpendKey=%s PrivateViewKey=%v",
+	return fmt.Sprintf("SendKeysMessage PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%v",
 		m.PublicSpendKey,
-		m.PrivateViewKey == "",
+		m.PublicViewKey,
+		m.PrivateViewKey,
 	)
 }
 
