@@ -29,5 +29,6 @@ func (c *client) Transfer(to Address, accountIdx, amount uint) error {
 	}
 
 	txhash, err := c.callTransfer([]Destination{destination}, accountIdx)
+	fmt.Printf("transfer: txhash=%s\n", txhash)
 	return err
 }

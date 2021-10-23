@@ -113,6 +113,10 @@ func (kp *PrivateKeyPair) PublicKeyPair() *PublicKeyPair {
 	}
 }
 
+func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
+	return kp.vk
+}
+
 type PrivateSpendKey struct {
 	key *ed25519.Scalar
 }
@@ -169,6 +173,10 @@ func (k *PrivateViewKey) Hex() string {
 
 type PublicKey struct {
 	key *ed25519.Point
+}
+
+func (k *PublicKey) Hex() string {
+	return hex.EncodeToString(k.key.Bytes())
 }
 
 // PublicKeyPair contains a public SpendKey and ViewKey

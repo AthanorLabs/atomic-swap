@@ -30,7 +30,7 @@ const (
 var logger = log.New("pkg", "net")
 var _ Host = &host{}
 
-type ReceivedMessage struct {
+type MessageInfo struct {
 	Message Message
 	Who     peer.ID
 }
@@ -38,8 +38,9 @@ type ReceivedMessage struct {
 type Host interface {
 	Start() error
 	Stop() error
-	SetOutgoingCh(<-chan *ReceivedMessage)
-	ReceivedMessageCh() <-chan *ReceivedMessage
+	SetOutgoingCh(<-chan *MessageInfo)
+	ReceivedMessageCh() <-chan *MessageInfo
+	SetNextExpectedMessage(m Message)
 }
 
 type host struct {
@@ -51,10 +52,10 @@ type host struct {
 	//mdns *mdns
 	bootnodes []peer.AddrInfo
 	// messages received from the rest of the program, to be sent out
-	outCh <-chan *ReceivedMessage
+	outCh <-chan *MessageInfo
 
 	// messages received from the network, to be sent to the rest of the program
-	inCh chan *ReceivedMessage
+	inCh chan *MessageInfo
 
 	// next expected message from the network
 	// empty, is just used for type matching
@@ -89,7 +90,7 @@ func NewHost(port uint64, want, keyfile string, bootnodes []string) (*host, erro
 	// format bootnodes
 	bns, err := stringsToAddrInfos(bootnodes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
 	}
 
 	// create libp2p host instance
@@ -98,7 +99,7 @@ func NewHost(port uint64, want, keyfile string, bootnodes []string) (*host, erro
 		return nil, err
 	}
 
-	inCh := make(chan *ReceivedMessage)
+	inCh := make(chan *MessageInfo)
 
 	return &host{
 		ctx:         ctx,
@@ -112,17 +113,36 @@ func NewHost(port uint64, want, keyfile string, bootnodes []string) (*host, erro
 	}, nil
 }
 
-func (h *host) SetOutgoingCh(ch <-chan *ReceivedMessage) {
+func (h *host) SetOutgoingCh(ch <-chan *MessageInfo) {
 	h.outCh = ch
 }
 
+func (h *host) SetNextExpectedMessage(m Message) {
+	h.nextExpectedMessage = m
+}
+
 func (h *host) Start() error {
+	h.nextExpectedMessage = &WantMessage{}
 	h.h.SetStreamHandler(protocolID, h.handleStream)
 	h.h.Network().SetConnHandler(h.handleConn)
-	h.bootstrap()
-	//h.mdns.start()
+	fmt.Println("host started!")
+	for _, addr := range h.multiaddrs() {
+		logger.Info("Started listening", "address", addr)
+	}
+	return h.bootstrap()
+}
 
-	return nil
+// multiaddrs returns the multiaddresses of the host
+func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
+	addrs := h.h.Addrs()
+	for _, addr := range addrs {
+		multiaddr, err := ma.NewMultiaddr(fmt.Sprintf("%s/p2p/%s", addr, h.h.ID()))
+		if err != nil {
+			continue
+		}
+		multiaddrs = append(multiaddrs, multiaddr)
+	}
+	return multiaddrs
 }
 
 // close closes host services and the libp2p host (host services first)
@@ -143,8 +163,8 @@ func (h *host) SendMessage(to peer.ID, msg Message) error {
 	return err
 }
 
-func (h *host) ReceivedMessageCh() <-chan *ReceivedMessage {
-	return h.outCh
+func (h *host) ReceivedMessageCh() <-chan *MessageInfo {
+	return h.inCh
 }
 
 // send creates a new outbound stream with the given peer and writes the message. It also returns
@@ -167,16 +187,12 @@ func (h *host) send(p peer.ID, msg Message) (libp2pnetwork.Stream, error) {
 		return nil, err
 	}
 
-	logger.Trace(
-		"Sent message to peer",
-		"peer", p,
-		"message", msg.String(),
-	)
-
 	return stream, nil
 }
 
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
+	//defer s.Close()
+
 	encMsg, err := msg.Encode()
 	if err != nil {
 		return err
@@ -190,6 +206,12 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 	if err != nil {
 		return err
 	}
+
+	logger.Trace(
+		"Sent message to peer",
+		"peer", s.Conn().RemotePeer(),
+		"message", msg.String(),
+	)
 
 	return nil
 }
@@ -208,7 +230,6 @@ func (h *host) handleConn(conn libp2pnetwork.Conn) {
 }
 
 func (h *host) handleStream(stream libp2pnetwork.Stream) {
-	fmt.Printf("incoming stream, peer=%s\n", stream.Conn().RemotePeer())
 	msgBytes := make([]byte, 2048)
 
 	for {
@@ -240,6 +261,12 @@ func (h *host) handleStream(stream libp2pnetwork.Stream) {
 
 func (h *host) decodeMessage(b []byte) (Message, error) {
 	switch h.nextExpectedMessage.(type) {
+	case *WantMessage:
+		var m *WantMessage
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
 	case *SendKeysMessage:
 		var m *SendKeysMessage
 		if err := json.Unmarshal(b, &m); err != nil {
@@ -264,7 +291,7 @@ func (h *host) decodeMessage(b []byte) (Message, error) {
 }
 
 func (h *host) handleMessage(stream libp2pnetwork.Stream, m Message) {
-	h.inCh <- &ReceivedMessage{
+	h.inCh <- &MessageInfo{
 		Message: m,
 		Who:     stream.Conn().RemotePeer(),
 	}
@@ -330,7 +357,7 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 }
 
 // bootstrap connects the host to the configured bootnodes
-func (h *host) bootstrap() {
+func (h *host) bootstrap() error {
 	failed := 0
 	for _, addrInfo := range h.bootnodes {
 		logger.Debug("bootstrapping to peer", "peer", addrInfo.ID)
@@ -340,9 +367,12 @@ func (h *host) bootstrap() {
 			failed++
 		}
 	}
+
 	if failed == len(h.bootnodes) && len(h.bootnodes) != 0 {
-		logger.Error("failed to bootstrap to any bootnode")
+		return errors.New("failed to bootstrap to any bootnode")
 	}
+
+	return nil
 }
 
 // stringToAddrInfos converts a single string peer id to AddrInfo
@@ -386,9 +416,6 @@ func generateKey(seed int64, fp string) (crypto.PrivKey, error) {
 		return nil, err
 	}
 	if seed == 0 {
-		if err = makeDir(fp); err != nil {
-			return nil, err
-		}
 		if err = saveKey(key, fp); err != nil {
 			return nil, err
 		}
@@ -408,18 +435,6 @@ func loadKey(fp string) (crypto.PrivKey, error) {
 		return nil, err
 	}
 	return crypto.UnmarshalEd25519PrivateKey(dec)
-}
-
-// makeDir makes directory if directory does not already exist
-func makeDir(fp string) error {
-	_, e := os.Stat(fp)
-	if os.IsNotExist(e) {
-		e = os.Mkdir(fp, os.ModePerm)
-		if e != nil {
-			return e
-		}
-	}
-	return e
 }
 
 // saveKey attempts to save a private key to the provided filepath

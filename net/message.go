@@ -29,7 +29,10 @@ type SendKeysMessage struct {
 }
 
 func (m *SendKeysMessage) String() string {
-	return "SendKeysMessage"
+	return fmt.Sprintf("SendKeysMessage PublicSpendKey=%s PrivateViewKey=%v",
+		m.PublicSpendKey,
+		m.PrivateViewKey == "",
+	)
 }
 
 func (m *SendKeysMessage) Encode() ([]byte, error) {
