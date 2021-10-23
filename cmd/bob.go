@@ -57,8 +57,12 @@ func (n *node) doProtocolBob() error {
 			fmt.Println("Alice called Ready!")
 
 			// contract ready, let's claim our ether
+			if err := n.bob.RedeemFunds(); err != nil {
+				return fmt.Errorf("failed to redeem ether: %w", err)
+			}
 		case kp := <-refund:
 			fmt.Println("Alice refunded, got monero account key", kp)
+			// TODO: generate wallet
 		}
 	}
 
@@ -109,6 +113,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 			return errors.New("got empty contract address")
 		}
 
+		n.host.SetNextExpectedMessage(nil)
 		fmt.Println("got Swap contract address!")
 
 		if err := n.bob.SetContract(ethcommon.HexToAddress(msg.Address)); err != nil {

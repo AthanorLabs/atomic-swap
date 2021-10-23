@@ -5,7 +5,9 @@ import (
 )
 
 type Client interface {
+	GetBalance(idx uint) (*getBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) error
+	GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error
 }
 
 type client struct {
@@ -31,4 +33,9 @@ func (c *client) Transfer(to Address, accountIdx, amount uint) error {
 	txhash, err := c.callTransfer([]Destination{destination}, accountIdx)
 	fmt.Printf("transfer: txhash=%s\n", txhash)
 	return err
+}
+
+func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error {
+	address := kp.Address()
+	return c.callGenerateFromKeys(kp.sk, kp.vk, address, filename, password)
 }
