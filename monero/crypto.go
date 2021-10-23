@@ -106,6 +106,10 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 	return addr
 }
 
+func (kp *PrivateKeyPair) Bytes() []byte {
+	return kp.sk.key.Bytes()
+}
+
 func (kp *PrivateKeyPair) Address() Address {
 	return Address(EncodeMoneroBase58(kp.AddressBytes()))
 }
@@ -181,6 +185,10 @@ func NewPrivateViewKeyFromHex() *PrivateViewKey {
 
 type PublicKey struct {
 	key *ed25519.Point
+}
+
+func (k *PublicKey) Bytes() []byte {
+	return k.key.Bytes()
 }
 
 func (k *PublicKey) Hex() string {
