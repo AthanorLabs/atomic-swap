@@ -87,20 +87,28 @@ func TestSwap_Claim(t *testing.T) {
 		Signer: authAlice.Signer,
 	}
 
-	// callOpts := &bind.CallOpts{From: address}
-
-	// Alice calls set_ready on the contract
-	_, err = swap.SetReady(txOpts)
-	require.NoError(t, err)
-
 	txOptsBob := &bind.TransactOpts{
 		From:   authBob.From,
 		Signer: authBob.Signer,
 	}
 
-	// Bob tries to claim
+	// callOpts := &bind.CallOpts{From: address}
+
+	// Bob tries to claim before Alice has called ready, should fail
+	_, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
+	require.Errorf(t, err, "'isReady == false' cannot claim yet!")
+
+	// Alice calls set_ready on the contract
+	_, err = swap.SetReady(txOpts)
+	require.NoError(t, err)
+
+	// Bob tries to claim before Alice has called ready, should fail
 	_, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
 	require.NoError(t, err)
 
 	// TODO check whether Bob's account balance has increased
+}
+
+func TestSwap_Refund(t *testing.T) {
+
 }

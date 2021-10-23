@@ -54,7 +54,12 @@ contract Swap {
       // Bob can claim either when:
       // Alice never calls ready, and timeout_0 has passed, or
       // Alice called ready and Bob is within timeframe timeout_1
-    require((block.timestamp <= timeout_1 && isReady == true) || block.timestamp >= timeout_0);
+      if (isReady == true) {
+          require(block.timestamp <= timeout_1, "Too late to claim!");
+      } else {
+          require(block.timestamp >= timeout_0, "'isReady == false' cannot claim yet!");
+      }
+      /* require((block.timestamp <= timeout_1 && isReady == true) || block.timestamp >= timeout_0, "Cannot claim in the wrong time period!"); */
 		// confirm that provided secret `_s` was used to derive pubKeyClaim
     (uint px, uint py) = ed25519.scalarMultBase(_s);
 		bytes32 ph = keccak256(abi.encode(px, py));
