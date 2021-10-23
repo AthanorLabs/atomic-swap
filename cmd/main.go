@@ -125,7 +125,7 @@ func runAlice(c *cli.Context, amount uint) error {
 		return err
 	}
 
-	fmt.Println("instantiated Alice session", alice)
+	fmt.Println("instantiated Alice session")
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
@@ -138,9 +138,10 @@ func runAlice(c *cli.Context, amount uint) error {
 	}
 
 	n := &node{
-		alice: alice,
-		host:  host,
-		done:  make(chan struct{}),
+		alice:  alice,
+		host:   host,
+		done:   make(chan struct{}),
+		amount: amount,
 	}
 
 	return n.doProtocolAlice()
@@ -148,7 +149,7 @@ func runAlice(c *cli.Context, amount uint) error {
 
 func runBob(c *cli.Context, amount uint) error {
 	var (
-		moneroEndpoint, ethPrivKey string
+		moneroEndpoint, ethEndpoint, ethPrivKey string
 	)
 
 	if c.String("monero-endpoint") != "" {
@@ -157,18 +158,24 @@ func runBob(c *cli.Context, amount uint) error {
 		moneroEndpoint = defaultBobMoneroEndpoint
 	}
 
+	if c.String("ethereum-endpoint") != "" {
+		ethEndpoint = c.String("ethereum-endpoint")
+	} else {
+		ethEndpoint = defaultEthEndpoint
+	}
+
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKey = c.String("ethereum-privkey")
 	} else {
 		ethPrivKey = defaultPrivKeyBob
 	}
 
-	bob, err := bob.NewBob(moneroEndpoint, ethPrivKey)
+	bob, err := bob.NewBob(moneroEndpoint, ethEndpoint, ethPrivKey)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("instantiated Bob session", bob)
+	fmt.Println("instantiated Bob session")
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
@@ -181,9 +188,10 @@ func runBob(c *cli.Context, amount uint) error {
 	}
 
 	n := &node{
-		bob:  bob,
-		host: host,
-		done: make(chan struct{}),
+		bob:    bob,
+		host:   host,
+		done:   make(chan struct{}),
+		amount: amount,
 	}
 
 	return n.doProtocolBob()

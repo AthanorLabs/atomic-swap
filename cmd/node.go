@@ -13,12 +13,13 @@ import (
 )
 
 type node struct {
-	alice alice.Alice
-	bob   bob.Bob
-	host  net.Host
-	done  chan struct{}
-	outCh chan<- *net.MessageInfo
-	inCh  <-chan *net.MessageInfo
+	amount uint
+	alice  alice.Alice
+	bob    bob.Bob
+	host   net.Host
+	done   chan struct{}
+	outCh  chan<- *net.MessageInfo
+	inCh   <-chan *net.MessageInfo
 }
 
 func (n *node) wait() {

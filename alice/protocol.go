@@ -3,9 +3,10 @@ package alice
 import (
 	"crypto/ecdsa"
 	"time"
-	"math/big"
+	//"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	//"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -14,6 +15,7 @@ import (
 )
 
 var _ Alice = &alice{}
+
 const (
 	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
 )
@@ -25,8 +27,12 @@ type Alice interface {
 	// It returns Alice's public spend key
 	GenerateKeys() (*monero.PublicKeyPair, error)
 
+	// SetBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
+	// private view key (used to check XMR balance before calling Ready())
+	SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey)
+
 	// DeployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
-	DeployAndLockETH(amount uint) (*swap.Swap, error)
+	DeployAndLockETH(amount uint) (ethcommon.Address, error)
 
 	// Ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
 	// call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
@@ -47,14 +53,14 @@ type Alice interface {
 type alice struct {
 	t0, t1 time.Time
 
-	privkeys *monero.PrivateKeyPair
-	pubkeys  *monero.PublicKeyPair
-	bobspubkeys  *monero.PublicKey
-	client   monero.Client
+	privkeys    *monero.PrivateKeyPair
+	pubkeys     *monero.PublicKeyPair
+	bobspubkeys *monero.PublicKey
+	client      monero.Client
 
-	contract    *swap.Swap
-	ethPrivKey  *ecdsa.PrivateKey
-	ethEndpoint string
+	contract   *swap.Swap
+	ethPrivKey *ecdsa.PrivateKey
+	ethClient  *ethclient.Client
 }
 
 // NewAlice returns a new instance of Alice.
@@ -66,10 +72,15 @@ func NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
 		return nil, err
 	}
 
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	return &alice{
-		ethPrivKey:  pk,
-		ethEndpoint: ethEndpoint,
-		client:      monero.NewClient(moneroEndpoint),
+		ethPrivKey: pk,
+		ethClient:  ec,
+		client:     monero.NewClient(moneroEndpoint),
 	}, nil
 }
 
@@ -84,23 +95,22 @@ func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
 	return a.pubkeys, nil
 }
 
-func (a *alice) DeployAndLockETH(amount uint) (*swap.Swap, error) {
-	conn, err := ethclient.Dial("http://127.0.0.1:8545")
-	if err != nil {
-		return nil, err
-	}
+func (a *alice) SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey) {
 
-	pk_a, err := crypto.HexToECDSA(keyAlice)
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+}
 
-	pxAlice := a.pubkeys.SpendKey().X.Bytes()
-	pyAlice := a.pubkeys.SpendKey.Y.Bytes()
-	_, _, swap, err := DeploySwap(authAlice, conn, pxAlice, pyAlice, pxBob, pyBob)
-	if err != nil {
-		return nil, err
-	}
+func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
+	// pk_a, err := crypto.HexToECDSA(keyAlice)
+	// authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 
-	return nil, nil
+	// pxAlice := a.pubkeys.SpendKey().X.Bytes()
+	// pyAlice := a.pubkeys.SpendKey().Y.Bytes()
+	// _, _, swap, err := swap.DeploySwap(authAlice, a.ethClient, pxAlice, pyAlice, pxBob, pyBob)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return ethcommon.Address{}, nil
 }
 
 func (a *alice) Ready() error {
