@@ -33,7 +33,7 @@ contract Swap {
 	constructor(
 		bytes32 _pubKeyClaim,
 		bytes32 _pubKeyRefund
-	) public payable {
+	) payable {
       owner = payable(msg.sender);
 		pubKeyClaim = _pubKeyClaim;
 		pubKeyRefund = _pubKeyRefund;
