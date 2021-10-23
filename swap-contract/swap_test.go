@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
@@ -81,9 +82,15 @@ func TestSwap_Claim(t *testing.T) {
 	pk_a, err := crypto.HexToECDSA(keyAlice)
 	require.NoError(t, err)
 	pk_b, err := crypto.HexToECDSA(keyBob)
+
+	// check whether Bob had nothing before the Tx
+	bobAccount := common.HexToAddress("0x21e6fc92f93c8a1bb41e2be64b4e1f88a54d3576")
+	bobBalanceBefore, err := conn.BalanceAt(context.Background(), bobAccount, nil)
 	require.NoError(t, err)
+	require.Equal(t, bobBalanceBefore.String(), "0")
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
 	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
@@ -121,7 +128,10 @@ func TestSwap_Claim(t *testing.T) {
 
 	time.Sleep(time.Second * 10)
 
-	// TODO check whether Bob's account balance has increased
+	// check whether Bob's account balance has increased now
+	bobBalanceAfter, err := conn.BalanceAt(context.Background(), bobAccount, nil)
+	require.NoError(t, err)
+	require.Equal(t, bobBalanceAfter.String(), "10")
 
 }
 
