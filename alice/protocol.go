@@ -1,7 +1,9 @@
 package alice
 
 import (
+	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -51,6 +53,7 @@ type Alice interface {
 }
 
 type alice struct {
+	ctx    context.Context
 	t0, t1 time.Time
 
 	privkeys   *monero.PrivateKeyPair
@@ -78,6 +81,7 @@ func NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
 	}
 
 	return &alice{
+		ctx:        context.Background(), // TODO: add cancel
 		ethPrivKey: pk,
 		ethClient:  ec,
 		client:     monero.NewClient(moneroEndpoint),
@@ -124,7 +128,52 @@ func (a *alice) Ready() error {
 }
 
 func (a *alice) WatchForClaim() (<-chan *monero.PrivateKeyPair, error) {
-	return nil, nil
+	watchOpts := &bind.WatchOpts{
+		Context: a.ctx,
+	}
+
+	out := make(chan *monero.PrivateKeyPair)
+	ch := make(chan *swap.SwapClaimed)
+	defer close(out)
+
+	// watch for Refund() event on chain, calculate unlock key as result
+	sub, err := a.contract.WatchClaimed(watchOpts, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	defer sub.Unsubscribe()
+
+	go func() {
+		select {
+		case claim := <-ch:
+			// got Bob's secret
+			sbBytes := claim.S.Bytes()
+			var sb [32]byte
+			copy(sb[:], sbBytes)
+
+			skB, err := monero.NewPrivateSpendKey(sb[:])
+			if err != nil {
+				fmt.Printf("failed to convert Bob's secret into a key: %w", err)
+				return
+			}
+
+			vkA, err := skB.View()
+			if err != nil {
+				fmt.Printf("failed to get view key from Bob's secret spend key: %w", err)
+				return
+			}
+
+			skAB := monero.SumPrivateSpendKeys(skB, a.privkeys.SpendKey())
+			vkAB := monero.SumPrivateViewKeys(vkA, a.privkeys.ViewKey())
+			kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+			out <- kpAB
+		case <-a.ctx.Done():
+			return
+		}
+	}()
+
+	return out, nil
 }
 
 func (a *alice) Refund() error {
