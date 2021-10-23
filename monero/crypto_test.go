@@ -34,7 +34,7 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	// test that Address() gives the correct address bytes
 	// implicitly tests that the *PrivateSpendKey.Public() and *PrivateViewKey.Public()
 	// give the correct public keys
-	kp, err := NewPrivateKeyPair(sk, vk)
+	kp, err := NewPrivateKeyPairFromBytes(sk, vk)
 	require.NoError(t, err)
 	require.Equal(t, addressBytes, kp.AddressBytes())
 	require.Equal(t, Address(address), kp.Address())
