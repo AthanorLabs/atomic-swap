@@ -100,8 +100,7 @@ func (a *alice) SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey) {
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
-	pk_a, err := crypto.HexToECDSA(keyAlice)
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	authAlice, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, big.NewInt(1337)) // ganache chainID
 
 	pkAlice := a.pubkeys.SpendKey().Bytes()
 	pkBob := a.bobpubkeys.Bytes()
