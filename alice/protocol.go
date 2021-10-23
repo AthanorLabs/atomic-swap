@@ -55,8 +55,8 @@ type alice struct {
 
 	privkeys    *monero.PrivateKeyPair
 	pubkeys     *monero.PublicKeyPair
-	bobspubkeys *monero.PublicKey
-	client      monero.Client
+	bobpubkeys  *monero.PublicKey
+	client   monero.Client
 
 	contract   *swap.Swap
 	ethPrivKey *ecdsa.PrivateKey
@@ -99,9 +99,18 @@ func (a *alice) SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey) {
 
 }
 
+<<<<<<< HEAD
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 	// pk_a, err := crypto.HexToECDSA(keyAlice)
 	// authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+=======
+	pkAlice := a.pubkeys.SpendKey().Bytes()
+	pkBob := a.bobpubkeys.Bytes()
+	_, _, swap, err := swap.DeploySwap(authAlice, conn, pkAlice, pkBob)
+	if err != nil {
+		return nil, err
+	}
+>>>>>>> 5717030 (Use Alice's and Bob's pubkeys to deploy the contract)
 
 	// pxAlice := a.pubkeys.SpendKey().X.Bytes()
 	// pyAlice := a.pubkeys.SpendKey().Y.Bytes()
