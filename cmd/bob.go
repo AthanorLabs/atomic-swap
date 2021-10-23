@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 )
 
@@ -57,6 +59,17 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message) error {
 			Message: out,
 			Who:     who,
 		}
+	case *net.SendKeysMessage:
+		if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
+			return errors.New("did not receive Alice's public spend or view key")
+		}
+
+		kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
+		if err != nil {
+			return fmt.Errorf("failed to generate Alice's public keys: %w", err)
+		}
+
+		n.bob.SetAlicePublicKeys(kp)
 	default:
 		return errors.New("unexpected message type")
 	}

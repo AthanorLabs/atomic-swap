@@ -20,6 +20,9 @@ type Bob interface {
 	// if the funds are locked.
 	GenerateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error)
 
+	// SetAlicePublicKeys sets Alice's public spend and view keys
+	SetAlicePublicKeys(*monero.PublicKeyPair)
+
 	// SetContract sets the contract in which Alice has locked her ETH.
 	SetContract(*swap.Swap)
 
@@ -39,9 +42,9 @@ type Bob interface {
 
 	// LockFunds locks Bob's funds in the monero account specified by public key
 	// (S_a + S_b), viewable with (V_a + V_b)
-	// It accepts Alice's public keys (S_a, V_a) as input, as well as the amount to lock
+	// It accepts the amount to lock as the input
 	// TODO: units
-	LockFunds(aliceKeys *monero.PublicKeyPair, amount uint) error
+	LockFunds(amount uint) error
 
 	// RedeemFunds redeem's Bob's funds on ethereum
 	RedeemFunds() error
@@ -50,11 +53,12 @@ type Bob interface {
 type bob struct {
 	t0, t1 time.Time
 
-	privkeys   *monero.PrivateKeyPair
-	pubkeys    *monero.PublicKeyPair
-	client     monero.Client
-	contract   *swap.Swap
-	ethPrivKey *ecdsa.PrivateKey
+	privkeys        *monero.PrivateKeyPair
+	pubkeys         *monero.PublicKeyPair
+	client          monero.Client
+	contract        *swap.Swap
+	ethPrivKey      *ecdsa.PrivateKey
+	alicePublicKeys *monero.PublicKeyPair
 }
 
 // NewBob returns a new instance of Bob.
@@ -83,6 +87,10 @@ func (b *bob) GenerateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error) 
 	return b.pubkeys.SpendKey(), b.privkeys.ViewKey(), nil
 }
 
+func (b *bob) SetAlicePublicKeys(sk *monero.PublicKeyPair) {
+	b.alicePublicKeys = sk
+}
+
 func (b *bob) SetContract(contract *swap.Swap) {
 	b.contract = contract
 }
@@ -96,8 +104,8 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 	return nil, nil
 }
 
-func (b *bob) LockFunds(akp *monero.PublicKeyPair, amount uint) error {
-	kp := monero.SumSpendAndViewKeys(akp, b.pubkeys)
+func (b *bob) LockFunds(amount uint) error {
+	kp := monero.SumSpendAndViewKeys(b.alicePublicKeys, b.pubkeys)
 
 	address := kp.Address()
 	if err := b.client.Transfer(address, 0, amount); err != nil {

@@ -44,13 +44,14 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message) error {
 		fmt.Println("found peer that wants ETH, initiating swap protocol...")
 		n.host.SetNextExpectedMessage(&net.SendKeysMessage{})
 
-		sk, err := n.alice.GenerateKeys()
+		kp, err := n.alice.GenerateKeys()
 		if err != nil {
 			return err
 		}
 
 		out := &net.SendKeysMessage{
-			PublicSpendKey: sk.Hex(),
+			PublicSpendKey: kp.SpendKey().Hex(),
+			PublicViewKey:  kp.ViewKey().Hex(),
 		}
 
 		n.outCh <- &net.MessageInfo{

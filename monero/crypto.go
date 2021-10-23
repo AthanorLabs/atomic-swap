@@ -185,6 +185,33 @@ type PublicKeyPair struct {
 	vk *PublicKey
 }
 
+func NewPublicKeyPairFromHex(skHex, vkHex string) (*PublicKeyPair, error) {
+	skBytes, err := hex.DecodeString(skHex)
+	if err != nil {
+		return nil, err
+	}
+
+	vkBytes, err := hex.DecodeString(vkHex)
+	if err != nil {
+		return nil, err
+	}
+
+	sk, err := ed25519.NewIdentityPoint().SetBytes(skBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	vk, err := ed25519.NewIdentityPoint().SetBytes(vkBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PublicKeyPair{
+		sk: &PublicKey{key: sk},
+		vk: &PublicKey{key: vk},
+	}, nil
+}
+
 func NewPublicKeyPair(sk, vk *PublicKey) *PublicKeyPair {
 	return &PublicKeyPair{
 		sk: sk,
