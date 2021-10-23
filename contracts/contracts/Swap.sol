@@ -1,83 +1,103 @@
-pragma solidity 0.6.12;
+// SPDX-License-Identifier: MIT
 
-import "./elliptic-curve-solidity/examples/Secp256k1.sol";
+pragma solidity 0.8.9;
+
+import "./Ed25519.sol";
 
 contract Swap {
-	Secp256k1 secp256k1;
+    // Ed25519 library
+    Ed25519 ed25519;
 
-	// the hash where the pre-image must be disclosed to redeem the eth
-	// in this contract.
-	// it is the keccak256 hash of Bob's secret (s_b), which when disclosed
-	// allows Alice, the contract creator to redeem funds on another chain.
-	bytes32 public hashRedeem;
+    // contract creator, Alice
+    address payable owner;
 
-	// the hash of the expected public key for which the secret s_b corresponds.
-	// this public key lies on the secp256k1 curve, and is in 33-byte compressed format.
-	bytes32 public expectedPublicKey;
+    // the hash of the expected public key for which the secret `s_b` corresponds.
+    // this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
+    bytes32 public pubKeyClaim;
 
-	// the hash where the pre-image must be disclosed by the contract owner, Alice, after time
-	// `t` to refund the eth in this contract.
-	// it is the keccak256 hash of Alice's secret, which when disclosed 
-	// allows Bob to refund their coins on the other chain.
-	bytes32 public hashRefund;
+    // the hash of the expected public key for which the secret `s_a` corresponds.
+    // this public key is a point on the ed25519 curve, and is in 33-byte compressed format (?)
+    bytes32 public pubKeyRefund;
 
-	// time after which a refund is allowed
-	uint256 timeout;
+    // time period from contract creation
+    // during which Alice can call either set_ready or refund
+    uint256 public timeout_0;
 
-	// contract creator, Alice
-	address payable owner;
+    // time period from the moment Alice calls `set_ready`
+    // during which Bob can claim. After this, Alice can refund again
+    uint256 public timeout_1;
 
-	// ready is set to true when Alice sees the funds locked on the other chain.
-	// this prevents Bob from withdrawing funds without locking funds on the other chain first
-	bool isReady = false;
+    // ready is set to true when Alice sees the funds locked on the other chain.
+    // this prevents Bob from withdrawing funds without locking funds on the other chain first
+    bool isReady = false;
 
-	event DerivedPubKeyRedeem(uint256 x, uint256 y);
+    event Constructed(bytes32 p);
+    event IsReady(bool b);
+    event Claimed(uint256 s);
+    event Refunded(uint256 s);
 
-	constructor(
-		bytes32 _hashRedeem,
-		bytes32 _expectedPublicKey, 
-		bytes32 _hashRefund
-	) public payable {
-		owner = msg.sender;
-		hashRedeem = _hashRedeem;
-		expectedPublicKey = _expectedPublicKey;
-		hashRefund = _hashRefund;
-		timeout = now + 1 days; // TODO: make configurable
-		secp256k1 = new Secp256k1();
-	}
+    constructor(
+        bytes32 _pubKeyClaim,
+        bytes32 _pubKeyRefund
+    ) payable {
+        owner = payable(msg.sender);
+        pubKeyClaim = _pubKeyClaim;
+        pubKeyRefund = _pubKeyRefund;
+        timeout_0 = block.timestamp + 1 days;
+        ed25519 = new Ed25519();
+        emit Constructed(pubKeyRefund);
+    }
 
-	function ready() public {
-		require(msg.sender == owner);
-		isReady = true; 
-	}
+    // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
+    function set_ready() public {
+        require(msg.sender == owner && block.timestamp < timeout_0);
+        isReady = true;
+        timeout_1 = block.timestamp + 1 days;
+        emit IsReady(true);
+    }
 
-	function redeem(
-		uint256 _s
-	) public {
-		require(isReady == true, "contract is not ready!");
+    // Bob can claim if:
+    // - Alice doesn't call set_ready or refund within t_0, or
+    // - Alice calls ready within t_0, in which case Bob can call claim until t_1
+    function claim(uint256 _s) external {
+        if (isReady == true) {
+            require(block.timestamp < timeout_1, "Too late to claim!");
+        } else {
+            require(
+                block.timestamp >= timeout_0,
+                "'isReady == false' cannot claim yet!"
+            );
+        }
 
-		// // confirm that provided secret `_s` is pre-image of `hashRedeem`
-		// bytes32 h0 = keccak256(abi.encode(_s));
-		// require(h0 == hashRedeem, "pre-image for redeem was incorrect");
+        verifySecret(_s, pubKeyClaim);
+        emit Claimed(_s);
 
-		// confirm that secret corresponds to provided public key
-		(uint256 px, uint256 py) = secp256k1.derivePubKey(_s);
-		emit DerivedPubKeyRedeem(px, py);
-		bytes32 ph = keccak256(abi.encode(px, py));
-		require(ph == expectedPublicKey, "provided public key does not match expected");
+        // send eth to caller (Bob)
+        selfdestruct(payable(msg.sender));
+    }
 
-		// // send eth to caller
-		// msg.sender.transfer(address(this).balance);
-	}
+    // Alice can claim a refund:
+    // - Until t_0 unless she calls set_ready
+    // - After t_1, if she called set_ready
+    function refund(uint256 _s) external {
+        require(
+            (!isReady && block.timestamp < timeout_0) ||
+                (isReady && block.timestamp >= timeout_1)
+        );
 
-	function refund(
-		uint256 _s
-	) public {
-		// confirm that provided secret is pre-image of `hashRefund`
-		bytes32 h = keccak256(abi.encode(_s));
-		require(h == hashRefund);
+        verifySecret(_s, pubKeyRefund);
+        emit Refunded(_s);
 
-		// send eth back to owner
-		owner.transfer(address(this).balance);
-	}
+        // send eth back to owner==caller (Alice)
+        selfdestruct(owner);
+    }
+
+    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
+        (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
+        bytes32 ph = keccak256(abi.encode(px, py));
+        require(
+            ph == pubKey,
+            "provided secret does not match the expected pubKey"
+        );
+    }
 }
