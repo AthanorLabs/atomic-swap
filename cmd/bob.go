@@ -133,22 +133,28 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 		}
 
 		go func() {
-			// TODO: add t0 timeout case
-			select {
-			case <-n.done:
-				return
-			case <-ready:
-				fmt.Println("Alice called Ready!")
+			for {
+				// TODO: add t0 timeout case
+				select {
+				case <-n.done:
+					return
+				case <-ready:
+					fmt.Println("Alice called Ready!")
 
-				time.Sleep(time.Second)
+					time.Sleep(time.Second)
 
-				// contract ready, let's claim our ether
-				if err := n.bob.ClaimFunds(); err != nil {
-					fmt.Printf("failed to redeem ether: %w", err)
+					// contract ready, let's claim our ether
+					if err := n.bob.ClaimFunds(); err != nil {
+						fmt.Printf("failed to redeem ether: %w", err)
+					}
+				case kp := <-refund:
+					if kp == nil {
+						continue
+					}
+
+					fmt.Println("Alice refunded, got monero account key", kp)
+					// TODO: generate wallet
 				}
-			case kp := <-refund:
-				fmt.Println("Alice refunded, got monero account key", kp)
-				// TODO: generate wallet
 			}
 		}()
 
