@@ -28,13 +28,13 @@ func TestDeploySwap(t *testing.T) {
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(keyAlice)
 	require.NoError(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	auth, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(auth, conn, [32]byte{}, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(auth, conn, [32]byte{}, [32]byte{})
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -57,8 +57,8 @@ func TestSwap_Redeem(t *testing.T) {
 	require.NoError(t, err)
 
 	// Bob's encoded pubkey
-	pubBytes := encodePublicKey(kp.Public().(*ecdsa.PublicKey))
-	pubhash := crypto.Keccak256Hash(pubBytes[:])
+	pubBytesBob := encodePublicKey(kp.Public().(*ecdsa.PublicKey))
+	pubhashBob := crypto.Keccak256Hash(pubBytesBob[:])
 
 	// Bob's secret key, to be revealed with `Redeem()`
 	kb := kp.D.Bytes()
@@ -76,13 +76,15 @@ func TestSwap_Redeem(t *testing.T) {
 
 	pk, err := crypto.HexToECDSA(keyAlice)
 	require.NoError(t, err)
-	//alicePub := pk.Public().(*ecdsa.PublicKey)
+	// pubBytesAlice := encodePublicKey(pk.Public().(*ecdsa.PublickKey))
+	pubBytesAlice := encodePublicKey(pk.Public().(*ecdsa.PublicKey))
+	pubhashAlice := crypto.Keccak256Hash(pubBytesAlice[:])
 	//address := crypto.PubkeyToAddress(*alicePub)
 
 	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	_, _, swap, err := DeploySwap(auth, conn, sk, pubhash, sr)
+	_, _, swap, err := DeploySwap(auth, conn, pubhashAlice, pubhashBob)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -92,10 +94,10 @@ func TestSwap_Redeem(t *testing.T) {
 
 	// callOpts := &bind.CallOpts{From: address}
 
-	_, err = swap.Ready(txOpts)
+	_, err = swap.SetReady(txOpts)
 	require.NoError(t, err)
 
-	_, err = swap.Redeem(txOpts, setBigIntLE(kb))
+	_, err = swap.Claim(txOpts, setBigIntLE(kb))
 	require.NoError(t, err)
 
 }
