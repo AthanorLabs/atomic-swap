@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ebfe/keccak"
 	ed25519 "filippo.io/edwards25519"
+	"github.com/ebfe/keccak"
 )
 
 const (
@@ -23,7 +23,7 @@ func SumSpendAndViewKeys(a, b *PublicKeyPair) *PublicKeyPair {
 
 // Sum sums two public keys (points)
 func SumPublicKeys(a, b *PublicKey) *PublicKey {
-	s := ed25519.NewIdentityPoint().Add(a.key, b.key) 
+	s := ed25519.NewIdentityPoint().Add(a.key, b.key)
 	return &PublicKey{
 		key: s,
 	}
@@ -31,7 +31,7 @@ func SumPublicKeys(a, b *PublicKey) *PublicKey {
 
 // Sum sums two private spend keys (scalars)
 func SumPrivateSpendKeys(a, b *PrivateSpendKey) *PrivateSpendKey {
-	s := ed25519.NewScalar().Add(a.key, b.key) 
+	s := ed25519.NewScalar().Add(a.key, b.key)
 	return &PrivateSpendKey{
 		key: s,
 	}
@@ -39,7 +39,7 @@ func SumPrivateSpendKeys(a, b *PrivateSpendKey) *PrivateSpendKey {
 
 // Sum sums two private view keys (scalars)
 func SumPrivateViewKeys(a, b *PrivateViewKey) *PrivateViewKey {
-	s := ed25519.NewScalar().Add(a.key, b.key) 
+	s := ed25519.NewScalar().Add(a.key, b.key)
 	return &PrivateViewKey{
 		key: s,
 	}
@@ -85,7 +85,7 @@ func NewPrivateKeyPair(skBytes, vkBytes []byte) (*PrivateKeyPair, error) {
 	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes)
 	if err != nil {
 		return nil, err
-	}	
+	}
 
 	return &PrivateKeyPair{
 		sk: &PrivateSpendKey{key: sk},
@@ -99,15 +99,11 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 	c := append(psk, pvk...)
 
 	// address encoding is:
-	// 0x12+(32-byte public spend key) + (32-byte-byte public view key) 
+	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
 	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
 	checksum := getChecksum(append([]byte{0x18}, c...))
 	addr := append(append([]byte{0x18}, c...), checksum[:4]...)
 	return addr
-}
-
-func (kp *PrivateKeyPair) Bytes() []byte {
-	return kp.sk.key.Bytes()
 }
 
 func (kp *PrivateKeyPair) Address() Address {
@@ -179,20 +175,48 @@ func (k *PrivateViewKey) Hex() string {
 	return hex.EncodeToString(k.key.Bytes())
 }
 
-func NewPrivateViewKeyFromHex() *PrivateViewKey {
-	return nil // TODO
+func NewPrivateViewKeyFromHex(vkHex string) (*PrivateViewKey, error) {
+	vkBytes, err := hex.DecodeString(vkHex)
+	if err != nil {
+		return nil, err
+	}
+
+	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PrivateViewKey{
+		key: vk,
+	}, nil
 }
 
 type PublicKey struct {
 	key *ed25519.Point
 }
 
-func (k *PublicKey) Bytes() []byte {
-	return k.key.Bytes()
+func NewPublicKeyFromHex(s string) (*PublicKey, error) {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+
+	k, err := ed25519.NewIdentityPoint().SetBytes(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PublicKey{
+		key: k,
+	}, nil
 }
 
 func (k *PublicKey) Hex() string {
-	return hex.EncodeToString(k.key.Bytes())	
+	return hex.EncodeToString(k.key.Bytes())
+}
+
+func (k *PublicKey) Bytes() []byte {
+	return k.key.Bytes()
 }
 
 // PublicKeyPair contains a public SpendKey and ViewKey
@@ -221,7 +245,7 @@ func NewPublicKeyPairFromHex(skHex, vkHex string) (*PublicKeyPair, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &PublicKeyPair{
 		sk: &PublicKey{key: sk},
 		vk: &PublicKey{key: vk},
@@ -249,7 +273,7 @@ func (kp *PublicKeyPair) AddressBytes() []byte {
 	c := append(psk, pvk...)
 
 	// address encoding is:
-	// 0x12+(32-byte public spend key) + (32-byte-byte public view key) 
+	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
 	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
 	checksum := getChecksum(append([]byte{addressPrefixMainnet}, c...))
 	addr := append(append([]byte{addressPrefixMainnet}, c...), checksum[:4]...)

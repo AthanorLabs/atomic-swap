@@ -83,6 +83,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message) error {
 			return fmt.Errorf("failed to deploy contract: %w", err)
 		}
 
+		fmt.Printf("deployed Swap contract: address=%s\n", address)
 	case *net.NotifyXMRLock:
 		if msg.Address == "" {
 			return errors.New("got empty address for locked XMR")
