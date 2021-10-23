@@ -9,6 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
+
+	"github.com/noot/atomic-swap/monero"
 )
 
 const (
@@ -33,7 +35,7 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -52,20 +54,17 @@ func encodePublicKey(pub *ecdsa.PublicKey) [64]byte {
 
 func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
-	keyPairAlice, err := crypto.GenerateKey()
+	keyPairAlice, err := monero.GenerateKeys()
+	// keyPairAlice, err := crypto.GenerateKey()
 	require.NoError(t, err)
-	pubKeyAlice := keyPairAlice.Public().(*ecdsa.PublicKey)
-	pxAlice := pubKeyAlice.X.Bytes()
-	pyAlice := pubKeyAlice.Y.Bytes()
+	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
-	keyPairBob, err := crypto.GenerateKey()
+	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyBob := keyPairBob.Public().(*ecdsa.PublicKey)
-	pxBob := pubKeyBob.X.Bytes()
-	pyBob := pubKeyBob.Y.Bytes()
+	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
-	secretBob := keyPairBob.D.Bytes()
+	secretBob := keyPairBob.Bytes()
 
 	// setup
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
@@ -81,15 +80,11 @@ func TestSwap_Claim(t *testing.T) {
 	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	var pxAliceFixed [32]byte
-	copy(pxAliceFixed [:], pxAlice)
-	var pyAliceFixed [32]byte
-	copy(pyAliceFixed [:], pyAlice)
-	var pxBobFixed [32]byte
-	copy(pxAliceFixed [:], pxBob)
-	var pyBobFixed [32]byte
-	copy(pyBobFixed [:], pyBob)
-	_, _, swap, err := DeploySwap(authAlice, conn, pxAliceFixed, pyAliceFixed, pxBobFixed, pyBobFixed)
+	var pkAliceFixed [32]byte
+	copy(pkAliceFixed [:], pubKeyAlice)
+	var pkBobFixed [32]byte
+	copy(pkBobFixed [:], pubKeyBob)
+	_, _, swap, err := DeploySwap(authAlice, conn, pkAliceFixed, pkAliceFixed)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
