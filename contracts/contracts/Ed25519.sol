@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import "./elliptic-curve-solidity/EllipticCurve.sol";
+import "./EllipticCurve.sol";
 
 /**
  * @title Ed25519 Elliptic Curve
