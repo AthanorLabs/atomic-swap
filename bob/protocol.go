@@ -16,6 +16,8 @@ import (
 	"github.com/noot/atomic-swap/swap-contract"
 )
 
+const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
+
 var _ Bob = &bob{}
 
 // Bob contains the functions that will be called by a user who owns XMR
@@ -50,7 +52,7 @@ type Bob interface {
 	// (S_a + S_b), viewable with (V_a + V_b)
 	// It accepts the amount to lock as the input
 	// TODO: units
-	LockFunds(amount uint) error
+	LockFunds(amount uint) (monero.Address, error)
 
 	// ClaimFunds redeem's Bob's funds on ethereum
 	ClaimFunds() error
@@ -63,6 +65,7 @@ type bob struct {
 	privkeys        *monero.PrivateKeyPair
 	pubkeys         *monero.PublicKeyPair
 	client          monero.Client
+	daemonClient    monero.DaemonClient
 	contract        *swap.Swap
 	ethPrivKey      *ecdsa.PrivateKey
 	alicePublicKeys *monero.PublicKeyPair
@@ -89,11 +92,12 @@ func NewBob(moneroEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
 	}
 
 	return &bob{
-		ctx:        context.Background(), // TODO: add cancel
-		client:     monero.NewClient(moneroEndpoint),
-		ethClient:  ec,
-		ethPrivKey: pk,
-		auth:       auth,
+		ctx:          context.Background(), // TODO: add cancel
+		client:       monero.NewClient(moneroEndpoint),
+		daemonClient: monero.NewClient(defaultDaemonEndpoint), // TODO: pass through flags
+		ethClient:    ec,
+		ethPrivKey:   pk,
+		auth:         auth,
 	}, nil
 }
 
@@ -198,17 +202,37 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 	return out, nil
 }
 
-func (b *bob) LockFunds(amount uint) error {
+func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(b.alicePublicKeys, b.pubkeys)
+
+	fmt.Println("Bob: going to lock funds...")
+
+	balance, err := b.client.GetBalance(0)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("balance: ", balance.Balance)
+	fmt.Println("unlocked balance: ", balance.UnlockedBalance)
+	fmt.Println("blocks to unlock: ", balance.BlocksToUnlock)
 
 	address := kp.Address()
 	if err := b.client.Transfer(address, 0, amount); err != nil {
-		return err
+		return "", err
+	}
+
+	bobAddr, err := b.client.GetAddress(0)
+	if err != nil {
+		return "", err
+	}
+
+	if err := b.daemonClient.GenerateBlocks(bobAddr.Address, 1); err != nil {
+		return "", err
 	}
 
 	fmt.Println("Bob: successfully locked funds")
 	fmt.Println("address: ", address)
-	return nil
+	return address, nil
 }
 
 func (b *bob) ClaimFunds() error {

@@ -114,12 +114,25 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 		}
 
 		n.host.SetNextExpectedMessage(nil)
-		fmt.Println("got Swap contract address!")
+		fmt.Printf("got Swap contract address! address=%s\n", msg.Address)
 
 		if err := n.bob.SetContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return fmt.Errorf("failed to instantiate contract instance: %w", err)
 		}
 
+		addrAB, err := n.bob.LockFunds(n.amount)
+		if err != nil {
+			return err
+		}
+
+		out := &net.NotifyXMRLock{
+			Address: string(addrAB),
+		}
+
+		n.outCh <- &net.MessageInfo{
+			Message: out,
+			Who:     who,
+		}
 		close(setupDone)
 	default:
 		return errors.New("unexpected message type")

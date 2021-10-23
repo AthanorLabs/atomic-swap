@@ -5,6 +5,7 @@ import (
 )
 
 type Client interface {
+	GetAddress(idx uint) (*getAddressResponse, error)
 	GetBalance(idx uint) (*getBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) error
 	GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error
@@ -38,4 +39,8 @@ func (c *client) Transfer(to Address, accountIdx, amount uint) error {
 func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error {
 	address := kp.Address()
 	return c.callGenerateFromKeys(kp.sk, kp.vk, address, filename, password)
+}
+
+func (c *client) GetAddress(idx uint) (*getAddressResponse, error) {
+	return c.callGetAddress(idx)
 }
