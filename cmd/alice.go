@@ -29,7 +29,7 @@ func (n *node) doProtocolAlice() error {
 		select {
 		case <-n.done:
 		case msg := <-n.inCh:
-			if err := n.handleMessageAlice(msg.Who, msg.Message); err != nil {
+			if err := n.handleMessageAlice(msg.Who, msg.Message, setupDone); err != nil {
 				fmt.Printf("failed to handle message: error=%s\n", err)
 			}
 		case <-setupDone:
@@ -62,7 +62,7 @@ func (n *node) doProtocolAlice() error {
 	return nil
 }
 
-func (n *node) handleMessageAlice(who peer.ID, msg net.Message) error {
+func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan struct{}) error {
 	switch msg := msg.(type) {
 	case *net.WantMessage:
 		if msg.Want != "ETH" {
@@ -111,6 +111,16 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message) error {
 		}
 
 		fmt.Printf("deployed Swap contract: address=%s\n", address)
+
+		out := &net.NotifyContractDeployed{
+			Address: address.String(),
+		}
+
+		n.outCh <- &net.MessageInfo{
+			Message: out,
+			Who:     who,
+		}
+
 	case *net.NotifyXMRLock:
 		if msg.Address == "" {
 			return errors.New("got empty address for locked XMR")
@@ -119,6 +129,12 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message) error {
 		// check that XMR was locked in expected account, and confirm amount
 
 		n.host.SetNextExpectedMessage(nil)
+
+		if err := n.alice.Ready(); err != nil {
+			return fmt.Errorf("failed to call Ready: %w", err)
+		}
+
+		close(setupDone)
 	default:
 		return errors.New("unexpected message type")
 	}
