@@ -3,14 +3,20 @@ package alice
 import (
 	"crypto/ecdsa"
 	"time"
+	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/swap-contract"
 )
 
 var _ Alice = &alice{}
+const (
+	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+)
 
 // Alice contains the functions that will be called by a user who owns ETH
 // and wishes to swap for XMR.
@@ -43,6 +49,7 @@ type alice struct {
 
 	privkeys *monero.PrivateKeyPair
 	pubkeys  *monero.PublicKeyPair
+	bobspubkeys  *monero.PublicKey
 	client   monero.Client
 
 	contract    *swap.Swap
@@ -78,6 +85,21 @@ func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (*swap.Swap, error) {
+	conn, err := ethclient.Dial("http://127.0.0.1:8545")
+	if err != nil {
+		return nil, err
+	}
+
+	pk_a, err := crypto.HexToECDSA(keyAlice)
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+
+	pxAlice := a.pubkeys.SpendKey().X.Bytes()
+	pyAlice := a.pubkeys.SpendKey.Y.Bytes()
+	_, _, swap, err := DeploySwap(authAlice, conn, pxAlice, pyAlice, pxBob, pyBob)
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
