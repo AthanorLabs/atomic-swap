@@ -171,31 +171,37 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 	defer sub.Unsubscribe()
 
 	go func() {
-		select {
-		case refund := <-ch:
-			// got Alice's secret
-			saBytes := refund.S.Bytes()
-			var sa [32]byte
-			copy(sa[:], saBytes)
+		for {
+			select {
+			case refund := <-ch:
+				if refund == nil {
+					continue
+				}
 
-			skA, err := monero.NewPrivateSpendKey(sa[:])
-			if err != nil {
-				fmt.Printf("failed to convert Alice's secret into a key: %w", err)
+				// got Alice's secret
+				saBytes := refund.S.Bytes()
+				var sa [32]byte
+				copy(sa[:], saBytes)
+
+				skA, err := monero.NewPrivateSpendKey(sa[:])
+				if err != nil {
+					fmt.Printf("failed to convert Alice's secret into a key: %w", err)
+					return
+				}
+
+				vkA, err := skA.View()
+				if err != nil {
+					fmt.Printf("failed to get view key from Alice's secret spend key: %w", err)
+					return
+				}
+
+				skAB := monero.SumPrivateSpendKeys(skA, b.privkeys.SpendKey())
+				vkAB := monero.SumPrivateViewKeys(vkA, b.privkeys.ViewKey())
+				kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+				out <- kpAB
+			case <-b.ctx.Done():
 				return
 			}
-
-			vkA, err := skA.View()
-			if err != nil {
-				fmt.Printf("failed to get view key from Alice's secret spend key: %w", err)
-				return
-			}
-
-			skAB := monero.SumPrivateSpendKeys(skA, b.privkeys.SpendKey())
-			vkAB := monero.SumPrivateViewKeys(vkA, b.privkeys.ViewKey())
-			kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
-			out <- kpAB
-		case <-b.ctx.Done():
-			return
 		}
 	}()
 

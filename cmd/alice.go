@@ -43,6 +43,7 @@ func (n *node) doProtocolAlice() error {
 	}
 
 	for {
+		// TODO: add t1 timeout case
 		select {
 		case <-n.done:
 			return nil
@@ -133,6 +134,8 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 		if err := n.alice.Ready(); err != nil {
 			return fmt.Errorf("failed to call Ready: %w", err)
 		}
+
+		fmt.Println("called swap.Ready()!!")
 
 		close(setupDone)
 	default:

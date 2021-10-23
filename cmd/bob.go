@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -39,32 +40,33 @@ func (n *node) doProtocolBob() error {
 		}
 	}
 
-	ready, err := n.bob.WatchForReady()
-	if err != nil {
-		return err
-	}
+	// ready, err := n.bob.WatchForReady()
+	// if err != nil {
+	// 	return err
+	// }
 
-	refund, err := n.bob.WatchForRefund()
-	if err != nil {
-		return err
-	}
+	// refund, err := n.bob.WatchForRefund()
+	// if err != nil {
+	// 	return err
+	// }
 
-	for {
-		select {
-		case <-n.done:
-			return nil
-		case <-ready:
-			fmt.Println("Alice called Ready!")
+	// for {
+	// 	// TODO: add t0 timeout case
+	// 	select {
+	// 	case <-n.done:
+	// 		return nil
+	// 	case <-ready:
+	// 		fmt.Println("Alice called Ready!")
 
-			// contract ready, let's claim our ether
-			if err := n.bob.ClaimFunds(); err != nil {
-				return fmt.Errorf("failed to redeem ether: %w", err)
-			}
-		case kp := <-refund:
-			fmt.Println("Alice refunded, got monero account key", kp)
-			// TODO: generate wallet
-		}
-	}
+	// 		// contract ready, let's claim our ether
+	// 		if err := n.bob.ClaimFunds(); err != nil {
+	// 			return fmt.Errorf("failed to redeem ether: %w", err)
+	// 		}
+	// 	case kp := <-refund:
+	// 		fmt.Println("Alice refunded, got monero account key", kp)
+	// 		// TODO: generate wallet
+	// 	}
+	// }
 
 	n.wait()
 	return nil
@@ -119,6 +121,36 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 		if err := n.bob.SetContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return fmt.Errorf("failed to instantiate contract instance: %w", err)
 		}
+
+		ready, err := n.bob.WatchForReady()
+		if err != nil {
+			return err
+		}
+
+		refund, err := n.bob.WatchForRefund()
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			// TODO: add t0 timeout case
+			select {
+			case <-n.done:
+				return
+			case <-ready:
+				fmt.Println("Alice called Ready!")
+
+				time.Sleep(time.Second)
+
+				// contract ready, let's claim our ether
+				if err := n.bob.ClaimFunds(); err != nil {
+					fmt.Printf("failed to redeem ether: %w", err)
+				}
+			case kp := <-refund:
+				fmt.Println("Alice refunded, got monero account key", kp)
+				// TODO: generate wallet
+			}
+		}()
 
 		addrAB, err := n.bob.LockFunds(n.amount)
 		if err != nil {
