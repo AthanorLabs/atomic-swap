@@ -38,14 +38,13 @@ contract Swap {
 
     constructor(
         bytes32 _pubKeyClaim,
-        bytes32 _pubKeyRefund,
-        Ed25519 _ed25519
+        bytes32 _pubKeyRefund
     ) payable {
         owner = payable(msg.sender);
         pubKeyClaim = _pubKeyClaim;
         pubKeyRefund = _pubKeyRefund;
         timeout_0 = block.timestamp + 1 days;
-        ed25519 = _ed25519;
+        ed25519 = new Ed25519();
         emit Constructed(pubKeyRefund);
     }
 
