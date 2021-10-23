@@ -33,7 +33,7 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, [32]byte{}, [32]byte{})
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -81,7 +81,15 @@ func TestSwap_Claim(t *testing.T) {
 	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	_, _, swap, err := DeploySwap(authAlice, conn, pxAlice, pyAlice, pxBob, pyBob)
+	var pxAliceFixed [32]byte
+	copy(pxAliceFixed [:], pxAlice)
+	var pyAliceFixed [32]byte
+	copy(pyAliceFixed [:], pyAlice)
+	var pxBobFixed [32]byte
+	copy(pxAliceFixed [:], pxBob)
+	var pyBobFixed [32]byte
+	copy(pyBobFixed [:], pyBob)
+	_, _, swap, err := DeploySwap(authAlice, conn, pxAliceFixed, pyAliceFixed, pxBobFixed, pyBobFixed)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -98,7 +106,8 @@ func TestSwap_Claim(t *testing.T) {
 
 	// Bob tries to claim before Alice has called ready, should fail
 	// _, err = swap.Claim(txOptsBob, setBigIntLE(secretBob))
-	_, err = swap.Claim(txOptsBob, secretBob)
+	s := big.NewInt(0).SetBytes(secretBob)
+	_, err = swap.Claim(txOptsBob, s)
 	require.Errorf(t, err, "'isReady == false' cannot claim yet!")
 
 	// Alice calls set_ready on the contract
@@ -106,7 +115,7 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	// Bob tries to claim before Alice has called ready, should fail
-	_, err = swap.Claim(txOptsBob, secretBob)
+	_, err = swap.Claim(txOptsBob, s)
 	require.NoError(t, err)
 
 	// TODO check whether Bob's account balance has increased
