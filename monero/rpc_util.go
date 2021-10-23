@@ -86,7 +86,7 @@ func postRPC(endpoint, method, params string) (*ServerResponse, error) {
 		return nil, err
 	}
 
-	fmt.Println(string(body))
+	//fmt.Println(string(body))
 
 	var sv *ServerResponse
 	if err = json.Unmarshal(body, &sv); err != nil {
