@@ -33,3 +33,9 @@ Generate the bindings
 ```
 ./scripts/generate-bindings.sh
 ```
+
+##### Testing
+To run tests on the go bindings, execute
+```
+go test ./swap-contract
+```
