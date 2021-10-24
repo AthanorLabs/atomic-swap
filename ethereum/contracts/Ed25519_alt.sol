@@ -4,7 +4,7 @@ pragma solidity ^0.8.5;
 // and constants from https://tools.ietf.org/html/draft-josefsson-eddsa-ed25519-03
 
 contract Ed25519 {
-    uint constant q = 2 ** 255 - 19;
+    uint constant q = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFED;
     uint constant d = 37095705934669439343138083508754565189542113879843219016388785533085940283555;
                       // = -(121665/121666)
     uint constant Bx = 15112221349535400772501151409588531511454012693041857206046113283949847762202;
