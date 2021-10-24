@@ -3,7 +3,7 @@
 pragma solidity ^0.8.5;
 
 // import "./Ed25519.sol";
-import "./Ed25519_alt.sol";
+// import "./Ed25519_alt.sol";
 import "./EC.sol";
 
 contract SwapDLEQ {
