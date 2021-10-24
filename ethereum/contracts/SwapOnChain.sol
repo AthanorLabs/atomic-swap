@@ -5,7 +5,7 @@ pragma solidity ^0.8.5;
 // import "./Ed25519.sol";
 import "./Ed25519_alt.sol";
 
-contract Swap {
+contract SwapOnChain {
     // Ed25519 library
     Ed25519 immutable ed25519;
 
