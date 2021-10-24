@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Swap contract including Hardhat logging for testing
 
 pragma solidity ^0.8.5;
 
