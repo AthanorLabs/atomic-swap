@@ -137,10 +137,23 @@ func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 	copy(pka[:], reverse(pkAlice))
 	copy(pkb[:], reverse(pkBob))
 
+	log.Debug("locking amount: ", amount)
+	a.auth.Value = big.NewInt(int64(amount))
+	defer func() {
+		a.auth.Value = nil
+	}()
+
 	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
+
+	balance, err := a.ethClient.BalanceAt(a.ctx, address, nil)
+	if err != nil {
+		return ethcommon.Address{}, err
+	}
+
+	log.Debug("contract balance: ", balance)
 
 	a.contract = swap
 	return address, nil
@@ -232,7 +245,7 @@ func (a *alice) CreateMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address,
 		return "", err
 	}
 
-	log.Info("created wallet with name", walletName)
+	log.Info("created wallet: ", walletName)
 	return kpAB.Address(), nil
 }
 
@@ -275,6 +288,10 @@ func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
 	if err != nil {
 		return "", err
 	}
+
+	pkAB := kpAB.PublicKeyPair()
+	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
+	log.Info("public view keys: ", pkAB.ViewKey().Hex())
 
 	return a.CreateMoneroWallet(kpAB)
 }
