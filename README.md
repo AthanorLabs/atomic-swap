@@ -64,6 +64,15 @@ Start monero-wallet-rpc for Bob with some wallet that has regtest monero:
 ./monero-wallet-rpc  --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-file test-wallet
 ```
 
+Determine the address of `test-wallet` by running `monero-wallet-cli` and `address all`
+
+Then, mine some blocks on the monero test chain by running the following RPC command, replacing the address with the one from the previous step:
+```
+curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{ "wallet_address":"49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB","amount_of_blocks":100}' -H 'Content-Type: application/json'
+```
+
+This will deposit some XMR in your account.
+
 Start monero-wallet-rpc for Alice:
 ```
 ./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
