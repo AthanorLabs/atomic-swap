@@ -24,6 +24,13 @@ const (
 	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
 )
 
+func reverse(s []byte) []byte {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
+}
+
 // Alice contains the functions that will be called by a user who owns ETH
 // and wishes to swap for XMR.
 type Alice interface {
@@ -123,8 +130,8 @@ func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 	pkBob := reverse(a.bobSpendKey.Bytes())
 
 	var pka, pkb [32]byte
-	copy(pka[:], pkAlice)
-	copy(pkb[:], pkBob)
+	copy(pka[:], reverse(pkAlice))
+	copy(pkb[:], reverse(pkBob))
 
 	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb)
 	if err != nil {
@@ -208,8 +215,9 @@ func (a *alice) Refund() error {
 		From:   a.auth.From,
 		Signer: a.auth.Signer,
 	}
+
 	secret := a.privkeys.SpendKeyBytes()
-	s := big.NewInt(0).SetBytes(secret)
+	s := big.NewInt(0).SetBytes(reverse(secret))
 	_, err := a.contract.Refund(txOpts, s)
 	return err
 }
@@ -268,11 +276,4 @@ func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
 	}
 
 	return a.CreateMoneroWallet(kpAB)
-}
-
-func reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
 }

@@ -94,7 +94,7 @@ contract Swap {
         selfdestruct(owner);
     }
 
-    function verifySecret(uint256 _s, bytes32 pubKey) public view {
+    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
         // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
         (uint256 px, uint256 py) = ed25519.scalarMultBase(_s);
         uint256 canonical_p = py | ((px % 2) << 7);
