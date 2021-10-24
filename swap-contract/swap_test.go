@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -80,6 +81,7 @@ func TestSwap_Claim(t *testing.T) {
 	kBobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
 	fmt.Println("kBobHex: ", kBobHex)
 	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
+	require.NoError(t, err)
 
 	// exchange dleq-proofs
 
@@ -90,10 +92,21 @@ func TestSwap_Claim(t *testing.T) {
 	// }
 	require.NoError(t, err)
 	fmt.Printf("%s\n", out)
+	BobStrings := strings.Fields(string(out))
+	secp256k1BobX, err := hex.DecodeString(BobStrings[1])
+	require.NoError(t, err)
+	secp256k1BobY, err := hex.DecodeString(BobStrings[2])
+	require.NoError(t, err)
+
 	// bob verifies alice's dleq
 	out, err = exec.Command("../target/debug/dleq-verify", "../dleq-file-exchange/dleq_proof_alice.dat").Output()
 	require.NoError(t, err)
 	fmt.Printf("%s\n", out)
+	AliceStrings := strings.Fields(string(out))
+	secp256k1AliceX, err := hex.DecodeString(AliceStrings[1])
+	require.NoError(t, err)
+	secp256k1AliceY, err := hex.DecodeString(AliceStrings[2])
+	require.NoError(t, err)
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")

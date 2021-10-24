@@ -25,6 +25,7 @@ fn main() -> std::io::Result<()> {
     let filename = args.iter().nth(2).unwrap();
     let file = fs::File::create(filename);
     file.unwrap().write_all(bytes.as_slice()).unwrap();
-    println!("successfully wrote dleq_proof to {:?}", filename);
+    // println!("successfully wrote dleq_proof to {:?}", filename);
+    println!("successfully generated dleq_proof for {}", hex::encode(x));
     Ok(())
 }
