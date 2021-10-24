@@ -58,7 +58,7 @@ func TestDeploySwap(t *testing.T) {
 
 func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeysTruncated()
+	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
@@ -72,8 +72,16 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Printf("%s\n", out)
 
+	// keyAlease, err := hex.DecodeString("e32ad36ce8e59156aa416da9c9f41a7abc59f6b5f1dd1c2079e8ff4e14503090")
+	keyAlease, err := hex.DecodeString("a6e51afb9662bf2173d807ceaf88938d09a82d1ab2cea3eeb1706eeeb8b6ba03")
+	require.NoError(t, err)
+
+	pubKeyAleaseX, pubKeyAleaseY := monero.PublicSpendOnSecp256k1(keyAlease)
+
+	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyAleaseX.Bytes())), hex.EncodeToString(reverse(pubKeyAleaseY.Bytes())))
+
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeysTruncated()
+	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
 	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
