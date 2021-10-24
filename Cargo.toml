@@ -7,6 +7,10 @@ edition = "2018"
 name = "dleq-gen"
 path = "src/generate.rs"
 
+[[bin]]
+name = "dleq-verify"
+path = "src/verify.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
