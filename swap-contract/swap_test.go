@@ -100,7 +100,9 @@ func TestSwap_Claim(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	_, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractBalance, err := conn.BalanceAt(context.Background(), contractAddress, nil)
+	require.Equal(t, contractBalance.String(), "10")
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
