@@ -4,6 +4,7 @@ pragma solidity ^0.8.5;
 
 // import "./Ed25519.sol";
 import "./Ed25519_alt.sol";
+import "hardhat/console.sol";
 
 contract Swap {
     // Ed25519 library
@@ -48,7 +49,7 @@ contract Swap {
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
     function set_ready() external {
-        require(!isReady && msg.sender == owner && block.timestamp < timeout_0);
+        require(msg.sender == owner && block.timestamp < timeout_0);
         isReady = true;
         timeout_1 = block.timestamp + 1 days;
         emit IsReady(true);
@@ -94,13 +95,38 @@ contract Swap {
         selfdestruct(owner);
     }
 
-    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
+    function verifySecret(uint256 _s, bytes32 pubKey) public view {
         // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
         (uint256 px, uint256 py) = ed25519.scalarMultBase(_s);
         uint256 canonical_p = py | ((px % 2) << 255);
+        console.log("py: %s", uint2hexstr(py));
+        console.log("px: %s", uint2hexstr(px));
+        console.log("derived:  %s", uint2hexstr(canonical_p));
+        console.log("provided: %s", uint2hexstr(uint256(pubKey)));
         require(
             bytes32(canonical_p) == pubKey,
             "provided secret does not match the expected pubKey"
         );
+    }
+
+    function uint2hexstr(uint256 i) public pure returns (string memory) {
+        if (i == 0) return "0";
+        uint256 j = i;
+        uint256 length;
+        while (j != 0) {
+            length++;
+            j = j >> 4;
+        }
+        uint256 mask = 15;
+        bytes memory bstr = new bytes(length);
+        uint256 k = length;
+        while (i != 0) {
+            uint256 curr = (i & mask);
+            bstr[--k] = curr > 9
+                ? bytes1(uint8(55 + curr))
+                : bytes1(uint8(48 + curr)); // 55 = 65 - 10
+            i = i >> 4;
+        }
+        return string(bstr);
     }
 }
