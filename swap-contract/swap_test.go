@@ -62,6 +62,7 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
+	fmt.Println("pubKeyAliceX: ", hex.EncodeToString(pubKeyAliceX.Bytes()), "pubKeyAliceY: ", hex.EncodeToString(pubKeyAliceY.Bytes()))
 
 	// Alice generates DLEQ proof - this binary file is transmitted to Bob via some offchain protocol
 	fmt.Println("kAlice: ", keyPairAlice.SpendKeyBytes())
@@ -76,12 +77,14 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
 	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
+	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()), "pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 	// pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
 	kBobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
 	fmt.Println("kBobHex: ", kBobHex)
 	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
 	require.NoError(t, err)
+	fmt.Println("dleq-gen out: ", (string(out)))
 
 	// exchange dleq-proofs
 
@@ -93,20 +96,24 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Printf("%s\n", out)
 	BobStrings := strings.Fields(string(out))
+	fmt.Println("BobStrings: ", BobStrings)
 	secp256k1BobX, err := hex.DecodeString(BobStrings[1])
 	require.NoError(t, err)
 	secp256k1BobY, err := hex.DecodeString(BobStrings[2])
 	require.NoError(t, err)
+	fmt.Println("BobParsed: ", secp256k1BobX, secp256k1BobY)
 
 	// bob verifies alice's dleq
 	out, err = exec.Command("../target/debug/dleq-verify", "../dleq-file-exchange/dleq_proof_alice.dat").Output()
 	require.NoError(t, err)
 	fmt.Printf("%s\n", out)
 	AliceStrings := strings.Fields(string(out))
+	fmt.Println("AliceStrings: ", AliceStrings)
 	secp256k1AliceX, err := hex.DecodeString(AliceStrings[1])
 	require.NoError(t, err)
 	secp256k1AliceY, err := hex.DecodeString(AliceStrings[2])
 	require.NoError(t, err)
+	fmt.Println("AliceParsed: ", secp256k1AliceX, secp256k1AliceY)
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
