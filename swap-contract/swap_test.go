@@ -115,7 +115,7 @@ func TestSwap_Claim(t *testing.T) {
 	// Bob tries to claim before Alice has called ready, should fail
 	s := big.NewInt(0).SetBytes(reverse(secretBob))
 	fmt.Println("Secret:", hex.EncodeToString(reverse(secretBob)))
-	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyBob)))
+	// fmt.Println("PubKey:", hex.EncodeToString(reverse(append(pubKeyBobY.Bytes(), pubKeyBobY.Bytes()))))
 	_, err = swap.Claim(txOptsBob, s)
 	require.Regexp(t, ".*'isReady == false' cannot claim yet!", err)
 
