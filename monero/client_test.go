@@ -15,7 +15,7 @@ func TestClient_Transfer(t *testing.T) {
 	//
 	// `./monero-wallet-rpc  --stagenet --rpc-bind-port 18080 --password "" --disable-rpc-login --wallet-file stagenet-wallet`
 	const amount = 3000000000000
-	cA := NewClient("http://127.0.0.1:18080/json_rpc")
+	cA := NewClient(defaultEndpoint)
 
 	aliceAddress, err := cA.callGetAddress(0)
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestClient_Transfer(t *testing.T) {
 	// `./monero-wallet-rpc  --stagenet --rpc-bind-port 18082 --password "" --disable-rpc-login --wallet-dir .`
 	// TODO: it seems the wallet CLI fails to generate from keys when wallet-dir is not set,
 	// but it fails to load the wallet if wallet-file is not set (and these two flags cannot be used together)
-	cB := NewClient(defaultEndpoint)
+	cB := NewClient("http://127.0.0.1:18084/json_rpc")
 
 	// generate view-only account for A+B
 	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-%d", r), "")
