@@ -107,7 +107,14 @@ Generate the bindings
 ```
 
 ##### Testing
-To run tests on the go bindings, execute
+To run tests on the go bindings, execute:
 ```
 go test ./swap-contract
 ```
+
+This will test the main protocol functionality on the ethereum side:
+1. Success case, where both parties obey the protocol
+2. Case where Bob never locks monero on his side. Alice can Refund
+3. Case where Bob locks monero, but never claims his ether from the contract
+
+Upon Refund/Claim by either side, they reveal the secret to the counterparty, which *always* guarantees that the counteryparty can claim the locked funds on ethereum.
