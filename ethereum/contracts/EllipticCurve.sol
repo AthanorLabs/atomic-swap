@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+// Source https://github.com/witnet/elliptic-curve-solidity/blob/master/contracts/EllipticCurve.sol
+// This file is not being used as of the final Hackathon submission
 
 pragma solidity ^0.8.5;
 
