@@ -7,8 +7,10 @@ import (
 	"math/big"
 	"time"
 
+	//eth 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	//ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -69,15 +71,18 @@ type bob struct {
 	ctx    context.Context
 	t0, t1 time.Time
 
-	privkeys        *monero.PrivateKeyPair
-	pubkeys         *monero.PublicKeyPair
-	client          monero.Client
-	daemonClient    monero.DaemonClient
-	contract        *swap.Swap
+	privkeys     *monero.PrivateKeyPair
+	pubkeys      *monero.PublicKeyPair
+	client       monero.Client
+	daemonClient monero.DaemonClient
+
+	contract     *swap.Swap
+	contractAddr ethcommon.Address
+	ethClient    *ethclient.Client
+	auth         *bind.TransactOpts
+
 	ethPrivKey      *ecdsa.PrivateKey
 	alicePublicKeys *monero.PublicKeyPair
-	ethClient       *ethclient.Client
-	auth            *bind.TransactOpts
 }
 
 // NewBob returns a new instance of Bob.
@@ -126,11 +131,45 @@ func (b *bob) SetAlicePublicKeys(sk *monero.PublicKeyPair) {
 
 func (b *bob) SetContract(address ethcommon.Address) error {
 	var err error
+	b.contractAddr = address
 	b.contract, err = swap.NewSwap(address, b.ethClient)
 	return err
 }
 
 func (b *bob) WatchForReady() (<-chan struct{}, error) {
+	//var readyTopic = ethcommon.HexToHash("0x2724cf6c3ad6a3399ad72482e4013d0171794f3ef4c462b7e24790c658cb3cd4")
+	// ch := make(chan ethtypes.Log)
+	// done := make(chan struct{})
+
+	// filterQuery := eth.FilterQuery{
+	// 	Addresses: []ethcommon.Address{
+	// 		b.contractAddr,
+	// 	},
+	// 	Topics: [][]ethcommon.Hash{
+	// 	//	{readyTopic},
+	// 	},
+	// }
+
+	// sub, err := b.ethClient.SubscribeFilterLogs(b.ctx, filterQuery, ch)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// defer sub.Unsubscribe()
+
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case <-ch:
+	// 			//if log.TxHash != [32]byte{} {
+	// 				close(done)
+	// 				return
+	// 			//}
+	// 		case <-b.ctx.Done():
+	// 		}
+	// 	}
+	// }()
+
 	watchOpts := &bind.WatchOpts{
 		Context: b.ctx,
 	}

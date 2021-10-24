@@ -228,10 +228,13 @@ func (a *alice) CreateMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address,
 	// vkAB := monero.SumPrivateViewKeys(kpB.ViewKey(), a.privkeys.ViewKey())
 	// kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
-	if err := a.client.GenerateFromKeys(kpAB, "alice-swap-wallet-0", ""); err != nil {
+	t := time.Now().Format("2006-Jan-2-15:04:05")
+	walletName := fmt.Sprintf("alice-swap-wallet-%s", t)
+	if err := a.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
 		return "", err
 	}
 
+	fmt.Println("created wallet with name", walletName)
 	return kpAB.Address(), nil
 }
 
