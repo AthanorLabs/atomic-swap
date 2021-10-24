@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Swap contract including Hardhat logging for testing
+// Swap contract including Hardhat logging for testing purposes
 
 pragma solidity ^0.8.5;
 
@@ -7,7 +7,7 @@ pragma solidity ^0.8.5;
 import "./Ed25519_alt.sol";
 import "hardhat/console.sol";
 
-contract Swap {
+contract SwapOnChainConsole {
     // Ed25519 library
     Ed25519 immutable ed25519;
 
@@ -50,7 +50,7 @@ contract Swap {
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
     function set_ready() external {
-        require(msg.sender == owner && block.timestamp < timeout_0);
+        require(!isReady && msg.sender == owner && block.timestamp < timeout_0);
         isReady = true;
         timeout_1 = block.timestamp + 1 days;
         emit IsReady(true);
