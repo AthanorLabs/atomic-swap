@@ -267,6 +267,9 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(b.alicePublicKeys, b.pubkeys)
 
+	log.Info("public spend keys: ", kp.SpendKey().Hex())
+	log.Info("public view keys: ", kp.ViewKey().Hex())
+
 	log.Info("going to lock funds...")
 
 	balance, err := b.client.GetBalance(0)
@@ -302,6 +305,15 @@ func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 }
 
 func (b *bob) ClaimFunds() (string, error) {
+	var addr = ethcommon.HexToAddress("0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0")
+
+	balance, err := b.ethClient.BalanceAt(b.ctx, addr, nil)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("Bob's balance before claim: ", balance)
+
 	txOpts := &bind.TransactOpts{
 		From:   b.auth.From,
 		Signer: b.auth.Signer,
@@ -327,5 +339,12 @@ func (b *bob) ClaimFunds() (string, error) {
 	//log.Info("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
 	log.Info("included in block number: ", receipt.Logs[0].BlockNumber)
 	log.Info("secret: ", fmt.Sprintf("%x", secret))
+
+	balance, err = b.ethClient.BalanceAt(b.ctx, addr, nil)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("Bob's balance after claim: ", balance)
 	return tx.Hash().String(), nil
 }

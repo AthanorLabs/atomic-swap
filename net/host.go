@@ -178,8 +178,7 @@ func (h *host) send(p peer.ID, msg Message) (libp2pnetwork.Stream, error) {
 	}
 
 	log.Debug(
-		"Opened stream",
-		"peer", p,
+		"Opened stream, peer=", p,
 	)
 
 	err = h.writeToStream(stream, msg)
