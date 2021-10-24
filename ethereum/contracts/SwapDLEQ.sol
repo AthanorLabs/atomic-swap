@@ -47,7 +47,6 @@ contract SwapDLEQ {
         pubKeyRefundX = _pubKeyRefundX;
         pubKeyRefundY = _pubKeyRefundY;
         timeout_0 = block.timestamp + 1 days;
-        /* ed25519 = new Ed25519(); */
         ec = new EC();
         emit Constructed(_pubKeyRefundX, _pubKeyRefundY);
     }
