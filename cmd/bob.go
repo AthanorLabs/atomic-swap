@@ -111,7 +111,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 				case <-n.done:
 					return
 				case <-ready:
-					time.Sleep(time.Second * 2)
+					time.Sleep(time.Second * 3)
 					log.Debug("Alice called Ready!")
 					log.Debug("attempting to claim funds...")
 
@@ -120,8 +120,8 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 					// contract ready, let's claim our ether
 					txHash, err := n.bob.ClaimFunds()
 					if err != nil {
-						log.Info("failed to redeem ether: %w", err)
-						return
+						log.Error("failed to redeem ether: %w", err)
+						continue
 					}
 
 					log.Debug("funds claimed!!")

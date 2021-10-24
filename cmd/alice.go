@@ -29,6 +29,7 @@ func (n *node) doProtocolAlice() error {
 	for {
 		select {
 		case <-n.done:
+			return nil
 		case msg := <-n.inCh:
 			if err := n.handleMessageAlice(msg.Who, msg.Message, setupDone); err != nil {
 				log.Error("failed to handle message: error=", err)
@@ -117,6 +118,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 
 					log.Info("successfully created monero wallet from our secrets: address=", address)
 					// TODO: get and print balance
+					close(n.done)
 					os.Exit(1)
 				}
 			}

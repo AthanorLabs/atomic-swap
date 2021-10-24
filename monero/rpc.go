@@ -208,3 +208,27 @@ func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
 
 	return res, nil
 }
+
+type getAccountsResponse struct {
+	SubaddressAccounts []map[string]interface{} `json:"subaddress_accounts"`
+}
+
+func (c *client) callGetAccounts() (*getAccountsResponse, error) {
+	const method = "get_accounts"
+
+	resp, err := postRPC(c.endpoint, method, "{}")
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+
+	var res *getAccountsResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

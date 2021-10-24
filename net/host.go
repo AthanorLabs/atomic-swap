@@ -234,7 +234,7 @@ func (h *host) handleStream(stream libp2pnetwork.Stream) {
 		if errors.Is(err, io.EOF) {
 			return
 		} else if err != nil {
-			log.Debug("failed to read from stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
+			//log.Debug("failed to read from stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
 			_ = stream.Close()
 			return
 		}
