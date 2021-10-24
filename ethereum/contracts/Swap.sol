@@ -73,7 +73,7 @@ contract Swap {
             );
         }
 
-        require(ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
+        require(!ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
                 "provided secret does not match the expected pubKey");
         emit Claimed(_s);
 
@@ -94,7 +94,7 @@ contract Swap {
             require(block.timestamp < timeout_0, "Missed your chance!");
         }
 
-        require(ec.publicKeyVerify(_s, pubKeyRefundX, pubKeyRefundY),
+        require(!ec.publicKeyVerify(_s, pubKeyRefundX, pubKeyRefundY),
                 "provided secret does not match the expected pubKey");
         emit Refunded(_s);
 
