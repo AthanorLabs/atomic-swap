@@ -117,12 +117,21 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 					time.Sleep(time.Second * 3)
 
 					// contract ready, let's claim our ether
-					if err := n.bob.ClaimFunds(); err != nil {
+					txHash, err := n.bob.ClaimFunds()
+					if err != nil {
 						fmt.Printf("failed to redeem ether: %w", err)
 						return
 					}
 
 					fmt.Println("funds claimed!!")
+					out := &net.NotifyClaimed{
+						TxHash: txHash,
+					}
+
+					n.outCh <- &net.MessageInfo{
+						Message: out,
+						Who:     who,
+					}
 					return
 				case kp := <-refund:
 					if kp == nil {

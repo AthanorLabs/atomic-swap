@@ -137,7 +137,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 
 		// check that XMR was locked in expected account, and confirm amount
 
-		n.host.SetNextExpectedMessage(nil)
+		n.host.SetNextExpectedMessage(&net.NotifyClaimed{})
 
 		if err := n.alice.Ready(); err != nil {
 			return fmt.Errorf("failed to call Ready: %w", err)
@@ -145,7 +145,12 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 
 		fmt.Println("called swap.Ready()!!")
 
-		close(setupDone)
+		//close(setupDone)
+	case *net.NotifyClaimed:
+		_, err := n.alice.NotifyClaimed(msg.TxHash)
+		if err != nil {
+			fmt.Println("failed to create monero address: %w", err)
+		}
 	default:
 		return errors.New("unexpected message type")
 	}

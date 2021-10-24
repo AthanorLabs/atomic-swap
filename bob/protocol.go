@@ -55,7 +55,7 @@ type Bob interface {
 	LockFunds(amount uint) (monero.Address, error)
 
 	// ClaimFunds redeem's Bob's funds on ethereum
-	ClaimFunds() error
+	ClaimFunds() (string, error)
 }
 
 type bob struct {
@@ -251,7 +251,7 @@ func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 	return address, nil
 }
 
-func (b *bob) ClaimFunds() error {
+func (b *bob) ClaimFunds() (string, error) {
 	txOpts := &bind.TransactOpts{
 		From:   b.auth.From,
 		Signer: b.auth.Signer,
@@ -261,7 +261,7 @@ func (b *bob) ClaimFunds() error {
 	s := big.NewInt(0).SetBytes(secret)
 	tx, err := b.contract.Claim(txOpts, s)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	fmt.Println("success! Bob claimed funds")
@@ -269,11 +269,11 @@ func (b *bob) ClaimFunds() error {
 
 	receipt, err := b.ethClient.TransactionReceipt(b.ctx, tx.Hash())
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	//fmt.Println("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
 	fmt.Println("included in block number: ", receipt.Logs[0].BlockNumber)
-	//fmt.Println("expected secret: ", fmt.Sprintf("0x%x", secret))
-	return nil
+	fmt.Println("expected secret: ", fmt.Sprintf("0x%x", secret))
+	return tx.Hash().String(), nil
 }
