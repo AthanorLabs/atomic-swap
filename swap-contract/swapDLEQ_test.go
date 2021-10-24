@@ -1,4 +1,4 @@
-package swap
+package swapDLEQ
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func setBigIntLE(s []byte) *big.Int {
 	return big.NewInt(0).SetBytes(s)
 }
 
-func TestDeploySwap(t *testing.T) {
+func TestDeploySwapDLEQ(t *testing.T) {
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
@@ -48,7 +48,7 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, pk_a.X, pk_a.Y, pk_b.X, pk_b.Y)
+	address, tx, swapContract, err := DeploySwapDLEQ(authAlice, conn, pk_a.X, pk_a.Y, pk_b.X, pk_b.Y)
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -156,7 +156,7 @@ func TestSwap_Claim(t *testing.T) {
 	var pkBobFixedY [32]byte
 	// copy(pkBobFixedY[:], reverse(pubKeyBobY.Bytes()))
 	copy(pkBobFixedY[:], reverse(secp256k1BobY))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, setBigIntLE(pkBobFixedX[:]), setBigIntLE(pkBobFixedY[:]), setBigIntLE(pkAliceFixedX[:]), setBigIntLE(pkAliceFixedY[:]))
+	contractAddress, deployTx, swap, err := DeploySwapDLEQ(authAlice, conn, setBigIntLE(pkBobFixedX[:]), setBigIntLE(pkBobFixedY[:]), setBigIntLE(pkAliceFixedX[:]), setBigIntLE(pkAliceFixedY[:]))
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 	aliceBalanceAfter, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
 	fmt.Println("AliceBalanceAfter: ", aliceBalanceAfter)
@@ -201,10 +201,10 @@ func TestSwap_Claim(t *testing.T) {
 	fmt.Println("Tx details are:", tx.Gas())
 
 	// check whether Bob's account balance has increased now
-	// bobBalanceAfter, err := conn.BalanceAt(context.Background(), authBob.From, nil)
-	// fmt.Println("BobBalanceBefore: ", bobBalanceAfter)
-	// require.NoError(t, err)
-	// require.Equal(t, big.NewInt(10), big.NewInt(0).Sub(bobBalanceAfter, bobBalanceBefore))
+	bobBalanceAfter, err := conn.BalanceAt(context.Background(), authBob.From, nil)
+	fmt.Println("BobBalanceBefore: ", bobBalanceAfter)
+	require.NoError(t, err)
+	require.Equal(t, big.NewInt(10), big.NewInt(0).Sub(bobBalanceAfter, bobBalanceBefore))
 }
 
 func TestSwap_Refund_Within_T0(t *testing.T) {
@@ -302,7 +302,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	var pkBobFixedY [32]byte
 	// copy(pkBobFixedY[:], reverse(pubKeyBobY.Bytes()))
 	copy(pkBobFixedY[:], reverse(secp256k1BobY))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, setBigIntLE(pkBobFixedX[:]), setBigIntLE(pkBobFixedY[:]), setBigIntLE(pkAliceFixedX[:]), setBigIntLE(pkAliceFixedY[:]))
+	contractAddress, deployTx, swap, err := DeploySwapDLEQ(authAlice, conn, setBigIntLE(pkBobFixedX[:]), setBigIntLE(pkBobFixedY[:]), setBigIntLE(pkAliceFixedX[:]), setBigIntLE(pkAliceFixedY[:]))
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 	aliceBalanceAfter, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
 	fmt.Println("AliceBalanceAfter: ", aliceBalanceAfter)
@@ -423,7 +423,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	var pkBobFixedY [32]byte
 	// copy(pkBobFixedY[:], reverse(pubKeyBobY.Bytes()))
 	copy(pkBobFixedY[:], reverse(secp256k1BobY))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, setBigIntLE(pkBobFixedX[:]), setBigIntLE(pkBobFixedY[:]), setBigIntLE(pkAliceFixedX[:]), setBigIntLE(pkAliceFixedY[:]))
+	contractAddress, deployTx, swap, err := DeploySwapDLEQ(authAlice, conn, setBigIntLE(pkBobFixedX[:]), setBigIntLE(pkBobFixedY[:]), setBigIntLE(pkAliceFixedX[:]), setBigIntLE(pkAliceFixedY[:]))
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 	aliceBalanceAfter, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
 	fmt.Println("AliceBalanceAfter: ", aliceBalanceAfter)

@@ -6,7 +6,7 @@ pragma solidity ^0.8.5;
 import "./Ed25519_alt.sol";
 import "./EC.sol";
 
-contract Swap {
+contract SwapDLEQ {
     // EC library
     EC immutable ec;
 
