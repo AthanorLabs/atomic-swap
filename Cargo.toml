@@ -20,4 +20,5 @@ ecdsa_fun = { version = "0.6", default-features = false, features = ["all"] }
 secp256kfun = { version = "0.6", default-features = false, features = ["std", "serde", "libsecp_compat"] }
 curve25519-dalek = "3.0.2"
 rand = { version = "0.8.4" }
+hex = { version = "0.4.3" }
 

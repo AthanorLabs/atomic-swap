@@ -10,23 +10,23 @@ fn main() {
     use std::fs;
     use std::io::prelude::*;
 
-    let filename = "dleq_proof.dat";
+    let filename = args.iter().nth(1).unwrap();
     let mut f = fs::File::open(&filename).expect("no file found");
     let metadata = fs::metadata(&filename).expect("unable to read metadata");
     let mut buffer = vec![0; metadata.len() as usize];
 
     f.read(&mut buffer).expect("buffer overflow");
-    let dleq2 = DLEQProof::from_canonical_bytes(buffer.as_slice()).unwrap();
+    let dleq = DLEQProof::from_canonical_bytes(buffer.as_slice()).unwrap();
 
-    let commitment_agg_ed25519 = dleq2.c_g.iter().sum();
-    let commitment_agg_secp256k1 = dleq2
+    let commitment_agg_ed25519 = dleq.c_g.iter().sum();
+    let commitment_agg_secp256k1 = dleq
         .c_h
         .iter()
         .fold(secp256k1Point::zero(), |acc, bit_commitment| {
             g!(acc + bit_commitment).mark::<Normal>()
         });
 
-    let verification = dleq2.verify(commitment_agg_ed25519, commitment_agg_secp256k1.mark::<NonZero>().unwrap()).unwrap();
+    let verification = dleq.verify(commitment_agg_ed25519, commitment_agg_secp256k1.mark::<NonZero>().unwrap()).unwrap();
     println!("DLEQ proof successfully verified for:\ned25519:{:?}\nsecp256k1{:?}", commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes())
     // Ok((*commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes()))
 }
