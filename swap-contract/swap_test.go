@@ -196,6 +196,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, bytecode)
 
+	require.Equal(t, big.NewInt(0).Sub(bobBalanceAfter, bobBalanceBefore), 10)
 }
 
 func TestSwap_Refund_After_T1(t *testing.T) {
