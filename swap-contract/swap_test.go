@@ -5,12 +5,10 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"testing"
-	"time"
 	"fmt"
 	"encoding/hex"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
@@ -65,7 +63,6 @@ func encodePublicKey(pub *ecdsa.PublicKey) [64]byte {
 func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
-	// keyPairAlice, err := crypto.GenerateKey()
 	require.NoError(t, err)
 	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
@@ -85,15 +82,14 @@ func TestSwap_Claim(t *testing.T) {
 	pk_b, err := crypto.HexToECDSA(keyBob)
 
 	// check whether Bob had nothing before the Tx
-	bobAccount := common.HexToAddress("0x21e6fc92f93c8a1bb41e2be64b4e1f88a54d3576")
-	bobBalanceBefore, err := conn.BalanceAt(context.Background(), bobAccount, nil)
-	require.NoError(t, err)
-	require.Equal(t, bobBalanceBefore.String(), "0")
-
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
 	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
+	require.NoError(t, err)
+
+	// bobAccount := common.HexToAddress("0x21e6fc92f93c8a1bb41e2be64b4e1f88a54d3576")
+	bobBalanceBefore, err := conn.BalanceAt(context.Background(), authBob.From, nil)
 	require.NoError(t, err)
 
 	var pkAliceFixed [32]byte
@@ -129,12 +125,10 @@ func TestSwap_Claim(t *testing.T) {
 	_, err = swap.Claim(txOptsBob, s)
 	require.NoError(t, err)
 
-	time.Sleep(time.Second * 10)
-
 	// check whether Bob's account balance has increased now
-	bobBalanceAfter, err := conn.BalanceAt(context.Background(), bobAccount, nil)
+	bobBalanceAfter, err := conn.BalanceAt(context.Background(), authBob.From, nil)
 	require.NoError(t, err)
-	require.Equal(t, bobBalanceAfter.String(), "10")
+	require.Equal(t, big.NewInt(0).Sub(bobBalanceAfter, bobBalanceBefore).String(), "10")
 
 }
 
