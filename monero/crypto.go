@@ -113,7 +113,7 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 	return addr
 }
 
-func (kp *PrivateKeyPair) Bytes() []byte {
+func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
 }
 

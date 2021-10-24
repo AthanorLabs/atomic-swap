@@ -256,8 +256,9 @@ func (b *bob) ClaimFunds() (string, error) {
 		From:   b.auth.From,
 		Signer: b.auth.Signer,
 	}
+
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	secret := b.privkeys.Bytes()
+	secret := b.privkeys.SpendKeyBytes()
 	s := big.NewInt(0).SetBytes(secret)
 	tx, err := b.contract.Claim(txOpts, s)
 	if err != nil {
@@ -274,6 +275,13 @@ func (b *bob) ClaimFunds() (string, error) {
 
 	//fmt.Println("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
 	fmt.Println("included in block number: ", receipt.Logs[0].BlockNumber)
-	fmt.Println("expected secret: ", fmt.Sprintf("0x%x", secret), s)
+	fmt.Println("secret: ", fmt.Sprintf("%x", secret))
 	return tx.Hash().String(), nil
+}
+
+func reverse(s []byte) []byte {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
 }

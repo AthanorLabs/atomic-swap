@@ -111,7 +111,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 					fmt.Printf("Bob claimed ether! got secret: %v", kp)
 					address, err := n.alice.CreateMoneroWallet(kp)
 					if err != nil {
-						fmt.Println("failed to create monero address: %w", err)
+						fmt.Println("failed to create monero address: %s", err)
 						return
 					}
 
@@ -147,10 +147,14 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 
 		//close(setupDone)
 	case *net.NotifyClaimed:
-		_, err := n.alice.NotifyClaimed(msg.TxHash)
+		address, err := n.alice.NotifyClaimed(msg.TxHash)
 		if err != nil {
-			fmt.Println("failed to create monero address: %w", err)
+			fmt.Printf("failed to create monero address: %s\n", err)
+			return err
 		}
+
+		fmt.Printf("successfully created monero wallet from our secrets: address=%s", address)
+		// TODO: get and print balance
 	default:
 		return errors.New("unexpected message type")
 	}

@@ -119,9 +119,8 @@ func (a *alice) SetBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
-
-	pkAlice := a.pubkeys.SpendKey().Bytes()
-	pkBob := a.bobSpendKey.Bytes()
+	pkAlice := reverse(a.pubkeys.SpendKey().Bytes())
+	pkBob := reverse(a.bobSpendKey.Bytes())
 
 	var pka, pkb [32]byte
 	copy(pka[:], pkAlice)
@@ -209,19 +208,19 @@ func (a *alice) Refund() error {
 		From:   a.auth.From,
 		Signer: a.auth.Signer,
 	}
-	secret := a.privkeys.Bytes()
+	secret := a.privkeys.SpendKeyBytes()
 	s := big.NewInt(0).SetBytes(secret)
 	_, err := a.contract.Refund(txOpts, s)
 	return err
 }
 
-func (a *alice) CreateMoneroWallet(kpB *monero.PrivateKeyPair) (monero.Address, error) {
+func (a *alice) CreateMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
 	// got Bob's secret
-	skAB := monero.SumPrivateSpendKeys(kpB.SpendKey(), a.privkeys.SpendKey())
-	vkAB := monero.SumPrivateViewKeys(kpB.ViewKey(), a.privkeys.ViewKey())
-	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+	// skAB := monero.SumPrivateSpendKeys(kpB.SpendKey(), a.privkeys.SpendKey())
+	// vkAB := monero.SumPrivateViewKeys(kpB.ViewKey(), a.privkeys.ViewKey())
+	// kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
-	if err := a.client.GenerateFromKeys(kpAB, "alice-swap-wallet", ""); err != nil {
+	if err := a.client.GenerateFromKeys(kpAB, "alice-swap-wallet-0", ""); err != nil {
 		return "", err
 	}
 
@@ -249,6 +248,31 @@ func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	fmt.Println("got Bob's secret!", res[0].(*big.Int), hex.EncodeToString(res[0].(*big.Int).Bytes()))
-	return "", nil
+	fmt.Println("got Bob's secret!", hex.EncodeToString(res[0].(*big.Int).Bytes()))
+
+	// got Bob's secret
+	sbBytes := res[0].(*big.Int).Bytes()
+	var sb [32]byte
+	copy(sb[:], sbBytes)
+
+	skB, err := monero.NewPrivateSpendKey(sb[:])
+	if err != nil {
+		fmt.Printf("failed to convert Bob's secret into a key: %s\n", err)
+		return "", err
+	}
+
+	skAB := monero.SumPrivateSpendKeys(skB, a.privkeys.SpendKey())
+	kpAB, err := skAB.AsPrivateKeyPair()
+	if err != nil {
+		return "", err
+	}
+
+	return a.CreateMoneroWallet(kpAB)
+}
+
+func reverse(s []byte) []byte {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
 }

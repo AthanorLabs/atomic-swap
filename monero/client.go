@@ -38,8 +38,7 @@ func (c *client) Transfer(to Address, accountIdx, amount uint) error {
 }
 
 func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error {
-	address := kp.Address()
-	return c.callGenerateFromKeys(kp.sk, kp.vk, address, filename, password)
+	return c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(), filename, password)
 }
 
 func (c *client) GetAddress(idx uint) (*getAddressResponse, error) {
