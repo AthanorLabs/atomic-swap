@@ -5,6 +5,7 @@ import (
 )
 
 type Client interface {
+	GetAccounts() (*getAccountsResponse, error)
 	GetAddress(idx uint) (*getAddressResponse, error)
 	GetBalance(idx uint) (*getBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) error
@@ -20,6 +21,10 @@ func NewClient(endpoint string) *client {
 	return &client{
 		endpoint: endpoint,
 	}
+}
+
+func (c *client) GetAccounts() (*getAccountsResponse, error) {
+	return c.callGetAccounts()
 }
 
 func (c *client) GetBalance(idx uint) (*getBalanceResponse, error) {

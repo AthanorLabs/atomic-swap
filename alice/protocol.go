@@ -246,6 +246,23 @@ func (a *alice) CreateMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address,
 	}
 
 	log.Info("created wallet: ", walletName)
+
+	if err := a.client.Refresh(); err != nil {
+		return "", err
+	}
+
+	balance, err := a.client.GetBalance(0)
+	if err != nil {
+		return "", err
+	}
+
+	accounts, err := a.client.GetAccounts()
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug(accounts)
+	log.Info("wallet balance: ", balance.Balance)
 	return kpAB.Address(), nil
 }
 
@@ -284,10 +301,17 @@ func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
 	}
 
 	skAB := monero.SumPrivateSpendKeys(skB, a.privkeys.SpendKey())
-	kpAB, err := skAB.AsPrivateKeyPair()
-	if err != nil {
-		return "", err
-	}
+	// kpAB, err := skAB.AsPrivateKeyPair()
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	vkAB := monero.SumPrivateViewKeys(a.bobViewKey, a.privkeys.ViewKey())
+	//log.Debug("private view key: ", vkAB.Hex())
+	//log.Debug("public view key: ", vkAB.Public().Hex())
+	//log.Debug("private view key from spend key: ", kpAB.ViewKey().Hex())
+
+	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
 	pkAB := kpAB.PublicKeyPair()
 	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
