@@ -62,8 +62,13 @@ func TestSwap_Claim(t *testing.T) {
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
 
+	// Alice generates DLEQ proof - this binary file is transmitted to Bob via some offchain protocol
+	out, err = exec.Command("../target/debug/dleq-gen", "8a85daf15c236c18b98d2465ce2506cb86ab5da0d20a16751d98f6cea6d00000", "dleq_proof.dat").Output()
+	require.NoError(t, err)
+	fmt.Printf("%s\n", out)
+
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := monero.GenerateKeysTruncated()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
 	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
