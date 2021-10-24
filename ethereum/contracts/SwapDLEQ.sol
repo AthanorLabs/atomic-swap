@@ -100,13 +100,4 @@ contract SwapDLEQ {
         // send eth back to owner==caller (Alice)
         selfdestruct(owner);
     }
-    /* function verifySecret(uint256 _s, bytes32 pubKey) internal view { */
-    /*     // (uint256 px, uint256 py) = ed25519.derivePubKey(_s); */
-    /*     (uint256 px, uint256 py) = ed25519.scalarMultBase(_s); */
-    /*     uint256 canonical_p = py | ((px % 2) << 255); */
-    /*     require( */
-    /*         bytes32(canonical_p) == pubKey, */
-    /*         "provided secret does not match the expected pubKey" */
-    /*     ); */
-    /* } */
 }
