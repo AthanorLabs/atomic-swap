@@ -4,21 +4,24 @@ pragma solidity ^0.8.5;
 
 // import "./Ed25519.sol";
 import "./Ed25519_alt.sol";
+import "./EC.sol";
 
 contract Swap {
-    // Ed25519 library
-    Ed25519 immutable ed25519;
+    // EC library
+    EC immutable ec;
 
     // contract creator, Alice
     address payable immutable owner;
 
     // the expected public key derived from the secret `s_b`.
     // this public key is a point on the ed25519 curve
-    bytes32 public immutable pubKeyClaim;
+    uint256 public immutable pubKeyClaimX;
+    uint256 public immutable pubKeyClaimY;
 
     // the expected public key derived from the secret `s_a`.
     // this public key is a point on the ed25519 curve
-    bytes32 public immutable pubKeyRefund;
+    uint256 public immutable pubKeyRefundX;
+    uint256 public immutable pubKeyRefundY;
 
     // time period from contract creation
     // during which Alice can call either set_ready or refund
@@ -32,18 +35,21 @@ contract Swap {
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     bool isReady = false;
 
-    event Constructed(bytes32 p);
+    event Constructed(uint256 p, uint256 q);
     event IsReady(bool b);
     event Claimed(uint256 s);
     event Refunded(uint256 s);
 
-    constructor(bytes32 _pubKeyClaim, bytes32 _pubKeyRefund) payable {
+    constructor(uint256 _pubKeyClaimX, uint256 _pubKeyClaimY, uint256 _pubKeyRefundX, uint256 _pubKeyRefundY) payable {
         owner = payable(msg.sender);
-        pubKeyClaim = _pubKeyClaim;
-        pubKeyRefund = _pubKeyRefund;
+        pubKeyClaimX = _pubKeyClaimX;
+        pubKeyClaimY = _pubKeyClaimY;
+        pubKeyRefundX = _pubKeyRefundX;
+        pubKeyRefundY = _pubKeyRefundY;
         timeout_0 = block.timestamp + 1 days;
-        ed25519 = new Ed25519();
-        emit Constructed(_pubKeyRefund);
+        /* ed25519 = new Ed25519(); */
+        ec = new EC();
+        emit Constructed(_pubKeyRefundX, _pubKeyRefundY);
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
@@ -67,7 +73,8 @@ contract Swap {
             );
         }
 
-        verifySecret(_s, pubKeyClaim);
+        require(ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
+                "provided secret does not match the expected pubKey");
         emit Claimed(_s);
 
         // send eth to caller (Bob)
@@ -87,20 +94,21 @@ contract Swap {
             require(block.timestamp < timeout_0, "Missed your chance!");
         }
 
-        verifySecret(_s, pubKeyRefund);
+        require(ec.publicKeyVerify(_s, pubKeyRefundX, pubKeyRefundY),
+                "provided secret does not match the expected pubKey");
         emit Refunded(_s);
 
         // send eth back to owner==caller (Alice)
         selfdestruct(owner);
     }
 
-    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
-        // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
-        (uint256 px, uint256 py) = ed25519.scalarMultBase(_s);
-        uint256 canonical_p = py | ((px % 2) << 255);
-        require(
-            bytes32(canonical_p) == pubKey,
-            "provided secret does not match the expected pubKey"
-        );
-    }
+    /* function verifySecret(uint256 _s, bytes32 pubKey) internal view { */
+    /*     // (uint256 px, uint256 py) = ed25519.derivePubKey(_s); */
+    /*     (uint256 px, uint256 py) = ed25519.scalarMultBase(_s); */
+    /*     uint256 canonical_p = py | ((px % 2) << 255); */
+    /*     require( */
+    /*         bytes32(canonical_p) == pubKey, */
+    /*         "provided secret does not match the expected pubKey" */
+    /*     ); */
+    /* } */
 }
