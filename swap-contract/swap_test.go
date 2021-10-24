@@ -81,6 +81,20 @@ func TestSwap_Claim(t *testing.T) {
 	fmt.Println("kBobHex: ", kBobHex)
 	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
 
+	// exchange dleq-proofs
+
+	// alice verifies bob's dleq
+	out, err = exec.Command("../target/debug/dleq-verify", "../dleq-file-exchange/dleq_proof_bob.dat").Output()
+	// if err != nil {
+	// 	fmt.Println("proof verification failed:", err)
+	// }
+	require.NoError(t, err)
+	fmt.Printf("%s\n", out)
+	// bob verifies alice's dleq
+	out, err = exec.Command("../target/debug/dleq-verify", "../dleq-file-exchange/dleq_proof_alice.dat").Output()
+	require.NoError(t, err)
+	fmt.Printf("%s\n", out)
+
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
