@@ -1,5 +1,5 @@
 use farcaster_core::crypto::dleq::DLEQProof;
-use farcaster_core::consensus::{self, CanonicalBytes, Decodable, Encodable};
+use farcaster_core::consensus::CanonicalBytes;
 use std::env;
 
 fn zeroize_highest_bits(x: [u8; 32], highest_bit: usize) -> [u8; 32] {
