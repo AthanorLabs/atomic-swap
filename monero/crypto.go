@@ -357,7 +357,10 @@ func GenerateKeysTruncated() (*PrivateKeyPair, error) {
 	fmt.Println("sBytes pre-zeroization:  ", sBytes)
 	sBytes[31] &= 0x0f
 	fmt.Println("sBytes post-zeroization: ", sBytes)
-	ed25519.NewScalar().SetCanonicalBytes(sBytes)
+	s, err = ed25519.NewScalar().SetCanonicalBytes(sBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set bytes: %w", err)
+	}
 
 	sk := &PrivateSpendKey{
 		key: s,
