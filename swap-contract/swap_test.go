@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"testing"
 	"time"
+	"fmt"
+	"encoding/hex"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -113,6 +115,8 @@ func TestSwap_Claim(t *testing.T) {
 
 	// Bob tries to claim before Alice has called ready, should fail
 	s := big.NewInt(0).SetBytes(reverse(secretBob))
+	fmt.Println("Secret:", hex.EncodeToString(reverse(secretBob)))
+	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyBob)))
 	_, err = swap.Claim(txOptsBob, s)
 	require.Errorf(t, err, "'isReady == false' cannot claim yet!")
 
