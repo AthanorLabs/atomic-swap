@@ -1,5 +1,5 @@
-use farcaster_core::crypto::dleq::DLEQProof;
 use farcaster_core::consensus::CanonicalBytes;
+use farcaster_core::crypto::dleq::DLEQProof;
 use std::convert::TryInto;
 use std::env;
 extern crate hex;
@@ -27,7 +27,10 @@ fn main() -> std::io::Result<()> {
     // use rand::Rng;
     // let x: [u8; 32] = rand::thread_rng().gen();
     // let x_shaved = zeroize_highest_bits(x, 252);
-    let x: [u8; 32] = hex::decode(args.iter().nth(1).unwrap()).expect("Decoding failed").try_into().unwrap();
+    let x: [u8; 32] = hex::decode(args.iter().nth(1).unwrap())
+        .expect("Decoding failed")
+        .try_into()
+        .unwrap();
     // let x: [u8; 32] = bytes!(args.first().unwrap());
     let dleq = DLEQProof::generate(x);
 
