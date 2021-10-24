@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 
@@ -11,6 +10,8 @@ import (
 	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/net"
+
+	logging "github.com/ipfs/go-log"
 )
 
 const (
@@ -23,6 +24,14 @@ const (
 	defaultBobPort             = 9934
 	defaultAliceLibp2pKey      = "alice.key"
 	defaultBobLibp2pKey        = "bob.key"
+)
+
+var (
+	log = logging.Logger("cmd")
+	_   = logging.SetLogLevel("alice", "debug")
+	_   = logging.SetLogLevel("bob", "debug")
+	_   = logging.SetLogLevel("cmd", "debug")
+	_   = logging.SetLogLevel("net", "debug")
 )
 
 var (
@@ -66,13 +75,13 @@ var (
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		fmt.Println(err)
+		log.Debug(err)
 		os.Exit(1)
 	}
 }
 
 func startAction(c *cli.Context) error {
-	fmt.Println("starting...")
+	log.Debug("starting...")
 	amount := c.Uint("amount")
 	if amount == 0 {
 		return errors.New("must specify amount")
@@ -125,7 +134,7 @@ func runAlice(c *cli.Context, amount uint) error {
 		return err
 	}
 
-	fmt.Println("instantiated Alice session")
+	log.Debug("instantiated Alice session")
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
@@ -175,7 +184,7 @@ func runBob(c *cli.Context, amount uint) error {
 		return err
 	}
 
-	fmt.Println("instantiated Bob session")
+	log.Debug("instantiated Bob session")
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {

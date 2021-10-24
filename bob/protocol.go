@@ -16,7 +16,11 @@ import (
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/swap-contract"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("bob")
 
 const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
@@ -237,13 +241,13 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 
 				skA, err := monero.NewPrivateSpendKey(sa[:])
 				if err != nil {
-					fmt.Printf("failed to convert Alice's secret into a key: %w", err)
+					log.Info("failed to convert Alice's secret into a key: %w", err)
 					return
 				}
 
 				vkA, err := skA.View()
 				if err != nil {
-					fmt.Printf("failed to get view key from Alice's secret spend key: %w", err)
+					log.Info("failed to get view key from Alice's secret spend key: %w", err)
 					return
 				}
 
@@ -263,16 +267,16 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(b.alicePublicKeys, b.pubkeys)
 
-	fmt.Println("Bob: going to lock funds...")
+	log.Info("going to lock funds...")
 
 	balance, err := b.client.GetBalance(0)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Println("balance: ", balance.Balance)
-	fmt.Println("unlocked balance: ", balance.UnlockedBalance)
-	fmt.Println("blocks to unlock: ", balance.BlocksToUnlock)
+	log.Info("balance: ", balance.Balance)
+	log.Info("unlocked balance: ", balance.UnlockedBalance)
+	log.Info("blocks to unlock: ", balance.BlocksToUnlock)
 
 	address := kp.Address()
 	if err := b.client.Transfer(address, 0, amount); err != nil {
@@ -292,8 +296,8 @@ func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 		return "", err
 	}
 
-	fmt.Println("Bob: successfully locked funds")
-	fmt.Println("address: ", address)
+	log.Info("Bob: successfully locked funds")
+	log.Info("address: ", address)
 	return address, nil
 }
 
@@ -312,16 +316,16 @@ func (b *bob) ClaimFunds() (string, error) {
 		return "", err
 	}
 
-	fmt.Println("success! Bob claimed funds")
-	fmt.Println("tx hash: ", tx.Hash())
+	log.Info("success! Bob claimed funds")
+	log.Info("tx hash: ", tx.Hash())
 
 	receipt, err := b.ethClient.TransactionReceipt(b.ctx, tx.Hash())
 	if err != nil {
 		return "", err
 	}
 
-	//fmt.Println("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
-	fmt.Println("included in block number: ", receipt.Logs[0].BlockNumber)
-	fmt.Println("secret: ", fmt.Sprintf("%x", secret))
+	//log.Info("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
+	log.Info("included in block number: ", receipt.Logs[0].BlockNumber)
+	log.Info("secret: ", fmt.Sprintf("%x", secret))
 	return tx.Hash().String(), nil
 }

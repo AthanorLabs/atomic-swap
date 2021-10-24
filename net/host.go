@@ -13,13 +13,14 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/ChainSafe/log15"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
+	logging "github.com/ipfs/go-log"
 )
 
 const (
@@ -27,7 +28,7 @@ const (
 	maxReads   = 128
 )
 
-var logger = log.New("pkg", "net")
+var log = logging.Logger("net")
 var _ Host = &host{}
 
 type MessageInfo struct {
@@ -125,9 +126,8 @@ func (h *host) Start() error {
 	h.nextExpectedMessage = &WantMessage{}
 	h.h.SetStreamHandler(protocolID, h.handleStream)
 	h.h.Network().SetConnHandler(h.handleConn)
-	fmt.Println("host started!")
 	for _, addr := range h.multiaddrs() {
-		logger.Info("Started listening", "address", addr)
+		log.Info("Started listening: address=", addr)
 	}
 	return h.bootstrap()
 }
@@ -151,7 +151,7 @@ func (h *host) Stop() error {
 
 	// close libp2p host
 	if err := h.h.Close(); err != nil {
-		logger.Error("Failed to close libp2p host", "error", err)
+		log.Error("Failed to close libp2p host", "error", err)
 		return err
 	}
 
@@ -173,11 +173,11 @@ func (h *host) send(p peer.ID, msg Message) (libp2pnetwork.Stream, error) {
 	// open outbound stream with host protocol id
 	stream, err := h.h.NewStream(h.ctx, p, protocolID)
 	if err != nil {
-		logger.Trace("failed to open new stream with peer", "peer", p, "error", err)
+		log.Debug("failed to open new stream with peer", "peer", p, "error", err)
 		return nil, err
 	}
 
-	logger.Trace(
+	log.Debug(
 		"Opened stream",
 		"peer", p,
 	)
@@ -207,21 +207,19 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 		return err
 	}
 
-	logger.Trace(
-		"Sent message to peer",
-		"peer", s.Conn().RemotePeer(),
-		"message", msg.String(),
+	log.Debug(
+		"Sent message to peer=", s.Conn().RemotePeer(), " message=", msg.String(),
 	)
 
 	return nil
 }
 
 func (h *host) handleConn(conn libp2pnetwork.Conn) {
-	fmt.Printf("incoming connection, peer=%s\n", conn.RemotePeer())
+	log.Debug("incoming connection, peer=", conn.RemotePeer())
 
 	stream, err := h.send(conn.RemotePeer(), h.wantMessage)
 	if err != nil {
-		fmt.Printf("failed to send message, closing stream")
+		log.Info("failed to send message, closing stream")
 		_ = stream.Close()
 		return
 	}
@@ -237,7 +235,7 @@ func (h *host) handleStream(stream libp2pnetwork.Stream) {
 		if errors.Is(err, io.EOF) {
 			return
 		} else if err != nil {
-			logger.Trace("failed to read from stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
+			log.Debug("failed to read from stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
 			_ = stream.Close()
 			return
 		}
@@ -245,14 +243,12 @@ func (h *host) handleStream(stream libp2pnetwork.Stream) {
 		// decode message based on message type
 		msg, err := h.decodeMessage(msgBytes[:tot])
 		if err != nil {
-			logger.Trace("failed to decode message from peer", "id", stream.ID(), "protocol", stream.Protocol(), "err", err)
+			log.Debug("failed to decode message from peer", "id", stream.ID(), "protocol", stream.Protocol(), "err", err)
 			continue
 		}
 
-		logger.Trace(
-			"received message from peer",
-			"peer", stream.Conn().RemotePeer(),
-			"msg", msg.String(),
+		log.Debug(
+			"received message from peer, peer=", stream.Conn().RemotePeer(), "msg=", msg.String(),
 		)
 
 		h.handleMessage(stream, msg)
@@ -338,7 +334,7 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 	}
 
 	if length > uint64(len(buf)) {
-		logger.Warn("received message with size greater than allocated message buffer", "length", length, "buffer size", len(buf))
+		log.Warn("received message with size greater than allocated message buffer", "length", length, "buffer size", len(buf))
 		return 0, fmt.Errorf("message size greater than allocated message buffer: got %d", length)
 	}
 
@@ -366,10 +362,10 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 func (h *host) bootstrap() error {
 	failed := 0
 	for _, addrInfo := range h.bootnodes {
-		logger.Debug("bootstrapping to peer", "peer", addrInfo.ID)
+		log.Debug("bootstrapping to peer", "peer", addrInfo.ID)
 		err := h.h.Connect(h.ctx, addrInfo)
 		if err != nil {
-			logger.Debug("failed to bootstrap to peer", "error", err)
+			log.Debug("failed to bootstrap to peer", "error", err)
 			failed++
 		}
 	}

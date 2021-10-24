@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -30,7 +31,7 @@ func (n *node) doProtocolAlice() error {
 		case <-n.done:
 		case msg := <-n.inCh:
 			if err := n.handleMessageAlice(msg.Who, msg.Message, setupDone); err != nil {
-				fmt.Printf("failed to handle message: error=%s\n", err)
+				log.Error("failed to handle message: error=", err)
 			}
 		case <-setupDone:
 			break
@@ -48,7 +49,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 			return errors.New("Alice has ETH, peer does not want ETH")
 		}
 
-		fmt.Println("found peer that wants ETH, initiating swap protocol...")
+		log.Info("found peer that wants ETH, initiating swap protocol...")
 		n.host.SetNextExpectedMessage(&net.SendKeysMessage{})
 
 		kp, err := n.alice.GenerateKeys()
@@ -70,7 +71,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 			return errors.New("did not receive Bob's public spend or private view key")
 		}
 
-		fmt.Println("got Bob's keys")
+		log.Debug("got Bob's keys")
 		n.host.SetNextExpectedMessage(&net.NotifyXMRLock{})
 
 		sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)
@@ -89,7 +90,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 			return fmt.Errorf("failed to deploy contract: %w", err)
 		}
 
-		fmt.Printf("deployed Swap contract: address=%s\n", address)
+		log.Info("deployed Swap contract: address=", address)
 
 		claim, err := n.alice.WatchForClaim()
 		if err != nil {
@@ -101,22 +102,22 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 				// TODO: add t1 timeout case
 				select {
 				case <-n.done:
-					fmt.Println("done")
 					return
 				case kp := <-claim:
 					if kp == nil {
 						continue
 					}
 
-					fmt.Printf("Bob claimed ether! got secret: %v", kp)
+					log.Info("Bob claimed ether! got secret: ", kp)
 					address, err := n.alice.CreateMoneroWallet(kp)
 					if err != nil {
-						fmt.Println("failed to create monero address: %s", err)
+						log.Debug("failed to create monero address: %s", err)
 						return
 					}
 
-					fmt.Printf("successfully created monero wallet from our secrets: address=%s", address)
+					log.Info("successfully created monero wallet from our secrets: address=", address)
 					// TODO: get and print balance
+					os.Exit(1)
 				}
 			}
 		}()
@@ -143,17 +144,16 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 			return fmt.Errorf("failed to call Ready: %w", err)
 		}
 
-		fmt.Println("called swap.Ready()!!")
-
-		//close(setupDone)
+		log.Debug("called set swap.IsReady == true")
+		close(setupDone)
 	case *net.NotifyClaimed:
 		address, err := n.alice.NotifyClaimed(msg.TxHash)
 		if err != nil {
-			fmt.Printf("failed to create monero address: %s\n", err)
+			log.Error("failed to create monero address: err=", err)
 			return err
 		}
 
-		fmt.Printf("successfully created monero wallet from our secrets: address=%s", address)
+		log.Info("successfully created monero wallet from our secrets: address=", address)
 		// TODO: get and print balance
 	default:
 		return errors.New("unexpected message type")
