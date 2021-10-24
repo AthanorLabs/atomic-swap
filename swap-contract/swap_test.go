@@ -63,7 +63,10 @@ func TestSwap_Claim(t *testing.T) {
 	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
 
 	// Alice generates DLEQ proof - this binary file is transmitted to Bob via some offchain protocol
-	out, err = exec.Command("../target/debug/dleq-gen", "8a85daf15c236c18b98d2465ce2506cb86ab5da0d20a16751d98f6cea6d00000", "dleq_proof.dat").Output()
+	fmt.Println("kAlice: ", keyPairAlice.SpendKeyBytes())
+	kAliceHex := hex.EncodeToString(keyPairAlice.SpendKeyBytes())
+	fmt.Println("kAliceHex: ", kAliceHex)
+	out, err := exec.Command("../target/debug/dleq-gen", kAliceHex, "../dleq-file-exchange/dleq_proof_alice.dat").Output()
 	require.NoError(t, err)
 	fmt.Printf("%s\n", out)
 
@@ -73,6 +76,10 @@ func TestSwap_Claim(t *testing.T) {
 	secretBob := keyPairBob.SpendKeyBytes()
 	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
 	// pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
+
+	kBobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
+	fmt.Println("kBobHex: ", kBobHex)
+	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
