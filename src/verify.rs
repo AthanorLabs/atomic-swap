@@ -1,8 +1,8 @@
-use farcaster_core::crypto::dleq::DLEQProof;
-use farcaster_core::consensus::CanonicalBytes;
-use std::env;
 use ecdsa_fun::fun::Point as secp256k1Point;
+use farcaster_core::consensus::CanonicalBytes;
+use farcaster_core::crypto::dleq::DLEQProof;
 use secp256kfun::{g, marker::*};
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -26,7 +26,19 @@ fn main() {
             g!(acc + bit_commitment).mark::<Normal>()
         });
 
-    let verification = dleq.verify(commitment_agg_ed25519, commitment_agg_secp256k1.mark::<NonZero>().unwrap()).unwrap();
-    println!("DLEQ proof successfully verified for:\ned25519: {:?}\nsecp256k1: {:?}", commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes())
+    let verification = dleq
+        .verify(
+            commitment_agg_ed25519,
+            commitment_agg_secp256k1.mark::<NonZero>().unwrap(),
+        )
+        .unwrap();
+    println!(
+        "DLEQ proof successfully verified for:\ned25519: {:?}\nsecp256k1: {:?}",
+        commitment_agg_ed25519.compress().as_bytes(),
+        commitment_agg_secp256k1
+            .mark::<NonZero>()
+            .unwrap()
+            .to_bytes()
+    )
     // Ok((*commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes()))
 }
