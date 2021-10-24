@@ -27,6 +27,6 @@ fn main() {
         });
 
     let verification = dleq.verify(commitment_agg_ed25519, commitment_agg_secp256k1.mark::<NonZero>().unwrap()).unwrap();
-    println!("DLEQ proof successfully verified for:\ned25519:{:?}\nsecp256k1{:?}", commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes())
+    println!("DLEQ proof successfully verified for:\ned25519: {:?}\nsecp256k1: {:?}", commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes())
     // Ok((*commitment_agg_ed25519.compress().as_bytes(), commitment_agg_secp256k1.mark::<NonZero>().unwrap().to_bytes()))
 }
