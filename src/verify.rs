@@ -1,12 +1,8 @@
 use farcaster_core::crypto::dleq::DLEQProof;
-use farcaster_core::consensus::{self, CanonicalBytes, Decodable, Encodable};
+use farcaster_core::consensus::CanonicalBytes;
 use std::env;
-use curve25519_dalek::{
-    constants::ED25519_BASEPOINT_POINT as G, edwards::CompressedEdwardsY as ed25519PointCompressed,
-    edwards::EdwardsPoint as ed25519Point, scalar::Scalar as ed25519Scalar,
-};
-use ecdsa_fun::fun::{Point as secp256k1Point, Scalar as secp256k1Scalar, G as H};
-use secp256kfun::{g, marker::*, s as sc};
+use ecdsa_fun::fun::Point as secp256k1Point;
+use secp256kfun::{g, marker::*};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
