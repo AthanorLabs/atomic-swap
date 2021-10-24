@@ -266,7 +266,7 @@ func (b *bob) ClaimFunds() (string, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	secret := b.privkeys.SpendKeyBytes()
-	s := big.NewInt(0).SetBytes(reverse(secret))
+	s := big.NewInt(0).SetBytes(secret)
 
 	tx, err := b.contract.Claim(txOpts, s)
 	if err != nil {

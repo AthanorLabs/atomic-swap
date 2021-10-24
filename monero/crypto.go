@@ -108,8 +108,8 @@ func (kp *PrivateKeyPair) AddressBytes() []byte {
 	// address encoding is:
 	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
 	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
-	checksum := getChecksum(append([]byte{0x18}, c...))
-	addr := append(append([]byte{0x18}, c...), checksum[:4]...)
+	checksum := getChecksum(append([]byte{addressPrefixMainnet}, c...))
+	addr := append(append([]byte{addressPrefixMainnet}, c...), checksum[:4]...)
 	return addr
 }
 
