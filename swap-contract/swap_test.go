@@ -59,15 +59,14 @@ func TestSwap_Claim(t *testing.T) {
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
-	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKey())
+	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(keyPairBob.SpendKey())
-	// pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
-
 	secretBob := keyPairBob.SpendKeyBytes()
+	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
+	// pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
@@ -115,7 +114,7 @@ func TestSwap_Claim(t *testing.T) {
 	// Bob tries to claim before Alice has called ready, should fail
 	s := big.NewInt(0).SetBytes(reverse(secretBob))
 	fmt.Println("Secret:", hex.EncodeToString(reverse(secretBob)))
-	// fmt.Println("PubKey:", hex.EncodeToString(reverse(append(pubKeyBobY.Bytes(), pubKeyBobY.Bytes()))))
+	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyBobX.Bytes())), hex.EncodeToString(reverse(pubKeyBobY.Bytes())))
 	_, err = swap.Claim(txOptsBob, s)
 	require.Regexp(t, ".*'isReady == false' cannot claim yet!", err)
 

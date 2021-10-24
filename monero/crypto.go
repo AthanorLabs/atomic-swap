@@ -16,9 +16,8 @@ const (
 	addressPrefixMainnet byte = 0x12
 )
 
-func PublicSpendOnSecp256k1(x *PrivateSpendKey) (a, b *big.Int) {
-	xBytes := x.key.Bytes()
-	return secp256k1.S256().ScalarBaseMult(xBytes)
+func PublicSpendOnSecp256k1(k []byte) (a, b *big.Int) {
+	return secp256k1.S256().ScalarBaseMult(k)
 }
 
 func SumSpendAndViewKeys(a, b *PublicKeyPair) *PublicKeyPair {
