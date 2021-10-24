@@ -29,9 +29,15 @@ func (n *node) wait() {
 		sigc := make(chan os.Signal, 1)
 		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 		defer signal.Stop(sigc)
-		<-sigc
-		fmt.Println("signal interrupt, shutting down...")
-		close(n.done)
+
+		select {
+		case <-sigc:
+			fmt.Println("signal interrupt, shutting down...")
+			close(n.done)
+		case <-n.done:
+			fmt.Println("protocol complete, shutting down...")
+		}
+
 		os.Exit(0)
 	}()
 

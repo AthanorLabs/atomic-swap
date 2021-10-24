@@ -33,7 +33,7 @@ func (n *node) doProtocolBob() error {
 			return nil
 		case msg := <-n.inCh:
 			if err := n.handleMessageBob(msg.Who, msg.Message, setupDone); err != nil {
-				fmt.Printf("failed to handle message: error=%s\n", err)
+				log.Info("failed to handle message: error=%s\n", err)
 			}
 		case <-setupDone:
 			break
@@ -51,7 +51,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 			return errors.New("Bob has XMR, peer does not want XMR")
 		}
 
-		fmt.Println("found peer that wants XMR, initiating swap protocol...")
+		log.Debug("found peer that wants XMR, initiating swap protocol...")
 		n.host.SetNextExpectedMessage(&net.SendKeysMessage{})
 
 		sk, vk, err := n.bob.GenerateKeys()
@@ -73,7 +73,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 			return errors.New("did not receive Alice's public spend or view key")
 		}
 
-		fmt.Println("got Alice's public keys")
+		log.Debug("got Alice's public keys")
 		n.host.SetNextExpectedMessage(&net.NotifyContractDeployed{})
 
 		kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
@@ -88,7 +88,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 		}
 
 		n.host.SetNextExpectedMessage(nil)
-		fmt.Printf("got Swap contract address! address=%s\n", msg.Address)
+		log.Info("got Swap contract address! address=%s\n", msg.Address)
 
 		if err := n.bob.SetContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return fmt.Errorf("failed to instantiate contract instance: %w", err)
@@ -111,19 +111,20 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 				case <-n.done:
 					return
 				case <-ready:
-					fmt.Println("Alice called Ready!")
-					fmt.Println("attempting to claim funds...")
+					time.Sleep(time.Second * 2)
+					log.Debug("Alice called Ready!")
+					log.Debug("attempting to claim funds...")
 
 					time.Sleep(time.Second)
 
 					// contract ready, let's claim our ether
 					txHash, err := n.bob.ClaimFunds()
 					if err != nil {
-						fmt.Printf("failed to redeem ether: %w", err)
+						log.Info("failed to redeem ether: %w", err)
 						return
 					}
 
-					fmt.Println("funds claimed!!")
+					log.Debug("funds claimed!!")
 					out := &net.NotifyClaimed{
 						TxHash: txHash,
 					}
@@ -132,13 +133,18 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 						Message: out,
 						Who:     who,
 					}
+
+					time.Sleep(time.Second)
+					close(n.done)
 					return
 				case kp := <-refund:
 					if kp == nil {
 						continue
 					}
 
-					fmt.Println("Alice refunded, got monero account key", kp)
+					log.Debug("Alice refunded, got monero account key", kp)
+					time.Sleep(time.Second)
+					close(n.done)
 					return
 					// TODO: generate wallet
 				}
