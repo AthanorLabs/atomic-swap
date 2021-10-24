@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Source https://github.com/javgh/ed25519-solidity
+
 pragma solidity ^0.8.5;
 
 // Using formulas from https://hyperelliptic.org/EFD/g1p/auto-twisted-projective.html

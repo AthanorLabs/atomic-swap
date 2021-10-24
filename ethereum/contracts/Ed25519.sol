@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+// Adapted from https://github.com/witnet/elliptic-curve-solidity/blob/master/examples/Secp256k1.sol
+// This file is not being used as of the final Hackathon submission
 
 pragma solidity ^0.8.5;
 
