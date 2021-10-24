@@ -3,6 +3,7 @@ package alice
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -248,6 +249,6 @@ func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	fmt.Println("got Bob's secret!", res)
+	fmt.Println("got Bob's secret!", res[0].(*big.Int), hex.EncodeToString(res[0].(*big.Int).Bytes()))
 	return "", nil
 }

@@ -114,7 +114,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 					fmt.Println("Alice called Ready!")
 					fmt.Println("attempting to claim funds...")
 
-					time.Sleep(time.Second * 3)
+					time.Sleep(time.Second)
 
 					// contract ready, let's claim our ether
 					txHash, err := n.bob.ClaimFunds()

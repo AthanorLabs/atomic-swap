@@ -274,6 +274,6 @@ func (b *bob) ClaimFunds() (string, error) {
 
 	//fmt.Println("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
 	fmt.Println("included in block number: ", receipt.Logs[0].BlockNumber)
-	fmt.Println("expected secret: ", fmt.Sprintf("0x%x", secret))
+	fmt.Println("expected secret: ", fmt.Sprintf("0x%x", secret), s)
 	return tx.Hash().String(), nil
 }

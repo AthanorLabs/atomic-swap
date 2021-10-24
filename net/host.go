@@ -285,6 +285,12 @@ func (h *host) decodeMessage(b []byte) (Message, error) {
 			return nil, err
 		}
 		return m, nil
+	case *NotifyClaimed:
+		var m *NotifyClaimed
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
 	default:
 		return nil, errors.New("not expecting any more messages")
 	}
