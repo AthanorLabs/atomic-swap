@@ -5,14 +5,20 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 
 	ed25519 "filippo.io/edwards25519"
 	"github.com/ebfe/keccak"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 const (
 	addressPrefixMainnet byte = 0x12
 )
+
+func PublicSpendOnSecp256k1(k []byte) (a, b *big.Int) {
+	return secp256k1.S256().ScalarBaseMult(k)
+}
 
 func SumSpendAndViewKeys(a, b *PublicKeyPair) *PublicKeyPair {
 	return &PublicKeyPair{
