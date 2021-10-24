@@ -50,7 +50,7 @@ fn main() {
     let mut buffer = vec![0; metadata.len() as usize];
 
     f.read(&mut buffer).expect("buffer overflow");
-    let dleq2 = DLEQProof::from_canonical_bytes(bytes.as_slice()).unwrap();
+    let dleq2 = DLEQProof::from_canonical_bytes(buffer.as_slice()).unwrap();
 
     let commitment_agg_ed25519 = dleq2.c_g.iter().sum();
     let commitment_agg_secp256k1 = dleq2
