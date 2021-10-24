@@ -4,23 +4,6 @@ use std::convert::TryInto;
 use std::env;
 extern crate hex;
 
-fn zeroize_highest_bits(x: [u8; 32], highest_bit: usize) -> [u8; 32] {
-    let mut x = x;
-    let remainder = highest_bit % 8;
-    let quotient = (highest_bit - remainder) / 8;
-
-    for bit in x.iter_mut().skip(quotient + 1) {
-        *bit = 0;
-    }
-
-    if remainder != 0 {
-        let mask = (2 << (remainder - 1)) - 1;
-        x[quotient] &= mask;
-    }
-
-    x
-}
-
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
