@@ -35,7 +35,7 @@ contract SwapDLEQ {
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     bool isReady = false;
 
-    event Constructed(uint256 p, uint256 q);
+    event Constructed(uint256 x, uint256 y);
     event IsReady(bool b);
     event Claimed(uint256 s);
     event Refunded(uint256 s);
