@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"os/exec"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -56,7 +57,7 @@ func TestDeploySwap(t *testing.T) {
 
 func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := monero.GenerateKeysTruncated()
 	require.NoError(t, err)
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
