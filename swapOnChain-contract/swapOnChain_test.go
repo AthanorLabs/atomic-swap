@@ -1,4 +1,4 @@
-package swap
+package swapOnChain
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func setBigIntLE(s []byte) *big.Int {
 	return big.NewInt(0).SetBytes(s)
 }
 
-func TestDeploySwap(t *testing.T) {
+func TestDeploySwapOnChain(t *testing.T) {
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
@@ -43,7 +43,7 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwapOnChain(authAlice, conn, [32]byte{}, [32]byte{})
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -89,7 +89,7 @@ func TestSwap_Claim(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, deployTx, swap, err := DeploySwapOnChain(authAlice, conn, pkBobFixed, pkAliceFixed)
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 	aliceBalanceAfter, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
 	fmt.Println("AliceBalanceAfter: ", aliceBalanceAfter)
@@ -171,7 +171,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwapOnChain(authAlice, conn, pkBobFixed, pkAliceFixed)
 
 	txOpts := &bind.TransactOpts{
 		From:   authAlice.From,
@@ -225,7 +225,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwapOnChain(authAlice, conn, pkBobFixed, pkAliceFixed)
 
 	txOpts := &bind.TransactOpts{
 		From:   authAlice.From,
