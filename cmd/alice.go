@@ -15,7 +15,9 @@ func (n *node) doProtocolAlice() error {
 	if err := n.host.Start(); err != nil {
 		return err
 	}
-	defer n.host.Stop()
+	defer func() {
+		_ = n.host.Stop()
+	}()
 
 	outCh := make(chan *net.MessageInfo)
 	n.host.SetOutgoingCh(outCh)
@@ -26,6 +28,7 @@ func (n *node) doProtocolAlice() error {
 	// can move on to just watching the contract
 	setupDone := make(chan struct{})
 
+	var done bool
 	for {
 		select {
 		case <-n.done:
@@ -35,6 +38,10 @@ func (n *node) doProtocolAlice() error {
 				log.Error("failed to handle message: error=", err)
 			}
 		case <-setupDone:
+			done = true
+		}
+
+		if done {
 			break
 		}
 	}
