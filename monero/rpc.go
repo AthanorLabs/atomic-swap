@@ -24,7 +24,7 @@ type generateFromKeysRequest struct {
 
 type generateFromKeysResponse struct {
 	Address string `json:"address"`
-	Info    string `json:"info`
+	Info    string `json:"info"`
 }
 
 func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, address Address, filename, password string) error {

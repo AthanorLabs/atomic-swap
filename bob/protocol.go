@@ -20,18 +20,12 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("bob")
-
 const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
-func reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
-var _ Bob = &bob{}
+var (
+	_   Bob = &bob{}
+	log     = logging.Logger("bob")
+)
 
 // Bob contains the functions that will be called by a user who owns XMR
 // and wishes to swap for ETH.
@@ -73,7 +67,7 @@ type Bob interface {
 
 type bob struct {
 	ctx    context.Context
-	t0, t1 time.Time
+	t0, t1 time.Time //nolint
 
 	privkeys     *monero.PrivateKeyPair
 	pubkeys      *monero.PublicKeyPair
