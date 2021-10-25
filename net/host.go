@@ -64,8 +64,6 @@ type host struct {
 }
 
 func NewHost(port uint64, want, keyfile string, bootnodes []string) (*host, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	key, err := loadKey(keyfile)
 	if err != nil {
 		fmt.Println("failed to load libp2p key, generating key...", keyfile)
@@ -95,22 +93,21 @@ func NewHost(port uint64, want, keyfile string, bootnodes []string) (*host, erro
 	}
 
 	// create libp2p host instance
-	h, err := libp2p.New(ctx, opts...)
+	h, err := libp2p.New(context.Background(), opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	inCh := make(chan *MessageInfo)
 
+	ctx, cancel := context.WithCancel(context.Background())
 	return &host{
 		ctx:         ctx,
 		cancel:      cancel,
 		h:           h,
 		wantMessage: &WantMessage{Want: want},
-		//mdns: newMDNS(h),
-		//discovery: discovery,
-		bootnodes: bns,
-		inCh:      inCh,
+		bootnodes:   bns,
+		inCh:        inCh,
 	}, nil
 }
 

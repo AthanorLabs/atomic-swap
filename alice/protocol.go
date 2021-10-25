@@ -20,12 +20,13 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var _ Alice = &alice{}
-
-var log = logging.Logger("alice")
-
 const (
-	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d" //nolint
+)
+
+var (
+	_   Alice = &alice{}
+	log       = logging.Logger("alice")
 )
 
 func reverse(s []byte) []byte {
@@ -72,7 +73,7 @@ type Alice interface {
 
 type alice struct {
 	ctx    context.Context
-	t0, t1 time.Time
+	t0, t1 time.Time //nolint
 
 	privkeys    *monero.PrivateKeyPair
 	pubkeys     *monero.PublicKeyPair

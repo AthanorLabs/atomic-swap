@@ -16,7 +16,9 @@ func (n *node) doProtocolBob() error {
 	if err := n.host.Start(); err != nil {
 		return err
 	}
-	defer n.host.Stop()
+	defer func() {
+		_ = n.host.Stop()
+	}()
 
 	outCh := make(chan *net.MessageInfo)
 	n.host.SetOutgoingCh(outCh)
@@ -27,6 +29,7 @@ func (n *node) doProtocolBob() error {
 	// can move on to just watching the contract
 	setupDone := make(chan struct{})
 
+	var done bool
 	for {
 		select {
 		case <-n.done:
@@ -36,6 +39,10 @@ func (n *node) doProtocolBob() error {
 				log.Info("failed to handle message: error=%s\n", err)
 			}
 		case <-setupDone:
+			done = true
+		}
+
+		if done {
 			break
 		}
 	}

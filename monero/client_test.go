@@ -59,7 +59,8 @@ func TestClient_Transfer(t *testing.T) {
 	// transfer to account A+B
 	err = cA.Transfer(kpABPub.Address(), 0, amount)
 	require.NoError(t, err)
-	daemon.callGenerateBlocks(aliceAddress.Address, 1)
+	err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
+	require.NoError(t, err)
 
 	for {
 		t.Log("checking balance...")
@@ -72,11 +73,13 @@ func TestClient_Transfer(t *testing.T) {
 			break
 		}
 
-		daemon.callGenerateBlocks(aliceAddress.Address, 1)
+		err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
+		require.NoError(t, err)
 		time.Sleep(time.Second)
 	}
 
-	daemon.callGenerateBlocks(aliceAddress.Address, 16)
+	err = daemon.callGenerateBlocks(aliceAddress.Address, 16)
+	require.NoError(t, err)
 
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)

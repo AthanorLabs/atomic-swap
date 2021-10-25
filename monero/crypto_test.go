@@ -7,13 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
 func TestPrivateKeyPairToAddress(t *testing.T) {
 	skBytes := "a6e51afb9662bf2173d807ceaf88938d09a82d1ab2cea3eeb1706eeeb8b6ba03"
 	pskBytes := "57edf916a28c2a0a172565468564ab1c5c217d33ea63436f7604a96aa28ec471"

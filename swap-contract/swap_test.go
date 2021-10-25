@@ -1,4 +1,4 @@
-package swapOnChain
+package swap
 
 import (
 	"context"
@@ -28,12 +28,12 @@ func reverse(s []byte) []byte {
 	return s
 }
 
-func setBigIntLE(s []byte) *big.Int {
+func setBigIntLE(s []byte) *big.Int { //nolint
 	s = reverse(s)
 	return big.NewInt(0).SetBytes(s)
 }
 
-func TestDeploySwapOnChain(t *testing.T) {
+func TestDeploySwap(t *testing.T) {
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
@@ -43,7 +43,7 @@ func TestDeploySwapOnChain(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwapOnChain(authAlice, conn, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -71,6 +71,7 @@ func TestSwap_Claim(t *testing.T) {
 	pk_a, err := crypto.HexToECDSA(keyAlice)
 	require.NoError(t, err)
 	pk_b, err := crypto.HexToECDSA(keyBob)
+	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	authAlice.Value = big.NewInt(10)
@@ -79,23 +80,29 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
+	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
+
 	// check whether Bob had nothing before the Tx
 	bobBalanceBefore, err := conn.BalanceAt(context.Background(), authBob.From, nil)
-	fmt.Println("BobBalanceBefore: ", bobBalanceBefore)
 	require.NoError(t, err)
+	fmt.Println("BobBalanceBefore: ", bobBalanceBefore)
 
 	var pkAliceFixed [32]byte
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, deployTx, swap, err := DeploySwapOnChain(authAlice, conn, pkBobFixed, pkAliceFixed)
-	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
-	aliceBalanceAfter, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
-	fmt.Println("AliceBalanceAfter: ", aliceBalanceAfter)
-	contractBalance, err := conn.BalanceAt(context.Background(), contractAddress, nil)
-	require.Equal(t, contractBalance, big.NewInt(10))
+	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
 	require.NoError(t, err)
+	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
+
+	aliceBalanceAfter, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
+	require.NoError(t, err)
+	fmt.Println("AliceBalanceAfter: ", aliceBalanceAfter)
+
+	contractBalance, err := conn.BalanceAt(context.Background(), contractAddress, nil)
+	require.NoError(t, err)
+	require.Equal(t, contractBalance, big.NewInt(10))
 
 	txOpts := &bind.TransactOpts{
 		From:   authAlice.From,
@@ -161,17 +168,19 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
-	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
+	authAlice.Value = big.NewInt(10)
 
 	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
+	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
 
 	var pkAliceFixed [32]byte
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwapOnChain(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
 		From:   authAlice.From,
@@ -219,13 +228,15 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	require.NoError(t, err)
 
 	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
+	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
 
 	var pkAliceFixed [32]byte
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwapOnChain(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
 		From:   authAlice.From,
@@ -244,6 +255,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	// wait some, then try again
 	var result int64
 	rpcClient, err := rpc.Dial("http://127.0.0.1:8545")
+	require.NoError(t, err)
 
 	ret := rpcClient.Call(&result, "evm_increaseTime", 3600*25)
 	require.NoError(t, ret)
