@@ -1,9 +1,9 @@
 # Hardhat Project for Swap contract
 
+Run `npm install` first.
+
+
 A default Hardhat project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
-
-Run `npm install hardhat` first (must be installed locally).
-
 
 Try running some of the following tasks:
 

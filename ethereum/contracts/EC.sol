@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPLv3
 // modified from https://github.com/1Address/ecsol/blob/master/contracts/EC.sol
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.5;
 
 
 contract EC {

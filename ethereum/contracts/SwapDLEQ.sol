@@ -40,7 +40,12 @@ contract SwapDLEQ {
     event Claimed(uint256 s);
     event Refunded(uint256 s);
 
-    constructor(uint256 _pubKeyClaimX, uint256 _pubKeyClaimY, uint256 _pubKeyRefundX, uint256 _pubKeyRefundY) payable {
+    constructor(
+        uint256 _pubKeyClaimX,
+        uint256 _pubKeyClaimY,
+        uint256 _pubKeyRefundX,
+        uint256 _pubKeyRefundY
+    ) payable {
         owner = payable(msg.sender);
         pubKeyClaimX = _pubKeyClaimX;
         pubKeyClaimY = _pubKeyClaimY;
@@ -72,8 +77,10 @@ contract SwapDLEQ {
             );
         }
 
-        require(ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
-                "provided secret does not match the expected pubKey");
+        require(
+            ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
+            "provided secret does not match the expected pubKey"
+        );
         emit Claimed(_s);
 
         // send eth to caller (Bob)
@@ -93,8 +100,10 @@ contract SwapDLEQ {
             require(block.timestamp < timeout_0, "Missed your chance!");
         }
 
-        require(ec.publicKeyVerify(_s, pubKeyRefundX, pubKeyRefundY),
-                "provided secret does not match the expected pubKey");
+        require(
+            ec.publicKeyVerify(_s, pubKeyRefundX, pubKeyRefundY),
+            "provided secret does not match the expected pubKey"
+        );
         emit Refunded(_s);
 
         // send eth back to owner==caller (Alice)
