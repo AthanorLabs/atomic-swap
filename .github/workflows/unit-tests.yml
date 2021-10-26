@@ -1,5 +1,10 @@
-on: [pull_request]
-name: unit-tests
+on: 
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
 
 jobs:
   unit-tests:
