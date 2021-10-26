@@ -36,10 +36,15 @@ func TestDeploySwap(t *testing.T) {
 	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
+	pk_b, err := crypto.HexToECDSA(keyBob)
+	require.NoError(t, err)
+
+	addr_b := crypto.PubkeyToAddress(pk_b.PublicKey)
+
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, addr_b)
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -69,6 +74,8 @@ func TestSwap_Claim(t *testing.T) {
 	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
+	addr_b := crypto.PubkeyToAddress(pk_b.PublicKey)
+
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
@@ -88,7 +95,7 @@ func TestSwap_Claim(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, addr_b)
 	require.NoError(t, err)
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 
@@ -163,6 +170,11 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
+	pk_b, err := crypto.HexToECDSA(keyBob)
+	require.NoError(t, err)
+
+	addr_b := crypto.PubkeyToAddress(pk_b.PublicKey)
+
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 	authAlice.Value = big.NewInt(10)
@@ -175,7 +187,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, addr_b)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -218,6 +230,11 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
+	pk_b, err := crypto.HexToECDSA(keyBob)
+	require.NoError(t, err)
+
+	addr_b := crypto.PubkeyToAddress(pk_b.PublicKey)
+
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
 	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
@@ -230,7 +247,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, addr_b)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{

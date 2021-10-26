@@ -5,12 +5,16 @@ pragma solidity ^0.8.5;
 // import "./Ed25519.sol";
 import "./Ed25519_alt.sol";
 
-contract SwapOnChain {
+contract Swap {
     // Ed25519 library
     Ed25519 immutable ed25519;
 
     // contract creator, Alice
     address payable immutable owner;
+
+    // contract counterparty, Bob
+    // this is required so that Bob's call of `claim` can't be frontrun
+    address payable immutable counterparty;
 
     // the expected public key derived from the secret `s_b`.
     // this public key is a point on the ed25519 curve
@@ -37,8 +41,9 @@ contract SwapOnChain {
     event Claimed(uint256 s);
     event Refunded(uint256 s);
 
-    constructor(bytes32 _pubKeyClaim, bytes32 _pubKeyRefund) payable {
+    constructor(bytes32 _pubKeyClaim, bytes32 _pubKeyRefund, address _counterparty) payable {
         owner = payable(msg.sender);
+        counterparty = payable(_counterparty);
         pubKeyClaim = _pubKeyClaim;
         pubKeyRefund = _pubKeyRefund;
         timeout_0 = block.timestamp + 1 days;
@@ -66,6 +71,7 @@ contract SwapOnChain {
                 "'isReady == false' cannot claim yet!"
             );
         }
+        require(msg.sender == counterparty, "Can't claim if not Bob!");
 
         verifySecret(_s, pubKeyClaim);
         emit Claimed(_s);

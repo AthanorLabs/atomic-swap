@@ -13,6 +13,10 @@ contract SwapDLEQ {
     // contract creator, Alice
     address payable immutable owner;
 
+    // contract counterparty, Bob
+    // this is required so that Bob's call of `claim` can't be frontrun
+    address payable immutable counterparty;
+
     // the expected public key derived from the secret `s_b`.
     // this public key is a point on the ed25519 curve
     uint256 public immutable pubKeyClaimX;
@@ -44,9 +48,11 @@ contract SwapDLEQ {
         uint256 _pubKeyClaimX,
         uint256 _pubKeyClaimY,
         uint256 _pubKeyRefundX,
-        uint256 _pubKeyRefundY
+        uint256 _pubKeyRefundY,
+        address _counterparty
     ) payable {
         owner = payable(msg.sender);
+        counterparty = payable(_counterparty);
         pubKeyClaimX = _pubKeyClaimX;
         pubKeyClaimY = _pubKeyClaimY;
         pubKeyRefundX = _pubKeyRefundX;
@@ -76,6 +82,7 @@ contract SwapDLEQ {
                 "'isReady == false' cannot claim yet!"
             );
         }
+        require(msg.sender == counterparty, "Can't claim if not Bob!");
 
         require(
             ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
