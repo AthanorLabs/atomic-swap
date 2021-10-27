@@ -7,7 +7,7 @@ pragma solidity ^0.8.5;
 import "./Ed25519_alt.sol";
 import "hardhat/console.sol";
 
-contract SwapOnChainConsole {
+contract SwapConsole {
     // Ed25519 library
     Ed25519 immutable ed25519;
 

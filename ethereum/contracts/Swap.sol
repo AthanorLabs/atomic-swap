@@ -41,9 +41,13 @@ contract Swap {
     event Claimed(uint256 s);
     event Refunded(uint256 s);
 
-    constructor(bytes32 _pubKeyClaim, bytes32 _pubKeyRefund, address _counterparty) payable {
+    constructor(
+        bytes32 _pubKeyClaim,
+        bytes32 _pubKeyRefund,
+        address payable _counterparty
+    ) payable {
         owner = payable(msg.sender);
-        counterparty = payable(_counterparty);
+        counterparty = _counterparty;
         pubKeyClaim = _pubKeyClaim;
         pubKeyRefund = _pubKeyRefund;
         timeout_0 = block.timestamp + 1 days;
@@ -76,7 +80,7 @@ contract Swap {
         emit Claimed(_s);
 
         // send eth to caller (Bob)
-        selfdestruct(payable(counterparty));
+        selfdestruct(counterparty);
     }
 
     // Alice can claim a refund:
