@@ -82,7 +82,6 @@ contract SwapDLEQ {
                 "'isReady == false' cannot claim yet!"
             );
         }
-        require(msg.sender == counterparty, "Can't claim if not Bob!");
 
         require(
             ec.publicKeyVerify(_s, pubKeyClaimX, pubKeyClaimY),
@@ -91,7 +90,7 @@ contract SwapDLEQ {
         emit Claimed(_s);
 
         // send eth to caller (Bob)
-        selfdestruct(payable(msg.sender));
+        selfdestruct(payable(counterparty));
     }
 
     // Alice can claim a refund:
