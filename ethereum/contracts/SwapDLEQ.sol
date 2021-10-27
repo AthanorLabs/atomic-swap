@@ -49,10 +49,10 @@ contract SwapDLEQ {
         uint256 _pubKeyClaimY,
         uint256 _pubKeyRefundX,
         uint256 _pubKeyRefundY,
-        address _counterparty
+        address payable _counterparty
     ) payable {
         owner = payable(msg.sender);
-        counterparty = payable(_counterparty);
+        counterparty = _counterparty;
         pubKeyClaimX = _pubKeyClaimX;
         pubKeyClaimY = _pubKeyClaimY;
         pubKeyRefundX = _pubKeyRefundX;
@@ -90,7 +90,7 @@ contract SwapDLEQ {
         emit Claimed(_s);
 
         // send eth to caller (Bob)
-        selfdestruct(payable(counterparty));
+        selfdestruct(counterparty);
     }
 
     // Alice can claim a refund:
