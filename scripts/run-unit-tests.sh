@@ -20,7 +20,8 @@ MONERO_WALLET_CLI_ALICE_PID=$!
 echo "installing and starting ganache-cli..."
 if ! command -v golangci-lint &> /dev/null; then
 	npm i -g ganache-cli
-fi
+fi\
+export NODE_OPTIONS=--max_old_space_size=8192
 ganache-cli -d &> ganache-cli.log &
 GANACHE_CLI_PID=$!
 
