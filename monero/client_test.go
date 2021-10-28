@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 
@@ -57,10 +56,6 @@ func TestClient_Transfer(t *testing.T) {
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
-	defer func() {
-		_ = os.RemoveAll("../test-keys")
-	}()
-
 	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(), walletFP, "")
 	require.NoError(t, err)
 
