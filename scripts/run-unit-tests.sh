@@ -30,6 +30,7 @@ sleep 10
 # run unit tests
 echo "running unit tests..."
 go test ./... -v -short
+OK=$!
 
 # kill processes
 kill $MONEROD_PID
@@ -37,4 +38,4 @@ kill $MONERO_WALLET_CLI_BOB_PID
 kill $MONERO_WALLET_CLI_ALICE_PID
 kill $GANACHE_CLI_PID
 rm -rf ./test-keys
-exit 0
+exit $OK
