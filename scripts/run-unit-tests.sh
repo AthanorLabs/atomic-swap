@@ -4,7 +4,6 @@
 bash ./scripts/install-monero-linux.sh
 echo "starting monerod..."
 ./monero-x86_64-linux-gnu-v0.17.2.3/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-port 18081 &
-MONEROD_PID=$!
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
@@ -34,7 +33,6 @@ go test ./... -v -short
 OK=$!
 
 # kill processes
-kill $MONEROD_PID
 kill $MONERO_WALLET_CLI_BOB_PID
 kill $MONERO_WALLET_CLI_ALICE_PID
 kill $GANACHE_CLI_PID
