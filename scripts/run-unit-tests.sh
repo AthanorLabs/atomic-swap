@@ -30,7 +30,7 @@ sleep 10
 # run unit tests
 echo "running unit tests..."
 go test ./... -v -short
-OK=$!
+OK=$?
 
 # kill processes
 kill $MONERO_WALLET_CLI_BOB_PID
