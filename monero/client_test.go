@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -13,15 +14,17 @@ import (
 func TestClient_Transfer(t *testing.T) {
 	// start RPC server with wallet w/ balance:
 	//
-	// `./monero-wallet-rpc  --stagenet --rpc-bind-port 18080 --password "" --disable-rpc-login --wallet-file stagenet-wallet`
-	const amount = 3000000000000
-	cA := NewClient(defaultEndpoint)
+	// `./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-file test-wallet`
+	const amount = 2800000000
+	cA := NewClient(defaultEndpointWalletFile)
 
 	aliceAddress, err := cA.callGetAddress(0)
 	require.NoError(t, err)
 	t.Log("aliceAddress", aliceAddress)
 
 	daemon := NewClient(defaultDaemonEndpoint)
+	err = daemon.callGenerateBlocks(aliceAddress.Address, 121)
+	require.NoError(t, err)
 
 	balance, err := cA.GetBalance(0)
 	require.NoError(t, err)
@@ -29,7 +32,7 @@ func TestClient_Transfer(t *testing.T) {
 	t.Log("unlocked balance: ", balance.UnlockedBalance)
 	t.Log("blocks to unlock: ", balance.BlocksToUnlock)
 
-	if balance.BlocksToUnlock > 0 && balance.UnlockedBalance == 0 {
+	if balance.UnlockedBalance < amount {
 		t.Fatal("need to wait for balance to unlock")
 	}
 
@@ -47,13 +50,18 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 
 	// start RPC server with wallet-dir
-	// `./monero-wallet-rpc  --stagenet --rpc-bind-port 18082 --password "" --disable-rpc-login --wallet-dir .`
+	// `./monero-wallet-rpc --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .`
 	// TODO: it seems the wallet CLI fails to generate from keys when wallet-dir is not set,
 	// but it fails to load the wallet if wallet-file is not set (and these two flags cannot be used together)
-	cB := NewClient("http://127.0.0.1:18084/json_rpc")
+	cB := NewClient(defaultEndpointWalletDir)
 
 	// generate view-only account for A+B
-	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-%d", r), "")
+	walletFP := fmt.Sprintf("test-wallet-%d", r)
+	defer func() {
+		_ = os.RemoveAll("../test-keys")
+	}()
+
+	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(), walletFP, "")
 	require.NoError(t, err)
 
 	// transfer to account A+B
