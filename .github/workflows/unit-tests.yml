@@ -45,4 +45,4 @@ jobs:
         run: make build
         
       - name: Run unit tests
-        run: go test ./...
+        run: ./scripts/run-unit-tests.sh
