@@ -20,10 +20,6 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-const (
-	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d" //nolint
-)
-
 var (
 	_   Alice = &alice{}
 	log       = logging.Logger("alice")
@@ -90,7 +86,7 @@ type alice struct {
 // NewAlice returns a new instance of Alice.
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
-func NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
+func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
 	pk, err := crypto.HexToECDSA(ethPrivKey)
 	if err != nil {
 		return nil, err
@@ -106,7 +102,7 @@ func NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
 	}
 
 	return &alice{
-		ctx:        context.Background(), // TODO: add cancel
+		ctx:        ctx, // TODO: add cancel
 		ethPrivKey: pk,
 		ethClient:  ec,
 		client:     monero.NewClient(moneroEndpoint),
@@ -161,11 +157,7 @@ func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 }
 
 func (a *alice) Ready() error {
-	txOpts := &bind.TransactOpts{
-		From:   a.auth.From,
-		Signer: a.auth.Signer,
-	}
-	_, err := a.contract.SetReady(txOpts)
+	_, err := a.contract.SetReady(a.auth)
 	return err
 }
 
@@ -228,14 +220,9 @@ func (a *alice) WatchForClaim() (<-chan *monero.PrivateKeyPair, error) {
 }
 
 func (a *alice) Refund() error {
-	txOpts := &bind.TransactOpts{
-		From:   a.auth.From,
-		Signer: a.auth.Signer,
-	}
-
 	secret := a.privkeys.SpendKeyBytes()
 	s := big.NewInt(0).SetBytes(reverse(secret))
-	_, err := a.contract.Refund(txOpts, s)
+	_, err := a.contract.Refund(a.auth, s)
 	return err
 }
 

@@ -11,11 +11,12 @@ type Message interface {
 }
 
 type WantMessage struct {
-	Want string
+	Want   string
+	Amount uint
 }
 
 func (m *WantMessage) String() string {
-	return fmt.Sprintf("WantMessage Want=%s", m.Want)
+	return fmt.Sprintf("WantMessage Want=%s Amount=%d", m.Want, m.Amount)
 }
 
 func (m *WantMessage) Encode() ([]byte, error) {
