@@ -67,7 +67,7 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  "ethereum-privkey",
-				Usage: "ethereum private key hex string",
+				Usage: "ethereum private key hex string", // TODO: change this to a file
 			},
 			&cli.StringFlag{
 				Name:  "bootnodes",
@@ -135,6 +135,8 @@ func runAlice(c *cli.Context, amount uint) error {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	alice, err := alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
 	if err != nil {
 		return err
@@ -194,6 +196,8 @@ func runBob(c *cli.Context, amount uint) error {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	bob, err := bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
 	if err != nil {
 		return err
