@@ -80,7 +80,7 @@ Start monero-wallet-rpc for Alice:
 
 Build binary:
 ```
-./scripts/build.sh
+make build
 ```
 
 This creates an `atomic-swap` binary in the root directory.
@@ -116,9 +116,9 @@ Generate the bindings
 ```
 
 ##### Testing
-To run tests on the go bindings, execute:
+To setup the test environment and run all unit tests, execute:
 ```
-go test ./swap-contract
+make test
 ```
 
 This will test the main protocol functionality on the ethereum side:

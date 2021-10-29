@@ -7,20 +7,19 @@ import (
 	"math/big"
 	"time"
 
-	//eth 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	//ethtypes "github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
 )
-
-const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
 var (
 	_   Bob = &bob{}
@@ -65,6 +64,13 @@ type Bob interface {
 	ClaimFunds() (string, error)
 }
 
+// SwapContract is the interface that must be implemented by the Swap contract.
+type SwapContract interface {
+	WatchIsReady(opts *bind.WatchOpts, sink chan<- *swap.SwapIsReady) (event.Subscription, error)
+	WatchRefunded(opts *bind.WatchOpts, sink chan<- *swap.SwapRefunded) (event.Subscription, error)
+	Claim(opts *bind.TransactOpts, _s *big.Int) (*ethtypes.Transaction, error)
+}
+
 type bob struct {
 	ctx    context.Context
 	t0, t1 time.Time //nolint
@@ -74,7 +80,7 @@ type bob struct {
 	client       monero.Client
 	daemonClient monero.DaemonClient
 
-	contract     *swap.Swap
+	contract     SwapContract
 	contractAddr ethcommon.Address
 	ethClient    *ethclient.Client
 	auth         *bind.TransactOpts
@@ -85,7 +91,7 @@ type bob struct {
 
 // NewBob returns a new instance of Bob.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(moneroEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
+func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
 	pk, err := crypto.HexToECDSA(ethPrivKey)
 	if err != nil {
 		return nil, err
@@ -102,9 +108,9 @@ func NewBob(moneroEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
 	}
 
 	return &bob{
-		ctx:          context.Background(), // TODO: add cancel
+		ctx:          ctx,
 		client:       monero.NewClient(moneroEndpoint),
-		daemonClient: monero.NewClient(defaultDaemonEndpoint), // TODO: pass through flags
+		daemonClient: monero.NewClient(moneroDaemonEndpoint),
 		ethClient:    ec,
 		ethPrivKey:   pk,
 		auth:         auth,
@@ -135,39 +141,6 @@ func (b *bob) SetContract(address ethcommon.Address) error {
 }
 
 func (b *bob) WatchForReady() (<-chan struct{}, error) {
-	//var readyTopic = ethcommon.HexToHash("0x2724cf6c3ad6a3399ad72482e4013d0171794f3ef4c462b7e24790c658cb3cd4")
-	// ch := make(chan ethtypes.Log)
-	// done := make(chan struct{})
-
-	// filterQuery := eth.FilterQuery{
-	// 	Addresses: []ethcommon.Address{
-	// 		b.contractAddr,
-	// 	},
-	// 	Topics: [][]ethcommon.Hash{
-	// 	//	{readyTopic},
-	// 	},
-	// }
-
-	// sub, err := b.ethClient.SubscribeFilterLogs(b.ctx, filterQuery, ch)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// defer sub.Unsubscribe()
-
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case <-ch:
-	// 			//if log.TxHash != [32]byte{} {
-	// 				close(done)
-	// 				return
-	// 			//}
-	// 		case <-b.ctx.Done():
-	// 		}
-	// 	}
-	// }()
-
 	watchOpts := &bind.WatchOpts{
 		Context: b.ctx,
 	}
@@ -299,7 +272,8 @@ func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 }
 
 func (b *bob) ClaimFunds() (string, error) {
-	var addr = ethcommon.HexToAddress("0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0")
+	pub := b.ethPrivKey.Public().(*ecdsa.PublicKey)
+	addr := ethcrypto.PubkeyToAddress(*pub)
 
 	balance, err := b.ethClient.BalanceAt(b.ctx, addr, nil)
 	if err != nil {
@@ -308,16 +282,11 @@ func (b *bob) ClaimFunds() (string, error) {
 
 	log.Info("Bob's balance before claim: ", balance)
 
-	txOpts := &bind.TransactOpts{
-		From:   b.auth.From,
-		Signer: b.auth.Signer,
-	}
-
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	secret := b.privkeys.SpendKeyBytes()
 	s := big.NewInt(0).SetBytes(secret)
 
-	tx, err := b.contract.Claim(txOpts, s)
+	tx, err := b.contract.Claim(b.auth, s)
 	if err != nil {
 		return "", err
 	}

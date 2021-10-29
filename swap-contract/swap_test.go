@@ -13,12 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
-)
-
-const (
-	keyAlice = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
-	keyBob   = "6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1"
 )
 
 func reverse(s []byte) []byte {
@@ -34,13 +30,13 @@ func setBigIntLE(s []byte) *big.Int { //nolint
 }
 
 func TestDeploySwap(t *testing.T) {
-	conn, err := ethclient.Dial("http://127.0.0.1:8545")
+	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
@@ -68,15 +64,15 @@ func TestSwap_Claim(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
-	pk_b, err := crypto.HexToECDSA(keyBob)
+	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
-	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(1337)) // ganache chainID
+	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
@@ -164,7 +160,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
@@ -219,7 +215,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(keyAlice)
+	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
