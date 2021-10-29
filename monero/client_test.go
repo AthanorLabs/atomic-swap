@@ -25,6 +25,8 @@ func TestClient_Transfer(t *testing.T) {
 	err = daemon.callGenerateBlocks(aliceAddress.Address, 181)
 	require.NoError(t, err)
 
+	time.Sleep(time.Second * 10)
+
 	balance, err := cA.GetBalance(0)
 	require.NoError(t, err)
 	t.Log("balance: ", balance.Balance)
