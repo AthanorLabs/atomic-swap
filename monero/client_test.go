@@ -22,7 +22,7 @@ func TestClient_Transfer(t *testing.T) {
 	t.Log("aliceAddress", aliceAddress)
 
 	daemon := NewClient(defaultDaemonEndpoint)
-	err = daemon.callGenerateBlocks(aliceAddress.Address, 121)
+	err = daemon.callGenerateBlocks(aliceAddress.Address, 181)
 	require.NoError(t, err)
 
 	balance, err := cA.GetBalance(0)
