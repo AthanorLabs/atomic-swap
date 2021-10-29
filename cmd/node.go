@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,11 +14,12 @@ import (
 )
 
 type node struct {
+	ctx    context.Context
+	cancel context.CancelFunc
 	amount uint
 	alice  alice.Alice
 	bob    bob.Bob
 	host   net.Host
-	done   chan struct{}
 	outCh  chan<- *net.MessageInfo
 	inCh   <-chan *net.MessageInfo
 }
@@ -33,8 +35,8 @@ func (n *node) wait() {
 		select {
 		case <-sigc:
 			fmt.Println("signal interrupt, shutting down...")
-			close(n.done)
-		case <-n.done:
+			n.cancel()
+		case <-n.ctx.Done():
 			fmt.Println("protocol complete, shutting down...")
 		}
 

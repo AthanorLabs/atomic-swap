@@ -32,7 +32,7 @@ func (n *node) doProtocolBob() error {
 	var done bool
 	for {
 		select {
-		case <-n.done:
+		case <-n.ctx.Done():
 			return nil
 		case msg := <-n.inCh:
 			if err := n.handleMessageBob(msg.Who, msg.Message, setupDone); err != nil {
@@ -115,7 +115,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 			for {
 				// TODO: add t0 timeout case
 				select {
-				case <-n.done:
+				case <-n.ctx.Done():
 					return
 				case <-ready:
 					time.Sleep(time.Second * 3)
@@ -142,7 +142,7 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 					}
 
 					time.Sleep(time.Second)
-					close(n.done)
+					n.cancel()
 					return
 				case kp := <-refund:
 					if kp == nil {
@@ -150,10 +150,11 @@ func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan str
 					}
 
 					log.Debug("Alice refunded, got monero account key", kp)
-					time.Sleep(time.Second)
-					close(n.done)
-					return
 					// TODO: generate wallet
+
+					time.Sleep(time.Second)
+					n.cancel()
+					return
 				}
 			}
 		}()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -9,21 +10,20 @@ import (
 
 	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 
 	logging "github.com/ipfs/go-log"
 )
 
 const (
-	defaultAliceMoneroEndpoint = "http://127.0.0.1:18084/json_rpc"
-	defaultBobMoneroEndpoint   = "http://127.0.0.1:18083/json_rpc"
-	defaultEthEndpoint         = "ws://localhost:8545"
-	defaultPrivKeyAlice        = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
-	defaultPrivKeyBob          = "6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1"
-	defaultAlicePort           = 9933
-	defaultBobPort             = 9934
-	defaultAliceLibp2pKey      = "alice.key"
-	defaultBobLibp2pKey        = "bob.key"
+	// default libp2p ports
+	defaultAlicePort = 9933
+	defaultBobPort   = 9934
+
+	// default libp2p key files
+	defaultAliceLibp2pKey = "alice.key"
+	defaultBobLibp2pKey   = "bob.key"
 )
 
 var (
@@ -58,12 +58,16 @@ var (
 				Usage: "monero-wallet-rpc endpoint",
 			},
 			&cli.StringFlag{
+				Name:  "monero-daemon-endpoint",
+				Usage: "monerod RPC endpoint",
+			},
+			&cli.StringFlag{
 				Name:  "ethereum-endpoint",
 				Usage: "ethereum client endpoint",
 			},
 			&cli.StringFlag{
 				Name:  "ethereum-privkey",
-				Usage: "ethereum private key hex string",
+				Usage: "ethereum private key hex string", // TODO: change this to a file
 			},
 			&cli.StringFlag{
 				Name:  "bootnodes",
@@ -114,22 +118,26 @@ func runAlice(c *cli.Context, amount uint) error {
 	if c.String("monero-endpoint") != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		moneroEndpoint = defaultAliceMoneroEndpoint
+		moneroEndpoint = common.DefaultAliceMoneroEndpoint
 	}
 
 	if c.String("ethereum-endpoint") != "" {
 		ethEndpoint = c.String("ethereum-endpoint")
 	} else {
-		ethEndpoint = defaultEthEndpoint
+		ethEndpoint = common.DefaultEthEndpoint
 	}
 
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKey = c.String("ethereum-privkey")
 	} else {
-		ethPrivKey = defaultPrivKeyAlice
+		log.Warn("no ethereum private key provided, using ganache deterministic key at index 0")
+		ethPrivKey = common.DefaultPrivKeyAlice
 	}
 
-	alice, err := alice.NewAlice(moneroEndpoint, ethEndpoint, ethPrivKey)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	alice, err := alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
 	if err != nil {
 		return err
 	}
@@ -141,15 +149,16 @@ func runAlice(c *cli.Context, amount uint) error {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
-	host, err := net.NewHost(defaultAlicePort, "XMR", defaultAliceLibp2pKey, bootnodes)
+	host, err := net.NewHost(ctx, defaultAlicePort, "XMR", amount, defaultAliceLibp2pKey, bootnodes)
 	if err != nil {
 		return err
 	}
 
 	n := &node{
+		ctx:    ctx,
+		cancel: cancel,
 		alice:  alice,
 		host:   host,
-		done:   make(chan struct{}),
 		amount: amount,
 	}
 
@@ -158,28 +167,38 @@ func runAlice(c *cli.Context, amount uint) error {
 
 func runBob(c *cli.Context, amount uint) error {
 	var (
-		moneroEndpoint, ethEndpoint, ethPrivKey string
+		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
 	)
 
 	if c.String("monero-endpoint") != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		moneroEndpoint = defaultBobMoneroEndpoint
+		moneroEndpoint = common.DefaultBobMoneroEndpoint
 	}
 
 	if c.String("ethereum-endpoint") != "" {
 		ethEndpoint = c.String("ethereum-endpoint")
 	} else {
-		ethEndpoint = defaultEthEndpoint
+		ethEndpoint = common.DefaultEthEndpoint
 	}
 
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKey = c.String("ethereum-privkey")
 	} else {
-		ethPrivKey = defaultPrivKeyBob
+		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
+		ethPrivKey = common.DefaultPrivKeyBob
 	}
 
-	bob, err := bob.NewBob(moneroEndpoint, ethEndpoint, ethPrivKey)
+	if c.String("monero-daemon-endpoint") != "" {
+		daemonEndpoint = c.String("monero-daemon-endpoint")
+	} else {
+		daemonEndpoint = common.DefaultDaemonEndpoint
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	bob, err := bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
 	if err != nil {
 		return err
 	}
@@ -191,15 +210,16 @@ func runBob(c *cli.Context, amount uint) error {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
-	host, err := net.NewHost(defaultBobPort, "ETH", defaultBobLibp2pKey, bootnodes)
+	host, err := net.NewHost(ctx, defaultBobPort, "ETH", amount, defaultBobLibp2pKey, bootnodes)
 	if err != nil {
 		return err
 	}
 
 	n := &node{
+		ctx:    ctx,
+		cancel: cancel,
 		bob:    bob,
 		host:   host,
-		done:   make(chan struct{}),
 		amount: amount,
 	}
 
