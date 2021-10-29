@@ -200,7 +200,6 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
 	require.NoError(t, err)
 	require.Empty(t, bytecode)
-
 }
 
 func TestSwap_Refund_After_T1(t *testing.T) {

@@ -57,6 +57,10 @@ func TestDeploySwapDLEQ(t *testing.T) {
 }
 
 func TestSwap_Claim(t *testing.T) {
+	if testing.Short() {
+		t.Skip() // TODO: relies on ../target/debug/dleq-gen binary
+	}
+
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
@@ -216,6 +220,10 @@ func TestSwap_Claim(t *testing.T) {
 }
 
 func TestSwap_Refund_Within_T0(t *testing.T) {
+	if testing.Short() {
+		t.Skip() // TODO: relies on ../target/debug/dleq-gen binary
+	}
+
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	secretAlice := keyPairAlice.SpendKeyBytes()
@@ -341,6 +349,10 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 }
 
 func TestSwap_Refund_After_T1(t *testing.T) {
+	if testing.Short() {
+		t.Skip() // TODO: relies on ../target/debug/dleq-gen binary
+	}
+
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	secretAlice := keyPairAlice.SpendKeyBytes()
