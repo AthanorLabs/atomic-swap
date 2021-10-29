@@ -8,10 +8,10 @@ import (
 )
 
 func TestPrivateKeyPairToAddress(t *testing.T) {
-	skBytes := "a6e51afb9662bf2173d807ceaf88938d09a82d1ab2cea3eeb1706eeeb8b6ba03"
-	pskBytes := "57edf916a28c2a0a172565468564ab1c5c217d33ea63436f7604a96aa28ec471"
-	vkBytes := "42090ad9b1e3f7cecb6ff4189aa209e7d1e739bad25d9026d807380b883ed30b"
-	pvkBytes := "03a57793b8fb5f87cdabcc26996393e1f700d2cb62e95e3943fdad76ff349bb6"
+	skBytes := "1186c5edbfce9f003e157f35d01af91745aa075f913362b604be10992b27490c"
+	pskBytes := "d7b83c2acd596568ed699644aa2092b7f75d6b9b8cd0d7a60e2c5b14f1d328e6"
+	vkBytes := "e41d9be1691ae364d96f2f655fc869f0d6c51502c90baebd3fa91bf805feae04"
+	pvkBytes := "f3e9adeaed9400c15386162207093b3324273fc643d2de466240e2b51b87d781"
 
 	sk, err := hex.DecodeString(skBytes)
 	require.NoError(t, err)
@@ -26,7 +26,7 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	require.NoError(t, err)
 
 	// test DecodeMoneroBase58
-	address := "55AQeJWyuJH2gtbpAN38av5k8LGv5nRUWKeK4ZwoUAmqKuP2Qu7FhwtPiTrwJVrSv6eo9FEP7CCD3AaYnK7sSMqcMbWVnrY"
+	address := "49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB"
 	addressBytes := DecodeMoneroBase58(address)
 	require.Equal(t, psk, addressBytes[1:33])
 	require.Equal(t, pvk, addressBytes[33:65])
