@@ -242,12 +242,12 @@ func (h *host) handleStream(stream libp2pnetwork.Stream) {
 		// decode message based on message type
 		msg, err := h.decodeMessage(msgBytes[:tot])
 		if err != nil {
-			log.Debug("failed to decode message from peer", "id", stream.ID(), "protocol", stream.Protocol(), "err", err)
+			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
 			continue
 		}
 
 		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), "msg=", msg.String(),
+			"received message from peer, peer=", stream.Conn().RemotePeer(), " msg=", msg.String(),
 		)
 
 		h.handleMessage(stream, msg)
