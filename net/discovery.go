@@ -12,11 +12,11 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 )
 
-type providesCoin string
+type ProvidesCoin string
 
 const (
-	providesXMR = "XMR"
-	providesETH = "ETH"
+	ProvidesXMR = "XMR"
+	ProvidesETH = "ETH"
 
 	initialAdvertisementTimeout = time.Millisecond
 	tryAdvertiseTimeout         = time.Second * 30
@@ -27,10 +27,10 @@ type discovery struct {
 	dht      *dual.DHT
 	h        libp2phost.Host
 	rd       *libp2pdiscovery.RoutingDiscovery
-	provides []providesCoin
+	provides []ProvidesCoin
 }
 
-func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo, provides ...providesCoin) (*discovery, error) {
+func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo, provides ...ProvidesCoin) (*discovery, error) {
 	dhtOpts := []dual.Option{
 		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
 		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
@@ -96,7 +96,7 @@ func (d *discovery) advertise() {
 	}
 }
 
-func (d *discovery) discover(provides providesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
 	log.Debug("attempting to find DHT peers...")
 
 	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))

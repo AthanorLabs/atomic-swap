@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/noot/atomic-swap/common"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
@@ -24,8 +26,9 @@ import (
 )
 
 const (
-	protocolID = "/eth-xmr-atomic-swap/0"
-	maxReads   = 128
+	protocolID     = "/eth-xmr-atomic-swap/0"
+	maxReads       = 128
+	defaultKeyFile = "net.key"
 )
 
 var log = logging.Logger("net")
@@ -50,7 +53,8 @@ type host struct {
 
 	h           libp2phost.Host
 	wantMessage *WantMessage
-	//mdns *mdns
+	discovery   *discovery
+
 	bootnodes []peer.AddrInfo
 	// messages received from the rest of the program, to be sent out
 	outCh <-chan *MessageInfo
@@ -63,17 +67,32 @@ type host struct {
 	nextExpectedMessage Message
 }
 
-func NewHost(ctx context.Context, port uint64, want string, amount uint, keyfile string, bootnodes []string) (*host, error) {
-	key, err := loadKey(keyfile)
+// Config is used to configure the network Host.
+type Config struct {
+	Ctx           context.Context
+	Port          uint64
+	Provides      []ProvidesCoin
+	MaximumAmount uint64
+	ExchangeRate  common.ExchangeRate
+	KeyFile       string
+	Bootnodes     []string
+}
+
+func NewHost(cfg *Config) (*host, error) {
+	if cfg.KeyFile == "" {
+		cfg.KeyFile = defaultKeyFile
+	}
+
+	key, err := loadKey(cfg.KeyFile)
 	if err != nil {
-		fmt.Println("failed to load libp2p key, generating key...", keyfile)
-		key, err = generateKey(0, keyfile)
+		fmt.Println("failed to load libp2p key, generating key...", cfg.KeyFile)
+		key, err = generateKey(0, cfg.KeyFile)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	addr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
+	addr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", cfg.Port))
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +106,7 @@ func NewHost(ctx context.Context, port uint64, want string, amount uint, keyfile
 	}
 
 	// format bootnodes
-	bns, err := stringsToAddrInfos(bootnodes)
+	bns, err := stringsToAddrInfos(cfg.Bootnodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
 	}
@@ -100,18 +119,33 @@ func NewHost(ctx context.Context, port uint64, want string, amount uint, keyfile
 
 	inCh := make(chan *MessageInfo)
 
-	ourCtx, cancel := context.WithCancel(ctx)
-	return &host{
+	ourCtx, cancel := context.WithCancel(cfg.Ctx)
+	hst := &host{
 		ctx:    ourCtx,
 		cancel: cancel,
 		h:      h,
-		wantMessage: &WantMessage{
-			Want:   want,
-			Amount: amount,
-		},
+		// wantMessage: &WantMessage{
+		// 	Want:   want,
+		// 	Amount: amount,
+		// },
 		bootnodes: bns,
 		inCh:      inCh,
-	}, nil
+	}
+
+	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Provides...)
+	if err != nil {
+		return nil, err
+	}
+
+	return hst, nil
+}
+
+func (h *host) getBootnodes() []peer.AddrInfo {
+	addrs := h.bootnodes
+	for _, p := range h.h.Network().Peers() {
+		addrs = append(addrs, h.h.Peerstore().PeerInfo(p))
+	}
+	return addrs
 }
 
 func (h *host) SetOutgoingCh(ch <-chan *MessageInfo) {

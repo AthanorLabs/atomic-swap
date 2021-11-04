@@ -44,7 +44,7 @@ type Alice interface {
 	SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey)
 
 	// DeployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
-	DeployAndLockETH(amount uint) (ethcommon.Address, error)
+	DeployAndLockETH(amount uint64) (ethcommon.Address, error)
 
 	// Ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
 	// call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
@@ -126,7 +126,7 @@ func (a *alice) SetBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
 	a.bobViewKey = vk
 }
 
-func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
+func (a *alice) DeployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	pkAlice := reverse(a.pubkeys.SpendKey().Bytes())
 	pkBob := reverse(a.bobSpendKey.Bytes())
 

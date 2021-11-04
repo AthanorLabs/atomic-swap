@@ -21,6 +21,10 @@ const (
 	defaultAlicePort = 9933
 	defaultBobPort   = 9934
 
+	// defaultExchangeRate is the default ratio of ETH:XMR.
+	// TODO; make this a CLI flag, or get it from some price feed.
+	defaultExchangeRate = 0.0578261
+
 	// default libp2p key files
 	defaultAliceLibp2pKey = "alice.key"
 	defaultBobLibp2pKey   = "bob.key"
@@ -51,7 +55,7 @@ var (
 			&cli.UintFlag{
 				Name:  "amount",
 				Value: 0,
-				Usage: "amount to swap (in smallest units of chain)",
+				Usage: "maximum amount to swap (in smallest units of coin)",
 			},
 			&cli.StringFlag{
 				Name:  "monero-endpoint",
@@ -86,7 +90,7 @@ func main() {
 
 func startAction(c *cli.Context) error {
 	log.Debug("starting...")
-	amount := c.Uint("amount")
+	amount := uint64(c.Uint("amount"))
 	if amount == 0 {
 		return errors.New("must specify amount")
 	}
@@ -110,7 +114,7 @@ func startAction(c *cli.Context) error {
 	return errors.New("must specify either --alice or --bob")
 }
 
-func runAlice(c *cli.Context, amount uint) error {
+func runAlice(c *cli.Context, amount uint64) error {
 	var (
 		moneroEndpoint, ethEndpoint, ethPrivKey string
 	)
@@ -149,7 +153,17 @@ func runAlice(c *cli.Context, amount uint) error {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
-	host, err := net.NewHost(ctx, defaultAlicePort, "XMR", amount, defaultAliceLibp2pKey, bootnodes)
+	netCfg := &net.Config{
+		Ctx:           ctx,
+		Port:          defaultAlicePort,
+		Provides:      []net.ProvidesCoin{net.ProvidesETH},
+		MaximumAmount: amount,
+		ExchangeRate:  defaultExchangeRate,
+		KeyFile:       defaultAliceLibp2pKey,
+		Bootnodes:     bootnodes,
+	}
+
+	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
 	}
@@ -165,7 +179,7 @@ func runAlice(c *cli.Context, amount uint) error {
 	return n.doProtocolAlice()
 }
 
-func runBob(c *cli.Context, amount uint) error {
+func runBob(c *cli.Context, amount uint64) error {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
 	)
@@ -210,7 +224,17 @@ func runBob(c *cli.Context, amount uint) error {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
-	host, err := net.NewHost(ctx, defaultBobPort, "ETH", amount, defaultBobLibp2pKey, bootnodes)
+	netCfg := &net.Config{
+		Ctx:           ctx,
+		Port:          defaultBobPort,
+		Provides:      []net.ProvidesCoin{net.ProvidesXMR},
+		MaximumAmount: amount,
+		ExchangeRate:  defaultExchangeRate,
+		KeyFile:       defaultBobLibp2pKey,
+		Bootnodes:     bootnodes,
+	}
+
+	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
 	}
