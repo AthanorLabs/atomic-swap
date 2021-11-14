@@ -52,7 +52,7 @@ func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.
 	}, nil
 }
 
-func (d *discovery) start() error {
+func (d *discovery) start() error { //nolint:unused
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
@@ -66,11 +66,11 @@ func (d *discovery) start() error {
 	return nil
 }
 
-func (d *discovery) stop() error {
+func (d *discovery) stop() error { //nolint:unused
 	return d.dht.Close()
 }
 
-func (d *discovery) advertise() {
+func (d *discovery) advertise() { //nolint:unused
 	ttl := initialAdvertisementTimeout
 
 	for {
@@ -96,7 +96,7 @@ func (d *discovery) advertise() {
 	}
 }
 
-func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) { //nolint:unused
 	log.Debug("attempting to find DHT peers...")
 
 	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))

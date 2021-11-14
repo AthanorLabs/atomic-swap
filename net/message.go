@@ -16,7 +16,7 @@ type HelloMessage struct {
 }
 
 func (m *HelloMessage) String() string {
-	return fmt.Sprintf("HelloMessage Provides=%s MaximumAmount=%s", m.Provides, m.MaximumAmount)
+	return fmt.Sprintf("HelloMessage Provides=%v MaximumAmount=%v", m.Provides, m.MaximumAmount)
 }
 
 func (m *HelloMessage) Encode() ([]byte, error) {
