@@ -16,7 +16,7 @@ import (
 type node struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	amount uint
+	amount uint64
 	alice  alice.Alice
 	bob    bob.Bob
 	host   net.Host

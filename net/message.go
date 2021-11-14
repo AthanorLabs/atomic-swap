@@ -10,16 +10,16 @@ type Message interface {
 	Encode() ([]byte, error)
 }
 
-type WantMessage struct {
-	Want   string
-	Amount uint
+type HelloMessage struct {
+	Provides      []ProvidesCoin
+	MaximumAmount []uint64
 }
 
-func (m *WantMessage) String() string {
-	return fmt.Sprintf("WantMessage Want=%s Amount=%d", m.Want, m.Amount)
+func (m *HelloMessage) String() string {
+	return fmt.Sprintf("HelloMessage Provides=%v MaximumAmount=%v", m.Provides, m.MaximumAmount)
 }
 
-func (m *WantMessage) Encode() ([]byte, error) {
+func (m *HelloMessage) Encode() ([]byte, error) {
 	return json.Marshal(m)
 }
 

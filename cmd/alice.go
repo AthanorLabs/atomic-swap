@@ -52,9 +52,17 @@ func (n *node) doProtocolAlice() error {
 
 func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan struct{}) error {
 	switch msg := msg.(type) {
-	case *net.WantMessage:
-		if msg.Want != "ETH" {
-			return errors.New("Alice has ETH, peer does not want ETH")
+	case *net.HelloMessage:
+		peerProvides := false
+		for _, provides := range msg.Provides {
+			if provides == net.ProvidesXMR {
+				peerProvides = true
+				break
+			}
+		}
+
+		if !peerProvides {
+			return errors.New("peer does not provide XMR")
 		}
 
 		log.Info("found peer that wants ETH, initiating swap protocol...")

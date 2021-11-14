@@ -58,7 +58,7 @@ type Bob interface {
 	// (S_a + S_b), viewable with (V_a + V_b)
 	// It accepts the amount to lock as the input
 	// TODO: units
-	LockFunds(amount uint) (monero.Address, error)
+	LockFunds(amount uint64) (monero.Address, error)
 
 	// ClaimFunds redeem's Bob's funds on ethereum
 	ClaimFunds() (string, error)
@@ -231,7 +231,7 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 	return out, nil
 }
 
-func (b *bob) LockFunds(amount uint) (monero.Address, error) {
+func (b *bob) LockFunds(amount uint64) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(b.alicePublicKeys, b.pubkeys)
 
 	log.Info("public spend keys: ", kp.SpendKey().Hex())
@@ -249,7 +249,7 @@ func (b *bob) LockFunds(amount uint) (monero.Address, error) {
 	log.Info("blocks to unlock: ", balance.BlocksToUnlock)
 
 	address := kp.Address()
-	if err := b.client.Transfer(address, 0, amount); err != nil {
+	if err := b.client.Transfer(address, 0, uint(amount)); err != nil {
 		return "", err
 	}
 
