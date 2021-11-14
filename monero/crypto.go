@@ -3,6 +3,7 @@ package monero
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -140,6 +141,13 @@ func (kp *PrivateKeyPair) SpendKey() *PrivateSpendKey {
 
 func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
 	return kp.vk
+}
+
+func (kp *PrivateKeyPair) Marshal() ([]byte, error) {
+	m := make(map[string]string)
+	m["PrivateSpendKey"] = kp.sk.Hex()
+	m["PrivateViewKey"] = kp.vk.Hex()
+	return json.Marshal(m)
 }
 
 type PrivateSpendKey struct {
