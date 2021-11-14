@@ -33,7 +33,7 @@ func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
 
 	stream, err := h.h.NewStream(ctx, who.ID, protocolID+queryID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
 
 	log.Debug(
@@ -63,7 +63,7 @@ func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse
 	}
 
 	var resp *QueryResponse
-	if err := json.Unmarshal(buf[:n], &resp); err != nil {
+	if err := json.Unmarshal(buf[1:n], &resp); err != nil {
 		return nil, err
 	}
 

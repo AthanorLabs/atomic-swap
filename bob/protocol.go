@@ -114,12 +114,13 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 	}
 
 	return &bob{
-		ctx:          ctx,
-		client:       monero.NewClient(moneroEndpoint),
-		daemonClient: monero.NewClient(moneroDaemonEndpoint),
-		ethClient:    ec,
-		ethPrivKey:   pk,
-		auth:         auth,
+		ctx:                 ctx,
+		client:              monero.NewClient(moneroEndpoint),
+		daemonClient:        monero.NewClient(moneroDaemonEndpoint),
+		ethClient:           ec,
+		ethPrivKey:          pk,
+		auth:                auth,
+		nextExpectedMessage: &net.InitiateMessage{},
 	}, nil
 }
 
@@ -247,7 +248,7 @@ func (b *bob) LockFunds(amount uint64) (monero.Address, error) {
 	log.Info("public spend keys: ", kp.SpendKey().Hex())
 	log.Info("public view keys: ", kp.ViewKey().Hex())
 
-	log.Info("going to lock funds...")
+	log.Infof("going to lock funds, amount=%d", amount)
 
 	balance, err := b.client.GetBalance(0)
 	if err != nil {

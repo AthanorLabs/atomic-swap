@@ -108,11 +108,12 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 	}
 
 	return &alice{
-		ctx:        ctx, // TODO: add cancel
-		ethPrivKey: pk,
-		ethClient:  ec,
-		client:     monero.NewClient(moneroEndpoint),
-		auth:       auth,
+		ctx:                 ctx, // TODO: add cancel
+		ethPrivKey:          pk,
+		ethClient:           ec,
+		client:              monero.NewClient(moneroEndpoint),
+		auth:                auth,
+		nextExpectedMessage: &net.InitiateMessage{},
 	}, nil
 }
 

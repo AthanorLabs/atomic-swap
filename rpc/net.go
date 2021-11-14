@@ -16,13 +16,16 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
-	Initiate(who peer.ID, msg *net.InitiateMessage) error
+	Initiate(who peer.AddrInfo, msg *net.InitiateMessage) error
 }
 
 type Protocol interface {
 	Provides() net.ProvidesCoin
 	InitiateProtocol(providesAmount, desiredAmount uint64) error
 	SendKeysMessage() (*net.SendKeysMessage, error)
+
+	// TODO: this isn't used here, but in the network package
+	HandleProtocolMessage(msg net.Message) (net.Message, bool, error)
 }
 
 type NetService struct {
@@ -107,14 +110,14 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 }
 
 type InitiateRequest struct {
-	PeerID         string
-	ProvidesCoin   net.ProvidesCoin
-	ProvidesAmount uint64
-	DesiredAmount  uint64
+	Multiaddr      string           `json:"multiaddr"`
+	ProvidesCoin   net.ProvidesCoin `json:"provides"`
+	ProvidesAmount uint64           `json:"providesAmount"`
+	DesiredAmount  uint64           `json:"desiredAmount"`
 }
 
 type InitiateResponse struct {
-	Success bool
+	Success bool `json:"success"`
 }
 
 func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *InitiateResponse) error {
@@ -130,5 +133,14 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		SendKeysMessage: skm,
 	}
 
-	return s.backend.Initiate(peer.ID(req.PeerID), msg)
+	who, err := net.StringToAddrInfo(req.Multiaddr)
+	if err != nil {
+		return err
+	}
+
+	if err = s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount); err != nil {
+		return err
+	}
+
+	return s.backend.Initiate(who, msg)
 }

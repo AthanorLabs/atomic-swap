@@ -36,6 +36,7 @@ func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) error {
 	b.initiated = true
 	b.providesAmount = providesAmount
 	b.desiredAmount = desiredAmount
+	b.setNextExpectedMessage(&net.SendKeysMessage{})
 	return nil
 }
 
@@ -71,9 +72,10 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 	// 		Message: out,
 	// 		Who:     who,
 	// 	}
-	case *net.SendKeysMessage:
+	case *net.InitiateMessage:
+		// TODO: this and the below case are the same
 		if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
-			return nil, false, errors.New("did not receive Alice's public spend or view key")
+			return nil, true, errors.New("did not receive Alice's public spend or view key")
 		}
 
 		log.Debug("got Alice's public keys")
@@ -81,30 +83,55 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 
 		kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to generate Alice's public keys: %w", err)
+			return nil, true, fmt.Errorf("failed to generate Alice's public keys: %w", err)
+		}
+
+		b.SetAlicePublicKeys(kp)
+
+		resp, err := b.SendKeysMessage()
+		if err != nil {
+			return nil, true, err
+		}
+
+		// TODO: check amounts are ok, less than our max, and desired coin
+		b.providesAmount = msg.DesiredAmount
+		b.desiredAmount = msg.ProvidesAmount
+
+		return resp, false, nil
+	case *net.SendKeysMessage:
+		if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
+			return nil, true, errors.New("did not receive Alice's public spend or view key")
+		}
+
+		log.Debug("got Alice's public keys")
+		b.setNextExpectedMessage(&net.NotifyContractDeployed{})
+
+		kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to generate Alice's public keys: %w", err)
 		}
 
 		b.SetAlicePublicKeys(kp)
 	case *net.NotifyContractDeployed:
 		if msg.Address == "" {
-			return nil, false, errors.New("got empty contract address")
+			return nil, true, errors.New("got empty contract address")
 		}
 
-		b.setNextExpectedMessage(nil)
+		b.setNextExpectedMessage(&net.NotifyReady{})
 		log.Info("got Swap contract address! address=%s\n", msg.Address)
 
 		if err := b.SetContract(ethcommon.HexToAddress(msg.Address)); err != nil {
-			return nil, false, fmt.Errorf("failed to instantiate contract instance: %w", err)
+			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)
 		}
 
-		ready, err := b.WatchForReady()
-		if err != nil {
-			return nil, false, err
-		}
+		// ready, err := b.WatchForReady()
+		// if err != nil {
+		// 	return nil, true, err
+		// }
 
 		refund, err := b.WatchForRefund()
 		if err != nil {
-			return nil, false, err
+			return nil, true, err
 		}
 
 		go func() {
@@ -113,27 +140,28 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 				select {
 				case <-b.ctx.Done():
 					return
-				case <-ready:
-					time.Sleep(time.Second * 3)
-					log.Debug("Alice called Ready!")
-					log.Debug("attempting to claim funds...")
+				// case <-ready:
+				// 	time.Sleep(time.Second * 3)
+				// 	log.Debug("Alice called Ready!")
+				// 	log.Debug("attempting to claim funds...")
 
-					time.Sleep(time.Second)
+				// 	time.Sleep(time.Second)
 
-					// contract ready, let's claim our ether
-					_, err = b.ClaimFunds()
-					if err != nil {
-						log.Error("failed to redeem ether: %w", err)
-						continue
-					}
+				// 	// contract ready, let's claim our ether
+				// 	_, err = b.ClaimFunds()
+				// 	if err != nil {
+				// 		log.Error("failed to redeem ether: %w", err)
+				// 		continue
+				// 	}
 
-					log.Debug("funds claimed!!")
-					// out := &net.NotifyClaimed{
-					// 	TxHash: txHash,
-					// }
+				// 	log.Debug("funds claimed!!")
+				// 	// out := &net.NotifyClaimed{
+				// 	// 	TxHash: txHash,
+				// 	// }
 
-					//time.Sleep(time.Second)
-					return
+				// 	//time.Sleep(time.Second)
+				// 	return
+				// TODO: fix events, or just use messages for now
 				case kp := <-refund:
 					if kp == nil {
 						continue
@@ -150,7 +178,7 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 
 		addrAB, err := b.LockFunds(b.providesAmount)
 		if err != nil {
-			return nil, false, err
+			return nil, true, fmt.Errorf("failed to lock funds: %w", err)
 		}
 
 		out := &net.NotifyXMRLock{
@@ -178,7 +206,7 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 
 		return out, true, nil
 	default:
-		return nil, false, errors.New("unexpected message type")
+		return nil, true, errors.New("unexpected message type")
 	}
 
 	return nil, false, nil

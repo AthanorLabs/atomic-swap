@@ -33,6 +33,7 @@ func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) error {
 	a.initiated = true
 	a.providesAmount = providesAmount
 	a.desiredAmount = desiredAmount
+	a.setNextExpectedMessage(&net.SendKeysMessage{})
 	return nil
 }
 
@@ -66,6 +67,67 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 
 	// 	return out, false, nil
 	case *net.InitiateMessage:
+		if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
+			return nil, true, errors.New("did not receive Bob's public spend or private view key")
+		}
+
+		log.Debug("got Bob's keys")
+		a.setNextExpectedMessage(&net.NotifyXMRLock{})
+
+		sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to generate Bob's public spend key: %w", err)
+		}
+
+		vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to generate Bob's private view keys: %w", err)
+		}
+
+		a.SetBobKeys(sk, vk)
+		address, err := a.DeployAndLockETH(a.providesAmount)
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to deploy contract: %w", err)
+		}
+
+		log.Info("deployed Swap contract: address=", address)
+
+		claim, err := a.WatchForClaim()
+		if err != nil {
+			return nil, true, err
+		}
+
+		go func() {
+			for {
+				// TODO: add t1 timeout case
+				select {
+				case <-a.ctx.Done():
+					return
+				case kp := <-claim:
+					if kp == nil {
+						continue
+					}
+
+					log.Info("Bob claimed ether! got secret: ", kp)
+					address, err := a.CreateMoneroWallet(kp)
+					if err != nil {
+						log.Debug("failed to create monero address: %s", err)
+						return
+					}
+
+					log.Info("successfully created monero wallet from our secrets: address=", address)
+					// TODO: get and print balance
+				}
+			}
+		}()
+
+		out := &net.NotifyContractDeployed{
+			Address: address.String(),
+		}
+
+		return out, false, nil
+	case *net.SendKeysMessage:
+		// TODO: this case is copy pasted from above
 		if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 			return nil, true, errors.New("did not receive Bob's public spend or private view key")
 		}

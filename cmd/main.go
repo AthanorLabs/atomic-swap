@@ -155,6 +155,28 @@ func runDaemon(c *cli.Context) error {
 		daemonEndpoint = common.DefaultDaemonEndpoint
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var (
+		protocol rpc.Protocol
+		err      error
+	)
+	switch {
+	case c.Bool("alice"):
+		protocol, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+		if err != nil {
+			return err
+		}
+	case c.Bool("bob"):
+		protocol, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("must specify either --alice or --bob")
+	}
+
 	port := uint32(c.Uint("rpc-port"))
 	if port == 0 {
 		port = defaultRPCPort
@@ -170,9 +192,6 @@ func runDaemon(c *cli.Context) error {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	netCfg := &net.Config{
 		Ctx:           ctx,
 		Port:          defaultAlicePort,                    // TODO: make flag
@@ -181,6 +200,7 @@ func runDaemon(c *cli.Context) error {
 		ExchangeRate:  defaultExchangeRate,
 		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
 		Bootnodes:     bootnodes,
+		Handler:       protocol,
 	}
 
 	if c.Bool("bob") {
@@ -197,22 +217,6 @@ func runDaemon(c *cli.Context) error {
 
 	if err = host.Start(); err != nil {
 		return err
-	}
-
-	var protocol rpc.Protocol
-	switch {
-	case c.Bool("alice"):
-		protocol, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
-		if err != nil {
-			return err
-		}
-	case c.Bool("bob"):
-		protocol, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
-		if err != nil {
-			return err
-		}
-	default:
-		return errors.New("must specify either --alice or --bob")
 	}
 
 	cfg := &rpc.Config{

@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
@@ -28,6 +29,8 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	for {
 		tot, err := readStream(stream, msgBytes[:])
 		if err != nil {
+			log.Debug("peer closed stream with us, protocol exited")
+			// TODO: call Handler.ProtocolDone()
 			return
 		}
 
@@ -48,34 +51,43 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 			return
 		}
 
-		if done {
-			log.Info("protocol complete!")
-			return
+		if resp == nil {
+			continue
 		}
 
 		if err := h.writeToStream(stream, resp); err != nil {
 			log.Warnf("failed to send response to peer: err=%s", err)
 			return
 		}
+
+		if done {
+			log.Info("protocol complete!")
+			return
+		}
 	}
 }
 
-func (h *host) Initiate(who peer.ID, msg *InitiateMessage) error {
+func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage) error {
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
 	defer cancel()
 
-	// if err := h.h.Connect(ctx, who); err != nil {
-	// 	return nil, err
-	// }
-
-	stream, err := h.h.NewStream(ctx, who, protocolID+subProtocolID)
-	if err != nil {
+	if err := h.h.Connect(ctx, who); err != nil {
 		return err
 	}
 
+	stream, err := h.h.NewStream(ctx, who.ID, protocolID+subProtocolID)
+	if err != nil {
+		return fmt.Errorf("failed to open stream with peer: err=%w", err)
+	}
+
 	log.Debug(
-		"opened protocol stream, peer=", who,
+		"opened protocol stream, peer=", who.ID,
 	)
+
+	if err := h.writeToStream(stream, msg); err != nil {
+		log.Warnf("failed to send InitiateMessage to peer: err=%s", err)
+		return err
+	}
 
 	h.handleProtocolStream(stream)
 	return nil

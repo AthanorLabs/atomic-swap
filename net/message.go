@@ -31,43 +31,43 @@ func decodeMessage(b []byte) (Message, error) {
 	switch b[0] {
 	case QueryResponseType:
 		var m *QueryResponse
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
 	case InitiateMessageType:
 		var m *InitiateMessage
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
 	case SendKeysMessageType:
 		var m *SendKeysMessage
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
 	case NotifyContractDeployedType:
 		var m *NotifyContractDeployed
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
 	case NotifyXMRLockType:
 		var m *NotifyXMRLock
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
 	case NotifyReadyType:
 		var m *NotifyReady
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
 	case NotifyClaimedType:
 		var m *NotifyClaimed
-		if err := json.Unmarshal(b, &m); err != nil {
+		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
