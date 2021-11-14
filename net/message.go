@@ -2,9 +2,20 @@ package net
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/noot/atomic-swap/common"
+)
+
+const (
+	QueryResponseType = iota
+	InitiateMessageType
+	SendKeysMessageType
+	NotifyContractDeployedType
+	NotifyXMRLockType
+	NotifyReadyType
+	NotifyClaimedType
 )
 
 type Message interface {
@@ -12,24 +23,80 @@ type Message interface {
 	Encode() ([]byte, error)
 }
 
-type QueryResponse = HelloMessage
+func decodeMessage(b []byte) (Message, error) {
+	if len(b) == 0 {
+		return nil, errors.New("invalid message bytes")
+	}
 
-type HelloMessage struct {
+	switch b[0] {
+	case QueryResponseType:
+		var m *QueryResponse
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case InitiateMessageType:
+		var m *InitiateMessage
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case SendKeysMessageType:
+		var m *SendKeysMessage
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case NotifyContractDeployedType:
+		var m *NotifyContractDeployed
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case NotifyXMRLockType:
+		var m *NotifyXMRLock
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case NotifyReadyType:
+		var m *NotifyReady
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case NotifyClaimedType:
+		var m *NotifyClaimed
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	default:
+		return nil, errors.New("invalid message type")
+	}
+}
+
+type QueryResponse struct {
 	Provides      []ProvidesCoin
 	MaximumAmount []uint64
 	ExchangeRate  common.ExchangeRate
 }
 
-func (m *HelloMessage) String() string {
-	return fmt.Sprintf("HelloMessage Provides=%v MaximumAmount=%v ExchangeRate=%v",
+func (m *QueryResponse) String() string {
+	return fmt.Sprintf("QueryResponse Provides=%v MaximumAmount=%v ExchangeRate=%v",
 		m.Provides,
 		m.MaximumAmount,
 		m.ExchangeRate,
 	)
 }
 
-func (m *HelloMessage) Encode() ([]byte, error) {
-	return json.Marshal(m)
+func (m *QueryResponse) Encode() ([]byte, error) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{QueryResponseType}, b...), nil
 }
 
 type InitiateMessage struct {
@@ -49,7 +116,12 @@ func (m *InitiateMessage) String() string {
 }
 
 func (m *InitiateMessage) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{InitiateMessageType}, b...), nil
 }
 
 // The below messages are sawp protocol messages, exchanged after the swap has been agreed
@@ -71,7 +143,12 @@ func (m *SendKeysMessage) String() string {
 }
 
 func (m *SendKeysMessage) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{SendKeysMessageType}, b...), nil
 }
 
 // NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
@@ -85,7 +162,12 @@ func (m *NotifyContractDeployed) String() string {
 }
 
 func (m *NotifyContractDeployed) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{NotifyContractDeployedType}, b...), nil
 }
 
 // NotifyXMRLock is sent by Bob to Alice after locking his XMR.
@@ -98,9 +180,31 @@ func (m *NotifyXMRLock) String() string {
 }
 
 func (m *NotifyXMRLock) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{NotifyXMRLockType}, b...), nil
 }
 
+// NotifyReady is sent by Alice to Bob after calling Ready() on the contract.
+type NotifyReady struct{}
+
+func (m *NotifyReady) String() string {
+	return fmt.Sprintf("NotifyReady")
+}
+
+func (m *NotifyReady) Encode() ([]byte, error) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{NotifyReadyType}, b...), nil
+}
+
+// NotifyClaimed is sent by Bob to Alice after claiming his ETH.
 type NotifyClaimed struct {
 	TxHash string
 }
@@ -110,5 +214,10 @@ func (m *NotifyClaimed) String() string {
 }
 
 func (m *NotifyClaimed) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{NotifyClaimedType}, b...), nil
 }

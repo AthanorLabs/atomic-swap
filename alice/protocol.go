@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
@@ -81,6 +82,11 @@ type alice struct {
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
 	auth       *bind.TransactOpts
+
+	nextExpectedMessage net.Message
+
+	initiated                     bool
+	providesAmount, desiredAmount uint64
 }
 
 // NewAlice returns a new instance of Alice.
@@ -110,7 +116,15 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 	}, nil
 }
 
+func (a *alice) setNextExpectedMessage(msg net.Message) {
+	a.nextExpectedMessage = msg
+}
+
 func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
+	if a.privkeys != nil {
+		return nil, nil
+	}
+
 	var err error
 	a.privkeys, err = monero.GenerateKeys()
 	if err != nil {

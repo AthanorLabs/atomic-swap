@@ -16,9 +16,13 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
+	Initiate(who peer.ID, msg *net.InitiateMessage) error
 }
 
 type Protocol interface {
+	Provides() net.ProvidesCoin
+	InitiateProtocol(providesAmount, desiredAmount uint64) error
+	SendKeysMessage() (*net.SendKeysMessage, error)
 }
 
 type NetService struct {
@@ -26,9 +30,10 @@ type NetService struct {
 	protocol Protocol
 }
 
-func NewNetService(net Net) *NetService {
+func NewNetService(net Net, protocol Protocol) *NetService {
 	return &NetService{
-		backend: net,
+		backend:  net,
+		protocol: protocol,
 	}
 }
 
@@ -108,6 +113,22 @@ type InitiateRequest struct {
 	DesiredAmount  uint64
 }
 
+type InitiateResponse struct {
+	Success bool
+}
+
 func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *InitiateResponse) error {
-	return nil
+	skm, err := s.protocol.SendKeysMessage()
+	if err != nil {
+		return err
+	}
+
+	msg := &net.InitiateMessage{
+		Provides:        req.ProvidesCoin,
+		ProvidesAmount:  req.ProvidesAmount,
+		DesiredAmount:   req.DesiredAmount,
+		SendKeysMessage: skm,
+	}
+
+	return s.backend.Initiate(peer.ID(req.PeerID), msg)
 }

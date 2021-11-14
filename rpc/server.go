@@ -18,14 +18,15 @@ type Server struct {
 }
 
 type Config struct {
-	Port uint32
-	Net  Net
+	Port     uint32
+	Net      Net
+	Protocol Protocol
 }
 
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	if err := s.RegisterService(NewNetService(cfg.Net), "net"); err != nil {
+	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Protocol), "net"); err != nil {
 		return nil, err
 	}
 

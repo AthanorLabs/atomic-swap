@@ -2,10 +2,8 @@ package net
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 	"time"
 
@@ -37,31 +35,31 @@ type MessageInfo struct {
 type Host interface {
 	Start() error
 	Stop() error
-	SetOutgoingCh(<-chan *MessageInfo)
-	ReceivedMessageCh() <-chan *MessageInfo
-	SetNextExpectedMessage(m Message)
 
 	Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Query(who peer.AddrInfo) (*QueryResponse, error)
+	Initiate(who peer.ID, msg *InitiateMessage) error
 }
 
 type host struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	h            libp2phost.Host
-	helloMessage *HelloMessage
-	discovery    *discovery
+	h             libp2phost.Host
+	queryResponse *QueryResponse
+	discovery     *discovery
+	handler       Handler
 
 	bootnodes []peer.AddrInfo
 	// messages received from the rest of the program, to be sent out
-	outCh <-chan *MessageInfo
+	//outCh <-chan *MessageInfo
 
 	// messages received from the network, to be sent to the rest of the program
-	inCh chan *MessageInfo
+	//inCh chan *MessageInfo
 
 	// next expected message from the network
 	// empty, is just used for type matching
-	nextExpectedMessage Message
+	//nextExpectedMessage Message
 
 	queryMu  sync.Mutex
 	queryBuf []byte
@@ -76,6 +74,7 @@ type Config struct {
 	ExchangeRate  common.ExchangeRate
 	KeyFile       string
 	Bootnodes     []string
+	Handler       Handler
 }
 
 func NewHost(cfg *Config) (*host, error) {
@@ -117,21 +116,22 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
-	inCh := make(chan *MessageInfo)
+	//inCh := make(chan *MessageInfo)
 
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
 		ctx:    ourCtx,
 		cancel: cancel,
 		h:      h,
-		helloMessage: &HelloMessage{
+		queryResponse: &QueryResponse{
 			Provides:      cfg.Provides,
 			MaximumAmount: cfg.MaximumAmount,
 			ExchangeRate:  cfg.ExchangeRate,
 		},
+		handler:   cfg.Handler,
 		bootnodes: bns,
-		inCh:      inCh,
-		queryBuf:  make([]byte, 2048),
+		//inCh:      inCh,
+		queryBuf: make([]byte, 2048),
 	}
 
 	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Provides...)
@@ -146,18 +146,18 @@ func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer
 	return h.discovery.discover(provides, searchTime)
 }
 
-func (h *host) SetOutgoingCh(ch <-chan *MessageInfo) {
-	h.outCh = ch
-}
+// func (h *host) SetOutgoingCh(ch <-chan *MessageInfo) {
+// 	h.outCh = ch
+// }
 
-func (h *host) SetNextExpectedMessage(m Message) {
-	h.nextExpectedMessage = m
-}
+// func (h *host) SetNextExpectedMessage(m Message) {
+// 	h.nextExpectedMessage = m
+// }
 
 func (h *host) Start() error {
-	h.nextExpectedMessage = &HelloMessage{}
-	h.h.SetStreamHandler(protocolID, h.handleStream)
+	//h.h.SetStreamHandler(protocolID, h.handleStream)
 	h.h.SetStreamHandler(protocolID+queryID, h.handleQueryStream)
+	h.h.SetStreamHandler(protocolID+subProtocolID, h.handleProtocolStream)
 
 	h.h.Network().SetConnHandler(h.handleConn)
 	for _, addr := range h.multiaddrs() {
@@ -188,14 +188,14 @@ func (h *host) Stop() error {
 	return nil
 }
 
-func (h *host) SendMessage(to peer.ID, msg Message) error {
-	_, err := h.send(to, msg)
-	return err
-}
+// func (h *host) SendMessage(to peer.ID, msg Message) error {
+// 	_, err := h.send(to, msg)
+// 	return err
+// }
 
-func (h *host) ReceivedMessageCh() <-chan *MessageInfo {
-	return h.inCh
-}
+// func (h *host) ReceivedMessageCh() <-chan *MessageInfo {
+// 	return h.inCh
+// }
 
 func (h *host) getBootnodes() []peer.AddrInfo {
 	addrs := h.bootnodes
@@ -267,102 +267,66 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 func (h *host) handleConn(conn libp2pnetwork.Conn) {
 	log.Debug("incoming connection, peer=", conn.RemotePeer())
 
-	stream, err := h.send(conn.RemotePeer(), h.helloMessage)
-	if err != nil {
-		log.Info("failed to send message, closing stream")
-		_ = stream.Close()
-		return
-	}
+	// stream, err := h.send(conn.RemotePeer(), h.helloMessage)
+	// if err != nil {
+	// 	log.Info("failed to send message, closing stream")
+	// 	_ = stream.Close()
+	// 	return
+	// }
 
-	go h.handleStream(stream)
+	// go h.handleStream(stream)
 }
 
-func (h *host) handleStream(stream libp2pnetwork.Stream) {
-	msgBytes := make([]byte, 2048)
+// func (h *host) handleStream(stream libp2pnetwork.Stream) {
+// 	defer func() {
+// 		_ = stream.Close()
+// 	}()
 
-	for {
-		tot, err := readStream(stream, msgBytes[:])
-		if errors.Is(err, io.EOF) {
-			return
-		} else if err != nil {
-			//log.Debug("failed to read from stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
-			_ = stream.Close()
-			return
-		}
+// 	msgBytes := make([]byte, 2048)
 
-		// decode message based on message type
-		msg, err := h.decodeMessage(msgBytes[:tot])
-		if err != nil {
-			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
-			continue
-		}
+// 	for {
+// 		tot, err := readStream(stream, msgBytes[:])
+// 		if err != nil {
+// 			log.Debug("failed to read from stream, closing stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
+// 			return
+// 		}
 
-		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), " msg=", msg.String(),
-		)
+// 		// decode message based on message type
+// 		msg, err := h.decodeMessage(msgBytes[:tot])
+// 		if err != nil {
+// 			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
+// 			continue
+// 		}
 
-		h.handleMessage(stream, msg)
-	}
-}
+// 		log.Debug(
+// 			"received message from peer, peer=", stream.Conn().RemotePeer(), " msg=", msg.String(),
+// 		)
 
-func (h *host) decodeMessage(b []byte) (Message, error) {
-	switch h.nextExpectedMessage.(type) {
-	case *HelloMessage:
-		var m *HelloMessage
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *SendKeysMessage:
-		var m *SendKeysMessage
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *NotifyContractDeployed:
-		var m *NotifyContractDeployed
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *NotifyXMRLock:
-		var m *NotifyXMRLock
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *NotifyClaimed:
-		var m *NotifyClaimed
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	default:
-		return nil, errors.New("not expecting any more messages")
-	}
-}
+// 		h.handleMessage(stream, msg)
+// 	}
+// }
 
-func (h *host) handleMessage(stream libp2pnetwork.Stream, m Message) {
-	h.inCh <- &MessageInfo{
-		Message: m,
-		Who:     stream.Conn().RemotePeer(),
-	}
+// func (h *host) handleMessage(stream libp2pnetwork.Stream, m Message) {
+// 	h.inCh <- &MessageInfo{
+// 		Message: m,
+// 		Who:     stream.Conn().RemotePeer(),
+// 	}
 
-	next := <-h.outCh
-	if next == nil {
-		fmt.Println("no more outgoing messages")
-		return
-	}
+// 	next := <-h.outCh
+// 	if next == nil {
+// 		fmt.Println("no more outgoing messages")
+// 		return
+// 	}
 
-	if next.Who != stream.Conn().RemotePeer() {
-		fmt.Println("peer ID mismatch")
-	}
+// 	if next.Who != stream.Conn().RemotePeer() {
+// 		fmt.Println("peer ID mismatch")
+// 	}
 
-	if err := h.writeToStream(stream, next.Message); err != nil {
-		fmt.Println("failed to write to stream")
-		return
-	}
-}
+// 	if err := h.writeToStream(stream, next.Message); err != nil {
+// 		fmt.Println("failed to write to stream")
+// 		return
+// 	}
+// }
 
 // readStream reads from the stream into the given buffer, returning the number of bytes read
 func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {

@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
@@ -87,6 +88,11 @@ type bob struct {
 
 	ethPrivKey      *ecdsa.PrivateKey
 	alicePublicKeys *monero.PublicKeyPair
+
+	nextExpectedMessage net.Message
+
+	initiated                     bool
+	providesAmount, desiredAmount uint64
 }
 
 // NewBob returns a new instance of Bob.
@@ -115,6 +121,10 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 		ethPrivKey:   pk,
 		auth:         auth,
 	}, nil
+}
+
+func (b *bob) setNextExpectedMessage(msg net.Message) {
+	b.nextExpectedMessage = msg
 }
 
 // GenerateKeys generates Bob's spend and view keys (S_b, V_b)

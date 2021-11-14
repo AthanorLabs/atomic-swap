@@ -8,9 +8,9 @@ import (
 
 	"github.com/urfave/cli"
 
-	// "github.com/noot/atomic-swap/alice"
-	// "github.com/noot/atomic-swap/bob"
-	// "github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/alice"
+	"github.com/noot/atomic-swap/bob"
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/rpc"
 
@@ -126,6 +126,35 @@ func startAction(c *cli.Context) error {
 }
 
 func runDaemon(c *cli.Context) error {
+	var (
+		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
+	)
+
+	if c.String("monero-endpoint") != "" {
+		moneroEndpoint = c.String("monero-endpoint")
+	} else {
+		moneroEndpoint = common.DefaultBobMoneroEndpoint
+	}
+
+	if c.String("ethereum-endpoint") != "" {
+		ethEndpoint = c.String("ethereum-endpoint")
+	} else {
+		ethEndpoint = common.DefaultEthEndpoint
+	}
+
+	if c.String("ethereum-privkey") != "" {
+		ethPrivKey = c.String("ethereum-privkey")
+	} else {
+		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
+		ethPrivKey = common.DefaultPrivKeyBob
+	}
+
+	if c.String("monero-daemon-endpoint") != "" {
+		daemonEndpoint = c.String("monero-daemon-endpoint")
+	} else {
+		daemonEndpoint = common.DefaultDaemonEndpoint
+	}
+
 	port := uint32(c.Uint("rpc-port"))
 	if port == 0 {
 		port = defaultRPCPort
@@ -133,7 +162,7 @@ func runDaemon(c *cli.Context) error {
 
 	amount := uint64(c.Uint("amount"))
 	if amount == 0 {
-		return errors.New("must specify amount")
+		return errors.New("must specify maximum provided amount")
 	}
 
 	var bootnodes []string
@@ -170,9 +199,26 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
+	var protocol rpc.Protocol
+	switch {
+	case c.Bool("alice"):
+		protocol, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+		if err != nil {
+			return err
+		}
+	case c.Bool("bob"):
+		protocol, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("must specify either --alice or --bob")
+	}
+
 	cfg := &rpc.Config{
-		Port: port,
-		Net:  host,
+		Port:     port,
+		Net:      host,
+		Protocol: protocol,
 	}
 
 	s, err := rpc.NewServer(cfg)
