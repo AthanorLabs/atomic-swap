@@ -12,6 +12,7 @@ import (
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/rpc"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -28,6 +29,9 @@ const (
 	// default libp2p key files
 	defaultAliceLibp2pKey = "alice.key"
 	defaultBobLibp2pKey   = "bob.key"
+
+	// default RPC port
+	defaultRPCPort = 5001
 )
 
 var (
@@ -36,6 +40,7 @@ var (
 	_   = logging.SetLogLevel("bob", "debug")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
+	_   = logging.SetLogLevel("rpc", "debug")
 )
 
 var (
@@ -44,6 +49,10 @@ var (
 		Usage:  "A program for doing atomic swaps between ETH and XMR",
 		Action: startAction,
 		Flags: []cli.Flag{
+			&cli.UintFlag{
+				Name:  "rpc-port",
+				Usage: "port for the daemon RPC server to run on; default 5001",
+			},
 			&cli.BoolFlag{
 				Name:  "alice",
 				Usage: "run as Alice (have ETH, want XMR)",
@@ -90,6 +99,8 @@ func main() {
 
 func startAction(c *cli.Context) error {
 	log.Debug("starting...")
+	return runDaemon(c)
+
 	amount := uint64(c.Uint("amount"))
 	if amount == 0 {
 		return errors.New("must specify amount")
@@ -112,6 +123,56 @@ func startAction(c *cli.Context) error {
 	}
 
 	return errors.New("must specify either --alice or --bob")
+}
+
+func runDaemon(c *cli.Context) error {
+	port := uint32(c.Uint("rpc-port"))
+	if port == 0 {
+		port = defaultRPCPort
+	}
+
+	amount := uint64(c.Uint("amount"))
+	if amount == 0 {
+		return errors.New("must specify amount")
+	}
+
+	var bootnodes []string
+	if c.String("bootnodes") != "" {
+		bootnodes = strings.Split(c.String("bootnodes"), ",")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	netCfg := &net.Config{
+		Ctx:           ctx,
+		Port:          defaultAlicePort,                    // TODO: make flag
+		Provides:      []net.ProvidesCoin{net.ProvidesETH}, // TODO: make flag
+		MaximumAmount: []uint64{amount},
+		ExchangeRate:  defaultExchangeRate,
+		KeyFile:       defaultAliceLibp2pKey,
+		Bootnodes:     bootnodes,
+	}
+
+	host, err := net.NewHost(netCfg)
+	if err != nil {
+		return err
+	}
+
+	if err = host.Start(); err != nil {
+		return err
+	}
+
+	cfg := &rpc.Config{
+		Port: port,
+		Net:  host,
+	}
+
+	s := rpc.NewServer(cfg)
+	go s.Start()
+
+	wait(ctx)
+	return nil
 }
 
 func runAlice(c *cli.Context, amount uint64) error {

@@ -10,7 +10,7 @@ import (
 )
 
 type Net interface {
-	Discover(provides *net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 }
 
 type NetService struct {
@@ -34,5 +34,6 @@ type DiscoverResponse struct {
 
 // Discover discovers peers over the network that provide a certain coin up for `SearchTime` duration of time.
 func (s *NetService) Discover(r *http.Request, req *DiscoverRequest, resp *DiscoverResponse) error {
+	resp.Peers = []string{"noot"}
 	return nil
 }

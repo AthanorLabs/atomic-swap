@@ -18,7 +18,10 @@ func NewCodec() *Codec {
 }
 
 func (c *Codec) NewRequest(req *http.Request) rpc.CodecRequest {
-	return new(CodecRequest)
+	outer := &CodecRequest{}
+	inner := json2.NewCodec().NewRequest(req)
+	outer.CodecRequest = inner.(*json2.CodecRequest)
+	return outer
 }
 
 type CodecRequest struct {

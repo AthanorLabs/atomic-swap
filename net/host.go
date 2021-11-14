@@ -12,6 +12,7 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/noot/atomic-swap/common"
 
@@ -45,6 +46,8 @@ type Host interface {
 	SetOutgoingCh(<-chan *MessageInfo)
 	ReceivedMessageCh() <-chan *MessageInfo
 	SetNextExpectedMessage(m Message)
+
+	Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 }
 
 type host struct {
@@ -138,6 +141,10 @@ func NewHost(cfg *Config) (*host, error) {
 	}
 
 	return hst, nil
+}
+
+func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+	return h.discovery.discover(provides, searchTime)
 }
 
 func (h *host) getBootnodes() []peer.AddrInfo {

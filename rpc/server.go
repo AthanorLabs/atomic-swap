@@ -33,12 +33,13 @@ func NewServer(cfg *Config) *Server {
 }
 
 func (s *Server) Start() {
-	r := mux.NewRouter()
-	r.Handle("/", s.s)
-
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), r)
-		if err != nil {
+		r := mux.NewRouter()
+		r.Handle("/", s.s)
+
+		log.Infof("starting RPC server on http://localhost:%d", s.port)
+
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), r); err != nil {
 			log.Errorf("failed to start RPC server: %s", err)
 		}
 	}()
