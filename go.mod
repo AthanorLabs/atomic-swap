@@ -6,6 +6,8 @@ require (
 	filippo.io/edwards25519 v1.0.0-rc.1
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/ethereum/go-ethereum v1.10.11
+	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/rpc v1.2.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.15.1
 	github.com/libp2p/go-libp2p-core v0.9.0

@@ -14,15 +14,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
 )
 
 var (
-	_   Alice = &alice{}
-	log       = logging.Logger("alice")
+	log = logging.Logger("alice")
 )
 
 func reverse(s []byte) []byte {
@@ -32,41 +33,8 @@ func reverse(s []byte) []byte {
 	return s
 }
 
-// Alice contains the functions that will be called by a user who owns ETH
+// alice implements the functions that will be called by a user who owns ETH
 // and wishes to swap for XMR.
-type Alice interface {
-	// GenerateKeys generates Alice's monero spend and view keys (S_b, V_b)
-	// It returns Alice's public spend key
-	GenerateKeys() (*monero.PublicKeyPair, error)
-
-	// SetBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
-	// private view key (used to check XMR balance before calling Ready())
-	SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey)
-
-	// DeployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
-	DeployAndLockETH(amount uint64) (ethcommon.Address, error)
-
-	// Ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
-	// call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
-	// If time t_0 has passed, there is no point of calling Ready().
-	Ready() error
-
-	// WatchForClaim watches for Bob to call Claim() on the Swap contract.
-	// When Claim() is called, revealing Bob's secret s_b, the secret key corresponding
-	// to (s_a + s_b) will be sent over this channel, allowing Alice to claim the XMR it contains.
-	WatchForClaim() (<-chan *monero.PrivateKeyPair, error)
-
-	// Refund calls the Refund() method in the Swap contract, revealing Alice's secret
-	// and returns to her the ether in the contract.
-	// If time t_1 passes and Claim() has not been called, Alice should call Refund().
-	Refund() error
-
-	// CreateMoneroWallet creates Alice's monero wallet after Bob calls Claim().
-	CreateMoneroWallet(*monero.PrivateKeyPair) (monero.Address, error)
-
-	NotifyClaimed(txHash string) (monero.Address, error)
-}
-
 type alice struct {
 	ctx    context.Context
 	t0, t1 time.Time //nolint
@@ -81,6 +49,11 @@ type alice struct {
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
 	auth       *bind.TransactOpts
+
+	nextExpectedMessage net.Message
+
+	initiated                     bool
+	providesAmount, desiredAmount uint64
 }
 
 // NewAlice returns a new instance of Alice.
@@ -96,24 +69,43 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 	if err != nil {
 		return nil, err
 	}
+
 	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
+
 	return &alice{
-		ctx:        ctx, // TODO: add cancel
-		ethPrivKey: pk,
-		ethClient:  ec,
-		client:     monero.NewClient(moneroEndpoint),
-		auth:       auth,
+		ctx:                 ctx,
+		ethPrivKey:          pk,
+		ethClient:           ec,
+		client:              monero.NewClient(moneroEndpoint),
+		auth:                auth,
+		nextExpectedMessage: &net.InitiateMessage{},
 	}, nil
 }
 
-func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
+func (a *alice) setNextExpectedMessage(msg net.Message) {
+	a.nextExpectedMessage = msg
+}
+
+// generateKeys generates Alice's monero spend and view keys (S_b, V_b)
+// It returns Alice's public spend key
+func (a *alice) generateKeys() (*monero.PublicKeyPair, error) {
+	if a.privkeys != nil {
+		return a.pubkeys, nil
+	}
+
 	var err error
 	a.privkeys, err = monero.GenerateKeys()
 	if err != nil {
+		return nil, err
+	}
+
+	// TODO: configure basepath
+	if err := common.WriteKeysToFile("./alice-xmr", a.privkeys); err != nil {
 		return nil, err
 	}
 
@@ -121,12 +113,15 @@ func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
 	return a.pubkeys, nil
 }
 
-func (a *alice) SetBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
+// setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
+// private view key (used to check XMR balance before calling Ready())
+func (a *alice) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
 	a.bobSpendKey = sk
 	a.bobViewKey = vk
 }
 
-func (a *alice) DeployAndLockETH(amount uint64) (ethcommon.Address, error) {
+// deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
+func (a *alice) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	pkAlice := reverse(a.pubkeys.SpendKey().Bytes())
 	pkBob := reverse(a.bobSpendKey.Bytes())
 
@@ -156,12 +151,18 @@ func (a *alice) DeployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	return address, nil
 }
 
-func (a *alice) Ready() error {
+// ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
+// call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
+// If time t_0 has passed, there is no point of calling Ready().
+func (a *alice) ready() error {
 	_, err := a.contract.SetReady(a.auth)
 	return err
 }
 
-func (a *alice) WatchForClaim() (<-chan *monero.PrivateKeyPair, error) {
+// watchForClaim watches for Bob to call Claim() on the Swap contract.
+// When Claim() is called, revealing Bob's secret s_b, the secret key corresponding
+// to (s_a + s_b) will be sent over this channel, allowing Alice to claim the XMR it contains.
+func (a *alice) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
 		Context: a.ctx,
 	}
@@ -219,14 +220,18 @@ func (a *alice) WatchForClaim() (<-chan *monero.PrivateKeyPair, error) {
 	return out, nil
 }
 
-func (a *alice) Refund() error {
+// refund calls the Refund() method in the Swap contract, revealing Alice's secret
+// and returns to her the ether in the contract.
+// If time t_1 passes and Claim() has not been called, Alice should call Refund().
+func (a *alice) refund() error { //nolint:unused
 	secret := a.privkeys.SpendKeyBytes()
 	s := big.NewInt(0).SetBytes(reverse(secret))
 	_, err := a.contract.Refund(a.auth, s)
 	return err
 }
 
-func (a *alice) CreateMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
+// createMoneroWallet creates Alice's monero wallet after Bob calls Claim().
+func (a *alice) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-swap-wallet-%s", t)
 	if err := a.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
@@ -244,24 +249,20 @@ func (a *alice) CreateMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address,
 		return "", err
 	}
 
-	accounts, err := a.client.GetAccounts()
-	if err != nil {
-		return "", err
-	}
-
-	log.Debug(accounts)
 	log.Info("wallet balance: ", balance.Balance)
 	return kpAB.Address(), nil
 }
 
-func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
+// handleNotifyClaimed handles Bob's reveal after he calls Claim().
+// it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
+func (a *alice) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	receipt, err := a.ethClient.TransactionReceipt(a.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err
 	}
 
 	if len(receipt.Logs) == 0 {
-		return "", errors.New("no logs!!!")
+		return "", errors.New("claim transaction has no logs")
 	}
 
 	abi, err := swap.SwapMetaData.GetAbi()
@@ -289,21 +290,12 @@ func (a *alice) NotifyClaimed(txHash string) (monero.Address, error) {
 	}
 
 	skAB := monero.SumPrivateSpendKeys(skB, a.privkeys.SpendKey())
-	// kpAB, err := skAB.AsPrivateKeyPair()
-	// if err != nil {
-	// 	return "", err
-	// }
-
 	vkAB := monero.SumPrivateViewKeys(a.bobViewKey, a.privkeys.ViewKey())
-	//log.Debug("private view key: ", vkAB.Hex())
-	//log.Debug("public view key: ", vkAB.Public().Hex())
-	//log.Debug("private view key from spend key: ", kpAB.ViewKey().Hex())
-
 	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
 	pkAB := kpAB.PublicKeyPair()
 	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
 	log.Info("public view keys: ", pkAB.ViewKey().Hex())
 
-	return a.CreateMoneroWallet(kpAB)
+	return a.createMoneroWallet(kpAB)
 }

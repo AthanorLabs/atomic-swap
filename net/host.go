@@ -2,21 +2,14 @@ package net
 
 import (
 	"context"
-	crand "crypto/rand"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	mrand "math/rand"
-	"os"
-	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/noot/atomic-swap/common"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -26,7 +19,7 @@ import (
 )
 
 const (
-	protocolID     = "/eth-xmr-atomic-swap/0"
+	protocolID     = "/atomic-swap"
 	maxReads       = 128
 	defaultKeyFile = "net.key"
 )
@@ -42,29 +35,24 @@ type MessageInfo struct {
 type Host interface {
 	Start() error
 	Stop() error
-	SetOutgoingCh(<-chan *MessageInfo)
-	ReceivedMessageCh() <-chan *MessageInfo
-	SetNextExpectedMessage(m Message)
+
+	Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Query(who peer.AddrInfo) (*QueryResponse, error)
+	Initiate(who peer.AddrInfo, msg *InitiateMessage) error
 }
 
 type host struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	h            libp2phost.Host
-	helloMessage *HelloMessage
-	discovery    *discovery
+	h             libp2phost.Host
+	bootnodes     []peer.AddrInfo
+	queryResponse *QueryResponse
+	discovery     *discovery
+	handler       Handler
 
-	bootnodes []peer.AddrInfo
-	// messages received from the rest of the program, to be sent out
-	outCh <-chan *MessageInfo
-
-	// messages received from the network, to be sent to the rest of the program
-	inCh chan *MessageInfo
-
-	// next expected message from the network
-	// empty, is just used for type matching
-	nextExpectedMessage Message
+	queryMu  sync.Mutex
+	queryBuf []byte
 }
 
 // Config is used to configure the network Host.
@@ -76,6 +64,7 @@ type Config struct {
 	ExchangeRate  common.ExchangeRate
 	KeyFile       string
 	Bootnodes     []string
+	Handler       Handler
 }
 
 func NewHost(cfg *Config) (*host, error) {
@@ -117,19 +106,19 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
-	inCh := make(chan *MessageInfo)
-
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
 		ctx:    ourCtx,
 		cancel: cancel,
 		h:      h,
-		helloMessage: &HelloMessage{
+		queryResponse: &QueryResponse{
 			Provides:      cfg.Provides,
 			MaximumAmount: cfg.MaximumAmount,
+			ExchangeRate:  cfg.ExchangeRate,
 		},
+		handler:   cfg.Handler,
 		bootnodes: bns,
-		inCh:      inCh,
+		queryBuf:  make([]byte, 2048),
 	}
 
 	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Provides...)
@@ -140,30 +129,54 @@ func NewHost(cfg *Config) (*host, error) {
 	return hst, nil
 }
 
+func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+	return h.discovery.discover(provides, searchTime)
+}
+
+func (h *host) Start() error {
+	//h.h.SetStreamHandler(protocolID, h.handleStream)
+	h.h.SetStreamHandler(protocolID+queryID, h.handleQueryStream)
+	h.h.SetStreamHandler(protocolID+subProtocolID, h.handleProtocolStream)
+
+	h.h.Network().SetConnHandler(h.handleConn)
+	for _, addr := range h.multiaddrs() {
+		log.Info("Started listening: address=", addr)
+	}
+
+	if err := h.bootstrap(); err != nil {
+		return err
+	}
+
+	if err := h.discovery.start(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// close closes host services and the libp2p host (host services first)
+func (h *host) Stop() error {
+	h.cancel()
+
+	if err := h.discovery.stop(); err != nil {
+		return err
+	}
+
+	// close libp2p host
+	if err := h.h.Close(); err != nil {
+		log.Error("Failed to close libp2p host", "error", err)
+		return err
+	}
+
+	return nil
+}
+
 func (h *host) getBootnodes() []peer.AddrInfo {
 	addrs := h.bootnodes
 	for _, p := range h.h.Network().Peers() {
 		addrs = append(addrs, h.h.Peerstore().PeerInfo(p))
 	}
 	return addrs
-}
-
-func (h *host) SetOutgoingCh(ch <-chan *MessageInfo) {
-	h.outCh = ch
-}
-
-func (h *host) SetNextExpectedMessage(m Message) {
-	h.nextExpectedMessage = m
-}
-
-func (h *host) Start() error {
-	h.nextExpectedMessage = &HelloMessage{}
-	h.h.SetStreamHandler(protocolID, h.handleStream)
-	h.h.Network().SetConnHandler(h.handleConn)
-	for _, addr := range h.multiaddrs() {
-		log.Info("Started listening: address=", addr)
-	}
-	return h.bootstrap()
 }
 
 // multiaddrs returns the multiaddresses of the host
@@ -177,50 +190,6 @@ func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
 		multiaddrs = append(multiaddrs, multiaddr)
 	}
 	return multiaddrs
-}
-
-// close closes host services and the libp2p host (host services first)
-func (h *host) Stop() error {
-	h.cancel()
-
-	// close libp2p host
-	if err := h.h.Close(); err != nil {
-		log.Error("Failed to close libp2p host", "error", err)
-		return err
-	}
-
-	return nil
-}
-
-func (h *host) SendMessage(to peer.ID, msg Message) error {
-	_, err := h.send(to, msg)
-	return err
-}
-
-func (h *host) ReceivedMessageCh() <-chan *MessageInfo {
-	return h.inCh
-}
-
-// send creates a new outbound stream with the given peer and writes the message. It also returns
-// the newly created stream.
-func (h *host) send(p peer.ID, msg Message) (libp2pnetwork.Stream, error) {
-	// open outbound stream with host protocol id
-	stream, err := h.h.NewStream(h.ctx, p, protocolID)
-	if err != nil {
-		log.Debug("failed to open new stream with peer", "peer", p, "error", err)
-		return nil, err
-	}
-
-	log.Debug(
-		"Opened stream, peer=", p,
-	)
-
-	err = h.writeToStream(stream, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return stream, nil
 }
 
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
@@ -249,102 +218,6 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 
 func (h *host) handleConn(conn libp2pnetwork.Conn) {
 	log.Debug("incoming connection, peer=", conn.RemotePeer())
-
-	stream, err := h.send(conn.RemotePeer(), h.helloMessage)
-	if err != nil {
-		log.Info("failed to send message, closing stream")
-		_ = stream.Close()
-		return
-	}
-
-	go h.handleStream(stream)
-}
-
-func (h *host) handleStream(stream libp2pnetwork.Stream) {
-	msgBytes := make([]byte, 2048)
-
-	for {
-		tot, err := readStream(stream, msgBytes[:])
-		if errors.Is(err, io.EOF) {
-			return
-		} else if err != nil {
-			//log.Debug("failed to read from stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
-			_ = stream.Close()
-			return
-		}
-
-		// decode message based on message type
-		msg, err := h.decodeMessage(msgBytes[:tot])
-		if err != nil {
-			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
-			continue
-		}
-
-		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), " msg=", msg.String(),
-		)
-
-		h.handleMessage(stream, msg)
-	}
-}
-
-func (h *host) decodeMessage(b []byte) (Message, error) {
-	switch h.nextExpectedMessage.(type) {
-	case *HelloMessage:
-		var m *HelloMessage
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *SendKeysMessage:
-		var m *SendKeysMessage
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *NotifyContractDeployed:
-		var m *NotifyContractDeployed
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *NotifyXMRLock:
-		var m *NotifyXMRLock
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case *NotifyClaimed:
-		var m *NotifyClaimed
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	default:
-		return nil, errors.New("not expecting any more messages")
-	}
-}
-
-func (h *host) handleMessage(stream libp2pnetwork.Stream, m Message) {
-	h.inCh <- &MessageInfo{
-		Message: m,
-		Who:     stream.Conn().RemotePeer(),
-	}
-
-	next := <-h.outCh
-	if next == nil {
-		fmt.Println("no more outgoing messages")
-		return
-	}
-
-	if next.Who != stream.Conn().RemotePeer() {
-		fmt.Println("peer ID mismatch")
-	}
-
-	if err := h.writeToStream(stream, next.Message); err != nil {
-		fmt.Println("failed to write to stream")
-		return
-	}
 }
 
 // readStream reads from the stream into the given buffer, returning the number of bytes read
@@ -395,10 +268,10 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 func (h *host) bootstrap() error {
 	failed := 0
 	for _, addrInfo := range h.bootnodes {
-		log.Debug("bootstrapping to peer", "peer", addrInfo.ID)
+		log.Debugf("bootstrapping to peer: peer=%s", addrInfo.ID)
 		err := h.h.Connect(h.ctx, addrInfo)
 		if err != nil {
-			log.Debug("failed to bootstrap to peer", "error", err)
+			log.Debugf("failed to bootstrap to peer: err=%s", err)
 			failed++
 		}
 	}
@@ -408,135 +281,4 @@ func (h *host) bootstrap() error {
 	}
 
 	return nil
-}
-
-// stringToAddrInfos converts a single string peer id to AddrInfo
-func stringToAddrInfo(s string) (peer.AddrInfo, error) {
-	maddr, err := ma.NewMultiaddr(s)
-	if err != nil {
-		return peer.AddrInfo{}, err
-	}
-	p, err := peer.AddrInfoFromP2pAddr(maddr)
-	if err != nil {
-		return peer.AddrInfo{}, err
-	}
-	return *p, err
-}
-
-// stringsToAddrInfos converts a string of peer ids to AddrInfo
-func stringsToAddrInfos(peers []string) ([]peer.AddrInfo, error) {
-	pinfos := make([]peer.AddrInfo, len(peers))
-	for i, p := range peers {
-		p, err := stringToAddrInfo(p)
-		if err != nil {
-			return nil, err
-		}
-		pinfos[i] = p
-	}
-	return pinfos, nil
-}
-
-// generateKey generates an ed25519 private key and writes it to the data directory
-// If the seed is zero, we use real cryptographic randomness. Otherwise, we use a
-// deterministic randomness source to make keys the same across multiple runs.
-func generateKey(seed int64, fp string) (crypto.PrivKey, error) {
-	var r io.Reader
-	if seed == 0 {
-		r = crand.Reader
-	} else {
-		r = mrand.New(mrand.NewSource(seed)) //nolint
-	}
-	key, _, err := crypto.GenerateEd25519Key(r)
-	if err != nil {
-		return nil, err
-	}
-	if seed == 0 {
-		if err = saveKey(key, fp); err != nil {
-			return nil, err
-		}
-	}
-	return key, nil
-}
-
-// loadKey attempts to load a private key from the provided filepath
-func loadKey(fp string) (crypto.PrivKey, error) {
-	keyData, err := ioutil.ReadFile(filepath.Clean(fp))
-	if err != nil {
-		return nil, err
-	}
-	dec := make([]byte, hex.DecodedLen(len(keyData)))
-	_, err = hex.Decode(dec, keyData)
-	if err != nil {
-		return nil, err
-	}
-	return crypto.UnmarshalEd25519PrivateKey(dec)
-}
-
-// saveKey attempts to save a private key to the provided filepath
-func saveKey(priv crypto.PrivKey, fp string) (err error) {
-	f, err := os.Create(filepath.Clean(fp))
-	if err != nil {
-		return err
-	}
-	raw, err := priv.Raw()
-	if err != nil {
-		return err
-	}
-	enc := make([]byte, hex.EncodedLen(len(raw)))
-	hex.Encode(enc, raw)
-	if _, err = f.Write(enc); err != nil {
-		return err
-	}
-	return f.Close()
-}
-
-func uint64ToLEB128(in uint64) []byte {
-	var out []byte
-	for {
-		b := uint8(in & 0x7f)
-		in >>= 7
-		if in != 0 {
-			b |= 0x80
-		}
-		out = append(out, b)
-		if in == 0 {
-			break
-		}
-	}
-	return out
-}
-
-func readLEB128ToUint64(r io.Reader, buf []byte) (uint64, int, error) {
-	if len(buf) == 0 {
-		return 0, 0, errors.New("buffer has length 0")
-	}
-
-	var out uint64
-	var shift uint
-
-	maxSize := 10 // Max bytes in LEB128 encoding of uint64 is 10.
-	bytesRead := 0
-
-	for {
-		n, err := r.Read(buf[:1])
-		if err != nil {
-			return 0, bytesRead, err
-		}
-
-		bytesRead += n
-
-		b := buf[0]
-		out |= uint64(0x7F&b) << shift
-		if b&0x80 == 0 {
-			break
-		}
-
-		maxSize--
-		if maxSize == 0 {
-			return 0, bytesRead, fmt.Errorf("invalid LEB128 encoded data")
-		}
-
-		shift += 7
-	}
-	return out, bytesRead, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/rpc"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -28,6 +29,9 @@ const (
 	// default libp2p key files
 	defaultAliceLibp2pKey = "alice.key"
 	defaultBobLibp2pKey   = "bob.key"
+
+	// default RPC port
+	defaultRPCPort = 5001
 )
 
 var (
@@ -36,14 +40,19 @@ var (
 	_   = logging.SetLogLevel("bob", "debug")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
+	_   = logging.SetLogLevel("rpc", "debug")
 )
 
 var (
 	app = &cli.App{
 		Name:   "atomic-swap",
 		Usage:  "A program for doing atomic swaps between ETH and XMR",
-		Action: startAction,
+		Action: runDaemon,
 		Flags: []cli.Flag{
+			&cli.UintFlag{
+				Name:  "rpc-port",
+				Usage: "port for the daemon RPC server to run on; default 5001",
+			},
 			&cli.BoolFlag{
 				Name:  "alice",
 				Usage: "run as Alice (have ETH, want XMR)",
@@ -83,111 +92,35 @@ var (
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		log.Debug(err)
+		log.Error(err)
 		os.Exit(1)
 	}
 }
 
-func startAction(c *cli.Context) error {
-	log.Debug("starting...")
-	amount := uint64(c.Uint("amount"))
-	if amount == 0 {
-		return errors.New("must specify amount")
-	}
-
-	if c.Bool("alice") {
-		if err := runAlice(c, amount); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	if c.Bool("bob") {
-		if err := runBob(c, amount); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	return errors.New("must specify either --alice or --bob")
-}
-
-func runAlice(c *cli.Context, amount uint64) error {
-	var (
-		moneroEndpoint, ethEndpoint, ethPrivKey string
-	)
-
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
-	} else {
-		moneroEndpoint = common.DefaultAliceMoneroEndpoint
-	}
-
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
-
-	if c.String("ethereum-privkey") != "" {
-		ethPrivKey = c.String("ethereum-privkey")
-	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key at index 0")
-		ethPrivKey = common.DefaultPrivKeyAlice
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	alice, err := alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
-	if err != nil {
-		return err
-	}
-
-	log.Debug("instantiated Alice session")
-
-	var bootnodes []string
-	if c.String("bootnodes") != "" {
-		bootnodes = strings.Split(c.String("bootnodes"), ",")
-	}
-
-	netCfg := &net.Config{
-		Ctx:           ctx,
-		Port:          defaultAlicePort,
-		Provides:      []net.ProvidesCoin{net.ProvidesETH},
-		MaximumAmount: []uint64{amount},
-		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultAliceLibp2pKey,
-		Bootnodes:     bootnodes,
-	}
-
-	host, err := net.NewHost(netCfg)
-	if err != nil {
-		return err
-	}
-
-	n := &node{
-		ctx:    ctx,
-		cancel: cancel,
-		alice:  alice,
-		host:   host,
-		amount: amount,
-	}
-
-	return n.doProtocolAlice()
-}
-
-func runBob(c *cli.Context, amount uint64) error {
+func runDaemon(c *cli.Context) error {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
 	)
 
+	isAlice := c.Bool("alice")
+	isBob := c.Bool("bob")
+
+	if !isAlice && !isBob {
+		return errors.New("must specify either --alice or --bob")
+	}
+
+	if isAlice && isBob {
+		return errors.New("must specify only one of --alice or --bob")
+	}
+
 	if c.String("monero-endpoint") != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
+		if isAlice {
+			moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		} else {
+			moneroEndpoint = common.DefaultBobMoneroEndpoint
+		}
 	}
 
 	if c.String("ethereum-endpoint") != "" {
@@ -199,25 +132,51 @@ func runBob(c *cli.Context, amount uint64) error {
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKey = c.String("ethereum-privkey")
 	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
-		ethPrivKey = common.DefaultPrivKeyBob
+		log.Warn("no ethereum private key provided, using ganache deterministic key")
+		if isAlice {
+			ethPrivKey = common.DefaultPrivKeyAlice
+		} else {
+			ethPrivKey = common.DefaultPrivKeyBob
+		}
 	}
 
 	if c.String("monero-daemon-endpoint") != "" {
 		daemonEndpoint = c.String("monero-daemon-endpoint")
 	} else {
-		daemonEndpoint = common.DefaultDaemonEndpoint
+		daemonEndpoint = common.DefaultMoneroDaemonEndpoint
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bob, err := bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
-	if err != nil {
-		return err
+	var (
+		protocol rpc.Protocol
+		err      error
+	)
+	switch {
+	case isAlice:
+		protocol, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+		if err != nil {
+			return err
+		}
+	case isBob:
+		protocol, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("must specify either --alice or --bob")
 	}
 
-	log.Debug("instantiated Bob session")
+	port := uint32(c.Uint("rpc-port"))
+	if port == 0 {
+		port = defaultRPCPort
+	}
+
+	amount := uint64(c.Uint("amount"))
+	if amount == 0 {
+		return errors.New("must specify maximum provided amount")
+	}
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
@@ -226,12 +185,20 @@ func runBob(c *cli.Context, amount uint64) error {
 
 	netCfg := &net.Config{
 		Ctx:           ctx,
-		Port:          defaultBobPort,
-		Provides:      []net.ProvidesCoin{net.ProvidesXMR},
+		Port:          defaultAlicePort,                    // TODO: make flag
+		Provides:      []net.ProvidesCoin{net.ProvidesETH}, // TODO: make flag
 		MaximumAmount: []uint64{amount},
 		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultBobLibp2pKey,
+		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
 		Bootnodes:     bootnodes,
+		Handler:       protocol,
+	}
+
+	if c.Bool("bob") {
+		netCfg.Port = defaultBobPort
+		netCfg.Provides = []net.ProvidesCoin{net.ProvidesXMR}
+		netCfg.KeyFile = defaultBobLibp2pKey
+		port = defaultRPCPort + 1
 	}
 
 	host, err := net.NewHost(netCfg)
@@ -239,13 +206,23 @@ func runBob(c *cli.Context, amount uint64) error {
 		return err
 	}
 
-	n := &node{
-		ctx:    ctx,
-		cancel: cancel,
-		bob:    bob,
-		host:   host,
-		amount: amount,
+	if err = host.Start(); err != nil {
+		return err
 	}
 
-	return n.doProtocolBob()
+	cfg := &rpc.Config{
+		Port:     port,
+		Net:      host,
+		Protocol: protocol,
+	}
+
+	s, err := rpc.NewServer(cfg)
+	if err != nil {
+		return err
+	}
+
+	go s.Start()
+
+	wait(ctx)
+	return nil
 }

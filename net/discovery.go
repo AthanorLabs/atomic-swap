@@ -7,6 +7,7 @@ import (
 
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	libp2pdiscovery "github.com/libp2p/go-libp2p-discovery"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -52,7 +53,7 @@ func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.
 	}, nil
 }
 
-func (d *discovery) start() error { //nolint:unused
+func (d *discovery) start() error {
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
@@ -66,11 +67,11 @@ func (d *discovery) start() error { //nolint:unused
 	return nil
 }
 
-func (d *discovery) stop() error { //nolint:unused
+func (d *discovery) stop() error {
 	return d.dht.Close()
 }
 
-func (d *discovery) advertise() { //nolint:unused
+func (d *discovery) advertise() {
 	ttl := initialAdvertisementTimeout
 
 	for {
@@ -79,14 +80,14 @@ func (d *discovery) advertise() { //nolint:unused
 			log.Debug("advertising in the DHT...")
 			err := d.dht.Bootstrap(d.ctx)
 			if err != nil {
-				log.Warn("failed to bootstrap DHT", "error", err)
+				log.Warnf("failed to bootstrap DHT: err=%s", err)
 				continue
 			}
 
 			for _, provides := range d.provides {
 				ttl, err = d.rd.Advertise(d.ctx, string(provides))
 				if err != nil {
-					log.Debug("failed to advertise in the DHT", "error", err)
+					log.Debugf("failed to advertise in the DHT: err=%s", err)
 					ttl = tryAdvertiseTimeout
 				}
 			}
@@ -97,7 +98,7 @@ func (d *discovery) advertise() { //nolint:unused
 }
 
 func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) { //nolint:unused
-	log.Debug("attempting to find DHT peers...")
+	log.Debugf("attempting to find DHT peers that provide %s for %s...", provides, searchTime)
 
 	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))
 	if err != nil {
@@ -119,7 +120,7 @@ func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([
 				continue
 			}
 
-			log.Debug("found new peer via DHT", "peer", peer.ID)
+			log.Debugf("found new peer via DHT: peer=%s", peer.ID)
 			peers = append(peers, peer)
 
 			// // found a peer, try to connect if we need more peers
@@ -129,8 +130,8 @@ func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([
 			// 		logger.Trace("failed to connect to discovered peer", "peer", peer.ID, "err", err)
 			// 	}
 			// } else {
-			// 	d.h.Peerstore().AddAddrs(peer.ID, peer.Addrs, peerstore.PermanentAddrTTL)
-			// 	return
+			d.h.Peerstore().AddAddrs(peer.ID, peer.Addrs, peerstore.PermanentAddrTTL)
+			//return
 			// }
 		}
 	}

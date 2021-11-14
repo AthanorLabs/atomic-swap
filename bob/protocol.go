@@ -15,54 +15,17 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
 )
 
 var (
-	_   Bob = &bob{}
-	log     = logging.Logger("bob")
+	log = logging.Logger("bob")
 )
-
-// Bob contains the functions that will be called by a user who owns XMR
-// and wishes to swap for ETH.
-type Bob interface {
-	// GenerateKeys generates Bob's spend and view keys (S_b, V_b)
-	// It returns Bob's public spend key and his private view key, so that Alice can see
-	// if the funds are locked.
-	GenerateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error)
-
-	// SetAlicePublicKeys sets Alice's public spend and view keys
-	SetAlicePublicKeys(*monero.PublicKeyPair)
-
-	// SetContract sets the contract in which Alice has locked her ETH.
-	SetContract(address ethcommon.Address) error
-
-	// WatchForReady watches for Alice to call Ready() on the swap contract, allowing
-	// Bob to call Claim().
-	WatchForReady() (<-chan struct{}, error)
-
-	// WatchForRefund watches for the Refund event in the contract.
-	// This should be called before LockFunds.
-	// If a keypair is sent over this channel, the rest of the protocol should be aborted.
-	//
-	// If Alice chooses to refund and thus reveals s_a,
-	// the private spend and view keys that contain the previously locked monero
-	// ((s_a + s_b), (v_a + v_b)) are sent over the channel.
-	// Bob can then use these keys to move his funds if he wishes.
-	WatchForRefund() (<-chan *monero.PrivateKeyPair, error)
-
-	// LockFunds locks Bob's funds in the monero account specified by public key
-	// (S_a + S_b), viewable with (V_a + V_b)
-	// It accepts the amount to lock as the input
-	// TODO: units
-	LockFunds(amount uint64) (monero.Address, error)
-
-	// ClaimFunds redeem's Bob's funds on ethereum
-	ClaimFunds() (string, error)
-}
 
 // SwapContract is the interface that must be implemented by the Swap contract.
 type SwapContract interface {
@@ -71,6 +34,8 @@ type SwapContract interface {
 	Claim(opts *bind.TransactOpts, _s *big.Int) (*ethtypes.Transaction, error)
 }
 
+// bob implements the functions that will be called by a user who owns XMR
+// and wishes to swap for ETH.
 type bob struct {
 	ctx    context.Context
 	t0, t1 time.Time //nolint
@@ -87,6 +52,11 @@ type bob struct {
 
 	ethPrivKey      *ecdsa.PrivateKey
 	alicePublicKeys *monero.PublicKeyPair
+
+	nextExpectedMessage net.Message
+
+	initiated                     bool
+	providesAmount, desiredAmount uint64
 }
 
 // NewBob returns a new instance of Bob.
@@ -108,20 +78,36 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 	}
 
 	return &bob{
-		ctx:          ctx,
-		client:       monero.NewClient(moneroEndpoint),
-		daemonClient: monero.NewClient(moneroDaemonEndpoint),
-		ethClient:    ec,
-		ethPrivKey:   pk,
-		auth:         auth,
+		ctx:                 ctx,
+		client:              monero.NewClient(moneroEndpoint),
+		daemonClient:        monero.NewClient(moneroDaemonEndpoint),
+		ethClient:           ec,
+		ethPrivKey:          pk,
+		auth:                auth,
+		nextExpectedMessage: &net.InitiateMessage{},
 	}, nil
 }
 
-// GenerateKeys generates Bob's spend and view keys (S_b, V_b)
-func (b *bob) GenerateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error) {
+func (b *bob) setNextExpectedMessage(msg net.Message) {
+	b.nextExpectedMessage = msg
+}
+
+// generateKeys generates Bob's spend and view keys (S_b, V_b)
+// It returns Bob's public spend key and his private view key, so that Alice can see
+// if the funds are locked.
+func (b *bob) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error) {
+	if b.privkeys != nil {
+		return b.pubkeys.SpendKey(), b.privkeys.ViewKey(), nil
+	}
+
 	var err error
 	b.privkeys, err = monero.GenerateKeys()
 	if err != nil {
+		return nil, nil, err
+	}
+
+	// TODO: configure basepath
+	if err := common.WriteKeysToFile("./bob-xmr", b.privkeys); err != nil {
 		return nil, nil, err
 	}
 
@@ -129,18 +115,22 @@ func (b *bob) GenerateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error) 
 	return b.pubkeys.SpendKey(), b.privkeys.ViewKey(), nil
 }
 
-func (b *bob) SetAlicePublicKeys(sk *monero.PublicKeyPair) {
+// setAlicePublicKeys sets Alice's public spend and view keys
+func (b *bob) setAlicePublicKeys(sk *monero.PublicKeyPair) {
 	b.alicePublicKeys = sk
 }
 
-func (b *bob) SetContract(address ethcommon.Address) error {
+// setContract sets the contract in which Alice has locked her ETH.
+func (b *bob) setContract(address ethcommon.Address) error {
 	var err error
 	b.contractAddr = address
 	b.contract, err = swap.NewSwap(address, b.ethClient)
 	return err
 }
 
-func (b *bob) WatchForReady() (<-chan struct{}, error) {
+// watchForReady watches for Alice to call Ready() on the swap contract, allowing
+// Bob to call Claim().
+func (b *bob) watchForReady() (<-chan struct{}, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
 		Context: b.ctx,
 	}
@@ -176,7 +166,15 @@ func (b *bob) WatchForReady() (<-chan struct{}, error) {
 	return done, nil
 }
 
-func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
+// watchForRefund watches for the Refund event in the contract.
+// This should be called before LockFunds.
+// If a keypair is sent over this channel, the rest of the protocol should be aborted.
+//
+// If Alice chooses to refund and thus reveals s_a,
+// the private spend and view keys that contain the previously locked monero
+// ((s_a + s_b), (v_a + v_b)) are sent over the channel.
+// Bob can then use these keys to move his funds if he wishes.
+func (b *bob) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
 		Context: b.ctx,
 	}
@@ -231,22 +229,25 @@ func (b *bob) WatchForRefund() (<-chan *monero.PrivateKeyPair, error) {
 	return out, nil
 }
 
-func (b *bob) LockFunds(amount uint64) (monero.Address, error) {
+// lockFunds locks Bob's funds in the monero account specified by public key
+// (S_a + S_b), viewable with (V_a + V_b)
+// It accepts the amount to lock as the input
+// TODO: units
+func (b *bob) lockFunds(amount uint64) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(b.alicePublicKeys, b.pubkeys)
 
-	log.Info("public spend keys: ", kp.SpendKey().Hex())
-	log.Info("public view keys: ", kp.ViewKey().Hex())
-
-	log.Info("going to lock funds...")
+	log.Debug("public spend keys: ", kp.SpendKey().Hex())
+	log.Debug("public view keys: ", kp.ViewKey().Hex())
+	log.Infof("going to lock XMR funds, amount=%d", amount)
 
 	balance, err := b.client.GetBalance(0)
 	if err != nil {
 		return "", err
 	}
 
-	log.Info("balance: ", balance.Balance)
-	log.Info("unlocked balance: ", balance.UnlockedBalance)
-	log.Info("blocks to unlock: ", balance.BlocksToUnlock)
+	log.Debug("XMR balance: ", balance.Balance)
+	log.Debug("unlocked XMR balance: ", balance.UnlockedBalance)
+	log.Debug("blocks to unlock: ", balance.BlocksToUnlock)
 
 	address := kp.Address()
 	if err := b.client.Transfer(address, 0, uint(amount)); err != nil {
@@ -266,12 +267,12 @@ func (b *bob) LockFunds(amount uint64) (monero.Address, error) {
 		return "", err
 	}
 
-	log.Info("Bob: successfully locked funds")
-	log.Info("address: ", address)
+	log.Infof("successfully locked XMR funds: address=%s", address)
 	return address, nil
 }
 
-func (b *bob) ClaimFunds() (string, error) {
+// claimFunds redeems Bob's ETH funds by calling Claim() on the contract
+func (b *bob) claimFunds() (string, error) {
 	pub := b.ethPrivKey.Public().(*ecdsa.PublicKey)
 	addr := ethcrypto.PubkeyToAddress(*pub)
 
