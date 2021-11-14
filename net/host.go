@@ -12,6 +12,7 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
@@ -27,7 +28,7 @@ import (
 )
 
 const (
-	protocolID     = "/eth-xmr-atomic-swap/0"
+	protocolID     = "/atomic-swap"
 	maxReads       = 128
 	defaultKeyFile = "net.key"
 )
@@ -68,6 +69,9 @@ type host struct {
 	// next expected message from the network
 	// empty, is just used for type matching
 	nextExpectedMessage Message
+
+	queryMu  sync.Mutex
+	queryBuf []byte
 }
 
 // Config is used to configure the network Host.
@@ -130,9 +134,11 @@ func NewHost(cfg *Config) (*host, error) {
 		helloMessage: &HelloMessage{
 			Provides:      cfg.Provides,
 			MaximumAmount: cfg.MaximumAmount,
+			ExchangeRate:  cfg.ExchangeRate,
 		},
 		bootnodes: bns,
 		inCh:      inCh,
+		queryBuf:  make([]byte, 2048),
 	}
 
 	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Provides...)
@@ -166,11 +172,22 @@ func (h *host) SetNextExpectedMessage(m Message) {
 func (h *host) Start() error {
 	h.nextExpectedMessage = &HelloMessage{}
 	h.h.SetStreamHandler(protocolID, h.handleStream)
+	h.h.SetStreamHandler(protocolID+queryID, h.handleQueryStream)
+
 	h.h.Network().SetConnHandler(h.handleConn)
 	for _, addr := range h.multiaddrs() {
 		log.Info("Started listening: address=", addr)
 	}
-	return h.bootstrap()
+
+	if err := h.bootstrap(); err != nil {
+		return err
+	}
+
+	if err := h.discovery.start(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // multiaddrs returns the multiaddresses of the host
@@ -402,10 +419,10 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 func (h *host) bootstrap() error {
 	failed := 0
 	for _, addrInfo := range h.bootnodes {
-		log.Debug("bootstrapping to peer", "peer", addrInfo.ID)
+		log.Debugf("bootstrapping to peer: peer=%s", addrInfo.ID)
 		err := h.h.Connect(h.ctx, addrInfo)
 		if err != nil {
-			log.Debug("failed to bootstrap to peer", "error", err)
+			log.Debugf("failed to bootstrap to peer: err=%s", err)
 			failed++
 		}
 	}

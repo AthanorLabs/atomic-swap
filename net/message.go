@@ -3,6 +3,8 @@ package net
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/noot/atomic-swap/common"
 )
 
 type Message interface {
@@ -10,13 +12,20 @@ type Message interface {
 	Encode() ([]byte, error)
 }
 
+type QueryResponse = HelloMessage
+
 type HelloMessage struct {
 	Provides      []ProvidesCoin
 	MaximumAmount []uint64
+	ExchangeRate  common.ExchangeRate
 }
 
 func (m *HelloMessage) String() string {
-	return fmt.Sprintf("HelloMessage Provides=%v MaximumAmount=%v", m.Provides, m.MaximumAmount)
+	return fmt.Sprintf("HelloMessage Provides=%v MaximumAmount=%v ExchangeRate=%v",
+		m.Provides,
+		m.MaximumAmount,
+		m.ExchangeRate,
+	)
 }
 
 func (m *HelloMessage) Encode() ([]byte, error) {

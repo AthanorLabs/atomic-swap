@@ -150,8 +150,15 @@ func runDaemon(c *cli.Context) error {
 		Provides:      []net.ProvidesCoin{net.ProvidesETH}, // TODO: make flag
 		MaximumAmount: []uint64{amount},
 		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultAliceLibp2pKey,
+		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
 		Bootnodes:     bootnodes,
+	}
+
+	if c.Bool("bob") {
+		netCfg.Port = defaultBobPort
+		netCfg.Provides = []net.ProvidesCoin{net.ProvidesXMR}
+		netCfg.KeyFile = defaultBobLibp2pKey
+		port = defaultRPCPort + 1
 	}
 
 	host, err := net.NewHost(netCfg)
