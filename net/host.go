@@ -51,9 +51,9 @@ type host struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	h           libp2phost.Host
-	wantMessage *WantMessage
-	discovery   *discovery
+	h            libp2phost.Host
+	helloMessage *HelloMessage
+	discovery    *discovery
 
 	bootnodes []peer.AddrInfo
 	// messages received from the rest of the program, to be sent out
@@ -72,7 +72,7 @@ type Config struct {
 	Ctx           context.Context
 	Port          uint64
 	Provides      []ProvidesCoin
-	MaximumAmount uint64
+	MaximumAmount []uint64
 	ExchangeRate  common.ExchangeRate
 	KeyFile       string
 	Bootnodes     []string
@@ -124,10 +124,10 @@ func NewHost(cfg *Config) (*host, error) {
 		ctx:    ourCtx,
 		cancel: cancel,
 		h:      h,
-		// wantMessage: &WantMessage{
-		// 	Want:   want,
-		// 	Amount: amount,
-		// },
+		helloMessage: &HelloMessage{
+			Provides:      cfg.Provides,
+			MaximumAmount: cfg.MaximumAmount,
+		},
 		bootnodes: bns,
 		inCh:      inCh,
 	}
@@ -157,7 +157,7 @@ func (h *host) SetNextExpectedMessage(m Message) {
 }
 
 func (h *host) Start() error {
-	h.nextExpectedMessage = &WantMessage{}
+	h.nextExpectedMessage = &HelloMessage{}
 	h.h.SetStreamHandler(protocolID, h.handleStream)
 	h.h.Network().SetConnHandler(h.handleConn)
 	for _, addr := range h.multiaddrs() {
@@ -250,7 +250,7 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 func (h *host) handleConn(conn libp2pnetwork.Conn) {
 	log.Debug("incoming connection, peer=", conn.RemotePeer())
 
-	stream, err := h.send(conn.RemotePeer(), h.wantMessage)
+	stream, err := h.send(conn.RemotePeer(), h.helloMessage)
 	if err != nil {
 		log.Info("failed to send message, closing stream")
 		_ = stream.Close()
@@ -290,8 +290,8 @@ func (h *host) handleStream(stream libp2pnetwork.Stream) {
 
 func (h *host) decodeMessage(b []byte) (Message, error) {
 	switch h.nextExpectedMessage.(type) {
-	case *WantMessage:
-		var m *WantMessage
+	case *HelloMessage:
+		var m *HelloMessage
 		if err := json.Unmarshal(b, &m); err != nil {
 			return nil, err
 		}

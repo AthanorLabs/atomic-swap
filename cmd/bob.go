@@ -53,9 +53,17 @@ func (n *node) doProtocolBob() error {
 
 func (n *node) handleMessageBob(who peer.ID, msg net.Message, setupDone chan struct{}) error {
 	switch msg := msg.(type) {
-	case *net.WantMessage:
-		if msg.Want != "XMR" {
-			return errors.New("Bob has XMR, peer does not want XMR")
+	case *net.HelloMessage:
+		peerProvides := false
+		for _, provides := range msg.Provides {
+			if provides == net.ProvidesETH {
+				peerProvides = true
+				break
+			}
+		}
+
+		if !peerProvides {
+			return errors.New("peer does not provide ETH")
 		}
 
 		log.Debug("found peer that wants XMR, initiating swap protocol...")
