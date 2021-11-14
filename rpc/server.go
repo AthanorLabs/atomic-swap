@@ -22,14 +22,17 @@ type Config struct {
 	Net  Net
 }
 
-func NewServer(cfg *Config) *Server {
+func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	s.RegisterService(NewNetService(cfg.Net), "net")
+	if err := s.RegisterService(NewNetService(cfg.Net), "net"); err != nil {
+		return nil, err
+	}
+
 	return &Server{
 		s:    s,
 		port: cfg.Port,
-	}
+	}, nil
 }
 
 func (s *Server) Start() {

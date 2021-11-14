@@ -9,7 +9,6 @@ import (
 	"github.com/noot/atomic-swap/net"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multiaddr"
 )
 
 const defaultSearchTime = time.Second * 12
@@ -19,8 +18,12 @@ type Net interface {
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 }
 
+type Protocol interface {
+}
+
 type NetService struct {
-	backend Net
+	backend  Net
+	protocol Protocol
 }
 
 func NewNetService(net Net) *NetService {
@@ -31,7 +34,7 @@ func NewNetService(net Net) *NetService {
 
 type DiscoverRequest struct {
 	Provides   net.ProvidesCoin `json:"provides"`
-	SearchTime uint64           `json:"searchTime",omitempty"` // in seconds
+	SearchTime uint64           `json:"searchTime"` // in seconds
 }
 
 type DiscoverResponse struct {
@@ -70,18 +73,6 @@ func addrInfoToStrings(addrInfo peer.AddrInfo) []string {
 	return strs
 }
 
-func stringToAddrInfo(s string) (peer.AddrInfo, error) {
-	maddr, err := multiaddr.NewMultiaddr(s)
-	if err != nil {
-		return peer.AddrInfo{}, err
-	}
-	p, err := peer.AddrInfoFromP2pAddr(maddr)
-	if err != nil {
-		return peer.AddrInfo{}, err
-	}
-	return *p, err
-}
-
 type QueryPeerRequest struct {
 	// Multiaddr of peer to query
 	Multiaddr string `json:"multiaddr"`
@@ -94,7 +85,7 @@ type QueryPeerResponse struct {
 }
 
 func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *QueryPeerResponse) error {
-	who, err := stringToAddrInfo(req.Multiaddr)
+	who, err := net.StringToAddrInfo(req.Multiaddr)
 	if err != nil {
 		return err
 	}
@@ -107,5 +98,16 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 	resp.Provides = msg.Provides
 	resp.MaximumAmount = msg.MaximumAmount
 	resp.ExchangeRate = msg.ExchangeRate
+	return nil
+}
+
+type InitiateRequest struct {
+	PeerID         string
+	ProvidesCoin   net.ProvidesCoin
+	ProvidesAmount uint64
+	DesiredAmount  uint64
+}
+
+func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *InitiateResponse) error {
 	return nil
 }

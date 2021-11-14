@@ -8,9 +8,9 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/alice"
-	"github.com/noot/atomic-swap/bob"
-	"github.com/noot/atomic-swap/common"
+	// "github.com/noot/atomic-swap/alice"
+	// "github.com/noot/atomic-swap/bob"
+	// "github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/rpc"
 
@@ -101,28 +101,28 @@ func startAction(c *cli.Context) error {
 	log.Debug("starting...")
 	return runDaemon(c)
 
-	amount := uint64(c.Uint("amount"))
-	if amount == 0 {
-		return errors.New("must specify amount")
-	}
+	// amount := uint64(c.Uint("amount"))
+	// if amount == 0 {
+	// 	return errors.New("must specify amount")
+	// }
 
-	if c.Bool("alice") {
-		if err := runAlice(c, amount); err != nil {
-			return err
-		}
+	// if c.Bool("alice") {
+	// 	if err := runAlice(c, amount); err != nil {
+	// 		return err
+	// 	}
 
-		return nil
-	}
+	// 	return nil
+	// }
 
-	if c.Bool("bob") {
-		if err := runBob(c, amount); err != nil {
-			return err
-		}
+	// if c.Bool("bob") {
+	// 	if err := runBob(c, amount); err != nil {
+	// 		return err
+	// 	}
 
-		return nil
-	}
+	// 	return nil
+	// }
 
-	return errors.New("must specify either --alice or --bob")
+	// return errors.New("must specify either --alice or --bob")
 }
 
 func runDaemon(c *cli.Context) error {
@@ -175,145 +175,149 @@ func runDaemon(c *cli.Context) error {
 		Net:  host,
 	}
 
-	s := rpc.NewServer(cfg)
+	s, err := rpc.NewServer(cfg)
+	if err != nil {
+		return err
+	}
+
 	go s.Start()
 
 	wait(ctx)
 	return nil
 }
 
-func runAlice(c *cli.Context, amount uint64) error {
-	var (
-		moneroEndpoint, ethEndpoint, ethPrivKey string
-	)
+// func runAlice(c *cli.Context, amount uint64) error {
+// 	var (
+// 		moneroEndpoint, ethEndpoint, ethPrivKey string
+// 	)
 
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
-	} else {
-		moneroEndpoint = common.DefaultAliceMoneroEndpoint
-	}
+// 	if c.String("monero-endpoint") != "" {
+// 		moneroEndpoint = c.String("monero-endpoint")
+// 	} else {
+// 		moneroEndpoint = common.DefaultAliceMoneroEndpoint
+// 	}
 
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
+// 	if c.String("ethereum-endpoint") != "" {
+// 		ethEndpoint = c.String("ethereum-endpoint")
+// 	} else {
+// 		ethEndpoint = common.DefaultEthEndpoint
+// 	}
 
-	if c.String("ethereum-privkey") != "" {
-		ethPrivKey = c.String("ethereum-privkey")
-	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key at index 0")
-		ethPrivKey = common.DefaultPrivKeyAlice
-	}
+// 	if c.String("ethereum-privkey") != "" {
+// 		ethPrivKey = c.String("ethereum-privkey")
+// 	} else {
+// 		log.Warn("no ethereum private key provided, using ganache deterministic key at index 0")
+// 		ethPrivKey = common.DefaultPrivKeyAlice
+// 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	alice, err := alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
-	if err != nil {
-		return err
-	}
+// 	alice, err := alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	log.Debug("instantiated Alice session")
+// 	log.Debug("instantiated Alice session")
 
-	var bootnodes []string
-	if c.String("bootnodes") != "" {
-		bootnodes = strings.Split(c.String("bootnodes"), ",")
-	}
+// 	var bootnodes []string
+// 	if c.String("bootnodes") != "" {
+// 		bootnodes = strings.Split(c.String("bootnodes"), ",")
+// 	}
 
-	netCfg := &net.Config{
-		Ctx:           ctx,
-		Port:          defaultAlicePort,
-		Provides:      []net.ProvidesCoin{net.ProvidesETH},
-		MaximumAmount: []uint64{amount},
-		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultAliceLibp2pKey,
-		Bootnodes:     bootnodes,
-	}
+// 	netCfg := &net.Config{
+// 		Ctx:           ctx,
+// 		Port:          defaultAlicePort,
+// 		Provides:      []net.ProvidesCoin{net.ProvidesETH},
+// 		MaximumAmount: []uint64{amount},
+// 		ExchangeRate:  defaultExchangeRate,
+// 		KeyFile:       defaultAliceLibp2pKey,
+// 		Bootnodes:     bootnodes,
+// 	}
 
-	host, err := net.NewHost(netCfg)
-	if err != nil {
-		return err
-	}
+// 	host, err := net.NewHost(netCfg)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	n := &node{
-		ctx:    ctx,
-		cancel: cancel,
-		alice:  alice,
-		host:   host,
-		amount: amount,
-	}
+// 	n := &node{
+// 		ctx:    ctx,
+// 		cancel: cancel,
+// 		alice:  alice,
+// 		host:   host,
+// 		amount: amount,
+// 	}
 
-	return n.doProtocolAlice()
-}
+// 	return n.doProtocolAlice()
+// }
 
-func runBob(c *cli.Context, amount uint64) error {
-	var (
-		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
-	)
+// func runBob(c *cli.Context, amount uint64) error {
+// 	var (
+// 		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
+// 	)
 
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
-	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
-	}
+// 	if c.String("monero-endpoint") != "" {
+// 		moneroEndpoint = c.String("monero-endpoint")
+// 	} else {
+// 		moneroEndpoint = common.DefaultBobMoneroEndpoint
+// 	}
 
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
+// 	if c.String("ethereum-endpoint") != "" {
+// 		ethEndpoint = c.String("ethereum-endpoint")
+// 	} else {
+// 		ethEndpoint = common.DefaultEthEndpoint
+// 	}
 
-	if c.String("ethereum-privkey") != "" {
-		ethPrivKey = c.String("ethereum-privkey")
-	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
-		ethPrivKey = common.DefaultPrivKeyBob
-	}
+// 	if c.String("ethereum-privkey") != "" {
+// 		ethPrivKey = c.String("ethereum-privkey")
+// 	} else {
+// 		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
+// 		ethPrivKey = common.DefaultPrivKeyBob
+// 	}
 
-	if c.String("monero-daemon-endpoint") != "" {
-		daemonEndpoint = c.String("monero-daemon-endpoint")
-	} else {
-		daemonEndpoint = common.DefaultDaemonEndpoint
-	}
+// 	if c.String("monero-daemon-endpoint") != "" {
+// 		daemonEndpoint = c.String("monero-daemon-endpoint")
+// 	} else {
+// 		daemonEndpoint = common.DefaultDaemonEndpoint
+// 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	bob, err := bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
-	if err != nil {
-		return err
-	}
+// 	bob, err := bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	log.Debug("instantiated Bob session")
+// 	log.Debug("instantiated Bob session")
 
-	var bootnodes []string
-	if c.String("bootnodes") != "" {
-		bootnodes = strings.Split(c.String("bootnodes"), ",")
-	}
+// 	var bootnodes []string
+// 	if c.String("bootnodes") != "" {
+// 		bootnodes = strings.Split(c.String("bootnodes"), ",")
+// 	}
 
-	netCfg := &net.Config{
-		Ctx:           ctx,
-		Port:          defaultBobPort,
-		Provides:      []net.ProvidesCoin{net.ProvidesXMR},
-		MaximumAmount: []uint64{amount},
-		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultBobLibp2pKey,
-		Bootnodes:     bootnodes,
-	}
+// 	netCfg := &net.Config{
+// 		Ctx:           ctx,
+// 		Port:          defaultBobPort,
+// 		Provides:      []net.ProvidesCoin{net.ProvidesXMR},
+// 		MaximumAmount: []uint64{amount},
+// 		ExchangeRate:  defaultExchangeRate,
+// 		KeyFile:       defaultBobLibp2pKey,
+// 		Bootnodes:     bootnodes,
+// 	}
 
-	host, err := net.NewHost(netCfg)
-	if err != nil {
-		return err
-	}
+// 	host, err := net.NewHost(netCfg)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	n := &node{
-		ctx:    ctx,
-		cancel: cancel,
-		bob:    bob,
-		host:   host,
-		amount: amount,
-	}
+// 	n := &node{
+// 		ctx:    ctx,
+// 		cancel: cancel,
+// 		bob:    bob,
+// 		host:   host,
+// 		amount: amount,
+// 	}
 
-	return n.doProtocolBob()
-}
+// 	return n.doProtocolBob()
+// }

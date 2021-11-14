@@ -32,6 +32,29 @@ func (m *HelloMessage) Encode() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+type InitiateMessage struct {
+	Provides       ProvidesCoin
+	ProvidesAmount uint64
+	DesiredAmount  uint64
+	*SendKeysMessage
+}
+
+func (m *InitiateMessage) String() string {
+	return fmt.Sprintf("InitiateMessage Provides=%v ProvidesAmount=%v DesiredAmount=%v Keys=%s",
+		m.Provides,
+		m.ProvidesAmount,
+		m.DesiredAmount,
+		m.SendKeysMessage,
+	)
+}
+
+func (m *InitiateMessage) Encode() ([]byte, error) {
+	return json.Marshal(m)
+}
+
+// The below messages are sawp protocol messages, exchanged after the swap has been agreed
+// upon by both sides.
+
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
 	PublicSpendKey string
