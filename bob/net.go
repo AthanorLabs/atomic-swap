@@ -42,36 +42,6 @@ func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) error {
 
 func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
 	switch msg := msg.(type) {
-	// case *net.HelloMessage:
-	// 	peerProvides := false
-	// 	for _, provides := range msg.Provides {
-	// 		if provides == net.ProvidesETH {
-	// 			peerProvides = true
-	// 			break
-	// 		}
-	// 	}
-
-	// 	if !peerProvides {
-	// 		return errors.New("peer does not provide ETH")
-	// 	}
-
-	// 	log.Debug("found peer that wants XMR, initiating swap protocol...")
-	// 	n.host.SetNextExpectedMessage(&net.SendKeysMessage{})
-
-	// 	sk, vk, err := n.bob.GenerateKeys()
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	out := &net.SendKeysMessage{
-	// 		PublicSpendKey: sk.Hex(),
-	// 		PrivateViewKey: vk.Hex(),
-	// 	}
-
-	// 	n.outCh <- &net.MessageInfo{
-	// 		Message: out,
-	// 		Who:     who,
-	// 	}
 	case *net.InitiateMessage:
 		// TODO: this and the below case are the same
 		if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
@@ -112,6 +82,9 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 		}
 
 		b.SetAlicePublicKeys(kp)
+
+		// we initiated, so we're now waiting for Alice to deploy the contract.
+		return nil, false, nil
 	case *net.NotifyContractDeployed:
 		if msg.Address == "" {
 			return nil, true, errors.New("got empty contract address")
@@ -187,11 +160,7 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 
 		return out, false, nil
 	case *net.NotifyReady:
-		//	time.Sleep(time.Second * 3)
-		log.Debug("Alice called Ready!")
-		log.Debug("attempting to claim funds...")
-
-		time.Sleep(time.Second)
+		log.Debug("Alice called Ready(), attempting to claim funds...")
 
 		// contract ready, let's claim our ether
 		txHash, err := b.ClaimFunds()
@@ -206,8 +175,6 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 
 		return out, true, nil
 	default:
-		return nil, true, errors.New("unexpected message type")
+		return nil, false, errors.New("unexpected message type")
 	}
-
-	return nil, false, nil
 }

@@ -46,20 +46,10 @@ type host struct {
 	cancel context.CancelFunc
 
 	h             libp2phost.Host
+	bootnodes     []peer.AddrInfo
 	queryResponse *QueryResponse
 	discovery     *discovery
 	handler       Handler
-
-	bootnodes []peer.AddrInfo
-	// messages received from the rest of the program, to be sent out
-	//outCh <-chan *MessageInfo
-
-	// messages received from the network, to be sent to the rest of the program
-	//inCh chan *MessageInfo
-
-	// next expected message from the network
-	// empty, is just used for type matching
-	//nextExpectedMessage Message
 
 	queryMu  sync.Mutex
 	queryBuf []byte
@@ -116,8 +106,6 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
-	//inCh := make(chan *MessageInfo)
-
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
 		ctx:    ourCtx,
@@ -130,8 +118,7 @@ func NewHost(cfg *Config) (*host, error) {
 		},
 		handler:   cfg.Handler,
 		bootnodes: bns,
-		//inCh:      inCh,
-		queryBuf: make([]byte, 2048),
+		queryBuf:  make([]byte, 2048),
 	}
 
 	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Provides...)
@@ -145,14 +132,6 @@ func NewHost(cfg *Config) (*host, error) {
 func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
 	return h.discovery.discover(provides, searchTime)
 }
-
-// func (h *host) SetOutgoingCh(ch <-chan *MessageInfo) {
-// 	h.outCh = ch
-// }
-
-// func (h *host) SetNextExpectedMessage(m Message) {
-// 	h.nextExpectedMessage = m
-// }
 
 func (h *host) Start() error {
 	//h.h.SetStreamHandler(protocolID, h.handleStream)
@@ -188,15 +167,6 @@ func (h *host) Stop() error {
 	return nil
 }
 
-// func (h *host) SendMessage(to peer.ID, msg Message) error {
-// 	_, err := h.send(to, msg)
-// 	return err
-// }
-
-// func (h *host) ReceivedMessageCh() <-chan *MessageInfo {
-// 	return h.inCh
-// }
-
 func (h *host) getBootnodes() []peer.AddrInfo {
 	addrs := h.bootnodes
 	for _, p := range h.h.Network().Peers() {
@@ -216,28 +186,6 @@ func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
 		multiaddrs = append(multiaddrs, multiaddr)
 	}
 	return multiaddrs
-}
-
-// send creates a new outbound stream with the given peer and writes the message. It also returns
-// the newly created stream.
-func (h *host) send(p peer.ID, msg Message) (libp2pnetwork.Stream, error) {
-	// open outbound stream with host protocol id
-	stream, err := h.h.NewStream(h.ctx, p, protocolID)
-	if err != nil {
-		log.Debug("failed to open new stream with peer", "peer", p, "error", err)
-		return nil, err
-	}
-
-	log.Debug(
-		"Opened stream, peer=", p,
-	)
-
-	err = h.writeToStream(stream, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return stream, nil
 }
 
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
@@ -266,67 +214,7 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 
 func (h *host) handleConn(conn libp2pnetwork.Conn) {
 	log.Debug("incoming connection, peer=", conn.RemotePeer())
-
-	// stream, err := h.send(conn.RemotePeer(), h.helloMessage)
-	// if err != nil {
-	// 	log.Info("failed to send message, closing stream")
-	// 	_ = stream.Close()
-	// 	return
-	// }
-
-	// go h.handleStream(stream)
 }
-
-// func (h *host) handleStream(stream libp2pnetwork.Stream) {
-// 	defer func() {
-// 		_ = stream.Close()
-// 	}()
-
-// 	msgBytes := make([]byte, 2048)
-
-// 	for {
-// 		tot, err := readStream(stream, msgBytes[:])
-// 		if err != nil {
-// 			log.Debug("failed to read from stream, closing stream", "id", stream.ID(), "peer", stream.Conn().RemotePeer(), "protocol", stream.Protocol(), "error", err)
-// 			return
-// 		}
-
-// 		// decode message based on message type
-// 		msg, err := h.decodeMessage(msgBytes[:tot])
-// 		if err != nil {
-// 			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
-// 			continue
-// 		}
-
-// 		log.Debug(
-// 			"received message from peer, peer=", stream.Conn().RemotePeer(), " msg=", msg.String(),
-// 		)
-
-// 		h.handleMessage(stream, msg)
-// 	}
-// }
-
-// func (h *host) handleMessage(stream libp2pnetwork.Stream, m Message) {
-// 	h.inCh <- &MessageInfo{
-// 		Message: m,
-// 		Who:     stream.Conn().RemotePeer(),
-// 	}
-
-// 	next := <-h.outCh
-// 	if next == nil {
-// 		fmt.Println("no more outgoing messages")
-// 		return
-// 	}
-
-// 	if next.Who != stream.Conn().RemotePeer() {
-// 		fmt.Println("peer ID mismatch")
-// 	}
-
-// 	if err := h.writeToStream(stream, next.Message); err != nil {
-// 		fmt.Println("failed to write to stream")
-// 		return
-// 	}
-// }
 
 // readStream reads from the stream into the given buffer, returning the number of bytes read
 func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {

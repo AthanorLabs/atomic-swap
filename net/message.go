@@ -192,7 +192,7 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 type NotifyReady struct{}
 
 func (m *NotifyReady) String() string {
-	return fmt.Sprintf("NotifyReady")
+	return "NotifyReady"
 }
 
 func (m *NotifyReady) Encode() ([]byte, error) {

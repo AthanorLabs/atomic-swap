@@ -39,33 +39,6 @@ func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) error {
 
 func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
 	switch msg := msg.(type) {
-	// case *net.HelloMessage:
-	// 	peerProvides := false
-	// 	for _, provides := range msg.Provides {
-	// 		if provides == net.ProvidesXMR {
-	// 			peerProvides = true
-	// 			break
-	// 		}
-	// 	}
-
-	// 	if !peerProvides {
-	// 		return nil, true, errors.New("peer does not provide XMR")
-	// 	}
-
-	// 	log.Info("found peer that wants ETH, initiating swap protocol...")
-	// 	a.setNextExpectedMessage(&net.SendKeysMessage{})
-
-	// 	kp, err := a.GenerateKeys()
-	// 	if err != nil {
-	// 		return nil, true, err
-	// 	}
-
-	// 	out := &net.SendKeysMessage{
-	// 		PublicSpendKey: kp.SpendKey().Hex(),
-	// 		PublicViewKey:  kp.ViewKey().Hex(),
-	// 	}
-
-	// 	return out, false, nil
 	case *net.InitiateMessage:
 		if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 			return nil, true, errors.New("did not receive Bob's public spend or private view key")
@@ -217,6 +190,4 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 	default:
 		return nil, false, errors.New("unexpected message type")
 	}
-
-	return nil, false, nil
 }

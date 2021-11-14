@@ -47,7 +47,7 @@ var (
 	app = &cli.App{
 		Name:   "atomic-swap",
 		Usage:  "A program for doing atomic swaps between ETH and XMR",
-		Action: startAction,
+		Action: runDaemon,
 		Flags: []cli.Flag{
 			&cli.UintFlag{
 				Name:  "rpc-port",
@@ -92,37 +92,9 @@ var (
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		log.Debug(err)
+		log.Error(err)
 		os.Exit(1)
 	}
-}
-
-func startAction(c *cli.Context) error {
-	log.Debug("starting...")
-	return runDaemon(c)
-
-	// amount := uint64(c.Uint("amount"))
-	// if amount == 0 {
-	// 	return errors.New("must specify amount")
-	// }
-
-	// if c.Bool("alice") {
-	// 	if err := runAlice(c, amount); err != nil {
-	// 		return err
-	// 	}
-
-	// 	return nil
-	// }
-
-	// if c.Bool("bob") {
-	// 	if err := runBob(c, amount); err != nil {
-	// 		return err
-	// 	}
-
-	// 	return nil
-	// }
-
-	// return errors.New("must specify either --alice or --bob")
 }
 
 func runDaemon(c *cli.Context) error {
@@ -235,139 +207,3 @@ func runDaemon(c *cli.Context) error {
 	wait(ctx)
 	return nil
 }
-
-// func runAlice(c *cli.Context, amount uint64) error {
-// 	var (
-// 		moneroEndpoint, ethEndpoint, ethPrivKey string
-// 	)
-
-// 	if c.String("monero-endpoint") != "" {
-// 		moneroEndpoint = c.String("monero-endpoint")
-// 	} else {
-// 		moneroEndpoint = common.DefaultAliceMoneroEndpoint
-// 	}
-
-// 	if c.String("ethereum-endpoint") != "" {
-// 		ethEndpoint = c.String("ethereum-endpoint")
-// 	} else {
-// 		ethEndpoint = common.DefaultEthEndpoint
-// 	}
-
-// 	if c.String("ethereum-privkey") != "" {
-// 		ethPrivKey = c.String("ethereum-privkey")
-// 	} else {
-// 		log.Warn("no ethereum private key provided, using ganache deterministic key at index 0")
-// 		ethPrivKey = common.DefaultPrivKeyAlice
-// 	}
-
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-
-// 	alice, err := alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	log.Debug("instantiated Alice session")
-
-// 	var bootnodes []string
-// 	if c.String("bootnodes") != "" {
-// 		bootnodes = strings.Split(c.String("bootnodes"), ",")
-// 	}
-
-// 	netCfg := &net.Config{
-// 		Ctx:           ctx,
-// 		Port:          defaultAlicePort,
-// 		Provides:      []net.ProvidesCoin{net.ProvidesETH},
-// 		MaximumAmount: []uint64{amount},
-// 		ExchangeRate:  defaultExchangeRate,
-// 		KeyFile:       defaultAliceLibp2pKey,
-// 		Bootnodes:     bootnodes,
-// 	}
-
-// 	host, err := net.NewHost(netCfg)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	n := &node{
-// 		ctx:    ctx,
-// 		cancel: cancel,
-// 		alice:  alice,
-// 		host:   host,
-// 		amount: amount,
-// 	}
-
-// 	return n.doProtocolAlice()
-// }
-
-// func runBob(c *cli.Context, amount uint64) error {
-// 	var (
-// 		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
-// 	)
-
-// 	if c.String("monero-endpoint") != "" {
-// 		moneroEndpoint = c.String("monero-endpoint")
-// 	} else {
-// 		moneroEndpoint = common.DefaultBobMoneroEndpoint
-// 	}
-
-// 	if c.String("ethereum-endpoint") != "" {
-// 		ethEndpoint = c.String("ethereum-endpoint")
-// 	} else {
-// 		ethEndpoint = common.DefaultEthEndpoint
-// 	}
-
-// 	if c.String("ethereum-privkey") != "" {
-// 		ethPrivKey = c.String("ethereum-privkey")
-// 	} else {
-// 		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
-// 		ethPrivKey = common.DefaultPrivKeyBob
-// 	}
-
-// 	if c.String("monero-daemon-endpoint") != "" {
-// 		daemonEndpoint = c.String("monero-daemon-endpoint")
-// 	} else {
-// 		daemonEndpoint = common.DefaultDaemonEndpoint
-// 	}
-
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-
-// 	bob, err := bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	log.Debug("instantiated Bob session")
-
-// 	var bootnodes []string
-// 	if c.String("bootnodes") != "" {
-// 		bootnodes = strings.Split(c.String("bootnodes"), ",")
-// 	}
-
-// 	netCfg := &net.Config{
-// 		Ctx:           ctx,
-// 		Port:          defaultBobPort,
-// 		Provides:      []net.ProvidesCoin{net.ProvidesXMR},
-// 		MaximumAmount: []uint64{amount},
-// 		ExchangeRate:  defaultExchangeRate,
-// 		KeyFile:       defaultBobLibp2pKey,
-// 		Bootnodes:     bootnodes,
-// 	}
-
-// 	host, err := net.NewHost(netCfg)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	n := &node{
-// 		ctx:    ctx,
-// 		cancel: cancel,
-// 		bob:    bob,
-// 		host:   host,
-// 		amount: amount,
-// 	}
-
-// 	return n.doProtocolBob()
-// }
