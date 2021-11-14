@@ -9,18 +9,20 @@ import (
 )
 
 const (
-	QueryResponseType = iota
+	QueryResponseType byte = iota
 	InitiateMessageType
 	SendKeysMessageType
 	NotifyContractDeployedType
 	NotifyXMRLockType
 	NotifyReadyType
 	NotifyClaimedType
+	NotifyRefundType
 )
 
 type Message interface {
 	String() string
 	Encode() ([]byte, error)
+	Type() byte
 }
 
 func decodeMessage(b []byte) (Message, error) {
@@ -99,6 +101,10 @@ func (m *QueryResponse) Encode() ([]byte, error) {
 	return append([]byte{QueryResponseType}, b...), nil
 }
 
+func (m *QueryResponse) Type() byte {
+	return QueryResponseType
+}
+
 type InitiateMessage struct {
 	Provides       ProvidesCoin
 	ProvidesAmount uint64
@@ -122,6 +128,10 @@ func (m *InitiateMessage) Encode() ([]byte, error) {
 	}
 
 	return append([]byte{InitiateMessageType}, b...), nil
+}
+
+func (m *InitiateMessage) Type() byte {
+	return InitiateMessageType
 }
 
 // The below messages are sawp protocol messages, exchanged after the swap has been agreed
@@ -151,6 +161,10 @@ func (m *SendKeysMessage) Encode() ([]byte, error) {
 	return append([]byte{SendKeysMessageType}, b...), nil
 }
 
+func (m *SendKeysMessage) Type() byte {
+	return SendKeysMessageType
+}
+
 // NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
 // and locking her ether in it
 type NotifyContractDeployed struct {
@@ -168,6 +182,10 @@ func (m *NotifyContractDeployed) Encode() ([]byte, error) {
 	}
 
 	return append([]byte{NotifyContractDeployedType}, b...), nil
+}
+
+func (m *NotifyContractDeployed) Type() byte {
+	return NotifyContractDeployedType
 }
 
 // NotifyXMRLock is sent by Bob to Alice after locking his XMR.
@@ -188,6 +206,10 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 	return append([]byte{NotifyXMRLockType}, b...), nil
 }
 
+func (m *NotifyXMRLock) Type() byte {
+	return NotifyXMRLockType
+}
+
 // NotifyReady is sent by Alice to Bob after calling Ready() on the contract.
 type NotifyReady struct{}
 
@@ -202,6 +224,10 @@ func (m *NotifyReady) Encode() ([]byte, error) {
 	}
 
 	return append([]byte{NotifyReadyType}, b...), nil
+}
+
+func (m *NotifyReady) Type() byte {
+	return NotifyReadyType
 }
 
 // NotifyClaimed is sent by Bob to Alice after claiming his ETH.
@@ -220,4 +246,28 @@ func (m *NotifyClaimed) Encode() ([]byte, error) {
 	}
 
 	return append([]byte{NotifyClaimedType}, b...), nil
+}
+
+func (m *NotifyClaimed) Type() byte {
+	return NotifyClaimedType
+}
+
+// NotifyRefund is sent by Alice to Bob after calling Refund() on the contract.
+type NotifyRefund struct{}
+
+func (m *NotifyRefund) String() string {
+	return "NotifyRefund"
+}
+
+func (m *NotifyRefund) Encode() ([]byte, error) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte{NotifyRefundType}, b...), nil
+}
+
+func (m *NotifyRefund) Type() byte {
+	return NotifyRefundType
 }

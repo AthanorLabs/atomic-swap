@@ -9,8 +9,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+// Handler handles incoming protocol messages.
+// It is implemented by *alice.alice and *bob.bob
 type Handler interface {
 	HandleProtocolMessage(msg Message) (resp Message, done bool, err error)
+	ProtocolComplete()
 }
 
 const (
@@ -22,6 +25,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
+		h.handler.ProtocolComplete()
 	}()
 
 	msgBytes := make([]byte, 2048)
@@ -30,7 +34,6 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		tot, err := readStream(stream, msgBytes[:])
 		if err != nil {
 			log.Debug("peer closed stream with us, protocol exited")
-			// TODO: call Handler.ProtocolDone()
 			return
 		}
 

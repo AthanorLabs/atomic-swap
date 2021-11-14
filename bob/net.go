@@ -3,7 +3,6 @@ package bob
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -16,7 +15,7 @@ func (b *bob) Provides() net.ProvidesCoin {
 }
 
 func (b *bob) SendKeysMessage() (*net.SendKeysMessage, error) {
-	sk, vk, err := b.GenerateKeys()
+	sk, vk, err := b.generateKeys()
 	if err != nil {
 		return nil, err
 	}
@@ -28,60 +27,70 @@ func (b *bob) SendKeysMessage() (*net.SendKeysMessage, error) {
 }
 
 func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) error {
-	if b.initiated {
-		return errors.New("protocol already in progress")
+	if err := b.initiate(providesAmount, desiredAmount); err != nil {
+		return err
 	}
 
-	// TODO: check user's balance and that they actualy have what they will provide
-	b.initiated = true
-	b.providesAmount = providesAmount
-	b.desiredAmount = desiredAmount
 	b.setNextExpectedMessage(&net.SendKeysMessage{})
 	return nil
 }
 
+func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
+	if b.initiated {
+		return errors.New("protocol already in progress")
+	}
+
+	balance, err := b.client.GetBalance(0)
+	if err != nil {
+		return err
+	}
+
+	// check user's balance and that they actualy have what they will provide
+	if balance.UnlockedBalance <= float64(b.providesAmount) {
+		return errors.New("balance lower than amount to be provided")
+	}
+
+	b.initiated = true
+	b.providesAmount = providesAmount
+	b.desiredAmount = desiredAmount
+	return nil
+}
+
+// ProtocolComplete is called when the protocol is done, whether it finished successfully or not.
+func (b *bob) ProtocolComplete() {
+	b.initiated = false
+	b.setNextExpectedMessage(&net.InitiateMessage{})
+}
+
 func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+	if err := b.checkMessageType(msg); err != nil {
+		return nil, true, err
+	}
+
 	switch msg := msg.(type) {
 	case *net.InitiateMessage:
-		// TODO: this and the below case are the same
-		if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
-			return nil, true, errors.New("did not receive Alice's public spend or view key")
+		if msg.Provides != net.ProvidesETH {
+			return nil, true, errors.New("peer does not provide ETH")
 		}
 
-		log.Debug("got Alice's public keys")
-		b.setNextExpectedMessage(&net.NotifyContractDeployed{})
-
-		kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to generate Alice's public keys: %w", err)
+		if err := b.handleSendKeysMessage(msg.SendKeysMessage); err != nil {
+			return nil, true, err
 		}
-
-		b.SetAlicePublicKeys(kp)
 
 		resp, err := b.SendKeysMessage()
 		if err != nil {
 			return nil, true, err
 		}
 
-		// TODO: check amounts are ok, less than our max, and desired coin
-		b.providesAmount = msg.DesiredAmount
-		b.desiredAmount = msg.ProvidesAmount
+		if err = b.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
+			return nil, true, err
+		}
 
 		return resp, false, nil
 	case *net.SendKeysMessage:
-		if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
-			return nil, true, errors.New("did not receive Alice's public spend or view key")
+		if err := b.handleSendKeysMessage(msg); err != nil {
+			return nil, true, err
 		}
-
-		log.Debug("got Alice's public keys")
-		b.setNextExpectedMessage(&net.NotifyContractDeployed{})
-
-		kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to generate Alice's public keys: %w", err)
-		}
-
-		b.SetAlicePublicKeys(kp)
 
 		// we initiated, so we're now waiting for Alice to deploy the contract.
 		return nil, false, nil
@@ -93,63 +102,13 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 		b.setNextExpectedMessage(&net.NotifyReady{})
 		log.Info("got Swap contract address! address=%s\n", msg.Address)
 
-		if err := b.SetContract(ethcommon.HexToAddress(msg.Address)); err != nil {
+		if err := b.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)
 		}
 
-		// ready, err := b.WatchForReady()
-		// if err != nil {
-		// 	return nil, true, err
-		// }
+		// TODO: add t0 timeout case
 
-		refund, err := b.WatchForRefund()
-		if err != nil {
-			return nil, true, err
-		}
-
-		go func() {
-			for {
-				// TODO: add t0 timeout case
-				select {
-				case <-b.ctx.Done():
-					return
-				// case <-ready:
-				// 	time.Sleep(time.Second * 3)
-				// 	log.Debug("Alice called Ready!")
-				// 	log.Debug("attempting to claim funds...")
-
-				// 	time.Sleep(time.Second)
-
-				// 	// contract ready, let's claim our ether
-				// 	_, err = b.ClaimFunds()
-				// 	if err != nil {
-				// 		log.Error("failed to redeem ether: %w", err)
-				// 		continue
-				// 	}
-
-				// 	log.Debug("funds claimed!!")
-				// 	// out := &net.NotifyClaimed{
-				// 	// 	TxHash: txHash,
-				// 	// }
-
-				// 	//time.Sleep(time.Second)
-				// 	return
-				// TODO: fix events, or just use messages for now
-				case kp := <-refund:
-					if kp == nil {
-						continue
-					}
-
-					log.Debug("Alice refunded, got monero account key", kp)
-					// TODO: generate wallet
-
-					time.Sleep(time.Second)
-					return
-				}
-			}
-		}()
-
-		addrAB, err := b.LockFunds(b.providesAmount)
+		addrAB, err := b.lockFunds(b.providesAmount)
 		if err != nil {
 			return nil, true, fmt.Errorf("failed to lock funds: %w", err)
 		}
@@ -163,7 +122,7 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 		log.Debug("Alice called Ready(), attempting to claim funds...")
 
 		// contract ready, let's claim our ether
-		txHash, err := b.ClaimFunds()
+		txHash, err := b.claimFunds()
 		if err != nil {
 			return nil, true, fmt.Errorf("failed to redeem ether: %w", err)
 		}
@@ -174,7 +133,35 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 		}
 
 		return out, true, nil
+	case *net.NotifyRefund:
+		// TODO: generate wallet
+		return nil, false, errors.New("unimplemented")
 	default:
 		return nil, false, errors.New("unexpected message type")
 	}
+}
+
+func (b *bob) handleSendKeysMessage(msg *net.SendKeysMessage) error {
+	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
+		return errors.New("did not receive Alice's public spend or view key")
+	}
+
+	log.Debug("got Alice's public keys")
+	b.setNextExpectedMessage(&net.NotifyContractDeployed{})
+
+	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
+	if err != nil {
+		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
+	}
+
+	b.setAlicePublicKeys(kp)
+	return nil
+}
+
+func (b *bob) checkMessageType(msg net.Message) error {
+	if msg.Type() != b.nextExpectedMessage.Type() {
+		return errors.New("received unexpected message")
+	}
+
+	return nil
 }

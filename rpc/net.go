@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -26,6 +27,7 @@ type Protocol interface {
 
 	// TODO: this isn't used here, but in the network package
 	HandleProtocolMessage(msg net.Message) (net.Message, bool, error)
+	ProtocolComplete()
 }
 
 type NetService struct {
@@ -121,6 +123,10 @@ type InitiateResponse struct {
 }
 
 func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *InitiateResponse) error {
+	if req.ProvidesCoin == "" {
+		return errors.New("must specify 'provides' coin")
+	}
+
 	skm, err := s.protocol.SendKeysMessage()
 	if err != nil {
 		return err
@@ -142,5 +148,11 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return err
 	}
 
-	return s.backend.Initiate(who, msg)
+	if err = s.backend.Initiate(who, msg); err != nil {
+		resp.Success = false
+		return err
+	}
+
+	resp.Success = true
+	return nil
 }

@@ -15,9 +15,9 @@ import (
 )
 
 func newTestBob(t *testing.T) *bob {
-	bob, err := NewBob(context.Background(), common.DefaultBobMoneroEndpoint, common.DefaultDaemonEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyBob)
+	bob, err := NewBob(context.Background(), common.DefaultBobMoneroEndpoint, common.DefaultMoneroDaemonEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyBob)
 	require.NoError(t, err)
-	_, _, err = bob.GenerateKeys()
+	_, _, err = bob.generateKeys()
 	require.NoError(t, err)
 
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
@@ -39,7 +39,7 @@ func newTestBob(t *testing.T) *bob {
 func TestBob_GenerateKeys(t *testing.T) {
 	bob := newTestBob(t)
 
-	pubSpendKey, privViewKey, err := bob.GenerateKeys()
+	pubSpendKey, privViewKey, err := bob.generateKeys()
 	require.NoError(t, err)
 	require.NotNil(t, bob.privkeys)
 	require.NotNil(t, bob.pubkeys)
@@ -53,7 +53,7 @@ func TestBob_ClaimFunds(t *testing.T) {
 	_, err := bob.contract.(*swap.Swap).SetReady(bob.auth)
 	require.NoError(t, err)
 
-	txHash, err := bob.ClaimFunds()
+	txHash, err := bob.claimFunds()
 	require.NoError(t, err)
 	require.NotEqual(t, "", txHash)
 }

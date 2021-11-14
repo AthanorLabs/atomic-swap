@@ -53,7 +53,7 @@ func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.
 	}, nil
 }
 
-func (d *discovery) start() error { //nolint:unused
+func (d *discovery) start() error {
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
@@ -67,11 +67,11 @@ func (d *discovery) start() error { //nolint:unused
 	return nil
 }
 
-func (d *discovery) stop() error { //nolint:unused
+func (d *discovery) stop() error {
 	return d.dht.Close()
 }
 
-func (d *discovery) advertise() { //nolint:unused
+func (d *discovery) advertise() {
 	ttl := initialAdvertisementTimeout
 
 	for {

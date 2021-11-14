@@ -158,6 +158,10 @@ func (h *host) Start() error {
 func (h *host) Stop() error {
 	h.cancel()
 
+	if err := h.discovery.stop(); err != nil {
+		return err
+	}
+
 	// close libp2p host
 	if err := h.h.Close(); err != nil {
 		log.Error("Failed to close libp2p host", "error", err)

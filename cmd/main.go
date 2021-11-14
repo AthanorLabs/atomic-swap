@@ -102,10 +102,25 @@ func runDaemon(c *cli.Context) error {
 		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
 	)
 
+	isAlice := c.Bool("alice")
+	isBob := c.Bool("bob")
+
+	if !isAlice && !isBob {
+		return errors.New("must specify either --alice or --bob")
+	}
+
+	if isAlice && isBob {
+		return errors.New("must specify only one of --alice or --bob")
+	}
+
 	if c.String("monero-endpoint") != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
+		if isAlice {
+			moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		} else {
+			moneroEndpoint = common.DefaultBobMoneroEndpoint
+		}
 	}
 
 	if c.String("ethereum-endpoint") != "" {
@@ -117,14 +132,18 @@ func runDaemon(c *cli.Context) error {
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKey = c.String("ethereum-privkey")
 	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key at index 1")
-		ethPrivKey = common.DefaultPrivKeyBob
+		log.Warn("no ethereum private key provided, using ganache deterministic key")
+		if isAlice {
+			ethPrivKey = common.DefaultPrivKeyAlice
+		} else {
+			ethPrivKey = common.DefaultPrivKeyBob
+		}
 	}
 
 	if c.String("monero-daemon-endpoint") != "" {
 		daemonEndpoint = c.String("monero-daemon-endpoint")
 	} else {
-		daemonEndpoint = common.DefaultDaemonEndpoint
+		daemonEndpoint = common.DefaultMoneroDaemonEndpoint
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -135,12 +154,12 @@ func runDaemon(c *cli.Context) error {
 		err      error
 	)
 	switch {
-	case c.Bool("alice"):
+	case isAlice:
 		protocol, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
 		if err != nil {
 			return err
 		}
-	case c.Bool("bob"):
+	case isBob:
 		protocol, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
 		if err != nil {
 			return err
