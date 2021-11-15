@@ -6,9 +6,7 @@ This is a WIP prototype of ETH<->XMR atomic swaps, currently in the early develo
 
 Alice has ETH and wants XMR, Bob has XMR and wants ETH. They come to an agreement to do the swap and the amounts they will swap.
 
-#### Ethereum smart contract interface
-
-Offline phase:
+##### Initial (offchain) phase
 - Alice and Bob each generate Monero secret keys (which consist of secret spend and view keys): (`s_a`, `v_a`) and (`s_b`, `v_b`), which are used to construct valid points on the ed25519 curve (ie. their public keys): `P_ed_a` and `P_ed_b` accordingly. Alice sends Bob her public keys and Bob sends Alice his public spend key and private view key. This is so Alice can check that Bob actually locked the amount of XMR he claims he will.
 
 ##### Step 1.
@@ -43,11 +41,11 @@ By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s
 
 #### What could go wrong
 
-- *Alice locked her ETH, but Bob doesn't lock his XMR*. Alice has until time `t_0` to call `Refund()` to reclaim her ETH, which she should do if `t_0` is soon.
+- **Alice locked her ETH, but Bob doesn't lock his XMR**. Alice has until time `t_0` to call `Refund()` to reclaim her ETH, which she should do if `t_0` is soon.
 
-- *Alice called `Ready()`, but Bob never redeems.* Deadlocks are prevented thanks to a second timelock `t_1`, which re-enables Alice to call refund after it, while disabling Bob's ability to claim.
+- **Alice called `Ready()`, but Bob never redeems.** Deadlocks are prevented thanks to a second timelock `t_1`, which re-enables Alice to call refund after it, while disabling Bob's ability to claim.
 
-- *Alice never calls `ready` within `t_0`*. Bob can still claim his ETH by waiting until after `t_0` has passed, as the contract automatically allows him to call `Claim()`.
+- **Alice never calls `ready` within `t_0`**. Bob can still claim his ETH by waiting until after `t_0` has passed, as the contract automatically allows him to call `Claim()`.
 
 ### Requirements
 
@@ -110,7 +108,7 @@ To run as Bob and connect to Alice, replace the bootnode in the following line w
 
 Note: amount doesn't matter at this point, it's only used in the `QueryResponse` message (ie. what's returned by `net_queryPeer`)
 
-Note: Alice's rpc server runs on http://locahost:5001, Bob's runs on http://localhost:5002 by default.
+Note: Alice's RPC server runs on http://locahost:5001, Bob's runs on http://localhost:5002 by default.
 
 In terminal 3, we will make RPC calls to the swap daemon.
 
@@ -132,7 +130,7 @@ $ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net
 {"jsonrpc":"2.0","result":{"success":true},"id":"0"}
 ```
 
-If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him.
+If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.
 
 
 ##### Compiling contract bindings
