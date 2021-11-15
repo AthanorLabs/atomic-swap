@@ -1,5 +1,7 @@
 #!/bin/bash
 
-cd cmd && go build -o atomic-swap 
-mv atomic-swap ..
-cd ..
+cd cmd/daemon && go build -o swapd 
+mv swapd ../..
+cd ../client && go build -o swapcli
+mv swapcli ../..
+cd ../..
