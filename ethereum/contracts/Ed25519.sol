@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPLv3
 // Adapted from https://github.com/witnet/elliptic-curve-solidity/blob/master/examples/Secp256k1.sol
-// This file is not being used as of the final Hackathon submission
 
 pragma solidity ^0.8.5;
 
 import "./EllipticCurve.sol";
 
+//TODO this is supposed to be >2x faster than Ed25519.sol - try to get it to work
 /**
  * @title Ed25519 Elliptic Curve
  * @notice Particularization of Elliptic Curve for ed25519 curve

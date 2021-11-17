@@ -1,24 +1,16 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPLv3
 
 pragma solidity ^0.8.5;
 
-// import "./Ed25519.sol";
-import "./Ed25519_alt.sol";
-
-contract SwapOnChain {
-    // Ed25519 library
-    Ed25519 immutable ed25519;
-
+abstract contract Swap {
     // contract creator, Alice
     address payable immutable owner;
 
-    // the expected public key derived from the secret `s_b`.
-    // this public key is a point on the ed25519 curve
-    bytes32 public immutable pubKeyClaim;
+    // will allow Bob to claim the funds if he reveals the secret
+    bytes32 public immutable claimCtment;
 
-    // the expected public key derived from the secret `s_a`.
-    // this public key is a point on the ed25519 curve
-    bytes32 public immutable pubKeyRefund;
+    // will allow Alice to claim a refund if she reveals the secret
+    bytes32 public immutable refundCtment;
 
     // time period from contract creation
     // during which Alice can call either set_ready or refund
@@ -29,21 +21,29 @@ contract SwapOnChain {
     uint256 public timeout_1;
 
     // Alice sets ready to true when she sees the funds locked on the other chain.
-    // this prevents Bob from withdrawing funds without locking funds on the other chain first
-    bool isReady = false;
+    // This prevents Bob from withdrawing funds without locking funds on the other chain first
+    bool public isReady = false;
 
     event Constructed(bytes32 p);
-    event IsReady(bool b);
+    event IsReady();
     event Claimed(uint256 s);
     event Refunded(uint256 s);
 
-    constructor(bytes32 _pubKeyClaim, bytes32 _pubKeyRefund) payable {
+    constructor(bytes32 _claimCtment, bytes32 _refundCtment) payable {
         owner = payable(msg.sender);
-        pubKeyClaim = _pubKeyClaim;
-        pubKeyRefund = _pubKeyRefund;
+        claimCtment = _claimCtment;
+        refundCtment = _refundCtment;
         timeout_0 = block.timestamp + 1 days;
-        ed25519 = new Ed25519();
-        emit Constructed(_pubKeyRefund);
+
+        // TODO if this is not the public key it doesn't make sense to emit it
+        // Bob needs to verify both anyway
+        // Either the event contains both (though we won't be able to listen for it,
+        // so I don't think there's any use), or we
+        // - Emit nothing
+        // - Notify bob of deployment
+        // - Bob reads both commitments through getters and
+        // - Verifies they match the information exchanged with Alice
+        emit Constructed(_refundCtment);
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
@@ -51,23 +51,26 @@ contract SwapOnChain {
         require(!isReady && msg.sender == owner && block.timestamp < timeout_0);
         isReady = true;
         timeout_1 = block.timestamp + 1 days;
-        emit IsReady(true);
+        emit IsReady();
     }
 
     // Bob can claim if:
     // - Alice doesn't call set_ready or refund within t_0, or
     // - Alice calls ready within t_0, in which case Bob can call claim until t_1
     function claim(uint256 _s) external {
-        if (isReady == true) {
-            require(block.timestamp < timeout_1, "Too late to claim!");
+        if (isReady) {
+            require(
+                block.timestamp < timeout_1,
+                "Too late to claim! Pray that Alice claims a refund."
+            );
         } else {
             require(
                 block.timestamp >= timeout_0,
-                "'isReady == false' cannot claim yet!"
+                "Please wait until Alice has called set_ready or the first timeout is reached."
             );
         }
 
-        verifySecret(_s, pubKeyClaim);
+        verifySecret(_s, claimCtment);
         emit Claimed(_s);
 
         // send eth to caller (Bob)
@@ -78,29 +81,24 @@ contract SwapOnChain {
     // - Until t_0 unless she calls set_ready
     // - After t_1, if she called set_ready
     function refund(uint256 _s) external {
-        if (isReady == true) {
+        if (isReady) {
             require(
                 block.timestamp >= timeout_1,
-                "It's Bob's turn now, please wait!"
+                "Bob can now claim the funds until the second timeout, please wait!"
             );
         } else {
-            require(block.timestamp < timeout_0, "Missed your chance!");
+            require(
+                block.timestamp < timeout_0,
+                "Too late for a refund! Pray that Bob claims his ETH."
+            );
         }
 
-        verifySecret(_s, pubKeyRefund);
+        verifySecret(_s, refundCtment);
         emit Refunded(_s);
 
         // send eth back to owner==caller (Alice)
         selfdestruct(owner);
     }
 
-    function verifySecret(uint256 _s, bytes32 pubKey) internal view {
-        // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
-        (uint256 px, uint256 py) = ed25519.scalarMultBase(_s);
-        uint256 canonical_p = py | ((px % 2) << 255);
-        require(
-            bytes32(canonical_p) == pubKey,
-            "provided secret does not match the expected pubKey"
-        );
-    }
+    function verifySecret(uint256 _s, bytes32 ctment) internal view virtual;
 }

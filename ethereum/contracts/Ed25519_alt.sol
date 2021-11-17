@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPLv3
 // Source https://github.com/javgh/ed25519-solidity
 
 pragma solidity ^0.8.5;
