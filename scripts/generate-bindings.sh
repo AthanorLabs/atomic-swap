@@ -1,8 +1,8 @@
 #!/bin/bash
 
-$SOLC_BIN --abi ethereum/contracts/Swap.sol -o ethereum/abi/ --overwrite
-$SOLC_BIN --bin ethereum/contracts/Swap.sol -o ethereum/bin/ --overwrite
-abigen --abi ethereum/abi/Swap.abi --pkg swap --type Swap --out swap.go --bin ethereum/bin/Swap.bin
+$SOLC_BIN --abi ethereum/contracts/SwapOnChain.sol -o ethereum/abi/ --overwrite
+$SOLC_BIN --bin ethereum/contracts/SwapOnChain.sol -o ethereum/bin/ --overwrite
+abigen --abi ethereum/abi/SwapOnChain.abi --pkg swap --type Swap --out swap.go --bin ethereum/bin/SwapOnChain.bin
 mv swap.go ./swap-contract
 
 $SOLC_BIN --abi ethereum/contracts/SwapDLEQ.sol -o ethereum/abi/ --overwrite
