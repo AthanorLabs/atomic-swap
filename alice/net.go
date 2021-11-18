@@ -147,6 +147,9 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, er
 
 	log.Info("deployed Swap contract, waiting for XMR to be locked: address=", address)
 
+	// start goroutine to check that Bob locks before t_0
+	go func() {}()
+
 	out := &net.NotifyContractDeployed{
 		Address: address.String(),
 	}

@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -265,7 +267,7 @@ func (a *alice) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", errors.New("claim transaction has no logs")
 	}
 
-	abi, err := swap.SwapMetaData.GetAbi()
+	abi, err := abi.JSON(strings.NewReader(swap.SwapABI))
 	if err != nil {
 		return "", err
 	}

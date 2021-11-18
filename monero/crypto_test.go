@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,4 +49,10 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 func TestGeneratePrivateKeyPair(t *testing.T) {
 	_, err := GenerateKeys()
 	require.NoError(t, err)
+}
+
+func TestKeccak256(t *testing.T) {
+	res := crypto.Keccak256([]byte{1})
+	res2 := Keccak256([]byte{1})
+	require.Equal(t, res, res2[:])
 }

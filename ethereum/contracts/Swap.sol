@@ -5,7 +5,7 @@ pragma solidity ^0.8.5;
 // import "./Ed25519.sol";
 import "./Ed25519_alt.sol";
 
-contract SwapOnChain {
+contract Swap {
     // Ed25519 library
     Ed25519 immutable ed25519;
 
@@ -48,7 +48,7 @@ contract SwapOnChain {
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
     function set_ready() external {
-        require(!isReady && msg.sender == owner && block.timestamp < timeout_0);
+        require(!isReady && msg.sender == owner);
         isReady = true;
         timeout_1 = block.timestamp + 1 days;
         emit IsReady(true);
