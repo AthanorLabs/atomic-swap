@@ -166,3 +166,11 @@ This will test the main protocol functionality on the ethereum side:
 3. Case where Bob locks monero, but never claims his ether from the contract
 
 Upon Refund/Claim by either side, they reveal the secret to the counterparty, which *always* guarantees that the counteryparty can claim the locked funds on ethereum.
+
+### Contributions
+
+If you'd like to contribute, feel free to fork the repo and make a pull request. Please make sure the CI is passing - you can run `make build`, `make lint`, and `make test` to make sure the checks pass locally.
+
+### Donations
+
+The work on this project is done in our free time. If you'd like to donate, you can send XMR to the following address: 48WX8KhD8ECgnRBonmDdUecGt8LtQjjesDRzxAjj7tie4CdhtqeBjSLWHhNKMc52kWayq365czkN3MV62abQobTcT1Xe6xC
