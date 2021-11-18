@@ -142,10 +142,17 @@ Set `SOLC_BIN` to the downloaded binary
 export SOLC_BIN=solc
 ```
 
+Install `abigen`
+```
+git clone https://github.com/ethereum/go-ethereum.git && cd go-ethereum/cmd/abigen
+go install
+```
+
 Generate the bindings
 ```
 ./scripts/generate-bindings.sh
 ```
+Note: you may need to add `$GOPATH` and `$GOPATH/bin` to your path.
 
 ##### Testing
 To setup the test environment and run all unit tests, execute:
