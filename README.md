@@ -173,4 +173,4 @@ If you'd like to contribute, feel free to fork the repo and make a pull request.
 
 ### Donations
 
-The work on this project is done in our free time. If you'd like to donate, you can send XMR to the following address: 48WX8KhD8ECgnRBonmDdUecGt8LtQjjesDRzxAjj7tie4CdhtqeBjSLWHhNKMc52kWayq365czkN3MV62abQobTcT1Xe6xC
+The work on this project is currently not funded. If you'd like to donate, you can send XMR to the following address: 48WX8KhD8ECgnRBonmDdUecGt8LtQjjesDRzxAjj7tie4CdhtqeBjSLWHhNKMc52kWayq365czkN3MV62abQobTcT1Xe6xC
