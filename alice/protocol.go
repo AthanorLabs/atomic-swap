@@ -51,6 +51,7 @@ type alice struct {
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
 	auth       *bind.TransactOpts
+	callOpts *bind.CallOpts
 
 	nextExpectedMessage net.Message
 
@@ -77,6 +78,8 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 		return nil, err
 	}
 
+	pub := pk.Public().(*ecdsa.PublicKey)
+
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
 
 	return &alice{
@@ -85,6 +88,10 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 		ethClient:           ec,
 		client:              monero.NewClient(moneroEndpoint),
 		auth:                auth,
+		callOpts: &bind.CallOpts{
+			From: crypto.PubkeyToAddress(*pub),
+			Context: ctx,
+		},
 		nextExpectedMessage: &net.InitiateMessage{},
 	}, nil
 }

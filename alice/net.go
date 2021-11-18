@@ -3,6 +3,7 @@ package alice
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -64,6 +65,8 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 		return nil, true, err
 	}
 
+	xmrLockedCh := make(chan struct{})
+
 	switch msg := msg.(type) {
 	case *net.InitiateMessage:
 		if msg.Provides != net.ProvidesXMR {
@@ -78,14 +81,14 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 			return nil, true, err
 		}
 
-		resp, err := a.handleSendKeysMessage(msg.SendKeysMessage)
+		resp, err := a.handleSendKeysMessage(msg.SendKeysMessage, xmrLockedCh)
 		if err != nil {
 			return nil, true, err
 		}
 
 		return resp, false, nil
 	case *net.SendKeysMessage:
-		resp, err := a.handleSendKeysMessage(msg)
+		resp, err := a.handleSendKeysMessage(msg, xmrLockedCh)
 		if err != nil {
 			return nil, true, err
 		}
@@ -96,8 +99,9 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 			return nil, true, errors.New("got empty address for locked XMR")
 		}
 
-		// check that XMR was locked in expected account, and confirm amount
+		// TODO: check that XMR was locked in expected account, and confirm amount
 		a.setNextExpectedMessage(&net.NotifyClaimed{})
+		close(xmrLockedCh)
 
 		if err := a.ready(); err != nil {
 			return nil, true, fmt.Errorf("failed to call Ready: %w", err)
@@ -121,7 +125,7 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 	}
 }
 
-func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
+func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-chan struct{}) (net.Message, error) {
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errors.New("did not receive Bob's public spend or private view key")
 	}
@@ -148,7 +152,28 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, er
 	log.Info("deployed Swap contract, waiting for XMR to be locked: address=", address)
 
 	// start goroutine to check that Bob locks before t_0
-	go func() {}()
+	go func() {
+		const timeoutBuffer = time.Minute * 5
+
+		st0, err := a.contract.Timeout0(a.callOpts)
+		if err != nil {
+			log.Errorf("failed to get timeout0 from contract: err=%s", err)
+			return
+		}
+
+		t0 := time.Unix(st0.Int64(), 0)
+		until := time.Until(t0)
+
+		select {
+		case <-a.ctx.Done():
+			return
+		case <-time.After(until - timeoutBuffer):
+			// Bob hasn't locked yet, let's call refund
+		case <-xmrLockedCh: 
+			return
+		}
+
+	}()
 
 	out := &net.NotifyContractDeployed{
 		Address: address.String(),

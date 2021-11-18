@@ -103,7 +103,7 @@ If all goes well, you should see Alice and Bob successfully exchange messages an
 
 ##### Compiling contract bindings
 
-Download solc v0.8.9
+Download solc v0.8.9: https://github.com/ethereum/solidity/releases/tag/v0.8.9
 
 Set `SOLC_BIN` to the downloaded binary
 ```
