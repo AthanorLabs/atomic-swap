@@ -66,6 +66,7 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 	}
 
 	xmrLockedCh := make(chan struct{})
+	claimedCh := make(chan struct{})
 
 	switch msg := msg.(type) {
 	case *net.InitiateMessage:
@@ -109,6 +110,30 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 
 		log.Debug("set swap.IsReady == true")
 
+		go func() {
+			st1, err := a.contract.Timeout1(a.callOpts)
+			if err != nil {
+				log.Errorf("failed to get timeout1 from contract: err=%s", err)
+				return
+			}
+
+			t1 := time.Unix(st1.Int64(), 0)
+			until := time.Until(t1)
+
+			select {
+			case <-a.ctx.Done():
+				return
+			case <-time.After(until):
+				// Bob hasn't claimed, and we're after t_1. let's call Refund
+				if err = a.refund(); err != nil {
+					log.Errorf("failed to refund: err=%s", err)
+					return
+				}
+			case <-claimedCh:
+				return
+			}
+		}()
+
 		out := &net.NotifyReady{}
 		return out, false, nil
 	case *net.NotifyClaimed:
@@ -117,6 +142,8 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 			log.Error("failed to create monero address: err=", err)
 			return nil, true, err
 		}
+
+		close(claimedCh)
 
 		log.Info("successfully created monero wallet from our secrets: address=", address)
 		return nil, true, nil
@@ -169,6 +196,10 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-ch
 			return
 		case <-time.After(until - timeoutBuffer):
 			// Bob hasn't locked yet, let's call refund
+			if err = a.refund(); err != nil {
+				log.Errorf("failed to refund: err=%s", err)
+				return
+			}
 		case <-xmrLockedCh:
 			return
 		}

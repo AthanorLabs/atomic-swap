@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	log = logging.Logger("alice")
+	log                    = logging.Logger("alice")
 	defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 )
 
@@ -233,7 +233,7 @@ func (a *alice) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //nolin
 // refund calls the Refund() method in the Swap contract, revealing Alice's secret
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
-func (a *alice) refund() error { //nolint:unused
+func (a *alice) refund() error {
 	secret := a.privkeys.SpendKeyBytes()
 	s := big.NewInt(0).SetBytes(reverse(secret))
 	_, err := a.contract.Refund(a.auth, s)
@@ -245,6 +245,7 @@ func (a *alice) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address,
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-swap-wallet-%s", t)
 	if err := a.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
+		// TODO: save the keypair on disk!!! otherwise we lose the keys
 		return "", err
 	}
 
