@@ -132,12 +132,12 @@ func (a *alice) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
 
 // deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
 func (a *alice) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
-	pkAlice := reverse(a.pubkeys.SpendKey().Bytes())
-	pkBob := reverse(a.bobSpendKey.Bytes())
+	pkAlice := a.pubkeys.SpendKey().Bytes()
+	pkBob := a.bobSpendKey.Bytes()
 
 	var pka, pkb [32]byte
-	copy(pka[:], reverse(pkAlice))
-	copy(pkb[:], reverse(pkBob))
+	copy(pka[:], pkAlice)
+	copy(pkb[:], pkBob)
 
 	log.Debug("locking amount: ", amount)
 	a.auth.Value = big.NewInt(int64(amount))
@@ -145,7 +145,7 @@ func (a *alice) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		a.auth.Value = nil
 	}()
 
-	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb, defaultTimeoutDuration)
+	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pkb, pka, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}

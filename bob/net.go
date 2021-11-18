@@ -100,7 +100,7 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 		}
 
 		b.setNextExpectedMessage(&net.NotifyReady{})
-		log.Info("got Swap contract address! address=%s\n", msg.Address)
+		log.Infof("got Swap contract address! address=%s", msg.Address)
 
 		if err := b.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)
