@@ -169,7 +169,7 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-ch
 			return
 		case <-time.After(until - timeoutBuffer):
 			// Bob hasn't locked yet, let's call refund
-		case <-xmrLockedCh: 
+		case <-xmrLockedCh:
 			return
 		}
 

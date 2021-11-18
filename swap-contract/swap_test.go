@@ -17,6 +17,8 @@ import (
 	"github.com/noot/atomic-swap/monero"
 )
 
+var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
+
 func reverse(s []byte) []byte {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -39,7 +41,7 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{})
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -88,7 +90,7 @@ func TestSwap_Claim(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, defaultTimeoutDuration)
 	require.NoError(t, err)
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 
@@ -115,7 +117,7 @@ func TestSwap_Claim(t *testing.T) {
 	fmt.Println("Secret:", hex.EncodeToString(reverse(secretBob)))
 	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyBob)))
 	_, err = swap.Claim(txOptsBob, s)
-	require.Regexp(t, ".*'isReady == false' cannot claim yet!", err)
+	require.Regexp(t, ".*too late or early to claim!", err)
 
 	// Alice calls set_ready on the contract
 	setReadyTx, err := swap.SetReady(txOpts)
@@ -175,7 +177,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -230,7 +232,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	copy(pkAliceFixed[:], reverse(pubKeyAlice))
 	var pkBobFixed [32]byte
 	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{

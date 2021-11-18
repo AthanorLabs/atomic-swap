@@ -26,6 +26,7 @@ import (
 
 var (
 	log = logging.Logger("alice")
+	defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 )
 
 func reverse(s []byte) []byte {
@@ -51,7 +52,7 @@ type alice struct {
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
 	auth       *bind.TransactOpts
-	callOpts *bind.CallOpts
+	callOpts   *bind.CallOpts
 
 	nextExpectedMessage net.Message
 
@@ -83,13 +84,13 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
 
 	return &alice{
-		ctx:                 ctx,
-		ethPrivKey:          pk,
-		ethClient:           ec,
-		client:              monero.NewClient(moneroEndpoint),
-		auth:                auth,
+		ctx:        ctx,
+		ethPrivKey: pk,
+		ethClient:  ec,
+		client:     monero.NewClient(moneroEndpoint),
+		auth:       auth,
 		callOpts: &bind.CallOpts{
-			From: crypto.PubkeyToAddress(*pub),
+			From:    crypto.PubkeyToAddress(*pub),
 			Context: ctx,
 		},
 		nextExpectedMessage: &net.InitiateMessage{},
@@ -144,7 +145,7 @@ func (a *alice) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		a.auth.Value = nil
 	}()
 
-	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb)
+	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}

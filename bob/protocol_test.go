@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var	defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
+
 func newTestBob(t *testing.T) *bob {
 	bob, err := NewBob(context.Background(), common.DefaultBobMoneroEndpoint, common.DefaultMoneroDaemonEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyBob)
 	require.NoError(t, err)
@@ -31,7 +33,7 @@ func newTestBob(t *testing.T) *bob {
 
 	var pubkey [32]byte
 	copy(pubkey[:], bob.pubkeys.SpendKey().Bytes())
-	bob.contractAddr, _, bob.contract, err = swap.DeploySwap(bob.auth, conn, pubkey, [32]byte{})
+	bob.contractAddr, _, bob.contract, err = swap.DeploySwap(bob.auth, conn, pubkey, [32]byte{}, defaultTimeoutDuration)
 	require.NoError(t, err)
 	return bob
 }
