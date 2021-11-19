@@ -61,7 +61,7 @@ func TestBob_ClaimFunds(t *testing.T) {
 
 	bob := newTestBob(t)
 
-	_, err := bob.contract.(*swap.Swap).SetReady(bob.auth)
+	_, err := bob.contract.SetReady(bob.auth)
 	require.NoError(t, err)
 
 	txHash, err := bob.claimFunds()
