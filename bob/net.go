@@ -3,6 +3,7 @@ package bob
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -67,6 +68,9 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 		return nil, true, err
 	}
 
+	// TODO: put this in *bob.swapState
+	readyCh := make(chan struct{})
+
 	switch msg := msg.(type) {
 	case *net.InitiateMessage:
 		if msg.Provides != net.ProvidesETH {
@@ -117,9 +121,36 @@ func (b *bob) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) 
 			Address: string(addrAB),
 		}
 
+		go func() {
+			st0, err := b.contract.Timeout0(b.callOpts)
+			if err != nil {
+				log.Errorf("failed to get timeout0 from contract: err=%s", err)
+				return
+			}
+
+			t0 := time.Unix(st0.Int64(), 0)
+			until := time.Until(t0)
+
+			select {
+			case <-b.ctx.Done():
+				return
+			case <-time.After(until):
+				// we can now call Claim()
+				if _, err = b.claimFunds(); err != nil {
+					log.Errorf("failed to claim: err=%s", err)
+					return
+				}
+
+				// TODO: send *net.NotifyClaimed
+			case <-readyCh:
+				return
+			}
+		}()
+
 		return out, false, nil
 	case *net.NotifyReady:
 		log.Debug("Alice called Ready(), attempting to claim funds...")
+		close(readyCh)
 
 		// contract ready, let's claim our ether
 		txHash, err := b.claimFunds()

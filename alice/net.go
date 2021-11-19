@@ -65,6 +65,7 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 		return nil, true, err
 	}
 
+	// TODO: put these in *alice.alice or *alice.swapState
 	xmrLockedCh := make(chan struct{})
 	claimedCh := make(chan struct{})
 

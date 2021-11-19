@@ -9,11 +9,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
@@ -27,13 +25,6 @@ var (
 	log = logging.Logger("bob")
 )
 
-// SwapContract is the interface that must be implemented by the Swap contract.
-type SwapContract interface {
-	WatchIsReady(opts *bind.WatchOpts, sink chan<- *swap.SwapIsReady) (event.Subscription, error)
-	WatchRefunded(opts *bind.WatchOpts, sink chan<- *swap.SwapRefunded) (event.Subscription, error)
-	Claim(opts *bind.TransactOpts, _s *big.Int) (*ethtypes.Transaction, error)
-}
-
 // bob implements the functions that will be called by a user who owns XMR
 // and wishes to swap for ETH.
 type bob struct {
@@ -45,10 +36,11 @@ type bob struct {
 	client       monero.Client
 	daemonClient monero.DaemonClient
 
-	contract     SwapContract
+	contract     *swap.Swap
 	contractAddr ethcommon.Address
 	ethClient    *ethclient.Client
 	auth         *bind.TransactOpts
+	callOpts     *bind.CallOpts
 
 	ethPrivKey      *ecdsa.PrivateKey
 	alicePublicKeys *monero.PublicKeyPair
@@ -77,13 +69,19 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 		return nil, err
 	}
 
+	pub := pk.Public().(*ecdsa.PublicKey)
+
 	return &bob{
-		ctx:                 ctx,
-		client:              monero.NewClient(moneroEndpoint),
-		daemonClient:        monero.NewClient(moneroDaemonEndpoint),
-		ethClient:           ec,
-		ethPrivKey:          pk,
-		auth:                auth,
+		ctx:          ctx,
+		client:       monero.NewClient(moneroEndpoint),
+		daemonClient: monero.NewClient(moneroDaemonEndpoint),
+		ethClient:    ec,
+		ethPrivKey:   pk,
+		auth:         auth,
+		callOpts: &bind.CallOpts{
+			From:    crypto.PubkeyToAddress(*pub),
+			Context: ctx,
+		},
 		nextExpectedMessage: &net.InitiateMessage{},
 	}, nil
 }
