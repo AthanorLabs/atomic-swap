@@ -2,14 +2,14 @@
 
 This is a WIP prototype of ETH<->XMR atomic swaps, currently in the early development phase. It currently consists of a single `atomic-swap` binary which allows for peers to discover each other over the network based on what you want to swap for, querying peers for additional info such as their desired exchange rate, and the ability to initiate and perform the entire protocol. The `atomic-swap` program has a JSON-RPC endpoint which the user can use to interact with the process. 
 
-### Protocol
+## Protocol
 
 Alice has ETH and wants XMR, Bob has XMR and wants ETH. They come to an agreement to do the swap and the amounts they will swap.
 
-##### Initial (offchain) phase
-- Alice and Bob each generate Monero secret keys (which consist of secret spend and view keys): (`s_a`, `v_a`) and (`s_b`, `v_b`), which are used to construct valid points on the ed25519 curve (ie. their public keys): `P_ed_a` and `P_ed_b` accordingly. Alice sends Bob her public keys and Bob sends Alice his public spend key and private view key. This is so Alice can check that Bob actually locked the amount of XMR he claims he will.
+#### Initial (offchain) phase
+- Alice and Bob each generate Monero secret keys (which consist of secret spend and view keys): (`s_a`, `v_a`) and (`s_b`, `v_b`), which are used to construct valid points on the ed25519 curve (ie. public keys): `P_a` and `P_b` accordingly. Alice sends Bob her public key and Bob sends Alice his public spend key and private view key. Note: The XMR will be locked in the account with address corresponding to the public key `P_a + P_b`. Bob needs to send his private view key so Alice can check that Bob actually locked the amount of XMR he claims he will.
 
-##### Step 1.
+#### Step 1.
 Alice deploys a smart contract on Ethereum and locks her ETH in it. The contract has the following properties:
 - it is non-destructible
 
@@ -27,12 +27,12 @@ Alice deploys a smart contract on Ethereum and locks her ETH in it. The contract
 
 - `Refund()` takes one parameter from Alice: `s_a`. This allows Alice to get her ETH back in case Bob goes offline, but it simulteneously reveals her secret, allowing Bob to regain access to the XMR he locked.
 
-##### Step 2. 
-Bob sees the smart contract has been deployed with the correct parameters. He sends his XMR to an account address constructed from `P_ed_a + P_ed_b`. Thus, the funds can only be accessed by an entity having both `s_a` & `s_b`, as the secret spend key to that account is `s_a + s_b`. The funds are viewable by someone having `v_a + v_b`.
+#### Step 2. 
+Bob sees the smart contract has been deployed with the correct parameters. He sends his XMR to an account address constructed from `P_a + P_b`. Thus, the funds can only be accessed by an entity having both `s_a` & `s_b`, as the secret spend key to that account is `s_a + s_b`. The funds are viewable by someone having `v_a + v_b`.
 
 Note: `Refund()` and `Claim()` cannot be called at the same time. This is to prevent the case of front-running where, for example, Bob tries to claim, so his secret `s_b` is in the mempool, and then Alice tries to call `Refund()` with a higher priority while also transferring the XMR in the account controlled by `s_a + s_b`. If her call goes through before Bob's and Bob doesn't notice this happening in time, then Alice will now have *both* the ETH and the XMR. Due to this case, Alice and Bob should not call `Refund()` or `Claim()` when they are approaching `t_0` or `t_1` respectively, as their transaction may not go through in time.
 
-##### Step 3.
+#### Step 3.
 Alice sees that the XMR has been locked, and the amount is correct (as she knows `v_a` and Bob send her `v_b` in the first key exchange step). She calls `Ready()` on the smart contract if the XMR has been locked. If the amount of XMR locked is incorrect, Alice calls `Refund()` to abort the swap and reclaim her ETH.
 
 From this point on, Bob can redeem his ether by calling `Claim(s_b)`, which transfers the ETH to him.
@@ -47,20 +47,23 @@ By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s
 
 - **Alice never calls `ready` within `t_0`**. Bob can still claim his ETH by waiting until after `t_0` has passed, as the contract automatically allows him to call `Claim()`.
 
+## Instructions
+
 ### Requirements
 
 - go 1.17
+- ganache-cli (can be installed with `npm i -g ganache-cli`) I suggest using nvm to install npm: https://github.com/nvm-sh/nvm#installing-and-updating
 
-Note: this program has only been tested on ubuntu 20.04.
+Note: this program has only been tested on Ubuntu 20.04.
 
-### Instructions
+#### Set up environment
+
+Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you. You can also check out the `scripts/run-unit-tests.sh` script for the commands needed to setup the environment.
 
 Start ganache-cli with determinstic keys:
 ```
 ganache-cli -d
 ```
-
-Note: the `scripts/run-unit-tests.sh` script will do the following setup for you including downloading the needed monero binaries and running the processes (up until the `make build` step)
 
 Start monerod for regtest:
 ```
@@ -76,15 +79,17 @@ Determine the address of `test-wallet` by running `monero-wallet-cli` and `addre
 
 Then, mine some blocks on the monero test chain by running the following RPC command, replacing the address with the one from the previous step:
 ```
-curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{ "wallet_address":"49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB","amount_of_blocks":100}' -H 'Content-Type: application/json'
+curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB","amount_of_blocks":100}' -H 'Content-Type: application/json'
 ```
 
 This will deposit some XMR in your account.
 
-Start monero-wallet-rpc for Alice:
+Start monero-wallet-rpc for Alice (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
 ```
 ./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
 ```
+
+#### Build and run
 
 Build binary:
 ```
@@ -108,7 +113,7 @@ To run as Bob and connect to Alice, replace the bootnode in the following line w
 
 Note: amount doesn't matter at this point, it's only used in the `QueryResponse` message (ie. what's returned by `net_queryPeer`)
 
-Note: Alice's RPC server runs on http://locahost:5001, Bob's runs on http://localhost:5002 by default.
+Note: Alice's RPC server runs on http://localhost:5001, Bob's runs on http://localhost:5002 by default.
 
 In terminal 3, we will make RPC calls to the swap daemon.
 
@@ -132,8 +137,11 @@ $ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.
 
+### Developer instructions
 
 ##### Compiling contract bindings
+
+If you update the `Swap.sol` contract for some reason, you will need to re-generate the Go bindings for the contract. **Note:** you do *not* need to do this to try out the swap; only if you want to edit the contract for development purposes.
 
 Download solc v0.8.9: https://github.com/ethereum/solidity/releases/tag/v0.8.9
 
@@ -154,7 +162,7 @@ Generate the bindings
 ```
 Note: you may need to add `$GOPATH` and `$GOPATH/bin` to your path.
 
-##### Testing
+#### Testing
 To setup the test environment and run all unit tests, execute:
 ```
 make test
@@ -166,3 +174,11 @@ This will test the main protocol functionality on the ethereum side:
 3. Case where Bob locks monero, but never claims his ether from the contract
 
 Upon Refund/Claim by either side, they reveal the secret to the counterparty, which *always* guarantees that the counteryparty can claim the locked funds on ethereum.
+
+## Contributions
+
+If you'd like to contribute, feel free to fork the repo and make a pull request. Please make sure the CI is passing - you can run `make build`, `make lint`, and `make test` to make sure the checks pass locally.
+
+## Donations
+
+The work on this project is currently not funded. If you'd like to donate, you can send XMR to the following address: `48WX8KhD8ECgnRBonmDdUecGt8LtQjjesDRzxAjj7tie4CdhtqeBjSLWHhNKMc52kWayq365czkN3MV62abQobTcT1Xe6xC`
