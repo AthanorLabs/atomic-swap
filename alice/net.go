@@ -14,7 +14,11 @@ func (a *alice) Provides() net.ProvidesCoin {
 }
 
 func (a *alice) SendKeysMessage() (*net.SendKeysMessage, error) {
-	kp, err := a.generateKeys()
+	if a.swapState == nil {
+		return nil, errors.New("must initiate swap before generating keys")
+	}
+
+	kp, err := a.swapState.generateKeys()
 	if err != nil {
 		return nil, err
 	}
@@ -25,72 +29,89 @@ func (a *alice) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) error {
-	if err := a.initiate(providesAmount, desiredAmount); err != nil {
-		return err
-	}
+func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) (*swapState, error) {
+	// if err := a.initiate(providesAmount, desiredAmount); err != nil {
+	// 	return err
+	// }
 
-	a.setNextExpectedMessage(&net.SendKeysMessage{})
-	return nil
+	// a.setNextExpectedMessage(&net.SendKeysMessage{})
+	// return nil
+	return a.initiate(providesAmount, desiredAmount)
 }
 
-func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
-	if a.initiated {
-		return errors.New("protocol already in progress")
+func (a *alice) initiate(providesAmount, desiredAmount uint64) (*swapState, error) {
+	if a.swapState != nil {
+		return nil, errors.New("protocol already in progress")
 	}
 
 	balance, err := a.ethClient.BalanceAt(a.ctx, a.auth.From, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// check user's balance and that they actualy have what they will provide
-	if balance.Uint64() <= a.providesAmount {
-		return errors.New("balance lower than amount to be provided")
+	if balance.Uint64() <= providesAmount {
+		return nil, errors.New("balance lower than amount to be provided")
 	}
 
-	a.initiated = true
-	a.providesAmount = providesAmount
-	a.desiredAmount = desiredAmount
-	return nil
+	a.swapState = newSwapState(a, providesAmount, desiredAmount)
+	return a.swapState, nil
 }
 
 func (a *alice) ProtocolComplete() {
-	a.initiated = false
-	a.setNextExpectedMessage(&net.InitiateMessage{})
+	a.swapState = nil
 }
 
-func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
-	if err := a.checkMessageType(msg); err != nil {
+func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (*swapState, net.Message, error) {
+	if msg.Provides != net.ProvidesXMR {
+		return nil, nil, errors.New("peer does not provide XMR")
+	}
+
+	// TODO: notify the user via the CLI/websockets that someone wishes to initiate a swap with them.
+
+	// the other party initiated, saying what they will provide and what they desire.
+	// we initiate our protocol, saying we will provide what they desire and vice versa.
+	swapState, err := a.initiate(msg.DesiredAmount, msg.ProvidesAmount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := swapState.handleSendKeysMessage(msg.SendKeysMessage)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return swapState, resp, nil
+}
+
+func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+	if err := s.checkMessageType(msg); err != nil {
 		return nil, true, err
 	}
 
-	// TODO: put these in *alice.alice or *alice.swapState
-	xmrLockedCh := make(chan struct{})
-	claimedCh := make(chan struct{})
-
 	switch msg := msg.(type) {
-	case *net.InitiateMessage:
-		if msg.Provides != net.ProvidesXMR {
-			return nil, true, errors.New("peer does not provide XMR")
-		}
+	// case *net.InitiateMessage:
+	// 	if msg.Provides != net.ProvidesXMR {
+	// 		return nil, true, errors.New("peer does not provide XMR")
+	// 	}
 
-		// TODO: notify the user via the CLI/websockets that someone wishes to initiate a swap with them.
+	// 	// TODO: notify the user via the CLI/websockets that someone wishes to initiate a swap with them.
 
-		// the other party initiated, saying what they will provide and what they desire.
-		// we initiate our protocol, saying we will provide what they desire and vice versa.
-		if err := a.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
-			return nil, true, err
-		}
+	// 	// the other party initiated, saying what they will provide and what they desire.
+	// 	// we initiate our protocol, saying we will provide what they desire and vice versa.
+	// 	swapState, err := a.initiate(msg.DesiredAmount, msg.ProvidesAmount)
+	// 	if err != nil {
+	// 		return nil, true, err
+	// 	}
 
-		resp, err := a.handleSendKeysMessage(msg.SendKeysMessage, xmrLockedCh)
-		if err != nil {
-			return nil, true, err
-		}
+	// 	resp, err := a.handleSendKeysMessage(msg.SendKeysMessage, xmrLockedCh)
+	// 	if err != nil {
+	// 		return nil, true, err
+	// 	}
 
-		return resp, false, nil
+	// 	return resp, false, nil
 	case *net.SendKeysMessage:
-		resp, err := a.handleSendKeysMessage(msg, xmrLockedCh)
+		resp, err := s.handleSendKeysMessage(msg)
 		if err != nil {
 			return nil, true, err
 		}
@@ -102,17 +123,17 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 		}
 
 		// TODO: check that XMR was locked in expected account, and confirm amount
-		a.setNextExpectedMessage(&net.NotifyClaimed{})
-		close(xmrLockedCh)
+		s.nextExpectedMessage = &net.NotifyClaimed{}
+		close(s.xmrLockedCh)
 
-		if err := a.ready(); err != nil {
+		if err := s.ready(); err != nil {
 			return nil, true, fmt.Errorf("failed to call Ready: %w", err)
 		}
 
 		log.Debug("set swap.IsReady == true")
 
 		go func() {
-			st1, err := a.contract.Timeout1(a.callOpts)
+			st1, err := s.contract.Timeout1(s.alice.callOpts)
 			if err != nil {
 				log.Errorf("failed to get timeout1 from contract: err=%s", err)
 				return
@@ -122,15 +143,15 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 			until := time.Until(t1)
 
 			select {
-			case <-a.ctx.Done():
+			case <-s.alice.ctx.Done():
 				return
 			case <-time.After(until):
 				// Bob hasn't claimed, and we're after t_1. let's call Refund
-				if err = a.refund(); err != nil {
+				if err = s.refund(); err != nil {
 					log.Errorf("failed to refund: err=%s", err)
 					return
 				}
-			case <-claimedCh:
+			case <-s.claimedCh:
 				return
 			}
 		}()
@@ -138,13 +159,13 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 		out := &net.NotifyReady{}
 		return out, false, nil
 	case *net.NotifyClaimed:
-		address, err := a.handleNotifyClaimed(msg.TxHash)
+		address, err := s.handleNotifyClaimed(msg.TxHash)
 		if err != nil {
 			log.Error("failed to create monero address: err=", err)
 			return nil, true, err
 		}
 
-		close(claimedCh)
+		close(s.claimedCh)
 
 		log.Info("successfully created monero wallet from our secrets: address=", address)
 		return nil, true, nil
@@ -153,13 +174,13 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 	}
 }
 
-func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-chan struct{}) (net.Message, error) {
+func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errors.New("did not receive Bob's public spend or private view key")
 	}
 
 	log.Debug("got Bob's keys")
-	a.setNextExpectedMessage(&net.NotifyXMRLock{})
+	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)
 	if err != nil {
@@ -171,8 +192,8 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-ch
 		return nil, fmt.Errorf("failed to generate Bob's private view keys: %w", err)
 	}
 
-	a.setBobKeys(sk, vk)
-	address, err := a.deployAndLockETH(a.providesAmount)
+	s.setBobKeys(sk, vk)
+	address, err := s.deployAndLockETH(s.providesAmount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
@@ -183,7 +204,7 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-ch
 	go func() {
 		const timeoutBuffer = time.Minute * 5
 
-		st0, err := a.contract.Timeout0(a.callOpts)
+		st0, err := s.contract.Timeout0(s.alice.callOpts)
 		if err != nil {
 			log.Errorf("failed to get timeout0 from contract: err=%s", err)
 			return
@@ -193,15 +214,15 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-ch
 		until := time.Until(t0)
 
 		select {
-		case <-a.ctx.Done():
+		case <-s.ctx.Done():
 			return
 		case <-time.After(until - timeoutBuffer):
 			// Bob hasn't locked yet, let's call refund
-			if err = a.refund(); err != nil {
+			if err = s.refund(); err != nil {
 				log.Errorf("failed to refund: err=%s", err)
 				return
 			}
-		case <-xmrLockedCh:
+		case <-s.xmrLockedCh:
 			return
 		}
 
@@ -214,8 +235,8 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage, xmrLockedCh <-ch
 	return out, nil
 }
 
-func (a *alice) checkMessageType(msg net.Message) error {
-	if msg.Type() != a.nextExpectedMessage.Type() {
+func (s *swapState) checkMessageType(msg net.Message) error {
+	if msg.Type() != s.nextExpectedMessage.Type() {
 		return errors.New("received unexpected message")
 	}
 
