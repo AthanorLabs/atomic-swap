@@ -38,7 +38,7 @@ type Host interface {
 
 	Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *InitiateMessage) error
+	Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error
 }
 
 type host struct {

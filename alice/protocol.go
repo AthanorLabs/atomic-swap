@@ -28,35 +28,17 @@ var (
 	defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 )
 
-func reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
 // alice implements the functions that will be called by a user who owns ETH
 // and wishes to swap for XMR.
 type alice struct {
 	ctx context.Context
-	// t0, t1 time.Time //nolint
 
-	// privkeys    *monero.PrivateKeyPair
-	// pubkeys     *monero.PublicKeyPair
-	// bobSpendKey *monero.PublicKey
-	// bobViewKey  *monero.PrivateViewKey
 	client monero.Client
 
-	//contract   *swap.Swap
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
 	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
-
-	//nextExpectedMessage net.Message
-
-	//initiated                     bool
-	//providesAmount, desiredAmount uint64
 
 	// non-nil if a swap is currently happening, nil otherwise
 	swapState *swapState
@@ -149,7 +131,7 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		return ethcommon.Address{}, err
 	}
 
-	balance, err := s.alice.ethClient.BalanceAt(s.alice.ctx, address, nil)
+	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
@@ -173,7 +155,7 @@ func (s *swapState) ready() error {
 // to (s_a + s_b) will be sent over this channel, allowing Alice to claim the XMR it contains.
 func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
-		Context: s.alice.ctx,
+		Context: s.ctx,
 	}
 
 	out := make(chan *monero.PrivateKeyPair)
@@ -220,7 +202,7 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 
 				out <- kpAB
 				return
-			case <-s.alice.ctx.Done():
+			case <-s.ctx.Done():
 				return
 			}
 		}
@@ -234,7 +216,7 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() error {
 	secret := s.privkeys.SpendKeyBytes()
-	sc := big.NewInt(0).SetBytes(reverse(secret))
+	sc := big.NewInt(0).SetBytes(secret)
 	_, err := s.contract.Refund(s.alice.auth, sc)
 	return err
 }
@@ -260,13 +242,14 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 	}
 
 	log.Info("wallet balance: ", balance.Balance)
+	s.success = true
 	return kpAB.Address(), nil
 }
 
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
-	receipt, err := s.alice.ethClient.TransactionReceipt(s.alice.ctx, ethcommon.HexToHash(txHash))
+	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err
 	}
@@ -295,7 +278,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 
 	skB, err := monero.NewPrivateSpendKey(sb[:])
 	if err != nil {
-		log.Error("failed to convert Bob's secret into a key: %s\n", err)
+		log.Errorf("failed to convert Bob's secret into a key: %s", err)
 		return "", err
 	}
 

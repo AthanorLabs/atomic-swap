@@ -47,8 +47,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 
 	// TODO: need a lock for this, otherwise two streams can enter this func
 	if h.swapState != nil {
-		log.Debugf("ignoring incoming protocol stream, already have ongoing swap")
-		return
+		// TODO: check if peer is the peer we initiated with, otherwise return
 	}
 
 	defer func() {
@@ -119,7 +118,12 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 }
 
-func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage) error {
+func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error {
+	// TODO: need a lock for this, otherwise two streams can enter this func
+	if h.swapState != nil {
+		return errors.New("already have ongoing swap")
+	}
+
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
 	defer cancel()
 
@@ -141,6 +145,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage) error {
 		return err
 	}
 
+	h.swapState = s
 	h.handleProtocolStream(stream)
 	return nil
 }

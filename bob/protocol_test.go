@@ -14,13 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
 var defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 
 func newTestBob(t *testing.T) *bob {

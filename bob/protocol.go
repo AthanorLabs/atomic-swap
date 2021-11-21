@@ -114,7 +114,7 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // Bob to call Claim().
 func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
-		Context: s.bob.ctx,
+		Context: s.ctx,
 	}
 
 	done := make(chan struct{})
@@ -139,7 +139,7 @@ func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
 
 				// contract is ready!!
 				close(done)
-			case <-s.bob.ctx.Done():
+			case <-s.ctx.Done():
 				return
 			}
 		}
@@ -158,7 +158,7 @@ func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
 // Bob can then use these keys to move his funds if he wishes.
 func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
-		Context: s.bob.ctx,
+		Context: s.ctx,
 	}
 
 	out := make(chan *monero.PrivateKeyPair)
@@ -202,7 +202,7 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 				vkAB := monero.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
 				kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 				out <- kpAB
-			case <-s.bob.ctx.Done():
+			case <-s.ctx.Done():
 				return
 			}
 		}
@@ -258,7 +258,7 @@ func (s *swapState) claimFunds() (string, error) {
 	pub := s.ethPrivKey.Public().(*ecdsa.PublicKey)
 	addr := ethcrypto.PubkeyToAddress(*pub)
 
-	balance, err := s.ethClient.BalanceAt(s.bob.ctx, addr, nil)
+	balance, err := s.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
 		return "", err
 	}
@@ -277,7 +277,7 @@ func (s *swapState) claimFunds() (string, error) {
 	log.Info("success! Bob claimed funds")
 	log.Info("tx hash: ", tx.Hash())
 
-	receipt, err := s.bob.ethClient.TransactionReceipt(s.bob.ctx, tx.Hash())
+	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
 	if err != nil {
 		return "", err
 	}
@@ -286,11 +286,12 @@ func (s *swapState) claimFunds() (string, error) {
 	log.Info("included in block number: ", receipt.Logs[0].BlockNumber)
 	log.Info("secret: ", fmt.Sprintf("%x", secret))
 
-	balance, err = s.bob.ethClient.BalanceAt(s.bob.ctx, addr, nil)
+	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
 		return "", err
 	}
 
 	log.Info("Bob's balance after claim: ", balance)
+	s.success = true
 	return tx.Hash().String(), nil
 }

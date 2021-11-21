@@ -17,8 +17,7 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *net.InitiateMessage) error
-	SetSwapState(net.SwapState) error
+	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
 }
 
 type Protocol interface {
@@ -28,13 +27,13 @@ type Protocol interface {
 }
 
 type NetService struct {
-	backend  Net
+	net      Net
 	protocol Protocol
 }
 
 func NewNetService(net Net, protocol Protocol) *NetService {
 	return &NetService{
-		backend:  net,
+		net:      net,
 		protocol: protocol,
 	}
 }
@@ -59,7 +58,7 @@ func (s *NetService) Discover(_ *http.Request, req *DiscoverRequest, resp *Disco
 		searchTime = defaultSearchTime
 	}
 
-	peers, err := s.backend.Discover(net.ProvidesCoin(req.Provides), searchTime)
+	peers, err := s.net.Discover(net.ProvidesCoin(req.Provides), searchTime)
 	if err != nil {
 		return err
 	}
@@ -97,7 +96,7 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 		return err
 	}
 
-	msg, err := s.backend.Query(who)
+	msg, err := s.net.Query(who)
 	if err != nil {
 		return err
 	}
@@ -124,6 +123,11 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return errors.New("must specify 'provides' coin")
 	}
 
+	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
+	if err != nil {
+		return err
+	}
+
 	skm, err := s.protocol.SendKeysMessage()
 	if err != nil {
 		return err
@@ -141,17 +145,7 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return err
 	}
 
-	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
-	if err != nil {
-		return err
-	}
-
-	if err = s.backend.SetSwapState(swapState); err != nil {
-		resp.Success = false
-		return err
-	}
-
-	if err = s.backend.Initiate(who, msg); err != nil {
+	if err = s.net.Initiate(who, msg, swapState); err != nil {
 		resp.Success = false
 		return err
 	}
