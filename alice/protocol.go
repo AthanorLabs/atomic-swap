@@ -223,13 +223,17 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 // refund calls the Refund() method in the Swap contract, revealing Alice's secret
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
-func (s *swapState) refund() error {
+func (s *swapState) refund() (string, error) {
 	secret := s.privkeys.SpendKeyBytes()
 	sc := big.NewInt(0).SetBytes(secret)
 
 	log.Infof("attempting to call Refund()...")
-	_, err := s.contract.Refund(s.alice.auth, sc)
-	return err
+	tx, err := s.contract.Refund(s.alice.auth, sc)
+	if err != nil {
+		return "", err
+	}
+
+	return tx.Hash().String(), nil
 }
 
 // createMoneroWallet creates Alice's monero wallet after Bob calls Claim().

@@ -123,7 +123,8 @@ func (s *swapState) tryRefund() error {
 		<-time.After(untilT1)
 	}
 
-	return s.refund()
+	_, err := s.refund()
+	return err
 }
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -165,12 +166,18 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				return
 			case <-time.After(until):
 				// Bob hasn't claimed, and we're after t_1. let's call Refund
-				if err := s.refund(); err != nil {
+				txhash, err := s.refund()
+				if err != nil {
 					log.Errorf("failed to refund: err=%s", err)
 					return
 				}
 
-				// TODO: send NotifyRefund msg
+				log.Infof("got our ETH back: tx hash=%s", txhash)
+
+				// send NotifyRefund msg
+				s.net.SendSwapMessage(&net.NotifyRefund{
+					TxHash: txhash,
+				})
 			case <-s.claimedCh:
 				return
 			}
@@ -245,12 +252,18 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			return
 		case <-time.After(until - timeoutBuffer):
 			// Bob hasn't locked yet, let's call refund
-			if err := s.refund(); err != nil {
+			txhash, err := s.refund()
+			if err != nil {
 				log.Errorf("failed to refund: err=%s", err)
 				return
 			}
 
-			// TODO: send NotifyRefund msg
+			log.Infof("got our ETH back: tx hash=%s", txhash)
+
+			// send NotifyRefund msg
+			s.net.SendSwapMessage(&net.NotifyRefund{
+				TxHash: txhash,
+			})
 		case <-s.xmrLockedCh:
 			return
 		}

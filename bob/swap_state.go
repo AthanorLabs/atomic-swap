@@ -190,12 +190,18 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				return
 			case <-time.After(until):
 				// we can now call Claim()
-				if _, err = s.claimFunds(); err != nil {
+				txHash, err := s.claimFunds()
+				if err != nil {
 					log.Errorf("failed to claim: err=%s", err)
 					return
 				}
 
-				// TODO: send *net.NotifyClaimed
+				log.Debug("funds claimed!!")
+
+				// send *net.NotifyClaimed
+				s.net.SendSwapMessage(&net.NotifyClaimed{
+					TxHash: txHash,
+				})
 			case <-s.readyCh:
 				return
 			}
