@@ -135,7 +135,6 @@ func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer
 }
 
 func (h *host) Start() error {
-	//h.h.SetStreamHandler(protocolID, h.handleStream)
 	h.h.SetStreamHandler(protocolID+queryID, h.handleQueryStream)
 	h.h.SetStreamHandler(protocolID+subProtocolID, h.handleProtocolStream)
 
@@ -194,8 +193,6 @@ func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
 }
 
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
-	//defer s.Close()
-
 	encMsg, err := msg.Encode()
 	if err != nil {
 		return err
@@ -237,7 +234,7 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 	}
 
 	if length == 0 {
-		return 0, nil // msg length of 0 is allowed, for example transactions handshake
+		return 0, nil
 	}
 
 	if length > uint64(len(buf)) {

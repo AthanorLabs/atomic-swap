@@ -21,17 +21,9 @@ type Handler interface {
 type SwapState interface {
 	HandleProtocolMessage(msg Message) (resp Message, done bool, err error)
 	ProtocolComplete()
-}
 
-// SetSwapState sets the current SwapState for the host. It errors if a swap is
-// already occuring.
-func (h *host) SetSwapState(s SwapState) error {
-	if h.swapState != nil {
-		return errors.New("swap already occuring")
-	}
-
-	h.swapState = s
-	return nil
+	// used by RPC
+	SendKeysMessage() (*SendKeysMessage, error)
 }
 
 const (
@@ -46,7 +38,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}()
 
 	// TODO: need a lock for this, otherwise two streams can enter this func
-	if h.swapState != nil {
+	if h.swapState != nil { //nolint
 		// TODO: check if peer is the peer we initiated with, otherwise return
 	}
 

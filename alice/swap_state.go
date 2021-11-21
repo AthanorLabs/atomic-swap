@@ -66,6 +66,18 @@ func newSwapState(a *alice, providesAmount, desiredAmount uint64) *swapState {
 	return s
 }
 
+func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
+	kp, err := s.generateKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	return &net.SendKeysMessage{
+		PublicSpendKey: kp.SpendKey().Hex(),
+		PublicViewKey:  kp.ViewKey().Hex(),
+	}, nil
+}
+
 // ProtocolComplete is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolComplete() {
@@ -85,25 +97,33 @@ func (s *swapState) ProtocolComplete() {
 		// we are fine, as we only just initiated the protocol.
 	case *net.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
-
-		// TODO: check t0 and t1
-		if err := s.refund(); err != nil {
+		if err := s.tryRefund(); err != nil {
 			log.Errorf("failed to refund: err=%s", err)
 			return
 		}
 	case *net.NotifyClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
-
-		// TODO: check t0 and t1
-		if err := s.refund(); err != nil {
+		if err := s.tryRefund(); err != nil {
 			log.Errorf("failed to refund: err=%s", err)
 			return
 		}
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolComplete: type=%T", s.nextExpectedMessage)
 	}
+}
 
+func (s *swapState) tryRefund() error {
+	untilT0 := time.Until(s.t0)
+	untilT1 := time.Until(s.t1)
+
+	if untilT0 > 0 && untilT1 < 0 {
+		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
+		log.Infof("waiting until time %s to refund", s.t1)
+		<-time.After(untilT1)
+	}
+
+	return s.refund()
 }
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -138,21 +158,14 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		log.Debug("set swap.IsReady == true")
 
 		go func() {
-			st1, err := s.contract.Timeout1(s.alice.callOpts)
-			if err != nil {
-				log.Errorf("failed to get timeout1 from contract: err=%s", err)
-				return
-			}
-
-			t1 := time.Unix(st1.Int64(), 0)
-			until := time.Until(t1)
+			until := time.Until(s.t1)
 
 			select {
 			case <-s.ctx.Done():
 				return
 			case <-time.After(until):
 				// Bob hasn't claimed, and we're after t_1. let's call Refund
-				if err = s.refund(); err != nil {
+				if err := s.refund(); err != nil {
 					log.Errorf("failed to refund: err=%s", err)
 					return
 				}
@@ -207,25 +220,32 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	log.Info("deployed Swap contract, waiting for XMR to be locked: address=", address)
 
+	// set t0 and t1
+	st0, err := s.contract.Timeout0(s.alice.callOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+	}
+
+	s.t0 = time.Unix(st0.Int64(), 0)
+
+	st1, err := s.contract.Timeout1(s.alice.callOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
+	}
+
+	s.t1 = time.Unix(st1.Int64(), 0)
+
 	// start goroutine to check that Bob locks before t_0
 	go func() {
 		const timeoutBuffer = time.Minute * 5
-
-		st0, err := s.contract.Timeout0(s.alice.callOpts)
-		if err != nil {
-			log.Errorf("failed to get timeout0 from contract: err=%s", err)
-			return
-		}
-
-		t0 := time.Unix(st0.Int64(), 0)
-		until := time.Until(t0)
+		until := time.Until(s.t0)
 
 		select {
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until - timeoutBuffer):
 			// Bob hasn't locked yet, let's call refund
-			if err = s.refund(); err != nil {
+			if err := s.refund(); err != nil {
 				log.Errorf("failed to refund: err=%s", err)
 				return
 			}

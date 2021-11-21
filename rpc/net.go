@@ -23,7 +23,6 @@ type Net interface {
 type Protocol interface {
 	Provides() net.ProvidesCoin
 	InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error)
-	SendKeysMessage() (*net.SendKeysMessage, error)
 }
 
 type NetService struct {
@@ -128,7 +127,7 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return err
 	}
 
-	skm, err := s.protocol.SendKeysMessage()
+	skm, err := swapState.SendKeysMessage()
 	if err != nil {
 		return err
 	}

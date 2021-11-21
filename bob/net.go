@@ -10,22 +10,6 @@ func (b *bob) Provides() net.ProvidesCoin {
 	return net.ProvidesXMR
 }
 
-func (b *bob) SendKeysMessage() (*net.SendKeysMessage, error) {
-	if b.swapState == nil {
-		return nil, errors.New("must initiate swap before generating keys")
-	}
-
-	sk, vk, err := b.swapState.generateKeys()
-	if err != nil {
-		return nil, err
-	}
-
-	return &net.SendKeysMessage{
-		PublicSpendKey: sk.Hex(),
-		PrivateViewKey: vk.Hex(),
-	}, nil
-}
-
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error) {
 	if err := b.initiate(providesAmount, desiredAmount); err != nil {

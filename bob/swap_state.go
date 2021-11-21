@@ -15,6 +15,10 @@ import (
 
 var nextID uint64 = 0
 
+var (
+	errMissingKeys = errors.New("did not receive Alice's public spend or view key")
+)
+
 type swapState struct {
 	*bob
 	ctx    context.Context
@@ -63,6 +67,18 @@ func newSwapState(b *bob, providesAmount, desiredAmount uint64) *swapState {
 	return s
 }
 
+func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
+	sk, vk, err := s.generateKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	return &net.SendKeysMessage{
+		PublicSpendKey: sk.Hex(),
+		PrivateViewKey: vk.Hex(),
+	}, nil
+}
+
 // ProtocolComplete is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolComplete() {
@@ -86,9 +102,32 @@ func (s *swapState) ProtocolComplete() {
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
+		if err := s.tryClaim(); err != nil {
+			log.Errorf("failed to claim funds: err=%s", err)
+		}
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolComplete: type=%T", s.nextExpectedMessage)
 	}
+}
+
+func (s *swapState) tryClaim() error {
+	untilT0 := time.Until(s.t0)
+	untilT1 := time.Until(s.t1)
+
+	if untilT0 < 0 {
+		// we need to wait until t0 to claim
+		log.Infof("waiting until time %s to refund", s.t0)
+		<-time.After(untilT0)
+	}
+
+	if untilT1 > 0 { //nolint
+		// we've passed t1, our only option now is for Alice to refund
+		// and we can regain control of the locked XMR.
+		// TODO: watch contract for Refund() to be called.
+	}
+
+	_, err := s.claimFunds()
+	return err
 }
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -128,15 +167,23 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			Address: string(addrAB),
 		}
 
-		go func() {
-			st0, err := s.contract.Timeout0(s.bob.callOpts)
-			if err != nil {
-				log.Errorf("failed to get timeout0 from contract: err=%s", err)
-				return
-			}
+		// set t0 and t1
+		st0, err := s.contract.Timeout0(s.bob.callOpts)
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+		}
 
-			t0 := time.Unix(st0.Int64(), 0)
-			until := time.Until(t0)
+		s.t0 = time.Unix(st0.Int64(), 0)
+
+		st1, err := s.contract.Timeout0(s.bob.callOpts)
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+		}
+
+		s.t1 = time.Unix(st1.Int64(), 0)
+
+		go func() {
+			until := time.Until(s.t0)
 
 			select {
 			case <-s.ctx.Done():
@@ -181,7 +228,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
-		return errors.New("did not receive Alice's public spend or view key")
+		return errMissingKeys
 	}
 
 	log.Debug("got Alice's public keys")

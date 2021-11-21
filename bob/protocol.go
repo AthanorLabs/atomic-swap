@@ -73,7 +73,7 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 	}, nil
 }
 
-// generateKeys generates Bob's spend and view keys (S_b, V_b)
+// generateKeys generates Bob's spend and view keys (s_b, v_b)
 // It returns Bob's public spend key and his private view key, so that Alice can see
 // if the funds are locked.
 func (s *swapState) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error) {
@@ -89,7 +89,7 @@ func (s *swapState) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, e
 
 	// TODO: configure basepath
 	// TODO: write swap ID
-	if err := common.WriteKeysToFile("./bob-xmr", s.privkeys); err != nil {
+	if err := common.WriteKeysToFile("/tmp/bob-xmr", s.privkeys); err != nil {
 		return nil, nil, err
 	}
 

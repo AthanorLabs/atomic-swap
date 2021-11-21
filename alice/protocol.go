@@ -95,7 +95,7 @@ func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
 
 	// TODO: configure basepath
 	// TODO: add swap ID
-	if err := common.WriteKeysToFile("./alice-xmr", s.privkeys); err != nil {
+	if err := common.WriteKeysToFile("/tmp/alice-xmr", s.privkeys); err != nil {
 		return nil, err
 	}
 
@@ -217,6 +217,8 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 func (s *swapState) refund() error {
 	secret := s.privkeys.SpendKeyBytes()
 	sc := big.NewInt(0).SetBytes(secret)
+
+	log.Infof("attempting to call Refund()...")
 	_, err := s.contract.Refund(s.alice.auth, sc)
 	return err
 }
