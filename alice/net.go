@@ -29,7 +29,7 @@ func (a *alice) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) (*swapState, error) {
+func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error) {
 	// if err := a.initiate(providesAmount, desiredAmount); err != nil {
 	// 	return err
 	// }
@@ -58,11 +58,11 @@ func (a *alice) initiate(providesAmount, desiredAmount uint64) (*swapState, erro
 	return a.swapState, nil
 }
 
-func (a *alice) ProtocolComplete() {
-	a.swapState = nil
+func (s *swapState) ProtocolComplete() {
+	s.alice.swapState = nil
 }
 
-func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (*swapState, net.Message, error) {
+func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, net.Message, error) {
 	if msg.Provides != net.ProvidesXMR {
 		return nil, nil, errors.New("peer does not provide XMR")
 	}

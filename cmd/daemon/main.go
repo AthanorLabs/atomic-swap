@@ -149,18 +149,23 @@ func runDaemon(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	type Handler interface {
+		net.Handler
+		rpc.Protocol
+	}
+
 	var (
-		protocol rpc.Protocol
-		err      error
+		handler Handler
+		err     error
 	)
 	switch {
 	case isAlice:
-		protocol, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+		handler, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
 		if err != nil {
 			return err
 		}
 	case isBob:
-		protocol, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
+		handler, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
 		if err != nil {
 			return err
 		}
@@ -191,7 +196,7 @@ func runDaemon(c *cli.Context) error {
 		ExchangeRate:  defaultExchangeRate,
 		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
 		Bootnodes:     bootnodes,
-		Handler:       protocol,
+		Handler:       handler,
 	}
 
 	if c.Bool("bob") {
@@ -213,7 +218,7 @@ func runDaemon(c *cli.Context) error {
 	cfg := &rpc.Config{
 		Port:     port,
 		Net:      host,
-		Protocol: protocol,
+		Protocol: handler,
 	}
 
 	s, err := rpc.NewServer(cfg)

@@ -18,16 +18,13 @@ type Net interface {
 	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.InitiateMessage) error
+	SetSwapState(net.SwapState) error
 }
 
 type Protocol interface {
 	Provides() net.ProvidesCoin
-	InitiateProtocol(providesAmount, desiredAmount uint64) error
+	InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error)
 	SendKeysMessage() (*net.SendKeysMessage, error)
-
-	// TODO: this isn't used here, but in the network package
-	HandleProtocolMessage(msg net.Message) (net.Message, bool, error)
-	ProtocolComplete()
 }
 
 type NetService struct {
@@ -144,7 +141,13 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return err
 	}
 
-	if err = s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount); err != nil {
+	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
+	if err != nil {
+		return err
+	}
+
+	if err = s.backend.SetSwapState(swapState); err != nil {
+		resp.Success = false
 		return err
 	}
 

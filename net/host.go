@@ -50,6 +50,7 @@ type host struct {
 	queryResponse *QueryResponse
 	discovery     *discovery
 	handler       Handler
+	swapState     SwapState
 
 	queryMu  sync.Mutex
 	queryBuf []byte
