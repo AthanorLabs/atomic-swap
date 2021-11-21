@@ -42,6 +42,9 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 }
 
 func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
+	a.swapMu.Lock()
+	defer a.swapMu.Unlock()
+
 	if a.swapState != nil {
 		return errors.New("protocol already in progress")
 	}

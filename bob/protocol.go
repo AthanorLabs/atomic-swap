@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
@@ -36,6 +38,9 @@ type bob struct {
 	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
 
+	net net.MessageSender
+
+	swapMu    sync.Mutex
 	swapState *swapState
 }
 
@@ -71,6 +76,10 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 			Context: ctx,
 		},
 	}, nil
+}
+
+func (b *bob) SetMessageSender(n net.MessageSender) {
+	b.net = n
 }
 
 // generateKeys generates Bob's spend and view keys (s_b, v_b)

@@ -152,6 +152,7 @@ func runDaemon(c *cli.Context) error {
 	type Handler interface {
 		net.Handler
 		rpc.Protocol
+		SetMessageSender(net.MessageSender)
 	}
 
 	var (
@@ -210,6 +211,9 @@ func runDaemon(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// connect network to protocol handler
+	handler.SetMessageSender(host)
 
 	if err = host.Start(); err != nil {
 		return err

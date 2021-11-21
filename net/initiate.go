@@ -31,18 +31,58 @@ const (
 	protocolTimeout = time.Second * 5
 )
 
+func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error {
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
+
+	// TODO: need a lock for this, otherwise two streams can enter this func
+	if h.swapState != nil {
+		return errors.New("already have ongoing swap")
+	}
+
+	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
+	defer cancel()
+
+	if err := h.h.Connect(ctx, who); err != nil {
+		return err
+	}
+
+	stream, err := h.h.NewStream(ctx, who.ID, protocolID+subProtocolID)
+	if err != nil {
+		return fmt.Errorf("failed to open stream with peer: err=%w", err)
+	}
+
+	log.Debug(
+		"opened protocol stream, peer=", who.ID,
+	)
+
+	if err := h.writeToStream(stream, msg); err != nil {
+		log.Warnf("failed to send InitiateMessage to peer: err=%s", err)
+		return err
+	}
+
+	h.swapState = s
+	h.handleProtocolStreamInner(stream)
+	return nil
+}
+
+// handleProtocolStream is called when there is an incoming protocol stream.
 func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
+
+	if h.swapState != nil {
+		log.Debug("failed to handling incoming swap stream, already have ongoing swap")
+	}
+
+	h.handleProtocolStreamInner(stream)
+}
+
+// handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
+func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
-	}()
-
-	// TODO: need a lock for this, otherwise two streams can enter this func
-	if h.swapState != nil { //nolint
-		// TODO: check if peer is the peer we initiated with, otherwise return
-	}
-
-	defer func() {
 		h.swapState.ProtocolComplete()
 	}()
 
@@ -108,36 +148,4 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 			return
 		}
 	}
-}
-
-func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error {
-	// TODO: need a lock for this, otherwise two streams can enter this func
-	if h.swapState != nil {
-		return errors.New("already have ongoing swap")
-	}
-
-	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
-	defer cancel()
-
-	if err := h.h.Connect(ctx, who); err != nil {
-		return err
-	}
-
-	stream, err := h.h.NewStream(ctx, who.ID, protocolID+subProtocolID)
-	if err != nil {
-		return fmt.Errorf("failed to open stream with peer: err=%w", err)
-	}
-
-	log.Debug(
-		"opened protocol stream, peer=", who.ID,
-	)
-
-	if err := h.writeToStream(stream, msg); err != nil {
-		log.Warnf("failed to send InitiateMessage to peer: err=%s", err)
-		return err
-	}
-
-	h.swapState = s
-	h.handleProtocolStream(stream)
-	return nil
 }

@@ -63,7 +63,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	require.NotEqual(t, "", txHash)
 }
 
-func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
+func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	_, s := newTestBob(t)
 
 	msg := &net.SendKeysMessage{}

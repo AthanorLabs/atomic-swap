@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
@@ -40,7 +42,10 @@ type alice struct {
 	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
 
+	net net.MessageSender
+
 	// non-nil if a swap is currently happening, nil otherwise
+	swapMu    sync.Mutex
 	swapState *swapState
 }
 
@@ -78,6 +83,10 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 			Context: ctx,
 		},
 	}, nil
+}
+
+func (a *alice) SetMessageSender(n net.MessageSender) {
+	a.net = n
 }
 
 // generateKeys generates Alice's monero spend and view keys (S_b, V_b)

@@ -20,6 +20,9 @@ func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapSt
 }
 
 func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+
 	if b.swapState != nil {
 		return errors.New("protocol already in progress")
 	}
