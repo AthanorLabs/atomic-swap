@@ -6,6 +6,7 @@ import (
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 func (a *alice) Provides() net.ProvidesCoin {
@@ -122,11 +123,11 @@ func (a *alice) HandleProtocolMessage(msg net.Message) (net.Message, bool, error
 }
 
 func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
-		return nil, errors.New("did not receive Bob's public spend or private view key")
+	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" || msg.EthAddress == "" {
+		return nil, errors.New("did not receive Bob's public spend, private view key, or ETH address")
 	}
 
-	log.Debug("got Bob's keys")
+	log.Debug("got Bob's keys and ETH address")
 	a.setNextExpectedMessage(&net.NotifyXMRLock{})
 
 	sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)
@@ -139,7 +140,9 @@ func (a *alice) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, er
 		return nil, fmt.Errorf("failed to generate Bob's private view keys: %w", err)
 	}
 
-	a.setBobKeys(sk, vk)
+	ek := ethcommon.HexToAddress(msg.EthAddress)
+
+	a.setBobKeysAndAddress(sk, vk, ek)
 	address, err := a.deployAndLockETH(a.providesAmount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)

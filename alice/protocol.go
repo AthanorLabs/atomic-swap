@@ -114,12 +114,13 @@ func (a *alice) generateKeys() (*monero.PublicKeyPair, error) {
 	return a.pubkeys, nil
 }
 
-// setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
-// private view key (used to check XMR balance before calling Ready())
-func (a *alice) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey, ek *ethcommon.Address) {
+// setBobKeys sets Bob's public spend key (to be stored in the contract), Bob's
+// private view key (used to check XMR balance before calling Ready()), and Bob's ethereum address
+// (to prevent others frontrunning Bob when he claims his ETH)
+func (a *alice) setBobKeysAndAddress(sk *monero.PublicKey, vk *monero.PrivateViewKey, ek ethcommon.Address) {
 	a.bobSpendKey = sk
 	a.bobViewKey = vk
-	a.ethBobAddress = *ek
+	a.ethBobAddress = ek
 }
 
 // deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.

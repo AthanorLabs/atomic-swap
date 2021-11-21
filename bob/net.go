@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -20,9 +21,12 @@ func (b *bob) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
+	ek := ethcrypto.PubkeyToAddress(b.ethPrivKey.PublicKey)
+
 	return &net.SendKeysMessage{
 		PublicSpendKey: sk.Hex(),
 		PrivateViewKey: vk.Hex(),
+		EthAddress: ek.Hex(),
 	}, nil
 }
 
