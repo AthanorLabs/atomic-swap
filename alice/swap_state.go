@@ -2,6 +2,7 @@ package alice
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -9,12 +10,16 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 var nextID uint64 = 0
 
 var (
-	errMissingKeys = errors.New("did not receive Bob's public spend or private view key")
+	errMissingKeys         = errors.New("did not receive Bob's public spend or private view key")
+	errMissingSpendKeyHash = errors.New("did not receive Bob's spend key hash")
+	errMissingAddress      = errors.New("did not receive Bob's address")
 )
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
@@ -33,8 +38,10 @@ type swapState struct {
 	pubkeys  *monero.PublicKeyPair
 
 	// Bob's keys for this session
-	bobSpendKey *monero.PublicKey
-	bobViewKey  *monero.PrivateViewKey
+	bobPublicSpendKey *monero.PublicKey
+	bobPrivateViewKey *monero.PrivateViewKey
+	bobClaimHash      [32]byte
+	bobAddress        ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract *swap.Swap
@@ -76,9 +83,12 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
+	sh := s.privkeys.SpendKey().Hash()
+
 	return &net.SendKeysMessage{
 		PublicSpendKey: kp.SpendKey().Hex(),
-		PublicViewKey:  kp.ViewKey().Hex(),
+		PrivateViewKey: s.privkeys.ViewKey().Hex(),
+		SpendKeyHash:   hex.EncodeToString(sh[:]),
 	}, nil
 }
 
@@ -212,7 +222,30 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, errMissingKeys
 	}
 
-	log.Debug("got Bob's keys")
+	if msg.SpendKeyHash == "" {
+		return nil, errMissingSpendKeyHash
+	}
+
+	if msg.EthAddress == "" {
+		return nil, errMissingAddress
+	}
+
+	// TODO: check that hash can be derived to view key
+
+	hb, err := hex.DecodeString(msg.SpendKeyHash)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(hb) != 32 {
+		return nil, errors.New("invalid spend key hash")
+	}
+
+	copy(s.bobClaimHash[:], hb)
+
+	s.bobAddress = ethcommon.HexToAddress(msg.EthAddress)
+
+	log.Debug("got Bob's keys and address: address=%s", s.bobAddress)
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)

@@ -10,8 +10,11 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
+
+var _ = logging.SetLogLevel("alice", "debug")
 
 type mockNet struct {
 	msg net.Message
@@ -46,14 +49,16 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	msg = &net.SendKeysMessage{
 		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
 		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
+		SpendKeyHash:   "17e799afa82d5210fd6d41e1b1cb64784c10d72a34ada97807a4533a30627f01",
+		EthAddress:     "0x",
 	}
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
-	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobSpendKey.Hex())
-	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobViewKey.Hex())
+	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
+	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
@@ -77,6 +82,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	msg := &net.SendKeysMessage{
 		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
 		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
+		SpendKeyHash:   "17e799afa82d5210fd6d41e1b1cb64784c10d72a34ada97807a4533a30627f01",
+		EthAddress:     "0x",
 	}
 
 	resp, done, err := s.HandleProtocolMessage(msg)
@@ -85,13 +92,14 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, net.NotifyContractDeployedType, resp.Type())
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
-	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobSpendKey.Hex())
-	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobViewKey.Hex())
+	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
+	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
 	// ensure we refund before t0
 	time.Sleep(time.Second * 2)
 	require.NotNil(t, s.net.(*mockNet).msg)
 	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
+	// TODO: check balance
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
