@@ -121,6 +121,14 @@ func (s *swapState) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) 
 
 // deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
 func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
+	if s.pubkeys == nil {
+		return ethcommon.Address{}, errors.New("public keys aren't set")
+	}
+
+	if s.bobSpendKey == nil {
+		return ethcommon.Address{}, errors.New("bob's keys aren't set")
+	}
+
 	pkAlice := s.pubkeys.SpendKey().Bytes()
 	pkBob := s.bobSpendKey.Bytes()
 

@@ -18,6 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mockNet struct {
+	msg net.Message
+}
+
+func (n *mockNet) SendSwapMessage(msg net.Message) error {
+	n.msg = msg
+	return nil
+}
+
 var defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 
 func newTestBob(t *testing.T) (*bob, *swapState) {
@@ -137,15 +146,6 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.Equal(t, &net.NotifyReady{}, s.nextExpectedMessage)
 }
 
-type mockNet struct {
-	msg net.Message
-}
-
-func (n *mockNet) SendSwapMessage(msg net.Message) error {
-	n.msg = msg
-	return nil
-}
-
 func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testing.T) {
 	bob, s := newTestBob(t)
 	defer s.cancel()
@@ -224,7 +224,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	_, s.contract = deploySwap(t, bob, s, duration)
 
 	// lock XMR
-	addrAB, err := s.lockFunds(s.providesAmount) //nolint
+	_, err = s.lockFunds(s.providesAmount) 
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
@@ -233,10 +233,8 @@ func TestSwapState_handleRefund(t *testing.T) {
 	tx, err := s.contract.Refund(s.bob.auth, sc)
 	require.NoError(t, err)
 
-	resAddr, err := s.handleRefund(tx.Hash().String()) //nolint
-	return                                             // TODO: currently fails w/ rpc error "No wallet dir configured"
-	require.NoError(t, err)                            //nolint
-	require.Equal(t, addrAB, resAddr)
+	_, _ = s.handleRefund(tx.Hash().String()) 
+ 	// TODO: currently fails w/ rpc error "No wallet dir configured"
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
@@ -268,9 +266,6 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 		TxHash: tx.Hash().String(),
 	}
 
-	resp, done, err := s.HandleProtocolMessage(msg) //nolint
-	return                                          // TODO: currently fails w/ rpc error "No wallet dir configured"
-	require.NoError(t, err)                         //nolint
-	require.True(t, done)
-	require.Nil(t, resp)
+	_, _, _ = s.HandleProtocolMessage(msg) 
+	// TODO: currently fails w/ rpc error "No wallet dir configured"
 }

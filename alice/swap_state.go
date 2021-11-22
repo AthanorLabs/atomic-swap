@@ -13,6 +13,10 @@ import (
 
 var nextID uint64 = 0
 
+var (
+	errMissingKeys = errors.New("did not receive Bob's public spend or private view key")
+)
+
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
 type swapState struct {
@@ -205,7 +209,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
-		return nil, errors.New("did not receive Bob's public spend or private view key")
+		return nil, errMissingKeys
 	}
 
 	log.Debug("got Bob's keys")
