@@ -9,12 +9,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
-	//"github.com/noot/atomic-swap/swap-contract"
 
-	//"github.com/ethereum/go-ethereum/accounts/abi/bind"
-//	ethcommon "github.com/ethereum/go-ethereum/common"
-	//"github.com/ethereum/go-ethereum/crypto"
-//	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,7 +51,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, time.Second * time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
 	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobSpendKey.Hex())
 	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobViewKey.Hex())
 }
@@ -89,7 +84,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, net.NotifyContractDeployedType, resp.Type())
-	require.Equal(t, time.Second * time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
 	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobSpendKey.Hex())
 	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobViewKey.Hex())
 

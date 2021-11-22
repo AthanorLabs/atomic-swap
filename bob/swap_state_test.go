@@ -224,7 +224,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	_, s.contract = deploySwap(t, bob, s, duration)
 
 	// lock XMR
-	_, err = s.lockFunds(s.providesAmount) 
+	_, err = s.lockFunds(s.providesAmount)
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
@@ -233,8 +233,8 @@ func TestSwapState_handleRefund(t *testing.T) {
 	tx, err := s.contract.Refund(s.bob.auth, sc)
 	require.NoError(t, err)
 
-	_, _ = s.handleRefund(tx.Hash().String()) 
- 	// TODO: currently fails w/ rpc error "No wallet dir configured"
+	_, _ = s.handleRefund(tx.Hash().String())
+	// TODO: currently fails w/ rpc error "No wallet dir configured"
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
@@ -266,6 +266,6 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 		TxHash: tx.Hash().String(),
 	}
 
-	_, _, _ = s.HandleProtocolMessage(msg) 
+	_, _, _ = s.HandleProtocolMessage(msg)
 	// TODO: currently fails w/ rpc error "No wallet dir configured"
 }
