@@ -2,12 +2,17 @@ package bob
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
@@ -16,7 +21,8 @@ import (
 var nextID uint64 = 0
 
 var (
-	errMissingKeys = errors.New("did not receive Alice's public spend or view key")
+	errMissingKeys    = errors.New("did not receive Alice's public spend or view key")
+	errMissingAddress = errors.New("got empty contract address")
 )
 
 type swapState struct {
@@ -148,7 +154,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		return nil, false, nil
 	case *net.NotifyContractDeployed:
 		if msg.Address == "" {
-			return nil, true, errors.New("got empty contract address")
+			return nil, true, errMissingAddress
 		}
 
 		s.nextExpectedMessage = &net.NotifyReady{}
@@ -175,9 +181,9 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		s.t0 = time.Unix(st0.Int64(), 0)
 
-		st1, err := s.contract.Timeout0(s.bob.callOpts)
+		st1, err := s.contract.Timeout1(s.bob.callOpts)
 		if err != nil {
-			return nil, true, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+			return nil, true, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
 		}
 
 		s.t1 = time.Unix(st1.Int64(), 0)
@@ -196,12 +202,14 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 					return
 				}
 
-				log.Debug("funds claimed!!")
+				log.Debug("funds claimed!")
 
 				// send *net.NotifyClaimed
-				s.net.SendSwapMessage(&net.NotifyClaimed{
+				if err := s.net.SendSwapMessage(&net.NotifyClaimed{
 					TxHash: txHash,
-				})
+				}); err != nil {
+					log.Errorf("failed to send NotifyClaimed message: err=%s", err)
+				}
 			case <-s.readyCh:
 				return
 			}
@@ -225,10 +233,16 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		return out, true, nil
 	case *net.NotifyRefund:
-		// TODO: generate wallet
-		return nil, false, errors.New("unimplemented")
+		// generate monero wallet, regaining control over locked funds
+		addr, err := s.handleRefund(msg.TxHash)
+		if err != nil {
+			return nil, true, err
+		}
+
+		log.Infof("regained control over monero account %s", addr)
+		return nil, true, nil
 	default:
-		return nil, false, errors.New("unexpected message type")
+		return nil, true, errors.New("unexpected message type")
 	}
 }
 
@@ -249,7 +263,94 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	return nil
 }
 
+func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
+	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
+	if err != nil {
+		return "", err
+	}
+
+	if len(receipt.Logs) == 0 {
+		return "", errors.New("claim transaction has no logs")
+	}
+
+	abi, err := abi.JSON(strings.NewReader(swap.SwapABI))
+	if err != nil {
+		return "", err
+	}
+
+	data := receipt.Logs[0].Data
+	res, err := abi.Unpack("Refunded", data)
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug("got Alice's secret: ", hex.EncodeToString(res[0].(*big.Int).Bytes()))
+
+	// got Alice's secret
+	sbBytes := res[0].(*big.Int).Bytes()
+	var sa [32]byte
+	copy(sa[:], sbBytes)
+
+	skA, err := monero.NewPrivateSpendKey(sa[:])
+	if err != nil {
+		log.Errorf("failed to convert Alice's secret into a key: %s", err)
+		return "", err
+	}
+
+	vkA, err := skA.View()
+	if err != nil {
+		log.Errorf("failed to convert Alice's spend key into a view key: %s", err)
+		return "", err
+	}
+
+	skAB := monero.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
+	vkAB := monero.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
+	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+
+	// write keys to file in case something goes wrong
+	// TODO: configure basepath
+	if err = common.WriteKeysToFile("/tmp/swap-xmr", kpAB); err != nil {
+		return "", err
+	}
+
+	pkAB := kpAB.PublicKeyPair()
+	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
+	log.Info("public view keys: ", pkAB.ViewKey().Hex())
+
+	return s.createMoneroWallet(kpAB)
+}
+
+// createMoneroWallet creates Alice's monero wallet after Bob calls Claim().
+func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
+	t := time.Now().Format("2006-Jan-2-15:04:05")
+	walletName := fmt.Sprintf("bob-swap-wallet-%s", t)
+	if err := s.bob.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
+		// TODO: save the keypair on disk!!! otherwise we lose the keys
+		return "", err
+	}
+
+	log.Info("created wallet: ", walletName)
+
+	if err := s.bob.client.Refresh(); err != nil {
+		return "", err
+	}
+
+	balance, err := s.bob.client.GetBalance(0)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("wallet balance: ", balance.Balance)
+	s.success = true
+	return kpAB.Address(), nil
+}
+
 func (s *swapState) checkMessageType(msg net.Message) error {
+	// Alice might refund anytime before t0 or after t1, so we should allow this.
+	if _, ok := msg.(*net.NotifyRefund); ok {
+		return nil
+	}
+
 	if msg.Type() != s.nextExpectedMessage.Type() {
 		return errors.New("received unexpected message")
 	}

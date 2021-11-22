@@ -147,6 +147,7 @@ func (kp *PrivateKeyPair) Marshal() ([]byte, error) {
 	m := make(map[string]string)
 	m["PrivateSpendKey"] = kp.sk.Hex()
 	m["PrivateViewKey"] = kp.vk.Hex()
+	m["Address"] = string(kp.Address())
 	return json.Marshal(m)
 }
 

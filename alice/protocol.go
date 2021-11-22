@@ -301,6 +301,12 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	vkAB := monero.SumPrivateViewKeys(s.bobViewKey, s.privkeys.ViewKey())
 	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
+	// write keys to file in case something goes wrong
+	// TODO: configure basepath
+	if err = common.WriteKeysToFile("/tmp/swap-xmr", kpAB); err != nil {
+		return "", err
+	}
+
 	pkAB := kpAB.PublicKeyPair()
 	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
 	log.Info("public view keys: ", pkAB.ViewKey().Hex())

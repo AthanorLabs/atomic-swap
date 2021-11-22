@@ -175,9 +175,11 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				log.Infof("got our ETH back: tx hash=%s", txhash)
 
 				// send NotifyRefund msg
-				s.net.SendSwapMessage(&net.NotifyRefund{
+				if err = s.net.SendSwapMessage(&net.NotifyRefund{
 					TxHash: txhash,
-				})
+				}); err != nil {
+					log.Errorf("failed to send refund message: err=%s", err)
+				}
 			case <-s.claimedCh:
 				return
 			}
@@ -261,9 +263,11 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
 			// send NotifyRefund msg
-			s.net.SendSwapMessage(&net.NotifyRefund{
+			if err := s.net.SendSwapMessage(&net.NotifyRefund{
 				TxHash: txhash,
-			})
+			}); err != nil {
+				log.Errorf("failed to send refund message: err=%s", err)
+			}
 		case <-s.xmrLockedCh:
 			return
 		}
