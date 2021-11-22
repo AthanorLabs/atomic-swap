@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -302,10 +301,10 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	log.Debug("got Alice's secret: ", hex.EncodeToString(res[0].(*big.Int).Bytes()))
+	sa := res[0].([32]byte)
+	log.Debug("got Alice's secret: ", hex.EncodeToString(sa[:]))
 
 	// got Alice's secret
-	sa := res[0].([32]byte)
 	skA, err := monero.NewPrivateSpendKey(sa[:])
 	if err != nil {
 		log.Errorf("failed to convert Alice's secret into a key: %s", err)
