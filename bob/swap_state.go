@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -43,7 +42,8 @@ type swapState struct {
 	t0, t1       time.Time
 
 	// Alice's keys for this session
-	alicePublicKeys *monero.PublicKeyPair
+	alicePublicKeys     *monero.PublicKeyPair
+	alicePrivateViewKey *monero.PrivateViewKey
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -79,9 +79,13 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
+	sh := s.privkeys.SpendKey().Hash()
+
 	return &net.SendKeysMessage{
 		PublicSpendKey: sk.Hex(),
 		PrivateViewKey: vk.Hex(),
+		SpendKeyHash:   hex.EncodeToString(sh[:]),
+		EthAddress:     s.bob.ethAddress.String(),
 	}, nil
 }
 
@@ -247,14 +251,27 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
-	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
+	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return errMissingKeys
 	}
+
+	if msg.SpendKeyHash == "" {
+		return errors.New("did not receive SpendKeyHash")
+	}
+
+	// TODO: verify hash derives view key, and that view only wallet can be generated
 
 	log.Debug("got Alice's public keys")
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 
-	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
+	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
+	if err != nil {
+		return fmt.Errorf("failed to generate Alice's private view key: %w", err)
+	}
+
+	s.alicePrivateViewKey = vk
+
+	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, vk.Public().Hex())
 	if err != nil {
 		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
 	}
@@ -284,13 +301,10 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	log.Debug("got Alice's secret: ", hex.EncodeToString(res[0].(*big.Int).Bytes()))
+	sa := res[0].([32]byte)
+	log.Debug("got Alice's secret: ", hex.EncodeToString(sa[:]))
 
 	// got Alice's secret
-	sbBytes := res[0].(*big.Int).Bytes()
-	var sa [32]byte
-	copy(sa[:], sbBytes)
-
 	skA, err := monero.NewPrivateSpendKey(sa[:])
 	if err != nil {
 		log.Errorf("failed to convert Alice's secret into a key: %s", err)

@@ -115,8 +115,8 @@ func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
 // setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
 // private view key (used to check XMR balance before calling Ready())
 func (s *swapState) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
-	s.bobSpendKey = sk
-	s.bobViewKey = vk
+	s.bobPublicSpendKey = sk
+	s.bobPrivateViewKey = vk
 }
 
 // deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
@@ -125,28 +125,32 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		return ethcommon.Address{}, errors.New("public keys aren't set")
 	}
 
-	if s.bobSpendKey == nil {
+	if s.bobPublicSpendKey == nil || s.bobPrivateViewKey == nil {
 		return ethcommon.Address{}, errors.New("bob's keys aren't set")
 	}
 
-	pkAlice := s.pubkeys.SpendKey().Bytes()
-	pkBob := s.bobSpendKey.Bytes()
-
-	var pka, pkb [32]byte
-	copy(pka[:], pkAlice)
-	copy(pkb[:], pkBob)
+	hb := s.bobClaimHash
+	ha := s.privkeys.SpendKey().Hash()
 
 	log.Debug("locking amount: ", amount)
+
 	// TODO: put auth in swapState
 	s.alice.auth.Value = big.NewInt(int64(amount))
 	defer func() {
 		s.alice.auth.Value = nil
 	}()
 
-	address, _, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, pkb, pka, defaultTimeoutDuration)
+	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, hb, ha, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
+
+	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
+	if err != nil {
+		return ethcommon.Address{}, err
+	}
+
+	log.Debugf("deployed Swap.sol, gas used=%d", receipt.CumulativeGasUsed)
 
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
 	if err != nil {
@@ -192,15 +196,12 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 		for {
 			select {
 			case claim := <-ch:
-				if claim == nil || claim.S == nil {
+				if claim == nil {
 					continue
 				}
 
 				// got Bob's secret
-				sbBytes := claim.S.Bytes()
-				var sb [32]byte
-				copy(sb[:], sbBytes)
-
+				sb := claim.S
 				skB, err := monero.NewPrivateSpendKey(sb[:])
 				if err != nil {
 					log.Error("failed to convert Bob's secret into a key: ", err)
@@ -233,7 +234,8 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (string, error) {
 	secret := s.privkeys.SpendKeyBytes()
-	sc := big.NewInt(0).SetBytes(secret)
+	var sc [32]byte
+	copy(sc[:], secret)
 
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.contract.Refund(s.alice.auth, sc)
@@ -241,6 +243,12 @@ func (s *swapState) refund() (string, error) {
 		return "", err
 	}
 
+	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
+	if err != nil {
+		return "", err
+	}
+
+	log.Debugf("called Refund(), gas used=%d", receipt.CumulativeGasUsed)
 	return tx.Hash().String(), nil
 }
 
@@ -249,7 +257,6 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-swap-wallet-%s", t)
 	if err := s.alice.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
-		// TODO: save the keypair on disk!!! otherwise we lose the keys
 		return "", err
 	}
 
@@ -292,12 +299,9 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	log.Debug("got Bob's secret: ", hex.EncodeToString(res[0].(*big.Int).Bytes()))
-
 	// got Bob's secret
-	sbBytes := res[0].(*big.Int).Bytes()
-	var sb [32]byte
-	copy(sb[:], sbBytes)
+	sb := res[0].([32]byte)
+	log.Debug("got Bob's secret: ", hex.EncodeToString(sb[:]))
 
 	skB, err := monero.NewPrivateSpendKey(sb[:])
 	if err != nil {
@@ -306,7 +310,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	}
 
 	skAB := monero.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-	vkAB := monero.SumPrivateViewKeys(s.bobViewKey, s.privkeys.ViewKey())
+	vkAB := monero.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
 	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
