@@ -253,10 +253,12 @@ func (m *NotifyClaimed) Type() byte {
 }
 
 // NotifyRefund is sent by Alice to Bob after calling Refund() on the contract.
-type NotifyRefund struct{}
+type NotifyRefund struct {
+	TxHash string
+}
 
 func (m *NotifyRefund) String() string {
-	return "NotifyRefund"
+	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
 }
 
 func (m *NotifyRefund) Encode() ([]byte, error) {
