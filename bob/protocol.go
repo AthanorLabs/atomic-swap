@@ -250,6 +250,8 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 		return "", err
 	}
 
+	// TODO: this has gonna be removed before stagenet/mainnet, will need to add
+	// waiting logs or such
 	if err := s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 1); err != nil {
 		return "", err
 	}

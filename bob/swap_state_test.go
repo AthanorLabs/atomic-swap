@@ -32,7 +32,16 @@ var defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 2
 func newTestBob(t *testing.T) (*bob, *swapState) {
 	bob, err := NewBob(context.Background(), common.DefaultBobMoneroEndpoint, common.DefaultMoneroDaemonEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyBob)
 	require.NoError(t, err)
-	swapState := newSwapState(bob, 1, 1)
+
+	bobAddr, err := bob.client.GetAddress(0)
+	require.NoError(t, err)
+
+	err = bob.daemonClient.GenerateBlocks(bobAddr.Address, 61)
+	require.NoError(t, err)
+
+	//time.Sleep(time.Second * 5)
+
+	swapState := newSwapState(bob, 33, 33)
 	return bob, swapState
 }
 
