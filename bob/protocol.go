@@ -3,7 +3,6 @@ package bob
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -37,6 +36,7 @@ type bob struct {
 	ethPrivKey *ecdsa.PrivateKey
 	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
+	ethAddress ethcommon.Address
 
 	net net.MessageSender
 
@@ -63,6 +63,7 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 	}
 
 	pub := pk.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
 
 	return &bob{
 		ctx:          ctx,
@@ -72,9 +73,10 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 		ethPrivKey:   pk,
 		auth:         auth,
 		callOpts: &bind.CallOpts{
-			From:    crypto.PubkeyToAddress(*pub),
+			From:    addr,
 			Context: ctx,
 		},
+		ethAddress: addr,
 	}, nil
 }
 
@@ -191,10 +193,7 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 				}
 
 				// got Alice's secret
-				saBytes := refund.S.Bytes()
-				var sa [32]byte
-				copy(sa[:], saBytes)
-
+				sa := refund.S
 				skA, err := monero.NewPrivateSpendKey(sa[:])
 				if err != nil {
 					log.Info("failed to convert Alice's secret into a key: %w", err)
@@ -278,7 +277,8 @@ func (s *swapState) claimFunds() (string, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	secret := s.privkeys.SpendKeyBytes()
-	sc := big.NewInt(0).SetBytes(secret)
+	var sc [32]byte
+	copy(sc[:], secret)
 
 	tx, err := s.contract.Claim(s.bob.auth, sc)
 	if err != nil {
@@ -286,16 +286,18 @@ func (s *swapState) claimFunds() (string, error) {
 	}
 
 	log.Info("success! Bob claimed funds")
-	log.Info("tx hash: ", tx.Hash())
+	log.Info("tx hash=%s", tx.Hash())
 
 	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
 	if err != nil {
 		return "", err
 	}
 
-	//log.Info("tx logs: ", fmt.Sprintf("0x%x", receipt.Logs[0].Data))
-	log.Info("included in block number: ", receipt.Logs[0].BlockNumber)
-	log.Info("secret: ", fmt.Sprintf("%x", secret))
+	log.Infof("included in block number=%d gas used=%d s_a=%x",
+		receipt.Logs[0].BlockNumber,
+		receipt.CumulativeGasUsed,
+		secret,
+	)
 
 	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {

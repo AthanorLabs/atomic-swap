@@ -205,6 +205,17 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	}, nil
 }
 
+// Hash returns the keccak256 of the secret key bytes
+func (k *PrivateSpendKey) Hash() [32]byte {
+	return Keccak256(k.key.Bytes())
+}
+
+// HashString returns the keccak256 of the secret key bytes as a hex encoded string
+func (k *PrivateSpendKey) HashString() string {
+	h := Keccak256(k.key.Bytes())
+	return hex.EncodeToString(h[:])
+}
+
 type PrivateViewKey struct {
 	key *ed25519.Scalar
 }

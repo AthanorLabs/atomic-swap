@@ -15,8 +15,11 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
+
+var _ = logging.SetLogLevel("bob", "debug")
 
 type mockNet struct {
 	msg net.Message
@@ -38,8 +41,6 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 
 	err = bob.daemonClient.GenerateBlocks(bobAddr.Address, 61)
 	require.NoError(t, err)
-
-	//time.Sleep(time.Second * 5)
 
 	swapState := newSwapState(bob, 33, 33)
 	return bob, swapState
@@ -70,9 +71,8 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	bob.auth, err = bind.NewKeyedTransactorWithChainID(pkBob, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
-	var pubkey [32]byte
-	copy(pubkey[:], swapState.pubkeys.SpendKey().Bytes())
-	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(bob.auth, conn, pubkey, [32]byte{}, defaultTimeoutDuration)
+	claimHash := swapState.privkeys.SpendKey().Hash()
+	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(bob.auth, conn, claimHash, [32]byte{}, bob.ethAddress, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	_, err = swapState.contract.SetReady(bob.auth)
@@ -96,7 +96,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 
 	msg = &net.SendKeysMessage{
 		PublicSpendKey: alicePrivKeys.SpendKey().Public().Hex(),
-		PublicViewKey:  alicePrivKeys.ViewKey().Public().Hex(),
+		PrivateViewKey: alicePrivKeys.ViewKey().Hex(),
+		SpendKeyHash:   "01fc704e28a5323372019db199a1c9adfd460eee382f3ee582371323ba62b62e",
 	}
 
 	err = s.handleSendKeysMessage(msg)
@@ -106,15 +107,14 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	require.Equal(t, alicePubKeys.ViewKey().Hex(), s.alicePublicKeys.ViewKey().Hex())
 }
 
-func deploySwap(t *testing.T, bob *bob, swapState *swapState, timeout time.Duration) (ethcommon.Address, *swap.Swap) {
+func deploySwap(t *testing.T, bob *bob, swapState *swapState, refundHash [32]byte, timeout time.Duration) (ethcommon.Address, *swap.Swap) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
 	tm := big.NewInt(int64(timeout.Seconds()))
 
-	var pubkey [32]byte
-	copy(pubkey[:], swapState.pubkeys.SpendKey().Bytes())
-	addr, _, contract, err := swap.DeploySwap(bob.auth, conn, pubkey, [32]byte{}, tm)
+	claimHash := swapState.privkeys.SpendKey().Hash()
+	addr, _, contract, err := swap.DeploySwap(bob.auth, conn, claimHash, refundHash, bob.ethAddress, tm)
 	require.NoError(t, err)
 	return addr, contract
 }
@@ -138,7 +138,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 
 	duration, err := time.ParseDuration("2s")
 	require.NoError(t, err)
-	addr, _ := deploySwap(t, bob, s, duration)
+	addr, _ := deploySwap(t, bob, s, [32]byte{}, duration)
 
 	msg = &net.NotifyContractDeployed{
 		Address: addr.String(),
@@ -175,7 +175,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 
 	duration, err := time.ParseDuration("1s")
 	require.NoError(t, err)
-	addr, _ := deploySwap(t, bob, s, duration)
+	addr, _ := deploySwap(t, bob, s, [32]byte{}, duration)
 
 	msg = &net.NotifyContractDeployed{
 		Address: addr.String(),
@@ -204,7 +204,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 
 	duration, err := time.ParseDuration("1s")
 	require.NoError(t, err)
-	_, s.contract = deploySwap(t, bob, s, duration)
+	_, s.contract = deploySwap(t, bob, s, [32]byte{}, duration)
 	time.Sleep(duration)
 
 	msg := &net.NotifyReady{}
@@ -230,7 +230,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
 
-	_, s.contract = deploySwap(t, bob, s, duration)
+	_, s.contract = deploySwap(t, bob, s, aliceKeys.SpendKey().Hash(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(s.providesAmount)
@@ -238,7 +238,9 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	// call refund w/ Alice's spend key
 	secret := aliceKeys.SpendKeyBytes()
-	sc := big.NewInt(0).SetBytes(secret)
+	var sc [32]byte
+	copy(sc[:], secret)
+
 	tx, err := s.contract.Refund(s.bob.auth, sc)
 	require.NoError(t, err)
 
@@ -259,7 +261,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
 
-	_, s.contract = deploySwap(t, bob, s, duration)
+	_, s.contract = deploySwap(t, bob, s, aliceKeys.SpendKey().Hash(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(s.providesAmount)
@@ -267,7 +269,9 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 
 	// call refund w/ Alice's spend key
 	secret := aliceKeys.SpendKeyBytes()
-	sc := big.NewInt(0).SetBytes(secret)
+	var sc [32]byte
+	copy(sc[:], secret)
+
 	tx, err := s.contract.Refund(s.bob.auth, sc)
 	require.NoError(t, err)
 
