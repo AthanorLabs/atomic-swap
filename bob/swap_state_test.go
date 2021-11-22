@@ -202,10 +202,13 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
-	duration, err := time.ParseDuration("1s")
+	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
 	_, s.contract = deploySwap(t, bob, s, [32]byte{}, duration)
 	time.Sleep(duration)
+
+	_, err = s.contract.SetReady(bob.auth)
+	require.NoError(t, err)
 
 	msg := &net.NotifyReady{}
 
