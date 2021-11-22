@@ -17,27 +17,22 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *net.InitiateMessage) error
+	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
 }
 
 type Protocol interface {
 	Provides() net.ProvidesCoin
-	InitiateProtocol(providesAmount, desiredAmount uint64) error
-	SendKeysMessage() (*net.SendKeysMessage, error)
-
-	// TODO: this isn't used here, but in the network package
-	HandleProtocolMessage(msg net.Message) (net.Message, bool, error)
-	ProtocolComplete()
+	InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error)
 }
 
 type NetService struct {
-	backend  Net
+	net      Net
 	protocol Protocol
 }
 
 func NewNetService(net Net, protocol Protocol) *NetService {
 	return &NetService{
-		backend:  net,
+		net:      net,
 		protocol: protocol,
 	}
 }
@@ -62,7 +57,7 @@ func (s *NetService) Discover(_ *http.Request, req *DiscoverRequest, resp *Disco
 		searchTime = defaultSearchTime
 	}
 
-	peers, err := s.backend.Discover(net.ProvidesCoin(req.Provides), searchTime)
+	peers, err := s.net.Discover(net.ProvidesCoin(req.Provides), searchTime)
 	if err != nil {
 		return err
 	}
@@ -100,7 +95,7 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 		return err
 	}
 
-	msg, err := s.backend.Query(who)
+	msg, err := s.net.Query(who)
 	if err != nil {
 		return err
 	}
@@ -127,7 +122,12 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return errors.New("must specify 'provides' coin")
 	}
 
-	skm, err := s.protocol.SendKeysMessage()
+	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
+	if err != nil {
+		return err
+	}
+
+	skm, err := swapState.SendKeysMessage()
 	if err != nil {
 		return err
 	}
@@ -144,11 +144,7 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return err
 	}
 
-	if err = s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount); err != nil {
-		return err
-	}
-
-	if err = s.backend.Initiate(who, msg); err != nil {
+	if err = s.net.Initiate(who, msg, swapState); err != nil {
 		resp.Success = false
 		return err
 	}

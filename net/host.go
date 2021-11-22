@@ -27,18 +27,18 @@ const (
 var log = logging.Logger("net")
 var _ Host = &host{}
 
-type MessageInfo struct {
-	Message Message
-	Who     peer.ID
-}
-
 type Host interface {
 	Start() error
 	Stop() error
 
 	Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *InitiateMessage) error
+	Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error
+	MessageSender
+}
+
+type MessageSender interface {
+	SendSwapMessage(Message) error
 }
 
 type host struct {
@@ -50,6 +50,11 @@ type host struct {
 	queryResponse *QueryResponse
 	discovery     *discovery
 	handler       Handler
+
+	// swap instance info
+	swapMu     sync.Mutex
+	swapState  SwapState
+	swapStream libp2pnetwork.Stream
 
 	queryMu  sync.Mutex
 	queryBuf []byte
@@ -129,12 +134,7 @@ func NewHost(cfg *Config) (*host, error) {
 	return hst, nil
 }
 
-func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
-	return h.discovery.discover(provides, searchTime)
-}
-
 func (h *host) Start() error {
-	//h.h.SetStreamHandler(protocolID, h.handleStream)
 	h.h.SetStreamHandler(protocolID+queryID, h.handleQueryStream)
 	h.h.SetStreamHandler(protocolID+subProtocolID, h.handleProtocolStream)
 
@@ -171,6 +171,24 @@ func (h *host) Stop() error {
 	return nil
 }
 
+// Discover searches the DHT for peers that advertise that they provide the given coin.
+// It searches for up to `searchTime` duration of time.
+func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+	return h.discovery.discover(provides, searchTime)
+}
+
+// SendSwapMessage sends a message to the peer who we're currently doing a swap with.
+func (h *host) SendSwapMessage(msg Message) error {
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
+
+	if h.swapStream == nil {
+		return errors.New("no swap currently happening")
+	}
+
+	return h.writeToStream(h.swapStream, msg)
+}
+
 func (h *host) getBootnodes() []peer.AddrInfo {
 	addrs := h.bootnodes
 	for _, p := range h.h.Network().Peers() {
@@ -193,8 +211,6 @@ func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
 }
 
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
-	//defer s.Close()
-
 	encMsg, err := msg.Encode()
 	if err != nil {
 		return err
@@ -236,7 +252,7 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 	}
 
 	if length == 0 {
-		return 0, nil // msg length of 0 is allowed, for example transactions handshake
+		return 0, nil
 	}
 
 	if length > uint64(len(buf)) {
