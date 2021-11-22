@@ -4,6 +4,16 @@
 
 See [this issue describing the update](https://github.com/noot/atomic-swap/issues/36).
 
+```
+gas used now to deploy Swap.sol: 640005
+gas used previously to deploy Swap.sol: 1855645
+improvement: ~2.9x
+
+gas used now for the Claim() or Refund() call: 14729
+gas used previously for the Claim() or Refund() call: 938818
+improvement: ~64x
+```
+
 ## Initial version
 
 Alice has ETH and wants XMR, Bob has XMR and wants ETH. They come to an agreement to do the swap and the amounts they will swap.
@@ -17,7 +27,7 @@ Alice deploys a smart contract on Ethereum and locks her ETH in it. The contract
 
 - it contains two timestamps, `t_0` and `t_1`, before and after which different actions are authorized.
 
-- it is constructed containing `P_ed_a` & `P_ed_b`, so that if Alice or Bob reveals their secret by calling the contract, the contract will verify that the secret corresponds to the expected public key that it was initalized with.
+- it is constructed containing `P_a` and`P_b`, so that if Alice or Bob reveals their secret by calling the contract, the contract will verify that the secret corresponds to the expected public key that it was initalized with.
 
 - it has a `Ready()` function which can only be called by Alice. Once `Ready()` is invoked, Bob can proceed with redeeming his ether. Alice has until the `t_0` timestamp to call `Ready()` - once `t_0` passes, then the contract automatically allows Bob to claim his ether, up until some second timestamp `t_1`.
 
@@ -30,7 +40,7 @@ Alice deploys a smart contract on Ethereum and locks her ETH in it. The contract
 - `Refund()` takes one parameter from Alice: `s_a`. This allows Alice to get her ETH back in case Bob goes offline, but it simulteneously reveals her secret, allowing Bob to regain access to the XMR he locked.
 
 #### Step 2. 
-Bob sees the smart contract has been deployed with the correct parameters. He sends his XMR to an account address constructed from `P_a + P_b`. Thus, the funds can only be accessed by an entity having both `s_a` & `s_b`, as the secret spend key to that account is `s_a + s_b`. The funds are viewable by someone having `v_a + v_b`.
+Bob sees the smart contract has been deployed with the correct parameters. He sends his XMR to an account address constructed from `P_a + P_b`. Thus, the funds can only be accessed by an entity having both `s_a` and `s_b`, as the secret spend key to that account is `s_a + s_b`. The funds are viewable by someone having `v_a + v_b`.
 
 Note: `Refund()` and `Claim()` cannot be called at the same time. This is to prevent the case of front-running where, for example, Bob tries to claim, so his secret `s_b` is in the mempool, and then Alice tries to call `Refund()` with a higher priority while also transferring the XMR in the account controlled by `s_a + s_b`. If her call goes through before Bob's and Bob doesn't notice this happening in time, then Alice will now have *both* the ETH and the XMR. Due to this case, Alice and Bob should not call `Refund()` or `Claim()` when they are approaching `t_0` or `t_1` respectively, as their transaction may not go through in time.
 
@@ -39,7 +49,7 @@ Alice sees that the XMR has been locked, and the amount is correct (as she knows
 
 From this point on, Bob can redeem his ether by calling `Claim(s_b)`, which transfers the ETH to him.
 
-By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s_a` & `s_b` and she can access the monero in the account created from `P_ed_a + P_ed_b`.
+By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s_a` and `s_b` and she can access the monero in the account created from `P_ed_a + P_ed_b`.
 
 #### What could go wrong
 
