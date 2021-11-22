@@ -140,10 +140,17 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		s.alice.auth.Value = nil
 	}()
 
-	address, _, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, hb, ha, s.bobAddress, defaultTimeoutDuration)
+	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, hb, ha, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
+
+	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
+	if err != nil {
+		return ethcommon.Address{}, err
+	}
+
+	log.Debugf("deployed Swap.sol, gas used=%d", receipt.CumulativeGasUsed)
 
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
 	if err != nil {

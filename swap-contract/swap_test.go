@@ -2,12 +2,13 @@ package swap
 
 import (
 	"context"
-	"encoding/hex"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -41,25 +42,21 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, defaultTimeoutDuration)
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, ethcommon.Address{}, defaultTimeoutDuration)
 	require.NoError(t, err)
-
-	t.Log(address)
-	t.Log(tx)
-	t.Log(swapContract)
+	require.NotEqual(t, ethcommon.Address{}, address)
+	require.NotNil(t, tx)
+	require.NotNil(t, swapContract)
 }
 
 func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
-
 	secretBob := keyPairBob.SpendKeyBytes()
 
 	// setup
@@ -72,7 +69,7 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
-	authAlice.Value = big.NewInt(10)
+	authAlice.Value = big.NewInt(1000000000000)
 	require.NoError(t, err)
 	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
@@ -86,11 +83,12 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("BobBalanceBefore: ", bobBalanceBefore)
 
-	var pkAliceFixed [32]byte
-	copy(pkAliceFixed[:], reverse(pubKeyAlice))
-	var pkBobFixed [32]byte
-	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, defaultTimeoutDuration)
+	bobPub := pk_b.Public().(*ecdsa.PublicKey)
+	bobAddr := crypto.PubkeyToAddress(*bobPub)
+	claimHash := keyPairBob.SpendKey().Hash()
+	refundHash := keyPairAlice.SpendKey().Hash()
+
+	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, claimHash, refundHash, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 
@@ -100,7 +98,7 @@ func TestSwap_Claim(t *testing.T) {
 
 	contractBalance, err := conn.BalanceAt(context.Background(), contractAddress, nil)
 	require.NoError(t, err)
-	require.Equal(t, contractBalance, big.NewInt(10))
+	require.Equal(t, contractBalance, big.NewInt(1000000000000))
 
 	txOpts := &bind.TransactOpts{
 		From:   authAlice.From,
@@ -113,10 +111,9 @@ func TestSwap_Claim(t *testing.T) {
 	}
 
 	// Bob tries to claim before Alice has called ready, should fail
-	s := big.NewInt(0).SetBytes(reverse(secretBob))
-	fmt.Println("Secret:", hex.EncodeToString(reverse(secretBob)))
-	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyBob)))
-	_, err = swap.Claim(txOptsBob, s)
+	var sb [32]byte
+	copy(sb[:], secretBob)
+	_, err = swap.Claim(txOptsBob, sb)
 	require.Regexp(t, ".*too late or early to claim!", err)
 
 	// Alice calls set_ready on the contract
@@ -125,7 +122,7 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	// The main transaction that we're testing. Should work
-	tx, err := swap.Claim(txOptsBob, s)
+	tx, err := swap.Claim(txOptsBob, sb)
 	require.NoError(t, err)
 
 	// The Swap contract has self destructed: should have no balance AND no bytecode at the address
@@ -138,23 +135,23 @@ func TestSwap_Claim(t *testing.T) {
 
 	fmt.Println("Tx details are:", tx.Gas())
 
-	// check whether Bob's account balance has increased now
+	// TODO: check whether Bob's account balance has updated
 	// bobBalanceAfter, err := conn.BalanceAt(context.Background(), authBob.From, nil)
-	// fmt.Println("BobBalanceBefore: ", bobBalanceAfter)
+	// fmt.Println("BobBalanceAfter: ", bobBalanceAfter)
 	// require.NoError(t, err)
-	// require.Equal(t, big.NewInt(10), big.NewInt(0).Sub(bobBalanceAfter, bobBalanceBefore))
+
+	// expected := big.NewInt(0).Sub(big.NewInt(1000000000000), tx.Cost())
+	// require.Equal(t, expected, big.NewInt(0).Sub(bobBalanceAfter, bobBalanceBefore))
 }
 
 func TestSwap_Refund_Within_T0(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
 	secretAlice := keyPairAlice.SpendKeyBytes()
 
@@ -163,6 +160,8 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	require.NoError(t, err)
 
 	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	require.NoError(t, err)
+	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
@@ -173,11 +172,11 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
 
-	var pkAliceFixed [32]byte
-	copy(pkAliceFixed[:], reverse(pubKeyAlice))
-	var pkBobFixed [32]byte
-	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, defaultTimeoutDuration)
+	bobPub := pk_b.Public().(*ecdsa.PublicKey)
+	bobAddr := crypto.PubkeyToAddress(*bobPub)
+	claimHash := keyPairBob.SpendKey().Hash()
+	refundHash := keyPairAlice.SpendKey().Hash()
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, claimHash, refundHash, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -186,8 +185,9 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	}
 
 	// Alice never calls set_ready on the contract, instead she just tries to Refund immidiately
-	s := big.NewInt(0).SetBytes(reverse(secretAlice))
-	_, err = swap.Refund(txOpts, s)
+	var sa [32]byte
+	copy(sa[:], secretAlice)
+	_, err = swap.Refund(txOpts, sa)
 	require.NoError(t, err)
 
 	// The Swap contract has self destructed: should have no balance AND no bytecode at the address
@@ -204,12 +204,10 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
 	secretAlice := keyPairAlice.SpendKeyBytes()
 
@@ -218,6 +216,8 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	require.NoError(t, err)
 
 	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	require.NoError(t, err)
+	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
@@ -228,11 +228,11 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
 
-	var pkAliceFixed [32]byte
-	copy(pkAliceFixed[:], reverse(pubKeyAlice))
-	var pkBobFixed [32]byte
-	copy(pkBobFixed[:], reverse(pubKeyBob))
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, defaultTimeoutDuration)
+	bobPub := pk_b.Public().(*ecdsa.PublicKey)
+	bobAddr := crypto.PubkeyToAddress(*bobPub)
+	claimHash := keyPairBob.SpendKey().Hash()
+	refundHash := keyPairAlice.SpendKey().Hash()
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, claimHash, refundHash, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -242,11 +242,12 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 
 	// Alice calls set_ready on the contract, and immediately tries to Refund
 	// After waiting T1, Alice should be able to refund now
-	s := big.NewInt(0).SetBytes(reverse(secretAlice))
 	_, err = swap.SetReady(txOpts)
 	require.NoError(t, err)
 
-	_, err = swap.Refund(txOpts, s)
+	var sa [32]byte
+	copy(sa[:], secretAlice)
+	_, err = swap.Refund(txOpts, sa)
 	require.Regexp(t, ".*It's Bob's turn now, please wait!", err)
 
 	// wait some, then try again
@@ -256,7 +257,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 
 	ret := rpcClient.Call(&result, "evm_increaseTime", 3600*25)
 	require.NoError(t, ret)
-	_, err = swap.Refund(txOpts, s)
+	_, err = swap.Refund(txOpts, sa)
 	require.NoError(t, err)
 
 	// The Swap contract has self destructed: should have no balance AND no bytecode at the address
