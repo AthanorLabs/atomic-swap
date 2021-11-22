@@ -49,7 +49,7 @@ Alice sees that the XMR has been locked, and the amount is correct (as she knows
 
 From this point on, Bob can redeem his ether by calling `Claim(s_b)`, which transfers the ETH to him.
 
-By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s_a` and `s_b` and she can access the monero in the account created from `P_ed_a + P_ed_b`.
+By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s_a` and `s_b` and she can access the monero in the account created from `P_a + P_b`.
 
 #### What could go wrong
 
