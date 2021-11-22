@@ -20,18 +20,6 @@ import (
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 
-func reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
-func setBigIntLE(s []byte) *big.Int { //nolint
-	s = reverse(s)
-	return big.NewInt(0).SetBytes(s)
-}
-
 func TestDeploySwap(t *testing.T) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
