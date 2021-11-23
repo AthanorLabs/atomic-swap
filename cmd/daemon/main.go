@@ -32,6 +32,8 @@ const (
 
 	// default RPC port
 	defaultRPCPort = 5001
+
+	defaultEnvironment = common.Development
 )
 
 var (
@@ -63,11 +65,15 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  "wallet-file",
-				Usage: "filename of wallet file containing XMR to be swapped",
+				Usage: "filename of wallet file containing XMR to be swapped; required if running as Bob",
 			},
 			&cli.StringFlag{
 				Name:  "wallet-password",
 				Usage: "password of wallet file containing XMR to be swapped",
+			},
+			&cli.StringFlag{
+				Name:  "env",
+				Usage: "environment to use: one of mainnet, stagenet, or dev",
 			},
 			&cli.UintFlag{
 				Name:  "amount", // TODO: remove this and pass it via RPC
@@ -108,6 +114,7 @@ func main() {
 func runDaemon(c *cli.Context) error {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
+		env                                                     common.Environment
 	)
 
 	isAlice := c.Bool("alice")
@@ -119,6 +126,19 @@ func runDaemon(c *cli.Context) error {
 
 	if isAlice && isBob {
 		return errors.New("must specify only one of --alice or --bob")
+	}
+
+	switch c.String("env") {
+	case "mainnet":
+		env = common.Mainnet
+	case "stagenet":
+		env = common.Stagenet
+	case "dev":
+		env = common.Development
+	case "":
+		env = defaultEnvironment
+	default:
+		return errors.New("--env must be one of mainnet, stagenet, or dev")
 	}
 
 	if c.String("monero-endpoint") != "" {
@@ -137,6 +157,7 @@ func runDaemon(c *cli.Context) error {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
+	// TODO: if env isn't development, require a private key
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKey = c.String("ethereum-privkey")
 	} else {
@@ -169,7 +190,7 @@ func runDaemon(c *cli.Context) error {
 	)
 	switch {
 	case isAlice:
-		handler, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+		handler, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey, env)
 		if err != nil {
 			return err
 		}
@@ -182,7 +203,7 @@ func runDaemon(c *cli.Context) error {
 		// empty password is ok
 		walletPassword := c.String("wallet-password")
 
-		handler, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword)
+		handler, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword, env)
 		if err != nil {
 			return err
 		}
@@ -216,6 +237,7 @@ func runDaemon(c *cli.Context) error {
 		Handler:       handler,
 	}
 
+	// TODO: this is ugly
 	if c.Bool("bob") {
 		netCfg.Port = defaultBobPort
 		netCfg.Provides = []net.ProvidesCoin{net.ProvidesXMR}

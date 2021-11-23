@@ -53,7 +53,7 @@ type alice struct {
 // NewAlice returns a new instance of Alice.
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
-func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey string) (*alice, error) {
+func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey string, env common.Environment) (*alice, error) {
 	pk, err := crypto.HexToECDSA(ethPrivKey)
 	if err != nil {
 		return nil, err
@@ -75,6 +75,7 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 
 	return &alice{
 		ctx:        ctx,
+		env:        env,
 		ethPrivKey: pk,
 		ethClient:  ec,
 		client:     monero.NewClient(moneroEndpoint),

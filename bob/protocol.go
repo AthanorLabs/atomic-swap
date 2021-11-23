@@ -48,7 +48,7 @@ type bob struct {
 
 // NewBob returns a new instance of Bob.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword string) (*bob, error) {
+func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword string, env common.Environment) (*bob, error) {
 	pk, err := crypto.HexToECDSA(ethPrivKey)
 	if err != nil {
 		return nil, err
@@ -77,6 +77,7 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 
 	return &bob{
 		ctx:            ctx,
+		env:            env,
 		client:         walletClient,
 		daemonClient:   monero.NewClient(moneroDaemonEndpoint),
 		walletFile:     walletFile,

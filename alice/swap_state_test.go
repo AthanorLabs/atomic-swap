@@ -26,7 +26,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 }
 
 func newTestAlice(t *testing.T) (*alice, *swapState) {
-	alice, err := NewAlice(context.Background(), common.DefaultAliceMoneroEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyAlice)
+	alice, err := NewAlice(context.Background(), common.DefaultAliceMoneroEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyAlice, common.Development)
 	require.NoError(t, err)
 	swapState := newSwapState(alice, 1, 1)
 	return alice, swapState
