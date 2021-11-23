@@ -11,6 +11,7 @@ mkdir bob-test-keys
 ./monero-x86_64-linux-gnu-v0.17.2.3/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys &> monero-wallet-cli-bob.log &
 MONERO_WALLET_CLI_BOB_PID=$!
 
+sleep 5
 curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"create_wallet","params":{"filename":"test-wallet","password":"","language":"English"}}' -H 'Content-Type: application/json'
 
 echo "starting monero-wallet-rpc on port 18084..."

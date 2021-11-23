@@ -196,6 +196,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		go func() {
 			until := time.Until(s.t0)
 
+			log.Debug("time until t0: ", until.Seconds())
+
 			select {
 			case <-s.ctx.Done():
 				return

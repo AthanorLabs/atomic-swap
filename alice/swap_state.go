@@ -166,6 +166,10 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		sk := monero.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
 		kp := monero.NewPublicKeyPair(sk, vk.Public())
 
+		if msg.Address != string(kp.Address()) {
+			return nil, true, fmt.Errorf("address received in message does not match expected address")
+		}
+
 		t := time.Now().Format("2006-Jan-2-15:04:05")
 		walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
 		if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
@@ -319,7 +323,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	s.bobAddress = ethcommon.HexToAddress(msg.EthAddress)
 
-	log.Debug("got Bob's keys and address: address=%s", s.bobAddress)
+	log.Debugf("got Bob's keys and address: address=%s", s.bobAddress)
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)
