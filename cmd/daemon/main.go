@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli"
@@ -18,6 +21,8 @@ import (
 )
 
 const (
+	ethPrivKeySize = 32
+
 	// default libp2p ports
 	defaultAlicePort = 9933
 	defaultBobPort   = 9934
@@ -94,7 +99,7 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  "ethereum-privkey",
-				Usage: "ethereum private key hex string", // TODO: change this to a file
+				Usage: "file containing a private key hex string",
 			},
 			&cli.StringFlag{
 				Name:  "bootnodes",
@@ -113,7 +118,7 @@ func main() {
 
 func runDaemon(c *cli.Context) error {
 	var (
-		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
+		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKeyFile, ethPrivKey string
 		env                                                     common.Environment
 	)
 
@@ -159,9 +164,23 @@ func runDaemon(c *cli.Context) error {
 
 	// TODO: if env isn't development, require a private key
 	if c.String("ethereum-privkey") != "" {
-		ethPrivKey = c.String("ethereum-privkey")
+		ethPrivKeyFile = c.String("ethereum-privkey")
+		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
+		if err != nil {
+			return fmt.Errorf("failed to read ethereum-privkey file: %w", err)
+		}
+
+		if len(key) != ethPrivKeySize {
+			return fmt.Errorf("private key is not correct size: got %d, expected %d", len(key), ethPrivKeySize)
+		}
+
+		ethPrivKey = hex.EncodeToString(key)
 	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key")
+		if env != common.Development {
+			return errors.New("must provide --ethereum-privkey file for non-development environment")
+		}
+		
+		log.Warn("no ethereum private key file provided, using ganache deterministic key")
 		if isAlice {
 			ethPrivKey = common.DefaultPrivKeyAlice
 		} else {
