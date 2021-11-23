@@ -2,6 +2,8 @@ package monero
 
 import (
 	"fmt"
+
+	"github.com/noot/atomic-swap/common"
 )
 
 type Client interface {
@@ -9,7 +11,7 @@ type Client interface {
 	GetAddress(idx uint) (*getAddressResponse, error)
 	GetBalance(idx uint) (*getBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) error
-	GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error
+	GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error
 	Refresh() error
 	OpenWallet(filename, password string) error
@@ -45,8 +47,8 @@ func (c *client) Transfer(to Address, accountIdx, amount uint) error {
 	return err
 }
 
-func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error {
-	return c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(), filename, password)
+func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error {
+	return c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(env), filename, password)
 }
 
 func (c *client) GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error {

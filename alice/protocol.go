@@ -34,6 +34,7 @@ var (
 // and wishes to swap for XMR.
 type alice struct {
 	ctx context.Context
+	env common.Environment
 
 	client monero.Client
 
@@ -104,7 +105,7 @@ func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
 
 	// TODO: configure basepath
 	// TODO: add swap ID
-	if err := common.WriteKeysToFile("/tmp/alice-xmr", s.privkeys); err != nil {
+	if err := monero.WriteKeysToFile("/tmp/alice-xmr", s.privkeys, s.alice.env); err != nil {
 		return nil, err
 	}
 
@@ -256,7 +257,7 @@ func (s *swapState) refund() (string, error) {
 func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-swap-wallet-%s", t)
-	if err := s.alice.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
+	if err := s.alice.client.GenerateFromKeys(kpAB, walletName, "", s.alice.env); err != nil {
 		return "", err
 	}
 
@@ -273,7 +274,7 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 
 	log.Info("wallet balance: ", balance.Balance)
 	s.success = true
-	return kpAB.Address(), nil
+	return kpAB.Address(s.alice.env), nil
 }
 
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
@@ -315,7 +316,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 
 	// write keys to file in case something goes wrong
 	// TODO: configure basepath
-	if err = common.WriteKeysToFile("/tmp/swap-xmr", kpAB); err != nil {
+	if err = monero.WriteKeysToFile("/tmp/swap-xmr", kpAB, s.alice.env); err != nil {
 		return "", err
 	}
 

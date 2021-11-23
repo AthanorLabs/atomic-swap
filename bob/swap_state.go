@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
@@ -292,7 +291,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	// that the private view key corresponds to the public spend key
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
-	if err = s.bob.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
+	if err = s.bob.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.bob.env), walletName, ""); err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify Alice's keys: %w", err)
 	}
 
@@ -352,7 +351,7 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 
 	// write keys to file in case something goes wrong
 	// TODO: configure basepath
-	if err = common.WriteKeysToFile("/tmp/swap-xmr", kpAB); err != nil {
+	if err = monero.WriteKeysToFile("/tmp/swap-xmr", kpAB, s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -367,7 +366,7 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("bob-swap-wallet-%s", t)
-	if err := s.bob.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
+	if err := s.bob.client.GenerateFromKeys(kpAB, walletName, "", s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -384,7 +383,7 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 
 	log.Info("wallet balance: ", balance.Balance)
 	s.success = true
-	return kpAB.Address(), nil
+	return kpAB.Address(s.bob.env), nil
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {

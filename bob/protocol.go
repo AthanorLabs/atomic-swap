@@ -28,6 +28,7 @@ var (
 // and wishes to swap for ETH.
 type bob struct {
 	ctx context.Context
+	env common.Environment
 
 	client                     monero.Client
 	daemonClient               monero.DaemonClient
@@ -115,7 +116,7 @@ func (s *swapState) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, e
 
 	// TODO: configure basepath
 	// TODO: write swap ID
-	if err := common.WriteKeysToFile("/tmp/bob-xmr", s.privkeys); err != nil {
+	if err := monero.WriteKeysToFile("/tmp/bob-xmr", s.privkeys, s.bob.env); err != nil {
 		return nil, nil, err
 	}
 
@@ -254,7 +255,7 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 	log.Debug("unlocked XMR balance: ", balance.UnlockedBalance)
 	log.Debug("blocks to unlock: ", balance.BlocksToUnlock)
 
-	address := kp.Address()
+	address := kp.Address(s.bob.env)
 	if err := s.bob.client.Transfer(address, 0, uint(amount)); err != nil {
 		return "", err
 	}
