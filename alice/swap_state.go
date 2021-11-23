@@ -95,10 +95,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 // ProtocolComplete is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolComplete() {
-	// stop all running goroutines
-	s.cancel()
-
 	defer func() {
+		// stop all running goroutines
+		s.cancel()
 		s.alice.swapState = nil
 	}()
 
@@ -162,7 +161,39 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, errors.New("got empty address for locked XMR")
 		}
 
-		// TODO: check that XMR was locked in expected account, and confirm amount
+		// check that XMR was locked in expected account, and confirm amount
+		vk := monero.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
+		sk := monero.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
+		kp := monero.NewPublicKeyPair(sk, vk.Public())
+
+		t := time.Now().Format("2006-Jan-2-15:04:05")
+		walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
+		if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
+			return nil, true, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
+		}
+
+		if err := s.alice.client.Refresh(); err != nil {
+			return nil, true, err
+		}
+
+		balance, err := s.alice.client.GetBalance(0)
+		if err != nil {
+			return nil, true, err
+		}
+
+		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(), balance.Balance)
+		log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
+		log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
+
+		// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
+		if balance.Balance < float64(s.desiredAmount) {
+			return nil, true, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v", balance.Balance, float64(s.desiredAmount))
+		}
+
+		if err := s.alice.client.CloseWallet(); err != nil {
+			return nil, true, fmt.Errorf("failed to close wallet: %w", err)
+		}
+
 		s.nextExpectedMessage = &net.NotifyClaimed{}
 		close(s.xmrLockedCh)
 
@@ -217,6 +248,53 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	}
 }
 
+func (s *swapState) verifyBobKeys(msg *net.SendKeysMessage) error { // TODO: this is the same for Alice and Bob, move to common somewhere
+	hb, err := hex.DecodeString(msg.SpendKeyHash)
+	if err != nil {
+		return err
+	}
+
+	if len(hb) != 32 {
+		return errors.New("invalid spend key hash")
+	}
+
+	copy(s.bobClaimHash[:], hb)
+
+	// check that spend keyhash can be derived to view key
+	dvk, err := monero.NewPrivateViewKeyFromHash(msg.SpendKeyHash)
+	if err != nil {
+		return fmt.Errorf("failed to derive view key from spend key hash: %w", err)
+	}
+
+	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
+	if err != nil {
+		return fmt.Errorf("failed to generate Bob's private view keys: %w", err)
+	}
+
+	if vk.Hex() != dvk.Hex() {
+		return fmt.Errorf("derived view key does not match message's view key: derived=%s received=%s", dvk.Hex(), vk.Hex())
+	}
+
+	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, vk.Public().Hex())
+	if err != nil {
+		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
+	}
+
+	// check that wallet can be created using Bob's private view key and public spend key
+	t := time.Now().Format("2006-Jan-2-15:04:05")
+	walletName := fmt.Sprintf("bob-viewonly-wallet-%s", t)
+	if err = s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
+		return fmt.Errorf("failed to generate view-only wallet to verify Bob's keys: %w", err)
+	}
+
+	// can close it right after, as we were just checking that they correspond
+	if err = s.alice.client.CloseWallet(); err != nil {
+		return fmt.Errorf("failed to close wallet: %w", err)
+	}
+
+	return nil
+}
+
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -230,18 +308,14 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, errMissingAddress
 	}
 
-	// TODO: check that hash can be derived to view key
-
-	hb, err := hex.DecodeString(msg.SpendKeyHash)
-	if err != nil {
+	if err := s.verifyBobKeys(msg); err != nil {
 		return nil, err
 	}
 
-	if len(hb) != 32 {
-		return nil, errors.New("invalid spend key hash")
+	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate Bob's private view keys: %w", err)
 	}
-
-	copy(s.bobClaimHash[:], hb)
 
 	s.bobAddress = ethcommon.HexToAddress(msg.EthAddress)
 
@@ -252,19 +326,13 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Bob's public spend key: %w", err)
 	}
-
-	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate Bob's private view keys: %w", err)
-	}
-
 	s.setBobKeys(sk, vk)
 	address, err := s.deployAndLockETH(s.providesAmount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
 
-	log.Info("deployed Swap contract, waiting for XMR to be locked: address=", address)
+	log.Info("deployed Swap contract, waiting for XMR to be locked: contract address=", address)
 
 	// set t0 and t1
 	st0, err := s.contract.Timeout0(s.alice.callOpts)

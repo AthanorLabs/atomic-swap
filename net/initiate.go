@@ -83,7 +83,10 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
-		h.swapState.ProtocolComplete()
+		if h.swapState != nil {
+			h.swapState.ProtocolComplete()
+			h.swapState = nil
+		}
 	}()
 
 	msgBytes := make([]byte, 2048)

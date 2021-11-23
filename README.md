@@ -29,9 +29,25 @@ Start monerod for regtest:
 ./monerod --regtest --fixed-difficulty=1 --rpc-bind-port 18081 --offline
 ```
 
-Start monero-wallet-rpc for Bob with some wallet that has regtest monero:
+Create a wallet (will represent Bob, who owns XMR):
 ```
-./monero-wallet-rpc  --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-file test-wallet
+./monero-wallet-cli // you will be prompted to create a wallet. remember the name and optionally the password for the upcoming steps
+```
+
+Start monero-wallet-rpc for Bob creating a wallet (make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
+```
+./monero-wallet-rpc  --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
+```
+
+Open the wallet:
+```
+$ curl http://localhost:18082/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"mytestwallet","password":"mytestpassword"}}' -H 'Content-Type: application/json'
+{
+  "id": "0",
+  "jsonrpc": "2.0",
+  "result": {
+  }
+}
 ```
 
 Determine the address of `test-wallet` by running `monero-wallet-cli` and `address all`
