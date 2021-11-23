@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/noot/atomic-swap/common"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,6 +19,6 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	c := NewClient(defaultEndpointWalletDir)
-	err = c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(), fmt.Sprintf("test-wallet-%d", r), "")
+	err = c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(common.Mainnet), fmt.Sprintf("test-wallet-%d", r), "")
 	require.NoError(t, err)
 }

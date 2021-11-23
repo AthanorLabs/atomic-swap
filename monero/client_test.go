@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,11 +59,11 @@ func TestClient_Transfer(t *testing.T) {
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
-	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(), walletFP, "")
+	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
 
 	// transfer to account A+B
-	err = cA.Transfer(kpABPub.Address(), 0, amount)
+	err = cA.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
 	require.NoError(t, err)
 	err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
 	require.NoError(t, err)
@@ -85,7 +87,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
-	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-spaghet%d", r), "")
+	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), fmt.Sprintf("test-wallet-spaghet%d", r), "")
 	require.NoError(t, err)
 
 	err = cB.refresh()

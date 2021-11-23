@@ -122,7 +122,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 
 	s.desiredAmount = 0
 	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
-	xmrAddr := kp.Address()
+	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &net.NotifyXMRLock{
 		Address: string(xmrAddr),
