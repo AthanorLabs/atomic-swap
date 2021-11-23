@@ -7,12 +7,16 @@ echo "starting monerod..."
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
-./monero-x86_64-linux-gnu-v0.17.2.3/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-file test-wallet --password "" &> monero-wallet-cli-bob.log &
+mkdir bob-test-keys
+./monero-x86_64-linux-gnu-v0.17.2.3/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys &> monero-wallet-cli-bob.log &
 MONERO_WALLET_CLI_BOB_PID=$!
 
+sleep 5
+curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"create_wallet","params":{"filename":"test-wallet","password":"","language":"English"}}' -H 'Content-Type: application/json'
+
 echo "starting monero-wallet-rpc on port 18084..."
-mkdir test-keys
-./monero-x86_64-linux-gnu-v0.17.2.3/monero-wallet-rpc --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./test-keys &> monero-wallet-cli-alice.log &
+mkdir alice-test-keys
+./monero-x86_64-linux-gnu-v0.17.2.3/monero-wallet-rpc --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys &> monero-wallet-cli-alice.log &
 MONERO_WALLET_CLI_ALICE_PID=$!
 
 # install ganache and run 
@@ -36,5 +40,6 @@ OK=$?
 kill $MONERO_WALLET_CLI_BOB_PID
 kill $MONERO_WALLET_CLI_ALICE_PID
 kill $GANACHE_CLI_PID
-rm -rf ./test-keys
+# rm -rf ./alice-test-keys
+# rm -rf ./bob-test-keys
 exit $OK

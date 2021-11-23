@@ -29,8 +29,9 @@ var (
 type bob struct {
 	ctx context.Context
 
-	client       monero.Client
-	daemonClient monero.DaemonClient
+	client                     monero.Client
+	daemonClient               monero.DaemonClient
+	walletFile, walletPassword string
 
 	ethClient  *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
@@ -46,7 +47,7 @@ type bob struct {
 
 // NewBob returns a new instance of Bob.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoint, ethPrivKey string) (*bob, error) {
+func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword string) (*bob, error) {
 	pk, err := crypto.HexToECDSA(ethPrivKey)
 	if err != nil {
 		return nil, err
@@ -65,13 +66,23 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 	pub := pk.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
+	// monero-wallet-rpc client
+	walletClient := monero.NewClient(moneroEndpoint)
+
+	// open Bob's XMR wallet
+	if err = walletClient.OpenWallet(walletFile, walletPassword); err != nil {
+		return nil, err
+	}
+
 	return &bob{
-		ctx:          ctx,
-		client:       monero.NewClient(moneroEndpoint),
-		daemonClient: monero.NewClient(moneroDaemonEndpoint),
-		ethClient:    ec,
-		ethPrivKey:   pk,
-		auth:         auth,
+		ctx:            ctx,
+		client:         walletClient,
+		daemonClient:   monero.NewClient(moneroDaemonEndpoint),
+		walletFile:     walletFile,
+		walletPassword: walletPassword,
+		ethClient:      ec,
+		ethPrivKey:     pk,
+		auth:           auth,
 		callOpts: &bind.CallOpts{
 			From:    addr,
 			Context: ctx,
@@ -82,6 +93,10 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 
 func (b *bob) SetMessageSender(n net.MessageSender) {
 	b.net = n
+}
+
+func (b *bob) openWallet() error {
+	return b.client.OpenWallet(b.walletFile, b.walletPassword)
 }
 
 // generateKeys generates Bob's spend and view keys (s_b, v_b)
@@ -226,8 +241,8 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
 
-	log.Debug("public spend keys: ", kp.SpendKey().Hex())
-	log.Debug("public view keys: ", kp.ViewKey().Hex())
+	log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
+	log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 	log.Infof("going to lock XMR funds, amount=%d", amount)
 
 	balance, err := s.bob.client.GetBalance(0)
@@ -285,8 +300,7 @@ func (s *swapState) claimFunds() (string, error) {
 		return "", err
 	}
 
-	log.Info("success! Bob claimed funds")
-	log.Info("tx hash=%s", tx.Hash())
+	log.Infof("success! Bob claimed funds, tx hash=%s", tx.Hash())
 
 	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
 	if err != nil {

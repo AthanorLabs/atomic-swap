@@ -10,7 +10,10 @@ type Client interface {
 	GetBalance(idx uint) (*getBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) error
 	GenerateFromKeys(kp *PrivateKeyPair, filename, password string) error
+	GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error
 	Refresh() error
+	OpenWallet(filename, password string) error
+	CloseWallet() error
 }
 
 type client struct {
@@ -46,6 +49,10 @@ func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string)
 	return c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(), filename, password)
 }
 
+func (c *client) GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error {
+	return c.callGenerateFromKeys(nil, vk, address, filename, password)
+}
+
 func (c *client) GetAddress(idx uint) (*getAddressResponse, error) {
 	return c.callGetAddress(idx)
 }
@@ -56,6 +63,25 @@ func (c *client) Refresh() error {
 
 func (c *client) refresh() error {
 	const method = "refresh"
+
+	resp, err := postRPC(c.endpoint, method, "{}")
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	return nil
+}
+
+func (c *client) OpenWallet(filename, password string) error {
+	return c.callOpenWallet(filename, password)
+}
+
+func (c *client) CloseWallet() error {
+	const method = "close_wallet"
 
 	resp, err := postRPC(c.endpoint, method, "{}")
 	if err != nil {

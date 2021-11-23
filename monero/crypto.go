@@ -247,6 +247,24 @@ func NewPrivateViewKeyFromHex(vkHex string) (*PrivateViewKey, error) {
 	}, nil
 }
 
+// NewPrivateViewKeyFromHash derives a private view key given a hash of a private spend key.
+// The input is a hex-encoded string.
+func NewPrivateViewKeyFromHash(hash string) (*PrivateViewKey, error) {
+	h, err := hex.DecodeString(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	vk, err := ed25519.NewScalar().SetBytesWithClamping(h)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PrivateViewKey{
+		key: vk,
+	}, nil
+}
+
 type PublicKey struct {
 	key *ed25519.Point
 }

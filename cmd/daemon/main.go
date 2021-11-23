@@ -61,8 +61,16 @@ var (
 				Name:  "bob",
 				Usage: "run as Bob (have XMR, want ETH)",
 			},
+			&cli.StringFlag{
+				Name:  "wallet-file",
+				Usage: "filename of wallet file containing XMR to be swapped",
+			},
+			&cli.StringFlag{
+				Name:  "wallet-password",
+				Usage: "password of wallet file containing XMR to be swapped",
+			},
 			&cli.UintFlag{
-				Name:  "amount",
+				Name:  "amount", // TODO: remove this and pass it via RPC
 				Value: 0,
 				Usage: "maximum amount to swap (in smallest units of coin)",
 			},
@@ -166,7 +174,15 @@ func runDaemon(c *cli.Context) error {
 			return err
 		}
 	case isBob:
-		handler, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey)
+		walletFile := c.String("wallet-file")
+		if walletFile == "" {
+			return errors.New("must provide --wallet-file")
+		}
+
+		// empty password is ok
+		walletPassword := c.String("wallet-password")
+
+		handler, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword)
 		if err != nil {
 			return err
 		}

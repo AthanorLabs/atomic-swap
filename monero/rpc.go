@@ -237,3 +237,33 @@ func (c *client) callGetAccounts() (*getAccountsResponse, error) {
 
 	return res, nil
 }
+
+type openWalletRequest struct {
+	Filename string `json:"filename"`
+	Password string `json:"password"`
+}
+
+func (c *client) callOpenWallet(filename, password string) error {
+	const method = "open_wallet"
+
+	req := &openWalletRequest{
+		Filename: filename,
+		Password: password,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := postRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	return nil
+}
