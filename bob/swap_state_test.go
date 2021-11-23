@@ -142,6 +142,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.NoError(t, err)
 	addr, _ := deploySwap(t, bob, s, [32]byte{}, duration)
 
+	s.providesAmount = 1
 	msg = &net.NotifyContractDeployed{
 		Address: addr.String(),
 	}
@@ -194,7 +195,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.Equal(t, &net.NotifyReady{}, s.nextExpectedMessage)
 
 	time.Sleep(duration)
-	require.NotNil(t, s.net.(*mockNet).msg)
+	require.NotNil(t, s.net.(*mockNet).msg) // TODO: fix this, sometimes fails?
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
