@@ -92,10 +92,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 // ProtocolComplete is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolComplete() {
-	// stop all running goroutines
-	s.cancel()
-
 	defer func() {
+		// stop all running goroutines
+		s.cancel()
 		s.bob.swapState = nil
 	}()
 
@@ -115,6 +114,8 @@ func (s *swapState) ProtocolComplete() {
 		if err := s.tryClaim(); err != nil {
 			log.Errorf("failed to claim funds: err=%s", err)
 		}
+
+		// TODO: we should check if Alice refunded, if so then check contract for secret
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolComplete: type=%T", s.nextExpectedMessage)
 	}
@@ -195,6 +196,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		go func() {
 			until := time.Until(s.t0)
 
+			log.Debug("time until t0: ", until.Seconds())
+
 			select {
 			case <-s.ctx.Done():
 				return
@@ -259,7 +262,11 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 		return errors.New("did not receive SpendKeyHash")
 	}
 
-	// TODO: verify hash derives view key, and that view only wallet can be generated
+	// verify hash derives view key
+	dvk, err := monero.NewPrivateViewKeyFromHash(msg.SpendKeyHash)
+	if err != nil {
+		return fmt.Errorf("failed to derive view key from spend key hash: %w", err)
+	}
 
 	log.Debug("got Alice's public keys")
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
@@ -269,11 +276,33 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 		return fmt.Errorf("failed to generate Alice's private view key: %w", err)
 	}
 
+	if vk.Hex() != dvk.Hex() {
+		return fmt.Errorf("derived view key does not match message's view key: derived=%s received=%s", dvk.Hex(), vk.Hex())
+	}
+
 	s.alicePrivateViewKey = vk
 
 	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, vk.Public().Hex())
 	if err != nil {
 		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
+	}
+
+	// verify that view only wallet can be generated from Alice's private view key and public spend key
+	// we can delete this wallet right after, as we don't actually use it, other than confirming
+	// that the private view key corresponds to the public spend key
+	t := time.Now().Format("2006-Jan-2-15:04:05")
+	walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
+	if err = s.bob.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
+		return fmt.Errorf("failed to generate view-only wallet to verify Alice's keys: %w", err)
+	}
+
+	if err = s.bob.client.CloseWallet(); err != nil {
+		return fmt.Errorf("failed to close wallet: %w", err)
+	}
+
+	// re-open Bob's wallet
+	if err = s.bob.openWallet(); err != nil {
+		return fmt.Errorf("failed to open wallet: %w", err)
 	}
 
 	s.setAlicePublicKeys(kp)
@@ -339,7 +368,6 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("bob-swap-wallet-%s", t)
 	if err := s.bob.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
-		// TODO: save the keypair on disk!!! otherwise we lose the keys
 		return "", err
 	}
 

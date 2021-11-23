@@ -49,9 +49,10 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	msg = &net.SendKeysMessage{
 		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
 		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
-		SpendKeyHash:   "17e799afa82d5210fd6d41e1b1cb64784c10d72a34ada97807a4533a30627f01",
+		SpendKeyHash:   bobPrivKeys.SpendKey().HashString(),
 		EthAddress:     "0x",
 	}
+
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
@@ -59,6 +60,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
 	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+	require.Equal(t, bobPrivKeys.SpendKey().Hash(), s.bobClaimHash)
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
@@ -82,7 +84,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	msg := &net.SendKeysMessage{
 		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
 		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
-		SpendKeyHash:   "17e799afa82d5210fd6d41e1b1cb64784c10d72a34ada97807a4533a30627f01",
+		SpendKeyHash:   bobPrivKeys.SpendKey().HashString(),
 		EthAddress:     "0x",
 	}
 
@@ -118,8 +120,12 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	_, err = s.deployAndLockETH(1)
 	require.NoError(t, err)
 
+	s.desiredAmount = 0
+	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	xmrAddr := kp.Address()
+
 	msg := &net.NotifyXMRLock{
-		Address: "asdf", // TODO: this is unused
+		Address: string(xmrAddr),
 	}
 
 	resp, done, err := s.HandleProtocolMessage(msg)

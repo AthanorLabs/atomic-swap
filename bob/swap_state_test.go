@@ -19,7 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ = logging.SetLogLevel("bob", "debug")
+var (
+	_          = logging.SetLogLevel("bob", "debug")
+	testWallet = "test-wallet"
+)
 
 type mockNet struct {
 	msg net.Message
@@ -33,7 +36,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 var defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 
 func newTestBob(t *testing.T) (*bob, *swapState) {
-	bob, err := NewBob(context.Background(), common.DefaultBobMoneroEndpoint, common.DefaultMoneroDaemonEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyBob)
+	bob, err := NewBob(context.Background(), common.DefaultBobMoneroEndpoint, common.DefaultMoneroDaemonEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyBob, testWallet, "")
 	require.NoError(t, err)
 
 	bobAddr, err := bob.client.GetAddress(0)
@@ -96,7 +99,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	msg = &net.SendKeysMessage{
 		PublicSpendKey: alicePrivKeys.SpendKey().Public().Hex(),
 		PrivateViewKey: alicePrivKeys.ViewKey().Hex(),
-		SpendKeyHash:   "01fc704e28a5323372019db199a1c9adfd460eee382f3ee582371323ba62b62e",
+		SpendKeyHash:   alicePrivKeys.SpendKey().HashString(),
 	}
 
 	err = s.handleSendKeysMessage(msg)
@@ -139,6 +142,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.NoError(t, err)
 	addr, _ := deploySwap(t, bob, s, [32]byte{}, duration)
 
+	s.providesAmount = 1
 	msg = &net.NotifyContractDeployed{
 		Address: addr.String(),
 	}
@@ -191,7 +195,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.Equal(t, &net.NotifyReady{}, s.nextExpectedMessage)
 
 	time.Sleep(duration)
-	require.NotNil(t, s.net.(*mockNet).msg)
+	require.NotNil(t, s.net.(*mockNet).msg) // TODO: fix this, sometimes fails?
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
@@ -220,7 +224,6 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 func TestSwapState_handleRefund(t *testing.T) {
 	bob, s := newTestBob(t)
 
-	// TODO: wallet-rpc doesn't allow for both --wallet-file and --wallet-dir, this is an issue
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
@@ -234,7 +237,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	_, s.contract = deploySwap(t, bob, s, aliceKeys.SpendKey().Hash(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(s.providesAmount)
+	addrAB, err := s.lockFunds(s.providesAmount)
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
@@ -245,8 +248,9 @@ func TestSwapState_handleRefund(t *testing.T) {
 	tx, err := s.contract.Refund(s.bob.auth, sc)
 	require.NoError(t, err)
 
-	_, _ = s.handleRefund(tx.Hash().String())
-	// TODO: currently fails w/ rpc error "No wallet dir configured"
+	addr, err := s.handleRefund(tx.Hash().String())
+	require.NoError(t, err)
+	require.Equal(t, addrAB, addr)
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
@@ -280,6 +284,8 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 		TxHash: tx.Hash().String(),
 	}
 
-	_, _, _ = s.HandleProtocolMessage(msg)
-	// TODO: currently fails w/ rpc error "No wallet dir configured"
+	resp, done, err := s.HandleProtocolMessage(msg)
+	require.NoError(t, err)
+	require.True(t, done)
+	require.Nil(t, resp)
 }

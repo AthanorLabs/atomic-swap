@@ -22,8 +22,7 @@ func TestClient_Transfer(t *testing.T) {
 	t.Log("aliceAddress", aliceAddress)
 
 	daemon := NewClient(defaultDaemonEndpoint)
-	err = daemon.callGenerateBlocks(aliceAddress.Address, 181)
-	require.NoError(t, err)
+	_ = daemon.callGenerateBlocks(aliceAddress.Address, 181)
 
 	time.Sleep(time.Second * 10)
 
@@ -78,13 +77,11 @@ func TestClient_Transfer(t *testing.T) {
 			break
 		}
 
-		err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
-		require.NoError(t, err)
+		_ = daemon.callGenerateBlocks(aliceAddress.Address, 1)
 		time.Sleep(time.Second)
 	}
 
-	err = daemon.callGenerateBlocks(aliceAddress.Address, 16)
-	require.NoError(t, err)
+	_ = daemon.callGenerateBlocks(aliceAddress.Address, 16)
 
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
