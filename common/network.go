@@ -7,3 +7,16 @@ const (
 	Stagenet
 	Development
 )
+
+func (env Environment) String() string {
+	switch env {
+	case Mainnet:
+		return "mainnet"
+	case Stagenet:
+		return "stagenet"
+	case Development:
+		return "development"
+	}
+
+	return "unknown"
+}

@@ -159,6 +159,7 @@ func (kp *PrivateKeyPair) Marshal(env common.Environment) ([]byte, error) {
 	m["PrivateSpendKey"] = kp.sk.Hex()
 	m["PrivateViewKey"] = kp.vk.Hex()
 	m["Address"] = string(kp.Address(env))
+	m["Environment"] = env.String()
 	return json.Marshal(m)
 }
 

@@ -33,8 +33,9 @@ var (
 // alice implements the functions that will be called by a user who owns ETH
 // and wishes to swap for XMR.
 type alice struct {
-	ctx context.Context
-	env common.Environment
+	ctx      context.Context
+	env      common.Environment
+	basepath string
 
 	client monero.Client
 
@@ -50,21 +51,31 @@ type alice struct {
 	swapState *swapState
 }
 
+type Config struct {
+	Ctx                  context.Context
+	Basepath             string
+	MoneroWalletEndpoint string
+	EthereumEndpoint     string
+	EthereumPrivateKey   string
+	Environment          common.Environment
+	ChainID              int64
+}
+
 // NewAlice returns a new instance of Alice.
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
-func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey string, env common.Environment) (*alice, error) {
-	pk, err := crypto.HexToECDSA(ethPrivKey)
+func NewAlice(cfg *Config) (*alice, error) {
+	pk, err := crypto.HexToECDSA(cfg.EthereumPrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	ec, err := ethclient.Dial(ethEndpoint)
+	ec, err := ethclient.Dial(cfg.EthereumEndpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(cfg.ChainID))
 	if err != nil {
 		return nil, err
 	}
@@ -74,15 +85,16 @@ func NewAlice(ctx context.Context, moneroEndpoint, ethEndpoint, ethPrivKey strin
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
 
 	return &alice{
-		ctx:        ctx,
-		env:        env,
+		ctx:        cfg.Ctx,
+		basepath:   cfg.Basepath,
+		env:        cfg.Environment,
 		ethPrivKey: pk,
 		ethClient:  ec,
-		client:     monero.NewClient(moneroEndpoint),
+		client:     monero.NewClient(cfg.MoneroWalletEndpoint),
 		auth:       auth,
 		callOpts: &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),
-			Context: ctx,
+			Context: cfg.Ctx,
 		},
 	}, nil
 }
@@ -104,9 +116,8 @@ func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
 		return nil, err
 	}
 
-	// TODO: configure basepath
-	// TODO: add swap ID
-	if err := monero.WriteKeysToFile("/tmp/alice-xmr", s.privkeys, s.alice.env); err != nil {
+	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.id)
+	if err := monero.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
 		return nil, err
 	}
 
@@ -316,8 +327,8 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	// TODO: configure basepath
-	if err = monero.WriteKeysToFile("/tmp/swap-xmr", kpAB, s.alice.env); err != nil {
+	fp := fmt.Sprintf("%s/%d/swap-secret", s.alice.basepath, s.id)
+	if err = monero.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
 		return "", err
 	}
 

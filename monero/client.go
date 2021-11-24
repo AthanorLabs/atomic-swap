@@ -13,6 +13,7 @@ type Client interface {
 	Transfer(to Address, accountIdx, amount uint) error
 	GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error
+	GetHeight() (uint, error)
 	Refresh() error
 	OpenWallet(filename, password string) error
 	CloseWallet() error
@@ -95,4 +96,8 @@ func (c *client) CloseWallet() error {
 	}
 
 	return nil
+}
+
+func (c *client) GetHeight() (uint, error) {
+	return c.callGetHeight()
 }

@@ -267,3 +267,27 @@ func (c *client) callOpenWallet(filename, password string) error {
 
 	return nil
 }
+
+type getHeightResponse struct {
+	Height uint `json:"height"`
+}
+
+func (c *client) callGetHeight() (uint, error) {
+	const method = "get_height"
+
+	resp, err := postRPC(c.endpoint, method, "{}")
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.Error != nil {
+		return 0, resp.Error
+	}
+
+	var res *getHeightResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return 0, err
+	}
+
+	return res.Height, nil
+}

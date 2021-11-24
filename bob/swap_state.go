@@ -350,8 +350,8 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	// TODO: configure basepath
-	if err = monero.WriteKeysToFile("/tmp/swap-xmr", kpAB, s.bob.env); err != nil {
+	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.id)
+	if err = monero.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
 		return "", err
 	}
 
