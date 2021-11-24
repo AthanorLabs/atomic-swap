@@ -13,11 +13,11 @@ import (
 )
 
 func TestClient_Transfer(t *testing.T) {
-	// start RPC server with wallet w/ balance:
-	//
-	// `./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-file test-wallet`
 	const amount = 2800000000
-	cA := NewClient(common.DefaultAliceMoneroEndpoint)
+	cA := NewClient(common.DefaultBobMoneroEndpoint)
+
+	err := cA.OpenWallet("test-wallet", "")
+	require.NoError(t, err)
 
 	aliceAddress, err := cA.callGetAddress(0)
 	require.NoError(t, err)
@@ -51,11 +51,7 @@ func TestClient_Transfer(t *testing.T) {
 	r, err := rand.Int(rand.Reader, big.NewInt(10000))
 	require.NoError(t, err)
 
-	// start RPC server with wallet-dir
-	// `./monero-wallet-rpc --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .`
-	// TODO: it seems the wallet CLI fails to generate from keys when wallet-dir is not set,
-	// but it fails to load the wallet if wallet-file is not set (and these two flags cannot be used together)
-	cB := NewClient(common.DefaultBobMoneroEndpoint)
+	cB := NewClient(common.DefaultAliceMoneroEndpoint)
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
