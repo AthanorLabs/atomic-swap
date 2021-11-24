@@ -66,7 +66,7 @@ type host struct {
 type Config struct {
 	Ctx           context.Context
 	Environment common.Environment
-	ChainID uint
+	ChainID int64
 	Port          uint64
 	Provides      []ProvidesCoin
 	MaximumAmount []uint64
