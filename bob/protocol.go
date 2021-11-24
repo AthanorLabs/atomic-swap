@@ -123,7 +123,7 @@ func (b *bob) SetMessageSender(n net.MessageSender) {
 	b.net = n
 }
 
-func (b *bob) openWallet() error {
+func (b *bob) openWallet() error { //nolint
 	return b.client.OpenWallet(b.walletFile, b.walletPassword)
 }
 
@@ -341,7 +341,7 @@ func (s *swapState) claimFunds() (string, error) {
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	secret := s.privkeys.SpendKeyBytes()
 	var sc [32]byte
-	copy(sc[:], secret)
+	copy(sc[:], common.Reverse(secret))
 
 	tx, err := s.contract.Claim(s.bob.auth, sc)
 	if err != nil {
