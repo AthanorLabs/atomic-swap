@@ -26,7 +26,17 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 }
 
 func newTestAlice(t *testing.T) (*alice, *swapState) {
-	alice, err := NewAlice(context.Background(), common.DefaultAliceMoneroEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyAlice, common.Development)
+	cfg := &Config{
+		Ctx: context.Background(),
+		Basepath: "/tmp/alice",
+		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
+		EthereumEndpoint: common.DefaultEthEndpoint,
+		EthereumPrivateKey: common.DefaultPrivKeyAlice,
+		Environment: common.Development,
+		ChainID: common.MainnetConfig.EthereumChainID,
+	}
+
+	alice, err := NewAlice(cfg)
 	require.NoError(t, err)
 	swapState := newSwapState(alice, 1, 1)
 	return alice, swapState
