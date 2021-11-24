@@ -4,8 +4,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/noot/atomic-swap/common"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,8 +39,8 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	// give the correct public keys
 	kp, err := NewPrivateKeyPairFromBytes(sk, vk)
 	require.NoError(t, err)
-	require.Equal(t, addressBytes, kp.AddressBytes())
-	require.Equal(t, Address(address), kp.Address())
+	require.Equal(t, addressBytes, kp.AddressBytes(common.Mainnet))
+	require.Equal(t, Address(address), kp.Address(common.Mainnet))
 
 	// check public key derivation
 	require.Equal(t, pskBytes, kp.sk.Public().Hex())

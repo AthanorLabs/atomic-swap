@@ -3,8 +3,11 @@ package bob
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
+	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -27,7 +30,9 @@ var (
 // bob implements the functions that will be called by a user who owns XMR
 // and wishes to swap for ETH.
 type bob struct {
-	ctx context.Context
+	ctx      context.Context
+	env      common.Environment
+	basepath string
 
 	client                     monero.Client
 	daemonClient               monero.DaemonClient
@@ -45,20 +50,36 @@ type bob struct {
 	swapState *swapState
 }
 
+type Config struct {
+	Ctx                        context.Context
+	Basepath                   string
+	MoneroWalletEndpoint       string
+	MoneroDaemonEndpoint       string // only needed for development
+	WalletFile, WalletPassword string
+	EthereumEndpoint           string
+	EthereumPrivateKey         string
+	Environment                common.Environment
+	ChainID                    int64
+}
+
 // NewBob returns a new instance of Bob.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword string) (*bob, error) {
-	pk, err := crypto.HexToECDSA(ethPrivKey)
+func NewBob(cfg *Config) (*bob, error) {
+	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
+		return nil, errors.New("environment is development, must provide monero daemon endpoint")
+	}
+
+	pk, err := crypto.HexToECDSA(cfg.EthereumPrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	ec, err := ethclient.Dial(ethEndpoint)
+	ec, err := ethclient.Dial(cfg.EthereumEndpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337)) // ganache chainID
+	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(cfg.ChainID)) // ganache chainID
 	if err != nil {
 		return nil, err
 	}
@@ -67,25 +88,32 @@ func NewBob(ctx context.Context, moneroEndpoint, moneroDaemonEndpoint, ethEndpoi
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// monero-wallet-rpc client
-	walletClient := monero.NewClient(moneroEndpoint)
+	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
 
 	// open Bob's XMR wallet
-	if err = walletClient.OpenWallet(walletFile, walletPassword); err != nil {
+	if err = walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
 		return nil, err
 	}
 
+	var daemonClient monero.DaemonClient
+	if cfg.Environment == common.Development {
+		daemonClient = monero.NewClient(cfg.MoneroDaemonEndpoint)
+	}
+
 	return &bob{
-		ctx:            ctx,
+		ctx:            cfg.Ctx,
+		basepath:       cfg.Basepath,
+		env:            cfg.Environment,
 		client:         walletClient,
-		daemonClient:   monero.NewClient(moneroDaemonEndpoint),
-		walletFile:     walletFile,
-		walletPassword: walletPassword,
+		daemonClient:   daemonClient,
+		walletFile:     cfg.WalletFile,
+		walletPassword: cfg.WalletPassword,
 		ethClient:      ec,
 		ethPrivKey:     pk,
 		auth:           auth,
 		callOpts: &bind.CallOpts{
 			From:    addr,
-			Context: ctx,
+			Context: cfg.Ctx,
 		},
 		ethAddress: addr,
 	}, nil
@@ -113,9 +141,8 @@ func (s *swapState) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, e
 		return nil, nil, err
 	}
 
-	// TODO: configure basepath
-	// TODO: write swap ID
-	if err := common.WriteKeysToFile("/tmp/bob-xmr", s.privkeys); err != nil {
+	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
+	if err := monero.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
 		return nil, nil, err
 	}
 
@@ -254,8 +281,13 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 	log.Debug("unlocked XMR balance: ", balance.UnlockedBalance)
 	log.Debug("blocks to unlock: ", balance.BlocksToUnlock)
 
-	address := kp.Address()
+	address := kp.Address(s.bob.env)
 	if err := s.bob.client.Transfer(address, 0, uint(amount)); err != nil {
+		return "", err
+	}
+
+	prevHeight, err := s.bob.client.GetHeight()
+	if err != nil {
 		return "", err
 	}
 
@@ -264,10 +296,26 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 		return "", err
 	}
 
-	// TODO: this has gonna be removed before stagenet/mainnet, will need to add
-	// waiting logs or such
-	if err := s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 1); err != nil {
-		return "", err
+	// if we're on a development --regtest node, generate some blocks
+	if s.bob.env == common.Development {
+		if err := s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 1); err != nil {
+			return "", err
+		}
+	} else {
+		// otherwise, wait for new blocks
+		for {
+			height, err := s.bob.client.GetHeight()
+			if err != nil {
+				log.Errorf("failed to get height: %s", err)
+			}
+
+			if height > prevHeight {
+				break
+			}
+
+			log.Infof("waiting for next block, current height=%d", height)
+			time.Sleep(time.Second * 10)
+		}
 	}
 
 	if err := s.bob.client.Refresh(); err != nil {
