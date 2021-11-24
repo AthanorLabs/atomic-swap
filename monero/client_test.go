@@ -7,21 +7,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestClient_Transfer(t *testing.T) {
-	// start RPC server with wallet w/ balance:
-	//
-	// `./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-file test-wallet`
 	const amount = 2800000000
-	cA := NewClient(defaultEndpointWalletFile)
+	cA := NewClient(common.DefaultBobMoneroEndpoint)
+
+	err := cA.OpenWallet("test-wallet", "")
+	require.NoError(t, err)
 
 	aliceAddress, err := cA.callGetAddress(0)
 	require.NoError(t, err)
 	t.Log("aliceAddress", aliceAddress)
 
-	daemon := NewClient(defaultDaemonEndpoint)
+	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemon.callGenerateBlocks(aliceAddress.Address, 181)
 
 	time.Sleep(time.Second * 10)
@@ -49,19 +51,15 @@ func TestClient_Transfer(t *testing.T) {
 	r, err := rand.Int(rand.Reader, big.NewInt(10000))
 	require.NoError(t, err)
 
-	// start RPC server with wallet-dir
-	// `./monero-wallet-rpc --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .`
-	// TODO: it seems the wallet CLI fails to generate from keys when wallet-dir is not set,
-	// but it fails to load the wallet if wallet-file is not set (and these two flags cannot be used together)
-	cB := NewClient(defaultEndpointWalletDir)
+	cB := NewClient(common.DefaultAliceMoneroEndpoint)
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
-	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(), walletFP, "")
+	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
 
 	// transfer to account A+B
-	err = cA.Transfer(kpABPub.Address(), 0, amount)
+	err = cA.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
 	require.NoError(t, err)
 	err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
 	require.NoError(t, err)
@@ -85,7 +83,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
-	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(), fmt.Sprintf("test-wallet-spaghet%d", r), "")
+	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), fmt.Sprintf("test-wallet-spaghet%d", r), "")
 	require.NoError(t, err)
 
 	err = cB.refresh()

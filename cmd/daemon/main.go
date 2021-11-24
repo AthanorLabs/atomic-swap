@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli"
@@ -18,6 +21,8 @@ import (
 )
 
 const (
+	ethPrivKeySize = 32
+
 	// default libp2p ports
 	defaultAlicePort = 9933
 	defaultBobPort   = 9934
@@ -32,6 +37,8 @@ const (
 
 	// default RPC port
 	defaultRPCPort = 5001
+
+	defaultEnvironment = common.Development
 )
 
 var (
@@ -53,6 +60,10 @@ var (
 				Name:  "rpc-port",
 				Usage: "port for the daemon RPC server to run on; default 5001",
 			},
+			&cli.StringFlag{
+				Name:  "basepath",
+				Usage: "path to store swap artifacts",
+			},
 			&cli.BoolFlag{
 				Name:  "alice",
 				Usage: "run as Alice (have ETH, want XMR)",
@@ -63,11 +74,15 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  "wallet-file",
-				Usage: "filename of wallet file containing XMR to be swapped",
+				Usage: "filename of wallet file containing XMR to be swapped; required if running as Bob",
 			},
 			&cli.StringFlag{
 				Name:  "wallet-password",
 				Usage: "password of wallet file containing XMR to be swapped",
+			},
+			&cli.StringFlag{
+				Name:  "env",
+				Usage: "environment to use: one of mainnet, stagenet, or dev",
 			},
 			&cli.UintFlag{
 				Name:  "amount", // TODO: remove this and pass it via RPC
@@ -88,7 +103,11 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  "ethereum-privkey",
-				Usage: "ethereum private key hex string", // TODO: change this to a file
+				Usage: "file containing a private key hex string",
+			},
+			&cli.UintFlag{
+				Name:  "ethereum-chain-id",
+				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
 			},
 			&cli.StringFlag{
 				Name:  "bootnodes",
@@ -107,7 +126,9 @@ func main() {
 
 func runDaemon(c *cli.Context) error {
 	var (
-		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey string
+		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKeyFile, ethPrivKey string
+		env                                                                     common.Environment
+		cfg                                                                     common.Config
 	)
 
 	isAlice := c.Bool("alice")
@@ -119,6 +140,23 @@ func runDaemon(c *cli.Context) error {
 
 	if isAlice && isBob {
 		return errors.New("must specify only one of --alice or --bob")
+	}
+
+	switch c.String("env") {
+	case "mainnet":
+		env = common.Mainnet
+		cfg = common.MainnetConfig
+	case "stagenet":
+		env = common.Stagenet
+		cfg = common.StagenetConfig
+	case "dev":
+		env = common.Development
+		cfg = common.DevelopmentConfig
+	case "":
+		env = defaultEnvironment
+		cfg = common.DevelopmentConfig
+	default:
+		return errors.New("--env must be one of mainnet, stagenet, or dev")
 	}
 
 	if c.String("monero-endpoint") != "" {
@@ -137,10 +175,25 @@ func runDaemon(c *cli.Context) error {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
+	// TODO: if env isn't development, require a private key
 	if c.String("ethereum-privkey") != "" {
-		ethPrivKey = c.String("ethereum-privkey")
+		ethPrivKeyFile = c.String("ethereum-privkey")
+		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
+		if err != nil {
+			return fmt.Errorf("failed to read ethereum-privkey file: %w", err)
+		}
+
+		if len(key) != ethPrivKeySize {
+			return fmt.Errorf("private key is not correct size: got %d, expected %d", len(key), ethPrivKeySize)
+		}
+
+		ethPrivKey = hex.EncodeToString(key)
 	} else {
-		log.Warn("no ethereum private key provided, using ganache deterministic key")
+		if env != common.Development {
+			return errors.New("must provide --ethereum-privkey file for non-development environment")
+		}
+
+		log.Warn("no ethereum private key file provided, using ganache deterministic key")
 		if isAlice {
 			ethPrivKey = common.DefaultPrivKeyAlice
 		} else {
@@ -148,10 +201,15 @@ func runDaemon(c *cli.Context) error {
 		}
 	}
 
+	chainID := int64(c.Uint("ethereum-chain-id"))
+	if chainID == 0 {
+		chainID = cfg.EthereumChainID
+	}
+
 	if c.String("monero-daemon-endpoint") != "" {
 		daemonEndpoint = c.String("monero-daemon-endpoint")
 	} else {
-		daemonEndpoint = common.DefaultMoneroDaemonEndpoint
+		daemonEndpoint = cfg.MoneroDaemonEndpoint
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -169,7 +227,17 @@ func runDaemon(c *cli.Context) error {
 	)
 	switch {
 	case isAlice:
-		handler, err = alice.NewAlice(ctx, moneroEndpoint, ethEndpoint, ethPrivKey)
+		aliceCfg := &alice.Config{
+			Ctx:                  ctx,
+			Basepath:             cfg.Basepath,
+			MoneroWalletEndpoint: moneroEndpoint,
+			EthereumEndpoint:     ethEndpoint,
+			EthereumPrivateKey:   ethPrivKey,
+			Environment:          env,
+			ChainID:              chainID,
+		}
+
+		handler, err = alice.NewAlice(aliceCfg)
 		if err != nil {
 			return err
 		}
@@ -182,7 +250,20 @@ func runDaemon(c *cli.Context) error {
 		// empty password is ok
 		walletPassword := c.String("wallet-password")
 
-		handler, err = bob.NewBob(ctx, moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKey, walletFile, walletPassword)
+		bobCfg := &bob.Config{
+			Ctx:                  ctx,
+			Basepath:             cfg.Basepath,
+			MoneroWalletEndpoint: moneroEndpoint,
+			MoneroDaemonEndpoint: daemonEndpoint,
+			WalletFile:           walletFile,
+			WalletPassword:       walletPassword,
+			EthereumEndpoint:     ethEndpoint,
+			EthereumPrivateKey:   ethPrivKey,
+			Environment:          env,
+			ChainID:              chainID,
+		}
+
+		handler, err = bob.NewBob(bobCfg)
 		if err != nil {
 			return err
 		}
@@ -207,6 +288,8 @@ func runDaemon(c *cli.Context) error {
 
 	netCfg := &net.Config{
 		Ctx:           ctx,
+		Environment:   env,
+		ChainID:       chainID,
 		Port:          defaultAlicePort,                    // TODO: make flag
 		Provides:      []net.ProvidesCoin{net.ProvidesETH}, // TODO: make flag
 		MaximumAmount: []uint64{amount},
@@ -216,6 +299,7 @@ func runDaemon(c *cli.Context) error {
 		Handler:       handler,
 	}
 
+	// TODO: this is ugly
 	if c.Bool("bob") {
 		netCfg.Port = defaultBobPort
 		netCfg.Provides = []net.ProvidesCoin{net.ProvidesXMR}
@@ -235,13 +319,13 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
-	cfg := &rpc.Config{
+	rpcCfg := &rpc.Config{
 		Port:     port,
 		Net:      host,
 		Protocol: handler,
 	}
 
-	s, err := rpc.NewServer(cfg)
+	s, err := rpc.NewServer(rpcCfg)
 	if err != nil {
 		return err
 	}

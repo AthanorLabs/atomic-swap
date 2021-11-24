@@ -8,13 +8,16 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/noot/atomic-swap/common"
+
 	ed25519 "filippo.io/edwards25519"
 	"github.com/ebfe/keccak"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 const (
-	addressPrefixMainnet byte = 0x12
+	addressPrefixMainnet  byte = 18
+	addressPrefixStagenet byte = 53
 )
 
 func PublicSpendOnSecp256k1(k []byte) (a, b *big.Int) {
@@ -107,16 +110,24 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
-func (kp *PrivateKeyPair) AddressBytes() []byte {
+func (kp *PrivateKeyPair) AddressBytes(env common.Environment) []byte {
 	psk := kp.sk.Public().key.Bytes()
 	pvk := kp.vk.Public().key.Bytes()
 	c := append(psk, pvk...)
 
+	var prefix byte
+	switch env {
+	case common.Mainnet, common.Development:
+		prefix = addressPrefixMainnet
+	case common.Stagenet:
+		prefix = addressPrefixStagenet
+	}
+
 	// address encoding is:
 	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
 	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
-	checksum := getChecksum(append([]byte{addressPrefixMainnet}, c...))
-	addr := append(append([]byte{addressPrefixMainnet}, c...), checksum[:4]...)
+	checksum := getChecksum(append([]byte{prefix}, c...))
+	addr := append(append([]byte{prefix}, c...), checksum[:4]...)
 	return addr
 }
 
@@ -124,8 +135,8 @@ func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
 }
 
-func (kp *PrivateKeyPair) Address() Address {
-	return Address(EncodeMoneroBase58(kp.AddressBytes()))
+func (kp *PrivateKeyPair) Address(env common.Environment) Address {
+	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
 }
 
 func (kp *PrivateKeyPair) PublicKeyPair() *PublicKeyPair {
@@ -143,11 +154,12 @@ func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
 	return kp.vk
 }
 
-func (kp *PrivateKeyPair) Marshal() ([]byte, error) {
+func (kp *PrivateKeyPair) Marshal(env common.Environment) ([]byte, error) {
 	m := make(map[string]string)
 	m["PrivateSpendKey"] = kp.sk.Hex()
 	m["PrivateViewKey"] = kp.vk.Hex()
-	m["Address"] = string(kp.Address())
+	m["Address"] = string(kp.Address(env))
+	m["Environment"] = env.String()
 	return json.Marshal(m)
 }
 
@@ -341,21 +353,29 @@ func (kp *PublicKeyPair) ViewKey() *PublicKey {
 	return kp.vk
 }
 
-func (kp *PublicKeyPair) AddressBytes() []byte {
+func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
 	psk := kp.sk.key.Bytes()
 	pvk := kp.vk.key.Bytes()
 	c := append(psk, pvk...)
 
+	var prefix byte
+	switch env {
+	case common.Mainnet, common.Development:
+		prefix = addressPrefixMainnet
+	case common.Stagenet:
+		prefix = addressPrefixStagenet
+	}
+
 	// address encoding is:
 	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
 	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
-	checksum := getChecksum(append([]byte{addressPrefixMainnet}, c...))
-	addr := append(append([]byte{addressPrefixMainnet}, c...), checksum[:4]...)
+	checksum := getChecksum(append([]byte{prefix}, c...))
+	addr := append(append([]byte{prefix}, c...), checksum[:4]...)
 	return addr
 }
 
-func (kp *PublicKeyPair) Address() Address {
-	return Address(EncodeMoneroBase58(kp.AddressBytes()))
+func (kp *PublicKeyPair) Address(env common.Environment) Address {
+	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
 }
 
 // GenerateKeys returns a private spend key and view key
