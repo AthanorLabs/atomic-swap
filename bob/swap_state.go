@@ -292,7 +292,7 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 	log.Debug("got Alice's secret: ", hex.EncodeToString(sa[:]))
 
 	// got Alice's secret
-	skA, err := monero.NewPrivateSpendKey(sa[:])
+	skA, err := monero.NewPrivateSpendKey(common.Reverse(sa[:]))
 	if err != nil {
 		log.Errorf("failed to convert Alice's secret into a key: %s", err)
 		return "", err

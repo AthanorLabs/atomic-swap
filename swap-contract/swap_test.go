@@ -106,12 +106,13 @@ func TestSwap_Claim(t *testing.T) {
 	var sb [32]byte
 	copy(sb[:], common.Reverse(secretBob))
 	_, err = swap.Claim(txOptsBob, sb)
+	require.Error(t, err)
 	require.Regexp(t, ".*too late or early to claim!", err)
 
 	// Alice calls set_ready on the contract
 	setReadyTx, err := swap.SetReady(txOpts)
-	fmt.Println("setReady Tx Gas Cost:", setReadyTx.Gas())
 	require.NoError(t, err)
+	fmt.Println("setReady Tx Gas Cost:", setReadyTx.Gas())
 
 	// The main transaction that we're testing. Should work
 	tx, err := swap.Claim(txOptsBob, sb)
