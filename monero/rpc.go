@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-const (
-	// defaultEndpointWalletFile is the default monero-wallet-rpc endpoint with a provided --wallet-file
-	defaultEndpointWalletFile = "http://127.0.0.1:18083/json_rpc"
+// const (
+// 	// defaultEndpointWalletFile is the default monero-wallet-rpc endpoint with a provided --wallet-file
+// 	defaultEndpointWalletFile = "http://127.0.0.1:18083/json_rpc"
 
-	// defaultEndpointWalletDir is the default monero-wallet-rpc endpoint with a provided --wallet-dir
-	defaultEndpointWalletDir = "http://127.0.0.1:18084/json_rpc"
-)
+// 	// defaultEndpointWalletDir is the default monero-wallet-rpc endpoint with a provided --wallet-dir
+// 	defaultEndpointWalletDir = "http://127.0.0.1:18084/json_rpc"
+// )
 
-const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
+// const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
 // Address represents a base58-encoded string
 type Address string

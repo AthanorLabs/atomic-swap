@@ -18,7 +18,7 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	r, err := rand.Int(rand.Reader, big.NewInt(999))
 	require.NoError(t, err)
 
-	c := NewClient(defaultEndpointWalletDir)
+	c := NewClient(common.DefaultBobMoneroEndpoint)
 	err = c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(common.Mainnet), fmt.Sprintf("test-wallet-%d", r), "")
 	require.NoError(t, err)
 }

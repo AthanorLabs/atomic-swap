@@ -13,6 +13,11 @@ func WriteKeysToFile(basepath string, keys *PrivateKeyPair, env common.Environme
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	path := fmt.Sprintf("%s-%s.key", basepath, t)
 
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+
 	file, err := os.Create(filepath.Clean(path))
 	if err != nil {
 		return err
