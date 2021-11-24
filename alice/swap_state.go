@@ -16,9 +16,8 @@ import (
 var nextID uint64 = 0
 
 var (
-	errMissingKeys         = errors.New("did not receive Bob's public spend or private view key")
-	errMissingSpendKeyHash = errors.New("did not receive Bob's spend key hash")
-	errMissingAddress      = errors.New("did not receive Bob's address")
+	errMissingKeys    = errors.New("did not receive Bob's public spend or private view key")
+	errMissingAddress = errors.New("did not receive Bob's address")
 )
 
 // swapState is an instance of a swap. it holds the info needed for the swap,

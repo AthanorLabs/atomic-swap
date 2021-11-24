@@ -307,7 +307,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	sb := res[0].([32]byte)
 	log.Debug("got Bob's secret: ", hex.EncodeToString(sb[:]))
 
-	skB, err := monero.NewPrivateSpendKey(sb[:])
+	skB, err := monero.NewPrivateSpendKey(common.Reverse(sb[:]))
 	if err != nil {
 		log.Errorf("failed to convert Bob's secret into a key: %s", err)
 		return "", err

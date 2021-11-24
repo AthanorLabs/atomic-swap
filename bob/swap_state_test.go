@@ -99,7 +99,6 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	msg = &net.SendKeysMessage{
 		PublicSpendKey: alicePrivKeys.SpendKey().Public().Hex(),
 		PrivateViewKey: alicePrivKeys.ViewKey().Hex(),
-		SpendKeyHash:   alicePrivKeys.SpendKey().HashString(),
 	}
 
 	err = s.handleSendKeysMessage(msg)
