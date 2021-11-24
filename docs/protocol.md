@@ -2,20 +2,6 @@
 
 ## Current version
 
-See [this issue describing the update](https://github.com/noot/atomic-swap/issues/36).
-
-```
-gas used now to deploy Swap.sol: 640005
-gas used previously to deploy Swap.sol: 1855645
-improvement: ~2.9x
-
-gas used now for the Claim() or Refund() call: 14729
-gas used previously for the Claim() or Refund() call: 938818
-improvement: ~64x
-```
-
-## Initial version
-
 Alice has ETH and wants XMR, Bob has XMR and wants ETH. They come to an agreement to do the swap and the amounts they will swap.
 
 #### Initial (offchain) phase

@@ -142,8 +142,12 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		return ethcommon.Address{}, errors.New("bob's keys aren't set")
 	}
 
-	hb := s.bobClaimHash
-	ha := s.privkeys.SpendKey().Hash()
+	pkAlice := s.pubkeys.SpendKey().Bytes()
+	pkBob := s.bobPublicSpendKey.Bytes()
+
+	var pka, pkb [32]byte
+	copy(pka[:], common.Reverse(pkAlice))
+	copy(pkb[:], common.Reverse(pkBob))
 
 	log.Debug("locking amount: ", amount)
 
@@ -153,7 +157,7 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		s.alice.auth.Value = nil
 	}()
 
-	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, hb, ha, s.bobAddress, defaultTimeoutDuration)
+	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
@@ -316,7 +320,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	sb := res[0].([32]byte)
 	log.Debug("got Bob's secret: ", hex.EncodeToString(sb[:]))
 
-	skB, err := monero.NewPrivateSpendKey(sb[:])
+	skB, err := monero.NewPrivateSpendKey(common.Reverse(sb[:]))
 	if err != nil {
 		log.Errorf("failed to convert Bob's secret into a key: %s", err)
 		return "", err

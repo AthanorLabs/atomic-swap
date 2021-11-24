@@ -41,11 +41,17 @@ func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
+	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
+	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
+
+	var pkAliceFixed, pkBobFixed [32]byte
+	copy(pkAliceFixed[:], common.Reverse(pubKeyAlice))
+	copy(pkBobFixed[:], common.Reverse(pubKeyBob))
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
@@ -73,10 +79,8 @@ func TestSwap_Claim(t *testing.T) {
 
 	bobPub := pk_b.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
-	claimHash := keyPairBob.SpendKey().Hash()
-	refundHash := keyPairAlice.SpendKey().Hash()
 
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, claimHash, refundHash, bobAddr, defaultTimeoutDuration)
+	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 
@@ -100,14 +104,15 @@ func TestSwap_Claim(t *testing.T) {
 
 	// Bob tries to claim before Alice has called ready, should fail
 	var sb [32]byte
-	copy(sb[:], secretBob)
+	copy(sb[:], common.Reverse(secretBob))
 	_, err = swap.Claim(txOptsBob, sb)
+	require.Error(t, err)
 	require.Regexp(t, ".*too late or early to claim!", err)
 
 	// Alice calls set_ready on the contract
 	setReadyTx, err := swap.SetReady(txOpts)
-	fmt.Println("setReady Tx Gas Cost:", setReadyTx.Gas())
 	require.NoError(t, err)
+	fmt.Println("setReady Tx Gas Cost:", setReadyTx.Gas())
 
 	// The main transaction that we're testing. Should work
 	tx, err := swap.Claim(txOptsBob, sb)
@@ -117,9 +122,9 @@ func TestSwap_Claim(t *testing.T) {
 	contractBalance, err = conn.BalanceAt(context.Background(), contractAddress, nil)
 	require.NoError(t, err)
 	require.Equal(t, contractBalance.Uint64(), big.NewInt(0).Uint64())
-	bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
-	require.NoError(t, err)
-	require.Empty(t, bytecode)
+	// bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
+	// require.NoError(t, err)
+	// require.Empty(t, bytecode)
 
 	fmt.Println("Tx details are:", tx.Gas())
 
@@ -136,12 +141,18 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
+	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
+	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
 	secretAlice := keyPairAlice.SpendKeyBytes()
+
+	var pkAliceFixed, pkBobFixed [32]byte
+	copy(pkAliceFixed[:], common.Reverse(pubKeyAlice))
+	copy(pkBobFixed[:], common.Reverse(pubKeyBob))
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
@@ -162,9 +173,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 
 	bobPub := pk_b.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
-	claimHash := keyPairBob.SpendKey().Hash()
-	refundHash := keyPairAlice.SpendKey().Hash()
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, claimHash, refundHash, bobAddr, defaultTimeoutDuration)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -174,7 +183,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 
 	// Alice never calls set_ready on the contract, instead she just tries to Refund immidiately
 	var sa [32]byte
-	copy(sa[:], secretAlice)
+	copy(sa[:], common.Reverse(secretAlice))
 	_, err = swap.Refund(txOpts, sa)
 	require.NoError(t, err)
 
@@ -183,21 +192,27 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, contractBalance.Uint64(), big.NewInt(0).Uint64())
 
-	bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
-	require.NoError(t, err)
-	require.Empty(t, bytecode)
+	// bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
+	// require.NoError(t, err)
+	// require.Empty(t, bytecode)
 }
 
 func TestSwap_Refund_After_T1(t *testing.T) {
 	// Alice generates key
 	keyPairAlice, err := monero.GenerateKeys()
 	require.NoError(t, err)
+	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
 	keyPairBob, err := monero.GenerateKeys()
 	require.NoError(t, err)
+	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
 	secretAlice := keyPairAlice.SpendKeyBytes()
+
+	var pkAliceFixed, pkBobFixed [32]byte
+	copy(pkAliceFixed[:], common.Reverse(pubKeyAlice))
+	copy(pkBobFixed[:], common.Reverse(pubKeyBob))
 
 	// setup
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
@@ -218,9 +233,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 
 	bobPub := pk_b.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
-	claimHash := keyPairBob.SpendKey().Hash()
-	refundHash := keyPairAlice.SpendKey().Hash()
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, claimHash, refundHash, bobAddr, defaultTimeoutDuration)
+	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	txOpts := &bind.TransactOpts{
@@ -234,7 +247,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	require.NoError(t, err)
 
 	var sa [32]byte
-	copy(sa[:], secretAlice)
+	copy(sa[:], common.Reverse(secretAlice))
 	_, err = swap.Refund(txOpts, sa)
 	require.Regexp(t, ".*It's Bob's turn now, please wait!", err)
 
@@ -253,7 +266,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, contractBalance.Uint64(), big.NewInt(0).Uint64())
 
-	bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
-	require.NoError(t, err)
-	require.Empty(t, bytecode)
+	// bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
+	// require.NoError(t, err)
+	// require.Empty(t, bytecode)
 }
