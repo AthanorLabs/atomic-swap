@@ -2,18 +2,26 @@
 
 pragma solidity ^0.8.5;
 
+// import "./Ed25519.sol";
+import "./Ed25519_alt.sol";
+
 contract Swap {
+    // Ed25519 library
+    Ed25519 immutable ed25519;
+
     // contract creator, Alice
     address payable immutable owner;
 
     // address allowed to claim the ether in this contract
     address payable immutable claimer;
 
-    // the expected hash of the secret `s_b`.
-    bytes32 public immutable claimHash;
+    // the expected public key derived from the secret `s_b`.
+    // this public key is a point on the ed25519 curve
+    bytes32 public immutable pubKeyClaim;
 
-    // the expected hash of the secret `s_a`.
-    bytes32 public immutable refundHash;
+    // the expected public key derived from the secret `s_a`.
+    // this public key is a point on the ed25519 curve
+    bytes32 public immutable pubKeyRefund;
 
     // timestamp (set at contract creation)
     // before which Alice can call either set_ready or refund
@@ -26,19 +34,20 @@ contract Swap {
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     bool isReady = false;
 
-    event Constructed(bytes32 claimHash, bytes32 refundHash);
+    event Constructed(bytes32 claimKey, bytes32 refundKey);
     event IsReady(bool b);
     event Claimed(bytes32 s);
     event Refunded(bytes32 s);
 
-    constructor(bytes32 _claimHash, bytes32 _refundHash, address payable _claimer, uint256 _timeoutDuration) payable {
+    constructor(bytes32 _pubKeyClaim, bytes32 _pubKeyRefund, address payable _claimer, uint256 _timeoutDuration) payable {
         owner = payable(msg.sender);
-        claimHash = _claimHash;
-        refundHash = _refundHash;
+        pubKeyClaim = _pubKeyClaim;
+        pubKeyRefund = _pubKeyRefund;
         claimer = _claimer;
         timeout_0 = block.timestamp + _timeoutDuration;
         timeout_1 = block.timestamp + (_timeoutDuration * 2);
-        emit Constructed(claimHash, refundHash);
+        ed25519 = new Ed25519();
+        emit Constructed(_pubKeyClaim, _pubKeyRefund);
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
@@ -55,11 +64,13 @@ contract Swap {
         require(msg.sender == claimer, "only claimer can claim!");
         require(block.timestamp < timeout_1 && (block.timestamp >= timeout_0 || isReady), 
             "too late or early to claim!");
-        require(keccak256(abi.encode(_s)) == claimHash, "secret is not preimage to claimHash");
+
+        verifySecret(_s, pubKeyClaim);
         emit Claimed(_s);
 
         // send eth to caller (Bob)
-        selfdestruct(payable(msg.sender));
+        //selfdestruct(payable(msg.sender));
+        claimer.transfer(address(this).balance);
     }
 
     // Alice can claim a refund:
@@ -71,10 +82,22 @@ contract Swap {
             block.timestamp >= timeout_1 || ( block.timestamp < timeout_0 && !isReady),
             "It's Bob's turn now, please wait!"
         );
-        require(keccak256(abi.encode(_s)) == refundHash, "secret is not preimage to refundHash");
+
+        verifySecret(_s, pubKeyRefund);
         emit Refunded(_s);
 
         // send eth back to owner==caller (Alice)
-        selfdestruct(owner);
+        //selfdestruct(owner);
+        owner.transfer(address(this).balance);
+    }
+
+    function verifySecret(bytes32 _s, bytes32 pubKey) internal view {
+        // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
+        (uint256 px, uint256 py) = ed25519.scalarMultBase(uint256(_s));
+        uint256 canonical_p = py | ((px % 2) << 255);
+        require(
+            bytes32(canonical_p) == pubKey,
+            "provided secret does not match the expected pubKey"
+        );
     }
 }

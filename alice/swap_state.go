@@ -2,7 +2,6 @@ package alice
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -40,8 +39,8 @@ type swapState struct {
 	// Bob's keys for this session
 	bobPublicSpendKey *monero.PublicKey
 	bobPrivateViewKey *monero.PrivateViewKey
-	bobClaimHash      [32]byte
-	bobAddress        ethcommon.Address
+	//bobClaimHash      [32]byte
+	bobAddress ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract *swap.Swap
@@ -83,12 +82,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
-	sh := s.privkeys.SpendKey().Hash()
-
 	return &net.SendKeysMessage{
 		PublicSpendKey: kp.SpendKey().Hex(),
-		PrivateViewKey: s.privkeys.ViewKey().Hex(),
-		SpendKeyHash:   hex.EncodeToString(sh[:]),
+		PublicViewKey:  kp.ViewKey().Hex(),
 	}, nil
 }
 
@@ -252,68 +248,13 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	}
 }
 
-func (s *swapState) verifyBobKeys(msg *net.SendKeysMessage) error { // TODO: this is the same for Alice and Bob, move to common somewhere
-	hb, err := hex.DecodeString(msg.SpendKeyHash)
-	if err != nil {
-		return err
-	}
-
-	if len(hb) != 32 {
-		return errors.New("invalid spend key hash")
-	}
-
-	copy(s.bobClaimHash[:], hb)
-
-	// check that spend keyhash can be derived to view key
-	dvk, err := monero.NewPrivateViewKeyFromHash(msg.SpendKeyHash)
-	if err != nil {
-		return fmt.Errorf("failed to derive view key from spend key hash: %w", err)
-	}
-
-	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
-	if err != nil {
-		return fmt.Errorf("failed to generate Bob's private view keys: %w", err)
-	}
-
-	if vk.Hex() != dvk.Hex() {
-		return fmt.Errorf("derived view key does not match message's view key: derived=%s received=%s", dvk.Hex(), vk.Hex())
-	}
-
-	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, vk.Public().Hex())
-	if err != nil {
-		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
-	}
-
-	// check that wallet can be created using Bob's private view key and public spend key
-	t := time.Now().Format("2006-Jan-2-15:04:05")
-	walletName := fmt.Sprintf("bob-viewonly-wallet-%s", t)
-	if err = s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
-		return fmt.Errorf("failed to generate view-only wallet to verify Bob's keys: %w", err)
-	}
-
-	// can close it right after, as we were just checking that they correspond
-	if err = s.alice.client.CloseWallet(); err != nil {
-		return fmt.Errorf("failed to close wallet: %w", err)
-	}
-
-	return nil
-}
-
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
 	}
 
-	if msg.SpendKeyHash == "" {
-		return nil, errMissingSpendKeyHash
-	}
-
 	if msg.EthAddress == "" {
 		return nil, errMissingAddress
-	}
-
-	if err := s.verifyBobKeys(msg); err != nil {
-		return nil, err
 	}
 
 	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
