@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	ethPrivKeySize = 32
+	ethPrivKeySize = 65
 
 	// default libp2p ports
 	defaultAlicePort = 9933
