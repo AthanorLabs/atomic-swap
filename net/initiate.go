@@ -8,6 +8,7 @@ import (
 
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 // Handler handles incoming protocol messages.
@@ -27,7 +28,7 @@ type SwapState interface {
 }
 
 const (
-	subProtocolID   = "/protocol/0"
+	swapID   = "/swap/0"
 	protocolTimeout = time.Second * 5
 )
 
@@ -47,7 +48,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) er
 		return err
 	}
 
-	stream, err := h.h.NewStream(ctx, who.ID, protocolID+subProtocolID)
+	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+swapID))
 	if err != nil {
 		return fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}

@@ -13,6 +13,7 @@ import (
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
 	logging "github.com/ipfs/go-log"
@@ -44,6 +45,7 @@ type MessageSender interface {
 type host struct {
 	ctx    context.Context
 	cancel context.CancelFunc
+	protocolID string
 
 	h             libp2phost.Host
 	bootnodes     []peer.AddrInfo
@@ -63,6 +65,8 @@ type host struct {
 // Config is used to configure the network Host.
 type Config struct {
 	Ctx           context.Context
+	Environment common.Environment
+	ChainID uint
 	Port          uint64
 	Provides      []ProvidesCoin
 	MaximumAmount []uint64
@@ -115,6 +119,7 @@ func NewHost(cfg *Config) (*host, error) {
 	hst := &host{
 		ctx:    ourCtx,
 		cancel: cancel,
+		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.ChainID),
 		h:      h,
 		queryResponse: &QueryResponse{
 			Provides:      cfg.Provides,
@@ -135,8 +140,8 @@ func NewHost(cfg *Config) (*host, error) {
 }
 
 func (h *host) Start() error {
-	h.h.SetStreamHandler(protocolID+queryID, h.handleQueryStream)
-	h.h.SetStreamHandler(protocolID+subProtocolID, h.handleProtocolStream)
+	h.h.SetStreamHandler(protocol.ID(h.protocolID+queryID), h.handleQueryStream)
+	h.h.SetStreamHandler(protocol.ID(h.protocolID+swapID), h.handleProtocolStream)
 
 	h.h.Network().SetConnHandler(h.handleConn)
 	for _, addr := range h.multiaddrs() {
