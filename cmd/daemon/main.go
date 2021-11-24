@@ -288,8 +288,8 @@ func runDaemon(c *cli.Context) error {
 
 	netCfg := &net.Config{
 		Ctx:           ctx,
-		Environment: env,
-		ChainID: chainID,
+		Environment:   env,
+		ChainID:       chainID,
 		Port:          defaultAlicePort,                    // TODO: make flag
 		Provides:      []net.ProvidesCoin{net.ProvidesETH}, // TODO: make flag
 		MaximumAmount: []uint64{amount},

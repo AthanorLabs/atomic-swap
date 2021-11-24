@@ -37,16 +37,16 @@ var defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 2
 
 func newTestBob(t *testing.T) (*bob, *swapState) {
 	cfg := &Config{
-		Ctx: context.Background(),
-		Basepath: "/tmp/bob",
+		Ctx:                  context.Background(),
+		Basepath:             "/tmp/bob",
 		MoneroWalletEndpoint: common.DefaultBobMoneroEndpoint,
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
-		WalletFile: testWallet,
-		WalletPassword: "",
-		EthereumEndpoint: common.DefaultEthEndpoint, 
-		EthereumPrivateKey: common.DefaultPrivKeyBob,
-		Environment: common.Development,
-		ChainID: common.MainnetConfig.EthereumChainID,
+		WalletFile:           testWallet,
+		WalletPassword:       "",
+		EthereumEndpoint:     common.DefaultEthEndpoint,
+		EthereumPrivateKey:   common.DefaultPrivKeyBob,
+		Environment:          common.Development,
+		ChainID:              common.MainnetConfig.EthereumChainID,
 	}
 
 	bob, err := NewBob(cfg)

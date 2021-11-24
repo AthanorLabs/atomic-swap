@@ -27,13 +27,13 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 
 func newTestAlice(t *testing.T) (*alice, *swapState) {
 	cfg := &Config{
-		Ctx: context.Background(),
-		Basepath: "/tmp/alice",
+		Ctx:                  context.Background(),
+		Basepath:             "/tmp/alice",
 		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
-		EthereumEndpoint: common.DefaultEthEndpoint,
-		EthereumPrivateKey: common.DefaultPrivKeyAlice,
-		Environment: common.Development,
-		ChainID: common.MainnetConfig.EthereumChainID,
+		EthereumEndpoint:     common.DefaultEthEndpoint,
+		EthereumPrivateKey:   common.DefaultPrivKeyAlice,
+		Environment:          common.Development,
+		ChainID:              common.MainnetConfig.EthereumChainID,
 	}
 
 	alice, err := NewAlice(cfg)

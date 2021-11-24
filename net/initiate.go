@@ -28,7 +28,7 @@ type SwapState interface {
 }
 
 const (
-	swapID   = "/swap/0"
+	swapID          = "/swap/0"
 	protocolTimeout = time.Second * 5
 )
 

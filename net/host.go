@@ -43,8 +43,8 @@ type MessageSender interface {
 }
 
 type host struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx        context.Context
+	cancel     context.CancelFunc
 	protocolID string
 
 	h             libp2phost.Host
@@ -65,8 +65,8 @@ type host struct {
 // Config is used to configure the network Host.
 type Config struct {
 	Ctx           context.Context
-	Environment common.Environment
-	ChainID int64
+	Environment   common.Environment
+	ChainID       int64
 	Port          uint64
 	Provides      []ProvidesCoin
 	MaximumAmount []uint64
@@ -117,10 +117,10 @@ func NewHost(cfg *Config) (*host, error) {
 
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
-		ctx:    ourCtx,
-		cancel: cancel,
+		ctx:        ourCtx,
+		cancel:     cancel,
 		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.ChainID),
-		h:      h,
+		h:          h,
 		queryResponse: &QueryResponse{
 			Provides:      cfg.Provides,
 			MaximumAmount: cfg.MaximumAmount,
