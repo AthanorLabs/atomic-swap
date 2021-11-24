@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -21,8 +20,6 @@ import (
 )
 
 const (
-	ethPrivKeySize = 65
-
 	// default libp2p ports
 	defaultAlicePort = 9933
 	defaultBobPort   = 9934
@@ -183,11 +180,11 @@ func runDaemon(c *cli.Context) error {
 			return fmt.Errorf("failed to read ethereum-privkey file: %w", err)
 		}
 
-		if len(key) != ethPrivKeySize {
-			return fmt.Errorf("private key is not correct size: got %d, expected %d", len(key), ethPrivKeySize)
+		if key[len(key)-1] == '\n' {
+			key = key[:len(key)-1]
 		}
 
-		ethPrivKey = hex.EncodeToString(key)
+		ethPrivKey = string(key)
 	} else {
 		if env != common.Development {
 			return errors.New("must provide --ethereum-privkey file for non-development environment")
