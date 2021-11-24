@@ -161,13 +161,13 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		sk := monero.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
 		kp := monero.NewPublicKeyPair(sk, vk.Public())
 
-		if msg.Address != string(kp.Address()) {
+		if msg.Address != string(kp.Address(s.alice.env)) {
 			return nil, true, fmt.Errorf("address received in message does not match expected address")
 		}
 
 		t := time.Now().Format("2006-Jan-2-15:04:05")
 		walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
-		if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(), walletName, ""); err != nil {
+		if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.alice.env), walletName, ""); err != nil {
 			return nil, true, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 		}
 
@@ -180,7 +180,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, err
 		}
 
-		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(), balance.Balance)
+		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)
 		log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
 		log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 

@@ -1,6 +1,8 @@
 package common
 
 const (
+	MainnetChainID = 1
+	RopstenChainID = 3
 	GanacheChainID = 1337
 
 	DefaultAliceMoneroEndpoint  = "http://127.0.0.1:18084/json_rpc"

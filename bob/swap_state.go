@@ -309,8 +309,8 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	// TODO: configure basepath
-	if err = common.WriteKeysToFile("/tmp/swap-xmr", kpAB); err != nil {
+	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.id)
+	if err = monero.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -325,7 +325,7 @@ func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
 func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("bob-swap-wallet-%s", t)
-	if err := s.bob.client.GenerateFromKeys(kpAB, walletName, ""); err != nil {
+	if err := s.bob.client.GenerateFromKeys(kpAB, walletName, "", s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -342,7 +342,7 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 
 	log.Info("wallet balance: ", balance.Balance)
 	s.success = true
-	return kpAB.Address(), nil
+	return kpAB.Address(s.bob.env), nil
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {

@@ -26,7 +26,17 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 }
 
 func newTestAlice(t *testing.T) (*alice, *swapState) {
-	alice, err := NewAlice(context.Background(), common.DefaultAliceMoneroEndpoint, common.DefaultEthEndpoint, common.DefaultPrivKeyAlice)
+	cfg := &Config{
+		Ctx:                  context.Background(),
+		Basepath:             "/tmp/alice",
+		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
+		EthereumEndpoint:     common.DefaultEthEndpoint,
+		EthereumPrivateKey:   common.DefaultPrivKeyAlice,
+		Environment:          common.Development,
+		ChainID:              common.MainnetConfig.EthereumChainID,
+	}
+
+	alice, err := NewAlice(cfg)
 	require.NoError(t, err)
 	swapState := newSwapState(alice, 1, 1)
 	return alice, swapState
@@ -120,7 +130,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 
 	s.desiredAmount = 0
 	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
-	xmrAddr := kp.Address()
+	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &net.NotifyXMRLock{
 		Address: string(xmrAddr),
