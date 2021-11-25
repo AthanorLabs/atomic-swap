@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
@@ -155,7 +156,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		if msg.Address == "" {
 			return nil, true, errors.New("got empty address for locked XMR")
 		}
-
 		// check that XMR was locked in expected account, and confirm amount
 		vk := monero.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
 		sk := monero.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
@@ -171,18 +171,40 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 		}
 
+		prevHeight, err := s.alice.client.GetHeight()
+		if err != nil {
+			return nil, true, fmt.Errorf("failed to get height: %w", err)
+		}
+
+		if s.alice.env != common.Development {
+			// wait for new blocks, otherwise balance might be 0
+			for {
+				height, err := s.alice.client.GetHeight()
+				if err != nil {
+					log.Errorf("failed to get height: %s", err)
+				}
+
+				if height > prevHeight+1 {
+					break
+				}
+
+				log.Infof("waiting for next block, current height=%d", height)
+				time.Sleep(time.Second * 10)
+			}
+		}
+
 		if err := s.alice.client.Refresh(); err != nil {
-			return nil, true, err
+			return nil, true, fmt.Errorf("failed to refresh client: %w", err)
 		}
 
 		balance, err := s.alice.client.GetBalance(0)
 		if err != nil {
-			return nil, true, err
+			return nil, true, fmt.Errorf("failed to get balance: %w", err)
 		}
 
 		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)
-		log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
-		log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
+		// log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
+		// log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 
 		// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
 		if balance.Balance < float64(s.desiredAmount) {
@@ -279,19 +301,32 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	log.Info("deployed Swap contract, waiting for XMR to be locked: contract address=", address)
 
 	// set t0 and t1
-	st0, err := s.contract.Timeout0(s.alice.callOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
+	for {
+		st0, err := s.contract.Timeout0(s.alice.callOpts)
+		if err != nil {
+			//return nil, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		s.t0 = time.Unix(st0.Int64(), 0)
+		break
 	}
 
-	s.t0 = time.Unix(st0.Int64(), 0)
+	for {
+		log.Debug("attempting to fetch t1 from contract")
 
-	st1, err := s.contract.Timeout1(s.alice.callOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
+		st1, err := s.contract.Timeout1(s.alice.callOpts)
+		if err != nil {
+			//return nil, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		s.t1 = time.Unix(st1.Int64(), 0)
+		break
 	}
-
-	s.t1 = time.Unix(st1.Int64(), 0)
 
 	// start goroutine to check that Bob locks before t_0
 	go func() {

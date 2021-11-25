@@ -268,8 +268,8 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
 
-	log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
-	log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
+	// log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
+	// log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 	log.Infof("going to lock XMR funds, amount=%d", amount)
 
 	balance, err := s.bob.client.GetBalance(0)
@@ -277,14 +277,17 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 		return "", err
 	}
 
-	log.Debug("XMR balance: ", balance.Balance)
+	//log.Debug("total XMR balance: ", balance.Balance)
 	log.Debug("unlocked XMR balance: ", balance.UnlockedBalance)
-	log.Debug("blocks to unlock: ", balance.BlocksToUnlock)
+	//log.Debug("blocks to unlock: ", balance.BlocksToUnlock)
 
 	address := kp.Address(s.bob.env)
-	if err := s.bob.client.Transfer(address, 0, uint(amount)); err != nil {
+	txResp, err := s.bob.client.Transfer(address, 0, uint(amount))
+	if err != nil {
 		return "", err
 	}
+
+	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
 
 	prevHeight, err := s.bob.client.GetHeight()
 	if err != nil {
@@ -348,18 +351,24 @@ func (s *swapState) claimFunds() (string, error) {
 		return "", err
 	}
 
-	log.Infof("success! Bob claimed funds, tx hash=%s", tx.Hash())
+	log.Infof("sent claim funds tx, tx hash=%s", tx.Hash())
 
-	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-	if err != nil {
-		return "", err
+	for {
+		time.Sleep(time.Second * 10)
+		log.Info("waiting for Claim call to be included in chain...")
+
+		receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
+		if err != nil {
+			continue
+		}
+
+		log.Infof("included in block number=%d gas used=%d s_a=%x",
+			receipt.Logs[0].BlockNumber,
+			receipt.CumulativeGasUsed,
+			secret,
+		)
+		break
 	}
-
-	log.Infof("included in block number=%d gas used=%d s_a=%x",
-		receipt.Logs[0].BlockNumber,
-		receipt.CumulativeGasUsed,
-		secret,
-	)
 
 	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {

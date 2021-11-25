@@ -193,7 +193,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		go func() {
 			until := time.Until(s.t0)
 
-			log.Debug("time until t0: ", until.Seconds())
+			log.Debugf("time until t0: %vs", until.Seconds())
 
 			select {
 			case <-s.ctx.Done():
@@ -235,6 +235,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			TxHash: txHash,
 		}
 
+		s.success = true
 		return out, true, nil
 	case *net.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
@@ -243,6 +244,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, err
 		}
 
+		s.success = true
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
