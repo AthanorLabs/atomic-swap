@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
+
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -13,12 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 )
 
-type ProvidesCoin string
-
 const (
-	ProvidesXMR = "XMR"
-	ProvidesETH = "ETH"
-
 	initialAdvertisementTimeout = time.Millisecond
 	tryAdvertiseTimeout         = time.Second * 30
 )
@@ -28,10 +25,10 @@ type discovery struct {
 	dht      *dual.DHT
 	h        libp2phost.Host
 	rd       *libp2pdiscovery.RoutingDiscovery
-	provides []ProvidesCoin
+	provides []common.ProvidesCoin
 }
 
-func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo, provides ...ProvidesCoin) (*discovery, error) {
+func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo, provides ...common.ProvidesCoin) (*discovery, error) {
 	dhtOpts := []dual.Option{
 		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
 		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
@@ -97,7 +94,7 @@ func (d *discovery) advertise() {
 	}
 }
 
-func (d *discovery) discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) { //nolint:unused
+func (d *discovery) discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) { //nolint:unused
 	log.Debugf("attempting to find DHT peers that provide %s for %s...", provides, searchTime)
 
 	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))

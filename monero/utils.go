@@ -16,6 +16,7 @@ var (
 	log = logging.Logger("common")
 )
 
+// WaitForBlocks waits for a new block to arrive.
 func WaitForBlocks(client Client) error {
 	prevHeight, err := client.GetHeight()
 	if err != nil {

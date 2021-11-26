@@ -2,8 +2,11 @@ package monero
 
 import (
 	"encoding/json"
+
+	"github.com/noot/atomic-swap/rpcclient"
 )
 
+// DaemonClient represents a monerod client.
 type DaemonClient interface {
 	GenerateBlocks(address string, amount uint) error
 }
@@ -30,7 +33,7 @@ func (c *client) callGenerateBlocks(address string, amount uint) error {
 		return err
 	}
 
-	resp, err := postRPC(c.endpoint, method, string(params))
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return err
 	}

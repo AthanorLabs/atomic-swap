@@ -8,6 +8,7 @@ import (
 
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 const (
@@ -31,7 +32,7 @@ func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
 		return nil, err
 	}
 
-	stream, err := h.h.NewStream(ctx, who.ID, protocolID+queryID)
+	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+queryID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}

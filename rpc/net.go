@@ -15,13 +15,13 @@ import (
 const defaultSearchTime = time.Second * 12
 
 type Net interface {
-	Discover(provides net.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
 }
 
 type Protocol interface {
-	Provides() net.ProvidesCoin
+	Provides() common.ProvidesCoin
 	InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error)
 }
 
@@ -38,8 +38,8 @@ func NewNetService(net Net, protocol Protocol) *NetService {
 }
 
 type DiscoverRequest struct {
-	Provides   net.ProvidesCoin `json:"provides"`
-	SearchTime uint64           `json:"searchTime"` // in seconds
+	Provides   common.ProvidesCoin `json:"provides"`
+	SearchTime uint64              `json:"searchTime"` // in seconds
 }
 
 type DiscoverResponse struct {
@@ -57,7 +57,7 @@ func (s *NetService) Discover(_ *http.Request, req *DiscoverRequest, resp *Disco
 		searchTime = defaultSearchTime
 	}
 
-	peers, err := s.net.Discover(net.ProvidesCoin(req.Provides), searchTime)
+	peers, err := s.net.Discover(common.ProvidesCoin(req.Provides), searchTime)
 	if err != nil {
 		return err
 	}
@@ -84,9 +84,9 @@ type QueryPeerRequest struct {
 }
 
 type QueryPeerResponse struct {
-	Provides      []net.ProvidesCoin  `json:"provides"`
-	MaximumAmount []uint64            `json:"maximumAmount"`
-	ExchangeRate  common.ExchangeRate `json:"exchangeRate"`
+	Provides      []common.ProvidesCoin `json:"provides"`
+	MaximumAmount []uint64              `json:"maximumAmount"`
+	ExchangeRate  common.ExchangeRate   `json:"exchangeRate"`
 }
 
 func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *QueryPeerResponse) error {
@@ -107,10 +107,10 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 }
 
 type InitiateRequest struct {
-	Multiaddr      string           `json:"multiaddr"`
-	ProvidesCoin   net.ProvidesCoin `json:"provides"`
-	ProvidesAmount uint64           `json:"providesAmount"`
-	DesiredAmount  uint64           `json:"desiredAmount"`
+	Multiaddr      string              `json:"multiaddr"`
+	ProvidesCoin   common.ProvidesCoin `json:"provides"`
+	ProvidesAmount uint64              `json:"providesAmount"`
+	DesiredAmount  uint64              `json:"desiredAmount"`
 }
 
 type InitiateResponse struct {

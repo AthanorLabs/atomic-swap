@@ -333,7 +333,7 @@ func (s *swapState) claimFunds() (string, error) {
 
 	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
 
-	if ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
+	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
 		return "", errors.New("failed to check Claim transaction receipt")
 	}
 

@@ -5,7 +5,9 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+
 	logging "github.com/ipfs/go-log"
 )
 
@@ -26,7 +28,7 @@ func Reverse(s []byte) []byte {
 	return s
 }
 
-func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (ok bool) {
+func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, bool) {
 	for i := 0; i < maxRetries; i++ {
 		receipt, err := ethclient.TransactionReceipt(ctx, txHash)
 		if err != nil {
@@ -41,8 +43,8 @@ func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash eth
 			receipt.BlockNumber,
 			receipt.CumulativeGasUsed,
 		)
-		return true
+		return receipt, true
 	}
 
-	return false
+	return nil, false
 }

@@ -3,11 +3,14 @@ package bob
 import (
 	"errors"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+
+	"github.com/fatih/color"
 )
 
-func (b *bob) Provides() net.ProvidesCoin {
-	return net.ProvidesXMR
+func (b *bob) Provides() common.ProvidesCoin {
+	return common.ProvidesXMR
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
@@ -38,14 +41,20 @@ func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
 	}
 
 	b.swapState = newSwapState(b, providesAmount, desiredAmount)
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
 func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, net.Message, error) {
-	if msg.Provides != net.ProvidesETH {
+	if msg.Provides != common.ProvidesETH {
 		return nil, nil, errors.New("peer does not provide ETH")
 	}
+
+	// TODO: allow user to accept/reject this via RPC
+	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %d**", msg.DesiredAmount)
+	log.Info(str)
 
 	if err := b.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
 		return nil, nil, err
