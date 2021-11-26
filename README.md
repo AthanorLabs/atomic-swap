@@ -15,7 +15,7 @@ Please see the [protocol documentation](docs/protocol.md) for how it works.
 
 Note: this program has only been tested on Ubuntu 20.04.
 
-#### Set up environment
+#### Set up development environment
 
 Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you. You can also check out the `scripts/run-unit-tests.sh` script for the commands needed to setup the environment.
 
@@ -71,11 +71,11 @@ Build binary:
 make build
 ```
 
-This creates an `atomic-swap` binary in the root directory.
+This creates `swapd` and `swapcli` binaries in the root directory.
 
 To run as Alice, execute in terminal 1:
 ```
-./atomic-swap --amount 1 --alice
+./swapd --amount 1 --alice
 ```
 
 Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA`. This will be used for Bob to connect.
@@ -83,31 +83,32 @@ Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933
 To run as Bob and connect to Alice, replace the bootnode in the following line with what Alice logged, and execute in terminal 2:
 
 ```
-./atomic-swap --amount 1 --bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
+./swapd --amount 1 --bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
 ```
 
-Note: amount doesn't matter at this point, it's only used in the `QueryResponse` message (ie. what's returned by `net_queryPeer`)
+Note: amount doesn't matter at this point, it's only used in the `QueryResponse` message (ie. what's returned by `swapcli query`)
 
 Note: Alice's RPC server runs on http://localhost:5001, Bob's runs on http://localhost:5002 by default.
 
-In terminal 3, we will make RPC calls to the swap daemon.
+In terminal 3, we will interact with the swap daemon using `swapcli`.
 
 This posts a call to Alice's daemon to begin discovering peers who provide XMR.
 ```
-$ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_discover","params":{"provides":"XMR"}}' -H 'Content-Type: application/json'
-{"jsonrpc":"2.0","result":{"peers":[["/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7","/ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"]]},"id":"0"}
+$ ./swapcli discover --provides XMR --search-time 3
+[[/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 /ip4/38.88.101.233/tcp/48161/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7]]
 ```
 
-Get Alice to query the returned peer as to how much they XMR they can provide and their preferred exchange rate (replace `"multiaddr"` field with one of the addresses returned in the above step):
+Query the returned peer as to how much they XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
 ```
-$ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_queryPeer","params":{"multiaddr":"/ip4/38.88.101.233/tcp/41044/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"}}' -H 'Content-Type: application/json'
-{"jsonrpc":"2.0","result":{"provides":["XMR"],"maximumAmount":[33300],"exchangeRate":0.0578261},"id":"0"}
+$ ./swapcli query --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7
+Provides: [XMR]
+MaximumAmount: [1]
+ExchangeRate (ETH/XMR): 0.0578261
 ```
 
 Now, we can tell Alice to initiate the protocol w/ the peer it found (which is Bob):
 ```
-$ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_initiate","params":{"multiaddr":"/ip4/38.88.101.233/tcp/41044/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "provides":"ETH", "providesAmount":333, "desiredAmount":33000 }}' -H 'Content-Type: application/json'
-{"jsonrpc":"2.0","result":{"success":true},"id":"0"}
+$ ./swapcli initiate --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --provides ETH --provides-amount 100000000000000000 --desired-amount 1000000000
 ```
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.

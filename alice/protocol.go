@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -162,7 +161,7 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	}
 
 	log.Debugf("deploying Swap.sol, amount=%d txHash=%s", amount, tx.Hash())
-	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
 		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
 	}
 
@@ -186,7 +185,7 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
 		return errors.New("failed to set IsReady to true in Swap.sol")
 	}
 
@@ -269,7 +268,7 @@ func (s *swapState) refund() (string, error) {
 		return "", err
 	}
 
-	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
 		return "", errors.New("failed to call Refund in Swap.sol")
 	}
 
@@ -304,12 +303,8 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
-	var (
-		receipt *ethtypes.Receipt
-		err     error
-	)
-
-	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash)); !ok {
+	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash))
+	if !ok {
 		return "", errors.New("failed check Claim transaction receipt")
 	}
 
@@ -348,9 +343,9 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	pkAB := kpAB.PublicKeyPair()
-	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
-	log.Info("public view keys: ", pkAB.ViewKey().Hex())
+	//pkAB := kpAB.PublicKeyPair()
+	// log.Info("public spend keys: ", pkAB.SpendKey().Hex())
+	// log.Info("public view keys: ", pkAB.ViewKey().Hex())
 
 	return s.createMoneroWallet(kpAB)
 }

@@ -42,6 +42,7 @@ var (
 	log = logging.Logger("cmd")
 	_   = logging.SetLogLevel("alice", "debug")
 	_   = logging.SetLogLevel("bob", "debug")
+	_   = logging.SetLogLevel("common", "info")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
 	_   = logging.SetLogLevel("rpc", "debug")
@@ -287,8 +288,8 @@ func runDaemon(c *cli.Context) error {
 		Ctx:           ctx,
 		Environment:   env,
 		ChainID:       chainID,
-		Port:          defaultAlicePort,                    // TODO: make flag
-		Provides:      []net.ProvidesCoin{net.ProvidesETH}, // TODO: make flag
+		Port:          defaultAlicePort,                          // TODO: make flag
+		Provides:      []common.ProvidesCoin{common.ProvidesETH}, // TODO: make flag
 		MaximumAmount: []uint64{amount},
 		ExchangeRate:  defaultExchangeRate,
 		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
@@ -299,7 +300,7 @@ func runDaemon(c *cli.Context) error {
 	// TODO: this is ugly
 	if c.Bool("bob") {
 		netCfg.Port = defaultBobPort
-		netCfg.Provides = []net.ProvidesCoin{net.ProvidesXMR}
+		netCfg.Provides = []common.ProvidesCoin{common.ProvidesXMR}
 		netCfg.KeyFile = defaultBobLibp2pKey
 		port = defaultRPCPort + 1
 	}

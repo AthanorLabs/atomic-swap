@@ -4,17 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/noot/atomic-swap/rpcclient"
 )
-
-// const (
-// 	// defaultEndpointWalletFile is the default monero-wallet-rpc endpoint with a provided --wallet-file
-// 	defaultEndpointWalletFile = "http://127.0.0.1:18083/json_rpc"
-
-// 	// defaultEndpointWalletDir is the default monero-wallet-rpc endpoint with a provided --wallet-dir
-// 	defaultEndpointWalletDir = "http://127.0.0.1:18084/json_rpc"
-// )
-
-// const defaultDaemonEndpoint = "http://127.0.0.1:18081/json_rpc"
 
 // Address represents a base58-encoded string
 type Address string
@@ -55,7 +47,7 @@ func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, a
 		return err
 	}
 
-	resp, err := postRPC(c.endpoint, method, string(params))
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return err
 	}
@@ -120,7 +112,7 @@ func (c *client) callTransfer(destinations []Destination, accountIdx uint) (*Tra
 		return nil, err
 	}
 
-	resp, err := postRPC(c.endpoint, method, string(params))
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +152,7 @@ func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
 		return nil, err
 	}
 
-	resp, err := postRPC(c.endpoint, method, string(params))
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +189,7 @@ func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
 		return nil, err
 	}
 
-	resp, err := postRPC(c.endpoint, method, string(params))
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +213,7 @@ type getAccountsResponse struct {
 func (c *client) callGetAccounts() (*getAccountsResponse, error) {
 	const method = "get_accounts"
 
-	resp, err := postRPC(c.endpoint, method, "{}")
+	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +248,7 @@ func (c *client) callOpenWallet(filename, password string) error {
 		return err
 	}
 
-	resp, err := postRPC(c.endpoint, method, string(params))
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return err
 	}
@@ -275,7 +267,7 @@ type getHeightResponse struct {
 func (c *client) callGetHeight() (uint, error) {
 	const method = "get_height"
 
-	resp, err := postRPC(c.endpoint, method, "{}")
+	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return 0, err
 	}

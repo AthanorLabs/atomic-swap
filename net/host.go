@@ -32,7 +32,7 @@ type Host interface {
 	Start() error
 	Stop() error
 
-	Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error
 	MessageSender
@@ -68,7 +68,7 @@ type Config struct {
 	Environment   common.Environment
 	ChainID       int64
 	Port          uint64
-	Provides      []ProvidesCoin
+	Provides      []common.ProvidesCoin
 	MaximumAmount []uint64
 	ExchangeRate  common.ExchangeRate
 	KeyFile       string
@@ -178,7 +178,7 @@ func (h *host) Stop() error {
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.
 // It searches for up to `searchTime` duration of time.
-func (h *host) Discover(provides ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (h *host) Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
 	return h.discovery.discover(provides, searchTime)
 }
 
