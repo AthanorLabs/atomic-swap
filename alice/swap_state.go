@@ -13,6 +13,7 @@ import (
 	"github.com/noot/atomic-swap/swap-contract"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/fatih/color"
 )
 
 var nextID uint64 = 0
@@ -102,6 +103,8 @@ func (s *swapState) ProtocolComplete() {
 	}()
 
 	if s.success {
+		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
+		log.Info(str)
 		return
 	}
 

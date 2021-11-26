@@ -5,6 +5,8 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+
+	"github.com/fatih/color"
 )
 
 func (b *bob) Provides() common.ProvidesCoin {
@@ -39,6 +41,8 @@ func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
 	}
 
 	b.swapState = newSwapState(b, providesAmount, desiredAmount)
+	str := color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id)
+	log.Info(str)
 	return nil
 }
 
@@ -47,6 +51,10 @@ func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, ne
 	if msg.Provides != common.ProvidesETH {
 		return nil, nil, errors.New("peer does not provide ETH")
 	}
+
+	// TODO: allow user to accept/reject this via RPC
+	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %d**", msg.DesiredAmount)
+	log.Info(str)
 
 	if err := b.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
 		return nil, nil, err

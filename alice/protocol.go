@@ -343,9 +343,9 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	pkAB := kpAB.PublicKeyPair()
-	log.Info("public spend keys: ", pkAB.SpendKey().Hex())
-	log.Info("public view keys: ", pkAB.ViewKey().Hex())
+	//pkAB := kpAB.PublicKeyPair()
+	// log.Info("public spend keys: ", pkAB.SpendKey().Hex())
+	// log.Info("public view keys: ", pkAB.ViewKey().Hex())
 
 	return s.createMoneroWallet(kpAB)
 }

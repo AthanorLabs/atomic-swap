@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/fatih/color"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
@@ -101,6 +102,8 @@ func (s *swapState) ProtocolComplete() {
 	}()
 
 	if s.success {
+		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
+		log.Info(str)
 		return
 	}
 

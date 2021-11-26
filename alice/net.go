@@ -5,6 +5,8 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+
+	"github.com/fatih/color"
 )
 
 func (a *alice) Provides() common.ProvidesCoin {
@@ -26,7 +28,9 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 		return nil, nil, errors.New("peer does not provide XMR")
 	}
 
-	// TODO: notify the user via the CLI/websockets that someone wishes to initiate a swap with them.
+	// TODO: allow user to accept/reject this via RPC
+	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %d**", msg.DesiredAmount)
+	log.Info(str)
 
 	// the other party initiated, saying what they will provide and what they desire.
 	// we initiate our protocol, saying we will provide what they desire and vice versa.
@@ -61,5 +65,7 @@ func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
 	}
 
 	a.swapState = newSwapState(a, providesAmount, desiredAmount)
+	str := color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.id)
+	log.Info(str)
 	return nil
 }
