@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -267,9 +266,6 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 // TODO: units
 func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
-
-	log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
-	log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 	log.Infof("going to lock XMR funds, amount=%d", amount)
 
 	balance, err := s.bob.client.GetBalance(0)
@@ -277,19 +273,16 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 		return "", err
 	}
 
-	log.Debug("XMR balance: ", balance.Balance)
-	log.Debug("unlocked XMR balance: ", balance.UnlockedBalance)
-	log.Debug("blocks to unlock: ", balance.BlocksToUnlock)
+	log.Debug("total XMR balance: ", balance.Balance)
+	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
 	address := kp.Address(s.bob.env)
-	if err := s.bob.client.Transfer(address, 0, uint(amount)); err != nil {
-		return "", err
-	}
-
-	prevHeight, err := s.bob.client.GetHeight()
+	txResp, err := s.bob.client.Transfer(address, 0, uint(amount))
 	if err != nil {
 		return "", err
 	}
+
+	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
 
 	bobAddr, err := s.bob.client.GetAddress(0)
 	if err != nil {
@@ -303,18 +296,8 @@ func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
 		}
 	} else {
 		// otherwise, wait for new blocks
-		for {
-			height, err := s.bob.client.GetHeight()
-			if err != nil {
-				log.Errorf("failed to get height: %s", err)
-			}
-
-			if height > prevHeight {
-				break
-			}
-
-			log.Infof("waiting for next block, current height=%d", height)
-			time.Sleep(time.Second * 10)
+		if err := monero.WaitForBlocks(s.bob.client); err != nil {
+			return "", err
 		}
 	}
 
@@ -348,18 +331,11 @@ func (s *swapState) claimFunds() (string, error) {
 		return "", err
 	}
 
-	log.Infof("success! Bob claimed funds, tx hash=%s", tx.Hash())
+	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
 
-	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-	if err != nil {
-		return "", err
+	if ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
+		return "", errors.New("failed to check Claim transaction receipt")
 	}
-
-	log.Infof("included in block number=%d gas used=%d s_a=%x",
-		receipt.Logs[0].BlockNumber,
-		receipt.CumulativeGasUsed,
-		secret,
-	)
 
 	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {

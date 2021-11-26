@@ -17,7 +17,7 @@ import (
 
 const (
 	addressPrefixMainnet  byte = 18
-	addressPrefixStagenet byte = 53
+	addressPrefixStagenet byte = 24
 )
 
 func PublicSpendOnSecp256k1(k []byte) (a, b *big.Int) {

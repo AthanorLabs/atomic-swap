@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -149,8 +150,6 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	copy(pka[:], common.Reverse(pkAlice))
 	copy(pkb[:], common.Reverse(pkBob))
 
-	log.Debug("locking amount: ", amount)
-
 	// TODO: put auth in swapState
 	s.alice.auth.Value = big.NewInt(int64(amount))
 	defer func() {
@@ -159,15 +158,13 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 
 	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
-		return ethcommon.Address{}, err
+		return ethcommon.Address{}, fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
 
-	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-	if err != nil {
-		return ethcommon.Address{}, err
+	log.Debugf("deploying Swap.sol, amount=%d txHash=%s", amount, tx.Hash())
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
 	}
-
-	log.Debugf("deployed Swap.sol, gas used=%d", receipt.CumulativeGasUsed)
 
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
 	if err != nil {
@@ -184,8 +181,16 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	_, err := s.contract.SetReady(s.alice.auth)
-	return err
+	tx, err := s.contract.SetReady(s.alice.auth)
+	if err != nil {
+		return err
+	}
+
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+		return errors.New("failed to set IsReady to true in Swap.sol")
+	}
+
+	return nil
 }
 
 // watchForClaim watches for Bob to call Claim() on the Swap contract.
@@ -252,7 +257,11 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 func (s *swapState) refund() (string, error) {
 	secret := s.privkeys.SpendKeyBytes()
 	var sc [32]byte
-	copy(sc[:], secret)
+	copy(sc[:], common.Reverse(secret))
+
+	if s.contract == nil {
+		return "", errors.New("contract is nil")
+	}
 
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.contract.Refund(s.alice.auth, sc)
@@ -260,12 +269,11 @@ func (s *swapState) refund() (string, error) {
 		return "", err
 	}
 
-	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-	if err != nil {
-		return "", err
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+		return "", errors.New("failed to call Refund in Swap.sol")
 	}
 
-	log.Debugf("called Refund(), gas used=%d", receipt.CumulativeGasUsed)
+	s.success = true
 	return tx.Hash().String(), nil
 }
 
@@ -296,9 +304,13 @@ func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Addr
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
-	receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
-	if err != nil {
-		return "", err
+	var (
+		receipt *ethtypes.Receipt
+		err     error
+	)
+
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash)); !ok {
+		return "", errors.New("failed check Claim transaction receipt")
 	}
 
 	if len(receipt.Logs) == 0 {

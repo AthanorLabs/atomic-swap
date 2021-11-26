@@ -92,7 +92,7 @@ type transferRequest struct {
 	// GetTxKey bool
 }
 
-type transferResponse struct {
+type TransferResponse struct {
 	Amount        uint        `json:"amount"`
 	Fee           uint        `json:"fee"`
 	MultisigTxset interface{} `json:"multisig_txset"`
@@ -103,7 +103,7 @@ type transferResponse struct {
 	UnsignedTxset string      `json:"unsigned_txset"`
 }
 
-func (c *client) callTransfer(destinations []Destination, accountIdx uint) (string, error) {
+func (c *client) callTransfer(destinations []Destination, accountIdx uint) (*TransferResponse, error) {
 	const (
 		method = "transfer"
 	)
@@ -117,24 +117,24 @@ func (c *client) callTransfer(destinations []Destination, accountIdx uint) (stri
 
 	params, err := json.Marshal(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := postRPC(c.endpoint, method, string(params))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if resp.Error != nil {
-		return "", resp.Error
+		return nil, resp.Error
 	}
 
-	var res *transferResponse
+	var res *TransferResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.TxHash, nil
+	return res, nil
 }
 
 type getBalanceRequest struct {

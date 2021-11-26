@@ -1,8 +1,6 @@
 package monero
 
 import (
-	"fmt"
-
 	"github.com/noot/atomic-swap/common"
 )
 
@@ -10,7 +8,7 @@ type Client interface {
 	GetAccounts() (*getAccountsResponse, error)
 	GetAddress(idx uint) (*getAddressResponse, error)
 	GetBalance(idx uint) (*getBalanceResponse, error)
-	Transfer(to Address, accountIdx, amount uint) error
+	Transfer(to Address, accountIdx, amount uint) (*TransferResponse, error)
 	GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error
 	GetHeight() (uint, error)
@@ -37,15 +35,13 @@ func (c *client) GetBalance(idx uint) (*getBalanceResponse, error) {
 	return c.callGetBalance(idx)
 }
 
-func (c *client) Transfer(to Address, accountIdx, amount uint) error {
+func (c *client) Transfer(to Address, accountIdx, amount uint) (*TransferResponse, error) {
 	destination := Destination{
 		Amount:  amount,
 		Address: string(to),
 	}
 
-	txhash, err := c.callTransfer([]Destination{destination}, accountIdx)
-	fmt.Printf("transfer: txhash=%s\n", txhash)
-	return err
+	return c.callTransfer([]Destination{destination}, accountIdx)
 }
 
 func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error {
