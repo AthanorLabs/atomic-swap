@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -28,6 +29,7 @@ type swapState struct {
 	*bob
 	ctx    context.Context
 	cancel context.CancelFunc
+	sync.Mutex
 
 	id                            uint64
 	providesAmount, desiredAmount uint64
@@ -89,6 +91,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 // ProtocolComplete is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolComplete() {
+	s.Lock()
+	defer s.Unlock()
+
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
@@ -142,6 +147,9 @@ func (s *swapState) tryClaim() error {
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	if err := s.checkMessageType(msg); err != nil {
 		return nil, true, err
 	}

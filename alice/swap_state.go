@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
@@ -27,6 +28,7 @@ type swapState struct {
 	*alice
 	ctx    context.Context
 	cancel context.CancelFunc
+	sync.Mutex
 
 	id uint64
 	// amount of ETH we are providing this swap, and the amount of XMR we should receive.
@@ -90,6 +92,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 // ProtocolComplete is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolComplete() {
+	s.Lock()
+	defer s.Unlock()
+
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
@@ -141,6 +146,9 @@ func (s *swapState) tryRefund() error {
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	if err := s.checkMessageType(msg); err != nil {
 		return nil, true, err
 	}
