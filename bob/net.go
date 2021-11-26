@@ -3,11 +3,12 @@ package bob
 import (
 	"errors"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 )
 
-func (b *bob) Provides() net.ProvidesCoin {
-	return net.ProvidesXMR
+func (b *bob) Provides() common.ProvidesCoin {
+	return common.ProvidesXMR
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
@@ -43,7 +44,7 @@ func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
 func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, net.Message, error) {
-	if msg.Provides != net.ProvidesETH {
+	if msg.Provides != common.ProvidesETH {
 		return nil, nil, errors.New("peer does not provide ETH")
 	}
 

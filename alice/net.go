@@ -3,11 +3,12 @@ package alice
 import (
 	"errors"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 )
 
-func (a *alice) Provides() net.ProvidesCoin {
-	return net.ProvidesETH
+func (a *alice) Provides() common.ProvidesCoin {
+	return common.ProvidesETH
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
@@ -21,7 +22,7 @@ func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) (net.Swap
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
 func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, net.Message, error) {
-	if msg.Provides != net.ProvidesXMR {
+	if msg.Provides != common.ProvidesXMR {
 		return nil, nil, errors.New("peer does not provide XMR")
 	}
 
