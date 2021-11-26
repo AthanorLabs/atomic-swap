@@ -41,8 +41,8 @@ func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
 	}
 
 	b.swapState = newSwapState(b, providesAmount, desiredAmount)
-	str := color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id)
-	log.Info(str)
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil
 }
 

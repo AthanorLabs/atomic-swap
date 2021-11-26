@@ -65,7 +65,7 @@ func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
 	}
 
 	a.swapState = newSwapState(a, providesAmount, desiredAmount)
-	str := color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.id)
-	log.Info(str)
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.id))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil
 }
