@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
@@ -38,8 +39,7 @@ type swapState struct {
 	// Bob's keys for this session
 	bobPublicSpendKey *monero.PublicKey
 	bobPrivateViewKey *monero.PrivateViewKey
-	//bobClaimHash      [32]byte
-	bobAddress ethcommon.Address
+	bobAddress        ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract *swap.Swap
@@ -66,7 +66,7 @@ func newSwapState(a *alice, providesAmount, desiredAmount uint64) *swapState {
 		id:                  nextID,
 		providesAmount:      providesAmount,
 		desiredAmount:       desiredAmount,
-		nextExpectedMessage: &net.SendKeysMessage{}, // should this be &net.InitiateMessage{}?
+		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
 	}
@@ -125,6 +125,8 @@ func (s *swapState) tryRefund() error {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
 
+	// TODO: also check if IsReady == true
+
 	if untilT0 > 0 && untilT1 < 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
 		log.Infof("waiting until time %s to refund", s.t1)
@@ -155,7 +157,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		if msg.Address == "" {
 			return nil, true, errors.New("got empty address for locked XMR")
 		}
-
 		// check that XMR was locked in expected account, and confirm amount
 		vk := monero.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
 		sk := monero.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
@@ -171,18 +172,28 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 		}
 
+		if s.alice.env != common.Development {
+			// wait for 2 new blocks, otherwise balance might be 0
+			// TODO: check transaction hash
+			if err := monero.WaitForBlocks(s.alice.client); err != nil {
+				return nil, true, err
+			}
+
+			if err := monero.WaitForBlocks(s.alice.client); err != nil {
+				return nil, true, err
+			}
+		}
+
 		if err := s.alice.client.Refresh(); err != nil {
-			return nil, true, err
+			return nil, true, fmt.Errorf("failed to refresh client: %w", err)
 		}
 
 		balance, err := s.alice.client.GetBalance(0)
 		if err != nil {
-			return nil, true, err
+			return nil, true, fmt.Errorf("failed to get balance: %w", err)
 		}
 
 		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)
-		log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
-		log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 
 		// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
 		if balance.Balance < float64(s.desiredAmount) {
@@ -279,19 +290,32 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	log.Info("deployed Swap contract, waiting for XMR to be locked: contract address=", address)
 
 	// set t0 and t1
-	st0, err := s.contract.Timeout0(s.alice.callOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
+	for {
+		log.Debug("attempting to fetch t0 from contract")
+
+		st0, err := s.contract.Timeout0(s.alice.callOpts)
+		if err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		s.t0 = time.Unix(st0.Int64(), 0)
+		break
 	}
 
-	s.t0 = time.Unix(st0.Int64(), 0)
+	for {
+		log.Debug("attempting to fetch t1 from contract")
 
-	st1, err := s.contract.Timeout1(s.alice.callOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
+		st1, err := s.contract.Timeout1(s.alice.callOpts)
+		if err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		s.t1 = time.Unix(st1.Int64(), 0)
+		break
 	}
-
-	s.t1 = time.Unix(st1.Int64(), 0)
 
 	// start goroutine to check that Bob locks before t_0
 	go func() {
