@@ -21,13 +21,13 @@ import (
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 
 func TestDeploySwap(t *testing.T) {
-	conn, err := ethclient.Dial("https://ropsten.infura.io/v3/ec83fd2ff717430b9defe56e70aa72d8" /*common.DefaultEthEndpoint*/)
+	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA("96f287425677558ef66725caeb462dfe31377628434b526d3d480f263b976af6" /*common.DefaultPrivKeyAlice*/)
+	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.RopstenChainID /*common.GanacheChainID*/))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, ethcommon.Address{}, defaultTimeoutDuration)

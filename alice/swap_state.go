@@ -39,8 +39,7 @@ type swapState struct {
 	// Bob's keys for this session
 	bobPublicSpendKey *monero.PublicKey
 	bobPrivateViewKey *monero.PrivateViewKey
-	//bobClaimHash      [32]byte
-	bobAddress ethcommon.Address
+	bobAddress        ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract *swap.Swap
@@ -67,7 +66,7 @@ func newSwapState(a *alice, providesAmount, desiredAmount uint64) *swapState {
 		id:                  nextID,
 		providesAmount:      providesAmount,
 		desiredAmount:       desiredAmount,
-		nextExpectedMessage: &net.SendKeysMessage{}, // should this be &net.InitiateMessage{}?
+		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
 	}
@@ -126,6 +125,8 @@ func (s *swapState) tryRefund() error {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
 
+	// TODO: also check if IsReady == true
+
 	if untilT0 > 0 && untilT1 < 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
 		log.Infof("waiting until time %s to refund", s.t1)
@@ -171,25 +172,15 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 		}
 
-		prevHeight, err := s.alice.client.GetHeight()
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to get height: %w", err)
-		}
-
 		if s.alice.env != common.Development {
-			// wait for new blocks, otherwise balance might be 0
-			for {
-				height, err := s.alice.client.GetHeight()
-				if err != nil {
-					log.Errorf("failed to get height: %s", err)
-				}
+			// wait for 2 new blocks, otherwise balance might be 0
+			// TODO: check transaction hash
+			if err := monero.WaitForBlocks(s.alice.client); err != nil {
+				return nil, true, err
+			}
 
-				if height > prevHeight+1 {
-					break
-				}
-
-				log.Infof("waiting for next block, current height=%d", height)
-				time.Sleep(time.Second * 10)
+			if err := monero.WaitForBlocks(s.alice.client); err != nil {
+				return nil, true, err
 			}
 		}
 
@@ -203,8 +194,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)
-		// log.Debug("public spend keys for lock account: ", kp.SpendKey().Hex())
-		// log.Debug("public view keys for lock account: ", kp.ViewKey().Hex())
 
 		// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
 		if balance.Balance < float64(s.desiredAmount) {
@@ -303,9 +292,10 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	// set t0 and t1
 	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
 	for {
+		log.Debug("attempting to fetch t0 from contract")
+
 		st0, err := s.contract.Timeout0(s.alice.callOpts)
 		if err != nil {
-			//return nil, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}
@@ -319,7 +309,6 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 		st1, err := s.contract.Timeout1(s.alice.callOpts)
 		if err != nil {
-			//return nil, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}

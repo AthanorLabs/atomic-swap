@@ -162,19 +162,8 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	}
 
 	log.Debugf("deploying Swap.sol, amount=%d txHash=%s", amount, tx.Hash())
-
-	for {
-		time.Sleep(time.Second * 10)
-		log.Info("waiting for Swap.sol deployment to be included in chain...")
-
-		receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-		if err != nil {
-			continue
-			//return ethcommon.Address{}, fmt.Errorf("failed to get deployment receipt: %w", err)
-		}
-
-		log.Debugf("deployed Swap.sol, gas used=%d", receipt.CumulativeGasUsed)
-		break
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
 	}
 
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
@@ -197,18 +186,8 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	for {
-		time.Sleep(time.Second * 10)
-		log.Info("waiting for SetReady call to be included in chain...")
-
-		receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-		if err != nil {
-			continue
-			//return ethcommon.Address{}, fmt.Errorf("failed to get deployment receipt: %w", err)
-		}
-
-		log.Debugf("set IsReady to true, gas used=%d", receipt.CumulativeGasUsed)
-		break
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+		return errors.New("failed to set IsReady to true in Swap.sol")
 	}
 
 	return nil
@@ -290,19 +269,11 @@ func (s *swapState) refund() (string, error) {
 		return "", err
 	}
 
-	for {
-		log.Infof("waiting for refund tx: hash=%s", tx.Hash())
-		receipt, err := s.alice.ethClient.TransactionReceipt(s.ctx, tx.Hash())
-		if err != nil {
-			//return "", err
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		log.Debugf("called Refund(), gas used=%d", receipt.CumulativeGasUsed)
-		break
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
+		return "", errors.New("failed to call Refund in Swap.sol")
 	}
 
+	s.success = true
 	return tx.Hash().String(), nil
 }
 
@@ -338,15 +309,8 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		err     error
 	)
 
-	for {
-		log.Infof("checking Claim tx receipt: hash=%s", txHash)
-		receipt, err = s.alice.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
-		if err != nil {
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		break
+	if ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash)); !ok {
+		return "", errors.New("failed check Claim transaction receipt")
 	}
 
 	if len(receipt.Logs) == 0 {

@@ -59,7 +59,7 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 
 	// transfer to account A+B
-	err = cA.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
+	_, err = cA.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
 	require.NoError(t, err)
 	err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
 	require.NoError(t, err)
@@ -96,6 +96,6 @@ func TestClient_Transfer(t *testing.T) {
 	}
 
 	// transfer from account A+B back to Alice's address
-	err = cB.Transfer(Address(aliceAddress.Address), 0, 1)
+	_, err = cB.Transfer(Address(aliceAddress.Address), 0, 1)
 	require.NoError(t, err)
 }
