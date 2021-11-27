@@ -41,8 +41,8 @@ type alice struct {
 
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
-	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
+	chainID    *big.Int
 
 	net net.MessageSender
 
@@ -75,11 +75,6 @@ func NewAlice(cfg *Config) (*alice, error) {
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(cfg.ChainID))
-	if err != nil {
-		return nil, err
-	}
-
 	pub := pk.Public().(*ecdsa.PublicKey)
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
@@ -91,11 +86,11 @@ func NewAlice(cfg *Config) (*alice, error) {
 		ethPrivKey: pk,
 		ethClient:  ec,
 		client:     monero.NewClient(cfg.MoneroWalletEndpoint),
-		auth:       auth,
 		callOpts: &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
 		},
+		chainID: big.NewInt(cfg.ChainID),
 	}, nil
 }
 
@@ -150,12 +145,12 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	copy(pkb[:], common.Reverse(pkBob))
 
 	// TODO: put auth in swapState
-	s.alice.auth.Value = big.NewInt(int64(amount))
+	s.txOpts.Value = big.NewInt(int64(amount))
 	defer func() {
-		s.alice.auth.Value = nil
+		s.txOpts.Value = nil
 	}()
 
-	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
+	address, tx, swap, err := swap.DeploySwap(s.txOpts, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
@@ -180,7 +175,7 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.contract.SetReady(s.alice.auth)
+	tx, err := s.contract.SetReady(s.txOpts)
 	if err != nil {
 		return err
 	}
@@ -263,7 +258,7 @@ func (s *swapState) refund() (string, error) {
 	}
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.contract.Refund(s.alice.auth, sc)
+	tx, err := s.contract.Refund(s.txOpts, sc)
 	if err != nil {
 		return "", err
 	}

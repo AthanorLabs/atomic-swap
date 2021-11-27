@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color"
 )
@@ -47,6 +49,7 @@ type swapState struct {
 	// swap contract and timeouts in it; set once contract is deployed
 	contract *swap.Swap
 	t0, t1   time.Time
+	txOpts   *bind.TransactOpts
 
 	// next expected network message
 	nextExpectedMessage net.Message // TODO: change to type?
@@ -59,7 +62,16 @@ type swapState struct {
 	success bool
 }
 
-func newSwapState(a *alice, providesAmount, desiredAmount uint64) *swapState {
+func newSwapState(a *alice, providesAmount, desiredAmount, gasPrice uint64) (*swapState, error) {
+	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	if gasPrice != 0 {
+		txOpts.GasPrice = big.NewInt(int64(gasPrice))
+	}
+
 	ctx, cancel := context.WithCancel(a.ctx)
 
 	s := &swapState{
@@ -69,13 +81,14 @@ func newSwapState(a *alice, providesAmount, desiredAmount uint64) *swapState {
 		id:                  nextID,
 		providesAmount:      providesAmount,
 		desiredAmount:       desiredAmount,
+		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
 	}
 
 	nextID++
-	return s
+	return s, nil
 }
 
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {

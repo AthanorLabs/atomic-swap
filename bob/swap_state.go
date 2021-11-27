@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color"
 
@@ -43,6 +45,7 @@ type swapState struct {
 	contract     *swap.Swap
 	contractAddr ethcommon.Address
 	t0, t1       time.Time
+	txOpts       *bind.TransactOpts
 
 	// Alice's keys for this session
 	alicePublicKeys *monero.PublicKeyPair
@@ -58,7 +61,16 @@ type swapState struct {
 	success bool
 }
 
-func newSwapState(b *bob, providesAmount, desiredAmount uint64) *swapState {
+func newSwapState(b *bob, providesAmount, desiredAmount, gasPrice uint64) (*swapState, error) {
+	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	if gasPrice != 0 {
+		txOpts.GasPrice = big.NewInt(int64(gasPrice))
+	}
+
 	ctx, cancel := context.WithCancel(b.ctx)
 
 	s := &swapState{
@@ -73,7 +85,7 @@ func newSwapState(b *bob, providesAmount, desiredAmount uint64) *swapState {
 	}
 
 	nextID++
-	return s
+	return s, nil
 }
 
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {

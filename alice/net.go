@@ -14,8 +14,8 @@ func (a *alice) Provides() common.ProvidesCoin {
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
-func (a *alice) InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error) {
-	if err := a.initiate(providesAmount, desiredAmount); err != nil {
+func (a *alice) InitiateProtocol(providesAmount, desiredAmount, gasPrice uint64) (net.SwapState, error) {
+	if err := a.initiate(providesAmount, desiredAmount, gasPrice); err != nil {
 		return nil, err
 	}
 
@@ -34,7 +34,8 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 
 	// the other party initiated, saying what they will provide and what they desire.
 	// we initiate our protocol, saying we will provide what they desire and vice versa.
-	if err := a.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
+	// TODO: somehow get gas price, ie. when the user accepts via cli
+	if err := a.initiate(msg.DesiredAmount, msg.ProvidesAmount, 0); err != nil {
 		return nil, nil, err
 	}
 
@@ -46,7 +47,7 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 	return a.swapState, resp, nil
 }
 
-func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
+func (a *alice) initiate(providesAmount, desiredAmount, gasPrice uint64) error {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
@@ -54,7 +55,7 @@ func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
 		return errors.New("protocol already in progress")
 	}
 
-	balance, err := a.ethClient.BalanceAt(a.ctx, a.auth.From, nil)
+	balance, err := a.ethClient.BalanceAt(a.ctx, a.callOpts.From, nil)
 	if err != nil {
 		return err
 	}
@@ -64,7 +65,11 @@ func (a *alice) initiate(providesAmount, desiredAmount uint64) error {
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	a.swapState = newSwapState(a, providesAmount, desiredAmount)
+	a.swapState, err = newSwapState(a, providesAmount, desiredAmount, gasPrice)
+	if err != nil {
+		return err
+	}
+
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.id))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil

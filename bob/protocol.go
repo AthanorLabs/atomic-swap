@@ -39,9 +39,9 @@ type bob struct {
 
 	ethClient  *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
-	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
 	ethAddress ethcommon.Address
+	chainID    *big.Int
 
 	net net.MessageSender
 
@@ -78,11 +78,6 @@ func NewBob(cfg *Config) (*bob, error) {
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(cfg.ChainID)) // ganache chainID
-	if err != nil {
-		return nil, err
-	}
-
 	pub := pk.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -109,12 +104,12 @@ func NewBob(cfg *Config) (*bob, error) {
 		walletPassword: cfg.WalletPassword,
 		ethClient:      ec,
 		ethPrivKey:     pk,
-		auth:           auth,
 		callOpts: &bind.CallOpts{
 			From:    addr,
 			Context: cfg.Ctx,
 		},
 		ethAddress: addr,
+		chainID:    big.NewInt(cfg.ChainID),
 	}, nil
 }
 
@@ -326,7 +321,7 @@ func (s *swapState) claimFunds() (string, error) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Claim(s.bob.auth, sc)
+	tx, err := s.contract.Claim(s.txOpts, sc)
 	if err != nil {
 		return "", err
 	}

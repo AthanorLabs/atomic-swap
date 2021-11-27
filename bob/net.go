@@ -14,15 +14,15 @@ func (b *bob) Provides() common.ProvidesCoin {
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
-func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error) {
-	if err := b.initiate(providesAmount, desiredAmount); err != nil {
+func (b *bob) InitiateProtocol(providesAmount, desiredAmount, gasPrice uint64) (net.SwapState, error) {
+	if err := b.initiate(providesAmount, desiredAmount, gasPrice); err != nil {
 		return nil, err
 	}
 
 	return b.swapState, nil
 }
 
-func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
+func (b *bob) initiate(providesAmount, desiredAmount, gasPrice uint64) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
@@ -40,7 +40,11 @@ func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	b.swapState = newSwapState(b, providesAmount, desiredAmount)
+	b.swapState, err = newSwapState(b, providesAmount, desiredAmount, gasPrice)
+	if err != nil {
+		return err
+	}
+
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil
@@ -56,7 +60,8 @@ func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, ne
 	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %d**", msg.DesiredAmount)
 	log.Info(str)
 
-	if err := b.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
+	// TODO: get gas price
+	if err := b.initiate(msg.DesiredAmount, msg.ProvidesAmount, 0); err != nil {
 		return nil, nil, err
 	}
 

@@ -22,7 +22,7 @@ type Net interface {
 
 type Protocol interface {
 	Provides() common.ProvidesCoin
-	InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error)
+	InitiateProtocol(providesAmount, desiredAmount, gasPrice uint64) (net.SwapState, error)
 }
 
 type NetService struct {
@@ -111,6 +111,7 @@ type InitiateRequest struct {
 	ProvidesCoin   common.ProvidesCoin `json:"provides"`
 	ProvidesAmount uint64              `json:"providesAmount"`
 	DesiredAmount  uint64              `json:"desiredAmount"`
+	GasPrice       uint64              `json:"gasPrice"`
 }
 
 type InitiateResponse struct {
@@ -122,7 +123,7 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return errors.New("must specify 'provides' coin")
 	}
 
-	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
+	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount, req.GasPrice)
 	if err != nil {
 		return err
 	}
