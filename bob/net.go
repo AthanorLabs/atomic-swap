@@ -14,15 +14,15 @@ func (b *bob) Provides() common.ProvidesCoin {
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
-func (b *bob) InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error) {
-	if err := b.initiate(providesAmount, desiredAmount); err != nil {
+func (b *bob) InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error) {
+	if err := b.initiate(common.MoneroToPiconero(providesAmount), common.EtherToWei(desiredAmount)); err != nil {
 		return nil, err
 	}
 
 	return b.swapState, nil
 }
 
-func (b *bob) initiate(providesAmount, desiredAmount uint64) error {
+func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
@@ -53,10 +53,10 @@ func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, ne
 	}
 
 	// TODO: allow user to accept/reject this via RPC
-	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %d**", msg.DesiredAmount)
+	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %v**", msg.DesiredAmount)
 	log.Info(str)
 
-	if err := b.initiate(msg.DesiredAmount, msg.ProvidesAmount); err != nil {
+	if err := b.initiate(common.MoneroToPiconero(msg.DesiredAmount), common.EtherToWei(msg.ProvidesAmount)); err != nil {
 		return nil, nil, err
 	}
 

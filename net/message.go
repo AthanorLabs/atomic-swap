@@ -80,7 +80,7 @@ func decodeMessage(b []byte) (Message, error) {
 
 type QueryResponse struct {
 	Provides      []common.ProvidesCoin
-	MaximumAmount []uint64
+	MaximumAmount []float64
 	ExchangeRate  common.ExchangeRate
 }
 
@@ -107,8 +107,8 @@ func (m *QueryResponse) Type() byte {
 
 type InitiateMessage struct {
 	Provides       common.ProvidesCoin
-	ProvidesAmount uint64
-	DesiredAmount  uint64
+	ProvidesAmount float64
+	DesiredAmount  float64
 	*SendKeysMessage
 }
 
