@@ -22,7 +22,7 @@ type Net interface {
 
 type Protocol interface {
 	Provides() common.ProvidesCoin
-	InitiateProtocol(providesAmount, desiredAmount uint64) (net.SwapState, error)
+	InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error)
 }
 
 type NetService struct {
@@ -85,7 +85,7 @@ type QueryPeerRequest struct {
 
 type QueryPeerResponse struct {
 	Provides      []common.ProvidesCoin `json:"provides"`
-	MaximumAmount []uint64              `json:"maximumAmount"`
+	MaximumAmount []float64             `json:"maximumAmount"`
 	ExchangeRate  common.ExchangeRate   `json:"exchangeRate"`
 }
 
@@ -109,8 +109,8 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 type InitiateRequest struct {
 	Multiaddr      string              `json:"multiaddr"`
 	ProvidesCoin   common.ProvidesCoin `json:"provides"`
-	ProvidesAmount uint64              `json:"providesAmount"`
-	DesiredAmount  uint64              `json:"desiredAmount"`
+	ProvidesAmount float64             `json:"providesAmount"`
+	DesiredAmount  float64             `json:"desiredAmount"`
 }
 
 type InitiateResponse struct {

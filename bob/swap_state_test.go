@@ -57,7 +57,7 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 
 	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 61)
 
-	swapState := newSwapState(bob, 33, 33)
+	swapState := newSwapState(bob, common.MoneroAmount(33), common.NewEtherAmount(33))
 	return bob, swapState
 }
 

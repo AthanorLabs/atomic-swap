@@ -64,11 +64,11 @@ var (
 						Name:  "provides",
 						Usage: "coin to provide in the swap: one of [ETH, XMR]",
 					},
-					&cli.UintFlag{
+					&cli.Float64Flag{
 						Name:  "provides-amount",
 						Usage: "amount of coin to send in the swap",
 					},
-					&cli.UintFlag{
+					&cli.Float64Flag{
 						Name:  "desired-amount",
 						Usage: "amount of coin to receive in the swap",
 					},
@@ -162,12 +162,12 @@ func runInitiate(ctx *cli.Context) error {
 		return err
 	}
 
-	providesAmount := ctx.Uint("provides-amount")
+	providesAmount := ctx.Float64("provides-amount")
 	if providesAmount == 0 {
 		return errors.New("must provide --provides-amount")
 	}
 
-	desiredAmount := ctx.Uint("desired-amount")
+	desiredAmount := ctx.Float64("desired-amount")
 	if desiredAmount == 0 {
 		return errors.New("must provide --desired-amount")
 	}
@@ -178,13 +178,13 @@ func runInitiate(ctx *cli.Context) error {
 	}
 
 	c := NewClient(endpoint)
-	ok, err := c.initiate(maddr, provides, uint64(providesAmount), uint64(desiredAmount))
+	ok, err := c.initiate(maddr, provides, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}
 
 	if ok {
-		fmt.Printf("Swap successful, received %d %s", desiredAmount, provides)
+		fmt.Printf("Swap successful, received %v %s\n", desiredAmount, provides)
 	} else {
 		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
 	}
