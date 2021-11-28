@@ -69,7 +69,7 @@ type Config struct {
 	ChainID       int64
 	Port          uint64
 	Provides      []common.ProvidesCoin
-	MaximumAmount []uint64
+	MaximumAmount []float64
 	ExchangeRate  common.ExchangeRate
 	KeyFile       string
 	Bootnodes     []string

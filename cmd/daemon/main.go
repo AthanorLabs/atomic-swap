@@ -82,7 +82,7 @@ var (
 				Name:  "env",
 				Usage: "environment to use: one of mainnet, stagenet, or dev",
 			},
-			&cli.UintFlag{
+			&cli.Float64Flag{
 				Name:  "amount", // TODO: remove this and pass it via RPC
 				Value: 0,
 				Usage: "maximum amount to swap (in smallest units of coin)",
@@ -274,10 +274,7 @@ func runDaemon(c *cli.Context) error {
 		port = defaultRPCPort
 	}
 
-	amount := uint64(c.Uint("amount"))
-	if amount == 0 {
-		return errors.New("must specify maximum provided amount")
-	}
+	amount := float64(c.Float64("amount"))
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
@@ -290,7 +287,7 @@ func runDaemon(c *cli.Context) error {
 		ChainID:       chainID,
 		Port:          defaultAlicePort,                          // TODO: make flag
 		Provides:      []common.ProvidesCoin{common.ProvidesETH}, // TODO: make flag
-		MaximumAmount: []uint64{amount},
+		MaximumAmount: []float64{amount},
 		ExchangeRate:  defaultExchangeRate,
 		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
 		Bootnodes:     bootnodes,

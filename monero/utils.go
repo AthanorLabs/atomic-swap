@@ -26,7 +26,7 @@ func WaitForBlocks(client Client) error {
 	for i := 0; i < maxRetries; i++ {
 		height, err := client.GetHeight()
 		if err != nil {
-			return fmt.Errorf("failed to get height: %w", err)
+			continue
 		}
 
 		if height > prevHeight {
