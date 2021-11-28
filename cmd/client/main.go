@@ -184,7 +184,7 @@ func runInitiate(ctx *cli.Context) error {
 	}
 
 	if ok {
-		fmt.Printf("Swap successful, received %d %s", desiredAmount, provides)
+		fmt.Printf("Swap successful, received %v %s\n", desiredAmount, provides)
 	} else {
 		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
 	}
