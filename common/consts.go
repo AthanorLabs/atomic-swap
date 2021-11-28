@@ -39,6 +39,11 @@ func (a MoneroAmount) Uint64() uint64 {
 
 type EtherAmount big.Int
 
+func NewEtherAmount(amount int64) EtherAmount {
+	i := big.NewInt(amount)
+	return EtherAmount(*i)
+}
+
 func EtherToWei(amount float64) EtherAmount {
 	amt := big.NewFloat(amount)
 	mult := big.NewFloat(numEtherUnits)

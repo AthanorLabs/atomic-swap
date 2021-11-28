@@ -30,7 +30,7 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 	}
 
 	// TODO: allow user to accept/reject this via RPC
-	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %s**", msg.DesiredAmount)
+	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %v**", msg.DesiredAmount)
 	log.Info(str)
 
 	// the other party initiated, saying what they will provide and what they desire.
