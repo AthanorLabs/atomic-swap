@@ -275,10 +275,6 @@ func runDaemon(c *cli.Context) error {
 	}
 
 	amount := float64(c.Float64("amount"))
-	log.Info("amount", amount)
-	// if amount == 0 {
-	// 	return errors.New("must specify maximum provided amount")
-	// }
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
