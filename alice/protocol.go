@@ -128,7 +128,7 @@ func (s *swapState) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) 
 }
 
 // deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
-func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
+func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Address, error) {
 	if s.pubkeys == nil {
 		return ethcommon.Address{}, errors.New("public keys aren't set")
 	}
@@ -145,7 +145,7 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 	copy(pkb[:], common.Reverse(pkBob))
 
 	// TODO: put auth in swapState
-	s.txOpts.Value = big.NewInt(int64(amount))
+	s.txOpts.Value = amount.BigInt()
 	defer func() {
 		s.txOpts.Value = nil
 	}()
@@ -155,7 +155,7 @@ func (s *swapState) deployAndLockETH(amount uint64) (ethcommon.Address, error) {
 		return ethcommon.Address{}, fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
 
-	log.Debugf("deploying Swap.sol, amount=%d txHash=%s", amount, tx.Hash())
+	log.Debugf("deploying Swap.sol, amount=%s txHash=%s", amount, tx.Hash())
 	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
 		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
 	}

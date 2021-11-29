@@ -34,8 +34,9 @@ type swapState struct {
 	cancel context.CancelFunc
 	sync.Mutex
 
-	id                            uint64
-	providesAmount, desiredAmount uint64
+	id             uint64
+	providesAmount common.MoneroAmount
+	desiredAmount  common.EtherAmount
 
 	// our keys for this session
 	privkeys *monero.PrivateKeyPair
@@ -61,7 +62,7 @@ type swapState struct {
 	success bool
 }
 
-func newSwapState(b *bob, providesAmount, desiredAmount, gasPrice uint64) (*swapState, error) {
+func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount, gasPrice uint64) *swapState {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -184,6 +185,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		s.nextExpectedMessage = &net.NotifyReady{}
 		log.Infof("got Swap contract address! address=%s", msg.Address)
+
+		// TODO: check contract balance and secrets
 
 		if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)

@@ -14,7 +14,7 @@ import (
 var (
 	contentTypeJSON   = "application/json"
 	dialTimeout       = 60 * time.Second
-	httpClientTimeout = 120 * time.Second
+	httpClientTimeout = 30 * time.Minute
 	callTimeout       = 30 * time.Minute
 
 	transport = &http.Transport{

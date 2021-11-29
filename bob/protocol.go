@@ -259,9 +259,9 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
 // TODO: units
-func (s *swapState) lockFunds(amount uint64) (monero.Address, error) {
+func (s *swapState) lockFunds(amount common.MoneroAmount) (monero.Address, error) {
 	kp := monero.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
-	log.Infof("going to lock XMR funds, amount=%d", amount)
+	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
 	balance, err := s.bob.client.GetBalance(0)
 	if err != nil {

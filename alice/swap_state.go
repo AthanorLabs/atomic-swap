@@ -35,7 +35,8 @@ type swapState struct {
 
 	id uint64
 	// amount of ETH we are providing this swap, and the amount of XMR we should receive.
-	providesAmount, desiredAmount uint64
+	providesAmount common.EtherAmount
+	desiredAmount  common.MoneroAmount
 
 	// our keys for this session
 	privkeys *monero.PrivateKeyPair
@@ -62,7 +63,7 @@ type swapState struct {
 	success bool
 }
 
-func newSwapState(a *alice, providesAmount, desiredAmount, gasPrice uint64) (*swapState, error) {
+func newSwapState(a *alice, providesAmount common.EtherAmount, desiredAmount common.MoneroAmount, gasPrice uint64)) *swapState {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err

@@ -9,7 +9,7 @@ import (
 	"github.com/noot/atomic-swap/rpcclient"
 )
 
-func (c *Client) initiate(maddr string, provides common.ProvidesCoin, providesAmount, desiredAmount uint64) (bool, error) {
+func (c *Client) initiate(maddr string, provides common.ProvidesCoin, providesAmount, desiredAmount float64) (bool, error) {
 	const (
 		method = "net_initiate"
 	)
