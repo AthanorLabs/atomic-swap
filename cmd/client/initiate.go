@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/rpc"
@@ -31,7 +32,7 @@ func (c *Client) initiate(maddr string, provides common.ProvidesCoin, providesAm
 	}
 
 	if resp.Error != nil {
-		return false, resp.Error
+		return false, fmt.Errorf("failed to call net_initiate: %w", resp.Error)
 	}
 
 	var res *rpc.InitiateResponse
