@@ -2,6 +2,10 @@
 
 This is a WIP prototype of ETH<->XMR atomic swaps, currently in the early development phase. It currently consists of a single `atomic-swap` binary which allows for peers to discover each other over the network based on what you want to swap for, querying peers for additional info such as their desired exchange rate, and the ability to initiate and perform the entire protocol. The `atomic-swap` program has a JSON-RPC endpoint which the user can use to interact with the process. 
 
+## Disclaimer
+
+**This code is unaudited and under active development and should not be used on mainnet!** Running this on mainnet may result in loss of funds.
+
 ## Protocol
 
 Please see the [protocol documentation](docs/protocol.md) for how it works.
