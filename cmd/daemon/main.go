@@ -42,7 +42,7 @@ var (
 	log = logging.Logger("cmd")
 	_   = logging.SetLogLevel("alice", "debug")
 	_   = logging.SetLogLevel("bob", "debug")
-	_   = logging.SetLogLevel("common", "info")
+	_   = logging.SetLogLevel("common", "debug")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
 	_   = logging.SetLogLevel("rpc", "debug")

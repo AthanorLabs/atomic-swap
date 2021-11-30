@@ -47,7 +47,6 @@ type swapState struct {
 
 	// Alice's keys for this session
 	alicePublicKeys *monero.PublicKeyPair
-	//alicePrivateViewKey *monero.PrivateViewKey
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -212,7 +211,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			select {
 			case <-s.ctx.Done():
 				return
-			case <-time.After(until):
+			case <-time.After(until + time.Second):
 				// we can now call Claim()
 				txHash, err := s.claimFunds()
 				if err != nil {

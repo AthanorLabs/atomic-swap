@@ -2,10 +2,13 @@ package alice
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"testing"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -71,6 +74,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 }
 
+// test the case where Alice deploys and locks her eth, but Bob never locks his monero.
+// Alice should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	_, s := newTestAlice(t)
 	defer s.cancel()
@@ -104,12 +109,18 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
+	cdMsg, ok := resp.(*net.NotifyContractDeployed)
+	require.True(t, ok)
+
 	// ensure we refund before t0
-	// TODO: fix this
-	// time.Sleep(time.Second * 2)
-	// require.NotNil(t, s.net.(*mockNet).msg)
-	// require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
-	// TODO: check balance
+	time.Sleep(time.Second * 10)
+	require.NotNil(t, s.net.(*mockNet).msg)
+	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
+
+	// check balance of contract is 0
+	balance, err := s.alice.ethClient.BalanceAt(s.ctx, ethcommon.HexToAddress(cdMsg.Address), nil)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), balance.Int64())
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
@@ -141,10 +152,145 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, net.NotifyReadyType, resp.Type())
+}
 
-	// TODO: test refund case
+// test the case where the monero is locked, but Bob never claims.
+// Alice should call refund after the timeout t1.
+func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
+	_, s := newTestAlice(t)
+	defer s.cancel()
+	s.net = new(mockNet)
+	s.nextExpectedMessage = &net.NotifyXMRLock{}
+
+	// set timeout to 2s
+	// TODO: pass this as a param to newSwapState
+	defaultTimeoutDuration = big.NewInt(3)
+	defer func() {
+		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
+	}()
+
+	_, err := s.generateKeys()
+	require.NoError(t, err)
+
+	bobPrivKeys, err := monero.GenerateKeys()
+	require.NoError(t, err)
+
+	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey())
+
+	_, err = s.deployAndLockETH(common.NewEtherAmount(1))
+	require.NoError(t, err)
+
+	s.desiredAmount = 0
+	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	xmrAddr := kp.Address(common.Mainnet)
+
+	msg := &net.NotifyXMRLock{
+		Address: string(xmrAddr),
+	}
+
+	resp, done, err := s.HandleProtocolMessage(msg)
+	require.NoError(t, err)
+	require.False(t, done)
+	require.NotNil(t, resp)
+	require.Equal(t, net.NotifyReadyType, resp.Type())
+
+	time.Sleep(time.Second * 15)
+	require.NotNil(t, s.net.(*mockNet).msg)
+	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
+
+	cdMsg, ok := resp.(*net.NotifyContractDeployed)
+	require.True(t, ok)
+
+	// check balance of contract is 0
+	balance, err := s.alice.ethClient.BalanceAt(s.ctx, ethcommon.HexToAddress(cdMsg.Address), nil)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), balance.Int64())
 }
 
 func TestSwapState_NotifyClaimed(t *testing.T) {
-	// TODO
+	_, s := newTestAlice(t)
+	defer s.cancel()
+
+	msg := &net.SendKeysMessage{}
+	_, _, err := s.HandleProtocolMessage(msg)
+	require.Equal(t, errMissingKeys, err)
+
+	_, err = s.generateKeys()
+	require.NoError(t, err)
+
+	// simulate bob sending his keys
+	bobPrivKeys, err := monero.GenerateKeys()
+	require.NoError(t, err)
+
+	pub := s.alice.ethPrivKey.Public().(*ecdsa.PublicKey)
+	address := ethcrypto.PubkeyToAddress(*pub)
+
+	msg = &net.SendKeysMessage{
+		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
+		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
+		EthAddress:     address.String(),
+	}
+
+	resp, done, err := s.HandleProtocolMessage(msg)
+	require.NoError(t, err)
+	require.False(t, done)
+	require.NotNil(t, resp)
+	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
+	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+
+	// simulate bob locking xmr
+	bobAddr, err := s.alice.client.GetAddress(0)
+	require.NoError(t, err)
+
+	// mine some blocks to get xmr first
+	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
+	_ = daemonClient.GenerateBlocks(bobAddr.Address, 257)
+
+	s.desiredAmount = 33333
+	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	xmrAddr := kp.Address(common.Mainnet)
+
+	// lock xmr
+	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(s.desiredAmount))
+	require.NoError(t, err)
+	t.Log("transferred to account", xmrAddr)
+
+	_ = daemonClient.GenerateBlocks(bobAddr.Address, 1)
+
+	err = s.alice.client.Refresh()
+	require.NoError(t, err)
+
+	lmsg := &net.NotifyXMRLock{
+		Address: string(xmrAddr),
+	}
+
+	resp, done, err = s.HandleProtocolMessage(lmsg)
+	require.NoError(t, err)
+	require.False(t, done)
+	require.NotNil(t, resp)
+	require.Equal(t, net.NotifyReadyType, resp.Type())
+
+	err = daemonClient.GenerateBlocks(bobAddr.Address, 1)
+	require.NoError(t, err)
+
+	// simulate bob calling claim
+	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
+	secret := bobPrivKeys.SpendKeyBytes()
+	var sc [32]byte
+	copy(sc[:], common.Reverse(secret))
+
+	tx, err := s.contract.Claim(s.alice.auth, sc)
+	require.NoError(t, err)
+
+	cmsg := &net.NotifyClaimed{
+		TxHash: tx.Hash().String(),
+	}
+
+	resp, done, err = s.HandleProtocolMessage(cmsg)
+	require.NoError(t, err)
+	require.True(t, done)
+	require.Nil(t, resp)
+
+	// check that wallet was generated
 }

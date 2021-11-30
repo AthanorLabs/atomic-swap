@@ -83,6 +83,9 @@ func NewBob(cfg *Config) (*bob, error) {
 		return nil, err
 	}
 
+	// auth.GasLimit = 3027733
+	// auth.GasPrice = big.NewInt(2000000000)
+
 	pub := pk.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
