@@ -61,14 +61,7 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.C
 			<-errCh
 			return
 		case err := <-errCh:
-			//time.Sleep(time.Millisecond * 1000)
-			select {
-			case <-done:
-				return
-				//default:
-			}
 			fmt.Println("program exited early: ", err)
-			os.Exit(1)
 		}
 	}()
 
