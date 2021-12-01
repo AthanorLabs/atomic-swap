@@ -176,6 +176,14 @@ func (h *host) Stop() error {
 	return nil
 }
 
+func (h *host) Addresses() []string {
+	var addrs []string
+	for _, ma := range h.multiaddrs() {
+		addrs = append(addrs, ma.String())
+	}
+	return addrs
+}
+
 // Discover searches the DHT for peers that advertise that they provide the given coin.
 // It searches for up to `searchTime` duration of time.
 func (h *host) Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {

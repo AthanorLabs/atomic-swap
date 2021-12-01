@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	defaultAliceMultiaddr      = "/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"
 	defaultAliceTestLibp2pKey  = "alice.key"
 	defaultAliceDaemonEndpoint = "http://localhost:5001"
 	defaultBobDaemonEndpoint   = "http://localhost:5002"
@@ -34,7 +33,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.Cmd {
+func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) {
 	cmd := exec.Command("../swapd", args...)
 
 	wg := new(sync.WaitGroup)
@@ -79,39 +78,43 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.C
 	})
 
 	time.Sleep(time.Second * 5)
-	return cmd
 }
 
-func startAlice(t *testing.T, done <-chan struct{}) *exec.Cmd {
-	return startSwapDaemon(t, done, "--alice",
+func startAlice(t *testing.T, done <-chan struct{}) []string {
+	startSwapDaemon(t, done, "--alice",
 		"--max-amount", fmt.Sprintf("%v", aliceProvideAmount),
 		"--libp2p-key", defaultAliceTestLibp2pKey,
 	)
+	c := client.NewClient(defaultAliceDaemonEndpoint)
+	addrs, err := c.Addresses()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(addrs), 1)
+	return addrs
 }
 
-func startBob(t *testing.T, done <-chan struct{}) *exec.Cmd {
-	return startSwapDaemon(t, done, "--bob",
+func startBob(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
+	startSwapDaemon(t, done, "--bob",
 		"--max-amount", fmt.Sprintf("%v", bobProvideAmount),
-		"--bootnodes", defaultAliceMultiaddr,
+		"--bootnodes", aliceMultiaddr,
 		"--wallet-file", "test-wallet",
 	)
 }
 
 // charlie doesn't provide any coin or participate in any swap.
 // he is just a node running the p2p protocol.
-func startCharlie(t *testing.T, done <-chan struct{}) *exec.Cmd {
-	return startSwapDaemon(t, done,
+func startCharlie(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
+	startSwapDaemon(t, done,
 		"--libp2p-port", "9955",
 		"--rpc-port", "5003",
-		"--bootnodes", defaultAliceMultiaddr)
+		"--bootnodes", aliceMultiaddr)
 }
 
 func startNodes(t *testing.T) {
 	done := make(chan struct{})
 
-	_ = startAlice(t, done)
-	_ = startBob(t, done)
-	_ = startCharlie(t, done)
+	addrs := startAlice(t, done)
+	startBob(t, done, addrs[0])
+	startCharlie(t, done, addrs[0])
 
 	t.Cleanup(func() {
 		close(done)
@@ -126,15 +129,15 @@ func TestStartAlice(t *testing.T) {
 
 func TestStartBob(t *testing.T) {
 	done := make(chan struct{})
-	_ = startAlice(t, done)
-	_ = startBob(t, done)
+	addrs := startAlice(t, done)
+	startBob(t, done, addrs[0])
 	close(done)
 }
 
 func TestStartCharlie(t *testing.T) {
 	done := make(chan struct{})
-	_ = startAlice(t, done)
-	_ = startCharlie(t, done)
+	addrs := startAlice(t, done)
+	startCharlie(t, done, addrs[0])
 	close(done)
 }
 

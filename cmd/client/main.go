@@ -24,6 +24,15 @@ var (
 		Usage: "Client for swapd",
 		Commands: []cli.Command{
 			{
+				Name:    "addresses",
+				Aliases: []string{"a"},
+				Usage:   "list our daemon's libp2p listening addresses",
+				Action:  runAddresses,
+				Flags: []cli.Flag{
+					daemonAddrFlag,
+				},
+			},
+			{
 				Name:    "discover",
 				Aliases: []string{"d"},
 				Usage:   "discover peers who provide a certain coin",
@@ -93,6 +102,22 @@ func main() {
 		log.Error(err)
 		os.Exit(1)
 	}
+}
+
+func runAddresses(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	addrs, err := c.Addresses()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Listening addresses: %v\n", addrs)
+	return nil
 }
 
 func runDiscover(ctx *cli.Context) error {
