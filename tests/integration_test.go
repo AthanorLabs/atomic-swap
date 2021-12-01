@@ -40,11 +40,19 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.C
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 
-	errCh := make(chan error)
+	type errOut struct {
+		err error
+		out string
+	}
+
+	errCh := make(chan *errOut)
 	go func() {
-		err := cmd.Run()
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			errCh <- err
+			errCh <- &errOut{
+				err: err,
+				out: string(out),
+			}
 		}
 
 		wg.Done()
@@ -61,7 +69,8 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.C
 			<-errCh
 			return
 		case err := <-errCh:
-			fmt.Println("program exited early: ", err)
+			fmt.Println("program exited early: ", err.err)
+			fmt.Println("output: ", err.out)
 		}
 	}()
 
@@ -117,12 +126,14 @@ func TestStartAlice(t *testing.T) {
 
 func TestStartBob(t *testing.T) {
 	done := make(chan struct{})
+	_ = startAlice(t, done)
 	_ = startBob(t, done)
 	close(done)
 }
 
 func TestStartCharlie(t *testing.T) {
 	done := make(chan struct{})
+	_ = startAlice(t, done)
 	_ = startCharlie(t, done)
 	close(done)
 }
