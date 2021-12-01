@@ -73,9 +73,9 @@ func startNodes(t *testing.T) {
 	charlieCmd := startCharlie(t, ctx)
 
 	t.Cleanup(func() {
-		aliceCmd.Process.Kill()
-		bobCmd.Process.Kill()
-		charlieCmd.Process.Kill()
+		_ = aliceCmd.Process.Kill()
+		_ = bobCmd.Process.Kill()
+		_ = charlieCmd.Process.Kill()
 		cancel()
 		_ = aliceCmd.Wait()
 		_ = bobCmd.Wait()
@@ -86,7 +86,7 @@ func startNodes(t *testing.T) {
 func TestStartAlice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := startAlice(t, ctx)
-	cmd.Process.Kill()
+	_ = cmd.Process.Kill()
 	cancel()
 	_ = cmd.Wait()
 }
@@ -94,7 +94,15 @@ func TestStartAlice(t *testing.T) {
 func TestStartBob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := startBob(t, ctx)
-	cmd.Process.Kill()
+	_ = cmd.Process.Kill()
+	cancel()
+	_ = cmd.Wait()
+}
+
+func TestStartCharlie(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cmd := startCharlie(t, ctx)
+	_ = cmd.Process.Kill()
 	cancel()
 	_ = cmd.Wait()
 }
@@ -145,7 +153,6 @@ func TestBob_Query(t *testing.T) {
 
 	resp, err := c.Query(providers[0][0])
 	require.NoError(t, err)
-	t.Log(resp)
 	require.Equal(t, 1, len(resp.Provides))
 	require.Equal(t, common.ProvidesETH, resp.Provides[0])
 	require.Equal(t, 1, len(resp.MaximumAmount))

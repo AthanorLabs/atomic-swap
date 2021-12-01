@@ -113,7 +113,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.True(t, ok)
 
 	// ensure we refund before t0
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 15)
 	require.NotNil(t, s.net.(*mockNet).msg)
 	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
 
@@ -194,7 +194,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, net.NotifyReadyType, resp.Type())
 
-	time.Sleep(time.Second * 15)
+	time.Sleep(time.Second * 20)
 	require.NotNil(t, s.net.(*mockNet).msg)
 	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
 
