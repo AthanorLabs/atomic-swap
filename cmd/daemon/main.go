@@ -365,7 +365,16 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
-	go s.Start()
+	errCh := s.Start()
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-errCh:
+			log.Errorf("failed to start RPC server: %s", err)
+			os.Exit(1)
+		}
+	}()
 
 	wait(ctx)
 	return nil

@@ -36,7 +36,9 @@ func NewServer(cfg *Config) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) Start() {
+func (s *Server) Start() <-chan error {
+	errCh := make(chan error)
+
 	go func() {
 		r := mux.NewRouter()
 		r.Handle("/", s.s)
@@ -45,6 +47,9 @@ func (s *Server) Start() {
 
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), r); err != nil {
 			log.Errorf("failed to start RPC server: %s", err)
+			errCh <- err
 		}
 	}()
+
+	return errCh
 }

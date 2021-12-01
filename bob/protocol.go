@@ -294,9 +294,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (monero.Address, error
 
 	// if we're on a development --regtest node, generate some blocks
 	if s.bob.env == common.Development {
-		if err := s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 1); err != nil {
-			return "", err
-		}
+		_ = s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 2)
 	} else {
 		// otherwise, wait for new blocks
 		if err := monero.WaitForBlocks(s.bob.client); err != nil {

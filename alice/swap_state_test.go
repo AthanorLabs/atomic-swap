@@ -177,7 +177,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 
 	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey())
 
-	_, err = s.deployAndLockETH(common.NewEtherAmount(1))
+	contractAddr, err := s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	s.desiredAmount = 0
@@ -194,17 +194,17 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, net.NotifyReadyType, resp.Type())
 
-	time.Sleep(time.Second * 20)
+	_, ok := resp.(*net.NotifyReady)
+	require.True(t, ok)
+
+	time.Sleep(time.Second * 25)
 	require.NotNil(t, s.net.(*mockNet).msg)
 	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
 
-	cdMsg, ok := resp.(*net.NotifyContractDeployed)
-	require.True(t, ok)
-
 	// check balance of contract is 0
-	balance, err := s.alice.ethClient.BalanceAt(s.ctx, ethcommon.HexToAddress(cdMsg.Address), nil)
+	balance, err := s.alice.ethClient.BalanceAt(s.ctx, contractAddr, nil)
 	require.NoError(t, err)
-	require.Equal(t, int64(0), balance.Int64())
+	require.Equal(t, uint64(0), balance.Uint64())
 }
 
 func TestSwapState_NotifyClaimed(t *testing.T) {

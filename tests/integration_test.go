@@ -1,10 +1,10 @@
 package tests
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,23 +34,60 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func startSwapDaemon(t *testing.T, ctx context.Context, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "../swapd", args...)
-	err := cmd.Start()
-	require.NoError(t, err)
+func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.Cmd {
+	cmd := exec.Command("../swapd", args...)
+
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
+	errCh := make(chan error)
+	go func() {
+		err := cmd.Run()
+		if err != nil {
+			errCh <- err
+		}
+
+		wg.Done()
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-done:
+				_ = cmd.Process.Kill()
+				_ = cmd.Wait()
+				// drain errCh
+				<-errCh
+				return
+			case err := <-errCh:
+				select {
+				case <-done:
+					return
+				}
+				t.Fatalf("program exited early: %s", err)
+			}
+		}
+	}()
+
+	t.Cleanup(func() {
+		wg.Wait()
+	})
+
 	time.Sleep(time.Second * 5)
 	return cmd
 }
 
-func startAlice(t *testing.T, ctx context.Context) *exec.Cmd {
-	return startSwapDaemon(t, ctx, "--alice",
+func startAlice(t *testing.T, done <-chan struct{}) *exec.Cmd {
+	return startSwapDaemon(t, done, "--alice",
 		"--max-amount", fmt.Sprintf("%v", aliceProvideAmount),
 		"--libp2p-key", defaultAliceTestLibp2pKey,
 	)
 }
 
-func startBob(t *testing.T, ctx context.Context) *exec.Cmd {
-	return startSwapDaemon(t, ctx, "--bob",
+func startBob(t *testing.T, done <-chan struct{}) *exec.Cmd {
+	return startSwapDaemon(t, done, "--bob",
 		"--max-amount", fmt.Sprintf("%v", bobProvideAmount),
 		"--bootnodes", defaultAliceMultiaddr,
 		"--wallet-file", "test-wallet",
@@ -59,58 +96,47 @@ func startBob(t *testing.T, ctx context.Context) *exec.Cmd {
 
 // charlie doesn't provide any coin or participate in any swap.
 // he is just a node running the p2p protocol.
-func startCharlie(t *testing.T, ctx context.Context) *exec.Cmd {
-	return startSwapDaemon(t, ctx,
+func startCharlie(t *testing.T, done <-chan struct{}) *exec.Cmd {
+	return startSwapDaemon(t, done,
 		"--libp2p-port", "9955",
 		"--rpc-port", "5003",
 		"--bootnodes", defaultAliceMultiaddr)
 }
 
 func startNodes(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	aliceCmd := startAlice(t, ctx)
-	bobCmd := startBob(t, ctx)
-	charlieCmd := startCharlie(t, ctx)
+	done := make(chan struct{})
+
+	_ = startAlice(t, done)
+	_ = startBob(t, done)
+	_ = startCharlie(t, done)
 
 	t.Cleanup(func() {
-		_ = aliceCmd.Process.Kill()
-		_ = bobCmd.Process.Kill()
-		_ = charlieCmd.Process.Kill()
-		cancel()
-		_ = aliceCmd.Wait()
-		_ = bobCmd.Wait()
-		_ = charlieCmd.Wait()
+		close(done)
 	})
 }
 
 func TestStartAlice(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cmd := startAlice(t, ctx)
-	_ = cmd.Process.Kill()
-	cancel()
-	_ = cmd.Wait()
+	done := make(chan struct{})
+	_ = startAlice(t, done)
+	close(done)
 }
 
 func TestStartBob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cmd := startBob(t, ctx)
-	_ = cmd.Process.Kill()
-	cancel()
-	_ = cmd.Wait()
+	done := make(chan struct{})
+	_ = startBob(t, done)
+	close(done)
 }
 
 func TestStartCharlie(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cmd := startCharlie(t, ctx)
-	_ = cmd.Process.Kill()
-	cancel()
-	_ = cmd.Wait()
+	done := make(chan struct{})
+	_ = startCharlie(t, done)
+	close(done)
 }
 
 func TestAlice_Discover(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultAliceDaemonEndpoint)
-	providers, err := c.Discover(common.ProvidesXMR, 3)
+	providers, err := c.Discover(common.ProvidesXMR, 15)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -119,7 +145,7 @@ func TestAlice_Discover(t *testing.T) {
 func TestBob_Discover(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
-	providers, err := c.Discover(common.ProvidesETH, 3)
+	providers, err := c.Discover(common.ProvidesETH, 15)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
