@@ -53,21 +53,22 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) *exec.C
 	go func() {
 		defer wg.Done()
 
-		for {
+		select {
+		case <-done:
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+			// drain errCh
+			<-errCh
+			return
+		case err := <-errCh:
+			//time.Sleep(time.Millisecond * 1000)
 			select {
 			case <-done:
-				_ = cmd.Process.Kill()
-				_ = cmd.Wait()
-				// drain errCh
-				<-errCh
 				return
-			case err := <-errCh:
-				select {
-				case <-done:
-					return
-				}
-				t.Fatalf("program exited early: %s", err)
+				//default:
 			}
+			fmt.Println("program exited early: ", err)
+			os.Exit(1)
 		}
 	}()
 
