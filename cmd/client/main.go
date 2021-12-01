@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/noot/atomic-swap/cmd/client/client"
 	"github.com/noot/atomic-swap/common"
 
 	logging "github.com/ipfs/go-log"
@@ -91,16 +92,6 @@ func main() {
 	}
 }
 
-type Client struct {
-	endpoint string
-}
-
-func NewClient(endpoint string) *Client {
-	return &Client{
-		endpoint: endpoint,
-	}
-}
-
 func runDiscover(ctx *cli.Context) error {
 	provides, err := common.NewProvidesCoin(ctx.String("provides"))
 	if err != nil {
@@ -114,8 +105,8 @@ func runDiscover(ctx *cli.Context) error {
 
 	searchTime := ctx.Uint("search-time")
 
-	c := NewClient(endpoint)
-	peers, err := c.discover(provides, uint64(searchTime))
+	c := client.NewClient(endpoint)
+	peers, err := c.Discover(provides, uint64(searchTime))
 	if err != nil {
 		return err
 	}
@@ -138,8 +129,8 @@ func runQuery(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := NewClient(endpoint)
-	res, err := c.query(maddr)
+	c := client.NewClient(endpoint)
+	res, err := c.Query(maddr)
 	if err != nil {
 		return err
 	}
@@ -177,8 +168,8 @@ func runInitiate(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := NewClient(endpoint)
-	ok, err := c.initiate(maddr, provides, providesAmount, desiredAmount)
+	c := client.NewClient(endpoint)
+	ok, err := c.Initiate(maddr, provides, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}

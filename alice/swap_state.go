@@ -203,9 +203,34 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to refresh client: %w", err)
 		}
 
-		balance, err := s.alice.client.GetBalance(0)
+		accounts, err := s.alice.client.GetAccounts()
 		if err != nil {
-			return nil, true, fmt.Errorf("failed to get balance: %w", err)
+			return nil, true, fmt.Errorf("failed to get accounts: %w", err)
+		}
+
+		var (
+			balance *monero.GetBalanceResponse
+		)
+
+		fmt.Println("num accounts", len(accounts.SubaddressAccounts))
+		for i, acc := range accounts.SubaddressAccounts {
+			addr, ok := acc["base_address"].(string)
+			if !ok {
+				panic("address is not a string!")
+			}
+
+			if monero.Address(addr) == kp.Address(s.alice.env) {
+				balance, err = s.alice.client.GetBalance(uint(i))
+				if err != nil {
+					return nil, true, fmt.Errorf("failed to get balance: %w", err)
+				}
+
+				break
+			}
+		}
+
+		if balance == nil {
+			return nil, true, fmt.Errorf("failed to find account with address %s", kp.Address(s.alice.env))
 		}
 
 		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)

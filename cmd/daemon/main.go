@@ -62,6 +62,10 @@ var (
 				Name:  "basepath",
 				Usage: "path to store swap artifacts",
 			},
+			&cli.StringFlag{
+				Name:  "libp2p-key",
+				Usage: "libp2p private key",
+			},
 			&cli.BoolFlag{
 				Name:  "alice",
 				Usage: "run as Alice (have ETH, want XMR)",
@@ -281,6 +285,17 @@ func runDaemon(c *cli.Context) error {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
+	k := c.String("libp2p-key")
+	var libp2pKey string
+	switch {
+	case k != "":
+		libp2pKey = k
+	case isAlice:
+		libp2pKey = defaultAliceLibp2pKey
+	case isBob:
+		libp2pKey = defaultBobLibp2pKey
+	}
+
 	netCfg := &net.Config{
 		Ctx:           ctx,
 		Environment:   env,
@@ -289,7 +304,7 @@ func runDaemon(c *cli.Context) error {
 		Provides:      []common.ProvidesCoin{common.ProvidesETH}, // TODO: make flag
 		MaximumAmount: []float64{amount},
 		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
+		KeyFile:       libp2pKey,
 		Bootnodes:     bootnodes,
 		Handler:       handler,
 	}
@@ -298,7 +313,6 @@ func runDaemon(c *cli.Context) error {
 	if c.Bool("bob") {
 		netCfg.Port = defaultBobPort
 		netCfg.Provides = []common.ProvidesCoin{common.ProvidesXMR}
-		netCfg.KeyFile = defaultBobLibp2pKey
 		port = defaultRPCPort + 1
 	}
 
