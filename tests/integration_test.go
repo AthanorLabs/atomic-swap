@@ -38,7 +38,7 @@ func startSwapDaemon(t *testing.T, ctx context.Context, args ...string) *exec.Cm
 	cmd := exec.CommandContext(ctx, "../swapd", args...)
 	err := cmd.Start()
 	require.NoError(t, err)
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 5)
 	return cmd
 }
 
