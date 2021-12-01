@@ -44,14 +44,14 @@ func startSwapDaemon(t *testing.T, ctx context.Context, args ...string) *exec.Cm
 
 func startAlice(t *testing.T, ctx context.Context) *exec.Cmd {
 	return startSwapDaemon(t, ctx, "--alice",
-		"--amount", fmt.Sprintf("%v", aliceProvideAmount),
+		"--max-amount", fmt.Sprintf("%v", aliceProvideAmount),
 		"--libp2p-key", defaultAliceTestLibp2pKey,
 	)
 }
 
 func startBob(t *testing.T, ctx context.Context) *exec.Cmd {
 	return startSwapDaemon(t, ctx, "--bob",
-		"--amount", fmt.Sprintf("%v", bobProvideAmount),
+		"--max-amount", fmt.Sprintf("%v", bobProvideAmount),
 		"--bootnodes", defaultAliceMultiaddr,
 		"--wallet-file", "test-wallet",
 	)
@@ -60,7 +60,10 @@ func startBob(t *testing.T, ctx context.Context) *exec.Cmd {
 // charlie doesn't provide any coin or participate in any swap.
 // he is just a node running the p2p protocol.
 func startCharlie(t *testing.T, ctx context.Context) *exec.Cmd {
-	return startSwapDaemon(t, ctx, "--bootnodes", defaultAliceMultiaddr)
+	return startSwapDaemon(t, ctx,
+		"--libp2p-port", "9955",
+		"--rpc-port", "5003",
+		"--bootnodes", defaultAliceMultiaddr)
 }
 
 func startNodes(t *testing.T) {
@@ -70,6 +73,9 @@ func startNodes(t *testing.T) {
 	charlieCmd := startCharlie(t, ctx)
 
 	t.Cleanup(func() {
+		aliceCmd.Process.Kill()
+		bobCmd.Process.Kill()
+		charlieCmd.Process.Kill()
 		cancel()
 		_ = aliceCmd.Wait()
 		_ = bobCmd.Wait()
@@ -80,6 +86,7 @@ func startNodes(t *testing.T) {
 func TestStartAlice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := startAlice(t, ctx)
+	cmd.Process.Kill()
 	cancel()
 	_ = cmd.Wait()
 }
@@ -87,6 +94,7 @@ func TestStartAlice(t *testing.T) {
 func TestStartBob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := startBob(t, ctx)
+	cmd.Process.Kill()
 	cancel()
 	_ = cmd.Wait()
 }
@@ -142,4 +150,32 @@ func TestBob_Query(t *testing.T) {
 	require.Equal(t, common.ProvidesETH, resp.Provides[0])
 	require.Equal(t, 1, len(resp.MaximumAmount))
 	require.Equal(t, aliceProvideAmount, resp.MaximumAmount[0])
+}
+
+func TestAlice_Initiate(t *testing.T) {
+	startNodes(t)
+	c := client.NewClient(defaultAliceDaemonEndpoint)
+
+	providers, err := c.Discover(common.ProvidesXMR, 3)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(providers))
+	require.GreaterOrEqual(t, len(providers[0]), 2)
+
+	ok, err := c.Initiate(providers[0][0], common.ProvidesETH, 3, 4)
+	require.NoError(t, err)
+	require.True(t, ok)
+}
+
+func TestBob_Initiate(t *testing.T) {
+	startNodes(t)
+	c := client.NewClient(defaultBobDaemonEndpoint)
+
+	providers, err := c.Discover(common.ProvidesETH, 3)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(providers))
+	require.GreaterOrEqual(t, len(providers[0]), 2)
+
+	ok, err := c.Initiate(providers[0][0], common.ProvidesXMR, 3, 1)
+	require.NoError(t, err)
+	require.True(t, ok)
 }

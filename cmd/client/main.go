@@ -37,6 +37,7 @@ var (
 						Name:  "search-time",
 						Usage: "duration of time to search for, in seconds",
 					},
+					daemonAddrFlag,
 				},
 			},
 			{
@@ -49,6 +50,7 @@ var (
 						Name:  "multiaddr",
 						Usage: "peer's multiaddress, as provided by discover",
 					},
+					daemonAddrFlag,
 				},
 			},
 			{
@@ -73,15 +75,16 @@ var (
 						Name:  "desired-amount",
 						Usage: "amount of coin to receive in the swap",
 					},
+					daemonAddrFlag,
 				},
 			},
 		},
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "daemon-addr",
-				Usage: "address of swap daemon; default http://localhost:5001",
-			},
-		},
+		Flags: []cli.Flag{daemonAddrFlag},
+	}
+
+	daemonAddrFlag = &cli.StringFlag{
+		Name:  "daemon-addr",
+		Usage: "address of swap daemon; default http://localhost:5001",
 	}
 )
 

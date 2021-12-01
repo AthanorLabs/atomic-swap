@@ -14,11 +14,11 @@ var log = logging.Logger("rpc")
 
 type Server struct {
 	s    *rpc.Server
-	port uint32
+	port uint16
 }
 
 type Config struct {
-	Port     uint32
+	Port     uint16
 	Net      Net
 	Protocol Protocol
 }

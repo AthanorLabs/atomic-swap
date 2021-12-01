@@ -33,6 +33,10 @@ const (
 )
 
 func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error {
+	if h.handler == nil {
+		return errors.New("no swap message handler set")
+	}
+
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -69,6 +73,10 @@ func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) er
 
 // handleProtocolStream is called when there is an incoming protocol stream.
 func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
+	if h.handler == nil {
+		return
+	}
+
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 

@@ -67,7 +67,7 @@ type Config struct {
 	Ctx           context.Context
 	Environment   common.Environment
 	ChainID       int64
-	Port          uint64
+	Port          uint16
 	Provides      []common.ProvidesCoin
 	MaximumAmount []float64
 	ExchangeRate  common.ExchangeRate
