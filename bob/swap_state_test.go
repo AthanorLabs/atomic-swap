@@ -190,7 +190,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.Nil(t, resp)
 	require.True(t, done)
 
-	duration, err := time.ParseDuration("10s")
+	duration, err := time.ParseDuration("15s")
 	require.NoError(t, err)
 	addr, _ := deploySwap(t, bob, s, [32]byte{}, duration)
 
