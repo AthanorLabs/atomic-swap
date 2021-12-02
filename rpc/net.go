@@ -15,6 +15,7 @@ import (
 const defaultSearchTime = time.Second * 12
 
 type Net interface {
+	Addresses() []string
 	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
@@ -35,6 +36,15 @@ func NewNetService(net Net, protocol Protocol) *NetService {
 		net:      net,
 		protocol: protocol,
 	}
+}
+
+type AddressesResponse struct {
+	Addrs []string `json:"addresses"`
+}
+
+func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesResponse) error {
+	resp.Addrs = s.net.Addresses()
+	return nil
 }
 
 type DiscoverRequest struct {

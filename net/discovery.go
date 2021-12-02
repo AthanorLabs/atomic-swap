@@ -88,6 +88,14 @@ func (d *discovery) advertise() {
 					ttl = tryAdvertiseTimeout
 				}
 			}
+
+			if len(d.provides) == 0 {
+				ttl, err = d.rd.Advertise(d.ctx, "")
+				if err != nil {
+					log.Debugf("failed to advertise in the DHT: err=%s", err)
+					ttl = tryAdvertiseTimeout
+				}
+			}
 		case <-d.ctx.Done():
 			return
 		}

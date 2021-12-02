@@ -67,7 +67,7 @@ type Config struct {
 	Ctx           context.Context
 	Environment   common.Environment
 	ChainID       int64
-	Port          uint64
+	Port          uint16
 	Provides      []common.ProvidesCoin
 	MaximumAmount []float64
 	ExchangeRate  common.ExchangeRate
@@ -174,6 +174,14 @@ func (h *host) Stop() error {
 	}
 
 	return nil
+}
+
+func (h *host) Addresses() []string {
+	var addrs []string
+	for _, ma := range h.multiaddrs() {
+		addrs = append(addrs, ma.String())
+	}
+	return addrs
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.
