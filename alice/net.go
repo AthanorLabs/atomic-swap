@@ -15,7 +15,7 @@ func (a *alice) Provides() common.ProvidesCoin {
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether and monero.
-func (a *alice) InitiateProtocol(providesAmount, desiredAmount float64, gasPrice uint64) (net.SwapState, error) {
+func (a *alice) InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error) {
 	if err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(desiredAmount)); err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 	// we initiate our protocol, saying we will provide what they desire and vice versa.
 
 	// TODO: somehow get gas price, ie. when the user accepts via cli
-	if err := a.initiate(common.EtherToWei(msg.DesiredAmount), common.MoneroToPiconero(msg.ProvidesAmount), 0); err != nil {
+	if err := a.initiate(common.EtherToWei(msg.DesiredAmount), common.MoneroToPiconero(msg.ProvidesAmount)); err != nil {
 		return nil, nil, err
 	}
 
@@ -49,7 +49,7 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 	return a.swapState, resp, nil
 }
 
-func (a *alice) initiate(providesAmount common.EtherAmount, desiredAmount common.MoneroAmount, gasPrice uint64) error {
+func (a *alice) initiate(providesAmount common.EtherAmount, desiredAmount common.MoneroAmount) error {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
@@ -67,7 +67,7 @@ func (a *alice) initiate(providesAmount common.EtherAmount, desiredAmount common
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	a.swapState, err = newSwapState(a, providesAmount, desiredAmount, gasPrice)
+	a.swapState, err = newSwapState(a, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}

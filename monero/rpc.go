@@ -78,10 +78,6 @@ type transferRequest struct {
 	Destinations []Destination `json:"destinations"`
 	AccountIndex uint          // optional
 	Priority     uint          `json:"priority"`
-	// Mixin uint  `json:"mixin"`
-	// RingSize uint  `json:"ring_size"`
-	// UnlockTime uint  `json:"unlock_time"`
-	// GetTxKey bool
 }
 
 type TransferResponse struct {
@@ -104,7 +100,6 @@ func (c *client) callTransfer(destinations []Destination, accountIdx uint) (*Tra
 		Destinations: destinations,
 		AccountIndex: accountIdx,
 		Priority:     0,
-		//RingSize: 11,
 	}
 
 	params, err := json.Marshal(req)
@@ -133,14 +128,14 @@ type getBalanceRequest struct {
 	AccountIndex uint `json:"account_index"`
 }
 
-type getBalanceResponse struct {
+type GetBalanceResponse struct {
 	Balance         float64                  `json:"balance"`
 	BlocksToUnlock  uint                     `json:"blocks_to_unlock"`
 	UnlockedBalance float64                  `json:"unlocked_balance"`
 	PerSubaddress   []map[string]interface{} `json:"per_subaddress"`
 }
 
-func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
+func (c *client) callGetBalance(idx uint) (*GetBalanceResponse, error) {
 	const method = "get_balance"
 
 	req := &getBalanceRequest{
@@ -161,7 +156,7 @@ func (c *client) callGetBalance(idx uint) (*getBalanceResponse, error) {
 		return nil, resp.Error
 	}
 
-	var res *getBalanceResponse
+	var res *GetBalanceResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return nil, err
 	}

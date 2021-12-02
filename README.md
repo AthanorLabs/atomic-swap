@@ -2,6 +2,10 @@
 
 This is a WIP prototype of ETH<->XMR atomic swaps, currently in the early development phase. It currently consists of a single `atomic-swap` binary which allows for peers to discover each other over the network based on what you want to swap for, querying peers for additional info such as their desired exchange rate, and the ability to initiate and perform the entire protocol. The `atomic-swap` program has a JSON-RPC endpoint which the user can use to interact with the process. 
 
+## Disclaimer
+
+**This code is unaudited and under active development and should not be used on mainnet!** Running this on mainnet may result in loss of funds.
+
 ## Protocol
 
 Please see the [protocol documentation](docs/protocol.md) for how it works.
@@ -75,7 +79,7 @@ This creates `swapd` and `swapcli` binaries in the root directory.
 
 To run as Alice, execute in terminal 1:
 ```
-./swapd --amount 1 --alice
+./swapd --max-amount 1 --alice
 ```
 
 Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA`. This will be used for Bob to connect.
@@ -83,7 +87,7 @@ Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933
 To run as Bob and connect to Alice, replace the bootnode in the following line with what Alice logged, and execute in terminal 2:
 
 ```
-./swapd --amount 1 --bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
+./swapd --max-amount 1 --bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
 ```
 
 Note: amount doesn't matter at this point, it's only used in the `QueryResponse` message (ie. what's returned by `swapcli query`)

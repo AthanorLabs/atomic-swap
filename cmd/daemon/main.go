@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,8 +22,8 @@ import (
 
 const (
 	// default libp2p ports
-	defaultAlicePort = 9933
-	defaultBobPort   = 9934
+	defaultAliceLibp2pPort = 9933
+	defaultBobLibp2pPort   = 9934
 
 	// defaultExchangeRate is the default ratio of ETH:XMR.
 	// TODO; make this a CLI flag, or get it from some price feed.
@@ -33,7 +34,8 @@ const (
 	defaultBobLibp2pKey   = "bob.key"
 
 	// default RPC port
-	defaultRPCPort = 5001
+	defaultAliceRPCPort = 5001
+	defaultBobRPCPort   = 5002
 
 	defaultEnvironment = common.Development
 )
@@ -42,7 +44,7 @@ var (
 	log = logging.Logger("cmd")
 	_   = logging.SetLogLevel("alice", "debug")
 	_   = logging.SetLogLevel("bob", "debug")
-	_   = logging.SetLogLevel("common", "info")
+	_   = logging.SetLogLevel("common", "debug")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
 	_   = logging.SetLogLevel("rpc", "debug")
@@ -61,6 +63,14 @@ var (
 			&cli.StringFlag{
 				Name:  "basepath",
 				Usage: "path to store swap artifacts",
+			},
+			&cli.StringFlag{
+				Name:  "libp2p-key",
+				Usage: "libp2p private key",
+			},
+			&cli.UintFlag{
+				Name:  "libp2p-port",
+				Usage: "libp2p port to listen on",
 			},
 			&cli.BoolFlag{
 				Name:  "alice",
@@ -83,9 +93,9 @@ var (
 				Usage: "environment to use: one of mainnet, stagenet, or dev",
 			},
 			&cli.Float64Flag{
-				Name:  "amount", // TODO: remove this and pass it via RPC
+				Name:  "max-amount", // TODO: remove this and pass it via RPC
 				Value: 0,
-				Usage: "maximum amount to swap (in smallest units of coin)",
+				Usage: "maximum amount to swap (in standard units of coin)",
 			},
 			&cli.StringFlag{
 				Name:  "monero-endpoint",
@@ -111,6 +121,14 @@ var (
 				Name:  "bootnodes",
 				Usage: "comma-separated string of libp2p bootnodes",
 			},
+			&cli.UintFlag{
+				Name: "gas-price",
+				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
+			},
+			&cli.UintFlag{
+				Name: "gas-limit",
+				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
+			},
 		},
 	}
 )
@@ -131,10 +149,6 @@ func runDaemon(c *cli.Context) error {
 
 	isAlice := c.Bool("alice")
 	isBob := c.Bool("bob")
-
-	if !isAlice && !isBob {
-		return errors.New("must specify either --alice or --bob")
-	}
 
 	if isAlice && isBob {
 		return errors.New("must specify only one of --alice or --bob")
@@ -219,6 +233,13 @@ func runDaemon(c *cli.Context) error {
 		SetMessageSender(net.MessageSender)
 	}
 
+	var gasPrice *big.Int
+	if c.Uint("gas-price") != 0 {
+		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	}
+
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+
 	var (
 		handler Handler
 		err     error
@@ -233,6 +254,8 @@ func runDaemon(c *cli.Context) error {
 			EthereumPrivateKey:   ethPrivKey,
 			Environment:          env,
 			ChainID:              chainID,
+			GasPrice: gasPrice,
+			GasLimit: uint64(c.Uint("gas-limit")),
 		}
 
 		handler, err = alice.NewAlice(aliceCfg)
@@ -259,47 +282,70 @@ func runDaemon(c *cli.Context) error {
 			EthereumPrivateKey:   ethPrivKey,
 			Environment:          env,
 			ChainID:              chainID,
+			GasPrice: gasPrice,
+			GasLimit: uint64(c.Uint("gas-limit")),
 		}
 
 		handler, err = bob.NewBob(bobCfg)
 		if err != nil {
 			return err
 		}
-	default:
-		return errors.New("must specify either --alice or --bob")
 	}
 
-	port := uint32(c.Uint("rpc-port"))
-	if port == 0 {
-		port = defaultRPCPort
-	}
-
-	amount := float64(c.Float64("amount"))
+	amount := float64(c.Float64("max-amount"))
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
 		bootnodes = strings.Split(c.String("bootnodes"), ",")
 	}
 
+	k := c.String("libp2p-key")
+	p := uint16(c.Uint("libp2p-port"))
+	var (
+		libp2pKey  string
+		libp2pPort uint16
+		provides   []common.ProvidesCoin
+		rpcPort    uint16
+	)
+
+	switch {
+	case k != "":
+		libp2pKey = k
+	case isAlice:
+		libp2pKey = defaultAliceLibp2pKey
+	case isBob:
+		libp2pKey = defaultBobLibp2pKey
+	}
+
+	switch {
+	case p != 0:
+		libp2pPort = p
+	case isAlice:
+		libp2pPort = defaultAliceLibp2pPort
+	case isBob:
+		libp2pPort = defaultBobLibp2pPort
+	default:
+		return errors.New("must provide --libp2p-port")
+	}
+
+	switch {
+	case isAlice:
+		provides = []common.ProvidesCoin{common.ProvidesETH}
+	case isBob:
+		provides = []common.ProvidesCoin{common.ProvidesXMR}
+	}
+
 	netCfg := &net.Config{
 		Ctx:           ctx,
 		Environment:   env,
 		ChainID:       chainID,
-		Port:          defaultAlicePort,                          // TODO: make flag
-		Provides:      []common.ProvidesCoin{common.ProvidesETH}, // TODO: make flag
+		Port:          libp2pPort,
+		Provides:      provides,
 		MaximumAmount: []float64{amount},
 		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       defaultAliceLibp2pKey, // TODO: make flag
+		KeyFile:       libp2pKey,
 		Bootnodes:     bootnodes,
 		Handler:       handler,
-	}
-
-	// TODO: this is ugly
-	if c.Bool("bob") {
-		netCfg.Port = defaultBobPort
-		netCfg.Provides = []common.ProvidesCoin{common.ProvidesXMR}
-		netCfg.KeyFile = defaultBobLibp2pKey
-		port = defaultRPCPort + 1
 	}
 
 	host, err := net.NewHost(netCfg)
@@ -308,14 +354,28 @@ func runDaemon(c *cli.Context) error {
 	}
 
 	// connect network to protocol handler
-	handler.SetMessageSender(host)
+	if isAlice || isBob {
+		handler.SetMessageSender(host)
+	}
 
 	if err = host.Start(); err != nil {
 		return err
 	}
 
+	p = uint16(c.Uint("rpc-port"))
+	switch {
+	case p != 0:
+		rpcPort = p
+	case isAlice:
+		rpcPort = defaultAliceRPCPort
+	case isBob:
+		rpcPort = defaultBobRPCPort
+	default:
+		return errors.New("must provide --rpc-port")
+	}
+
 	rpcCfg := &rpc.Config{
-		Port:     port,
+		Port:     rpcPort,
 		Net:      host,
 		Protocol: handler,
 	}
@@ -325,7 +385,16 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
-	go s.Start()
+	errCh := s.Start()
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-errCh:
+			log.Errorf("failed to start RPC server: %s", err)
+			os.Exit(1)
+		}
+	}()
 
 	wait(ctx)
 	return nil

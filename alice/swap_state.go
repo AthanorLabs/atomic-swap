@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
@@ -63,15 +62,14 @@ type swapState struct {
 	success bool
 }
 
-func newSwapState(a *alice, providesAmount common.EtherAmount, desiredAmount common.MoneroAmount, gasPrice uint64)) *swapState {
+func newSwapState(a *alice, providesAmount common.EtherAmount, desiredAmount common.MoneroAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	if gasPrice != 0 {
-		txOpts.GasPrice = big.NewInt(int64(gasPrice))
-	}
+	txOpts.GasPrice = a.gasPrice
+	txOpts.GasLimit = a.gasLimit
 
 	ctx, cancel := context.WithCancel(a.ctx)
 
@@ -193,9 +191,12 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		t := time.Now().Format("2006-Jan-2-15:04:05")
 		walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
+		log.Debugf("generating view-only wallet to check funds: %s", walletName)
 		if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.alice.env), walletName, ""); err != nil {
 			return nil, true, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 		}
+
+		log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
 		if s.alice.env != common.Development {
 			// wait for 2 new blocks, otherwise balance might be 0
@@ -213,9 +214,33 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to refresh client: %w", err)
 		}
 
-		balance, err := s.alice.client.GetBalance(0)
+		accounts, err := s.alice.client.GetAccounts()
 		if err != nil {
-			return nil, true, fmt.Errorf("failed to get balance: %w", err)
+			return nil, true, fmt.Errorf("failed to get accounts: %w", err)
+		}
+
+		var (
+			balance *monero.GetBalanceResponse
+		)
+
+		for i, acc := range accounts.SubaddressAccounts {
+			addr, ok := acc["base_address"].(string)
+			if !ok {
+				panic("address is not a string!")
+			}
+
+			if monero.Address(addr) == kp.Address(s.alice.env) {
+				balance, err = s.alice.client.GetBalance(uint(i))
+				if err != nil {
+					return nil, true, fmt.Errorf("failed to get balance: %w", err)
+				}
+
+				break
+			}
+		}
+
+		if balance == nil {
+			return nil, true, fmt.Errorf("failed to find account with address %s", kp.Address(s.alice.env))
 		}
 
 		log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)
@@ -236,7 +261,11 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to call Ready: %w", err)
 		}
 
-		log.Debug("set swap.IsReady == true")
+		log.Debug("set swap.IsReady to true")
+
+		if err := s.setTimeouts(); err != nil {
+			return nil, true, fmt.Errorf("failed to set timeouts: %w", err)
+		}
 
 		go func() {
 			until := time.Until(s.t1)
@@ -244,7 +273,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			select {
 			case <-s.ctx.Done():
 				return
-			case <-time.After(until):
+			case <-time.After(until + time.Second):
 				// Bob hasn't claimed, and we're after t_1. let's call Refund
 				txhash, err := s.refund()
 				if err != nil {
@@ -283,6 +312,45 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	}
 }
 
+func (s *swapState) setTimeouts() error {
+	if s.contract == nil {
+		return errors.New("contract is nil")
+	}
+
+	if (s.t0 != time.Time{}) && (s.t1 != time.Time{}) {
+		return nil
+	}
+
+	// TODO: add maxRetries
+	for {
+		log.Debug("attempting to fetch t0 from contract")
+
+		st0, err := s.contract.Timeout0(s.alice.callOpts)
+		if err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		s.t0 = time.Unix(st0.Int64(), 0)
+		break
+	}
+
+	for {
+		log.Debug("attempting to fetch t1 from contract")
+
+		st1, err := s.contract.Timeout1(s.alice.callOpts)
+		if err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		s.t1 = time.Unix(st1.Int64(), 0)
+		break
+	}
+
+	return nil
+}
+
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -316,30 +384,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	// set t0 and t1
 	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
-	for {
-		log.Debug("attempting to fetch t0 from contract")
-
-		st0, err := s.contract.Timeout0(s.alice.callOpts)
-		if err != nil {
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		s.t0 = time.Unix(st0.Int64(), 0)
-		break
-	}
-
-	for {
-		log.Debug("attempting to fetch t1 from contract")
-
-		st1, err := s.contract.Timeout1(s.alice.callOpts)
-		if err != nil {
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		s.t1 = time.Unix(st1.Int64(), 0)
-		break
+	if err := s.setTimeouts(); err != nil {
+		return nil, err
 	}
 
 	// start goroutine to check that Bob locks before t_0

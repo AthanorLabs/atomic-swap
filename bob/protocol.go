@@ -42,6 +42,8 @@ type bob struct {
 	callOpts   *bind.CallOpts
 	ethAddress ethcommon.Address
 	chainID    *big.Int
+	gasPrice *big.Int
+	gasLimit uint64
 
 	net net.MessageSender
 
@@ -59,6 +61,8 @@ type Config struct {
 	EthereumPrivateKey         string
 	Environment                common.Environment
 	ChainID                    int64
+	GasPrice *big.Int
+	GasLimit uint64
 }
 
 // NewBob returns a new instance of Bob.
@@ -77,6 +81,9 @@ func NewBob(cfg *Config) (*bob, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// auth.GasLimit = 3027733
+	// auth.GasPrice = big.NewInt(2000000000)
 
 	pub := pk.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
@@ -286,9 +293,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (monero.Address, error
 
 	// if we're on a development --regtest node, generate some blocks
 	if s.bob.env == common.Development {
-		if err := s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 1); err != nil {
-			return "", err
-		}
+		_ = s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 2)
 	} else {
 		// otherwise, wait for new blocks
 		if err := monero.WaitForBlocks(s.bob.client); err != nil {

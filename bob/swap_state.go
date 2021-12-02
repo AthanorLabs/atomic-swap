@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -50,7 +49,6 @@ type swapState struct {
 
 	// Alice's keys for this session
 	alicePublicKeys *monero.PublicKeyPair
-	//alicePrivateViewKey *monero.PrivateViewKey
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -62,15 +60,14 @@ type swapState struct {
 	success bool
 }
 
-func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount, gasPrice uint64) *swapState {
+func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	if gasPrice != 0 {
-		txOpts.GasPrice = big.NewInt(int64(gasPrice))
-	}
+	txOpts.GasPrice = b.gasPrice
+	txOpts.GasLimit = b.gasLimit
 
 	ctx, cancel := context.WithCancel(b.ctx)
 
@@ -224,7 +221,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			select {
 			case <-s.ctx.Done():
 				return
-			case <-time.After(until):
+			case <-time.After(until + time.Second):
 				// we can now call Claim()
 				txHash, err := s.claimFunds()
 				if err != nil {

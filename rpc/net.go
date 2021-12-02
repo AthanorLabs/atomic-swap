@@ -15,6 +15,7 @@ import (
 const defaultSearchTime = time.Second * 12
 
 type Net interface {
+	Addresses() []string
 	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
@@ -22,7 +23,7 @@ type Net interface {
 
 type Protocol interface {
 	Provides() common.ProvidesCoin
-	InitiateProtocol(providesAmount, desiredAmount float64, gasPrice uint64) (net.SwapState, error)
+	InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error)
 }
 
 type NetService struct {
@@ -35,6 +36,15 @@ func NewNetService(net Net, protocol Protocol) *NetService {
 		net:      net,
 		protocol: protocol,
 	}
+}
+
+type AddressesResponse struct {
+	Addrs []string `json:"addresses"`
+}
+
+func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesResponse) error {
+	resp.Addrs = s.net.Addresses()
+	return nil
 }
 
 type DiscoverRequest struct {
@@ -111,7 +121,6 @@ type InitiateRequest struct {
 	ProvidesCoin   common.ProvidesCoin `json:"provides"`
 	ProvidesAmount float64             `json:"providesAmount"`
 	DesiredAmount  float64             `json:"desiredAmount"`
-	GasPrice       uint64              `json:"gasPrice"`
 }
 
 type InitiateResponse struct {
@@ -123,7 +132,7 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return errors.New("must specify 'provides' coin")
 	}
 
-	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount, req.GasPrice)
+	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
 	if err != nil {
 		return err
 	}
@@ -151,5 +160,13 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 	}
 
 	resp.Success = true
+	return nil
+}
+
+type SetGasPriceRequest struct {
+	GasPrice uint64
+}
+
+func (s *NetService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
 	return nil
 }

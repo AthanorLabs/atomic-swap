@@ -43,7 +43,9 @@ type alice struct {
 	ethClient  *ethclient.Client
 	callOpts   *bind.CallOpts
 	chainID    *big.Int
-
+	gasPrice *big.Int
+	gasLimit uint64
+	
 	net net.MessageSender
 
 	// non-nil if a swap is currently happening, nil otherwise
@@ -59,6 +61,8 @@ type Config struct {
 	EthereumPrivateKey   string
 	Environment          common.Environment
 	ChainID              int64
+	GasPrice *big.Int
+	GasLimit uint64
 }
 
 // NewAlice returns a new instance of Alice.
@@ -74,6 +78,10 @@ func NewAlice(cfg *Config) (*alice, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: add --gas-limit flag and default params for L2
+	// auth.GasLimit = 35323600
+	// auth.GasPrice = big.NewInt(2000000000)
 
 	pub := pk.Public().(*ecdsa.PublicKey)
 
@@ -337,10 +345,6 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	if err = monero.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
 		return "", err
 	}
-
-	//pkAB := kpAB.PublicKeyPair()
-	// log.Info("public spend keys: ", pkAB.SpendKey().Hex())
-	// log.Info("public view keys: ", pkAB.ViewKey().Hex())
 
 	return s.createMoneroWallet(kpAB)
 }
