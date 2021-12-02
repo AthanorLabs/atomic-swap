@@ -212,7 +212,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			balance *monero.GetBalanceResponse
 		)
 
-		fmt.Println("num accounts", len(accounts.SubaddressAccounts))
 		for i, acc := range accounts.SubaddressAccounts {
 			addr, ok := acc["base_address"].(string)
 			if !ok {

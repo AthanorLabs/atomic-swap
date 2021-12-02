@@ -18,6 +18,7 @@ const (
 	defaultAliceTestLibp2pKey  = "alice.key"
 	defaultAliceDaemonEndpoint = "http://localhost:5001"
 	defaultBobDaemonEndpoint   = "http://localhost:5002"
+	defaultDiscoverTimeout     = 2 // 2 seconds
 
 	aliceProvideAmount = float64(33.3)
 	bobProvideAmount   = float64(44.4)
@@ -77,7 +78,7 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) {
 		wg.Wait()
 	})
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 2)
 }
 
 func startAlice(t *testing.T, done <-chan struct{}) []string {
@@ -144,7 +145,7 @@ func TestStartCharlie(t *testing.T) {
 func TestAlice_Discover(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultAliceDaemonEndpoint)
-	providers, err := c.Discover(common.ProvidesXMR, 15)
+	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -153,7 +154,7 @@ func TestAlice_Discover(t *testing.T) {
 func TestBob_Discover(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
-	providers, err := c.Discover(common.ProvidesETH, 15)
+	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -163,7 +164,7 @@ func TestAlice_Query(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 
-	providers, err := c.Discover(common.ProvidesXMR, 3)
+	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -180,7 +181,7 @@ func TestBob_Query(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
 
-	providers, err := c.Discover(common.ProvidesETH, 3)
+	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -197,7 +198,7 @@ func TestAlice_Initiate(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 
-	providers, err := c.Discover(common.ProvidesXMR, 3)
+	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -211,7 +212,7 @@ func TestBob_Initiate(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
 
-	providers, err := c.Discover(common.ProvidesETH, 3)
+	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)

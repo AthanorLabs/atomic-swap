@@ -272,8 +272,6 @@ func (s *swapState) refund() (string, error) {
 		return "", err
 	}
 
-	log.Infof("sent refund tx!")
-
 	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
 		return "", errors.New("failed to call Refund in Swap.sol")
 	}

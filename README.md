@@ -79,7 +79,7 @@ This creates `swapd` and `swapcli` binaries in the root directory.
 
 To run as Alice, execute in terminal 1:
 ```
-./swapd --amount 1 --alice
+./swapd --max-amount 1 --alice
 ```
 
 Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA`. This will be used for Bob to connect.
@@ -87,7 +87,7 @@ Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933
 To run as Bob and connect to Alice, replace the bootnode in the following line with what Alice logged, and execute in terminal 2:
 
 ```
-./swapd --amount 1 --bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
+./swapd --max-amount 1 --bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
 ```
 
 Note: amount doesn't matter at this point, it's only used in the `QueryResponse` message (ie. what's returned by `swapcli query`)
