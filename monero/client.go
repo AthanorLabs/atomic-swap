@@ -9,7 +9,7 @@ import (
 type Client interface {
 	GetAccounts() (*getAccountsResponse, error)
 	GetAddress(idx uint) (*getAddressResponse, error)
-	GetBalance(idx uint) (*getBalanceResponse, error)
+	GetBalance(idx uint) (*GetBalanceResponse, error)
 	Transfer(to Address, accountIdx, amount uint) (*TransferResponse, error)
 	GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error
@@ -33,7 +33,7 @@ func (c *client) GetAccounts() (*getAccountsResponse, error) {
 	return c.callGetAccounts()
 }
 
-func (c *client) GetBalance(idx uint) (*getBalanceResponse, error) {
+func (c *client) GetBalance(idx uint) (*GetBalanceResponse, error) {
 	return c.callGetBalance(idx)
 }
 

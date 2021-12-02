@@ -80,6 +80,10 @@ func NewAlice(cfg *Config) (*alice, error) {
 		return nil, err
 	}
 
+	// TODO: add --gas-limit flag and default params for L2
+	// auth.GasLimit = 35323600
+	// auth.GasPrice = big.NewInt(2000000000)
+
 	pub := pk.Public().(*ecdsa.PublicKey)
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
@@ -342,10 +346,6 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 	if err = monero.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
 		return "", err
 	}
-
-	//pkAB := kpAB.PublicKeyPair()
-	// log.Info("public spend keys: ", pkAB.SpendKey().Hex())
-	// log.Info("public view keys: ", pkAB.ViewKey().Hex())
 
 	return s.createMoneroWallet(kpAB)
 }

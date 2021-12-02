@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/noot/atomic-swap/cmd/client/client"
 	"github.com/noot/atomic-swap/common"
 
 	logging "github.com/ipfs/go-log"
@@ -23,6 +24,15 @@ var (
 		Usage: "Client for swapd",
 		Commands: []cli.Command{
 			{
+				Name:    "addresses",
+				Aliases: []string{"a"},
+				Usage:   "list our daemon's libp2p listening addresses",
+				Action:  runAddresses,
+				Flags: []cli.Flag{
+					daemonAddrFlag,
+				},
+			},
+			{
 				Name:    "discover",
 				Aliases: []string{"d"},
 				Usage:   "discover peers who provide a certain coin",
@@ -36,6 +46,7 @@ var (
 						Name:  "search-time",
 						Usage: "duration of time to search for, in seconds",
 					},
+					daemonAddrFlag,
 				},
 			},
 			{
@@ -48,6 +59,7 @@ var (
 						Name:  "multiaddr",
 						Usage: "peer's multiaddress, as provided by discover",
 					},
+					daemonAddrFlag,
 				},
 			},
 			{
@@ -72,15 +84,16 @@ var (
 						Name:  "desired-amount",
 						Usage: "amount of coin to receive in the swap",
 					},
+					daemonAddrFlag,
 				},
 			},
 		},
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "daemon-addr",
-				Usage: "address of swap daemon; default http://localhost:5001",
-			},
-		},
+		Flags: []cli.Flag{daemonAddrFlag},
+	}
+
+	daemonAddrFlag = &cli.StringFlag{
+		Name:  "daemon-addr",
+		Usage: "address of swap daemon; default http://localhost:5001",
 	}
 )
 
@@ -91,14 +104,20 @@ func main() {
 	}
 }
 
-type Client struct {
-	endpoint string
-}
-
-func NewClient(endpoint string) *Client {
-	return &Client{
-		endpoint: endpoint,
+func runAddresses(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
 	}
+
+	c := client.NewClient(endpoint)
+	addrs, err := c.Addresses()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Listening addresses: %v\n", addrs)
+	return nil
 }
 
 func runDiscover(ctx *cli.Context) error {
@@ -114,8 +133,8 @@ func runDiscover(ctx *cli.Context) error {
 
 	searchTime := ctx.Uint("search-time")
 
-	c := NewClient(endpoint)
-	peers, err := c.discover(provides, uint64(searchTime))
+	c := client.NewClient(endpoint)
+	peers, err := c.Discover(provides, uint64(searchTime))
 	if err != nil {
 		return err
 	}
@@ -138,8 +157,8 @@ func runQuery(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := NewClient(endpoint)
-	res, err := c.query(maddr)
+	c := client.NewClient(endpoint)
+	res, err := c.Query(maddr)
 	if err != nil {
 		return err
 	}
@@ -177,8 +196,8 @@ func runInitiate(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := NewClient(endpoint)
-	ok, err := c.initiate(maddr, provides, providesAmount, desiredAmount)
+	c := client.NewClient(endpoint)
+	ok, err := c.Initiate(maddr, provides, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}

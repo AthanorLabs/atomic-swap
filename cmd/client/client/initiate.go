@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/noot/atomic-swap/rpcclient"
 )
 
-func (c *Client) initiate(maddr string, provides common.ProvidesCoin, providesAmount, desiredAmount float64) (bool, error) {
+func (c *Client) Initiate(maddr string, provides common.ProvidesCoin, providesAmount, desiredAmount float64) (bool, error) {
 	const (
 		method = "net_initiate"
 	)

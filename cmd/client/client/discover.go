@@ -1,19 +1,21 @@
-package main
+package client
 
 import (
 	"encoding/json"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/rpc"
 	"github.com/noot/atomic-swap/rpcclient"
 )
 
-func (c *Client) query(maddr string) (*rpc.QueryPeerResponse, error) {
+func (c *Client) Discover(provides common.ProvidesCoin, searchTime uint64) ([][]string, error) {
 	const (
-		method = "net_queryPeer"
+		method = "net_discover"
 	)
 
-	req := &rpc.QueryPeerRequest{
-		Multiaddr: maddr,
+	req := &rpc.DiscoverRequest{
+		Provides:   provides,
+		SearchTime: searchTime,
 	}
 
 	params, err := json.Marshal(req)
@@ -30,10 +32,10 @@ func (c *Client) query(maddr string) (*rpc.QueryPeerResponse, error) {
 		return nil, resp.Error
 	}
 
-	var res *rpc.QueryPeerResponse
+	var res *rpc.DiscoverResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return res.Peers, nil
 }
