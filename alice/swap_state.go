@@ -91,9 +91,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-// ProtocolComplete is called by the network when the protocol stream closes.
+// ProtocolExited is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
-func (s *swapState) ProtocolComplete() {
+func (s *swapState) ProtocolExited() {
 	s.Lock()
 	defer s.Unlock()
 
@@ -126,7 +126,7 @@ func (s *swapState) ProtocolComplete() {
 			return
 		}
 	default:
-		log.Errorf("unexpected nextExpectedMessage in ProtocolComplete: type=%T", s.nextExpectedMessage)
+		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 	}
 }
 

@@ -3,15 +3,11 @@ package alice
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync"
-	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -280,30 +276,6 @@ func (s *swapState) refund() (string, error) {
 	return tx.Hash().String(), nil
 }
 
-// createMoneroWallet creates Alice's monero wallet after Bob calls Claim().
-func (s *swapState) createMoneroWallet(kpAB *monero.PrivateKeyPair) (monero.Address, error) {
-	t := time.Now().Format("2006-Jan-2-15:04:05")
-	walletName := fmt.Sprintf("alice-swap-wallet-%s", t)
-	if err := s.alice.client.GenerateFromKeys(kpAB, walletName, "", s.alice.env); err != nil {
-		return "", err
-	}
-
-	log.Info("created wallet: ", walletName)
-
-	if err := s.alice.client.Refresh(); err != nil {
-		return "", err
-	}
-
-	balance, err := s.alice.client.GetBalance(0)
-	if err != nil {
-		return "", err
-	}
-
-	log.Info("wallet balance: ", balance.Balance)
-	s.success = true
-	return kpAB.Address(s.alice.env), nil
-}
-
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
@@ -316,25 +288,9 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", errors.New("claim transaction has no logs")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(swap.SwapABI))
+	skB, err := swap.GetSecretFromLog(receipt.Logs[0], "Claimed")
 	if err != nil {
-		return "", err
-	}
-
-	data := receipt.Logs[0].Data
-	res, err := abi.Unpack("Claimed", data)
-	if err != nil {
-		return "", err
-	}
-
-	// got Bob's secret
-	sb := res[0].([32]byte)
-	log.Debug("got Bob's secret: ", hex.EncodeToString(sb[:]))
-
-	skB, err := monero.NewPrivateSpendKey(common.Reverse(sb[:]))
-	if err != nil {
-		log.Errorf("failed to convert Bob's secret into a key: %s", err)
-		return "", err
+		return "", fmt.Errorf("failed to get secret from log: %w", err)
 	}
 
 	skAB := monero.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
@@ -347,5 +303,6 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", err
 	}
 
-	return s.createMoneroWallet(kpAB)
+	s.success = true
+	return monero.CreateMoneroWallet("alice-swap-wallet", s.alice.env, s.alice.client, kpAB)
 }
