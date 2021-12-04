@@ -122,11 +122,11 @@ var (
 				Usage: "comma-separated string of libp2p bootnodes",
 			},
 			&cli.UintFlag{
-				Name: "gas-price",
+				Name:  "gas-price",
 				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
 			},
 			&cli.UintFlag{
-				Name: "gas-limit",
+				Name:  "gas-limit",
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
 		},
@@ -254,8 +254,8 @@ func runDaemon(c *cli.Context) error {
 			EthereumPrivateKey:   ethPrivKey,
 			Environment:          env,
 			ChainID:              chainID,
-			GasPrice: gasPrice,
-			GasLimit: uint64(c.Uint("gas-limit")),
+			GasPrice:             gasPrice,
+			GasLimit:             uint64(c.Uint("gas-limit")),
 		}
 
 		handler, err = alice.NewAlice(aliceCfg)
@@ -282,8 +282,8 @@ func runDaemon(c *cli.Context) error {
 			EthereumPrivateKey:   ethPrivKey,
 			Environment:          env,
 			ChainID:              chainID,
-			GasPrice: gasPrice,
-			GasLimit: uint64(c.Uint("gas-limit")),
+			GasPrice:             gasPrice,
+			GasLimit:             uint64(c.Uint("gas-limit")),
 		}
 
 		handler, err = bob.NewBob(bobCfg)

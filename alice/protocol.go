@@ -43,9 +43,9 @@ type alice struct {
 	ethClient  *ethclient.Client
 	callOpts   *bind.CallOpts
 	chainID    *big.Int
-	gasPrice *big.Int
-	gasLimit uint64
-	
+	gasPrice   *big.Int
+	gasLimit   uint64
+
 	net net.MessageSender
 
 	// non-nil if a swap is currently happening, nil otherwise
@@ -61,8 +61,8 @@ type Config struct {
 	EthereumPrivateKey   string
 	Environment          common.Environment
 	ChainID              int64
-	GasPrice *big.Int
-	GasLimit uint64
+	GasPrice             *big.Int
+	GasLimit             uint64
 }
 
 // NewAlice returns a new instance of Alice.

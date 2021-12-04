@@ -42,8 +42,8 @@ type bob struct {
 	callOpts   *bind.CallOpts
 	ethAddress ethcommon.Address
 	chainID    *big.Int
-	gasPrice *big.Int
-	gasLimit uint64
+	gasPrice   *big.Int
+	gasLimit   uint64
 
 	net net.MessageSender
 
@@ -61,8 +61,8 @@ type Config struct {
 	EthereumPrivateKey         string
 	Environment                common.Environment
 	ChainID                    int64
-	GasPrice *big.Int
-	GasLimit uint64
+	GasPrice                   *big.Int
+	GasLimit                   uint64
 }
 
 // NewBob returns a new instance of Bob.

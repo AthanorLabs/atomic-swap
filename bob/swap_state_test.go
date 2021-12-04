@@ -57,7 +57,8 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 
 	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 61)
 
-	swapState := newSwapState(bob, common.MoneroAmount(33), common.NewEtherAmount(33))
+	swapState, err := newSwapState(bob, common.MoneroAmount(33), common.NewEtherAmount(33))
+	require.NoError(t, err)
 	return bob, swapState
 }
 
@@ -83,15 +84,15 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	pkBob, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	bob.auth, err = bind.NewKeyedTransactorWithChainID(pkBob, big.NewInt(common.GanacheChainID))
+	swapState.txOpts, err = bind.NewKeyedTransactorWithChainID(pkBob, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	var claimKey [32]byte
 	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
-	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(bob.auth, conn, claimKey, [32]byte{}, bob.ethAddress, defaultTimeoutDuration)
+	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(swapState.txOpts, conn, claimKey, [32]byte{}, bob.ethAddress, defaultTimeoutDuration)
 	require.NoError(t, err)
 
-	_, err = swapState.contract.SetReady(bob.auth)
+	_, err = swapState.contract.SetReady(swapState.txOpts)
 	require.NoError(t, err)
 
 	txHash, err := swapState.claimFunds()
@@ -130,7 +131,7 @@ func deploySwap(t *testing.T, bob *bob, swapState *swapState, refundKey [32]byte
 
 	var claimKey [32]byte
 	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
-	addr, _, contract, err := swap.DeploySwap(bob.auth, conn, claimKey, refundKey, bob.ethAddress, tm)
+	addr, _, contract, err := swap.DeploySwap(swapState.txOpts, conn, claimKey, refundKey, bob.ethAddress, tm)
 	require.NoError(t, err)
 	return addr, contract
 }
@@ -223,7 +224,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	_, s.contract = deploySwap(t, bob, s, [32]byte{}, duration)
 
-	_, err = s.contract.SetReady(bob.auth)
+	_, err = s.contract.SetReady(s.txOpts)
 	require.NoError(t, err)
 
 	msg := &net.NotifyReady{}
@@ -261,7 +262,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Refund(s.bob.auth, sc)
+	tx, err := s.contract.Refund(s.txOpts, sc)
 	require.NoError(t, err)
 
 	addr, err := s.handleRefund(tx.Hash().String())
@@ -295,7 +296,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Refund(s.bob.auth, sc)
+	tx, err := s.contract.Refund(s.txOpts, sc)
 	require.NoError(t, err)
 
 	msg := &net.NotifyRefund{

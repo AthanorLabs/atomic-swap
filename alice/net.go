@@ -35,8 +35,6 @@ func (a *alice) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, 
 
 	// the other party initiated, saying what they will provide and what they desire.
 	// we initiate our protocol, saying we will provide what they desire and vice versa.
-
-	// TODO: somehow get gas price, ie. when the user accepts via cli
 	if err := a.initiate(common.EtherToWei(msg.DesiredAmount), common.MoneroToPiconero(msg.ProvidesAmount)); err != nil {
 		return nil, nil, err
 	}
