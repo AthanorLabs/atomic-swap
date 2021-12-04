@@ -28,6 +28,10 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*monero.PrivateSpendKey,
 		return nil, err
 	}
 
+	if len(res) == 0 {
+		return nil, errors.New("log had no parameters")
+	}
+
 	s := res[0].([32]byte)
 
 	sk, err := monero.NewPrivateSpendKey(common.Reverse(s[:]))

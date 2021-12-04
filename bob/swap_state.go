@@ -1,13 +1,16 @@
 package bob
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color"
 
@@ -158,6 +161,7 @@ func (s *swapState) reclaimMonero(skA *monero.PrivateSpendKey) (monero.Address, 
 	}
 
 	s.success = true
+	// TODO: check balance
 	return monero.CreateMoneroWallet("bob-swap-wallet", s.bob.env, s.bob.client, kpAB)
 }
 
@@ -192,10 +196,10 @@ func (s *swapState) tryClaim() error {
 	if untilT0 < 0 {
 		// we need to wait until t0 to claim
 		log.Infof("waiting until time %s to refund", s.t0)
-		<-time.After(untilT0)
+		<-time.After(untilT0 + time.Second)
 	}
 
-	if untilT1 > 0 { //nolint
+	if untilT1 > 0 {
 		// we've passed t1, our only option now is for Alice to refund
 		// and we can regain control of the locked XMR.
 		return errors.New("past t1, can no longer claim")
@@ -211,6 +215,10 @@ func (s *swapState) tryClaim() error {
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
 	s.Lock()
 	defer s.Unlock()
+
+	if s.ctx.Err() != nil {
+		return nil, true, fmt.Errorf("protocol exited: %w", s.ctx.Err())
+	}
 
 	if err := s.checkMessageType(msg); err != nil {
 		return nil, true, err
@@ -232,10 +240,12 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		s.nextExpectedMessage = &net.NotifyReady{}
 		log.Infof("got Swap contract address! address=%s", msg.Address)
 
-		// TODO: check contract balance and secrets
-
 		if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)
+		}
+
+		if err := s.checkContract(); err != nil {
+			return nil, true, err
 		}
 
 		addrAB, err := s.lockFunds(s.providesAmount)
@@ -313,7 +323,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		// generate monero wallet, regaining control over locked funds
 		addr, err := s.handleRefund(msg.TxHash)
 		if err != nil {
-			return nil, true, err
+			return nil, false, err
 		}
 
 		s.success = true
@@ -322,6 +332,63 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	default:
 		return nil, true, errors.New("unexpected message type")
 	}
+}
+
+// checkContract checks the contract's balance and Claim/Refund keys.
+// if the balance doesn't match what we're expecting to receive, or the public keys in the contract
+// aren't what we expect, we error and abort the swap.
+func (s *swapState) checkContract() error {
+	balance, err := s.bob.ethClient.BalanceAt(s.ctx, s.contractAddr, nil)
+	if err != nil {
+		return err
+	}
+
+	if balance.Cmp(s.desiredAmount.BigInt()) < 0 {
+		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", balance, s.desiredAmount)
+	}
+
+	constructedTopic := ethcommon.HexToHash("0x8d36aa70807342c3036697a846281194626fd4afa892356ad5979e03831ab080")
+	logs, err := s.bob.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
+		Addresses: []ethcommon.Address{s.contractAddr},
+		Topics:    [][]ethcommon.Hash{{constructedTopic}},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to filter logs: %w", err)
+	}
+
+	if len(logs) == 0 {
+		return errors.New("cannot find Constructed log")
+	}
+
+	abi, err := abi.JSON(strings.NewReader(swap.SwapABI))
+	if err != nil {
+		return err
+	}
+
+	data := logs[0].Data
+	res, err := abi.Unpack("Constructed", data)
+	if err != nil {
+		return err
+	}
+
+	if len(res) < 2 {
+		return errors.New("constructed event was missing parameters")
+	}
+
+	pkClaim := res[0].([32]byte)
+	pkRefund := res[0].([32]byte)
+
+	skOurs := common.Reverse(s.pubkeys.SpendKey().Bytes())
+	if !bytes.Equal(pkClaim[:], skOurs) {
+		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", pkClaim, skOurs)
+	}
+
+	skTheirs := common.Reverse(s.alicePublicKeys.SpendKey().Bytes())
+	if !bytes.Equal(pkRefund[:], skOurs) {
+		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", pkRefund, skTheirs)
+	}
+
+	return nil
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
