@@ -11,9 +11,9 @@ import (
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	// "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	// "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -81,11 +81,11 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pkBob, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
-	require.NoError(t, err)
+	// pkBob, err := crypto.HexToECsDSA(common.DefaultPrivKeyBob)
+	// require.NoError(t, err)
 
-	swapState.txOpts, err = bind.NewKeyedTransactorWithChainID(pkBob, big.NewInt(common.GanacheChainID))
-	require.NoError(t, err)
+	// swapState.txOpts, err = bind.NewKeyedTransactorWithChainID(pkBob, big.NewInt(common.GanacheChainID))
+	// require.NoError(t, err)
 
 	var claimKey [32]byte
 	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
@@ -131,6 +131,7 @@ func deploySwap(t *testing.T, bob *bob, swapState *swapState, refundKey [32]byte
 
 	var claimKey [32]byte
 	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
+
 	addr, _, contract, err := swap.DeploySwap(swapState.txOpts, conn, claimKey, refundKey, bob.ethAddress, tm)
 	require.NoError(t, err)
 	return addr, contract

@@ -80,6 +80,7 @@ func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount comm
 		desiredAmount:       desiredAmount,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
+		txOpts:              txOpts,
 	}
 
 	nextID++
@@ -226,6 +227,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				txHash, err := s.claimFunds()
 				if err != nil {
 					log.Errorf("failed to claim: err=%s", err)
+					// TODO: retry claim, depending on error
 					return
 				}
 
