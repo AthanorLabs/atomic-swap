@@ -24,6 +24,7 @@ type Net interface {
 type Protocol interface {
 	Provides() common.ProvidesCoin
 	InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error)
+	SetGasPrice(gasPrice uint64)
 }
 
 type NetService struct {
@@ -168,5 +169,6 @@ type SetGasPriceRequest struct {
 }
 
 func (s *NetService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
+	s.protocol.SetGasPrice(req.GasPrice)
 	return nil
 }

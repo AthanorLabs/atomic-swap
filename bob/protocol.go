@@ -124,6 +124,10 @@ func (b *bob) SetMessageSender(n net.MessageSender) {
 	b.net = n
 }
 
+func (b *bob) SetGasPrice(gasPrice uint64) {
+	b.gasPrice = big.NewInt(0).SetUint64(gasPrice)
+}
+
 func (b *bob) openWallet() error { //nolint
 	return b.client.OpenWallet(b.walletFile, b.walletPassword)
 }

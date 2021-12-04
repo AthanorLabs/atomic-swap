@@ -106,6 +106,10 @@ func (a *alice) SetMessageSender(n net.MessageSender) {
 	a.net = n
 }
 
+func (a *alice) SetGasPrice(gasPrice uint64) {
+	a.gasPrice = big.NewInt(0).SetUint64(gasPrice)
+}
+
 // generateKeys generates Alice's monero spend and view keys (S_b, V_b)
 // It returns Alice's public spend key
 func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
