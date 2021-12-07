@@ -39,9 +39,11 @@ type bob struct {
 
 	ethClient  *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
-	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
 	ethAddress ethcommon.Address
+	chainID    *big.Int
+	gasPrice   *big.Int
+	gasLimit   uint64
 
 	net net.MessageSender
 
@@ -59,6 +61,8 @@ type Config struct {
 	EthereumPrivateKey         string
 	Environment                common.Environment
 	ChainID                    int64
+	GasPrice                   *big.Int
+	GasLimit                   uint64
 }
 
 // NewBob returns a new instance of Bob.
@@ -74,11 +78,6 @@ func NewBob(cfg *Config) (*bob, error) {
 	}
 
 	ec, err := ethclient.Dial(cfg.EthereumEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(cfg.ChainID)) // ganache chainID
 	if err != nil {
 		return nil, err
 	}
@@ -112,17 +111,21 @@ func NewBob(cfg *Config) (*bob, error) {
 		walletPassword: cfg.WalletPassword,
 		ethClient:      ec,
 		ethPrivKey:     pk,
-		auth:           auth,
 		callOpts: &bind.CallOpts{
 			From:    addr,
 			Context: cfg.Ctx,
 		},
 		ethAddress: addr,
+		chainID:    big.NewInt(cfg.ChainID),
 	}, nil
 }
 
 func (b *bob) SetMessageSender(n net.MessageSender) {
 	b.net = n
+}
+
+func (b *bob) SetGasPrice(gasPrice uint64) {
+	b.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
 
 func (b *bob) openWallet() error { //nolint
@@ -327,7 +330,7 @@ func (s *swapState) claimFunds() (string, error) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Claim(s.bob.auth, sc)
+	tx, err := s.contract.Claim(s.txOpts, sc)
 	if err != nil {
 		return "", err
 	}

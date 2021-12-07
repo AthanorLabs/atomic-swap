@@ -66,7 +66,7 @@ func PostRPC(endpoint, method, params string) (*ServerResponse, error) {
 
 	r, err := http.NewRequest("POST", endpoint, buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 	r.Header.Set("Content-Type", contentTypeJSON)
 
@@ -76,7 +76,7 @@ func PostRPC(endpoint, method, params string) (*ServerResponse, error) {
 
 	resp, err := httpClient.Do(r)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to post request: %w", err)
 	}
 
 	defer func() {
@@ -85,7 +85,7 @@ func PostRPC(endpoint, method, params string) (*ServerResponse, error) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	var sv *ServerResponse

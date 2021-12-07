@@ -33,7 +33,7 @@ sleep 10
 
 # run unit tests
 echo "running unit tests..."
-go test ./... -v -short
+go test ./... -v -short -timeout=30m
 OK=$?
 
 # kill processes

@@ -55,7 +55,7 @@ func (a *alice) initiate(providesAmount common.EtherAmount, desiredAmount common
 		return errors.New("protocol already in progress")
 	}
 
-	balance, err := a.ethClient.BalanceAt(a.ctx, a.auth.From, nil)
+	balance, err := a.ethClient.BalanceAt(a.ctx, a.callOpts.From, nil)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,11 @@ func (a *alice) initiate(providesAmount common.EtherAmount, desiredAmount common
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	a.swapState = newSwapState(a, providesAmount, desiredAmount)
+	a.swapState, err = newSwapState(a, providesAmount, desiredAmount)
+	if err != nil {
+		return err
+	}
+
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.id))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil

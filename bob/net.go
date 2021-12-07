@@ -40,7 +40,11 @@ func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	b.swapState = newSwapState(b, providesAmount, desiredAmount)
+	b.swapState, err = newSwapState(b, providesAmount, desiredAmount)
+	if err != nil {
+		return err
+	}
+
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil

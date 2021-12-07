@@ -13,7 +13,7 @@ echo "starting monero-wallet-rpc on port 18084..."
 
 # open Bob's wallet (must have funds)
 sleep 5
-curl http://localhost:1803/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"stagenet-wallet","password":""}}' -H 'Content-Type: application/json'
+curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"stagenet-wallet","password":""}}' -H 'Content-Type: application/json'
 
 # check balance
 curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":get_accounts","params":{}}' -H 'Content-Type: application/json'
