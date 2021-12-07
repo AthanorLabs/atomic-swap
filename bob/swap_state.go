@@ -61,8 +61,9 @@ type swapState struct {
 	// channels
 	readyCh chan struct{}
 
-	// set to true on claiming the ETH
-	success bool
+	// set to true on claiming the ETH or reclaiming XMR
+	completed            bool
+	moneroReclaimAddress monero.Address
 }
 
 func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) *swapState {
@@ -108,7 +109,8 @@ func (s *swapState) ProtocolExited() error {
 		s.bob.swapState = nil
 	}()
 
-	if s.success {
+	// TODO: defer this?
+	if s.completed {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
 		log.Info(str)
 		return nil
@@ -137,6 +139,8 @@ func (s *swapState) ProtocolExited() error {
 			return err
 		}
 
+		s.completed = true
+		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
 	default:
@@ -170,7 +174,6 @@ func (s *swapState) reclaimMonero(skA *monero.PrivateSpendKey) (monero.Address, 
 		return "", err
 	}
 
-	s.success = true
 	// TODO: check balance
 	return monero.CreateMoneroWallet("bob-swap-wallet", s.bob.env, s.bob.client, kpAB)
 }
@@ -296,6 +299,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				}
 
 				log.Debug("funds claimed!")
+				s.completed = true
 
 				// send *net.NotifyClaimed
 				if err := s.net.SendSwapMessage(&net.NotifyClaimed{
@@ -324,7 +328,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			TxHash: txHash,
 		}
 
-		s.success = true
+		s.completed = true
 		return out, true, nil
 	case *net.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
@@ -333,7 +337,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, false, err
 		}
 
-		s.success = true
+		s.completed = true
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:

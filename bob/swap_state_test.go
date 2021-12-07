@@ -352,4 +352,8 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	s.nextExpectedMessage = &net.NotifyReady{}
 	err = s.ProtocolExited()
 	require.NoError(t, err)
+
+	balance, err := bob.client.GetBalance(0)
+	require.NoError(t, err)
+	require.Equal(t, s.providesAmount.Uint64(), uint64(balance.Balance))
 }
