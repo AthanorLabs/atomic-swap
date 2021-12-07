@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,6 +121,14 @@ var (
 				Name:  "bootnodes",
 				Usage: "comma-separated string of libp2p bootnodes",
 			},
+			&cli.UintFlag{
+				Name:  "gas-price",
+				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
+			},
+			&cli.UintFlag{
+				Name:  "gas-limit",
+				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
+			},
 		},
 	}
 )
@@ -224,6 +233,13 @@ func runDaemon(c *cli.Context) error {
 		SetMessageSender(net.MessageSender)
 	}
 
+	var gasPrice *big.Int
+	if c.Uint("gas-price") != 0 {
+		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	}
+
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+
 	var (
 		handler Handler
 		err     error
@@ -238,6 +254,8 @@ func runDaemon(c *cli.Context) error {
 			EthereumPrivateKey:   ethPrivKey,
 			Environment:          env,
 			ChainID:              chainID,
+			GasPrice:             gasPrice,
+			GasLimit:             uint64(c.Uint("gas-limit")),
 		}
 
 		handler, err = alice.NewAlice(aliceCfg)
@@ -264,6 +282,8 @@ func runDaemon(c *cli.Context) error {
 			EthereumPrivateKey:   ethPrivKey,
 			Environment:          env,
 			ChainID:              chainID,
+			GasPrice:             gasPrice,
+			GasLimit:             uint64(c.Uint("gas-limit")),
 		}
 
 		handler, err = bob.NewBob(bobCfg)

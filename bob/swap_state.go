@@ -11,6 +11,7 @@ import (
 
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color"
 
@@ -51,6 +52,7 @@ type swapState struct {
 	contract     *swap.Swap
 	contractAddr ethcommon.Address
 	t0, t1       time.Time
+	txOpts       *bind.TransactOpts
 
 	// Alice's keys for this session
 	alicePublicKeys *monero.PublicKeyPair
@@ -66,7 +68,15 @@ type swapState struct {
 	moneroReclaimAddress monero.Address
 }
 
-func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) *swapState {
+func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
+	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	txOpts.GasPrice = b.gasPrice
+	txOpts.GasLimit = b.gasLimit
+
 	ctx, cancel := context.WithCancel(b.ctx)
 
 	s := &swapState{
@@ -78,10 +88,11 @@ func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount comm
 		desiredAmount:       desiredAmount,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
+		txOpts:              txOpts,
 	}
 
 	nextID++
-	return s
+	return s, nil
 }
 
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
@@ -295,6 +306,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				txHash, err := s.claimFunds()
 				if err != nil {
 					log.Errorf("failed to claim: err=%s", err)
+					// TODO: retry claim, depending on error
 					return
 				}
 

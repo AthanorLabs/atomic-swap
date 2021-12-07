@@ -37,8 +37,10 @@ type alice struct {
 
 	ethPrivKey *ecdsa.PrivateKey
 	ethClient  *ethclient.Client
-	auth       *bind.TransactOpts
 	callOpts   *bind.CallOpts
+	chainID    *big.Int
+	gasPrice   *big.Int
+	gasLimit   uint64
 
 	net net.MessageSender
 
@@ -55,6 +57,8 @@ type Config struct {
 	EthereumPrivateKey   string
 	Environment          common.Environment
 	ChainID              int64
+	GasPrice             *big.Int
+	GasLimit             uint64
 }
 
 // NewAlice returns a new instance of Alice.
@@ -67,11 +71,6 @@ func NewAlice(cfg *Config) (*alice, error) {
 	}
 
 	ec, err := ethclient.Dial(cfg.EthereumEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(cfg.ChainID))
 	if err != nil {
 		return nil, err
 	}
@@ -91,16 +90,20 @@ func NewAlice(cfg *Config) (*alice, error) {
 		ethPrivKey: pk,
 		ethClient:  ec,
 		client:     monero.NewClient(cfg.MoneroWalletEndpoint),
-		auth:       auth,
 		callOpts: &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
 		},
+		chainID: big.NewInt(cfg.ChainID),
 	}, nil
 }
 
 func (a *alice) SetMessageSender(n net.MessageSender) {
 	a.net = n
+}
+
+func (a *alice) SetGasPrice(gasPrice uint64) {
+	a.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
 
 // generateKeys generates Alice's monero spend and view keys (S_b, V_b)
@@ -150,12 +153,12 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 	copy(pkb[:], common.Reverse(pkBob))
 
 	// TODO: put auth in swapState
-	s.alice.auth.Value = amount.BigInt()
+	s.txOpts.Value = amount.BigInt()
 	defer func() {
-		s.alice.auth.Value = nil
+		s.txOpts.Value = nil
 	}()
 
-	address, tx, swap, err := swap.DeploySwap(s.alice.auth, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
+	address, tx, swap, err := swap.DeploySwap(s.txOpts, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
@@ -180,7 +183,7 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.contract.SetReady(s.alice.auth)
+	tx, err := s.contract.SetReady(s.txOpts)
 	if err != nil {
 		return err
 	}
@@ -263,7 +266,7 @@ func (s *swapState) refund() (string, error) {
 	}
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.contract.Refund(s.alice.auth, sc)
+	tx, err := s.contract.Refund(s.txOpts, sc)
 	if err != nil {
 		return "", err
 	}
