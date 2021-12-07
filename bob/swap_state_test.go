@@ -329,7 +329,7 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 
 	var refundKey [32]byte
 	copy(refundKey[:], common.Reverse(aliceKeys.SpendKey().Public().Bytes()))
-	_, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
+	s.contractAddr, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(s.providesAmount)
@@ -340,11 +340,14 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	_, err = s.contract.Refund(s.bob.auth, sc)
+	tx, err := s.contract.Refund(s.bob.auth, sc)
 	require.NoError(t, err)
-	t.Log("called Refund")
 
-	time.Sleep(time.Second * 5)
+	receipt, err := bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(receipt.Logs))
+	require.Equal(t, 1, len(receipt.Logs[0].Topics))
+	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
 	s.nextExpectedMessage = &net.NotifyReady{}
 	err = s.ProtocolExited()
