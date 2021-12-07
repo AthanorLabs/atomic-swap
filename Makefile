@@ -8,6 +8,9 @@ lint:
 test:
 	./scripts/run-unit-tests.sh
 
+test-integration:
+	./scripts/run-integration-tests.sh
+
 install:
 	cd cmd/ && go install && cd ..
 
