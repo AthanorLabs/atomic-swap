@@ -47,5 +47,13 @@ jobs:
       - name: Run unit tests
         run: ./scripts/run-unit-tests.sh
 
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.17.x'
+      - uses: actions/checkout@v2
+
       - name: Run integration tests
         run: ./scripts/run-integration-tests.sh
