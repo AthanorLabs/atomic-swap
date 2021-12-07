@@ -106,7 +106,7 @@ func (s *swapState) ProtocolExited() error {
 	if s.success {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
 		log.Info(str)
-		return
+		return nil
 	}
 
 	switch s.nextExpectedMessage.(type) {
@@ -116,18 +116,21 @@ func (s *swapState) ProtocolExited() error {
 		// we already deployed the contract, so we should call Refund().
 		if err := s.tryRefund(); err != nil {
 			log.Errorf("failed to refund: err=%s", err)
-			return
+			return err
 		}
 	case *net.NotifyClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
 		if err := s.tryRefund(); err != nil {
 			log.Errorf("failed to refund: err=%s", err)
-			return
+			return err
 		}
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
+		return errors.New("unexpected message type")
 	}
+
+	return nil
 }
 
 func (s *swapState) tryRefund() error {
