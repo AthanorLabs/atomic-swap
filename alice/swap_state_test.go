@@ -41,7 +41,8 @@ func newTestAlice(t *testing.T) (*alice, *swapState) {
 
 	alice, err := NewAlice(cfg)
 	require.NoError(t, err)
-	swapState := newSwapState(alice, common.NewEtherAmount(1), common.MoneroAmount(1))
+	swapState, err := newSwapState(alice, common.NewEtherAmount(1), common.MoneroAmount(1))
+	require.NoError(t, err)
 	return alice, swapState
 }
 
@@ -288,7 +289,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Claim(s.alice.auth, sc)
+	tx, err := s.contract.Claim(s.txOpts, sc)
 	require.NoError(t, err)
 
 	cmsg := &net.NotifyClaimed{
