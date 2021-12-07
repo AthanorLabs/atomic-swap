@@ -92,7 +92,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 
 // ProtocolExited is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
-func (s *swapState) ProtocolExited() {
+func (s *swapState) ProtocolExited() error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -105,15 +105,17 @@ func (s *swapState) ProtocolExited() {
 	if s.success {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
 		log.Info(str)
-		return
+		return nil
 	}
 
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
+		return nil
 	case *net.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
+		return nil
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
@@ -126,12 +128,14 @@ func (s *swapState) ProtocolExited() {
 		if err != nil {
 			log.Errorf("failed to check for refund: err=%s", err)
 			// TODO: keep retrying until success
-			return
+			return err
 		}
 
 		log.Infof("regained private key to monero wallet, address=%s", address)
+		return nil
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
+		return errors.New("unexpected message type")
 	}
 }
 

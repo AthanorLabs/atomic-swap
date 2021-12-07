@@ -21,7 +21,7 @@ type Handler interface {
 // It is implemented by *alice.swapState and *bob.swapState
 type SwapState interface {
 	HandleProtocolMessage(msg Message) (resp Message, done bool, err error)
-	ProtocolExited()
+	ProtocolExited() error
 
 	// used by RPC
 	SendKeysMessage() (*SendKeysMessage, error)
@@ -93,7 +93,9 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
 		if h.swapState != nil {
-			h.swapState.ProtocolExited()
+			if err := h.swapState.ProtocolExited(); err != nil {
+				log.Errorf("failed to exit protocol: err=%s", err)
+			}
 			h.swapState = nil
 		}
 	}()

@@ -312,3 +312,41 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	require.True(t, done)
 	require.Nil(t, resp)
 }
+
+// test that if the protocol exits early, and Alice refunds, Bob can reclaim his monero
+func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
+	bob, s := newTestBob(t)
+
+	_, _, err := s.generateKeys()
+	require.NoError(t, err)
+
+	aliceKeys, err := monero.GenerateKeys()
+	require.NoError(t, err)
+	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
+
+	duration, err := time.ParseDuration("10m")
+	require.NoError(t, err)
+
+	var refundKey [32]byte
+	copy(refundKey[:], common.Reverse(aliceKeys.SpendKey().Public().Bytes()))
+	_, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
+
+	// lock XMR
+	_, err = s.lockFunds(s.providesAmount)
+	require.NoError(t, err)
+
+	// call refund w/ Alice's spend key
+	secret := aliceKeys.SpendKeyBytes()
+	var sc [32]byte
+	copy(sc[:], common.Reverse(secret))
+
+	_, err = s.contract.Refund(s.bob.auth, sc)
+	require.NoError(t, err)
+	t.Log("called Refund")
+
+	time.Sleep(time.Second * 5)
+
+	s.nextExpectedMessage = &net.NotifyReady{}
+	err = s.ProtocolExited()
+	require.NoError(t, err)
+}

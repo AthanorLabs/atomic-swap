@@ -93,7 +93,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 
 // ProtocolExited is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
-func (s *swapState) ProtocolExited() {
+func (s *swapState) ProtocolExited() error {
 	s.Lock()
 	defer s.Unlock()
 
