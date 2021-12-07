@@ -347,6 +347,5 @@ func (s *swapState) claimFunds() (string, error) {
 	}
 
 	log.Info("Bob's balance after claim: ", balance)
-	s.success = true
 	return tx.Hash().String(), nil
 }
