@@ -55,5 +55,8 @@ jobs:
           go-version: '1.17.x'
       - uses: actions/checkout@v2
 
+      - name: Run build
+        run: make build  
+
       - name: Run integration tests
         run: ./scripts/run-integration-tests.sh
