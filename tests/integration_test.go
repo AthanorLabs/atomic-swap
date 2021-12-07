@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,6 +26,11 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	flag.Parse()
+	if testing.Short() {
+		os.Exit(0)
+	}
+
 	cmd := exec.Command("../scripts/build.sh")
 	err := cmd.Run()
 	if err != nil {
