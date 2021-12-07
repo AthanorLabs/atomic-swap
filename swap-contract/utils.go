@@ -11,7 +11,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 )
 
-// GetSecretFromLog returns the secret from a Claim or Refund log
+// GetSecretFromLog returns the secret from a Claimed or Refunded log
 func GetSecretFromLog(log *ethtypes.Log, event string) (*monero.PrivateSpendKey, error) {
 	if event != "Refunded" && event != "Claimed" {
 		return nil, errors.New("invalid event name, must be one of Claimed or Refunded")
