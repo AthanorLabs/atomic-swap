@@ -49,6 +49,7 @@ type alice struct {
 	swapState *swapState
 }
 
+// Config contains the configuration values for a new Alice instance.
 type Config struct {
 	Ctx                  context.Context
 	Basepath             string

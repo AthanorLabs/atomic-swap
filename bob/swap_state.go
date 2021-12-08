@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/fatih/color"
+	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"

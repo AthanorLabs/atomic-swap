@@ -14,6 +14,7 @@ import (
 
 const defaultSearchTime = time.Second * 12
 
+// Net contains the functions required by the rpc service into the network.
 type Net interface {
 	Addresses() []string
 	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
@@ -21,17 +22,20 @@ type Net interface {
 	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
 }
 
+// Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
 	Provides() common.ProvidesCoin
 	InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error)
 	SetGasPrice(gasPrice uint64)
 }
 
+// NetService is the RPC service prefixed by net_.
 type NetService struct {
 	net      Net
 	protocol Protocol
 }
 
+// NewNetService ...
 func NewNetService(net Net, protocol Protocol) *NetService {
 	return &NetService{
 		net:      net,
@@ -39,20 +43,24 @@ func NewNetService(net Net, protocol Protocol) *NetService {
 	}
 }
 
+// AddressesResponse ...
 type AddressesResponse struct {
 	Addrs []string `json:"addresses"`
 }
 
+// Addresses returns the multiaddresses this node is listening on.
 func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesResponse) error {
 	resp.Addrs = s.net.Addresses()
 	return nil
 }
 
+// DiscoverRequest ...
 type DiscoverRequest struct {
 	Provides   common.ProvidesCoin `json:"provides"`
 	SearchTime uint64              `json:"searchTime"` // in seconds
 }
 
+// DiscoverResponse ...
 type DiscoverResponse struct {
 	Peers [][]string `json:"peers"`
 }
@@ -68,7 +76,7 @@ func (s *NetService) Discover(_ *http.Request, req *DiscoverRequest, resp *Disco
 		searchTime = defaultSearchTime
 	}
 
-	peers, err := s.net.Discover(common.ProvidesCoin(req.Provides), searchTime)
+	peers, err := s.net.Discover(req.Provides, searchTime)
 	if err != nil {
 		return err
 	}
@@ -89,17 +97,20 @@ func addrInfoToStrings(addrInfo peer.AddrInfo) []string {
 	return strs
 }
 
+// QueryPeerRequest ...
 type QueryPeerRequest struct {
 	// Multiaddr of peer to query
 	Multiaddr string `json:"multiaddr"`
 }
 
+// QueryPeerResponse ...
 type QueryPeerResponse struct {
 	Provides      []common.ProvidesCoin `json:"provides"`
 	MaximumAmount []float64             `json:"maximumAmount"`
 	ExchangeRate  common.ExchangeRate   `json:"exchangeRate"`
 }
 
+// QueryPeer queries a peer for the coins they provide, their maximum amounts, and desired exchange rate.
 func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *QueryPeerResponse) error {
 	who, err := net.StringToAddrInfo(req.Multiaddr)
 	if err != nil {
@@ -117,6 +128,7 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 	return nil
 }
 
+// InitiateRequest ...
 type InitiateRequest struct {
 	Multiaddr      string              `json:"multiaddr"`
 	ProvidesCoin   common.ProvidesCoin `json:"provides"`
@@ -124,10 +136,12 @@ type InitiateRequest struct {
 	DesiredAmount  float64             `json:"desiredAmount"`
 }
 
+// InitiateResponse ...
 type InitiateResponse struct {
 	Success bool `json:"success"`
 }
 
+// Initiate initiates a swap with the given peer.
 func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *InitiateResponse) error {
 	if req.ProvidesCoin == "" {
 		return errors.New("must specify 'provides' coin")
@@ -164,10 +178,12 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 	return nil
 }
 
+// SetGasPriceRequest ...
 type SetGasPriceRequest struct {
 	GasPrice uint64
 }
 
+// SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
 func (s *NetService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
 	s.protocol.SetGasPrice(req.GasPrice)
 	return nil

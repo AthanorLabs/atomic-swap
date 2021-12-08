@@ -62,7 +62,7 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  "basepath",
-				Usage: "path to store swap artifacts",
+				Usage: "path to store swap artefacts",
 			},
 			&cli.StringFlag{
 				Name:  "libp2p-key",
@@ -292,7 +292,7 @@ func runDaemon(c *cli.Context) error {
 		}
 	}
 
-	amount := float64(c.Float64("max-amount"))
+	amount := c.Float64("max-amount")
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {

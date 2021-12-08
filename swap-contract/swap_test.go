@@ -30,7 +30,8 @@ func TestDeploySwap(t *testing.T) {
 	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{}, ethcommon.Address{}, defaultTimeoutDuration)
+	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{},
+		ethcommon.Address{}, defaultTimeoutDuration)
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
 	require.NotNil(t, tx)
@@ -80,7 +81,8 @@ func TestSwap_Claim(t *testing.T) {
 	bobPub := pk_b.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
 
-	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
+	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr,
+		defaultTimeoutDuration)
 	require.NoError(t, err)
 	fmt.Println("Deploy Tx Gas Cost:", deployTx.Gas())
 
@@ -181,7 +183,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 		Signer: authAlice.Signer,
 	}
 
-	// Alice never calls set_ready on the contract, instead she just tries to Refund immidiately
+	// Alice never calls set_ready on the contract, instead she just tries to Refund immediately
 	var sa [32]byte
 	copy(sa[:], common.Reverse(secretAlice))
 	_, err = swap.Refund(txOpts, sa)

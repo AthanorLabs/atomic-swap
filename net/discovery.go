@@ -28,7 +28,8 @@ type discovery struct {
 	provides []common.ProvidesCoin
 }
 
-func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo, provides ...common.ProvidesCoin) (*discovery, error) {
+func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo,
+	provides ...common.ProvidesCoin) (*discovery, error) {
 	dhtOpts := []dual.Option{
 		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
 		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),

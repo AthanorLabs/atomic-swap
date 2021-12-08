@@ -51,6 +51,7 @@ type bob struct {
 	swapState *swapState
 }
 
+// Config contains the configuration values for a new Bob instance.
 type Config struct {
 	Ctx                        context.Context
 	Basepath                   string
