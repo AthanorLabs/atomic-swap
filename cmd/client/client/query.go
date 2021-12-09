@@ -7,6 +7,7 @@ import (
 	"github.com/noot/atomic-swap/rpcclient"
 )
 
+// Query calls net_query.
 func (c *Client) Query(maddr string) (*rpc.QueryPeerResponse, error) {
 	const (
 		method = "net_queryPeer"

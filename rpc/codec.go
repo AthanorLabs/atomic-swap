@@ -11,12 +11,15 @@ import (
 	"github.com/gorilla/rpc/v2/json2"
 )
 
+// Codec ...
 type Codec struct{}
 
+// NewCodec ...
 func NewCodec() *Codec {
 	return new(Codec)
 }
 
+// NewRequest ...
 func (c *Codec) NewRequest(req *http.Request) rpc.CodecRequest {
 	outer := &CodecRequest{}
 	inner := json2.NewCodec().NewRequest(req)
@@ -24,10 +27,12 @@ func (c *Codec) NewRequest(req *http.Request) rpc.CodecRequest {
 	return outer
 }
 
+// CodecRequest ...
 type CodecRequest struct {
 	*json2.CodecRequest
 }
 
+// Method ...
 func (cr *CodecRequest) Method() (string, error) {
 	method, err := cr.CodecRequest.Method()
 	if err != nil {

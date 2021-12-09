@@ -8,9 +8,8 @@ import (
 	"github.com/noot/atomic-swap/common"
 )
 
-//nolint:revive
 const (
-	QueryResponseType byte = iota
+	QueryResponseType byte = iota //nolint
 	InitiateMessageType
 	SendKeysMessageType
 	NotifyContractDeployedType

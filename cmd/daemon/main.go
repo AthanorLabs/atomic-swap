@@ -140,13 +140,13 @@ func main() {
 	}
 }
 
-func runDaemon(c *cli.Context) error {
-	var (
-		moneroEndpoint, daemonEndpoint, ethEndpoint, ethPrivKeyFile, ethPrivKey string
-		env                                                                     common.Environment
-		cfg                                                                     common.Config
-	)
+type protocolHandler interface {
+	net.Handler
+	rpc.Protocol
+	SetMessageSender(net.MessageSender)
+}
 
+func runDaemon(c *cli.Context) error {
 	isAlice := c.Bool("alice")
 	isBob := c.Bool("bob")
 
@@ -154,63 +154,9 @@ func runDaemon(c *cli.Context) error {
 		return errors.New("must specify only one of --alice or --bob")
 	}
 
-	switch c.String("env") {
-	case "mainnet":
-		env = common.Mainnet
-		cfg = common.MainnetConfig
-	case "stagenet":
-		env = common.Stagenet
-		cfg = common.StagenetConfig
-	case "dev":
-		env = common.Development
-		cfg = common.DevelopmentConfig
-	case "":
-		env = defaultEnvironment
-		cfg = common.DevelopmentConfig
-	default:
-		return errors.New("--env must be one of mainnet, stagenet, or dev")
-	}
-
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
-	} else {
-		if isAlice {
-			moneroEndpoint = common.DefaultAliceMoneroEndpoint
-		} else {
-			moneroEndpoint = common.DefaultBobMoneroEndpoint
-		}
-	}
-
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
-
-	// TODO: if env isn't development, require a private key
-	if c.String("ethereum-privkey") != "" {
-		ethPrivKeyFile = c.String("ethereum-privkey")
-		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
-		if err != nil {
-			return fmt.Errorf("failed to read ethereum-privkey file: %w", err)
-		}
-
-		if key[len(key)-1] == '\n' {
-			key = key[:len(key)-1]
-		}
-
-		ethPrivKey = string(key)
-	} else {
-		if env != common.Development {
-			return errors.New("must provide --ethereum-privkey file for non-development environment")
-		}
-
-		log.Warn("no ethereum private key file provided, using ganache deterministic key")
-		if isAlice {
-			ethPrivKey = common.DefaultPrivKeyAlice
-		} else {
-			ethPrivKey = common.DefaultPrivKeyBob
-		}
+	env, cfg, err := getEnvironment(c)
+	if err != nil {
+		return err
 	}
 
 	chainID := int64(c.Uint("ethereum-chain-id"))
@@ -218,78 +164,12 @@ func runDaemon(c *cli.Context) error {
 		chainID = cfg.EthereumChainID
 	}
 
-	if c.String("monero-daemon-endpoint") != "" {
-		daemonEndpoint = c.String("monero-daemon-endpoint")
-	} else {
-		daemonEndpoint = cfg.MoneroDaemonEndpoint
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	type Handler interface {
-		net.Handler
-		rpc.Protocol
-		SetMessageSender(net.MessageSender)
-	}
-
-	var gasPrice *big.Int
-	if c.Uint("gas-price") != 0 {
-		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
-	}
-
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
-
-	var (
-		handler Handler
-		err     error
-	)
-	switch {
-	case isAlice:
-		aliceCfg := &alice.Config{
-			Ctx:                  ctx,
-			Basepath:             cfg.Basepath,
-			MoneroWalletEndpoint: moneroEndpoint,
-			EthereumEndpoint:     ethEndpoint,
-			EthereumPrivateKey:   ethPrivKey,
-			Environment:          env,
-			ChainID:              chainID,
-			GasPrice:             gasPrice,
-			GasLimit:             uint64(c.Uint("gas-limit")),
-		}
-
-		handler, err = alice.NewAlice(aliceCfg)
-		if err != nil {
-			return err
-		}
-	case isBob:
-		walletFile := c.String("wallet-file")
-		if walletFile == "" {
-			return errors.New("must provide --wallet-file")
-		}
-
-		// empty password is ok
-		walletPassword := c.String("wallet-password")
-
-		bobCfg := &bob.Config{
-			Ctx:                  ctx,
-			Basepath:             cfg.Basepath,
-			MoneroWalletEndpoint: moneroEndpoint,
-			MoneroDaemonEndpoint: daemonEndpoint,
-			WalletFile:           walletFile,
-			WalletPassword:       walletPassword,
-			EthereumEndpoint:     ethEndpoint,
-			EthereumPrivateKey:   ethPrivKey,
-			Environment:          env,
-			ChainID:              chainID,
-			GasPrice:             gasPrice,
-			GasLimit:             uint64(c.Uint("gas-limit")),
-		}
-
-		handler, err = bob.NewBob(bobCfg)
-		if err != nil {
-			return err
-		}
+	handler, err := getProtocolHandler(ctx, c, env, cfg, chainID, isAlice, isBob)
+	if err != nil {
+		return err
 	}
 
 	amount := c.Float64("max-amount")
@@ -398,4 +278,144 @@ func runDaemon(c *cli.Context) error {
 
 	wait(ctx)
 	return nil
+}
+
+func getEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, err error) {
+	switch c.String("env") {
+	case "mainnet":
+		env = common.Mainnet
+		cfg = common.MainnetConfig
+	case "stagenet":
+		env = common.Stagenet
+		cfg = common.StagenetConfig
+	case "dev":
+		env = common.Development
+		cfg = common.DevelopmentConfig
+	case "":
+		env = defaultEnvironment
+		cfg = common.DevelopmentConfig
+	default:
+		return 0, common.Config{}, errors.New("--env must be one of mainnet, stagenet, or dev")
+	}
+
+	return env, cfg, nil
+}
+
+func getEthereumPrivateKey(c *cli.Context, env common.Environment, isAlice bool) (ethPrivKey string, err error) {
+	if c.String("ethereum-privkey") != "" {
+		ethPrivKeyFile := c.String("ethereum-privkey")
+		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
+		if err != nil {
+			return "", fmt.Errorf("failed to read ethereum-privkey file: %w", err)
+		}
+
+		if key[len(key)-1] == '\n' {
+			key = key[:len(key)-1]
+		}
+
+		ethPrivKey = string(key)
+	} else {
+		if env != common.Development {
+			return "", errors.New("must provide --ethereum-privkey file for non-development environment")
+		}
+
+		log.Warn("no ethereum private key file provided, using ganache deterministic key")
+		if isAlice {
+			ethPrivKey = common.DefaultPrivKeyAlice
+		} else {
+			ethPrivKey = common.DefaultPrivKeyBob
+		}
+	}
+
+	return ethPrivKey, nil
+}
+
+func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
+	chainID int64, isAlice, isBob bool) (handler protocolHandler, err error) {
+	var (
+		moneroEndpoint, daemonEndpoint, ethEndpoint string
+	)
+
+	if c.String("monero-endpoint") != "" {
+		moneroEndpoint = c.String("monero-endpoint")
+	} else {
+		if isAlice {
+			moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		} else {
+			moneroEndpoint = common.DefaultBobMoneroEndpoint
+		}
+	}
+
+	if c.String("ethereum-endpoint") != "" {
+		ethEndpoint = c.String("ethereum-endpoint")
+	} else {
+		ethEndpoint = common.DefaultEthEndpoint
+	}
+
+	ethPrivKey, err := getEthereumPrivateKey(c, env, isAlice)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.String("monero-daemon-endpoint") != "" {
+		daemonEndpoint = c.String("monero-daemon-endpoint")
+	} else {
+		daemonEndpoint = cfg.MoneroDaemonEndpoint
+	}
+
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	var gasPrice *big.Int
+	if c.Uint("gas-price") != 0 {
+		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	}
+
+	switch {
+	case isAlice:
+		aliceCfg := &alice.Config{
+			Ctx:                  ctx,
+			Basepath:             cfg.Basepath,
+			MoneroWalletEndpoint: moneroEndpoint,
+			EthereumEndpoint:     ethEndpoint,
+			EthereumPrivateKey:   ethPrivKey,
+			Environment:          env,
+			ChainID:              chainID,
+			GasPrice:             gasPrice,
+			GasLimit:             uint64(c.Uint("gas-limit")),
+		}
+
+		handler, err = alice.NewAlice(aliceCfg)
+		if err != nil {
+			return nil, err
+		}
+	case isBob:
+		walletFile := c.String("wallet-file")
+		if walletFile == "" {
+			return nil, errors.New("must provide --wallet-file")
+		}
+
+		// empty password is ok
+		walletPassword := c.String("wallet-password")
+
+		bobCfg := &bob.Config{
+			Ctx:                  ctx,
+			Basepath:             cfg.Basepath,
+			MoneroWalletEndpoint: moneroEndpoint,
+			MoneroDaemonEndpoint: daemonEndpoint,
+			WalletFile:           walletFile,
+			WalletPassword:       walletPassword,
+			EthereumEndpoint:     ethEndpoint,
+			EthereumPrivateKey:   ethPrivKey,
+			Environment:          env,
+			ChainID:              chainID,
+			GasPrice:             gasPrice,
+			GasLimit:             uint64(c.Uint("gas-limit")),
+		}
+
+		handler, err = bob.NewBob(bobCfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return handler, nil
 }

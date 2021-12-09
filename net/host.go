@@ -28,6 +28,7 @@ const (
 var log = logging.Logger("net")
 var _ Host = &host{}
 
+// Host represents a peer-to-peer node (ie. a hash)
 type Host interface {
 	Start() error
 	Stop() error
@@ -38,6 +39,7 @@ type Host interface {
 	MessageSender
 }
 
+// MessageSender is implemented by a Host
 type MessageSender interface {
 	SendSwapMessage(Message) error
 }
@@ -76,7 +78,8 @@ type Config struct {
 	Handler       Handler
 }
 
-func NewHost(cfg *Config) (*host, error) {
+// NewHost returns a new host
+func NewHost(cfg *Config) (*host, error) { //nolint:revive
 	if cfg.KeyFile == "" {
 		cfg.KeyFile = defaultKeyFile
 	}

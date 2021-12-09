@@ -145,7 +145,7 @@ func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
 }
 
-// AddressBytes returns the base58-encoded address for a PrivateKeyPair with the given environment
+// Address returns the base58-encoded address for a PrivateKeyPair with the given environment
 // (ie. mainnet or stagenet)
 func (kp *PrivateKeyPair) Address(env common.Environment) Address {
 	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
@@ -410,7 +410,7 @@ func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
 	return addr
 }
 
-// AddressBytes returns the base58-encoded address for a PublicKeyPair with the given environment
+// Address returns the base58-encoded address for a PublicKeyPair with the given environment
 // (ie. mainnet or stagenet)
 func (kp *PublicKeyPair) Address(env common.Environment) Address {
 	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))

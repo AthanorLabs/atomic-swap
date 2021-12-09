@@ -17,7 +17,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
-var nextID uint64 = 0
+var nextID uint64
 
 var (
 	errMissingKeys    = errors.New("did not receive Bob's public spend or private view key")

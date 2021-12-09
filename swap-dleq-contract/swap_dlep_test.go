@@ -35,16 +35,16 @@ func TestDeploySwapDLEQ(t *testing.T) {
 	conn, err := ethclient.Dial("http://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
-	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
-	address, tx, swapContract, err := DeploySwapDLEQ(authAlice, conn, pk_a.X, pk_a.Y, pk_b.X, pk_b.Y)
+	address, tx, swapContract, err := DeploySwapDLEQ(authAlice, conn, pkA.X, pkA.Y, pkB.X, pkB.Y)
 	require.NoError(t, err)
 
 	t.Log(address)
@@ -88,9 +88,9 @@ func TestSwap_Claim(t *testing.T) {
 	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()),
 		"pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 
-	kBobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
-	fmt.Println("kBobHex: ", kBobHex)
-	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
+	bobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
+	fmt.Println("bobHex: ", bobHex)
+	out, err = exec.Command("../target/debug/dleq-gen", bobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
 	require.NoError(t, err)
 	fmt.Println("dleq-gen out: ", (string(out)))
 
@@ -124,15 +124,15 @@ func TestSwap_Claim(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
-	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
-	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(common.GanacheChainID))
+	authBob, err := bind.NewKeyedTransactorWithChainID(pkB, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
@@ -252,9 +252,9 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()),
 		"pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 
-	kBobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
-	fmt.Println("kBobHex: ", kBobHex)
-	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
+	bobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
+	fmt.Println("bobHex: ", bobHex)
+	out, err = exec.Command("../target/debug/dleq-gen", bobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
 	require.NoError(t, err)
 	fmt.Println("dleq-gen out: ", (string(out)))
 
@@ -288,10 +288,10 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 	authAlice.Value = big.NewInt(10)
 
@@ -374,9 +374,9 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()),
 		"pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 
-	kBobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
-	fmt.Println("kBobHex: ", kBobHex)
-	out, err = exec.Command("../target/debug/dleq-gen", kBobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
+	bobHex := hex.EncodeToString(keyPairBob.SpendKeyBytes())
+	fmt.Println("bobHex: ", bobHex)
+	out, err = exec.Command("../target/debug/dleq-gen", bobHex, "../dleq-file-exchange/dleq_proof_bob.dat").Output()
 	require.NoError(t, err)
 	fmt.Println("dleq-gen out: ", (string(out)))
 
@@ -410,10 +410,10 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 	authAlice.Value = big.NewInt(10)
 

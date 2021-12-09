@@ -16,7 +16,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// StringToAddrInfos converts a single string peer id to AddrInfo
+// StringToAddrInfo converts a single string peer id to AddrInfo
 func StringToAddrInfo(s string) (peer.AddrInfo, error) {
 	maddr, err := ma.NewMultiaddr(s)
 	if err != nil {

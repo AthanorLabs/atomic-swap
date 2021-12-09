@@ -103,7 +103,8 @@ func (d *discovery) advertise() {
 	}
 }
 
-func (d *discovery) discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) { //nolint:unused
+func (d *discovery) discover(provides common.ProvidesCoin,
+	searchTime time.Duration) ([]peer.AddrInfo, error) {
 	log.Debugf("attempting to find DHT peers that provide %s for %s...", provides, searchTime)
 
 	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))

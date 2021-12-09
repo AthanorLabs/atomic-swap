@@ -21,7 +21,7 @@ import (
 	"github.com/noot/atomic-swap/swap-contract"
 )
 
-var nextID uint64 = 0
+var nextID uint64
 
 var (
 	errMissingKeys    = errors.New("did not receive Alice's public spend or view key")

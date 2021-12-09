@@ -82,6 +82,7 @@ type transferRequest struct {
 	Priority     uint          `json:"priority"`
 }
 
+// TransferResponse ...
 type TransferResponse struct {
 	Amount        uint        `json:"amount"`
 	Fee           uint        `json:"fee"`

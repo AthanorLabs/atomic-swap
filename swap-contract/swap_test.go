@@ -24,10 +24,10 @@ func TestDeploySwap(t *testing.T) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	address, tx, swapContract, err := DeploySwap(authAlice, conn, [32]byte{}, [32]byte{},
@@ -58,15 +58,15 @@ func TestSwap_Claim(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
-	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(common.GanacheChainID))
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	authAlice.Value = big.NewInt(1000000000000)
 	require.NoError(t, err)
-	authBob, err := bind.NewKeyedTransactorWithChainID(pk_b, big.NewInt(common.GanacheChainID))
+	authBob, err := bind.NewKeyedTransactorWithChainID(pkB, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 
 	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
@@ -78,7 +78,7 @@ func TestSwap_Claim(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("BobBalanceBefore: ", bobBalanceBefore)
 
-	bobPub := pk_b.Public().(*ecdsa.PublicKey)
+	bobPub := pkB.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
 
 	contractAddress, deployTx, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr,
@@ -160,12 +160,12 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
-	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(1337)) // ganache chainID
 	require.NoError(t, err)
 	authAlice.Value = big.NewInt(10)
 
@@ -173,7 +173,7 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
 
-	bobPub := pk_b.Public().(*ecdsa.PublicKey)
+	bobPub := pkB.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
 	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
@@ -220,12 +220,12 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
 	require.NoError(t, err)
 
-	pk_a, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
-	pk_b, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pk_a, big.NewInt(1337)) // ganache chainID
+	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(1337)) // ganache chainID
 	authAlice.Value = big.NewInt(10)
 	require.NoError(t, err)
 
@@ -233,7 +233,7 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
 
-	bobPub := pk_b.Public().(*ecdsa.PublicKey)
+	bobPub := pkB.Public().(*ecdsa.PublicKey)
 	bobAddr := crypto.PubkeyToAddress(*bobPub)
 	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
 	require.NoError(t, err)
