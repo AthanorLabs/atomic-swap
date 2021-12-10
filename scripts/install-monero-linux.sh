@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ -d "./monero-x86_64-linux-gnu-v0.17.2.3" ]]; then 
-    echo "monero-x86_64-linux-gnu-v0.17.2.3 already installed"
+if [[ -d "./monero-x86_64-linux-gnu-v0.17.3.0" ]]; then 
+    echo "monero-x86_64-linux-gnu-v0.17.3.0 already installed"
     exit 0
 fi
 
