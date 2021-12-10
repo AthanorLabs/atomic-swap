@@ -44,3 +44,9 @@ By redeeming, Bob reveals his secret. Now Alice is the only one that has both `s
 - **Alice called `Ready()`, but Bob never redeems.** Deadlocks are prevented thanks to a second timelock `t_1`, which re-enables Alice to call refund after it, while disabling Bob's ability to claim.
 
 - **Alice never calls `ready` within `t_0`**. Bob can still claim his ETH by waiting until after `t_0` has passed, as the contract automatically allows him to call `Claim()`.
+
+## Acknowledgements
+
+This protocol was inspired by the previous atomic swap research and work done by [COMIT Network](https://github.com/comit-network/xmr-btc-swap) and the [Farcaster Project](https://github.com/farcaster-project).
+
+Thanks for @mmagician, @alxs, and @Lederstrumpf for helping to review the protocol and kick-start the development of this project.
