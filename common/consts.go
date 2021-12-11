@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MainnetChainID = 1
+	MainnetChainID = 1 //nolint
 	RopstenChainID = 3
 	GanacheChainID = 1337
 
@@ -27,23 +27,29 @@ var (
 	numMoneroUnits = math.Pow(10, 12)
 )
 
+// MoneroAmount represents some amount of piconero (the smallest denomination of monero)
 type MoneroAmount uint64
 
+// MoneroToPiconero converts an amount of standard monero and returns it as a MoneroAmount
 func MoneroToPiconero(amount float64) MoneroAmount {
 	return MoneroAmount(amount * numMoneroUnits)
 }
 
+// Uint64 ...
 func (a MoneroAmount) Uint64() uint64 {
 	return uint64(a)
 }
 
+// EtherAmount represents some amout of ether in the smallest denomination (wei)
 type EtherAmount big.Int
 
+// NewEtherAmount converts some amount of wei into an EtherAmount.
 func NewEtherAmount(amount int64) EtherAmount {
 	i := big.NewInt(amount)
 	return EtherAmount(*i)
 }
 
+// EtherToWei converts some amount of standard ether to an EtherAmount.
 func EtherToWei(amount float64) EtherAmount {
 	amt := big.NewFloat(amount)
 	mult := big.NewFloat(numEtherUnits)
@@ -51,11 +57,13 @@ func EtherToWei(amount float64) EtherAmount {
 	return EtherAmount(*res)
 }
 
+// BigInt returns the given EtherAmount as a *big.Int
 func (a EtherAmount) BigInt() *big.Int {
 	i := big.Int(a)
 	return &i
 }
 
+// String ...
 func (a EtherAmount) String() string {
 	return a.BigInt().String()
 }

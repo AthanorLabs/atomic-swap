@@ -23,7 +23,8 @@ type client struct {
 	endpoint string
 }
 
-func NewClient(endpoint string) *client {
+// NewClient returns a new monero-wallet-rpc client.
+func NewClient(endpoint string) *client { //nolint:revive
 	return &client{
 		endpoint: endpoint,
 	}

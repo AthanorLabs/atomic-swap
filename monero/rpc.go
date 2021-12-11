@@ -24,7 +24,8 @@ type generateFromKeysResponse struct {
 	Info    string `json:"info"`
 }
 
-func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, address Address, filename, password string) error {
+func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, address Address,
+	filename, password string) error {
 	const (
 		method                 = "generate_from_keys"
 		successMessage         = "Wallet has been generated successfully."
@@ -69,6 +70,7 @@ func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, a
 	return fmt.Errorf("got unexpected Info string: %s", res.Info)
 }
 
+// Destination represents a transfer destination
 type Destination struct {
 	Amount  uint   `json:"amount"`
 	Address string `json:"address"`
@@ -80,6 +82,7 @@ type transferRequest struct {
 	Priority     uint          `json:"priority"`
 }
 
+// TransferResponse ...
 type TransferResponse struct {
 	Amount        uint        `json:"amount"`
 	Fee           uint        `json:"fee"`
@@ -128,6 +131,7 @@ type getBalanceRequest struct {
 	AccountIndex uint `json:"account_index"`
 }
 
+// GetBalanceResponse ...
 type GetBalanceResponse struct {
 	Balance         float64                  `json:"balance"`
 	BlocksToUnlock  uint                     `json:"blocks_to_unlock"`

@@ -56,7 +56,7 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 	bobAddr, err := bob.client.GetAddress(0)
 	require.NoError(t, err)
 
-	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 61)
+	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 121)
 
 	swapState, err := newSwapState(bob, common.MoneroAmount(33), desiredAmout)
 	require.NoError(t, err)
@@ -84,7 +84,8 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 
 	var claimKey [32]byte
 	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
-	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(swapState.txOpts, conn, claimKey, [32]byte{}, bob.ethAddress, defaultTimeoutDuration)
+	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(swapState.txOpts, conn,
+		claimKey, [32]byte{}, bob.ethAddress, defaultTimeoutDuration)
 	require.NoError(t, err)
 
 	_, err = swapState.contract.SetReady(swapState.txOpts)
@@ -118,7 +119,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	require.Equal(t, alicePubKeys.ViewKey().Hex(), s.alicePublicKeys.ViewKey().Hex())
 }
 
-func deploySwap(t *testing.T, bob *bob, swapState *swapState, refundKey [32]byte, amount *big.Int, timeout time.Duration) (ethcommon.Address, *swap.Swap) {
+func deploySwap(t *testing.T, bob *bob, swapState *swapState, refundKey [32]byte, amount *big.Int,
+	timeout time.Duration) (ethcommon.Address, *swap.Swap) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 

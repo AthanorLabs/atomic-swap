@@ -6,7 +6,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 
-	"github.com/fatih/color"
+	"github.com/fatih/color" //nolint:misspell
 )
 
 func (b *bob) Provides() common.ProvidesCoin {
@@ -35,7 +35,7 @@ func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.
 		return err
 	}
 
-	// check user's balance and that they actualy have what they will provide
+	// check user's balance and that they actually have what they will provide
 	if balance.UnlockedBalance <= float64(providesAmount) {
 		return errors.New("balance lower than amount to be provided")
 	}

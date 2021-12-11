@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// BASE58 ...
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 var base58Lookup = map[string]int{
@@ -50,6 +51,7 @@ func decodeChunk(encoded string) (result []byte) {
 	return
 }
 
+// EncodeMoneroBase58 encodes byte data using base-58
 func EncodeMoneroBase58(data ...[]byte) (result string) {
 	var combined []byte
 	for _, item := range data {
@@ -66,6 +68,7 @@ func EncodeMoneroBase58(data ...[]byte) (result string) {
 	return
 }
 
+// DecodeMoneroBase58 decodes base-58 encoded data into a byte slice
 func DecodeMoneroBase58(data string) (result []byte) {
 	length := len(data)
 	rounds := length / 11
