@@ -12,17 +12,20 @@ import (
 
 var log = logging.Logger("rpc")
 
+// Server represents the JSON-RPC server
 type Server struct {
 	s    *rpc.Server
 	port uint16
 }
 
+// Config ...
 type Config struct {
 	Port     uint16
 	Net      Net
 	Protocol Protocol
 }
 
+// NewServer ...
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
@@ -36,6 +39,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	}, nil
 }
 
+// Start starts the JSON-RPC server.
 func (s *Server) Start() <-chan error {
 	errCh := make(chan error)
 

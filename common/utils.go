@@ -21,6 +21,7 @@ var (
 	log = logging.Logger("common")
 )
 
+// Reverse reverses the byte slice and returns it.
 func Reverse(s []byte) []byte {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -28,6 +29,7 @@ func Reverse(s []byte) []byte {
 	return s
 }
 
+// WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
 func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, bool) {
 	for i := 0; i < maxRetries; i++ {
 		receipt, err := ethclient.TransactionReceipt(ctx, txHash)

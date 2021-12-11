@@ -49,6 +49,7 @@ type alice struct {
 	swapState *swapState
 }
 
+// Config contains the configuration values for a new Alice instance.
 type Config struct {
 	Ctx                  context.Context
 	Basepath             string
@@ -64,7 +65,7 @@ type Config struct {
 // NewAlice returns a new instance of Alice.
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
-func NewAlice(cfg *Config) (*alice, error) {
+func NewAlice(cfg *Config) (*alice, error) { //nolint
 	pk, err := crypto.HexToECDSA(cfg.EthereumPrivateKey)
 	if err != nil {
 		return nil, err

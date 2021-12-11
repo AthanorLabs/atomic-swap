@@ -51,6 +51,7 @@ type bob struct {
 	swapState *swapState
 }
 
+// Config contains the configuration values for a new Bob instance.
 type Config struct {
 	Ctx                        context.Context
 	Basepath                   string
@@ -67,7 +68,7 @@ type Config struct {
 
 // NewBob returns a new instance of Bob.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(cfg *Config) (*bob, error) {
+func NewBob(cfg *Config) (*bob, error) { //nolint
 	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
 		return nil, errors.New("environment is development, must provide monero daemon endpoint")
 	}

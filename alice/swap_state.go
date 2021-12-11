@@ -14,10 +14,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/fatih/color"
+	"github.com/fatih/color" //nolint:misspell
 )
 
-var nextID uint64 = 0
+var nextID uint64
 
 var (
 	errMissingKeys    = errors.New("did not receive Bob's public spend or private view key")
@@ -250,7 +250,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
 		if balance.Balance < float64(s.desiredAmount) {
-			return nil, true, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v", balance.Balance, float64(s.desiredAmount))
+			return nil, true, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
+				balance.Balance, float64(s.desiredAmount))
 		}
 
 		if err := s.alice.client.CloseWallet(); err != nil {

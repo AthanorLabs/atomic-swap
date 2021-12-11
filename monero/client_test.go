@@ -83,8 +83,9 @@ func TestClient_Transfer(t *testing.T) {
 
 	// generate spend account for A+B
 	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
-	err = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), fmt.Sprintf("test-wallet-spaghet%d", r), "")
-	require.NoError(t, err)
+	// ignore the error for now, as it can error with "Wallet already exists."
+	_ = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
+		fmt.Sprintf("test-wallet-%d", r), "")
 
 	err = cB.refresh()
 	require.NoError(t, err)

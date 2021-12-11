@@ -7,6 +7,7 @@ import (
 	"github.com/noot/atomic-swap/rpcclient"
 )
 
+// Addresses calls net_addresses.
 func (c *Client) Addresses() ([]string, error) {
 	const (
 		method = "net_addresses"

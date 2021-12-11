@@ -6,7 +6,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 
-	"github.com/fatih/color"
+	"github.com/fatih/color" //nolint:misspell
 )
 
 func (a *alice) Provides() common.ProvidesCoin {
@@ -60,7 +60,7 @@ func (a *alice) initiate(providesAmount common.EtherAmount, desiredAmount common
 		return err
 	}
 
-	// check user's balance and that they actualy have what they will provide
+	// check user's balance and that they actually have what they will provide
 	if balance.Cmp(providesAmount.BigInt()) <= 0 {
 		return errors.New("balance lower than amount to be provided")
 	}
