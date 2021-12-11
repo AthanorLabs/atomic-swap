@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-// Address represents a base58-encoded string
-type Address string
-
 // BASE58 ...
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
