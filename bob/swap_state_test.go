@@ -56,7 +56,7 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 	bobAddr, err := bob.client.GetAddress(0)
 	require.NoError(t, err)
 
-	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 61)
+	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 121)
 
 	swapState, err := newSwapState(bob, common.MoneroAmount(33), desiredAmout)
 	require.NoError(t, err)
