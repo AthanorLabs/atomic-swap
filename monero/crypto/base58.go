@@ -1,11 +1,14 @@
 // this file is from https://github.com/paxosglobal/moneroutil/tree/33d7e0c11a62d2ac67213781a0b485d0de4aca70
 
-package monero
+package crypto
 
 import (
 	"math/big"
 	"strings"
 )
+
+// Address represents a base58-encoded string
+type Address string
 
 // BASE58 ...
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"

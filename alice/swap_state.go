@@ -9,6 +9,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
@@ -38,12 +39,12 @@ type swapState struct {
 	desiredAmount  common.MoneroAmount
 
 	// our keys for this session
-	privkeys *monero.PrivateKeyPair
-	pubkeys  *monero.PublicKeyPair
+	privkeys *mcrypto.PrivateKeyPair
+	pubkeys  *mcrypto.PublicKeyPair
 
 	// Bob's keys for this session
-	bobPublicSpendKey *monero.PublicKey
-	bobPrivateViewKey *monero.PrivateViewKey
+	bobPublicSpendKey *mcrypto.PublicKey
+	bobPrivateViewKey *mcrypto.PrivateViewKey
 	bobAddress        ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
@@ -184,9 +185,9 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, errors.New("got empty address for locked XMR")
 		}
 		// check that XMR was locked in expected account, and confirm amount
-		vk := monero.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
-		sk := monero.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
-		kp := monero.NewPublicKeyPair(sk, vk.Public())
+		vk := mcrypto.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
+		sk := mcrypto.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
+		kp := mcrypto.NewPublicKeyPair(sk, vk.Public())
 
 		if msg.Address != string(kp.Address(s.alice.env)) {
 			return nil, true, fmt.Errorf("address received in message does not match expected address")
@@ -232,7 +233,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				panic("address is not a string!")
 			}
 
-			if monero.Address(addr) == kp.Address(s.alice.env) {
+			if mcrypto.Address(addr) == kp.Address(s.alice.env) {
 				balance, err = s.alice.client.GetBalance(uint(i))
 				if err != nil {
 					return nil, true, fmt.Errorf("failed to get balance: %w", err)
@@ -364,7 +365,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, errMissingAddress
 	}
 
-	vk, err := monero.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
+	vk, err := mcrypto.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Bob's private view keys: %w", err)
 	}
@@ -374,7 +375,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	log.Debugf("got Bob's keys and address: address=%s", s.bobAddress)
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
-	sk, err := monero.NewPublicKeyFromHex(msg.PublicSpendKey)
+	sk, err := mcrypto.NewPublicKeyFromHex(msg.PublicSpendKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Bob's public spend key: %w", err)
 	}

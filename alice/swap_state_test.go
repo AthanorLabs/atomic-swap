@@ -11,6 +11,7 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 
 	logging "github.com/ipfs/go-log"
@@ -57,7 +58,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	_, err = s.generateKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := monero.GenerateKeys()
+	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
 	msg = &net.SendKeysMessage{
@@ -92,7 +93,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	_, err := s.generateKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := monero.GenerateKeys()
+	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
 	msg := &net.SendKeysMessage{
@@ -132,7 +133,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	_, err := s.generateKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := monero.GenerateKeys()
+	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
 	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey())
@@ -141,7 +142,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	require.NoError(t, err)
 
 	s.desiredAmount = 0
-	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &net.NotifyXMRLock{
@@ -173,7 +174,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	_, err := s.generateKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := monero.GenerateKeys()
+	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
 	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey())
@@ -182,7 +183,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NoError(t, err)
 
 	s.desiredAmount = 0
-	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &net.NotifyXMRLock{
@@ -222,7 +223,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 
 	// simulate bob sending his keys
-	bobPrivKeys, err := monero.GenerateKeys()
+	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
 	pub := s.alice.ethPrivKey.Public().(*ecdsa.PublicKey)
@@ -242,7 +243,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
-	viewKey := monero.SumPrivateViewKeys(bobPrivKeys.ViewKey(), s.privkeys.ViewKey())
+	viewKey := mcrypto.SumPrivateViewKeys(bobPrivKeys.ViewKey(), s.privkeys.ViewKey())
 	t.Log(viewKey.Hex())
 
 	// simulate bob locking xmr
@@ -255,7 +256,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 257)
 
 	s.desiredAmount = 33333
-	kp := monero.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr

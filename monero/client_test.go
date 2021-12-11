@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/monero/crypto"
 
 	"github.com/stretchr/testify/require"
 )
@@ -38,15 +39,15 @@ func TestClient_Transfer(t *testing.T) {
 		t.Fatal("need to wait for balance to unlock")
 	}
 
-	kpA, err := GenerateKeys()
+	kpA, err := crypto.GenerateKeys()
 	require.NoError(t, err)
 
-	kpB, err := GenerateKeys()
+	kpB, err := crypto.GenerateKeys()
 	require.NoError(t, err)
 
-	kpABPub := SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
+	kpABPub := crypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
 
-	vkABPriv := SumPrivateViewKeys(kpA.vk, kpB.vk)
+	vkABPriv := crypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	r, err := rand.Int(rand.Reader, big.NewInt(10000))
 	require.NoError(t, err)
@@ -82,7 +83,7 @@ func TestClient_Transfer(t *testing.T) {
 	_ = daemon.callGenerateBlocks(aliceAddress.Address, 16)
 
 	// generate spend account for A+B
-	skAKPriv := SumPrivateSpendKeys(kpA.sk, kpB.sk)
+	skAKPriv := crypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
 	// ignore the error for now, as it can error with "Wallet already exists."
 	_ = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
 		fmt.Sprintf("test-wallet-%d", r), "")
@@ -97,6 +98,6 @@ func TestClient_Transfer(t *testing.T) {
 	}
 
 	// transfer from account A+B back to Alice's address
-	_, err = cB.Transfer(Address(aliceAddress.Address), 0, 1)
+	_, err = cB.Transfer(crypto.Address(aliceAddress.Address), 0, 1)
 	require.NoError(t, err)
 }

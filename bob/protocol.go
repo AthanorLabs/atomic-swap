@@ -16,6 +16,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
@@ -97,6 +98,7 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 		return nil, err
 	}
 
+	// this is only used in the monero development environment to generate new blocks
 	var daemonClient monero.DaemonClient
 	if cfg.Environment == common.Development {
 		daemonClient = monero.NewClient(cfg.MoneroDaemonEndpoint)
@@ -136,19 +138,19 @@ func (b *bob) openWallet() error { //nolint
 // generateKeys generates Bob's spend and view keys (s_b, v_b)
 // It returns Bob's public spend key and his private view key, so that Alice can see
 // if the funds are locked.
-func (s *swapState) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, error) {
+func (s *swapState) generateKeys() (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
 	if s.privkeys != nil {
 		return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
 	}
 
 	var err error
-	s.privkeys, err = monero.GenerateKeys()
+	s.privkeys, err = mcrypto.GenerateKeys()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
-	if err := monero.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
+	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
 		return nil, nil, err
 	}
 
@@ -157,7 +159,7 @@ func (s *swapState) generateKeys() (*monero.PublicKey, *monero.PrivateViewKey, e
 }
 
 // setAlicePublicKeys sets Alice's public spend and view keys
-func (s *swapState) setAlicePublicKeys(sk *monero.PublicKeyPair) {
+func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair) {
 	s.alicePublicKeys = sk
 }
 
@@ -215,12 +217,12 @@ func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
 // the private spend and view keys that contain the previously locked monero
 // ((s_a + s_b), (v_a + v_b)) are sent over the channel.
 // Bob can then use these keys to move his funds if he wishes.
-func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //nolint:unused
+func (s *swapState) watchForRefund() (<-chan *mcrypto.PrivateKeyPair, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
 		Context: s.ctx,
 	}
 
-	out := make(chan *monero.PrivateKeyPair)
+	out := make(chan *mcrypto.PrivateKeyPair)
 	ch := make(chan *swap.SwapRefunded)
 	defer close(out)
 
@@ -242,7 +244,7 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 
 				// got Alice's secret
 				sa := refund.S
-				skA, err := monero.NewPrivateSpendKey(sa[:])
+				skA, err := mcrypto.NewPrivateSpendKey(sa[:])
 				if err != nil {
 					log.Info("failed to convert Alice's secret into a key: %w", err)
 					return
@@ -254,9 +256,9 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 					return
 				}
 
-				skAB := monero.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
-				vkAB := monero.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-				kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+				skAB := mcrypto.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
+				vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
+				kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 				out <- kpAB
 			case <-s.ctx.Done():
 				return
@@ -271,8 +273,8 @@ func (s *swapState) watchForRefund() (<-chan *monero.PrivateKeyPair, error) { //
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
 // TODO: units
-func (s *swapState) lockFunds(amount common.MoneroAmount) (monero.Address, error) {
-	kp := monero.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
+func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
+	kp := mcrypto.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
 	balance, err := s.bob.client.GetBalance(0)

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 )
 
 func reverse(s []byte) []byte {
@@ -58,9 +58,9 @@ func TestSwap_Claim(t *testing.T) {
 	}
 
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
+	pubKeyAliceX, pubKeyAliceY := mcrypto.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
 	fmt.Println("pubKeyAliceX: ", hex.EncodeToString(pubKeyAliceX.Bytes()),
 		"pubKeyAliceY: ", hex.EncodeToString(pubKeyAliceY.Bytes()))
 
@@ -75,16 +75,16 @@ func TestSwap_Claim(t *testing.T) {
 	keyAlease, err := hex.DecodeString("a6e51afb9662bf2173d807ceaf88938d09a82d1ab2cea3eeb1706eeeb8b6ba03")
 	require.NoError(t, err)
 
-	pubKeyAleaseX, pubKeyAleaseY := monero.PublicSpendOnSecp256k1(keyAlease)
+	pubKeyAleaseX, pubKeyAleaseY := mcrypto.PublicSpendOnSecp256k1(keyAlease)
 
 	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyAleaseX.Bytes())),
 		hex.EncodeToString(reverse(pubKeyAleaseY.Bytes())))
 
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
-	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
+	pubKeyBobX, pubKeyBobY := mcrypto.PublicSpendOnSecp256k1(secretBob)
 	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()),
 		"pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 
@@ -220,11 +220,11 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	}
 
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := mcrypto.GenerateKeys()
 	secretAlice := keyPairAlice.SpendKeyBytes()
 	require.NoError(t, err)
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
-	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
+	pubKeyAliceX, pubKeyAliceY := mcrypto.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
 	fmt.Println("pubKeyAliceX: ", hex.EncodeToString(pubKeyAliceX.Bytes()),
 		"pubKeyAliceY: ", hex.EncodeToString(pubKeyAliceY.Bytes()))
 
@@ -239,16 +239,16 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 	keyAlease, err := hex.DecodeString("a6e51afb9662bf2173d807ceaf88938d09a82d1ab2cea3eeb1706eeeb8b6ba03")
 	require.NoError(t, err)
 
-	pubKeyAleaseX, pubKeyAleaseY := monero.PublicSpendOnSecp256k1(keyAlease)
+	pubKeyAleaseX, pubKeyAleaseY := mcrypto.PublicSpendOnSecp256k1(keyAlease)
 
 	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyAleaseX.Bytes())),
 		hex.EncodeToString(reverse(pubKeyAleaseY.Bytes())))
 
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
-	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
+	pubKeyBobX, pubKeyBobY := mcrypto.PublicSpendOnSecp256k1(secretBob)
 	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()),
 		"pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 
@@ -342,11 +342,11 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	}
 
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := mcrypto.GenerateKeys()
 	secretAlice := keyPairAlice.SpendKeyBytes()
 	require.NoError(t, err)
 	// pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
-	pubKeyAliceX, pubKeyAliceY := monero.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
+	pubKeyAliceX, pubKeyAliceY := mcrypto.PublicSpendOnSecp256k1(keyPairAlice.SpendKeyBytes())
 	fmt.Println("pubKeyAliceX: ", hex.EncodeToString(pubKeyAliceX.Bytes()),
 		"pubKeyAliceY: ", hex.EncodeToString(pubKeyAliceY.Bytes()))
 
@@ -361,16 +361,16 @@ func TestSwap_Refund_After_T1(t *testing.T) {
 	keyAlease, err := hex.DecodeString("a6e51afb9662bf2173d807ceaf88938d09a82d1ab2cea3eeb1706eeeb8b6ba03")
 	require.NoError(t, err)
 
-	pubKeyAleaseX, pubKeyAleaseY := monero.PublicSpendOnSecp256k1(keyAlease)
+	pubKeyAleaseX, pubKeyAleaseY := mcrypto.PublicSpendOnSecp256k1(keyAlease)
 
 	fmt.Println("PubKey:", hex.EncodeToString(reverse(pubKeyAleaseX.Bytes())),
 		hex.EncodeToString(reverse(pubKeyAleaseY.Bytes())))
 
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
-	pubKeyBobX, pubKeyBobY := monero.PublicSpendOnSecp256k1(secretBob)
+	pubKeyBobX, pubKeyBobY := mcrypto.PublicSpendOnSecp256k1(secretBob)
 	fmt.Println("pubKeyBobX: ", hex.EncodeToString(pubKeyBobX.Bytes()),
 		"pubKeyBobY: ", hex.EncodeToString(pubKeyBobY.Bytes()))
 

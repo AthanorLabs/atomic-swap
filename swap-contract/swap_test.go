@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 )
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
@@ -40,12 +40,12 @@ func TestDeploySwap(t *testing.T) {
 
 func TestSwap_Claim(t *testing.T) {
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	secretBob := keyPairBob.SpendKeyBytes()
 	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
@@ -141,12 +141,12 @@ func TestSwap_Claim(t *testing.T) {
 
 func TestSwap_Refund_Within_T0(t *testing.T) {
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
@@ -201,12 +201,12 @@ func TestSwap_Refund_Within_T0(t *testing.T) {
 
 func TestSwap_Refund_After_T1(t *testing.T) {
 	// Alice generates key
-	keyPairAlice, err := monero.GenerateKeys()
+	keyPairAlice, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
 
 	// Bob generates key
-	keyPairBob, err := monero.GenerateKeys()
+	keyPairBob, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
 
