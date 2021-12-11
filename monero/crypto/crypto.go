@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -182,7 +183,8 @@ func (kp *PrivateKeyPair) Marshal(env common.Environment) ([]byte, error) {
 
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
-	key *ed25519.Scalar
+	seed [32]byte
+	key  *ed25519.Scalar
 }
 
 // NewPrivateSpendKey returns a new PrivateSpendKey from the given canonically-encoded scalar.
@@ -418,19 +420,22 @@ func (kp *PublicKeyPair) Address(env common.Environment) Address {
 
 // GenerateKeys returns a private spend key and view key
 func GenerateKeys() (*PrivateKeyPair, error) {
-	var seed [64]byte
+	var seed [32]byte
 	_, err := rand.Read(seed[:])
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := ed25519.NewScalar().SetUniformBytes(seed[:])
+	h := sha512.Sum512(seed[:])
+
+	s, err := ed25519.NewScalar().SetBytesWithClamping(h[:32])
 	if err != nil {
 		return nil, fmt.Errorf("failed to set bytes: %w", err)
 	}
 
 	sk := &PrivateSpendKey{
-		key: s,
+		seed: seed,
+		key:  s,
 	}
 
 	return sk.AsPrivateKeyPair()
