@@ -66,6 +66,7 @@ type swapState struct {
 
 	// set to true on claiming the ETH or reclaiming XMR
 	completed            bool
+	refunded             bool
 	moneroReclaimAddress mcrypto.Address
 }
 
@@ -102,10 +103,16 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
+	sig, err := s.privkeys.SpendKey().Sign(s.pubkeys.SpendKey().Bytes())
+	if err != nil {
+		return nil, err
+	}
+
 	return &net.SendKeysMessage{
-		PublicSpendKey: sk.Hex(),
-		PrivateViewKey: vk.Hex(),
-		EthAddress:     s.bob.ethAddress.String(),
+		PublicSpendKey:  sk.Hex(),
+		PrivateViewKey:  vk.Hex(),
+		PrivateKeyProof: sig.Hex(),
+		EthAddress:      s.bob.ethAddress.String(),
 	}, nil
 }
 
@@ -131,11 +138,11 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
-		return nil
+		return errors.New("protocol exited before any funds were locked")
 	case *net.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
-		return nil
+		return errors.New("protocol exited before any funds were locked")
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
@@ -152,6 +159,7 @@ func (s *swapState) ProtocolExited() error {
 		}
 
 		s.completed = true
+		s.refunded = true // TODO: return this
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
@@ -259,7 +267,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, errMissingAddress
 		}
 
-		s.nextExpectedMessage = &net.NotifyReady{}
 		log.Infof("got Swap contract address! address=%s", msg.Address)
 
 		if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
@@ -325,6 +332,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			}
 		}()
 
+		s.nextExpectedMessage = &net.NotifyReady{}
 		return out, false, nil
 	case *net.NotifyReady:
 		log.Debug("Alice called Ready(), attempting to claim funds...")
@@ -351,6 +359,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		s.completed = true
+		s.refunded = true
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
@@ -421,14 +430,25 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	log.Debug("got Alice's public keys")
-	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 
 	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
 	if err != nil {
 		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
 	}
 
+	// verify that counterparty really has the private key to the public key
+	sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
+	if err != nil {
+		return err
+	}
+
+	ok := kp.SpendKey().Verify(kp.SpendKey().Bytes(), sig)
+	if !ok {
+		return errors.New("failed to verify proof of private key")
+	}
+
 	s.setAlicePublicKeys(kp)
+	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 	return nil
 }
 

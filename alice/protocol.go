@@ -278,6 +278,7 @@ func (s *swapState) refund() (string, error) {
 	}
 
 	s.success = true
+	s.refunded = true
 	return tx.Hash().String(), nil
 }
 

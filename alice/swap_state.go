@@ -60,7 +60,8 @@ type swapState struct {
 	claimedCh   chan struct{}
 
 	// set to true upon creating of the XMR wallet
-	success bool
+	success  bool
+	refunded bool
 }
 
 func newSwapState(a *alice, providesAmount common.EtherAmount, desiredAmount common.MoneroAmount) (*swapState, error) {
@@ -97,9 +98,15 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
+	sig, err := s.privkeys.SpendKey().Sign(kp.SpendKey().Bytes())
+	if err != nil {
+		return nil, err
+	}
+
 	return &net.SendKeysMessage{
-		PublicSpendKey: kp.SpendKey().Hex(),
-		PublicViewKey:  kp.ViewKey().Hex(),
+		PublicSpendKey:  kp.SpendKey().Hex(),
+		PublicViewKey:   kp.ViewKey().Hex(),
+		PrivateKeyProof: sig.Hex(),
 	}, nil
 }
 
@@ -124,6 +131,7 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
+		return errors.New("swap cancelled early, but before any locking happened")
 	case *net.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		if err := s.tryRefund(); err != nil {
@@ -140,6 +148,10 @@ func (s *swapState) ProtocolExited() error {
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		return errors.New("unexpected message type")
+	}
+
+	if s.refunded {
+		return errors.New("swap refunded")
 	}
 
 	return nil
@@ -259,7 +271,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to close wallet: %w", err)
 		}
 
-		s.nextExpectedMessage = &net.NotifyClaimed{}
 		close(s.xmrLockedCh)
 
 		if err := s.ready(); err != nil {
@@ -299,6 +310,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			}
 		}()
 
+		s.nextExpectedMessage = &net.NotifyClaimed{}
 		out := &net.NotifyReady{}
 		return out, false, nil
 	case *net.NotifyClaimed:
@@ -373,12 +385,23 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.bobAddress = ethcommon.HexToAddress(msg.EthAddress)
 
 	log.Debugf("got Bob's keys and address: address=%s", s.bobAddress)
-	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	sk, err := mcrypto.NewPublicKeyFromHex(msg.PublicSpendKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Bob's public spend key: %w", err)
 	}
+
+	// verify that counterparty really has the private key to the public key
+	sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
+	if err != nil {
+		return nil, err
+	}
+
+	ok := sk.Verify(sk.Bytes(), sig)
+	if !ok {
+		return nil, errors.New("failed to verify proof of private key")
+	}
+
 	s.setBobKeys(sk, vk)
 	address, err := s.deployAndLockETH(s.providesAmount)
 	if err != nil {
@@ -422,6 +445,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		}
 
 	}()
+
+	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	out := &net.NotifyContractDeployed{
 		Address: address.String(),

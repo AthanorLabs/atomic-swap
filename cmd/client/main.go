@@ -202,8 +202,16 @@ func runInitiate(ctx *cli.Context) error {
 		return err
 	}
 
+	var desiredCoin common.ProvidesCoin
+	switch provides {
+	case common.ProvidesETH:
+		desiredCoin = common.ProvidesXMR
+	case common.ProvidesXMR:
+		desiredCoin = common.ProvidesETH
+	}
+
 	if ok {
-		fmt.Printf("Swap successful, received %v %s\n", desiredAmount, provides)
+		fmt.Printf("Swap successful, received %v %s\n", desiredAmount, desiredCoin)
 	} else {
 		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
 	}
