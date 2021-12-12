@@ -7,13 +7,11 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
-	// "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	// "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -63,6 +61,22 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 	return bob, swapState
 }
 
+func newTestAliceSendKeySMessage(t *testing.T) (*net.SendKeysMessage, *mcrypto.PrivateKeyPair) {
+	alicePrivKeys, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	sig, err := alicePrivKeys.SpendKey().Sign(alicePrivKeys.SpendKey().Public().Bytes())
+	require.NoError(t, err)
+
+	msg := &net.SendKeysMessage{
+		PublicSpendKey:  alicePrivKeys.SpendKey().Public().Hex(),
+		PublicViewKey:   alicePrivKeys.ViewKey().Public().Hex(),
+		PrivateKeyProof: sig.Hex(),
+	}
+
+	return msg, alicePrivKeys
+}
+
 func TestSwapState_GenerateKeys(t *testing.T) {
 	_, swapState := newTestBob(t)
 
@@ -103,14 +117,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	alicePrivKeys, err := monero.GenerateKeys()
-	require.NoError(t, err)
+	msg, alicePrivKeys := newTestAliceSendKeySMessage(t)
 	alicePubKeys := alicePrivKeys.PublicKeyPair()
-
-	msg = &net.SendKeysMessage{
-		PublicSpendKey: alicePrivKeys.SpendKey().Public().Hex(),
-		PublicViewKey:  alicePrivKeys.ViewKey().Public().Hex(),
-	}
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
@@ -146,7 +154,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := monero.GenerateKeys()
+	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
 
@@ -184,7 +192,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := monero.GenerateKeys()
+	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
 
@@ -245,7 +253,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := monero.GenerateKeys()
+	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
 
@@ -279,7 +287,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := monero.GenerateKeys()
+	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
 
@@ -319,7 +327,7 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := monero.GenerateKeys()
+	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
 

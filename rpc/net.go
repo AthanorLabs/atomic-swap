@@ -137,6 +137,7 @@ type InitiateRequest struct {
 }
 
 // InitiateResponse ...
+// TODO: add Refunded bool
 type InitiateResponse struct {
 	Success bool `json:"success"`
 }

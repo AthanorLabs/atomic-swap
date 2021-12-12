@@ -1,7 +1,8 @@
-package monero
+package crypto
 
 import (
 	"crypto/rand"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,68 +12,8 @@ import (
 	"github.com/noot/atomic-swap/common"
 
 	ed25519 "filippo.io/edwards25519"
-	"github.com/ebfe/keccak"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
-
-const (
-	addressPrefixMainnet  byte = 18
-	addressPrefixStagenet byte = 24
-)
-
-// PublicSpendOnSecp256k1 returns a public spend key on the secp256k1 curve
-func PublicSpendOnSecp256k1(k []byte) (x, y *big.Int) {
-	return secp256k1.S256().ScalarBaseMult(k)
-}
-
-// SumSpendAndViewKeys sums two PublicKeyPairs, returning another PublicKeyPair.
-func SumSpendAndViewKeys(a, b *PublicKeyPair) *PublicKeyPair {
-	return &PublicKeyPair{
-		sk: SumPublicKeys(a.sk, b.sk),
-		vk: SumPublicKeys(a.vk, b.vk),
-	}
-}
-
-// SumPublicKeys sums two public keys (points)
-func SumPublicKeys(a, b *PublicKey) *PublicKey {
-	s := ed25519.NewIdentityPoint().Add(a.key, b.key)
-	return &PublicKey{
-		key: s,
-	}
-}
-
-// SumPrivateSpendKeys sums two private spend keys (scalars)
-func SumPrivateSpendKeys(a, b *PrivateSpendKey) *PrivateSpendKey {
-	s := ed25519.NewScalar().Add(a.key, b.key)
-	return &PrivateSpendKey{
-		key: s,
-	}
-}
-
-// SumPrivateViewKeys sums two private view keys (scalars)
-func SumPrivateViewKeys(a, b *PrivateViewKey) *PrivateViewKey {
-	s := ed25519.NewScalar().Add(a.key, b.key)
-	return &PrivateViewKey{
-		key: s,
-	}
-}
-
-// Keccak256 returns the keccak256 hash of the data.
-func Keccak256(data ...[]byte) (result [32]byte) {
-	h := keccak.New256()
-	for _, b := range data {
-		h.Write(b)
-	}
-	r := h.Sum(nil)
-	copy(result[:], r)
-	return
-}
-
-func getChecksum(data ...[]byte) (result [4]byte) {
-	keccak256 := Keccak256(data...)
-	copy(result[:], keccak256[:4])
-	return
-}
 
 const privateKeySize = 32
 
@@ -118,37 +59,9 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
-// AddressBytes returns the address as bytes for a PrivateKeyPair with the given environment (ie. mainnet or stagenet)
-func (kp *PrivateKeyPair) AddressBytes(env common.Environment) []byte {
-	psk := kp.sk.Public().key.Bytes()
-	pvk := kp.vk.Public().key.Bytes()
-	c := append(psk, pvk...)
-
-	var prefix byte
-	switch env {
-	case common.Mainnet, common.Development:
-		prefix = addressPrefixMainnet
-	case common.Stagenet:
-		prefix = addressPrefixStagenet
-	}
-
-	// address encoding is:
-	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
-	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
-	checksum := getChecksum(append([]byte{prefix}, c...))
-	addr := append(append([]byte{prefix}, c...), checksum[:4]...)
-	return addr
-}
-
 // SpendKeyBytes returns the canoncail byte encoding of the private spend key.
 func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
-}
-
-// Address returns the base58-encoded address for a PrivateKeyPair with the given environment
-// (ie. mainnet or stagenet)
-func (kp *PrivateKeyPair) Address(env common.Environment) Address {
-	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
 }
 
 // PublicKeyPair returns the PublicKeyPair corresponding to the PrivateKeyPair
@@ -182,7 +95,8 @@ func (kp *PrivateKeyPair) Marshal(env common.Environment) ([]byte, error) {
 
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
-	key *ed25519.Scalar
+	seed [32]byte
+	key  *ed25519.Scalar
 }
 
 // NewPrivateSpendKey returns a new PrivateSpendKey from the given canonically-encoded scalar.
@@ -388,50 +302,63 @@ func (kp *PublicKeyPair) ViewKey() *PublicKey {
 	return kp.vk
 }
 
-// AddressBytes returns the address as bytes for a PublicKeyPair with the given environment (ie. mainnet or stagenet)
-func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
-	psk := kp.sk.key.Bytes()
-	pvk := kp.vk.key.Bytes()
-	c := append(psk, pvk...)
-
-	var prefix byte
-	switch env {
-	case common.Mainnet, common.Development:
-		prefix = addressPrefixMainnet
-	case common.Stagenet:
-		prefix = addressPrefixStagenet
-	}
-
-	// address encoding is:
-	// 0x12+(32-byte public spend key) + (32-byte-byte public view key)
-	// + First_4_Bytes(Hash(0x12+(32-byte public spend key) + (32-byte public view key)))
-	checksum := getChecksum(append([]byte{prefix}, c...))
-	addr := append(append([]byte{prefix}, c...), checksum[:4]...)
-	return addr
-}
-
-// Address returns the base58-encoded address for a PublicKeyPair with the given environment
-// (ie. mainnet or stagenet)
-func (kp *PublicKeyPair) Address(env common.Environment) Address {
-	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
-}
-
-// GenerateKeys returns a private spend key and view key
+// GenerateKeys generates a private spend key and view key
 func GenerateKeys() (*PrivateKeyPair, error) {
-	var seed [64]byte
+	var seed [32]byte
 	_, err := rand.Read(seed[:])
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := ed25519.NewScalar().SetUniformBytes(seed[:])
+	// we hash the seed for compatibility w/ the ed25519 stdlib
+	h := sha512.Sum512(seed[:])
+
+	s, err := ed25519.NewScalar().SetBytesWithClamping(h[:32])
 	if err != nil {
 		return nil, fmt.Errorf("failed to set bytes: %w", err)
 	}
 
 	sk := &PrivateSpendKey{
-		key: s,
+		seed: seed,
+		key:  s,
 	}
 
 	return sk.AsPrivateKeyPair()
+}
+
+// PublicSpendOnSecp256k1 returns a public spend key on the secp256k1 curve
+func PublicSpendOnSecp256k1(k []byte) (x, y *big.Int) {
+	return secp256k1.S256().ScalarBaseMult(k)
+}
+
+// SumSpendAndViewKeys sums two PublicKeyPairs, returning another PublicKeyPair.
+func SumSpendAndViewKeys(a, b *PublicKeyPair) *PublicKeyPair {
+	return &PublicKeyPair{
+		sk: SumPublicKeys(a.sk, b.sk),
+		vk: SumPublicKeys(a.vk, b.vk),
+	}
+}
+
+// SumPublicKeys sums two public keys (points)
+func SumPublicKeys(a, b *PublicKey) *PublicKey {
+	s := ed25519.NewIdentityPoint().Add(a.key, b.key)
+	return &PublicKey{
+		key: s,
+	}
+}
+
+// SumPrivateSpendKeys sums two private spend keys (scalars)
+func SumPrivateSpendKeys(a, b *PrivateSpendKey) *PrivateSpendKey {
+	s := ed25519.NewScalar().Add(a.key, b.key)
+	return &PrivateSpendKey{
+		key: s,
+	}
+}
+
+// SumPrivateViewKeys sums two private view keys (scalars)
+func SumPrivateViewKeys(a, b *PrivateViewKey) *PrivateViewKey {
+	s := ed25519.NewScalar().Add(a.key, b.key)
+	return &PrivateViewKey{
+		key: s,
+	}
 }
