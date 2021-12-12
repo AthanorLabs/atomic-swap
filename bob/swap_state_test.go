@@ -61,6 +61,22 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 	return bob, swapState
 }
 
+func newTestAliceSendKeySMessage(t *testing.T) (*net.SendKeysMessage, *mcrypto.PrivateKeyPair) {
+	alicePrivKeys, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	sig, err := alicePrivKeys.SpendKey().Sign(alicePrivKeys.SpendKey().Public().Bytes())
+	require.NoError(t, err)
+
+	msg := &net.SendKeysMessage{
+		PublicSpendKey:  alicePrivKeys.SpendKey().Public().Hex(),
+		PublicViewKey:   alicePrivKeys.ViewKey().Public().Hex(),
+		PrivateKeyProof: sig.Hex(),
+	}
+
+	return msg, alicePrivKeys
+}
+
 func TestSwapState_GenerateKeys(t *testing.T) {
 	_, swapState := newTestBob(t)
 
@@ -101,14 +117,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	alicePrivKeys, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
+	msg, alicePrivKeys := newTestAliceSendKeySMessage(t)
 	alicePubKeys := alicePrivKeys.PublicKeyPair()
-
-	msg = &net.SendKeysMessage{
-		PublicSpendKey: alicePrivKeys.SpendKey().Public().Hex(),
-		PublicViewKey:  alicePrivKeys.ViewKey().Public().Hex(),
-	}
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)

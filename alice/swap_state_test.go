@@ -2,13 +2,11 @@ package alice
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"testing"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
@@ -47,6 +45,23 @@ func newTestAlice(t *testing.T) (*alice, *swapState) {
 	return alice, swapState
 }
 
+func newTestBobSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *mcrypto.PrivateKeyPair) {
+	bobPrivKeys, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	sig, err := bobPrivKeys.SpendKey().Sign(bobPrivKeys.SpendKey().Public().Bytes())
+	require.NoError(t, err)
+
+	msg := &net.SendKeysMessage{
+		PublicSpendKey:  bobPrivKeys.SpendKey().Public().Hex(),
+		PrivateViewKey:  bobPrivKeys.ViewKey().Hex(),
+		PrivateKeyProof: sig.Hex(),
+		EthAddress:      "0x",
+	}
+
+	return msg, bobPrivKeys
+}
+
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	_, s := newTestAlice(t)
 	defer s.cancel()
@@ -58,14 +73,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	_, err = s.generateKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-
-	msg = &net.SendKeysMessage{
-		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
-		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
-		EthAddress:     "0x",
-	}
+	msg, bobPrivKeys := newTestBobSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
@@ -93,14 +101,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	_, err := s.generateKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-
-	msg := &net.SendKeysMessage{
-		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
-		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
-		EthAddress:     "0x",
-	}
+	msg, bobPrivKeys := newTestBobSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
@@ -222,18 +223,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	_, err = s.generateKeys()
 	require.NoError(t, err)
 
-	// simulate bob sending his keys
-	bobPrivKeys, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-
-	pub := s.alice.ethPrivKey.Public().(*ecdsa.PublicKey)
-	address := ethcrypto.PubkeyToAddress(*pub)
-
-	msg = &net.SendKeysMessage{
-		PublicSpendKey: bobPrivKeys.SpendKey().Public().Hex(),
-		PrivateViewKey: bobPrivKeys.ViewKey().Hex(),
-		EthAddress:     address.String(),
-	}
+	msg, bobPrivKeys := newTestBobSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
