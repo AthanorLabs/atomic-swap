@@ -17,6 +17,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 )
@@ -45,8 +46,8 @@ type swapState struct {
 	desiredAmount  common.EtherAmount
 
 	// our keys for this session
-	privkeys *monero.PrivateKeyPair
-	pubkeys  *monero.PublicKeyPair
+	privkeys *mcrypto.PrivateKeyPair
+	pubkeys  *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract     *swap.Swap
@@ -55,7 +56,7 @@ type swapState struct {
 	txOpts       *bind.TransactOpts
 
 	// Alice's keys for this session
-	alicePublicKeys *monero.PublicKeyPair
+	alicePublicKeys *mcrypto.PublicKeyPair
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -65,7 +66,8 @@ type swapState struct {
 
 	// set to true on claiming the ETH or reclaiming XMR
 	completed            bool
-	moneroReclaimAddress monero.Address
+	refunded             bool
+	moneroReclaimAddress mcrypto.Address
 }
 
 func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
@@ -101,10 +103,16 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
+	sig, err := s.privkeys.SpendKey().Sign(s.pubkeys.SpendKey().Bytes())
+	if err != nil {
+		return nil, err
+	}
+
 	return &net.SendKeysMessage{
-		PublicSpendKey: sk.Hex(),
-		PrivateViewKey: vk.Hex(),
-		EthAddress:     s.bob.ethAddress.String(),
+		PublicSpendKey:  sk.Hex(),
+		PrivateViewKey:  vk.Hex(),
+		PrivateKeyProof: sig.Hex(),
+		EthAddress:      s.bob.ethAddress.String(),
 	}, nil
 }
 
@@ -130,11 +138,11 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
-		return nil
+		return errors.New("protocol exited before any funds were locked")
 	case *net.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
-		return nil
+		return errors.New("protocol exited before any funds were locked")
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
@@ -151,6 +159,7 @@ func (s *swapState) ProtocolExited() error {
 		}
 
 		s.completed = true
+		s.refunded = true // TODO: return this
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
@@ -160,7 +169,7 @@ func (s *swapState) ProtocolExited() error {
 	}
 }
 
-func (s *swapState) tryReclaimMonero() (monero.Address, error) {
+func (s *swapState) tryReclaimMonero() (mcrypto.Address, error) {
 	skA, err := s.filterForRefund()
 	if err != nil {
 		return "", err
@@ -169,19 +178,19 @@ func (s *swapState) tryReclaimMonero() (monero.Address, error) {
 	return s.reclaimMonero(skA)
 }
 
-func (s *swapState) reclaimMonero(skA *monero.PrivateSpendKey) (monero.Address, error) {
+func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
 	vkA, err := skA.View()
 	if err != nil {
 		return "", err
 	}
 
-	skAB := monero.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
-	vkAB := monero.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+	skAB := mcrypto.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
+	vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
+	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
 	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.id)
-	if err = monero.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
+	if err = mcrypto.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -189,7 +198,7 @@ func (s *swapState) reclaimMonero(skA *monero.PrivateSpendKey) (monero.Address, 
 	return monero.CreateMoneroWallet("bob-swap-wallet", s.bob.env, s.bob.client, kpAB)
 }
 
-func (s *swapState) filterForRefund() (*monero.PrivateSpendKey, error) {
+func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	logs, err := s.bob.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.contractAddr},
 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
@@ -258,7 +267,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, errMissingAddress
 		}
 
-		s.nextExpectedMessage = &net.NotifyReady{}
 		log.Infof("got Swap contract address! address=%s", msg.Address)
 
 		if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
@@ -324,6 +332,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			}
 		}()
 
+		s.nextExpectedMessage = &net.NotifyReady{}
 		return out, false, nil
 	case *net.NotifyReady:
 		log.Debug("Alice called Ready(), attempting to claim funds...")
@@ -350,6 +359,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		s.completed = true
+		s.refunded = true
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
@@ -420,18 +430,29 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	log.Debug("got Alice's public keys")
-	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 
-	kp, err := monero.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
+	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
 	if err != nil {
 		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
 	}
 
+	// verify that counterparty really has the private key to the public key
+	sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
+	if err != nil {
+		return err
+	}
+
+	ok := kp.SpendKey().Verify(kp.SpendKey().Bytes(), sig)
+	if !ok {
+		return errors.New("failed to verify proof of private key")
+	}
+
 	s.setAlicePublicKeys(kp)
+	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 	return nil
 }
 
-func (s *swapState) handleRefund(txHash string) (monero.Address, error) {
+func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
 	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err

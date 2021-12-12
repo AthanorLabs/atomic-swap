@@ -1,4 +1,4 @@
-package monero
+package crypto
 
 import (
 	"encoding/hex"

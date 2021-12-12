@@ -15,6 +15,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
+	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
 
@@ -109,19 +110,19 @@ func (a *alice) SetGasPrice(gasPrice uint64) {
 
 // generateKeys generates Alice's monero spend and view keys (S_b, V_b)
 // It returns Alice's public spend key
-func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
+func (s *swapState) generateKeys() (*mcrypto.PublicKeyPair, error) {
 	if s.privkeys != nil {
 		return s.pubkeys, nil
 	}
 
 	var err error
-	s.privkeys, err = monero.GenerateKeys()
+	s.privkeys, err = mcrypto.GenerateKeys()
 	if err != nil {
 		return nil, err
 	}
 
 	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.id)
-	if err := monero.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
+	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
 		return nil, err
 	}
 
@@ -131,7 +132,7 @@ func (s *swapState) generateKeys() (*monero.PublicKeyPair, error) {
 
 // setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
 // private view key (used to check XMR balance before calling Ready())
-func (s *swapState) setBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
+func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) {
 	s.bobPublicSpendKey = sk
 	s.bobPrivateViewKey = vk
 }
@@ -199,12 +200,12 @@ func (s *swapState) ready() error {
 // watchForClaim watches for Bob to call Claim() on the Swap contract.
 // When Claim() is called, revealing Bob's secret s_b, the secret key corresponding
 // to (s_a + s_b) will be sent over this channel, allowing Alice to claim the XMR it contains.
-func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //nolint:unused
+func (s *swapState) watchForClaim() (<-chan *mcrypto.PrivateKeyPair, error) { //nolint:unused
 	watchOpts := &bind.WatchOpts{
 		Context: s.ctx,
 	}
 
-	out := make(chan *monero.PrivateKeyPair)
+	out := make(chan *mcrypto.PrivateKeyPair)
 	ch := make(chan *swap.SwapClaimed)
 	defer close(out)
 
@@ -227,7 +228,7 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 
 				// got Bob's secret
 				sb := claim.S
-				skB, err := monero.NewPrivateSpendKey(sb[:])
+				skB, err := mcrypto.NewPrivateSpendKey(sb[:])
 				if err != nil {
 					log.Error("failed to convert Bob's secret into a key: ", err)
 					return
@@ -239,9 +240,9 @@ func (s *swapState) watchForClaim() (<-chan *monero.PrivateKeyPair, error) { //n
 					return
 				}
 
-				skAB := monero.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-				vkAB := monero.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-				kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+				skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
+				vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
+				kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 				out <- kpAB
 				return
@@ -277,12 +278,13 @@ func (s *swapState) refund() (string, error) {
 	}
 
 	s.success = true
+	s.refunded = true
 	return tx.Hash().String(), nil
 }
 
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
-func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
+func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
 	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash))
 	if !ok {
 		return "", errors.New("failed check Claim transaction receipt")
@@ -297,13 +299,13 @@ func (s *swapState) handleNotifyClaimed(txHash string) (monero.Address, error) {
 		return "", fmt.Errorf("failed to get secret from log: %w", err)
 	}
 
-	skAB := monero.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-	vkAB := monero.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
-	kpAB := monero.NewPrivateKeyPair(skAB, vkAB)
+	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
+	vkAB := mcrypto.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
+	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
 	fp := fmt.Sprintf("%s/%d/swap-secret", s.alice.basepath, s.id)
-	if err = monero.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
+	if err = mcrypto.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
 		return "", err
 	}
 

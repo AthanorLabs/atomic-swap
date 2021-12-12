@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/monero/crypto"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -43,7 +44,8 @@ func WaitForBlocks(client Client) error {
 }
 
 // CreateMoneroWallet creates a monero wallet from a private keypair.
-func CreateMoneroWallet(name string, env common.Environment, client Client, kpAB *PrivateKeyPair) (Address, error) {
+func CreateMoneroWallet(name string, env common.Environment, client Client,
+	kpAB *crypto.PrivateKeyPair) (crypto.Address, error) {
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("%s-%s", name, t)
 	if err := client.GenerateFromKeys(kpAB, walletName, "", env); err != nil {

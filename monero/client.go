@@ -2,6 +2,7 @@ package monero
 
 import (
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/rpcclient"
 )
 
@@ -10,9 +11,9 @@ type Client interface {
 	GetAccounts() (*getAccountsResponse, error)
 	GetAddress(idx uint) (*getAddressResponse, error)
 	GetBalance(idx uint) (*GetBalanceResponse, error)
-	Transfer(to Address, accountIdx, amount uint) (*TransferResponse, error)
-	GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error
-	GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error
+	Transfer(to crypto.Address, accountIdx, amount uint) (*TransferResponse, error)
+	GenerateFromKeys(kp *crypto.PrivateKeyPair, filename, password string, env common.Environment) error
+	GenerateViewOnlyWalletFromKeys(vk *crypto.PrivateViewKey, address crypto.Address, filename, password string) error
 	GetHeight() (uint, error)
 	Refresh() error
 	OpenWallet(filename, password string) error
@@ -38,7 +39,7 @@ func (c *client) GetBalance(idx uint) (*GetBalanceResponse, error) {
 	return c.callGetBalance(idx)
 }
 
-func (c *client) Transfer(to Address, accountIdx, amount uint) (*TransferResponse, error) {
+func (c *client) Transfer(to crypto.Address, accountIdx, amount uint) (*TransferResponse, error) {
 	destination := Destination{
 		Amount:  amount,
 		Address: string(to),
@@ -47,11 +48,12 @@ func (c *client) Transfer(to Address, accountIdx, amount uint) (*TransferRespons
 	return c.callTransfer([]Destination{destination}, accountIdx)
 }
 
-func (c *client) GenerateFromKeys(kp *PrivateKeyPair, filename, password string, env common.Environment) error {
-	return c.callGenerateFromKeys(kp.sk, kp.vk, kp.Address(env), filename, password)
+func (c *client) GenerateFromKeys(kp *crypto.PrivateKeyPair, filename, password string, env common.Environment) error {
+	return c.callGenerateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(env), filename, password)
 }
 
-func (c *client) GenerateViewOnlyWalletFromKeys(vk *PrivateViewKey, address Address, filename, password string) error {
+func (c *client) GenerateViewOnlyWalletFromKeys(vk *crypto.PrivateViewKey, address crypto.Address,
+	filename, password string) error {
 	return c.callGenerateFromKeys(nil, vk, address, filename, password)
 }
 

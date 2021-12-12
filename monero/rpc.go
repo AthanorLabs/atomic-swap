@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/rpcclient"
 )
-
-// Address represents a base58-encoded string
-type Address string
 
 type generateFromKeysRequest struct {
 	Filename string `json:"filename"`
@@ -24,7 +22,7 @@ type generateFromKeysResponse struct {
 	Info    string `json:"info"`
 }
 
-func (c *client) callGenerateFromKeys(sk *PrivateSpendKey, vk *PrivateViewKey, address Address,
+func (c *client) callGenerateFromKeys(sk *crypto.PrivateSpendKey, vk *crypto.PrivateViewKey, address crypto.Address,
 	filename, password string) error {
 	const (
 		method                 = "generate_from_keys"
