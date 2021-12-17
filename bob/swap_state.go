@@ -273,6 +273,11 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)
 		}
 
+		fp := fmt.Sprintf("%s/%d/contractaddress", s.bob.basepath, s.id)
+		if err := common.WriteContractAddressToFile(fp, msg.Address); err != nil {
+			return nil, true, fmt.Errorf("failed to write contract address to file: %w", err)
+		}
+
 		if err := s.checkContract(); err != nil {
 			return nil, true, err
 		}

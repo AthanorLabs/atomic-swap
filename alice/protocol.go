@@ -170,6 +170,11 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
 	}
 
+	fp := fmt.Sprintf("%s/%d/contractaddress", s.alice.basepath, s.id)
+	if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
+		return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
+	}
+
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
 	if err != nil {
 		return ethcommon.Address{}, err

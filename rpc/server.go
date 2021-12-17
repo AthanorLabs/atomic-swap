@@ -20,9 +20,10 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Port     uint16
-	Net      Net
-	Protocol Protocol
+	Port            uint16
+	Net             Net
+	Protocol        Protocol
+	MoneroRecoverer MoneroRecoverer
 }
 
 // NewServer ...
@@ -30,6 +31,10 @@ func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
 	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Protocol), "net"); err != nil {
+		return nil, err
+	}
+
+	if err := s.RegisterService(NewRecoverService(cfg.MoneroRecoverer), "recover"); err != nil {
 		return nil, err
 	}
 

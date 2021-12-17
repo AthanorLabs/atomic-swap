@@ -14,6 +14,7 @@ import (
 	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
+	recovery "github.com/noot/atomic-swap/monero/recover"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/rpc"
 
@@ -254,10 +255,16 @@ func runDaemon(c *cli.Context) error {
 		return errors.New("must provide --rpc-port")
 	}
 
+	mr, err := getRecoverer(c, env, isAlice, isBob)
+	if err != nil {
+		return err
+	}
+
 	rpcCfg := &rpc.Config{
-		Port:     rpcPort,
-		Net:      host,
-		Protocol: handler,
+		Port:            rpcPort,
+		Net:             host,
+		Protocol:        handler,
+		MoneroRecoverer: mr,
 	}
 
 	s, err := rpc.NewServer(rpcCfg)
@@ -276,6 +283,9 @@ func runDaemon(c *cli.Context) error {
 		}
 	}()
 
+	log.Info("started swapd with basepath %d",
+		basepath,
+	)
 	wait(ctx)
 	return nil
 }
@@ -330,6 +340,37 @@ func getEthereumPrivateKey(c *cli.Context, env common.Environment, isAlice bool)
 	return ethPrivKey, nil
 }
 
+func getRecoverer(c *cli.Context, env common.Environment, isAlice, isBob bool) (rpc.MoneroRecoverer, error) {
+	var (
+		moneroEndpoint, ethEndpoint string
+	)
+
+	if c.String("monero-endpoint") != "" {
+		moneroEndpoint = c.String("monero-endpoint")
+	} else {
+		switch {
+		case isAlice:
+			moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		case isBob:
+			moneroEndpoint = common.DefaultBobMoneroEndpoint
+		default:
+			moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		}
+	}
+
+	if c.String("ethereum-endpoint") != "" {
+		ethEndpoint = c.String("ethereum-endpoint")
+	} else {
+		ethEndpoint = common.DefaultEthEndpoint
+	}
+
+	log.Info("created recovery module with monero endpoint %s and ethereum endpoint %s",
+		moneroEndpoint,
+		ethEndpoint,
+	)
+	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
+}
+
 func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
 	chainID int64, isAlice, isBob bool) (handler protocolHandler, err error) {
 	var (
@@ -339,10 +380,13 @@ func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environm
 	if c.String("monero-endpoint") != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		if isAlice {
+		switch {
+		case isAlice:
 			moneroEndpoint = common.DefaultAliceMoneroEndpoint
-		} else {
+		case isBob:
 			moneroEndpoint = common.DefaultBobMoneroEndpoint
+		default:
+			moneroEndpoint = common.DefaultAliceMoneroEndpoint
 		}
 	}
 
@@ -417,5 +461,9 @@ func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environm
 		}
 	}
 
+	log.Info("created swap protocol module with monero endpoint %s and ethereum endpoint %s",
+		moneroEndpoint,
+		ethEndpoint,
+	)
 	return handler, nil
 }
