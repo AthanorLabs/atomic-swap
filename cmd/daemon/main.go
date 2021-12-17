@@ -284,7 +284,7 @@ func runDaemon(c *cli.Context) error {
 	}()
 
 	log.Info("started swapd with basepath %d",
-		basepath,
+		cfg.Basepath,
 	)
 	wait(ctx)
 	return nil
