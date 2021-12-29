@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPLv3
 
 pragma solidity ^0.8.5;
 
-// import "./Ed25519.sol";
-import "./Ed25519_alt.sol";
+import "./Secp256k1.sol";
 
 contract Swap {
     // Ed25519 library
-    Ed25519 immutable ed25519;
+    Secp256k1 immutable secp256k1;
 
     // contract creator, Alice
     address payable immutable owner;
@@ -16,11 +15,11 @@ contract Swap {
     address payable immutable claimer;
 
     // the expected public key derived from the secret `s_b`.
-    // this public key is a point on the ed25519 curve
+    // this public key is a point on the secp256k1 curve
     bytes32 public immutable pubKeyClaim;
 
     // the expected public key derived from the secret `s_a`.
-    // this public key is a point on the ed25519 curve
+    // this public key is a point on the secp256k1 curve
     bytes32 public immutable pubKeyRefund;
 
     // timestamp (set at contract creation)
@@ -32,7 +31,7 @@ contract Swap {
 
     // Alice sets ready to true when she sees the funds locked on the other chain.
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
-    bool isReady = false;
+    bool public isReady = false;
 
     event Constructed(bytes32 claimKey, bytes32 refundKey);
     event IsReady(bool b);
@@ -46,7 +45,7 @@ contract Swap {
         claimer = _claimer;
         timeout_0 = block.timestamp + _timeoutDuration;
         timeout_1 = block.timestamp + (_timeoutDuration * 2);
-        ed25519 = new Ed25519();
+        secp256k1 = new Secp256k1();
         emit Constructed(_pubKeyClaim, _pubKeyRefund);
     }
 
@@ -92,11 +91,8 @@ contract Swap {
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal view {
-        // (uint256 px, uint256 py) = ed25519.derivePubKey(_s);
-        (uint256 px, uint256 py) = ed25519.scalarMultBase(uint256(_s));
-        uint256 canonical_p = py | ((px % 2) << 255);
         require(
-            bytes32(canonical_p) == pubKey,
+            secp256k1.mulVerify(uint256(_s), uint256(pubKey)),
             "provided secret does not match the expected pubKey"
         );
     }
