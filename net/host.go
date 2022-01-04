@@ -35,7 +35,7 @@ type Host interface {
 
 	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error
+	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) error
 	MessageSender
 }
 
@@ -49,11 +49,10 @@ type host struct {
 	cancel     context.CancelFunc
 	protocolID string
 
-	h             libp2phost.Host
-	bootnodes     []peer.AddrInfo
-	queryResponse *QueryResponse
-	discovery     *discovery
-	handler       Handler
+	h         libp2phost.Host
+	bootnodes []peer.AddrInfo
+	discovery *discovery
+	handler   Handler
 
 	// swap instance info
 	swapMu     sync.Mutex
@@ -66,16 +65,13 @@ type host struct {
 
 // Config is used to configure the network Host.
 type Config struct {
-	Ctx           context.Context
-	Environment   common.Environment
-	ChainID       int64
-	Port          uint16
-	Provides      []common.ProvidesCoin
-	MaximumAmount []float64
-	ExchangeRate  common.ExchangeRate
-	KeyFile       string
-	Bootnodes     []string
-	Handler       Handler
+	Ctx         context.Context
+	Environment common.Environment
+	ChainID     int64
+	Port        uint16
+	KeyFile     string
+	Bootnodes   []string
+	Handler     Handler
 }
 
 // NewHost returns a new host
@@ -124,17 +120,12 @@ func NewHost(cfg *Config) (*host, error) { //nolint:revive
 		cancel:     cancel,
 		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.ChainID),
 		h:          h,
-		queryResponse: &QueryResponse{
-			Provides:      cfg.Provides,
-			MaximumAmount: cfg.MaximumAmount,
-			ExchangeRate:  cfg.ExchangeRate,
-		},
-		handler:   cfg.Handler,
-		bootnodes: bns,
-		queryBuf:  make([]byte, 2048),
+		handler:    cfg.Handler,
+		bootnodes:  bns,
+		queryBuf:   make([]byte, 2048),
 	}
 
-	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Provides...)
+	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes)
 	if err != nil {
 		return nil, err
 	}

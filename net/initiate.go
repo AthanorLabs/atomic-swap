@@ -11,10 +11,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
-// Handler handles incoming protocol messages.
-// It is implemented by *alice.alice and *bob.bob
+// Handler handles swap initation messages.
+// It is implemented by *bob.bob
 type Handler interface {
-	HandleInitiateMessage(msg *InitiateMessage) (s SwapState, resp Message, err error)
+	HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error)
 }
 
 // SwapState handles incoming protocol messages for an initiated protocol.
@@ -25,6 +25,7 @@ type SwapState interface {
 
 	// used by RPC
 	SendKeysMessage() (*SendKeysMessage, error)
+	ReceivedAmount() float64
 }
 
 const (
@@ -32,11 +33,7 @@ const (
 	protocolTimeout = time.Second * 5
 )
 
-func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) error {
-	if h.handler == nil {
-		return errors.New("no swap message handler set")
-	}
-
+func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -62,7 +59,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *InitiateMessage, s SwapState) er
 	)
 
 	if err := h.writeToStream(stream, msg); err != nil {
-		log.Warnf("failed to send InitiateMessage to peer: err=%s", err)
+		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}
 
@@ -126,9 +123,9 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		)
 
 		if h.swapState == nil {
-			im, ok := msg.(*InitiateMessage)
+			im, ok := msg.(*SendKeysMessage)
 			if !ok {
-				log.Warnf("failed to handle protocol message: message was not InitiateMessage")
+				log.Warnf("failed to handle protocol message: message was not SendKeysMessage")
 				return
 			}
 

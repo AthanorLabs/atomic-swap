@@ -20,16 +20,17 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Port     uint16
-	Net      Net
-	Protocol Protocol
+	Port  uint16
+	Net   Net
+	Alice Alice
+	Bob   Bob
 }
 
 // NewServer ...
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Protocol), "net"); err != nil {
+	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob), "net"); err != nil {
 		return nil, err
 	}
 

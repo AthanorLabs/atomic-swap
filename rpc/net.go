@@ -1,13 +1,13 @@
 package rpc
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/types"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -19,27 +19,38 @@ type Net interface {
 	Addresses() []string
 	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *net.InitiateMessage, s net.SwapState) error
+	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s net.SwapState) error
 }
 
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
 	Provides() common.ProvidesCoin
-	InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error)
 	SetGasPrice(gasPrice uint64)
+}
+
+type Alice interface {
+	Protocol
+	InitiateProtocol(providesAmount float64) (net.SwapState, error)
+}
+
+type Bob interface {
+	Protocol
+	MakeOffer(offer *types.Offer) error
 }
 
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
-	net      Net
-	protocol Protocol
+	net   Net
+	alice Alice
+	bob   Bob
 }
 
 // NewNetService ...
-func NewNetService(net Net, protocol Protocol) *NetService {
+func NewNetService(net Net, alice Alice, bob Bob) *NetService {
 	return &NetService{
-		net:      net,
-		protocol: protocol,
+		net:   net,
+		alice: alice,
+		bob:   bob,
 	}
 }
 
@@ -129,26 +140,22 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 }
 
 // InitiateRequest ...
-type InitiateRequest struct {
-	Multiaddr      string              `json:"multiaddr"`
-	ProvidesCoin   common.ProvidesCoin `json:"provides"`
-	ProvidesAmount float64             `json:"providesAmount"`
-	DesiredAmount  float64             `json:"desiredAmount"`
+type TakeOfferRequest struct {
+	Multiaddr      string  `json:"multiaddr"`
+	OfferID        string  `json:"offerID"`
+	ProvidesAmount float64 `json:"providesAmount"`
 }
 
 // InitiateResponse ...
 // TODO: add Refunded bool
-type InitiateResponse struct {
-	Success bool `json:"success"`
+type TakeOfferResponse struct {
+	Success        bool    `json:"success"`
+	ReceivedAmount float64 `json:"receivedAmount"`
 }
 
 // Initiate initiates a swap with the given peer.
-func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *InitiateResponse) error {
-	if req.ProvidesCoin == "" {
-		return errors.New("must specify 'provides' coin")
-	}
-
-	swapState, err := s.protocol.InitiateProtocol(req.ProvidesAmount, req.DesiredAmount)
+func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *TakeOfferResponse) error {
+	swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -158,24 +165,28 @@ func (s *NetService) Initiate(_ *http.Request, req *InitiateRequest, resp *Initi
 		return err
 	}
 
-	msg := &net.InitiateMessage{
-		Provides:        req.ProvidesCoin,
-		ProvidesAmount:  req.ProvidesAmount,
-		DesiredAmount:   req.DesiredAmount,
-		SendKeysMessage: skm,
-	}
+	skm.ProvidedAmount = req.ProvidesAmount
 
 	who, err := net.StringToAddrInfo(req.Multiaddr)
 	if err != nil {
 		return err
 	}
 
-	if err = s.net.Initiate(who, msg, swapState); err != nil {
+	if err = s.net.Initiate(who, skm, swapState); err != nil {
 		resp.Success = false
 		return err
 	}
 
 	resp.Success = true
+	resp.ReceivedAmount = swapState.ReceivedAmount()
+	return nil
+}
+
+type MakeOfferRequest struct{}
+type MakeOfferResponse struct{}
+
+// MakeOffer creates and advertises a new swap offer.
+func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *MakeOfferResponse) error {
 	return nil
 }
 
@@ -186,6 +197,7 @@ type SetGasPriceRequest struct {
 
 // SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
 func (s *NetService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
-	s.protocol.SetGasPrice(req.GasPrice)
+	s.alice.SetGasPrice(req.GasPrice)
+	s.bob.SetGasPrice(req.GasPrice)
 	return nil
 }

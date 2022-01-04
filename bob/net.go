@@ -13,14 +13,14 @@ func (b *bob) Provides() common.ProvidesCoin {
 	return common.ProvidesXMR
 }
 
-// InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
-func (b *bob) InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error) {
-	if err := b.initiate(common.MoneroToPiconero(providesAmount), common.EtherToWei(desiredAmount)); err != nil {
-		return nil, err
-	}
+// // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
+// func (b *bob) InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error) {
+// 	if err := b.initiate(common.MoneroToPiconero(providesAmount), common.EtherToWei(desiredAmount)); err != nil {
+// 		return nil, err
+// 	}
 
-	return b.swapState, nil
-}
+// 	return b.swapState, nil
+// }
 
 func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) error {
 	b.swapMu.Lock()
@@ -51,20 +51,19 @@ func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, net.Message, error) {
-	if msg.Provides != common.ProvidesETH {
-		return nil, nil, errors.New("peer does not provide ETH")
-	}
-
+func (b *bob) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
 	// TODO: allow user to accept/reject this via RPC
-	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %v**", msg.DesiredAmount)
+	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**", msg.OfferID, msg.ProvidedAmount)
 	log.Info(str)
 
-	if err := b.initiate(common.MoneroToPiconero(msg.DesiredAmount), common.EtherToWei(msg.ProvidesAmount)); err != nil {
+	// TODO: get offer from offermanager and determine expected amount
+	expectedAmount := float64(0)
+
+	if err := b.initiate(common.MoneroToPiconero(expectedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil {
 		return nil, nil, err
 	}
 
-	if err := b.swapState.handleSendKeysMessage(msg.SendKeysMessage); err != nil {
+	if err := b.swapState.handleSendKeysMessage(msg); err != nil {
 		return nil, nil, err
 	}
 

@@ -63,26 +63,22 @@ var (
 				},
 			},
 			{
-				Name:    "initiate",
+				Name:    "take",
 				Aliases: []string{"i"},
-				Usage:   "initiate a swap",
-				Action:  runInitiate,
+				Usage:   "initiate a swap by taking an offer",
+				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "multiaddr",
 						Usage: "peer's multiaddress, as provided by discover",
 					},
 					&cli.StringFlag{
-						Name:  "provides",
-						Usage: "coin to provide in the swap: one of [ETH, XMR]",
+						Name:  "offer-id",
+						Usage: "ID of the offer being taken",
 					},
 					&cli.Float64Flag{
 						Name:  "provides-amount",
 						Usage: "amount of coin to send in the swap",
-					},
-					&cli.Float64Flag{
-						Name:  "desired-amount",
-						Usage: "amount of coin to receive in the swap",
 					},
 					daemonAddrFlag,
 				},
@@ -170,25 +166,20 @@ func runQuery(ctx *cli.Context) error {
 	return nil
 }
 
-func runInitiate(ctx *cli.Context) error {
+func runTake(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
 	if maddr == "" {
 		return errors.New("must provide peer's multiaddress with --multiaddr")
 	}
 
-	provides, err := common.NewProvidesCoin(ctx.String("provides"))
-	if err != nil {
-		return err
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errors.New("must provide --offer-id")
 	}
 
 	providesAmount := ctx.Float64("provides-amount")
 	if providesAmount == 0 {
 		return errors.New("must provide --provides-amount")
-	}
-
-	desiredAmount := ctx.Float64("desired-amount")
-	if desiredAmount == 0 {
-		return errors.New("must provide --desired-amount")
 	}
 
 	endpoint := ctx.String("daemon-addr")
@@ -197,21 +188,13 @@ func runInitiate(ctx *cli.Context) error {
 	}
 
 	c := client.NewClient(endpoint)
-	ok, err := c.Initiate(maddr, provides, providesAmount, desiredAmount)
+	ok, received, err := c.TakeOffer(maddr, offerID, providesAmount)
 	if err != nil {
 		return err
 	}
 
-	var desiredCoin common.ProvidesCoin
-	switch provides {
-	case common.ProvidesETH:
-		desiredCoin = common.ProvidesXMR
-	case common.ProvidesXMR:
-		desiredCoin = common.ProvidesETH
-	}
-
 	if ok {
-		fmt.Printf("Swap successful, received %v %s\n", desiredAmount, desiredCoin)
+		fmt.Printf("Swap successful, received %v ETH\n", received)
 	} else {
 		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
 	}

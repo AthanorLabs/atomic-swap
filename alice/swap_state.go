@@ -64,7 +64,7 @@ type swapState struct {
 	refunded bool
 }
 
-func newSwapState(a *alice, providesAmount common.EtherAmount, desiredAmount common.MoneroAmount) (*swapState, error) {
+func newSwapState(a *alice, providesAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,6 @@ func newSwapState(a *alice, providesAmount common.EtherAmount, desiredAmount com
 		alice:               a,
 		id:                  nextID,
 		providesAmount:      providesAmount,
-		desiredAmount:       desiredAmount,
 		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
@@ -108,6 +107,10 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		PublicViewKey:   kp.ViewKey().Hex(),
 		PrivateKeyProof: sig.Hex(),
 	}, nil
+}
+
+func (s *swapState) ReceivedAmount() float64 {
+	return s.desiredAmount.AsMonero()
 }
 
 // ProtocolExited is called by the network when the protocol stream closes.
@@ -369,6 +372,9 @@ func (s *swapState) setTimeouts() error {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
+	// TODO: get user to confirm amount they will receive!!
+	s.desiredAmount = common.MoneroToPiconero(msg.ProvidedAmount)
+
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
 	}

@@ -109,11 +109,16 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}
 
 	return &net.SendKeysMessage{
+		ProvidedAmount:  s.providesAmount.AsMonero(),
 		PublicSpendKey:  sk.Hex(),
 		PrivateViewKey:  vk.Hex(),
 		PrivateKeyProof: sig.Hex(),
 		EthAddress:      s.bob.ethAddress.String(),
 	}, nil
+}
+
+func (s *swapState) ReceivedAmount() float64 {
+	return s.desiredAmount.AsEther()
 }
 
 // ProtocolExited is called by the network when the protocol stream closes.
