@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/types"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 
@@ -34,6 +38,10 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
+	if err := s.RegisterService(NewPersonalService(cfg.Bob), "personal"); err != nil {
+		return nil, err
+	}
+
 	return &Server{
 		s:    s,
 		port: cfg.Port,
@@ -57,4 +65,23 @@ func (s *Server) Start() <-chan error {
 	}()
 
 	return errCh
+}
+
+// Protocol represents the functions required by the rpc service into the protocol handler.
+type Protocol interface {
+	Provides() common.ProvidesCoin
+	SetGasPrice(gasPrice uint64)
+}
+
+// Alice ...
+type Alice interface {
+	Protocol
+	InitiateProtocol(providesAmount float64) (net.SwapState, error)
+}
+
+// Bob ...
+type Bob interface {
+	Protocol
+	MakeOffer(offer *types.Offer) error
+	SetMoneroWalletFile(file, password string) error
 }

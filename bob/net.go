@@ -44,7 +44,6 @@ func (b *bob) initiate(offerID types.Hash, providesAmount common.MoneroAmount, d
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
 func (b *bob) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
-	// TODO: allow user to accept/reject this via RPC
 	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
 		msg.OfferID,
 		msg.ProvidedAmount,

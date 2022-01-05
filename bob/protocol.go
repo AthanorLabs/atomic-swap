@@ -101,7 +101,6 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 			return nil, err
 		}
 	} else {
-		// TODO: implement this
 		log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
 	}
 
@@ -133,6 +132,11 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 
 func (b *bob) SetMessageSender(n net.MessageSender) {
 	b.net = n
+}
+
+func (b *bob) SetMoneroWalletFile(file, password string) error {
+	_ = b.client.CloseWallet()
+	return b.client.OpenWallet(file, password)
 }
 
 func (b *bob) SetGasPrice(gasPrice uint64) {

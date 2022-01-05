@@ -23,24 +23,6 @@ type Net interface {
 	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s net.SwapState) error
 }
 
-// Protocol represents the functions required by the rpc service into the protocol handler.
-type Protocol interface {
-	Provides() common.ProvidesCoin
-	SetGasPrice(gasPrice uint64)
-}
-
-// Alice ...
-type Alice interface {
-	Protocol
-	InitiateProtocol(providesAmount float64) (net.SwapState, error)
-}
-
-// Bob ...
-type Bob interface {
-	Protocol
-	MakeOffer(offer *types.Offer) error
-}
-
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
 	net   Net
