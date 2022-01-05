@@ -63,6 +63,14 @@ func (b *bob) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, ne
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 
+	if providedAmount < offer.MinimumAmount {
+		return nil, nil, errors.New("amount provided by taker is too low for offer")
+	}
+
+	if providedAmount > offer.MaximumAmount {
+		return nil, nil, errors.New("amount provided by taker is too low for offer")
+	}
+
 	if err = b.initiate(id, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
 		return nil, nil, err
 	}

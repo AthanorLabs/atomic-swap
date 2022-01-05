@@ -17,7 +17,7 @@ func (a *alice) Provides() common.ProvidesCoin {
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether and monero.
 func (a *alice) InitiateProtocol(providesAmount float64) (net.SwapState, error) {
-	if err := a.initiate(common.EtherToWei(providesAmount) /*, common.MoneroToPiconero(desiredAmount)*/); err != nil {
+	if err := a.initiate(common.EtherToWei(providesAmount)); err != nil {
 		return nil, err
 	}
 
