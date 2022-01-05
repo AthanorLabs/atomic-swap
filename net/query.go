@@ -17,7 +17,11 @@ const (
 )
 
 func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
-	if err := h.writeToStream(stream, h.queryResponse); err != nil {
+	resp := &QueryResponse{
+		Offers: h.handler.GetOffers(),
+	}
+
+	if err := h.writeToStream(stream, resp); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
 

@@ -22,18 +22,17 @@ import (
 
 const (
 	// default libp2p ports
+	defaultLibp2pPort      = 9900
 	defaultAliceLibp2pPort = 9933
 	defaultBobLibp2pPort   = 9934
 
-	// defaultExchangeRate is the default ratio of ETH:XMR.
-	// TODO; make this a CLI flag, or get it from some price feed.
-	defaultExchangeRate = 0.0578261
-
 	// default libp2p key files
+	defaultLibp2pKey      = "node.key"
 	defaultAliceLibp2pKey = "alice.key"
 	defaultBobLibp2pKey   = "bob.key"
 
 	// default RPC port
+	defaultRPCPort      = 5005
 	defaultAliceRPCPort = 5001
 	defaultBobRPCPort   = 5002
 
@@ -72,14 +71,6 @@ var (
 				Name:  "libp2p-port",
 				Usage: "libp2p port to listen on",
 			},
-			&cli.BoolFlag{
-				Name:  "alice",
-				Usage: "run as Alice (have ETH, want XMR)",
-			},
-			&cli.BoolFlag{
-				Name:  "bob",
-				Usage: "run as Bob (have XMR, want ETH)",
-			},
 			&cli.StringFlag{
 				Name:  "wallet-file",
 				Usage: "filename of wallet file containing XMR to be swapped; required if running as Bob",
@@ -91,11 +82,6 @@ var (
 			&cli.StringFlag{
 				Name:  "env",
 				Usage: "environment to use: one of mainnet, stagenet, or dev",
-			},
-			&cli.Float64Flag{
-				Name:  "max-amount", // TODO: remove this and pass it via RPC
-				Value: 0,
-				Usage: "maximum amount to swap (in standard units of coin)",
 			},
 			&cli.StringFlag{
 				Name:  "monero-endpoint",
@@ -129,6 +115,12 @@ var (
 				Name:  "gas-limit",
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
+			&cli.BoolFlag{
+				Name: "dev-alice",
+			},
+			&cli.BoolFlag{
+				Name: "dev-bob",
+			},
 		},
 	}
 )
@@ -140,24 +132,25 @@ func main() {
 	}
 }
 
-type protocolHandler interface {
+type aliceHandler interface {
+	rpc.Alice
+	SetMessageSender(net.MessageSender)
+}
+
+type bobHandler interface {
 	net.Handler
-	rpc.Protocol
+	rpc.Bob
 	SetMessageSender(net.MessageSender)
 }
 
 func runDaemon(c *cli.Context) error {
-	isAlice := c.Bool("alice")
-	isBob := c.Bool("bob")
-
-	if isAlice && isBob {
-		return errors.New("must specify only one of --alice or --bob")
-	}
-
 	env, cfg, err := getEnvironment(c)
 	if err != nil {
 		return err
 	}
+
+	devAlice := c.Bool("dev-alice")
+	devBob := c.Bool("dev-bob")
 
 	chainID := int64(c.Uint("ethereum-chain-id"))
 	if chainID == 0 {
@@ -167,12 +160,10 @@ func runDaemon(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	handler, err := getProtocolHandler(ctx, c, env, cfg, chainID, isAlice, isBob)
+	a, b, err := getProtocolHandlers(ctx, c, env, cfg, chainID, devBob)
 	if err != nil {
 		return err
 	}
-
-	amount := c.Float64("max-amount")
 
 	var bootnodes []string
 	if c.String("bootnodes") != "" {
@@ -184,48 +175,40 @@ func runDaemon(c *cli.Context) error {
 	var (
 		libp2pKey  string
 		libp2pPort uint16
-		provides   []common.ProvidesCoin
 		rpcPort    uint16
 	)
 
 	switch {
 	case k != "":
 		libp2pKey = k
-	case isAlice:
+	case devAlice:
 		libp2pKey = defaultAliceLibp2pKey
-	case isBob:
+	case devBob:
 		libp2pKey = defaultBobLibp2pKey
+	default:
+		libp2pKey = defaultLibp2pKey
 	}
 
 	switch {
 	case p != 0:
 		libp2pPort = p
-	case isAlice:
+	case devAlice:
 		libp2pPort = defaultAliceLibp2pPort
-	case isBob:
+	case devBob:
 		libp2pPort = defaultBobLibp2pPort
 	default:
-		return errors.New("must provide --libp2p-port")
-	}
-
-	switch {
-	case isAlice:
-		provides = []common.ProvidesCoin{common.ProvidesETH}
-	case isBob:
-		provides = []common.ProvidesCoin{common.ProvidesXMR}
+		libp2pPort = defaultLibp2pPort
+		//	return errors.New("must provide --libp2p-port")
 	}
 
 	netCfg := &net.Config{
-		Ctx:           ctx,
-		Environment:   env,
-		ChainID:       chainID,
-		Port:          libp2pPort,
-		Provides:      provides,
-		MaximumAmount: []float64{amount},
-		ExchangeRate:  defaultExchangeRate,
-		KeyFile:       libp2pKey,
-		Bootnodes:     bootnodes,
-		Handler:       handler,
+		Ctx:         ctx,
+		Environment: env,
+		ChainID:     chainID,
+		Port:        libp2pPort,
+		KeyFile:     libp2pKey,
+		Bootnodes:   bootnodes,
+		Handler:     b, // handler handles initiated ("taken") swaps
 	}
 
 	host, err := net.NewHost(netCfg)
@@ -233,10 +216,9 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
-	// connect network to protocol handler
-	if isAlice || isBob {
-		handler.SetMessageSender(host)
-	}
+	// connect network to protocol handlers
+	a.SetMessageSender(host)
+	b.SetMessageSender(host)
 
 	if err = host.Start(); err != nil {
 		return err
@@ -246,18 +228,20 @@ func runDaemon(c *cli.Context) error {
 	switch {
 	case p != 0:
 		rpcPort = p
-	case isAlice:
+	case devAlice:
 		rpcPort = defaultAliceRPCPort
-	case isBob:
+	case devBob:
 		rpcPort = defaultBobRPCPort
 	default:
-		return errors.New("must provide --rpc-port")
+		rpcPort = defaultRPCPort
+		//	return errors.New("must provide --rpc-port")
 	}
 
 	rpcCfg := &rpc.Config{
-		Port:     rpcPort,
-		Net:      host,
-		Protocol: handler,
+		Port:  rpcPort,
+		Net:   host,
+		Alice: a,
+		Bob:   b,
 	}
 
 	s, err := rpc.NewServer(rpcCfg)
@@ -301,7 +285,7 @@ func getEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, 
 	return env, cfg, nil
 }
 
-func getEthereumPrivateKey(c *cli.Context, env common.Environment, isAlice bool) (ethPrivKey string, err error) {
+func getEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) (ethPrivKey string, err error) {
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKeyFile := c.String("ethereum-privkey")
 		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
@@ -316,34 +300,33 @@ func getEthereumPrivateKey(c *cli.Context, env common.Environment, isAlice bool)
 		ethPrivKey = string(key)
 	} else {
 		if env != common.Development {
+			// TODO: allow this to be set via RPC
 			return "", errors.New("must provide --ethereum-privkey file for non-development environment")
 		}
 
 		log.Warn("no ethereum private key file provided, using ganache deterministic key")
-		if isAlice {
-			ethPrivKey = common.DefaultPrivKeyAlice
-		} else {
+		if devBob {
 			ethPrivKey = common.DefaultPrivKeyBob
+		} else {
+			ethPrivKey = common.DefaultPrivKeyAlice
 		}
 	}
 
 	return ethPrivKey, nil
 }
 
-func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
-	chainID int64, isAlice, isBob bool) (handler protocolHandler, err error) {
+func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
+	chainID int64, devBob bool) (a aliceHandler, b bobHandler, err error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
 
 	if c.String("monero-endpoint") != "" {
 		moneroEndpoint = c.String("monero-endpoint")
+	} else if devBob {
+		moneroEndpoint = common.DefaultBobMoneroEndpoint
 	} else {
-		if isAlice {
-			moneroEndpoint = common.DefaultAliceMoneroEndpoint
-		} else {
-			moneroEndpoint = common.DefaultBobMoneroEndpoint
-		}
+		moneroEndpoint = common.DefaultAliceMoneroEndpoint
 	}
 
 	if c.String("ethereum-endpoint") != "" {
@@ -352,9 +335,9 @@ func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environm
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	ethPrivKey, err := getEthereumPrivateKey(c, env, isAlice)
+	ethPrivKey, err := getEthereumPrivateKey(c, env, devBob)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if c.String("monero-daemon-endpoint") != "" {
@@ -369,53 +352,47 @@ func getProtocolHandler(ctx context.Context, c *cli.Context, env common.Environm
 		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
 	}
 
-	switch {
-	case isAlice:
-		aliceCfg := &alice.Config{
-			Ctx:                  ctx,
-			Basepath:             cfg.Basepath,
-			MoneroWalletEndpoint: moneroEndpoint,
-			EthereumEndpoint:     ethEndpoint,
-			EthereumPrivateKey:   ethPrivKey,
-			Environment:          env,
-			ChainID:              chainID,
-			GasPrice:             gasPrice,
-			GasLimit:             uint64(c.Uint("gas-limit")),
-		}
-
-		handler, err = alice.NewAlice(aliceCfg)
-		if err != nil {
-			return nil, err
-		}
-	case isBob:
-		walletFile := c.String("wallet-file")
-		if walletFile == "" {
-			return nil, errors.New("must provide --wallet-file")
-		}
-
-		// empty password is ok
-		walletPassword := c.String("wallet-password")
-
-		bobCfg := &bob.Config{
-			Ctx:                  ctx,
-			Basepath:             cfg.Basepath,
-			MoneroWalletEndpoint: moneroEndpoint,
-			MoneroDaemonEndpoint: daemonEndpoint,
-			WalletFile:           walletFile,
-			WalletPassword:       walletPassword,
-			EthereumEndpoint:     ethEndpoint,
-			EthereumPrivateKey:   ethPrivKey,
-			Environment:          env,
-			ChainID:              chainID,
-			GasPrice:             gasPrice,
-			GasLimit:             uint64(c.Uint("gas-limit")),
-		}
-
-		handler, err = bob.NewBob(bobCfg)
-		if err != nil {
-			return nil, err
-		}
+	aliceCfg := &alice.Config{
+		Ctx:                  ctx,
+		Basepath:             cfg.Basepath,
+		MoneroWalletEndpoint: moneroEndpoint,
+		EthereumEndpoint:     ethEndpoint,
+		EthereumPrivateKey:   ethPrivKey,
+		Environment:          env,
+		ChainID:              chainID,
+		GasPrice:             gasPrice,
+		GasLimit:             uint64(c.Uint("gas-limit")),
 	}
 
-	return handler, nil
+	a, err = alice.NewAlice(aliceCfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	walletFile := c.String("wallet-file")
+
+	// empty password is ok
+	walletPassword := c.String("wallet-password")
+
+	bobCfg := &bob.Config{
+		Ctx:                  ctx,
+		Basepath:             cfg.Basepath,
+		MoneroWalletEndpoint: moneroEndpoint,
+		MoneroDaemonEndpoint: daemonEndpoint,
+		WalletFile:           walletFile,
+		WalletPassword:       walletPassword,
+		EthereumEndpoint:     ethEndpoint,
+		EthereumPrivateKey:   ethPrivKey,
+		Environment:          env,
+		ChainID:              chainID,
+		GasPrice:             gasPrice,
+		GasLimit:             uint64(c.Uint("gas-limit")),
+	}
+
+	b, err = bob.NewBob(bobCfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return a, b, nil
 }

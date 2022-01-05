@@ -63,26 +63,43 @@ var (
 				},
 			},
 			{
-				Name:    "initiate",
-				Aliases: []string{"i"},
-				Usage:   "initiate a swap",
-				Action:  runInitiate,
+				Name:    "make",
+				Aliases: []string{"m"},
+				Usage:   "mke a swap offer; currently monero holders must be the makers",
+				Action:  runMake,
+				Flags: []cli.Flag{
+					&cli.Float64Flag{
+						Name:  "min-amount",
+						Usage: "minimum amount to be swapped, in XMR",
+					},
+					&cli.Float64Flag{
+						Name:  "max-amount",
+						Usage: "maximum amount to be swapped, in XMR",
+					},
+					&cli.Float64Flag{
+						Name:  "exchange-rate",
+						Usage: "desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
+					},
+					daemonAddrFlag,
+				},
+			},
+			{
+				Name:    "take",
+				Aliases: []string{"t"},
+				Usage:   "initiate a swap by taking an offerl currently only eth holders can be the takers",
+				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "multiaddr",
 						Usage: "peer's multiaddress, as provided by discover",
 					},
 					&cli.StringFlag{
-						Name:  "provides",
-						Usage: "coin to provide in the swap: one of [ETH, XMR]",
+						Name:  "offer-id",
+						Usage: "ID of the offer being taken",
 					},
 					&cli.Float64Flag{
 						Name:  "provides-amount",
 						Usage: "amount of coin to send in the swap",
-					},
-					&cli.Float64Flag{
-						Name:  "desired-amount",
-						Usage: "amount of coin to receive in the swap",
 					},
 					daemonAddrFlag,
 				},
@@ -126,6 +143,10 @@ func runDiscover(ctx *cli.Context) error {
 		return err
 	}
 
+	if provides == "" {
+		provides = common.ProvidesXMR
+	}
+
 	endpoint := ctx.String("daemon-addr")
 	if endpoint == "" {
 		endpoint = defaultSwapdAddress
@@ -163,32 +184,26 @@ func runQuery(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provides: %v\n", res.Provides)
-	fmt.Printf("MaximumAmount: %v\n", res.MaximumAmount)
-	fmt.Printf("ExchangeRate (ETH/XMR): %v\n", res.ExchangeRate)
-
+	for _, o := range res.Offers {
+		fmt.Printf("%v\n", o)
+	}
 	return nil
 }
 
-func runInitiate(ctx *cli.Context) error {
-	maddr := ctx.String("multiaddr")
-	if maddr == "" {
-		return errors.New("must provide peer's multiaddress with --multiaddr")
+func runMake(ctx *cli.Context) error {
+	min := ctx.Float64("min-amount")
+	if min == 0 {
+		return errors.New("must provide non-zero --min-amount")
 	}
 
-	provides, err := common.NewProvidesCoin(ctx.String("provides"))
-	if err != nil {
-		return err
+	max := ctx.Float64("max-amount")
+	if max == 0 {
+		return errors.New("must provide non-zero --max-amount")
 	}
 
-	providesAmount := ctx.Float64("provides-amount")
-	if providesAmount == 0 {
-		return errors.New("must provide --provides-amount")
-	}
-
-	desiredAmount := ctx.Float64("desired-amount")
-	if desiredAmount == 0 {
-		return errors.New("must provide --desired-amount")
+	exchangeRate := ctx.Float64("exchange-rate")
+	if exchangeRate == 0 {
+		return errors.New("must provide non-zero --exchange-rate")
 	}
 
 	endpoint := ctx.String("daemon-addr")
@@ -197,21 +212,44 @@ func runInitiate(ctx *cli.Context) error {
 	}
 
 	c := client.NewClient(endpoint)
-	ok, err := c.Initiate(maddr, provides, providesAmount, desiredAmount)
+	id, err := c.MakeOffer(min, max, exchangeRate)
 	if err != nil {
 		return err
 	}
 
-	var desiredCoin common.ProvidesCoin
-	switch provides {
-	case common.ProvidesETH:
-		desiredCoin = common.ProvidesXMR
-	case common.ProvidesXMR:
-		desiredCoin = common.ProvidesETH
+	fmt.Printf("Published offer with ID %s\n", id)
+	return nil
+}
+
+func runTake(ctx *cli.Context) error {
+	maddr := ctx.String("multiaddr")
+	if maddr == "" {
+		return errors.New("must provide peer's multiaddress with --multiaddr")
+	}
+
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errors.New("must provide --offer-id")
+	}
+
+	providesAmount := ctx.Float64("provides-amount")
+	if providesAmount == 0 {
+		return errors.New("must provide --provides-amount")
+	}
+
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	ok, received, err := c.TakeOffer(maddr, offerID, providesAmount)
+	if err != nil {
+		return err
 	}
 
 	if ok {
-		fmt.Printf("Swap successful, received %v %s\n", desiredAmount, desiredCoin)
+		fmt.Printf("Swap successful, received %v ETH\n", received)
 	} else {
 		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
 	}

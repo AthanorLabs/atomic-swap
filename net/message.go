@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/types"
 )
 
 const (
 	QueryResponseType byte = iota //nolint
-	InitiateMessageType
 	SendKeysMessageType
 	NotifyContractDeployedType
 	NotifyXMRLockType
@@ -34,12 +33,6 @@ func decodeMessage(b []byte) (Message, error) {
 	switch b[0] {
 	case QueryResponseType:
 		var m *QueryResponse
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case InitiateMessageType:
-		var m *InitiateMessage
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
@@ -81,17 +74,13 @@ func decodeMessage(b []byte) (Message, error) {
 
 // QueryResponse ...
 type QueryResponse struct {
-	Provides      []common.ProvidesCoin
-	MaximumAmount []float64
-	ExchangeRate  common.ExchangeRate
+	Offers []*types.Offer
 }
 
 // String ...
 func (m *QueryResponse) String() string {
-	return fmt.Sprintf("QueryResponse Provides=%v MaximumAmount=%v ExchangeRate=%v",
-		m.Provides,
-		m.MaximumAmount,
-		m.ExchangeRate,
+	return fmt.Sprintf("QueryResponse Offers=%v",
+		m.Offers,
 	)
 }
 
@@ -110,44 +99,13 @@ func (m *QueryResponse) Type() byte {
 	return QueryResponseType
 }
 
-// InitiateMessage is sent by a node who wishes to initate a swap with the remote peer.
-type InitiateMessage struct {
-	Provides       common.ProvidesCoin
-	ProvidesAmount float64
-	DesiredAmount  float64
-	*SendKeysMessage
-}
-
-// String ...
-func (m *InitiateMessage) String() string {
-	return fmt.Sprintf("InitiateMessage Provides=%v ProvidesAmount=%v DesiredAmount=%v Keys=%s",
-		m.Provides,
-		m.ProvidesAmount,
-		m.DesiredAmount,
-		m.SendKeysMessage,
-	)
-}
-
-// Encode ...
-func (m *InitiateMessage) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return append([]byte{InitiateMessageType}, b...), nil
-}
-
-// Type ...
-func (m *InitiateMessage) Type() byte {
-	return InitiateMessageType
-}
-
 // The below messages are sawp protocol messages, exchanged after the swap has been agreed
 // upon by both sides.
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
+	OfferID         string
+	ProvidedAmount  float64
 	PublicSpendKey  string
 	PublicViewKey   string
 	PrivateViewKey  string
@@ -157,7 +115,9 @@ type SendKeysMessage struct {
 
 // String ...
 func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s PrivateKeyProof=%s EthAddress=%s", //nolint:lll
+	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s PrivateKeyProof=%s EthAddress=%s", //nolint:lll
+		m.OfferID,
+		m.ProvidedAmount,
 		m.PublicSpendKey,
 		m.PublicViewKey,
 		m.PrivateViewKey,
