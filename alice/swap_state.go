@@ -91,6 +91,7 @@ func newSwapState(a *alice, providesAmount common.EtherAmount) (*swapState, erro
 	return s, nil
 }
 
+// SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	kp, err := s.generateKeys()
 	if err != nil {
@@ -109,6 +110,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
+// ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
 	return s.desiredAmount.AsMonero()
 }
@@ -374,6 +376,7 @@ func (s *swapState) setTimeouts() error {
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	// TODO: get user to confirm amount they will receive!!
 	s.desiredAmount = common.MoneroToPiconero(msg.ProvidedAmount)
+	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
 
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys

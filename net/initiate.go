@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/noot/atomic-swap/types"
+
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
-// Handler handles swap initation messages.
+// Handler handles swap initiation messages.
 // It is implemented by *bob.bob
 type Handler interface {
+	GetOffers() []*types.Offer
 	HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error)
 }
 

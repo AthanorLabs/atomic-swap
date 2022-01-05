@@ -26,10 +26,6 @@ const (
 	defaultAliceLibp2pPort = 9933
 	defaultBobLibp2pPort   = 9934
 
-	// defaultExchangeRate is the default ratio of ETH:XMR.
-	// TODO; make this a CLI flag, or get it from some price feed.
-	defaultExchangeRate = 0.0578261
-
 	// default libp2p key files
 	defaultLibp2pKey      = "node.key"
 	defaultAliceLibp2pKey = "alice.key"
@@ -118,6 +114,12 @@ var (
 			&cli.UintFlag{
 				Name:  "gas-limit",
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
+			},
+			&cli.BoolFlag{
+				Name: "dev-alice",
+			},
+			&cli.BoolFlag{
+				Name: "dev-bob",
 			},
 		},
 	}
@@ -298,6 +300,7 @@ func getEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) 
 		ethPrivKey = string(key)
 	} else {
 		if env != common.Development {
+			// TODO: allow this to be set via RPC
 			return "", errors.New("must provide --ethereum-privkey file for non-development environment")
 		}
 
@@ -367,9 +370,6 @@ func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environ
 	}
 
 	walletFile := c.String("wallet-file")
-	if walletFile == "" {
-		return nil, nil, errors.New("must provide --wallet-file")
-	}
 
 	// empty password is ok
 	walletPassword := c.String("wallet-password")

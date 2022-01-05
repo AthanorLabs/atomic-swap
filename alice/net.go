@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
+// Provides returns common.ProvidesETH
 func (a *alice) Provides() common.ProvidesCoin {
 	return common.ProvidesETH
 }

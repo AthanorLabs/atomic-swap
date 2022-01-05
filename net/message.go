@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/types"
 )
 
 const (
@@ -74,17 +74,13 @@ func decodeMessage(b []byte) (Message, error) {
 
 // QueryResponse ...
 type QueryResponse struct {
-	Provides      []common.ProvidesCoin
-	MaximumAmount []float64
-	ExchangeRate  common.ExchangeRate
+	Offers []*types.Offer
 }
 
 // String ...
 func (m *QueryResponse) String() string {
-	return fmt.Sprintf("QueryResponse Provides=%v MaximumAmount=%v ExchangeRate=%v",
-		m.Provides,
-		m.MaximumAmount,
-		m.ExchangeRate,
+	return fmt.Sprintf("QueryResponse Offers=%v",
+		m.Offers,
 	)
 }
 

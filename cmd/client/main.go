@@ -63,9 +63,30 @@ var (
 				},
 			},
 			{
+				Name:    "make",
+				Aliases: []string{"m"},
+				Usage:   "mke a swap offer; currently monero holders must be the makers",
+				Action:  runMake,
+				Flags: []cli.Flag{
+					&cli.Float64Flag{
+						Name:  "min-amount",
+						Usage: "minimum amount to be swapped, in XMR",
+					},
+					&cli.Float64Flag{
+						Name:  "max-amount",
+						Usage: "maximum amount to be swapped, in XMR",
+					},
+					&cli.Float64Flag{
+						Name:  "exchange-rate",
+						Usage: "desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
+					},
+					daemonAddrFlag,
+				},
+			},
+			{
 				Name:    "take",
-				Aliases: []string{"i"},
-				Usage:   "initiate a swap by taking an offer",
+				Aliases: []string{"t"},
+				Usage:   "initiate a swap by taking an offerl currently only eth holders can be the takers",
 				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -122,6 +143,10 @@ func runDiscover(ctx *cli.Context) error {
 		return err
 	}
 
+	if provides == "" {
+		provides = common.ProvidesXMR
+	}
+
 	endpoint := ctx.String("daemon-addr")
 	if endpoint == "" {
 		endpoint = defaultSwapdAddress
@@ -159,10 +184,40 @@ func runQuery(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provides: %v\n", res.Provides)
-	fmt.Printf("MaximumAmount: %v\n", res.MaximumAmount)
-	fmt.Printf("ExchangeRate (ETH/XMR): %v\n", res.ExchangeRate)
+	for _, o := range res.Offers {
+		fmt.Printf("%v\n", o)
+	}
+	return nil
+}
 
+func runMake(ctx *cli.Context) error {
+	min := ctx.Float64("min-amount")
+	if min == 0 {
+		return errors.New("must provide non-zero --min-amount")
+	}
+
+	max := ctx.Float64("max-amount")
+	if max == 0 {
+		return errors.New("must provide non-zero --max-amount")
+	}
+
+	exchangeRate := ctx.Float64("exchange-rate")
+	if exchangeRate == 0 {
+		return errors.New("must provide non-zero --exchange-rate")
+	}
+
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	id, err := c.MakeOffer(min, max, exchangeRate)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Published offer with ID %s\n", id)
 	return nil
 }
 

@@ -17,6 +17,7 @@ const defaultSearchTime = time.Second * 12
 // Net contains the functions required by the rpc service into the network.
 type Net interface {
 	Addresses() []string
+	Advertise()
 	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s net.SwapState) error
@@ -28,11 +29,13 @@ type Protocol interface {
 	SetGasPrice(gasPrice uint64)
 }
 
+// Alice ...
 type Alice interface {
 	Protocol
 	InitiateProtocol(providesAmount float64) (net.SwapState, error)
 }
 
+// Bob ...
 type Bob interface {
 	Protocol
 	MakeOffer(offer *types.Offer) error
@@ -116,9 +119,7 @@ type QueryPeerRequest struct {
 
 // QueryPeerResponse ...
 type QueryPeerResponse struct {
-	Provides      []common.ProvidesCoin `json:"provides"`
-	MaximumAmount []float64             `json:"maximumAmount"`
-	ExchangeRate  common.ExchangeRate   `json:"exchangeRate"`
+	Offers []*types.Offer `json:"offers"`
 }
 
 // QueryPeer queries a peer for the coins they provide, their maximum amounts, and desired exchange rate.
@@ -133,27 +134,25 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 		return err
 	}
 
-	resp.Provides = msg.Provides
-	resp.MaximumAmount = msg.MaximumAmount
-	resp.ExchangeRate = msg.ExchangeRate
+	resp.Offers = msg.Offers
 	return nil
 }
 
-// InitiateRequest ...
+// TakeOfferRequest ...
 type TakeOfferRequest struct {
 	Multiaddr      string  `json:"multiaddr"`
 	OfferID        string  `json:"offerID"`
 	ProvidesAmount float64 `json:"providesAmount"`
 }
 
-// InitiateResponse ...
+// TakeOfferResponse ...
 // TODO: add Refunded bool
 type TakeOfferResponse struct {
 	Success        bool    `json:"success"`
 	ReceivedAmount float64 `json:"receivedAmount"`
 }
 
-// Initiate initiates a swap with the given peer.
+// TakeOffer initiates a swap with the given peer by taking an offer they've made.
 func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *TakeOfferResponse) error {
 	swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
 	if err != nil {
@@ -165,6 +164,7 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 		return err
 	}
 
+	skm.OfferID = req.OfferID
 	skm.ProvidedAmount = req.ProvidesAmount
 
 	who, err := net.StringToAddrInfo(req.Multiaddr)
@@ -182,11 +182,34 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 	return nil
 }
 
-type MakeOfferRequest struct{}
-type MakeOfferResponse struct{}
+// MakeOfferRequest ...
+type MakeOfferRequest struct {
+	MinimumAmount float64
+	MaximumAmount float64
+	ExchangeRate  common.ExchangeRate
+}
+
+// MakeOfferResponse ...
+type MakeOfferResponse struct {
+	ID string
+}
 
 // MakeOffer creates and advertises a new swap offer.
 func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *MakeOfferResponse) error {
+	o := &types.Offer{
+		Provides:      common.ProvidesXMR,
+		MinimumAmount: req.MinimumAmount,
+		MaximumAmount: req.MaximumAmount,
+		ExchangeRate:  req.ExchangeRate,
+	}
+
+	if err := s.bob.MakeOffer(o); err != nil {
+		return err
+	}
+
+	resp.ID = o.GetID().String()
+
+	s.net.Advertise()
 	return nil
 }
 

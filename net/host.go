@@ -170,6 +170,10 @@ func (h *host) Stop() error {
 	return nil
 }
 
+func (h *host) Advertise() {
+	h.discovery.advertiseCh <- struct{}{}
+}
+
 func (h *host) Addresses() []string {
 	var addrs []string
 	for _, ma := range h.multiaddrs() {

@@ -31,7 +31,7 @@ func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64)
 	}
 
 	if resp.Error != nil {
-		return false, 0, fmt.Errorf("failed to call net_initiate: %w", resp.Error)
+		return false, 0, fmt.Errorf("failed to call %s: %w", method, resp.Error)
 	}
 
 	var res *rpc.TakeOfferResponse

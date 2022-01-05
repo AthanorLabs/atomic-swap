@@ -40,8 +40,9 @@ func (a MoneroAmount) Uint64() uint64 {
 	return uint64(a)
 }
 
+// AsMonero converts the piconero MoneroAmount into standard units
 func (a MoneroAmount) AsMonero() float64 {
-	return float64(a) / float64(numMoneroUnits)
+	return float64(a) / numMoneroUnits
 }
 
 // EtherAmount represents some amout of ether in the smallest denomination (wei)
@@ -67,6 +68,7 @@ func (a EtherAmount) BigInt() *big.Int {
 	return &i
 }
 
+// AsEther returns the wei amount as ether
 func (a EtherAmount) AsEther() float64 {
 	wei := big.NewFloat(0).SetInt(a.BigInt())
 	mult := big.NewFloat(numEtherUnits)
