@@ -20,6 +20,7 @@ import (
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/types"
 )
 
 var nextID uint64
@@ -44,6 +45,7 @@ type swapState struct {
 	id             uint64
 	providesAmount common.MoneroAmount
 	desiredAmount  common.EtherAmount
+	offerID        types.Hash
 
 	// our keys for this session
 	privkeys *mcrypto.PrivateKeyPair
@@ -70,7 +72,7 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
+func newSwapState(b *bob, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -88,6 +90,7 @@ func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount comm
 		id:                  nextID,
 		providesAmount:      providesAmount,
 		desiredAmount:       desiredAmount,
+		offerID:             offerID,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
@@ -97,6 +100,7 @@ func newSwapState(b *bob, providesAmount common.MoneroAmount, desiredAmount comm
 	return s, nil
 }
 
+// SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	sk, vk, err := s.generateKeys()
 	if err != nil {
@@ -109,11 +113,17 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}
 
 	return &net.SendKeysMessage{
+		ProvidedAmount:  s.providesAmount.AsMonero(),
 		PublicSpendKey:  sk.Hex(),
 		PrivateViewKey:  vk.Hex(),
 		PrivateKeyProof: sig.Hex(),
 		EthAddress:      s.bob.ethAddress.String(),
 	}, nil
+}
+
+// ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
+func (s *swapState) ReceivedAmount() float64 {
+	return s.desiredAmount.AsEther()
 }
 
 // ProtocolExited is called by the network when the protocol stream closes.
@@ -132,6 +142,12 @@ func (s *swapState) ProtocolExited() error {
 	if s.completed {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
 		log.Info(str)
+
+		if !s.refunded {
+			// remove offer, as it's been taken
+			s.bob.offerManager.deleteOffer(s.offerID)
+		}
+
 		return nil
 	}
 

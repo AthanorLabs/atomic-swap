@@ -18,18 +18,19 @@ import (
 const (
 	initialAdvertisementTimeout = time.Millisecond
 	tryAdvertiseTimeout         = time.Second * 30
+	defaultAdvertiseTTL         = time.Minute * 5
 )
 
 type discovery struct {
-	ctx      context.Context
-	dht      *dual.DHT
-	h        libp2phost.Host
-	rd       *libp2pdiscovery.RoutingDiscovery
-	provides []common.ProvidesCoin
+	ctx         context.Context
+	dht         *dual.DHT
+	h           libp2phost.Host
+	rd          *libp2pdiscovery.RoutingDiscovery
+	provides    []common.ProvidesCoin
+	advertiseCh chan struct{}
 }
 
-func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo,
-	provides ...common.ProvidesCoin) (*discovery, error) {
+func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo) (*discovery, error) {
 	dhtOpts := []dual.Option{
 		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
 		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
@@ -43,11 +44,11 @@ func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.
 	rd := libp2pdiscovery.NewRoutingDiscovery(dht)
 
 	return &discovery{
-		ctx:      ctx,
-		dht:      dht,
-		h:        h,
-		rd:       rd,
-		provides: provides,
+		ctx:         ctx,
+		dht:         dht,
+		h:           h,
+		rd:          rd,
+		advertiseCh: make(chan struct{}),
 	}, nil
 }
 
@@ -72,31 +73,43 @@ func (d *discovery) stop() error {
 func (d *discovery) advertise() {
 	ttl := initialAdvertisementTimeout
 
+	doAdvertise := func() {
+		log.Debug("advertising in the DHT...")
+		err := d.dht.Bootstrap(d.ctx)
+		if err != nil {
+			log.Warnf("failed to bootstrap DHT: err=%s", err)
+			return
+		}
+
+		for _, provides := range d.provides {
+			ttl, err = d.rd.Advertise(d.ctx, string(provides))
+			if err != nil {
+				log.Debugf("failed to advertise in the DHT: err=%s", err)
+				ttl = tryAdvertiseTimeout
+				return
+			}
+		}
+
+		if len(d.provides) == 0 {
+			ttl, err = d.rd.Advertise(d.ctx, "")
+			if err != nil {
+				log.Debugf("failed to advertise in the DHT: err=%s", err)
+				ttl = tryAdvertiseTimeout
+				return
+			}
+		}
+
+		ttl = defaultAdvertiseTTL
+	}
+
 	for {
 		select {
+		case <-d.advertiseCh:
+			// TODO: check current offers, as this may change
+			d.provides = []common.ProvidesCoin{common.ProvidesXMR}
+			doAdvertise()
 		case <-time.After(ttl):
-			log.Debug("advertising in the DHT...")
-			err := d.dht.Bootstrap(d.ctx)
-			if err != nil {
-				log.Warnf("failed to bootstrap DHT: err=%s", err)
-				continue
-			}
-
-			for _, provides := range d.provides {
-				ttl, err = d.rd.Advertise(d.ctx, string(provides))
-				if err != nil {
-					log.Debugf("failed to advertise in the DHT: err=%s", err)
-					ttl = tryAdvertiseTimeout
-				}
-			}
-
-			if len(d.provides) == 0 {
-				ttl, err = d.rd.Advertise(d.ctx, "")
-				if err != nil {
-					log.Debugf("failed to advertise in the DHT: err=%s", err)
-					ttl = tryAdvertiseTimeout
-				}
-			}
+			doAdvertise()
 		case <-d.ctx.Done():
 			return
 		}

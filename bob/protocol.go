@@ -48,6 +48,8 @@ type bob struct {
 
 	net net.MessageSender
 
+	offerManager *offerManager
+
 	swapMu    sync.Mutex
 	swapState *swapState
 }
@@ -94,8 +96,12 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
 
 	// open Bob's XMR wallet
-	if err = walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
-		return nil, err
+	if cfg.WalletFile != "" {
+		if err = walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
+			return nil, err
+		}
+	} else {
+		log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
 	}
 
 	// this is only used in the monero development environment to generate new blocks
@@ -118,13 +124,19 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 			From:    addr,
 			Context: cfg.Ctx,
 		},
-		ethAddress: addr,
-		chainID:    big.NewInt(cfg.ChainID),
+		ethAddress:   addr,
+		chainID:      big.NewInt(cfg.ChainID),
+		offerManager: newOfferManager(),
 	}, nil
 }
 
 func (b *bob) SetMessageSender(n net.MessageSender) {
 	b.net = n
+}
+
+func (b *bob) SetMoneroWalletFile(file, password string) error {
+	_ = b.client.CloseWallet()
+	return b.client.OpenWallet(file, password)
 }
 
 func (b *bob) SetGasPrice(gasPrice uint64) {

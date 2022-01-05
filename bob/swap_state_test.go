@@ -10,6 +10,7 @@ import (
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/types"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -56,7 +57,7 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 
 	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 121)
 
-	swapState, err := newSwapState(bob, common.MoneroAmount(33), desiredAmout)
+	swapState, err := newSwapState(bob, types.Hash{}, common.MoneroAmount(33), desiredAmout)
 	require.NoError(t, err)
 	return bob, swapState
 }
