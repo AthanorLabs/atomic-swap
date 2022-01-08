@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/types"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 
@@ -22,7 +26,8 @@ type Server struct {
 type Config struct {
 	Port            uint16
 	Net             Net
-	Protocol        Protocol
+	Alice           Alice
+	Bob             Bob
 	MoneroRecoverer MoneroRecoverer
 }
 
@@ -30,7 +35,11 @@ type Config struct {
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Protocol), "net"); err != nil {
+	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob), "net"); err != nil {
+		return nil, err
+	}
+
+	if err := s.RegisterService(NewPersonalService(cfg.Bob), "personal"); err != nil {
 		return nil, err
 	}
 
@@ -61,4 +70,23 @@ func (s *Server) Start() <-chan error {
 	}()
 
 	return errCh
+}
+
+// Protocol represents the functions required by the rpc service into the protocol handler.
+type Protocol interface {
+	Provides() common.ProvidesCoin
+	SetGasPrice(gasPrice uint64)
+}
+
+// Alice ...
+type Alice interface {
+	Protocol
+	InitiateProtocol(providesAmount float64) (net.SwapState, error)
+}
+
+// Bob ...
+type Bob interface {
+	Protocol
+	MakeOffer(offer *types.Offer) error
+	SetMoneroWalletFile(file, password string) error
 }

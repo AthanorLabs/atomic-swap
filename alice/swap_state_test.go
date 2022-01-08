@@ -40,8 +40,9 @@ func newTestAlice(t *testing.T) (*alice, *swapState) {
 
 	alice, err := NewAlice(cfg)
 	require.NoError(t, err)
-	swapState, err := newSwapState(alice, common.NewEtherAmount(1), common.MoneroAmount(1))
+	swapState, err := newSwapState(alice, common.NewEtherAmount(1))
 	require.NoError(t, err)
+	swapState.desiredAmount = common.MoneroAmount(1)
 	return alice, swapState
 }
 
