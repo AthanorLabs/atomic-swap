@@ -26,8 +26,10 @@ import (
 var nextID uint64
 
 var (
-	errMissingKeys    = errors.New("did not receive Alice's public spend or view key")
-	errMissingAddress = errors.New("got empty contract address")
+	errMissingKeys       = errors.New("did not receive Alice's public spend or view key")
+	errMissingAddress    = errors.New("got empty contract address")
+	errNoRefundLogsFound = errors.New("no refund logs found")
+	errPastClaimTime     = errors.New("past t1, can no longer claim")
 )
 
 var (
@@ -37,7 +39,7 @@ var (
 )
 
 type swapState struct {
-	*bob
+	bob    *Instance
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
@@ -72,7 +74,7 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *bob, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
+func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -162,8 +164,12 @@ func (s *swapState) ProtocolExited() error {
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
-		if err := s.tryClaim(); err != nil {
+		txHash, err := s.tryClaim()
+		if err != nil {
 			log.Errorf("failed to claim funds: err=%s", err)
+		} else {
+			log.Infof("claimed ether! transaction hash=%s", txHash)
+			return nil
 		}
 
 		// we should check if Alice refunded, if so then check contract for secret
@@ -224,7 +230,7 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	}
 
 	if len(logs) == 0 {
-		return nil, errors.New("no refund logs found")
+		return nil, errNoRefundLogsFound
 	}
 
 	sa, err := swap.GetSecretFromLog(&logs[0], "Refunded")
@@ -235,24 +241,23 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	return sa, nil
 }
 
-func (s *swapState) tryClaim() error {
+func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
 
 	if untilT0 < 0 {
 		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to refund", s.t0)
+		log.Infof("waiting until time %s to claim", s.t0)
 		<-time.After(untilT0 + time.Second)
 	}
 
 	if untilT1 > 0 {
 		// we've passed t1, our only option now is for Alice to refund
 		// and we can regain control of the locked XMR.
-		return errors.New("past t1, can no longer claim")
+		return ethcommon.Hash{}, errPastClaimTime
 	}
 
-	_, err := s.claimFunds()
-	return err
+	return s.claimFunds()
 }
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -308,19 +313,9 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		// set t0 and t1
-		st0, err := s.contract.Timeout0(s.bob.callOpts)
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+		if err := s.setTimeouts(); err != nil {
+			return nil, true, err
 		}
-
-		s.t0 = time.Unix(st0.Int64(), 0)
-
-		st1, err := s.contract.Timeout1(s.bob.callOpts)
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
-		}
-
-		s.t1 = time.Unix(st1.Int64(), 0)
 
 		go func() {
 			until := time.Until(s.t0)
@@ -343,8 +338,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				s.completed = true
 
 				// send *net.NotifyClaimed
-				if err := s.net.SendSwapMessage(&net.NotifyClaimed{
-					TxHash: txHash,
+				if err := s.bob.net.SendSwapMessage(&net.NotifyClaimed{
+					TxHash: txHash.String(),
 				}); err != nil {
 					log.Errorf("failed to send NotifyClaimed message: err=%s", err)
 				}
@@ -367,7 +362,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		log.Debug("funds claimed!!")
 		out := &net.NotifyClaimed{
-			TxHash: txHash,
+			TxHash: txHash.String(),
 		}
 
 		s.completed = true
@@ -386,6 +381,23 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	default:
 		return nil, true, errors.New("unexpected message type")
 	}
+}
+
+func (s *swapState) setTimeouts() error {
+	st0, err := s.contract.Timeout0(s.bob.callOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+	}
+
+	s.t0 = time.Unix(st0.Int64(), 0)
+
+	st1, err := s.contract.Timeout1(s.bob.callOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
+	}
+
+	s.t1 = time.Unix(st1.Int64(), 0)
+	return nil
 }
 
 // checkContract checks the contract's balance and Claim/Refund keys.

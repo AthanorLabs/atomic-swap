@@ -29,7 +29,7 @@ func (om *offerManager) deleteOffer(id types.Hash) {
 	delete(om.offers, id)
 }
 
-func (b *bob) MakeOffer(o *types.Offer) error {
+func (b *Instance) MakeOffer(o *types.Offer) error {
 	balance, err := b.client.GetBalance(0)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (b *bob) MakeOffer(o *types.Offer) error {
 	return nil
 }
 
-func (b *bob) GetOffers() []*types.Offer {
+func (b *Instance) GetOffers() []*types.Offer {
 	offers := make([]*types.Offer, len(b.offerManager.offers))
 	i := 0
 	for _, o := range b.offerManager.offers {

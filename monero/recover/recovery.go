@@ -4,10 +4,12 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -60,4 +62,24 @@ func (r *recoverer) WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Ad
 	}
 
 	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)
+}
+
+func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string) (*bob.RecoveryResult, error) {
+	bs, err := hex.DecodeString(bobSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode bob's secret: %w", err)
+	}
+
+	bk, err := mcrypto.NewPrivateSpendKey(bs)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := ethcommon.HexToAddress(contractAddr)
+	rs, err := bob.NewRecoveryState(b, bk, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return rs.ClaimOrRecover()
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
+	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/rpc"
@@ -144,7 +145,7 @@ type bobHandler interface {
 }
 
 func runDaemon(c *cli.Context) error {
-	env, cfg, err := getEnvironment(c)
+	env, cfg, err := utils.GetEnvironment(c)
 	if err != nil {
 		return err
 	}
@@ -337,7 +338,7 @@ func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environ
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	ethPrivKey, err := getEthereumPrivateKey(c, env, devBob)
+	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devBob)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -391,7 +392,7 @@ func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environ
 		GasLimit:             uint64(c.Uint("gas-limit")),
 	}
 
-	b, err = bob.NewBob(bobCfg)
+	b, err = bob.NewInstance(bobCfg)
 	if err != nil {
 		return nil, nil, err
 	}

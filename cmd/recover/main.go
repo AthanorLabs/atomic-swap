@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"math/big"
 	"os"
 
 	"github.com/urfave/cli"
 
+	"github.com/noot/atomic-swap/bob"
+	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	recovery "github.com/noot/atomic-swap/monero/recover"
@@ -97,15 +101,15 @@ func main() {
 // MoneroRecoverer is implemented by a backend which is able to recover monero
 type MoneroRecoverer interface {
 	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
+	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string) (*bob.RecoveryResult, error)
 }
 
-func runRecoverMonero(ctx *cli.Context) error {
-	as := ctx.String("alice-secret")
-	bs := ctx.String("bob-secret")
-	contractAddr := ctx.String("contract-addr")
+func runRecoverMonero(c *cli.Context) error {
+	as := c.String("alice-secret")
+	bs := c.String("bob-secret")
+	contractAddr := c.String("contract-addr")
 
-	// TODO: use eth config here for chain ID
-	env, _, err := getEnvironment(ctx)
+	env, cfg, err := utils.GetEnvironment(c)
 	if err != nil {
 		return err
 	}
@@ -122,7 +126,7 @@ func runRecoverMonero(ctx *cli.Context) error {
 		return errors.New("must also provide one of --contract-addr or --bob-secret")
 	}
 
-	r, err := getRecoverer(ctx, env)
+	r, err := getRecoverer(c, env)
 	if err != nil {
 		return err
 	}
@@ -137,29 +141,30 @@ func runRecoverMonero(ctx *cli.Context) error {
 		return nil
 	}
 
-	log.Warnf("unimplemented!")
-	return nil
-}
+	if bs != "" && contractAddr != "" {
+		b, err := createBobInstance(context.Background(), c, env, cfg)
+		if err != nil {
+			return err
+		}
 
-func getEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, err error) {
-	switch c.String("env") {
-	case "mainnet":
-		env = common.Mainnet
-		cfg = common.MainnetConfig
-	case "stagenet":
-		env = common.Stagenet
-		cfg = common.StagenetConfig
-	case "dev":
-		env = common.Development
-		cfg = common.DevelopmentConfig
-	case "":
-		env = common.Development
-		cfg = common.DevelopmentConfig
-	default:
-		return 0, common.Config{}, errors.New("--env must be one of mainnet, stagenet, or dev")
+		res, err := r.RecoverFromBobSecretAndContract(b, bs, contractAddr)
+		if err != nil {
+			return err
+		}
+
+		if res.Claimed {
+			log.Info("claimed ether from contract! transaction hash=%s", res.TxHash)
+			return nil
+		}
+
+		if res.Recovered {
+			log.Infof("restored wallet from secrets: address=%s", res.MoneroAddress)
+			return nil
+		}
 	}
 
-	return env, cfg, nil
+	log.Warnf("unimplemented!")
+	return nil
 }
 
 func getRecoverer(c *cli.Context, env common.Environment) (MoneroRecoverer, error) {
@@ -184,4 +189,71 @@ func getRecoverer(c *cli.Context, env common.Environment) (MoneroRecoverer, erro
 		ethEndpoint,
 	)
 	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
+}
+
+func createBobInstance(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config) (*bob.Instance, error) {
+	var (
+		moneroEndpoint, daemonEndpoint, ethEndpoint string
+	)
+
+	chainID := int64(c.Uint("ethereum-chain-id"))
+	if chainID == 0 {
+		chainID = cfg.EthereumChainID
+	}
+
+	if c.String("monero-endpoint") != "" {
+		moneroEndpoint = c.String("monero-endpoint")
+	} else {
+		moneroEndpoint = common.DefaultBobMoneroEndpoint
+	}
+
+	if c.String("ethereum-endpoint") != "" {
+		ethEndpoint = c.String("ethereum-endpoint")
+	} else {
+		ethEndpoint = common.DefaultEthEndpoint
+	}
+
+	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.String("monero-daemon-endpoint") != "" {
+		daemonEndpoint = c.String("monero-daemon-endpoint")
+	} else {
+		daemonEndpoint = cfg.MoneroDaemonEndpoint
+	}
+
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	var gasPrice *big.Int
+	if c.Uint("gas-price") != 0 {
+		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	}
+
+	walletFile := c.String("wallet-file")
+
+	// empty password is ok
+	walletPassword := c.String("wallet-password")
+
+	bobCfg := &bob.Config{
+		Ctx:                  ctx,
+		Basepath:             cfg.Basepath,
+		MoneroWalletEndpoint: moneroEndpoint,
+		MoneroDaemonEndpoint: daemonEndpoint,
+		WalletFile:           walletFile,
+		WalletPassword:       walletPassword,
+		EthereumEndpoint:     ethEndpoint,
+		EthereumPrivateKey:   ethPrivKey,
+		Environment:          env,
+		ChainID:              chainID,
+		GasPrice:             gasPrice,
+		GasLimit:             uint64(c.Uint("gas-limit")),
+	}
+
+	b, err := bob.NewInstance(bobCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }

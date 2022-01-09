@@ -27,9 +27,9 @@ var (
 	log = logging.Logger("bob")
 )
 
-// bob implements the functions that will be called by a user who owns XMR
+// Instance implements the functionality that will be needed by a user who owns XMR
 // and wishes to swap for ETH.
-type bob struct {
+type Instance struct {
 	ctx      context.Context
 	env      common.Environment
 	basepath string
@@ -69,9 +69,9 @@ type Config struct {
 	GasLimit                   uint64
 }
 
-// NewBob returns a new instance of Bob.
+// NewInstance returns a new *bob.Instance.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(cfg *Config) (*bob, error) { //nolint
+func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
 		return nil, errors.New("environment is development, must provide monero daemon endpoint")
 	}
@@ -110,7 +110,7 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 		daemonClient = monero.NewClient(cfg.MoneroDaemonEndpoint)
 	}
 
-	return &bob{
+	return &Instance{
 		ctx:            cfg.Ctx,
 		basepath:       cfg.Basepath,
 		env:            cfg.Environment,
@@ -130,20 +130,20 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 	}, nil
 }
 
-func (b *bob) SetMessageSender(n net.MessageSender) {
+func (b *Instance) SetMessageSender(n net.MessageSender) {
 	b.net = n
 }
 
-func (b *bob) SetMoneroWalletFile(file, password string) error {
+func (b *Instance) SetMoneroWalletFile(file, password string) error {
 	_ = b.client.CloseWallet()
 	return b.client.OpenWallet(file, password)
 }
 
-func (b *bob) SetGasPrice(gasPrice uint64) {
+func (b *Instance) SetGasPrice(gasPrice uint64) {
 	b.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
 
-func (b *bob) openWallet() error { //nolint
+func (b *Instance) openWallet() error { //nolint
 	return b.client.OpenWallet(b.walletFile, b.walletPassword)
 }
 
@@ -329,13 +329,13 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 }
 
 // claimFunds redeems Bob's ETH funds by calling Claim() on the contract
-func (s *swapState) claimFunds() (string, error) {
-	pub := s.ethPrivKey.Public().(*ecdsa.PublicKey)
+func (s *swapState) claimFunds() (ethcommon.Hash, error) {
+	pub := s.bob.ethPrivKey.Public().(*ecdsa.PublicKey)
 	addr := ethcrypto.PubkeyToAddress(*pub)
 
-	balance, err := s.ethClient.BalanceAt(s.ctx, addr, nil)
+	balance, err := s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
-		return "", err
+		return ethcommon.Hash{}, err
 	}
 
 	log.Info("Bob's balance before claim: ", balance)
@@ -347,20 +347,20 @@ func (s *swapState) claimFunds() (string, error) {
 
 	tx, err := s.contract.Claim(s.txOpts, sc)
 	if err != nil {
-		return "", err
+		return ethcommon.Hash{}, err
 	}
 
 	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
 
 	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
-		return "", errors.New("failed to check Claim transaction receipt")
+		return ethcommon.Hash{}, errors.New("failed to check Claim transaction receipt")
 	}
 
 	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
-		return "", err
+		return ethcommon.Hash{}, err
 	}
 
 	log.Info("Bob's balance after claim: ", balance)
-	return tx.Hash().String(), nil
+	return tx.Hash(), nil
 }
