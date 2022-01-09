@@ -104,27 +104,6 @@ var (
 					daemonAddrFlag,
 				},
 			},
-			{
-				Name:    "recover-monero",
-				Aliases: []string{"r"},
-				Usage:   "recover funds from an aborted swap; must provide 2/3 of --alice-secret, --bob-secret, and --contract-addr", //nolint:lll
-				Action:  runRecoverMonero,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "alice-secret",
-						Usage: "Alice's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
-					},
-					&cli.StringFlag{
-						Name:  "bob-secret",
-						Usage: "Bob's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
-					},
-					&cli.StringFlag{
-						Name:  "contract-addr",
-						Usage: "address of deployed ethereum swap contract, can be found in the basepath (default ~/.atomicswap)", //nolint:lll
-					},
-					daemonAddrFlag,
-				},
-			},
 		},
 		Flags: []cli.Flag{daemonAddrFlag},
 	}
@@ -275,37 +254,5 @@ func runTake(ctx *cli.Context) error {
 		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
 	}
 
-	return nil
-}
-
-func runRecoverMonero(ctx *cli.Context) error {
-	as := ctx.String("alice-secret")
-	bs := ctx.String("bob-secret")
-	contractAddr := ctx.String("contract-addr")
-
-	if as == "" && bs == "" {
-		return errors.New("must also provide one of --alice-secret or --bob-secret")
-	}
-
-	if as == "" && contractAddr == "" {
-		return errors.New("must also provide one of --alice-secret or --contract-addr")
-	}
-
-	if contractAddr == "" && bs == "" {
-		return errors.New("must also provide one of --contract-addr or --bob-secret")
-	}
-
-	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
-	c := client.NewClient(endpoint)
-	addr, err := c.RecoverMonero(as, bs, contractAddr)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("successfully recovered monero: address=%s\n", addr)
 	return nil
 }

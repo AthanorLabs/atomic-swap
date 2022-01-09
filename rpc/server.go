@@ -24,11 +24,10 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Port            uint16
-	Net             Net
-	Alice           Alice
-	Bob             Bob
-	MoneroRecoverer MoneroRecoverer
+	Port  uint16
+	Net   Net
+	Alice Alice
+	Bob   Bob
 }
 
 // NewServer ...
@@ -40,10 +39,6 @@ func NewServer(cfg *Config) (*Server, error) {
 	}
 
 	if err := s.RegisterService(NewPersonalService(cfg.Bob), "personal"); err != nil {
-		return nil, err
-	}
-
-	if err := s.RegisterService(NewRecoverService(cfg.MoneroRecoverer), "recover"); err != nil {
 		return nil, err
 	}
 

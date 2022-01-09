@@ -14,7 +14,6 @@ import (
 	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
-	recovery "github.com/noot/atomic-swap/monero/recover"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/rpc"
 
@@ -52,7 +51,7 @@ var (
 
 var (
 	app = &cli.App{
-		Name:   "atomic-swap",
+		Name:   "swapd",
 		Usage:  "A program for doing atomic swaps between ETH and XMR",
 		Action: runDaemon,
 		Flags: []cli.Flag{
@@ -237,17 +236,11 @@ func runDaemon(c *cli.Context) error {
 		rpcPort = defaultRPCPort
 	}
 
-	mr, err := getRecoverer(c, env, devBob)
-	if err != nil {
-		return err
-	}
-
 	rpcCfg := &rpc.Config{
-		Port:            rpcPort,
-		Net:             host,
-		Alice:           a,
-		Bob:             b,
-		MoneroRecoverer: mr,
+		Port:  rpcPort,
+		Net:   host,
+		Alice: a,
+		Bob:   b,
 	}
 
 	s, err := rpc.NewServer(rpcCfg)
@@ -322,32 +315,6 @@ func getEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) 
 	}
 
 	return ethPrivKey, nil
-}
-
-func getRecoverer(c *cli.Context, env common.Environment, devBob bool) (rpc.MoneroRecoverer, error) {
-	var (
-		moneroEndpoint, ethEndpoint string
-	)
-
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
-	} else if devBob {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
-	} else {
-		moneroEndpoint = common.DefaultAliceMoneroEndpoint
-	}
-
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
-
-	log.Info("created recovery module with monero endpoint %s and ethereum endpoint %s",
-		moneroEndpoint,
-		ethEndpoint,
-	)
-	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
 }
 
 func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
