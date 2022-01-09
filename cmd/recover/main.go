@@ -13,7 +13,7 @@ import (
 	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
-	recovery "github.com/noot/atomic-swap/monero/recover"
+	recovery "github.com/noot/atomic-swap/recover"
 
 	logging "github.com/ipfs/go-log"
 )
