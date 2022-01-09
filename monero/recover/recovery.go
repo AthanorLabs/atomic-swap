@@ -64,7 +64,8 @@ func (r *recoverer) WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Ad
 	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)
 }
 
-func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string) (*bob.RecoveryResult, error) {
+func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
+	bobSecret, contractAddr string) (*bob.RecoveryResult, error) {
 	bs, err := hex.DecodeString(bobSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode bob's secret: %w", err)

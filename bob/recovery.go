@@ -14,7 +14,10 @@ type recoveryState struct {
 	ss *swapState
 }
 
-func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr ethcommon.Address) (*recoveryState, error) {
+// NewRecoveryState returns a new *bob.recoveryState,
+// which has methods to either claim ether or reclaim monero from an initiated swap.
+func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
+	contractAddr ethcommon.Address) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -48,12 +51,17 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr
 	}, nil
 }
 
+// RecoveryResult represents the result of a recovery operation.
+// If the ether was claimed, Claimed is set to true and the TxHash is set.
+// If the monero was recovered, Recovered is set to true and the MoneroAddress is set.
 type RecoveryResult struct {
 	Claimed, Recovered bool
 	TxHash             ethcommon.Hash
 	MoneroAddress      mcrypto.Address
 }
 
+// ClaimOrRecover either claims ether or recovers monero by creating a wallet.
+// It returns a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
 	if err := rs.ss.setTimeouts(); err != nil {
 		return nil, err
@@ -67,7 +75,7 @@ func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
 
 	// if Alice refunded, let's get our monero back
 	if skA != nil {
-		addr, err := rs.ss.reclaimMonero(skA)
+		addr, err := rs.ss.reclaimMonero(skA) //nolint:govet
 		if err != nil {
 			return nil, err
 		}

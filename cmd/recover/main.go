@@ -191,7 +191,8 @@ func getRecoverer(c *cli.Context, env common.Environment) (MoneroRecoverer, erro
 	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
 }
 
-func createBobInstance(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config) (*bob.Instance, error) {
+func createBobInstance(ctx context.Context, c *cli.Context, env common.Environment,
+	cfg common.Config) (*bob.Instance, error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)

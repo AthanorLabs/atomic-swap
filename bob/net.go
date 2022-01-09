@@ -10,11 +10,13 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
+// Provides returns common.ProvidesXMR
 func (b *Instance) Provides() common.ProvidesCoin {
 	return common.ProvidesXMR
 }
 
-func (b *Instance) initiate(offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) error {
+func (b *Instance) initiate(offerID types.Hash, providesAmount common.MoneroAmount,
+	desiredAmount common.EtherAmount) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 

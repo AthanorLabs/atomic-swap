@@ -29,6 +29,7 @@ func (om *offerManager) deleteOffer(id types.Hash) {
 	delete(om.offers, id)
 }
 
+// MakeOffer makes a new swap offer.
 func (b *Instance) MakeOffer(o *types.Offer) error {
 	balance, err := b.client.GetBalance(0)
 	if err != nil {
@@ -44,6 +45,7 @@ func (b *Instance) MakeOffer(o *types.Offer) error {
 	return nil
 }
 
+// GetOffers returns all current offers.
 func (b *Instance) GetOffers() []*types.Offer {
 	offers := make([]*types.Offer, len(b.offerManager.offers))
 	i := 0

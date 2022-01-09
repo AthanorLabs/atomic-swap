@@ -35,7 +35,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 
 var defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
 
-func newTestBob(t *testing.T) (*bob, *swapState) {
+func newTestBob(t *testing.T) (*Instance, *swapState) {
 	cfg := &Config{
 		Ctx:                  context.Background(),
 		Basepath:             "/tmp/bob",
@@ -49,7 +49,7 @@ func newTestBob(t *testing.T) (*bob, *swapState) {
 		ChainID:              common.MainnetConfig.EthereumChainID,
 	}
 
-	bob, err := NewBob(cfg)
+	bob, err := NewInstance(cfg)
 	require.NoError(t, err)
 
 	bobAddr, err := bob.client.GetAddress(0)
@@ -128,7 +128,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	require.Equal(t, alicePubKeys.ViewKey().Hex(), s.alicePublicKeys.ViewKey().Hex())
 }
 
-func deploySwap(t *testing.T, bob *bob, swapState *swapState, refundKey [32]byte, amount *big.Int,
+func deploySwap(t *testing.T, bob *Instance, swapState *swapState, refundKey [32]byte, amount *big.Int,
 	timeout time.Duration) (ethcommon.Address, *swap.Swap) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testing.T) {
 	bob, s := newTestBob(t)
 	defer s.cancel()
-	s.net = new(mockNet)
+	s.bob.net = new(mockNet)
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 	_, _, err := s.generateKeys()
 	require.NoError(t, err)
@@ -222,7 +222,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.Equal(t, &net.NotifyReady{}, s.nextExpectedMessage)
 
 	time.Sleep(duration * 3)
-	require.NotNil(t, s.net.(*mockNet).msg)
+	require.NotNil(t, s.bob.net.(*mockNet).msg)
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {

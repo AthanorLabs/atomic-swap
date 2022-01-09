@@ -14,6 +14,9 @@ import (
 
 var log = logging.Logger("cmd")
 
+var defaultEnvironment = common.Development
+
+// GetEthereumPrivateKey returns an ethereum private key hex string given the CLI options.
 func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) (ethPrivKey string, err error) {
 	if c.String("ethereum-privkey") != "" {
 		ethPrivKeyFile := c.String("ethereum-privkey")
@@ -44,6 +47,7 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) 
 	return ethPrivKey, nil
 }
 
+// GetEnvironment returns a common.Environment from the CLI options.
 func GetEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, err error) {
 	switch c.String("env") {
 	case "mainnet":
@@ -56,7 +60,7 @@ func GetEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, 
 		env = common.Development
 		cfg = common.DevelopmentConfig
 	case "":
-		env = common.Development
+		env = defaultEnvironment
 		cfg = common.DevelopmentConfig
 	default:
 		return 0, common.Config{}, errors.New("--env must be one of mainnet, stagenet, or dev")

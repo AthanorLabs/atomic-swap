@@ -3,6 +3,7 @@ package bob
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
@@ -383,6 +385,42 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	}
 }
 
+// generateKeys generates Bob's spend and view keys (s_b, v_b)
+// It returns Bob's public spend key and his private view key, so that Alice can see
+// if the funds are locked.
+func (s *swapState) generateKeys() (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
+	if s.privkeys != nil {
+		return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
+	}
+
+	var err error
+	s.privkeys, err = mcrypto.GenerateKeys()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
+	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
+		return nil, nil, err
+	}
+
+	s.pubkeys = s.privkeys.PublicKeyPair()
+	return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
+}
+
+// setAlicePublicKeys sets Alice's public spend and view keys
+func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair) {
+	s.alicePublicKeys = sk
+}
+
+// setContract sets the contract in which Alice has locked her ETH.
+func (s *swapState) setContract(address ethcommon.Address) error {
+	var err error
+	s.contractAddr = address
+	s.contract, err = swap.NewSwap(address, s.bob.ethClient)
+	return err
+}
+
 func (s *swapState) setTimeouts() error {
 	st0, err := s.contract.Timeout0(s.bob.callOpts)
 	if err != nil {
@@ -514,4 +552,88 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	}
 
 	return nil
+}
+
+// lockFunds locks Bob's funds in the monero account specified by public key
+// (S_a + S_b), viewable with (V_a + V_b)
+// It accepts the amount to lock as the input
+// TODO: units
+func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
+	kp := mcrypto.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
+	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
+
+	balance, err := s.bob.client.GetBalance(0)
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug("total XMR balance: ", balance.Balance)
+	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
+
+	address := kp.Address(s.bob.env)
+	txResp, err := s.bob.client.Transfer(address, 0, uint(amount))
+	if err != nil {
+		return "", err
+	}
+
+	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
+
+	bobAddr, err := s.bob.client.GetAddress(0)
+	if err != nil {
+		return "", err
+	}
+
+	// if we're on a development --regtest node, generate some blocks
+	if s.bob.env == common.Development {
+		_ = s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 2)
+	} else {
+		// otherwise, wait for new blocks
+		if err := monero.WaitForBlocks(s.bob.client); err != nil {
+			return "", err
+		}
+	}
+
+	if err := s.bob.client.Refresh(); err != nil {
+		return "", err
+	}
+
+	log.Infof("successfully locked XMR funds: address=%s", address)
+	return address, nil
+}
+
+// claimFunds redeems Bob's ETH funds by calling Claim() on the contract
+func (s *swapState) claimFunds() (ethcommon.Hash, error) {
+	pub := s.bob.ethPrivKey.Public().(*ecdsa.PublicKey)
+	addr := ethcrypto.PubkeyToAddress(*pub)
+
+	balance, err := s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	log.Info("Bob's balance before claim: ", balance)
+
+	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
+	secret := s.privkeys.SpendKeyBytes()
+	var sc [32]byte
+	copy(sc[:], common.Reverse(secret))
+
+	tx, err := s.contract.Claim(s.txOpts, sc)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
+
+	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
+		return ethcommon.Hash{}, errors.New("failed to check Claim transaction receipt")
+	}
+
+	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	log.Info("Bob's balance after claim: ", balance)
+	return tx.Hash(), nil
 }
