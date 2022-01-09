@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
@@ -64,11 +65,12 @@ func (r *recoverer) WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Ad
 	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)
 }
 
+// RecoverFromBobSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
 func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 	bobSecret, contractAddr string) (*bob.RecoveryResult, error) {
 	bs, err := hex.DecodeString(bobSecret)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode bob's secret: %w", err)
+		return nil, fmt.Errorf("failed to decode Bob's secret: %w", err)
 	}
 
 	bk, err := mcrypto.NewPrivateSpendKey(bs)
@@ -83,4 +85,26 @@ func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 	}
 
 	return rs.ClaimOrRecover()
+}
+
+// RecoverFromAliceSecretAndContract recovers funds by either claiming locked monero or refunding ether.
+func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
+	aliceSecret, contractAddr string) (*alice.RecoveryResult, error) {
+	as, err := hex.DecodeString(aliceSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Alice's secret: %w", err)
+	}
+
+	ak, err := mcrypto.NewPrivateSpendKey(as)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := ethcommon.HexToAddress(contractAddr)
+	rs, err := alice.NewRecoveryState(a, ak, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return rs.ClaimOrRefund()
 }

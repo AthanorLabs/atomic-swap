@@ -156,7 +156,7 @@ func runDaemon(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	a, b, err := getProtocolHandlers(ctx, c, env, cfg, chainID, devBob)
+	a, b, err := getProtocolInstances(ctx, c, env, cfg, chainID, devBob)
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func runDaemon(c *cli.Context) error {
 	return nil
 }
 
-func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
+func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
 	chainID int64, devBob bool) (a aliceHandler, b bobHandler, err error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
@@ -311,7 +311,7 @@ func getProtocolHandlers(ctx context.Context, c *cli.Context, env common.Environ
 		GasLimit:             uint64(c.Uint("gas-limit")),
 	}
 
-	a, err = alice.NewAlice(aliceCfg)
+	a, err = alice.NewInstance(aliceCfg)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/noot/atomic-swap/alice"
 	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
@@ -102,6 +103,7 @@ func main() {
 type MoneroRecoverer interface {
 	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
 	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string) (*bob.RecoveryResult, error)
+	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string) (*alice.RecoveryResult, error)
 }
 
 func runRecoverMonero(c *cli.Context) error {
@@ -163,6 +165,28 @@ func runRecoverMonero(c *cli.Context) error {
 		}
 	}
 
+	if as != "" && contractAddr != "" {
+		a, err := createAliceInstance(context.Background(), c, env, cfg)
+		if err != nil {
+			return err
+		}
+
+		res, err := r.RecoverFromAliceSecretAndContract(a, as, contractAddr)
+		if err != nil {
+			return err
+		}
+
+		if res.Claimed {
+			log.Info("claimed monero! wallet address=%s", res.MoneroAddress)
+			return nil
+		}
+
+		if res.Refunded {
+			log.Infof("refunded ether: transaction hash=%s", res.TxHash)
+			return nil
+		}
+	}
+
 	log.Warnf("unimplemented!")
 	return nil
 }
@@ -191,10 +215,59 @@ func getRecoverer(c *cli.Context, env common.Environment) (MoneroRecoverer, erro
 	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
 }
 
+func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environment,
+	cfg common.Config) (*alice.Instance, error) {
+	var (
+		moneroEndpoint, ethEndpoint string
+	)
+
+	chainID := int64(c.Uint("ethereum-chain-id"))
+	if chainID == 0 {
+		chainID = cfg.EthereumChainID
+	}
+
+	if c.String("monero-endpoint") != "" {
+		moneroEndpoint = c.String("monero-endpoint")
+	} else {
+		moneroEndpoint = common.DefaultAliceMoneroEndpoint
+	}
+
+	if c.String("ethereum-endpoint") != "" {
+		ethEndpoint = c.String("ethereum-endpoint")
+	} else {
+		ethEndpoint = common.DefaultEthEndpoint
+	}
+
+	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	var gasPrice *big.Int
+	if c.Uint("gas-price") != 0 {
+		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	}
+
+	aliceCfg := &alice.Config{
+		Ctx:                  ctx,
+		Basepath:             cfg.Basepath,
+		MoneroWalletEndpoint: moneroEndpoint,
+		EthereumEndpoint:     ethEndpoint,
+		EthereumPrivateKey:   ethPrivKey,
+		Environment:          env,
+		ChainID:              chainID,
+		GasPrice:             gasPrice,
+		GasLimit:             uint64(c.Uint("gas-limit")),
+	}
+
+	return alice.NewInstance(aliceCfg)
+}
+
 func createBobInstance(ctx context.Context, c *cli.Context, env common.Environment,
 	cfg common.Config) (*bob.Instance, error) {
 	var (
-		moneroEndpoint, daemonEndpoint, ethEndpoint string
+		moneroEndpoint, ethEndpoint string
 	)
 
 	chainID := int64(c.Uint("ethereum-chain-id"))
@@ -219,30 +292,16 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 		return nil, err
 	}
 
-	if c.String("monero-daemon-endpoint") != "" {
-		daemonEndpoint = c.String("monero-daemon-endpoint")
-	} else {
-		daemonEndpoint = cfg.MoneroDaemonEndpoint
-	}
-
 	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
 	var gasPrice *big.Int
 	if c.Uint("gas-price") != 0 {
 		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
 	}
 
-	walletFile := c.String("wallet-file")
-
-	// empty password is ok
-	walletPassword := c.String("wallet-password")
-
 	bobCfg := &bob.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroDaemonEndpoint: daemonEndpoint,
-		WalletFile:           walletFile,
-		WalletPassword:       walletPassword,
 		EthereumEndpoint:     ethEndpoint,
 		EthereumPrivateKey:   ethPrivKey,
 		Environment:          env,
