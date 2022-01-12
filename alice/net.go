@@ -10,13 +10,13 @@ import (
 )
 
 // Provides returns common.ProvidesETH
-func (a *alice) Provides() common.ProvidesCoin {
+func (a *Instance) Provides() common.ProvidesCoin {
 	return common.ProvidesETH
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether and monero.
-func (a *alice) InitiateProtocol(providesAmount float64) (net.SwapState, error) {
+func (a *Instance) InitiateProtocol(providesAmount float64) (net.SwapState, error) {
 	if err := a.initiate(common.EtherToWei(providesAmount)); err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (a *alice) InitiateProtocol(providesAmount float64) (net.SwapState, error) 
 	return a.swapState, nil
 }
 
-func (a *alice) initiate(providesAmount common.EtherAmount) error {
+func (a *Instance) initiate(providesAmount common.EtherAmount) error {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 

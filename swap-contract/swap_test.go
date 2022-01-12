@@ -109,7 +109,7 @@ func TestSwap_Claim(t *testing.T) {
 	copy(sb[:], common.Reverse(secretBob))
 	_, err = swap.Claim(txOptsBob, sb)
 	require.Error(t, err)
-	require.Regexp(t, ".*too late or early to claim!", err)
+	require.Regexp(t, ".*too early to claim!", err)
 
 	// Alice calls set_ready on the contract
 	setReadyTx, err := swap.SetReady(txOpts)

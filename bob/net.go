@@ -10,11 +10,13 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
-func (b *bob) Provides() common.ProvidesCoin {
+// Provides returns common.ProvidesXMR
+func (b *Instance) Provides() common.ProvidesCoin {
 	return common.ProvidesXMR
 }
 
-func (b *bob) initiate(offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) error {
+func (b *Instance) initiate(offerID types.Hash, providesAmount common.MoneroAmount,
+	desiredAmount common.EtherAmount) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
@@ -43,7 +45,7 @@ func (b *bob) initiate(offerID types.Hash, providesAmount common.MoneroAmount, d
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (b *bob) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
+func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
 	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
 		msg.OfferID,
 		msg.ProvidedAmount,
