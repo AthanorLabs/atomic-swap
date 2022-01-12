@@ -156,11 +156,11 @@ func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
 	}
 
 	done := make(chan struct{})
-	ch := make(chan *swap.SwapIsReady)
+	ch := make(chan *swap.SwapReady)
 	defer close(done)
 
 	// watch for Refund() event on chain, calculate unlock key as result
-	sub, err := s.contract.WatchIsReady(watchOpts, ch)
+	sub, err := s.contract.WatchReady(watchOpts, ch)
 	if err != nil {
 		return nil, err
 	}

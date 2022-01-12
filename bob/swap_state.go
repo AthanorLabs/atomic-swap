@@ -246,14 +246,18 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
+	isReady, err := s.contract.IsReady(s.bob.callOpts)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
 
-	if untilT0 < 0 {
+	if untilT0 > 0 && !isReady {
 		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to claim", s.t0)
+		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
 		<-time.After(untilT0 + time.Second)
 	}
 
-	if untilT1 > 0 {
+	if untilT1 < 0 {
 		// we've passed t1, our only option now is for Alice to refund
 		// and we can regain control of the locked XMR.
 		return ethcommon.Hash{}, errPastClaimTime

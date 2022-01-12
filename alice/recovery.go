@@ -88,14 +88,14 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 
 	// if Bob claimed, let's get our monero
 	if skA != nil {
-		vkA, err := skA.View()
+		vkA, err := skA.View() //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
 		rs.ss.setBobKeys(skA.Public(), vkA)
 
-		addr, err := rs.ss.claimMonero(skA) //nolint:govet
+		addr, err := rs.ss.claimMonero(skA)
 		if err != nil {
 			return nil, err
 		}

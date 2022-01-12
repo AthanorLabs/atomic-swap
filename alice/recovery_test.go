@@ -69,9 +69,19 @@ func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
 
 	rpcClient, err := rpc.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
-	var result int64
-	err = rpcClient.Call(&result, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+360)
+
+	var result string
+	err = rpcClient.Call(&result, "evm_snapshot")
 	require.NoError(t, err)
+
+	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+360)
+	require.NoError(t, err)
+
+	defer func() {
+		var ok bool
+		err = rpcClient.Call(&ok, "evm_revert", result)
+		require.NoError(t, err)
+	}()
 
 	// assert we can refund the ether
 	res, err := rs.ClaimOrRefund()

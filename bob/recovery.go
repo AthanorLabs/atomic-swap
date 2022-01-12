@@ -75,7 +75,13 @@ func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
 
 	// if Alice refunded, let's get our monero back
 	if skA != nil {
-		addr, err := rs.ss.reclaimMonero(skA) //nolint:govet
+		kpA, err := skA.AsPrivateKeyPair() //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		rs.ss.setAlicePublicKeys(kpA.PublicKeyPair())
+		addr, err := rs.ss.reclaimMonero(skA)
 		if err != nil {
 			return nil, err
 		}
@@ -91,8 +97,8 @@ func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
 	if err != nil {
 		if errors.Is(err, errPastClaimTime) {
 			log.Infof(
-				"Past the time where we can claim the ether, and the counterparty" +
-					"has not yet refunded. Please try running the recovery module again later" +
+				"Past the time where we can claim the ether, and the counterparty " +
+					"has not yet refunded. Please try running the recovery module again later " +
 					"and hopefully the counterparty will have refunded by then.",
 			)
 		}
