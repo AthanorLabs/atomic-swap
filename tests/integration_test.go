@@ -21,8 +21,8 @@ const (
 	defaultBobDaemonEndpoint   = "http://localhost:5002"
 	defaultDiscoverTimeout     = 2 // 2 seconds
 
-	aliceProvideAmount = float64(33.3)
-	bobProvideAmount   = float64(44.4)
+	bobProvideAmount = float64(44.4)
+	exchangeRate     = float64(0.05)
 )
 
 func TestMain(m *testing.M) {
@@ -88,8 +88,7 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) {
 }
 
 func startAlice(t *testing.T, done <-chan struct{}) []string {
-	startSwapDaemon(t, done, "--alice",
-		"--max-amount", fmt.Sprintf("%v", aliceProvideAmount),
+	startSwapDaemon(t, done, "--dev-alice",
 		"--libp2p-key", defaultAliceTestLibp2pKey,
 	)
 	c := client.NewClient(defaultAliceDaemonEndpoint)
@@ -100,8 +99,7 @@ func startAlice(t *testing.T, done <-chan struct{}) []string {
 }
 
 func startBob(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
-	startSwapDaemon(t, done, "--bob",
-		"--max-amount", fmt.Sprintf("%v", bobProvideAmount),
+	startSwapDaemon(t, done, "--dev-bob",
 		"--bootnodes", aliceMultiaddr,
 		"--wallet-file", "test-wallet",
 	)
@@ -150,6 +148,10 @@ func TestStartCharlie(t *testing.T) {
 
 func TestAlice_Discover(t *testing.T) {
 	startNodes(t)
+	bc := client.NewClient(defaultBobDaemonEndpoint)
+	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
+	require.NoError(t, err)
+
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -162,12 +164,15 @@ func TestBob_Discover(t *testing.T) {
 	c := client.NewClient(defaultBobDaemonEndpoint)
 	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(providers))
-	require.GreaterOrEqual(t, len(providers[0]), 2)
+	require.Equal(t, 0, len(providers))
 }
 
 func TestAlice_Query(t *testing.T) {
 	startNodes(t)
+	bc := client.NewClient(defaultBobDaemonEndpoint)
+	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
+	require.NoError(t, err)
+
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 
 	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
@@ -177,31 +182,19 @@ func TestAlice_Query(t *testing.T) {
 
 	resp, err := c.Query(providers[0][0])
 	require.NoError(t, err)
-	require.Equal(t, 1, len(resp.Provides))
-	require.Equal(t, common.ProvidesXMR, resp.Provides[0])
-	require.Equal(t, 1, len(resp.MaximumAmount))
-	require.Equal(t, bobProvideAmount, resp.MaximumAmount[0])
-}
-
-func TestBob_Query(t *testing.T) {
-	startNodes(t)
-	c := client.NewClient(defaultBobDaemonEndpoint)
-
-	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
-	require.NoError(t, err)
-	require.Equal(t, 1, len(providers))
-	require.GreaterOrEqual(t, len(providers[0]), 2)
-
-	resp, err := c.Query(providers[0][0])
-	require.NoError(t, err)
-	require.Equal(t, 1, len(resp.Provides))
-	require.Equal(t, common.ProvidesETH, resp.Provides[0])
-	require.Equal(t, 1, len(resp.MaximumAmount))
-	require.Equal(t, aliceProvideAmount, resp.MaximumAmount[0])
+	require.Equal(t, 1, len(resp.Offers))
+	require.Equal(t, bobProvideAmount, resp.Offers[0].MinimumAmount)
+	require.Equal(t, bobProvideAmount, resp.Offers[0].MaximumAmount)
+	require.Equal(t, exchangeRate, float64(resp.Offers[0].ExchangeRate))
 }
 
 func TestAlice_Initiate(t *testing.T) {
 	startNodes(t)
+
+	bc := client.NewClient(defaultBobDaemonEndpoint)
+	id, err := bc.MakeOffer(0.1, bobProvideAmount, exchangeRate)
+	require.NoError(t, err)
+
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 
 	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
@@ -209,21 +202,8 @@ func TestAlice_Initiate(t *testing.T) {
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	ok, err := c.Initiate(providers[0][0], common.ProvidesETH, 3, 4)
+	ok, received, err := c.TakeOffer(providers[0][0], id, 0.1)
 	require.NoError(t, err)
 	require.True(t, ok)
-}
-
-func TestBob_Initiate(t *testing.T) {
-	startNodes(t)
-	c := client.NewClient(defaultBobDaemonEndpoint)
-
-	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
-	require.NoError(t, err)
-	require.Equal(t, 1, len(providers))
-	require.GreaterOrEqual(t, len(providers[0]), 2)
-
-	ok, err := c.Initiate(providers[0][0], common.ProvidesXMR, 3, 1)
-	require.NoError(t, err)
-	require.True(t, ok)
+	require.Equal(t, float64(0.1)/exchangeRate, received)
 }

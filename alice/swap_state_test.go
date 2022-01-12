@@ -27,7 +27,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 	return nil
 }
 
-func newTestAlice(t *testing.T) (*alice, *swapState) {
+func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	cfg := &Config{
 		Ctx:                  context.Background(),
 		Basepath:             "/tmp/alice",
@@ -38,10 +38,11 @@ func newTestAlice(t *testing.T) (*alice, *swapState) {
 		ChainID:              common.MainnetConfig.EthereumChainID,
 	}
 
-	alice, err := NewAlice(cfg)
+	alice, err := NewInstance(cfg)
 	require.NoError(t, err)
-	swapState, err := newSwapState(alice, common.NewEtherAmount(1), common.MoneroAmount(1))
+	swapState, err := newSwapState(alice, common.NewEtherAmount(1))
 	require.NoError(t, err)
+	swapState.desiredAmount = common.MoneroAmount(1)
 	return alice, swapState
 }
 
@@ -63,7 +64,7 @@ func newTestBobSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *mcrypto.Pri
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
-	_, s := newTestAlice(t)
+	_, s := newTestInstance(t)
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}
@@ -87,9 +88,9 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 // test the case where Alice deploys and locks her eth, but Bob never locks his monero.
 // Alice should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	_, s := newTestAlice(t)
+	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.net = new(mockNet)
+	s.alice.net = new(mockNet)
 
 	// set timeout to 2s
 	// TODO: pass this as a param to newSwapState
@@ -117,8 +118,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 
 	// ensure we refund before t0
 	time.Sleep(time.Second * 15)
-	require.NotNil(t, s.net.(*mockNet).msg)
-	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
+	require.NotNil(t, s.alice.net.(*mockNet).msg)
+	require.Equal(t, net.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check balance of contract is 0
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, ethcommon.HexToAddress(cdMsg.Address), nil)
@@ -127,7 +128,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
-	_, s := newTestAlice(t)
+	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
@@ -160,9 +161,9 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 // test the case where the monero is locked, but Bob never claims.
 // Alice should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	_, s := newTestAlice(t)
+	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.net = new(mockNet)
+	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	// set timeout to 2s
@@ -201,8 +202,8 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.True(t, ok)
 
 	time.Sleep(time.Second * 25)
-	require.NotNil(t, s.net.(*mockNet).msg)
-	require.Equal(t, net.NotifyRefundType, s.net.(*mockNet).msg.Type())
+	require.NotNil(t, s.alice.net.(*mockNet).msg)
+	require.Equal(t, net.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check balance of contract is 0
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, contractAddr, nil)
@@ -213,7 +214,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 func TestSwapState_NotifyClaimed(t *testing.T) {
 	t.Skip() // TODO: fix this, fails saying the wallet doesn't have balance
 
-	_, s := newTestAlice(t)
+	_, s := newTestInstance(t)
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}

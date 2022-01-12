@@ -5,24 +5,18 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/types"
 
 	"github.com/fatih/color" //nolint:misspell
 )
 
-func (b *bob) Provides() common.ProvidesCoin {
+// Provides returns common.ProvidesXMR
+func (b *Instance) Provides() common.ProvidesCoin {
 	return common.ProvidesXMR
 }
 
-// InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
-func (b *bob) InitiateProtocol(providesAmount, desiredAmount float64) (net.SwapState, error) {
-	if err := b.initiate(common.MoneroToPiconero(providesAmount), common.EtherToWei(desiredAmount)); err != nil {
-		return nil, err
-	}
-
-	return b.swapState, nil
-}
-
-func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) error {
+func (b *Instance) initiate(offerID types.Hash, providesAmount common.MoneroAmount,
+	desiredAmount common.EtherAmount) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
@@ -40,7 +34,7 @@ func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	b.swapState, err = newSwapState(b, providesAmount, desiredAmount)
+	b.swapState, err = newSwapState(b, offerID, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}
@@ -51,20 +45,39 @@ func (b *bob) initiate(providesAmount common.MoneroAmount, desiredAmount common.
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (b *bob) HandleInitiateMessage(msg *net.InitiateMessage) (net.SwapState, net.Message, error) {
-	if msg.Provides != common.ProvidesETH {
-		return nil, nil, errors.New("peer does not provide ETH")
-	}
-
-	// TODO: allow user to accept/reject this via RPC
-	str := color.New(color.Bold).Sprintf("**incoming swap with want amount %v**", msg.DesiredAmount)
+func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
+	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
+		msg.OfferID,
+		msg.ProvidedAmount,
+	)
 	log.Info(str)
 
-	if err := b.initiate(common.MoneroToPiconero(msg.DesiredAmount), common.EtherToWei(msg.ProvidesAmount)); err != nil {
+	// get offer and determine expected amount
+	id, err := types.HexToHash(msg.OfferID)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := b.swapState.handleSendKeysMessage(msg.SendKeysMessage); err != nil {
+	offer := b.offerManager.getOffer(id)
+	if offer == nil {
+		return nil, nil, errors.New("failed to find offer with given ID")
+	}
+
+	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+
+	if providedAmount < offer.MinimumAmount {
+		return nil, nil, errors.New("amount provided by taker is too low for offer")
+	}
+
+	if providedAmount > offer.MaximumAmount {
+		return nil, nil, errors.New("amount provided by taker is too low for offer")
+	}
+
+	if err = b.initiate(id, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
+		return nil, nil, err
+	}
+
+	if err = b.swapState.handleSendKeysMessage(msg); err != nil {
 		return nil, nil, err
 	}
 

@@ -34,7 +34,7 @@ contract Swap {
     bool public isReady = false;
 
     event Constructed(bytes32 claimKey, bytes32 refundKey);
-    event IsReady(bool b);
+    event Ready(bool b);
     event Claimed(bytes32 s);
     event Refunded(bytes32 s);
 
@@ -53,7 +53,7 @@ contract Swap {
     function set_ready() external {
         require(!isReady && msg.sender == owner);
         isReady = true;
-        emit IsReady(true);
+        emit Ready(true);
     }
 
     // Bob can claim if:
@@ -61,8 +61,8 @@ contract Swap {
     // - Alice calls ready within t_0, in which case Bob can call claim until t_1
     function claim(bytes32 _s) external {
         require(msg.sender == claimer, "only claimer can claim!");
-        require(block.timestamp < timeout_1 && (block.timestamp >= timeout_0 || isReady), 
-            "too late or early to claim!");
+        require((block.timestamp >= timeout_0 || isReady), "too early to claim!");
+        require(block.timestamp < timeout_1, "too late to claim!");
 
         verifySecret(_s, pubKeyClaim);
         emit Claimed(_s);

@@ -4,14 +4,12 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
@@ -27,9 +25,9 @@ var (
 	log = logging.Logger("bob")
 )
 
-// bob implements the functions that will be called by a user who owns XMR
+// Instance implements the functionality that will be needed by a user who owns XMR
 // and wishes to swap for ETH.
-type bob struct {
+type Instance struct {
 	ctx      context.Context
 	env      common.Environment
 	basepath string
@@ -47,6 +45,8 @@ type bob struct {
 	gasLimit   uint64
 
 	net net.MessageSender
+
+	offerManager *offerManager
 
 	swapMu    sync.Mutex
 	swapState *swapState
@@ -67,9 +67,9 @@ type Config struct {
 	GasLimit                   uint64
 }
 
-// NewBob returns a new instance of Bob.
+// NewInstance returns a new *bob.Instance.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
-func NewBob(cfg *Config) (*bob, error) { //nolint
+func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
 		return nil, errors.New("environment is development, must provide monero daemon endpoint")
 	}
@@ -94,8 +94,12 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
 
 	// open Bob's XMR wallet
-	if err = walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
-		return nil, err
+	if cfg.WalletFile != "" {
+		if err = walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
+			return nil, err
+		}
+	} else {
+		log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
 	}
 
 	// this is only used in the monero development environment to generate new blocks
@@ -104,7 +108,7 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 		daemonClient = monero.NewClient(cfg.MoneroDaemonEndpoint)
 	}
 
-	return &bob{
+	return &Instance{
 		ctx:            cfg.Ctx,
 		basepath:       cfg.Basepath,
 		env:            cfg.Environment,
@@ -118,57 +122,30 @@ func NewBob(cfg *Config) (*bob, error) { //nolint
 			From:    addr,
 			Context: cfg.Ctx,
 		},
-		ethAddress: addr,
-		chainID:    big.NewInt(cfg.ChainID),
+		ethAddress:   addr,
+		chainID:      big.NewInt(cfg.ChainID),
+		offerManager: newOfferManager(),
 	}, nil
 }
 
-func (b *bob) SetMessageSender(n net.MessageSender) {
+// SetMessageSender sets the Instance's net.MessageSender interface.
+func (b *Instance) SetMessageSender(n net.MessageSender) {
 	b.net = n
 }
 
-func (b *bob) SetGasPrice(gasPrice uint64) {
+// SetMoneroWalletFile sets the Instance's current monero wallet file.
+func (b *Instance) SetMoneroWalletFile(file, password string) error {
+	_ = b.client.CloseWallet()
+	return b.client.OpenWallet(file, password)
+}
+
+// SetGasPrice sets the ethereum gas price for the instance to use (in wei).
+func (b *Instance) SetGasPrice(gasPrice uint64) {
 	b.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
 
-func (b *bob) openWallet() error { //nolint
+func (b *Instance) openWallet() error { //nolint
 	return b.client.OpenWallet(b.walletFile, b.walletPassword)
-}
-
-// generateKeys generates Bob's spend and view keys (s_b, v_b)
-// It returns Bob's public spend key and his private view key, so that Alice can see
-// if the funds are locked.
-func (s *swapState) generateKeys() (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
-	if s.privkeys != nil {
-		return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
-	}
-
-	var err error
-	s.privkeys, err = mcrypto.GenerateKeys()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
-	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
-		return nil, nil, err
-	}
-
-	s.pubkeys = s.privkeys.PublicKeyPair()
-	return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
-}
-
-// setAlicePublicKeys sets Alice's public spend and view keys
-func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair) {
-	s.alicePublicKeys = sk
-}
-
-// setContract sets the contract in which Alice has locked her ETH.
-func (s *swapState) setContract(address ethcommon.Address) error {
-	var err error
-	s.contractAddr = address
-	s.contract, err = swap.NewSwap(address, s.bob.ethClient)
-	return err
 }
 
 // watchForReady watches for Alice to call Ready() on the swap contract, allowing
@@ -179,11 +156,11 @@ func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
 	}
 
 	done := make(chan struct{})
-	ch := make(chan *swap.SwapIsReady)
+	ch := make(chan *swap.SwapReady)
 	defer close(done)
 
 	// watch for Refund() event on chain, calculate unlock key as result
-	sub, err := s.contract.WatchIsReady(watchOpts, ch)
+	sub, err := s.contract.WatchReady(watchOpts, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -267,88 +244,4 @@ func (s *swapState) watchForRefund() (<-chan *mcrypto.PrivateKeyPair, error) { /
 	}()
 
 	return out, nil
-}
-
-// lockFunds locks Bob's funds in the monero account specified by public key
-// (S_a + S_b), viewable with (V_a + V_b)
-// It accepts the amount to lock as the input
-// TODO: units
-func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
-	kp := mcrypto.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
-	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
-
-	balance, err := s.bob.client.GetBalance(0)
-	if err != nil {
-		return "", err
-	}
-
-	log.Debug("total XMR balance: ", balance.Balance)
-	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
-
-	address := kp.Address(s.bob.env)
-	txResp, err := s.bob.client.Transfer(address, 0, uint(amount))
-	if err != nil {
-		return "", err
-	}
-
-	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
-
-	bobAddr, err := s.bob.client.GetAddress(0)
-	if err != nil {
-		return "", err
-	}
-
-	// if we're on a development --regtest node, generate some blocks
-	if s.bob.env == common.Development {
-		_ = s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 2)
-	} else {
-		// otherwise, wait for new blocks
-		if err := monero.WaitForBlocks(s.bob.client); err != nil {
-			return "", err
-		}
-	}
-
-	if err := s.bob.client.Refresh(); err != nil {
-		return "", err
-	}
-
-	log.Infof("successfully locked XMR funds: address=%s", address)
-	return address, nil
-}
-
-// claimFunds redeems Bob's ETH funds by calling Claim() on the contract
-func (s *swapState) claimFunds() (string, error) {
-	pub := s.ethPrivKey.Public().(*ecdsa.PublicKey)
-	addr := ethcrypto.PubkeyToAddress(*pub)
-
-	balance, err := s.ethClient.BalanceAt(s.ctx, addr, nil)
-	if err != nil {
-		return "", err
-	}
-
-	log.Info("Bob's balance before claim: ", balance)
-
-	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	secret := s.privkeys.SpendKeyBytes()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
-
-	tx, err := s.contract.Claim(s.txOpts, sc)
-	if err != nil {
-		return "", err
-	}
-
-	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
-
-	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
-		return "", errors.New("failed to check Claim transaction receipt")
-	}
-
-	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
-	if err != nil {
-		return "", err
-	}
-
-	log.Info("Bob's balance after claim: ", balance)
-	return tx.Hash().String(), nil
 }

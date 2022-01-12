@@ -6,11 +6,11 @@ package common
 type ExchangeRate float64
 
 // ToXMR converts an ether amount to a monero amount with the given exchange rate
-func (r ExchangeRate) ToXMR(ethAmount uint64) uint64 {
-	return uint64(float64(ethAmount) / float64(r))
+func (r ExchangeRate) ToXMR(ethAmount float64) float64 {
+	return ethAmount / float64(r)
 }
 
 // ToETH converts a moenro amount to an eth amount with the given exchange rate
-func (r ExchangeRate) ToETH(xmrAmount uint64) uint64 {
-	return uint64(float64(r) * float64(xmrAmount))
+func (r ExchangeRate) ToETH(xmrAmount float64) float64 {
+	return float64(r) * xmrAmount
 }
