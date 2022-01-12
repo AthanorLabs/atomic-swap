@@ -23,7 +23,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	var sr [32]byte
 	copy(sr[:], common.Reverse(refundKey))
 
-	duration, err := time.ParseDuration("60m")
+	duration, err := time.ParseDuration("1440m")
 	require.NoError(t, err)
 	addr, _ := deploySwap(t, inst, s, sr, big.NewInt(1), duration)
 	rs, err := NewRecoveryState(inst, bkp.SpendKey(), addr)
