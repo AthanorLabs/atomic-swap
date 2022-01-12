@@ -3,6 +3,7 @@ package bob
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
@@ -26,8 +28,10 @@ import (
 var nextID uint64
 
 var (
-	errMissingKeys    = errors.New("did not receive Alice's public spend or view key")
-	errMissingAddress = errors.New("got empty contract address")
+	errMissingKeys       = errors.New("did not receive Alice's public spend or view key")
+	errMissingAddress    = errors.New("got empty contract address")
+	errNoRefundLogsFound = errors.New("no refund logs found")
+	errPastClaimTime     = errors.New("past t1, can no longer claim")
 )
 
 var (
@@ -37,7 +41,7 @@ var (
 )
 
 type swapState struct {
-	*bob
+	bob    *Instance
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
@@ -72,7 +76,7 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *bob, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
+func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -162,8 +166,12 @@ func (s *swapState) ProtocolExited() error {
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
-		if err := s.tryClaim(); err != nil {
+		txHash, err := s.tryClaim()
+		if err != nil {
 			log.Errorf("failed to claim funds: err=%s", err)
+		} else {
+			log.Infof("claimed ether! transaction hash=%s", txHash)
+			return nil
 		}
 
 		// we should check if Alice refunded, if so then check contract for secret
@@ -224,7 +232,7 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	}
 
 	if len(logs) == 0 {
-		return nil, errors.New("no refund logs found")
+		return nil, errNoRefundLogsFound
 	}
 
 	sa, err := swap.GetSecretFromLog(&logs[0], "Refunded")
@@ -235,24 +243,27 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	return sa, nil
 }
 
-func (s *swapState) tryClaim() error {
+func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
+	isReady, err := s.contract.IsReady(s.bob.callOpts)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
 
-	if untilT0 < 0 {
+	if untilT0 > 0 && !isReady {
 		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to refund", s.t0)
+		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
 		<-time.After(untilT0 + time.Second)
 	}
 
-	if untilT1 > 0 {
+	if untilT1 < 0 {
 		// we've passed t1, our only option now is for Alice to refund
 		// and we can regain control of the locked XMR.
-		return errors.New("past t1, can no longer claim")
+		return ethcommon.Hash{}, errPastClaimTime
 	}
 
-	_, err := s.claimFunds()
-	return err
+	return s.claimFunds()
 }
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -289,6 +300,11 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, fmt.Errorf("failed to instantiate contract instance: %w", err)
 		}
 
+		fp := fmt.Sprintf("%s/%d/contractaddress", s.bob.basepath, s.id)
+		if err := common.WriteContractAddressToFile(fp, msg.Address); err != nil {
+			return nil, true, fmt.Errorf("failed to write contract address to file: %w", err)
+		}
+
 		if err := s.checkContract(); err != nil {
 			return nil, true, err
 		}
@@ -303,19 +319,9 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		// set t0 and t1
-		st0, err := s.contract.Timeout0(s.bob.callOpts)
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+		if err := s.setTimeouts(); err != nil {
+			return nil, true, err
 		}
-
-		s.t0 = time.Unix(st0.Int64(), 0)
-
-		st1, err := s.contract.Timeout1(s.bob.callOpts)
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
-		}
-
-		s.t1 = time.Unix(st1.Int64(), 0)
 
 		go func() {
 			until := time.Until(s.t0)
@@ -338,8 +344,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 				s.completed = true
 
 				// send *net.NotifyClaimed
-				if err := s.net.SendSwapMessage(&net.NotifyClaimed{
-					TxHash: txHash,
+				if err := s.bob.net.SendSwapMessage(&net.NotifyClaimed{
+					TxHash: txHash.String(),
 				}); err != nil {
 					log.Errorf("failed to send NotifyClaimed message: err=%s", err)
 				}
@@ -362,7 +368,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		log.Debug("funds claimed!!")
 		out := &net.NotifyClaimed{
-			TxHash: txHash,
+			TxHash: txHash.String(),
 		}
 
 		s.completed = true
@@ -381,6 +387,59 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	default:
 		return nil, true, errors.New("unexpected message type")
 	}
+}
+
+// generateKeys generates Bob's spend and view keys (s_b, v_b)
+// It returns Bob's public spend key and his private view key, so that Alice can see
+// if the funds are locked.
+func (s *swapState) generateKeys() (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
+	if s.privkeys != nil {
+		return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
+	}
+
+	var err error
+	s.privkeys, err = mcrypto.GenerateKeys()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
+	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
+		return nil, nil, err
+	}
+
+	s.pubkeys = s.privkeys.PublicKeyPair()
+	return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
+}
+
+// setAlicePublicKeys sets Alice's public spend and view keys
+func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair) {
+	s.alicePublicKeys = sk
+}
+
+// setContract sets the contract in which Alice has locked her ETH.
+func (s *swapState) setContract(address ethcommon.Address) error {
+	var err error
+	s.contractAddr = address
+	s.contract, err = swap.NewSwap(address, s.bob.ethClient)
+	return err
+}
+
+func (s *swapState) setTimeouts() error {
+	st0, err := s.contract.Timeout0(s.bob.callOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+	}
+
+	s.t0 = time.Unix(st0.Int64(), 0)
+
+	st1, err := s.contract.Timeout1(s.bob.callOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
+	}
+
+	s.t1 = time.Unix(st1.Int64(), 0)
+	return nil
 }
 
 // checkContract checks the contract's balance and Claim/Refund keys.
@@ -497,4 +556,88 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	}
 
 	return nil
+}
+
+// lockFunds locks Bob's funds in the monero account specified by public key
+// (S_a + S_b), viewable with (V_a + V_b)
+// It accepts the amount to lock as the input
+// TODO: units
+func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
+	kp := mcrypto.SumSpendAndViewKeys(s.alicePublicKeys, s.pubkeys)
+	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
+
+	balance, err := s.bob.client.GetBalance(0)
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug("total XMR balance: ", balance.Balance)
+	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
+
+	address := kp.Address(s.bob.env)
+	txResp, err := s.bob.client.Transfer(address, 0, uint(amount))
+	if err != nil {
+		return "", err
+	}
+
+	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
+
+	bobAddr, err := s.bob.client.GetAddress(0)
+	if err != nil {
+		return "", err
+	}
+
+	// if we're on a development --regtest node, generate some blocks
+	if s.bob.env == common.Development {
+		_ = s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 2)
+	} else {
+		// otherwise, wait for new blocks
+		if err := monero.WaitForBlocks(s.bob.client); err != nil {
+			return "", err
+		}
+	}
+
+	if err := s.bob.client.Refresh(); err != nil {
+		return "", err
+	}
+
+	log.Infof("successfully locked XMR funds: address=%s", address)
+	return address, nil
+}
+
+// claimFunds redeems Bob's ETH funds by calling Claim() on the contract
+func (s *swapState) claimFunds() (ethcommon.Hash, error) {
+	pub := s.bob.ethPrivKey.Public().(*ecdsa.PublicKey)
+	addr := ethcrypto.PubkeyToAddress(*pub)
+
+	balance, err := s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	log.Info("Bob's balance before claim: ", balance)
+
+	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
+	secret := s.privkeys.SpendKeyBytes()
+	var sc [32]byte
+	copy(sc[:], common.Reverse(secret))
+
+	tx, err := s.contract.Claim(s.txOpts, sc)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
+
+	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
+		return ethcommon.Hash{}, errors.New("failed to check Claim transaction receipt")
+	}
+
+	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	log.Info("Bob's balance after claim: ", balance)
+	return tx.Hash(), nil
 }

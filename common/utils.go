@@ -2,6 +2,10 @@ package common
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -49,4 +53,34 @@ func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash eth
 	}
 
 	return nil, false
+}
+
+// WriteContractAddressToFile writes the contract address to a file in the given basepath
+func WriteContractAddressToFile(basepath, addr string) error {
+	t := time.Now().Format("2006-Jan-2-15:04:05")
+	path := fmt.Sprintf("%s-%s.txt", basepath, t)
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+
+	file, err := os.Create(filepath.Clean(path))
+	if err != nil {
+		return err
+	}
+
+	type addressFileFormat struct {
+		Address string
+	}
+
+	bz, err := json.Marshal(addressFileFormat{
+		Address: addr,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(bz)
+	return err
 }
