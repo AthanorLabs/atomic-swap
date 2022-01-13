@@ -1,59 +1,63 @@
 package dleq
 
 import (
-	"crypto/ecdsa"
-	"crypto/ed25519"
-
-	"filippo.io/edwards25519"
-	//"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"io/ioutil"
+	"os"
+	"os/exec"
 )
 
 type DLEQ interface {
-	Prove() (*Proof, *ProofSecret, error)
+	Prove() (*Proof, error)
 	Verify(*Proof) error
 }
 
-type Secret [32]byte
-
-type Secp256k1Signature [65]byte
-
-type Ed25519Signature [ed25519.SignatureSize]byte
-
-type PublicKeyTuple struct {
-	ed25519Key   *edwards25519.Point
-	secp256k1Key *ecdsa.PublicKey
-}
-
-type SignatureTuple struct {
-	ed25519Signature *Ed25519Signature
-	secp256k1Key     *Secp256k1Signature
-}
-
 type Proof struct {
-	baseCommitments []*PublicKeyTuple
-	firstChallenges [32]byte
-	sValues         [2]*PublicKeyTuple
-	signatures      *SignatureTuple
-}
-
-type ProofSecret struct {
-	secret       [32]byte
-	ed25519Key   *edwards25519.Scalar
-	secp256k1Key *ecdsa.PrivateKey
+	secret [32]byte
+	proof  []byte
 }
 
 var (
 	dleqGenBinPath    = "../farcaster-dleq/target/release/dleq-gen"
 	dleqVerifyBinPath = "../farcaster-dleq/target/release/dleq-verify"
+	defaultProofPath  = "../dleq_proof"
 )
 
 type FarcasterDLEq struct{}
 
-func (d *FarcasterDLEq) Prove() (*Proof, *ProofSecret, error) {
+func (d *FarcasterDLEq) Prove() (*Proof, error) {
+	cmd := exec.Command(dleqGenBinPath, defaultProofPath)
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
 
-	return nil, nil, nil
+	secret, err := ioutil.ReadFile(defaultProofPath + ".key")
+	if err != nil {
+		return nil, err
+	}
+
+	var sc [32]byte
+	copy(sc[:], secret)
+
+	proof, err := ioutil.ReadFile(defaultProofPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Proof{
+		secret: sc,
+		proof:  proof,
+	}, nil
 }
 
-func (d *FarcasterDLEq) Verify(*Proof) error {
+func (d *FarcasterDLEq) Verify(p *Proof) error {
+	if err := ioutil.WriteFile(defaultProofPath, p.proof, os.ModePerm); err != nil {
+		return err
+	}
+
+	cmd := exec.Command(dleqVerifyBinPath, defaultProofPath)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
 	return nil
 }
