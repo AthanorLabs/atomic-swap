@@ -1,10 +1,8 @@
 package swap
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -18,7 +16,6 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 )
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds

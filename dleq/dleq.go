@@ -26,6 +26,7 @@ type Proof struct {
 	proof  []byte
 }
 
+// Secret returns the proof's 32-byte secret
 func (p *Proof) Secret() [32]byte {
 	return p.secret
 }
@@ -36,6 +37,7 @@ type VerifyResult struct {
 	secp256k1Pub *secp256k1.PublicKey
 }
 
+// Secp256k1PublicKey returns the secp256k1 public key associated with the DLEq verification
 func (r *VerifyResult) Secp256k1PublicKey() *secp256k1.PublicKey {
 	return r.secp256k1Pub
 }
