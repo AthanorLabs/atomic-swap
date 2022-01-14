@@ -19,7 +19,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	s.privkeys = akp
 	s.pubkeys = akp.PublicKeyPair()
 
-	s.setBobKeys(akp.SpendKey().Public(), akp.ViewKey())
+	s.setBobKeys(akp.SpendKey().Public(), akp.ViewKey(), nil)
 	s.bobAddress = inst.callOpts.From
 	addr, err := s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
