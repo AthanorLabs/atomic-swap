@@ -2,6 +2,7 @@ package bob
 
 import (
 	"context"
+	"encoding/hex"
 	"math/big"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
+	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"
 	"github.com/noot/atomic-swap/types"
 
@@ -62,36 +64,33 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	return bob, swapState
 }
 
-func newTestAliceSendKeySMessage(t *testing.T) (*net.SendKeysMessage, *mcrypto.PrivateKeyPair) {
-	alicePrivKeys, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-
-	sig, err := alicePrivKeys.SpendKey().Sign(alicePrivKeys.SpendKey().Public().Bytes())
+func newTestAliceSendKeySMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	msg := &net.SendKeysMessage{
-		PublicSpendKey:  alicePrivKeys.SpendKey().Public().Hex(),
-		PublicViewKey:   alicePrivKeys.ViewKey().Public().Hex(),
-		PrivateKeyProof: sig.Hex(),
+		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
+		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey().Hex(),
+		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
+		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
 	}
 
-	return msg, alicePrivKeys
+	return msg, keysAndProof
 }
 
 func TestSwapState_GenerateKeys(t *testing.T) {
 	_, swapState := newTestInstance(t)
 
-	pubSpendKey, privViewKey, err := swapState.generateKeys()
+	err := swapState.generateKeys()
 	require.NoError(t, err)
 	require.NotNil(t, swapState.privkeys)
 	require.NotNil(t, swapState.pubkeys)
-	require.NotNil(t, pubSpendKey)
-	require.NotNil(t, privViewKey)
+	require.NotNil(t, swapState.dleqProof)
 }
 
 func TestSwapState_ClaimFunds(t *testing.T) {
 	bob, swapState := newTestInstance(t)
-	_, _, err := swapState.generateKeys()
+	err := swapState.generateKeys()
 	require.NoError(t, err)
 
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
@@ -118,8 +117,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	msg, alicePrivKeys := newTestAliceSendKeySMessage(t)
-	alicePubKeys := alicePrivKeys.PublicKeyPair()
+	msg, aliceKeysAndProof := newTestAliceSendKeySMessage(t)
+	alicePubKeys := aliceKeysAndProof.PublicKeyPair
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
@@ -152,12 +151,12 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	bob, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
-	_, _, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
+	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
 
 	msg := &net.NotifyContractDeployed{}
 	resp, done, err := s.HandleProtocolMessage(msg)
@@ -190,12 +189,12 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	defer s.cancel()
 	s.bob.net = new(mockNet)
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
-	_, _, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
+	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
 
 	msg := &net.NotifyContractDeployed{}
 	resp, done, err := s.HandleProtocolMessage(msg)
@@ -230,7 +229,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	bob, s := newTestInstance(t)
 
 	s.nextExpectedMessage = &net.NotifyReady{}
-	_, _, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
@@ -252,12 +251,12 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 func TestSwapState_handleRefund(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	_, _, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
+	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
@@ -286,12 +285,12 @@ func TestSwapState_handleRefund(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	_, _, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
+	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
@@ -326,12 +325,12 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	_, _, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	aliceKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair())
+	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)

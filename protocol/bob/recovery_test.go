@@ -50,7 +50,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	rs := newTestRecoveryState(t)
 
 	// lock XMR
-	rs.ss.setAlicePublicKeys(rs.ss.pubkeys)
+	rs.ss.setAlicePublicKeys(rs.ss.pubkeys, nil)
 	addrAB, err := rs.ss.lockFunds(33000)
 	require.NoError(t, err)
 

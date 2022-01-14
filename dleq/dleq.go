@@ -26,6 +26,7 @@ type Proof struct {
 	proof  []byte
 }
 
+// NewProofWithoutSecret returns a new Proof without a secret from the given proof slice
 func NewProofWithoutSecret(p []byte) *Proof {
 	return &Proof{
 		proof: p,
@@ -54,10 +55,21 @@ func (r *VerifyResult) Secp256k1PublicKey() *secp256k1.PublicKey {
 }
 
 var (
-	dleqGenBinPath    = "../farcaster-dleq/target/release/dleq-gen"
-	dleqVerifyBinPath = "../farcaster-dleq/target/release/dleq-verify"
-	defaultProofPath  = "../dleq_proof"
+	dleqGenBinPath    = getFarcasterDLEqBinaryPath() + "dleq-gen"
+	dleqVerifyBinPath = getFarcasterDLEqBinaryPath() + "dleq-verify"
+	defaultProofPath  = "/tmp/dleq_proof"
 )
+
+// TODO: this is kinda sus, make it actually find the bin better. maybe env vars?
+func getFarcasterDLEqBinaryPath() string {
+	bin := "../farcaster-dleq/target/release/dleq-gen"
+	_, err := os.Stat(bin)
+	if !errors.Is(err, os.ErrNotExist) {
+		return "../farcaster-dleq/target/release/"
+	}
+
+	return "../../farcaster-dleq/target/release/"
+}
 
 // FarcasterDLEq is a wrapper around the binaries in farcaster-dleq
 type FarcasterDLEq struct{}

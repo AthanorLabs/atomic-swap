@@ -2,6 +2,7 @@ package alice
 
 import (
 	"context"
+	"encoding/hex"
 	"math/big"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
+	pcommon "github.com/noot/atomic-swap/protocol"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -46,21 +48,19 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	return alice, swapState
 }
 
-func newTestBobSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *mcrypto.PrivateKeyPair) {
-	bobPrivKeys, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-
-	sig, err := bobPrivKeys.SpendKey().Sign(bobPrivKeys.SpendKey().Public().Bytes())
+func newTestBobSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	msg := &net.SendKeysMessage{
-		PublicSpendKey:  bobPrivKeys.SpendKey().Public().Hex(),
-		PrivateViewKey:  bobPrivKeys.ViewKey().Hex(),
-		PrivateKeyProof: sig.Hex(),
-		EthAddress:      "0x",
+		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
+		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey().Hex(),
+		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
+		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
+		EthAddress:         "0x",
 	}
 
-	return msg, bobPrivKeys
+	return msg, keysAndProof
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
@@ -71,18 +71,18 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	_, _, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	_, err = s.generateKeys()
+	err = s.generateKeys()
 	require.NoError(t, err)
 
-	msg, bobPrivKeys := newTestBobSendKeysMessage(t)
+	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
-	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
-	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
+	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 }
 
 // test the case where Alice deploys and locks her eth, but Bob never locks his monero.
@@ -99,10 +99,10 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
 	}()
 
-	_, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
-	msg, bobPrivKeys := newTestBobSendKeysMessage(t)
+	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
@@ -110,8 +110,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, net.NotifyContractDeployedType, resp.Type())
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
-	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
-	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
+	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
 	cdMsg, ok := resp.(*net.NotifyContractDeployed)
 	require.True(t, ok)
@@ -132,13 +132,13 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
-	_, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey())
+	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey(), nil)
 
 	_, err = s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
@@ -173,13 +173,13 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
 	}()
 
-	_, err := s.generateKeys()
+	err := s.generateKeys()
 	require.NoError(t, err)
 
 	bobPrivKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey())
+	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey(), nil)
 
 	contractAddr, err := s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
@@ -221,33 +221,32 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	_, _, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	_, err = s.generateKeys()
+	err = s.generateKeys()
 	require.NoError(t, err)
 
-	msg, bobPrivKeys := newTestBobSendKeysMessage(t)
+	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
-	require.Equal(t, bobPrivKeys.SpendKey().Public().Hex(), s.bobPublicSpendKey.Hex())
-	require.Equal(t, bobPrivKeys.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
+	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
-	viewKey := mcrypto.SumPrivateViewKeys(bobPrivKeys.ViewKey(), s.privkeys.ViewKey())
+	viewKey := mcrypto.SumPrivateViewKeys(bobKeysAndProof.PrivateKeyPair.ViewKey(), s.privkeys.ViewKey())
 	t.Log(viewKey.Hex())
 
 	// simulate bob locking xmr
 	bobAddr, err := s.alice.client.GetAddress(0)
 	require.NoError(t, err)
-	t.Log(bobAddr)
 
 	// mine some blocks to get xmr first
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 257)
 
 	s.desiredAmount = 33333
-	kp := mcrypto.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
@@ -277,7 +276,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// simulate bob calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	secret := bobPrivKeys.SpendKeyBytes()
+	secret := bobKeysAndProof.PrivateKeyPair.SpendKeyBytes()
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
