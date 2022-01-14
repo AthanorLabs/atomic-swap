@@ -71,7 +71,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	_, _, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	err = s.generateKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
@@ -99,7 +99,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
 	}()
 
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
@@ -132,19 +132,20 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := mcrypto.GenerateKeys()
+	bobKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey(), nil)
+	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
+		bobKeysAndProof.Secp256k1PublicKey)
 
 	_, err = s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	s.desiredAmount = 0
-	kp := mcrypto.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &net.NotifyXMRLock{
@@ -173,19 +174,20 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
 	}()
 
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobPrivKeys, err := mcrypto.GenerateKeys()
+	bobKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobPrivKeys.SpendKey().Public(), bobPrivKeys.ViewKey(), nil)
+	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
+		bobKeysAndProof.Secp256k1PublicKey)
 
 	contractAddr, err := s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	s.desiredAmount = 0
-	kp := mcrypto.SumSpendAndViewKeys(bobPrivKeys.PublicKeyPair(), s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &net.NotifyXMRLock{
@@ -221,7 +223,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	_, _, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	err = s.generateKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)

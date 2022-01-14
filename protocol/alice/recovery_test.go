@@ -4,27 +4,27 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 
 	"github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/stretchr/testify/require"
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
 	inst, s := newTestInstance(t)
-	akp, err := mcrypto.GenerateKeys()
+	akp, err := generateKeys()
 	require.NoError(t, err)
 
-	s.privkeys = akp
-	s.pubkeys = akp.PublicKeyPair()
+	s.privkeys = akp.PrivateKeyPair
+	s.pubkeys = akp.PublicKeyPair
+	s.secp256k1Pub = akp.Secp256k1PublicKey
+	s.dleqProof = akp.DLEqProof
 
-	s.setBobKeys(akp.SpendKey().Public(), akp.ViewKey(), nil)
+	s.setBobKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
 	s.bobAddress = inst.callOpts.From
 	addr, err := s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	rs, err := NewRecoveryState(inst, akp.SpendKey(), addr)
+	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr)
 	require.NoError(t, err)
 	return rs
 }
@@ -39,9 +39,7 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	// call swap.Claim()
-	secret := rs.ss.privkeys.SpendKeyBytes()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
+	sc := rs.ss.getSecret()
 	_, err = rs.ss.contract.Claim(rs.ss.txOpts, sc)
 	require.NoError(t, err)
 

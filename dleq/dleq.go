@@ -33,6 +33,14 @@ func NewProofWithoutSecret(p []byte) *Proof {
 	}
 }
 
+// NewProofWithSecret returns a new Proof with the given secret.
+// Note that the returned proof actually lacks the `proof` field.
+func NewProofWithSecret(s [32]byte) *Proof {
+	return &Proof{
+		secret: s,
+	}
+}
+
 // Secret returns the proof's 32-byte secret
 func (p *Proof) Secret() [32]byte {
 	return p.secret

@@ -100,7 +100,7 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	if err := s.generateKeys(); err != nil {
+	if err := s.generateAndSetKeys(); err != nil {
 		return nil, err
 	}
 
@@ -474,14 +474,12 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	return nil
 }
 
-// generateKeys generates Alice's monero spend and view keys (S_b, V_b), a secp256k1 public key,
-// and a DLEq proof proving that the two keys correspond.
-func (s *swapState) generateKeys() error {
+func (s *swapState) generateAndSetKeys() error {
 	if s.privkeys != nil {
 		return nil
 	}
 
-	keysAndProof, err := pcommon.GenerateKeysAndProof()
+	keysAndProof, err := generateKeys()
 	if err != nil {
 		return err
 	}
@@ -497,6 +495,20 @@ func (s *swapState) generateKeys() error {
 	}
 
 	return nil
+}
+
+// generateKeys generates Alice's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// and a DLEq proof proving that the two keys correspond.
+func generateKeys() (*pcommon.KeysAndProof, error) {
+	return pcommon.GenerateKeysAndProof()
+}
+
+// getSecret secrets returns the current secret scalar used to unlock funds from the contract.
+func (s *swapState) getSecret() [32]byte {
+	secret := s.dleqProof.Secret()
+	var sc [32]byte
+	copy(sc[:], common.Reverse(secret[:]))
+	return sc
 }
 
 // setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
@@ -572,13 +584,11 @@ func (s *swapState) ready() error {
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
-	secret := s.dleqProof.Secret()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret[:]))
-
 	if s.contract == nil {
 		return ethcommon.Hash{}, errors.New("contract is nil")
 	}
+
+	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.contract.Refund(s.txOpts, sc)

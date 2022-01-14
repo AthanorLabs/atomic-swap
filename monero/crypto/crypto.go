@@ -163,6 +163,11 @@ func (k *PrivateSpendKey) HashString() string {
 	return hex.EncodeToString(h[:])
 }
 
+// Bytes returns the PrivateSpendKey as canonical bytes
+func (k *PrivateSpendKey) Bytes() []byte {
+	return k.key.Bytes()
+}
+
 // PrivateViewKey represents a monero private view key.
 type PrivateViewKey struct {
 	key *ed25519.Scalar
