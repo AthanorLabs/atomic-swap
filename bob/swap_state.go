@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
@@ -52,8 +54,9 @@ type swapState struct {
 	offerID        types.Hash
 
 	// our keys for this session
-	privkeys *mcrypto.PrivateKeyPair
-	pubkeys  *mcrypto.PublicKeyPair
+	dleqProof *dleq.Proof
+	privkeys  *mcrypto.PrivateKeyPair
+	pubkeys   *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract     *swap.Swap
@@ -106,22 +109,19 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	sk, vk, err := s.generateKeys()
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := s.privkeys.SpendKey().Sign(s.pubkeys.SpendKey().Bytes())
+	d := &dleq.FarcasterDLEq{}
+	res, err := d.Verify(s.dleqProof)
 	if err != nil {
 		return nil, err
 	}
 
 	return &net.SendKeysMessage{
-		ProvidedAmount:  s.providesAmount.AsMonero(),
-		PublicSpendKey:  sk.Hex(),
-		PrivateViewKey:  vk.Hex(),
-		PrivateKeyProof: sig.Hex(),
-		EthAddress:      s.bob.ethAddress.String(),
+		ProvidedAmount:     s.providesAmount.AsMonero(),
+		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
+		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
+		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
+		Secp256k1PublicKey: res.Secp256k1PublicKey().String(),
+		EthAddress:         s.bob.ethAddress.String(),
 	}, nil
 }
 
@@ -392,24 +392,38 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 // generateKeys generates Bob's spend and view keys (s_b, v_b)
 // It returns Bob's public spend key and his private view key, so that Alice can see
 // if the funds are locked.
-func (s *swapState) generateKeys() (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
+func (s *swapState) generateKeys() error {
 	if s.privkeys != nil {
-		return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
+		return nil
 	}
 
-	var err error
-	s.privkeys, err = mcrypto.GenerateKeys()
+	d := &dleq.FarcasterDLEq{}
+	proof, err := d.Prove()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
+
+	secret := proof.Secret()
+	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
+	if err != nil {
+		return err
+	}
+
+	kp, err := sk.AsPrivateKeyPair()
+	if err != nil {
+		return err
+	}
+
+	s.dleqProof = proof
+	s.privkeys = kp
+	s.pubkeys = kp.PublicKeyPair()
 
 	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
 	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	s.pubkeys = s.privkeys.PublicKeyPair()
-	return s.pubkeys.SpendKey(), s.privkeys.ViewKey(), nil
+	return nil
 }
 
 // setAlicePublicKeys sets Alice's public spend and view keys
@@ -512,15 +526,15 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	// verify that counterparty really has the private key to the public key
-	sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
-	if err != nil {
-		return err
-	}
+	// sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
+	// if err != nil {
+	// 	return err
+	// }
 
-	ok := kp.SpendKey().Verify(kp.SpendKey().Bytes(), sig)
-	if !ok {
-		return errors.New("failed to verify proof of private key")
-	}
+	// ok := kp.SpendKey().Verify(kp.SpendKey().Bytes(), sig)
+	// if !ok {
+	// 	return errors.New("failed to verify proof of private key")
+	// }
 
 	s.setAlicePublicKeys(kp)
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}

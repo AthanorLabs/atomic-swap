@@ -31,6 +31,11 @@ func (p *Proof) Secret() [32]byte {
 	return p.secret
 }
 
+// Proof returns the encoded DLEq proof
+func (p *Proof) Proof() []byte {
+	return p.proof
+}
+
 // VerifyResult contains the public keys resulting from verifying a DLEq proof
 type VerifyResult struct {
 	ed25519Pub   [32]byte

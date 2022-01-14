@@ -2,12 +2,15 @@ package alice
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/crypto/secp256k1"
+	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
@@ -39,13 +42,15 @@ type swapState struct {
 	desiredAmount  common.MoneroAmount
 
 	// our keys for this session
-	privkeys *mcrypto.PrivateKeyPair
-	pubkeys  *mcrypto.PublicKeyPair
+	dleqProof *dleq.Proof
+	privkeys  *mcrypto.PrivateKeyPair
+	pubkeys   *mcrypto.PublicKeyPair
 
 	// Bob's keys for this session
-	bobPublicSpendKey *mcrypto.PublicKey
-	bobPrivateViewKey *mcrypto.PrivateViewKey
-	bobAddress        ethcommon.Address
+	bobPublicSpendKey     *mcrypto.PublicKey
+	bobPrivateViewKey     *mcrypto.PrivateViewKey
+	bobSecp256k1PublicKey *secp256k1.PublicKey
+	bobAddress            ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract *swap.Swap
@@ -93,20 +98,21 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	kp, err := s.generateKeys()
-	if err != nil {
+	if err := s.generateKeys(); err != nil {
 		return nil, err
 	}
 
-	sig, err := s.privkeys.SpendKey().Sign(kp.SpendKey().Bytes())
+	d := &dleq.FarcasterDLEq{}
+	res, err := d.Verify(s.dleqProof)
 	if err != nil {
 		return nil, err
 	}
 
 	return &net.SendKeysMessage{
-		PublicSpendKey:  kp.SpendKey().Hex(),
-		PublicViewKey:   kp.ViewKey().Hex(),
-		PrivateKeyProof: sig.Hex(),
+		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
+		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
+		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
+		Secp256k1PublicKey: res.Secp256k1PublicKey().String(),
 	}, nil
 }
 
@@ -406,17 +412,22 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	// verify that counterparty really has the private key to the public key
-	sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
+	// sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// ok := sk.Verify(sk.Bytes(), sig)
+	// if !ok {
+	// 	return nil, errors.New("failed to verify proof of private key")
+	// }
+
+	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(msg.Secp256k1PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	ok := sk.Verify(sk.Bytes(), sig)
-	if !ok {
-		return nil, errors.New("failed to verify proof of private key")
-	}
-
-	s.setBobKeys(sk, vk)
+	s.setBobKeys(sk, vk, secp256k1Pub)
 	address, err := s.deployAndLockETH(s.providesAmount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
@@ -477,33 +488,48 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	return nil
 }
 
-// generateKeys generates Alice's monero spend and view keys (S_b, V_b)
-// It returns Alice's public spend key
-func (s *swapState) generateKeys() (*mcrypto.PublicKeyPair, error) {
+// generateKeys generates Alice's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// and a DLEq proof proving that the two keys correspond.
+func (s *swapState) generateKeys() error {
 	if s.privkeys != nil {
-		return s.pubkeys, nil
+		return nil
 	}
 
-	var err error
-	s.privkeys, err = mcrypto.GenerateKeys()
+	d := &dleq.FarcasterDLEq{}
+	proof, err := d.Prove()
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	secret := proof.Secret()
+	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
+	if err != nil {
+		return err
+	}
+
+	kp, err := sk.AsPrivateKeyPair()
+	if err != nil {
+		return err
+	}
+
+	s.dleqProof = proof
+	s.privkeys = kp
+	s.pubkeys = kp.PublicKeyPair()
 
 	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.id)
 	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
-		return nil, err
+		return err
 	}
 
-	s.pubkeys = s.privkeys.PublicKeyPair()
-	return s.pubkeys, nil
+	return nil
 }
 
 // setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
 // private view key (used to check XMR balance before calling Ready())
-func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) {
+func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey, secp256k1Pub *secp256k1.PublicKey) {
 	s.bobPublicSpendKey = sk
 	s.bobPrivateViewKey = vk
+	s.bobSecp256k1PublicKey = secp256k1Pub
 }
 
 // deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
