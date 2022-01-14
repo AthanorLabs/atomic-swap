@@ -411,16 +411,22 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, fmt.Errorf("failed to generate Bob's public spend key: %w", err)
 	}
 
-	// verify that counterparty really has the private key to the public key
-	// sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
+	pb, err := hex.DecodeString(msg.DLEqProof)
+	if err != nil {
+		return nil, err
+	}
 
-	// ok := sk.Verify(sk.Bytes(), sig)
-	// if !ok {
-	// 	return nil, errors.New("failed to verify proof of private key")
-	// }
+	d := &dleq.FarcasterDLEq{}
+	proof := dleq.NewProofWithoutSecret(pb)
+	res, err := d.Verify(proof)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Secp256k1PublicKey().String() != msg.Secp256k1PublicKey {
+		return nil, errors.New("secp256k1 public key resulting from proof verification does not match key sent")
+	}
 
 	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(msg.Secp256k1PublicKey)
 	if err != nil {

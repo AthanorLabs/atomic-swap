@@ -26,6 +26,12 @@ type Proof struct {
 	proof  []byte
 }
 
+func NewProofWithoutSecret(p []byte) *Proof {
+	return &Proof{
+		proof: p,
+	}
+}
+
 // Secret returns the proof's 32-byte secret
 func (p *Proof) Secret() [32]byte {
 	return p.secret

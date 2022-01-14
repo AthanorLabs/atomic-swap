@@ -19,6 +19,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
@@ -65,7 +66,8 @@ type swapState struct {
 	txOpts       *bind.TransactOpts
 
 	// Alice's keys for this session
-	alicePublicKeys *mcrypto.PublicKeyPair
+	alicePublicKeys         *mcrypto.PublicKeyPair
+	aliceSecp256K1PublicKey *secp256k1.PublicKey
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -427,8 +429,9 @@ func (s *swapState) generateKeys() error {
 }
 
 // setAlicePublicKeys sets Alice's public spend and view keys
-func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair) {
+func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair, secp256k1Pub *secp256k1.PublicKey) {
 	s.alicePublicKeys = sk
+	s.aliceSecp256K1PublicKey = secp256k1Pub
 }
 
 // setContract sets the contract in which Alice has locked her ETH.
@@ -525,18 +528,29 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
 	}
 
-	// verify that counterparty really has the private key to the public key
-	// sig, err := mcrypto.NewSignatureFromHex(msg.PrivateKeyProof)
-	// if err != nil {
-	// 	return err
-	// }
+	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
+	pb, err := hex.DecodeString(msg.DLEqProof)
+	if err != nil {
+		return err
+	}
 
-	// ok := kp.SpendKey().Verify(kp.SpendKey().Bytes(), sig)
-	// if !ok {
-	// 	return errors.New("failed to verify proof of private key")
-	// }
+	d := &dleq.FarcasterDLEq{}
+	proof := dleq.NewProofWithoutSecret(pb)
+	res, err := d.Verify(proof)
+	if err != nil {
+		return err
+	}
 
-	s.setAlicePublicKeys(kp)
+	if res.Secp256k1PublicKey().String() != msg.Secp256k1PublicKey {
+		return errors.New("secp256k1 public key resulting from proof verification does not match key sent")
+	}
+
+	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(msg.Secp256k1PublicKey)
+	if err != nil {
+		return err
+	}
+
+	s.setAlicePublicKeys(kp, secp256k1Pub)
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
 	return nil
 }

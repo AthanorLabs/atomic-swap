@@ -80,7 +80,7 @@ func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
 			return nil, err
 		}
 
-		rs.ss.setAlicePublicKeys(kpA.PublicKeyPair())
+		rs.ss.setAlicePublicKeys(kpA.PublicKeyPair(), nil)
 		addr, err := rs.ss.reclaimMonero(skA)
 		if err != nil {
 			return nil, err
