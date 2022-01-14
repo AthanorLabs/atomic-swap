@@ -14,11 +14,11 @@ contract Swap {
     // address allowed to claim the ether in this contract
     address payable immutable claimer;
 
-    // the expected public key derived from the secret `s_b`.
+    // the keccak256 hash of the expected public key derived from the secret `s_b`.
     // this public key is a point on the secp256k1 curve
     bytes32 public immutable pubKeyClaim;
 
-    // the expected public key derived from the secret `s_a`.
+    // the keccak256 hash of the expected public key derived from the secret `s_a`.
     // this public key is a point on the secp256k1 curve
     bytes32 public immutable pubKeyRefund;
 

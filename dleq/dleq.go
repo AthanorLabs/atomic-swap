@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/noot/atomic-swap/crypto/secp256k1"
 )
 
 // Interface ...
@@ -24,11 +26,18 @@ type Proof struct {
 	proof  []byte
 }
 
+func (p *Proof) Secret() [32]byte {
+	return p.secret
+}
+
 // VerifyResult contains the public keys resulting from verifying a DLEq proof
 type VerifyResult struct {
-	ed25519Pub [32]byte
-	secp256k1X [32]byte
-	secp256k1Y [32]byte
+	ed25519Pub   [32]byte
+	secp256k1Pub *secp256k1.PublicKey
+}
+
+func (r *VerifyResult) Secp256k1PublicKey() *secp256k1.PublicKey {
+	return r.secp256k1Pub
 }
 
 var (
@@ -107,8 +116,11 @@ func (d *FarcasterDLEq) Verify(p *Proof) (*VerifyResult, error) {
 
 	res := &VerifyResult{}
 	copy(res.ed25519Pub[:], ed25519Pub)
-	copy(res.secp256k1X[:], secp256k1X)
-	copy(res.secp256k1Y[:], secp256k1Y)
+
+	var x, y [32]byte
+	copy(x[:], secp256k1X)
+	copy(y[:], secp256k1Y)
+	res.secp256k1Pub = secp256k1.NewPublicKey(x, y)
 
 	return res, nil
 }

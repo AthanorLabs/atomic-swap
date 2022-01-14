@@ -16,8 +16,8 @@ func TestFarcasterDLEqProof(t *testing.T) {
 	res, err := f.Verify(proof)
 	require.NoError(t, err)
 	require.NotEqual(t, [32]byte{}, res.ed25519Pub)
-	require.NotEqual(t, [32]byte{}, res.secp256k1X)
-	require.NotEqual(t, [32]byte{}, res.secp256k1Y)
+	require.NotEqual(t, [32]byte{}, res.secp256k1Pub.X())
+	require.NotEqual(t, [32]byte{}, res.secp256k1Pub.Y())
 }
 
 func TestFarcasterDLEqProof_invalid(t *testing.T) {
@@ -49,8 +49,10 @@ func TestFarcasterDLEqProof_createKeys(t *testing.T) {
 	// require.Equal(t, res.secp256k1X[:], x.Bytes())
 	// require.Equal(t, res.secp256k1Y[:], y.Bytes())
 
-	x := big.NewInt(0).SetBytes(res.secp256k1X[:])
-	y := big.NewInt(0).SetBytes(res.secp256k1Y[:])
+	xb := res.secp256k1Pub.X()
+	yb := res.secp256k1Pub.Y()
+	x := big.NewInt(0).SetBytes(xb[:])
+	y := big.NewInt(0).SetBytes(yb[:])
 	ok := curve.IsOnCurve(x, y)
 	require.True(t, ok)
 }

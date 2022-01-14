@@ -32,6 +32,8 @@ describe("Swap", function () {
         ["uint256", "uint256"],
         [kp.pubKey_x, kp.pubKey_y]);
 
+      console.log(qKeccak)
+
       console.log('Testing %s of %s test vectors...', i + 1, test_vecs.length);
       promises.push(swap.testVerifySecret(arrayify(kp.s), arrayify(qKeccak)));
     });
