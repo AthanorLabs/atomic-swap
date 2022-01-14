@@ -116,139 +116,78 @@ func TestSwap_Claim_random(t *testing.T) {
 }
 
 func TestSwap_Refund_beforeT0(t *testing.T) {
+	// generate refund secret and public key
+	dleq := &dleq.FarcasterDLEq{}
+	proof, err := dleq.Prove()
+	require.NoError(t, err)
+	res, err := dleq.Verify(proof)
+	require.NoError(t, err)
 
+	// hash public key
+	cmt := res.Secp256k1PublicKey().Keccak256()
+
+	// deploy swap contract with claim key hash
+	auth, conn, pkA := setupAliceAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	_, deployTx, swap, err := DeploySwap(auth, conn, [32]byte{}, cmt, addr,
+		defaultTimeoutDuration)
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy Swap.sol: %d", deployTx.Gas())
+
+	// now let's try to claim
+	var s [32]byte
+	secret := proof.Secret()
+	copy(s[:], common.Reverse(secret[:]))
+	tx, err := swap.Refund(auth, s)
+	require.NoError(t, err)
+	t.Logf("gas cost to call Refund: %d", tx.Gas())
 }
 
-func TestSwap_Refund_Within_T0(t *testing.T) {
-	// Alice generates key
-	keyPairAlice, err := mcrypto.GenerateKeys()
+func TestSwap_Refund_afterT1(t *testing.T) {
+	// generate refund secret and public key
+	dleq := &dleq.FarcasterDLEq{}
+	proof, err := dleq.Prove()
 	require.NoError(t, err)
-	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
-
-	// Bob generates key
-	keyPairBob, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
-
-	secretAlice := keyPairAlice.SpendKeyBytes()
-
-	var pkAliceFixed, pkBobFixed [32]byte
-	copy(pkAliceFixed[:], common.Reverse(pubKeyAlice))
-	copy(pkBobFixed[:], common.Reverse(pubKeyBob))
-
-	// setup
-	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
+	res, err := dleq.Verify(proof)
 	require.NoError(t, err)
 
-	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
-	require.NoError(t, err)
-	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
-	require.NoError(t, err)
+	// hash public key
+	cmt := res.Secp256k1PublicKey().Keccak256()
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(1337)) // ganache chainID
+	// deploy swap contract with claim key hash
+	auth, conn, pkA := setupAliceAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	_, deployTx, swap, err := DeploySwap(auth, conn, [32]byte{}, cmt, addr,
+		defaultTimeoutDuration)
 	require.NoError(t, err)
-	authAlice.Value = big.NewInt(10)
+	t.Logf("gas cost to deploy Swap.sol: %d", deployTx.Gas())
 
-	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
-	require.NoError(t, err)
-	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
-
-	bobPub := pkB.Public().(*ecdsa.PublicKey)
-	bobAddr := crypto.PubkeyToAddress(*bobPub)
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
-	require.NoError(t, err)
-
-	txOpts := &bind.TransactOpts{
-		From:   authAlice.From,
-		Signer: authAlice.Signer,
-	}
-
-	// Alice never calls set_ready on the contract, instead she just tries to Refund immediately
-	var sa [32]byte
-	copy(sa[:], common.Reverse(secretAlice))
-	_, err = swap.Refund(txOpts, sa)
+	// fast forward past t1
+	rpcClient, err := rpc.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	// The Swap contract has self destructed: should have no balance AND no bytecode at the address
-	contractBalance, err := conn.BalanceAt(context.Background(), contractAddress, nil)
-	require.NoError(t, err)
-	require.Equal(t, contractBalance.Uint64(), big.NewInt(0).Uint64())
-
-	// bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
-	// require.NoError(t, err)
-	// require.Empty(t, bytecode)
-}
-
-func TestSwap_Refund_After_T1(t *testing.T) {
-	// Alice generates key
-	keyPairAlice, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-	pubKeyAlice := keyPairAlice.PublicKeyPair().SpendKey().Bytes()
-
-	// Bob generates key
-	keyPairBob, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-	pubKeyBob := keyPairBob.PublicKeyPair().SpendKey().Bytes()
-
-	secretAlice := keyPairAlice.SpendKeyBytes()
-
-	var pkAliceFixed, pkBobFixed [32]byte
-	copy(pkAliceFixed[:], common.Reverse(pubKeyAlice))
-	copy(pkBobFixed[:], common.Reverse(pubKeyBob))
-
-	// setup
-	conn, err := ethclient.Dial("ws://127.0.0.1:8545")
+	var result string
+	err = rpcClient.Call(&result, "evm_snapshot")
 	require.NoError(t, err)
 
-	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
-	require.NoError(t, err)
-	pkB, err := crypto.HexToECDSA(common.DefaultPrivKeyBob)
+	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+60)
 	require.NoError(t, err)
 
-	authAlice, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(1337)) // ganache chainID
-	authAlice.Value = big.NewInt(10)
+	defer func() {
+		var ok bool
+		err = rpcClient.Call(&ok, "evm_revert", result)
+		require.NoError(t, err)
+	}()
+
+	// now let's try to claim
+	var s [32]byte
+	secret := proof.Secret()
+	copy(s[:], common.Reverse(secret[:]))
+	tx, err := swap.Refund(auth, s)
 	require.NoError(t, err)
-
-	aliceBalanceBefore, err := conn.BalanceAt(context.Background(), authAlice.From, nil)
-	require.NoError(t, err)
-	fmt.Println("AliceBalanceBefore: ", aliceBalanceBefore)
-
-	bobPub := pkB.Public().(*ecdsa.PublicKey)
-	bobAddr := crypto.PubkeyToAddress(*bobPub)
-	contractAddress, _, swap, err := DeploySwap(authAlice, conn, pkBobFixed, pkAliceFixed, bobAddr, defaultTimeoutDuration)
-	require.NoError(t, err)
-
-	txOpts := &bind.TransactOpts{
-		From:   authAlice.From,
-		Signer: authAlice.Signer,
-	}
-
-	// Alice calls set_ready on the contract, and immediately tries to Refund
-	// After waiting T1, Alice should be able to refund now
-	_, err = swap.SetReady(txOpts)
-	require.NoError(t, err)
-
-	var sa [32]byte
-	copy(sa[:], common.Reverse(secretAlice))
-	_, err = swap.Refund(txOpts, sa)
-	require.Regexp(t, ".*It's Bob's turn now, please wait!", err)
-
-	// wait some, then try again
-	var result int64
-	rpcClient, err := rpc.Dial("http://127.0.0.1:8545")
-	require.NoError(t, err)
-
-	ret := rpcClient.Call(&result, "evm_increaseTime", 3600*25)
-	require.NoError(t, ret)
-	_, err = swap.Refund(txOpts, sa)
-	require.NoError(t, err)
-
-	// The Swap contract has self destructed: should have no balance AND no bytecode at the address
-	contractBalance, err := conn.BalanceAt(context.Background(), contractAddress, nil)
-	require.NoError(t, err)
-	require.Equal(t, contractBalance.Uint64(), big.NewInt(0).Uint64())
-
-	// bytecode, err := conn.CodeAt(context.Background(), contractAddress, nil) // nil is latest block
-	// require.NoError(t, err)
-	// require.Empty(t, bytecode)
+	t.Logf("gas cost to call Refund: %d", tx.Gas())
 }
