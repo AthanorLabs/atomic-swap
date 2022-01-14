@@ -517,19 +517,16 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 		return ethcommon.Address{}, errors.New("bob's keys aren't set")
 	}
 
-	pkAlice := s.pubkeys.SpendKey().Bytes()
-	pkBob := s.bobPublicSpendKey.Bytes()
-
-	var pka, pkb [32]byte
-	copy(pka[:], common.Reverse(pkAlice))
-	copy(pkb[:], common.Reverse(pkBob))
+	cmtAlice := s.secp256k1Pub.Keccak256()
+	cmtBob := s.bobSecp256k1PublicKey.Keccak256()
 
 	s.txOpts.Value = amount.BigInt()
 	defer func() {
 		s.txOpts.Value = nil
 	}()
 
-	address, tx, swap, err := swap.DeploySwap(s.txOpts, s.alice.ethClient, pkb, pka, s.bobAddress, defaultTimeoutDuration)
+	address, tx, swap, err := swap.DeploySwap(s.txOpts, s.alice.ethClient,
+		cmtBob, cmtAlice, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return ethcommon.Address{}, fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
@@ -575,15 +572,15 @@ func (s *swapState) ready() error {
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
-	secret := s.privkeys.SpendKeyBytes()
+	secret := s.dleqProof.Secret()
 	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
+	copy(sc[:], common.Reverse(secret[:]))
 
 	if s.contract == nil {
 		return ethcommon.Hash{}, errors.New("contract is nil")
 	}
 
-	log.Infof("atte`mpting to call Refund()...")
+	log.Infof("attempting to call Refund()...")
 	tx, err := s.contract.Refund(s.txOpts, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err

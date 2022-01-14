@@ -616,9 +616,9 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	log.Info("Bob's balance before claim: ", balance)
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	secret := s.privkeys.SpendKeyBytes()
+	secret := s.dleqProof.Secret()
 	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
+	copy(sc[:], common.Reverse(secret[:]))
 
 	tx, err := s.contract.Claim(s.txOpts, sc)
 	if err != nil {
