@@ -24,6 +24,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
+	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"
 	"github.com/noot/atomic-swap/types"
 )
@@ -55,9 +56,10 @@ type swapState struct {
 	offerID        types.Hash
 
 	// our keys for this session
-	dleqProof *dleq.Proof
-	privkeys  *mcrypto.PrivateKeyPair
-	pubkeys   *mcrypto.PublicKeyPair
+	dleqProof    *dleq.Proof
+	secp256k1Pub *secp256k1.PublicKey
+	privkeys     *mcrypto.PrivateKeyPair
+	pubkeys      *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract     *swap.Swap
@@ -111,18 +113,12 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	d := &dleq.FarcasterDLEq{}
-	res, err := d.Verify(s.dleqProof)
-	if err != nil {
-		return nil, err
-	}
-
 	return &net.SendKeysMessage{
 		ProvidedAmount:     s.providesAmount.AsMonero(),
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
-		Secp256k1PublicKey: res.Secp256k1PublicKey().String(),
+		Secp256k1PublicKey: s.secp256k1Pub.String(),
 		EthAddress:         s.bob.ethAddress.String(),
 	}, nil
 }
@@ -399,26 +395,15 @@ func (s *swapState) generateKeys() error {
 		return nil
 	}
 
-	d := &dleq.FarcasterDLEq{}
-	proof, err := d.Prove()
+	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	if err != nil {
 		return err
 	}
 
-	secret := proof.Secret()
-	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
-	if err != nil {
-		return err
-	}
-
-	kp, err := sk.AsPrivateKeyPair()
-	if err != nil {
-		return err
-	}
-
-	s.dleqProof = proof
-	s.privkeys = kp
-	s.pubkeys = kp.PublicKeyPair()
+	s.dleqProof = keysAndProof.DLEqProof
+	s.secp256k1Pub = keysAndProof.Secp256k1PublicKey
+	s.privkeys = keysAndProof.PrivateKeyPair
+	s.pubkeys = keysAndProof.PublicKeyPair
 
 	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
 	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
@@ -503,13 +488,14 @@ func (s *swapState) checkContract() error {
 	pkClaim := res[0].([32]byte)
 	pkRefund := res[0].([32]byte)
 
-	skOurs := common.Reverse(s.pubkeys.SpendKey().Bytes())
-	if !bytes.Equal(pkClaim[:], skOurs) {
+	// check that contract was constructed with correct secp256k1 keys
+	skOurs := s.secp256k1Pub.Keccak256()
+	if !bytes.Equal(pkClaim[:], skOurs[:]) {
 		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", pkClaim, skOurs)
 	}
 
-	skTheirs := common.Reverse(s.alicePublicKeys.SpendKey().Bytes())
-	if !bytes.Equal(pkRefund[:], skOurs) {
+	skTheirs := s.aliceSecp256K1PublicKey.Keccak256()
+	if !bytes.Equal(pkRefund[:], skOurs[:]) {
 		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", pkRefund, skTheirs)
 	}
 
@@ -529,23 +515,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	pb, err := hex.DecodeString(msg.DLEqProof)
-	if err != nil {
-		return err
-	}
-
-	d := &dleq.FarcasterDLEq{}
-	proof := dleq.NewProofWithoutSecret(pb)
-	res, err := d.Verify(proof)
-	if err != nil {
-		return err
-	}
-
-	if res.Secp256k1PublicKey().String() != msg.Secp256k1PublicKey {
-		return errors.New("secp256k1 public key resulting from proof verification does not match key sent")
-	}
-
-	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(msg.Secp256k1PublicKey)
+	secp256k1Pub, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
 	if err != nil {
 		return err
 	}

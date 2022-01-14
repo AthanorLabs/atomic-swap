@@ -14,6 +14,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
+	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -42,9 +43,10 @@ type swapState struct {
 	desiredAmount  common.MoneroAmount
 
 	// our keys for this session
-	dleqProof *dleq.Proof
-	privkeys  *mcrypto.PrivateKeyPair
-	pubkeys   *mcrypto.PublicKeyPair
+	dleqProof    *dleq.Proof
+	secp256k1Pub *secp256k1.PublicKey
+	privkeys     *mcrypto.PrivateKeyPair
+	pubkeys      *mcrypto.PublicKeyPair
 
 	// Bob's keys for this session
 	bobPublicSpendKey     *mcrypto.PublicKey
@@ -102,17 +104,11 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		return nil, err
 	}
 
-	d := &dleq.FarcasterDLEq{}
-	res, err := d.Verify(s.dleqProof)
-	if err != nil {
-		return nil, err
-	}
-
 	return &net.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
-		Secp256k1PublicKey: res.Secp256k1PublicKey().String(),
+		Secp256k1PublicKey: s.secp256k1Pub.String(),
 	}, nil
 }
 
@@ -412,23 +408,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	pb, err := hex.DecodeString(msg.DLEqProof)
-	if err != nil {
-		return nil, err
-	}
-
-	d := &dleq.FarcasterDLEq{}
-	proof := dleq.NewProofWithoutSecret(pb)
-	res, err := d.Verify(proof)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.Secp256k1PublicKey().String() != msg.Secp256k1PublicKey {
-		return nil, errors.New("secp256k1 public key resulting from proof verification does not match key sent")
-	}
-
-	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(msg.Secp256k1PublicKey)
+	secp256k1Pub, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -501,26 +481,15 @@ func (s *swapState) generateKeys() error {
 		return nil
 	}
 
-	d := &dleq.FarcasterDLEq{}
-	proof, err := d.Prove()
+	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	if err != nil {
 		return err
 	}
 
-	secret := proof.Secret()
-	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
-	if err != nil {
-		return err
-	}
-
-	kp, err := sk.AsPrivateKeyPair()
-	if err != nil {
-		return err
-	}
-
-	s.dleqProof = proof
-	s.privkeys = kp
-	s.pubkeys = kp.PublicKeyPair()
+	s.dleqProof = keysAndProof.DLEqProof
+	s.secp256k1Pub = keysAndProof.Secp256k1PublicKey
+	s.privkeys = keysAndProof.PrivateKeyPair
+	s.pubkeys = keysAndProof.PublicKeyPair
 
 	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.id)
 	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
@@ -555,7 +524,6 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 	copy(pka[:], common.Reverse(pkAlice))
 	copy(pkb[:], common.Reverse(pkBob))
 
-	// TODO: put auth in swapState
 	s.txOpts.Value = amount.BigInt()
 	defer func() {
 		s.txOpts.Value = nil
