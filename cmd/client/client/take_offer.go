@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/rpc"
-	"github.com/noot/atomic-swap/rpcclient"
 )
 
 // TakeOffer calls net_takeOffer.

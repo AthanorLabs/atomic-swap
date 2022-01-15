@@ -3,7 +3,7 @@ package monero
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/rpcclient"
+	"github.com/noot/atomic-swap/common/rpcclient"
 )
 
 // DaemonClient represents a monerod client.

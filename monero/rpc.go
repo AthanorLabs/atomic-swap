@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/noot/atomic-swap/common/rpcclient"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/rpcclient"
 )
 
 type generateFromKeysRequest struct {

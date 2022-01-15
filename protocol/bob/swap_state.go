@@ -19,6 +19,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
@@ -26,7 +27,6 @@ import (
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"
-	"github.com/noot/atomic-swap/types"
 )
 
 var nextID uint64

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/types"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )

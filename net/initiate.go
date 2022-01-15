@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/noot/atomic-swap/types"
+	"github.com/noot/atomic-swap/common/types"
 
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
