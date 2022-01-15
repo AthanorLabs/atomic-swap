@@ -1,5 +1,5 @@
-.PHONY: lint test install build 
-all: install
+.PHONY: lint test install build build-dleq
+all: build-dleq install
 
 lint: 
 	./scripts/install_lint.sh
@@ -16,3 +16,6 @@ install:
 
 build:
 	./scripts/build.sh
+
+build-dleq:
+	./scripts/install-rust.sh && cd farcaster-dleq && cargo build --release && cd ..

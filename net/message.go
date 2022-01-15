@@ -104,24 +104,26 @@ func (m *QueryResponse) Type() byte {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID         string
-	ProvidedAmount  float64
-	PublicSpendKey  string
-	PublicViewKey   string
-	PrivateViewKey  string
-	PrivateKeyProof string
-	EthAddress      string
+	OfferID            string
+	ProvidedAmount     float64
+	PublicSpendKey     string
+	PublicViewKey      string
+	PrivateViewKey     string
+	DLEqProof          string
+	Secp256k1PublicKey string
+	EthAddress         string
 }
 
 // String ...
 func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s PrivateKeyProof=%s EthAddress=%s", //nolint:lll
+	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
 		m.OfferID,
 		m.ProvidedAmount,
 		m.PublicSpendKey,
 		m.PublicViewKey,
 		m.PrivateViewKey,
-		m.PrivateKeyProof,
+		m.DLEqProof,
+		m.Secp256k1PublicKey,
 		m.EthAddress,
 	)
 }
