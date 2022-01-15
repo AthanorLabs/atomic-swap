@@ -19,6 +19,7 @@ const (
 	initialAdvertisementTimeout = time.Millisecond
 	tryAdvertiseTimeout         = time.Second * 30
 	defaultAdvertiseTTL         = time.Minute * 5
+	defaultMaxPeers             = 50 // TODO: make this configurable
 )
 
 type discovery struct {
@@ -143,16 +144,15 @@ func (d *discovery) discover(provides common.ProvidesCoin,
 			log.Debugf("found new peer via DHT: peer=%s", peer.ID)
 			peers = append(peers, peer)
 
-			// // found a peer, try to connect if we need more peers
-			// if len(d.h.Network().Peers()) < d.maxPeers {
-			// 	err = d.h.Connect(d.ctx, peer)
-			// 	if err != nil {
-			// 		logger.Trace("failed to connect to discovered peer", "peer", peer.ID, "err", err)
-			// 	}
-			// } else {
-			d.h.Peerstore().AddAddrs(peer.ID, peer.Addrs, peerstore.PermanentAddrTTL)
-			//return
-			// }
+			// found a peer, try to connect if we need more peers
+			if len(d.h.Network().Peers()) < defaultMaxPeers {
+				err = d.h.Connect(d.ctx, peer)
+				if err != nil {
+					log.Debugf("failed to connect to discovered peer %s: %s", peer.ID, err)
+				}
+			} else {
+				d.h.Peerstore().AddAddrs(peer.ID, peer.Addrs, peerstore.PermanentAddrTTL)
+			}
 		}
 	}
 }

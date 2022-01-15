@@ -13,6 +13,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
+const (
+	swapID          = "/swap/0"
+	protocolTimeout = time.Second * 5
+)
+
 // Handler handles swap initiation messages.
 // It is implemented by *bob.bob
 type Handler interface {
@@ -30,11 +35,6 @@ type SwapState interface {
 	SendKeysMessage() (*SendKeysMessage, error)
 	ReceivedAmount() float64
 }
-
-const (
-	swapID          = "/swap/0"
-	protocolTimeout = time.Second * 5
-)
 
 func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) error {
 	h.swapMu.Lock()

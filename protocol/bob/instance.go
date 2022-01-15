@@ -14,9 +14,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -84,9 +82,6 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		return nil, err
 	}
 
-	// auth.GasLimit = 3027733
-	// auth.GasPrice = big.NewInt(2000000000)
-
 	pub := pk.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -146,102 +141,4 @@ func (b *Instance) SetGasPrice(gasPrice uint64) {
 
 func (b *Instance) openWallet() error { //nolint
 	return b.client.OpenWallet(b.walletFile, b.walletPassword)
-}
-
-// watchForReady watches for Alice to call Ready() on the swap contract, allowing
-// Bob to call Claim().
-func (s *swapState) watchForReady() (<-chan struct{}, error) { //nolint:unused
-	watchOpts := &bind.WatchOpts{
-		Context: s.ctx,
-	}
-
-	done := make(chan struct{})
-	ch := make(chan *swap.SwapReady)
-	defer close(done)
-
-	// watch for Refund() event on chain, calculate unlock key as result
-	sub, err := s.contract.WatchReady(watchOpts, ch)
-	if err != nil {
-		return nil, err
-	}
-
-	defer sub.Unsubscribe()
-
-	go func() {
-		for {
-			select {
-			case event := <-ch:
-				if !event.B {
-					continue
-				}
-
-				// contract is ready!!
-				close(done)
-			case <-s.ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return done, nil
-}
-
-// watchForRefund watches for the Refund event in the contract.
-// This should be called before LockFunds.
-// If a keypair is sent over this channel, the rest of the protocol should be aborted.
-//
-// If Alice chooses to refund and thus reveals s_a,
-// the private spend and view keys that contain the previously locked monero
-// ((s_a + s_b), (v_a + v_b)) are sent over the channel.
-// Bob can then use these keys to move his funds if he wishes.
-func (s *swapState) watchForRefund() (<-chan *mcrypto.PrivateKeyPair, error) { //nolint:unused
-	watchOpts := &bind.WatchOpts{
-		Context: s.ctx,
-	}
-
-	out := make(chan *mcrypto.PrivateKeyPair)
-	ch := make(chan *swap.SwapRefunded)
-	defer close(out)
-
-	// watch for Refund() event on chain, calculate unlock key as result
-	sub, err := s.contract.WatchRefunded(watchOpts, ch)
-	if err != nil {
-		return nil, err
-	}
-
-	defer sub.Unsubscribe()
-
-	go func() {
-		for {
-			select {
-			case refund := <-ch:
-				if refund == nil {
-					continue
-				}
-
-				// got Alice's secret
-				sa := refund.S
-				skA, err := mcrypto.NewPrivateSpendKey(sa[:])
-				if err != nil {
-					log.Info("failed to convert Alice's secret into a key: %w", err)
-					return
-				}
-
-				vkA, err := skA.View()
-				if err != nil {
-					log.Info("failed to get view key from Alice's secret spend key: %w", err)
-					return
-				}
-
-				skAB := mcrypto.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
-				vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-				kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-				out <- kpAB
-			case <-s.ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return out, nil
 }
