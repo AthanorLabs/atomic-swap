@@ -390,12 +390,12 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 // generateKeys generates Bob's spend and view keys (s_b, v_b)
 // It returns Bob's public spend key and his private view key, so that Alice can see
 // if the funds are locked.
-func (s *swapState) generateKeys() error {
+func (s *swapState) generateAndSetKeys() error {
 	if s.privkeys != nil {
 		return nil
 	}
 
-	keysAndProof, err := pcommon.GenerateKeysAndProof()
+	keysAndProof, err := generateKeys()
 	if err != nil {
 		return err
 	}
@@ -411,6 +411,18 @@ func (s *swapState) generateKeys() error {
 	}
 
 	return nil
+}
+
+func generateKeys() (*pcommon.KeysAndProof, error) {
+	return pcommon.GenerateKeysAndProof()
+}
+
+// getSecret secrets returns the current secret scalar used to unlock funds from the contract.
+func (s *swapState) getSecret() [32]byte {
+	secret := s.dleqProof.Secret()
+	var sc [32]byte
+	copy(sc[:], common.Reverse(secret[:]))
+	return sc
 }
 
 // setAlicePublicKeys sets Alice's public spend and view keys
@@ -616,10 +628,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	log.Info("Bob's balance before claim: ", balance)
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	secret := s.dleqProof.Secret()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret[:]))
-
+	sc := s.getSecret()
 	tx, err := s.contract.Claim(s.txOpts, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err

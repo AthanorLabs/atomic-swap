@@ -46,6 +46,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 
 	var sc [32]byte
 	copy(sc[:], secret.Bytes())
+
 	ctx, cancel := context.WithCancel(a.ctx)
 	s := &swapState{
 		ctx:       ctx,

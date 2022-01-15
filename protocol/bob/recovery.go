@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/noot/atomic-swap/dleq"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 )
 
@@ -33,14 +34,18 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
 	txOpts.GasPrice = b.gasPrice
 	txOpts.GasLimit = b.gasLimit
 
+	var sc [32]byte
+	copy(sc[:], secret.Bytes())
+
 	ctx, cancel := context.WithCancel(b.ctx)
 	s := &swapState{
-		ctx:      ctx,
-		cancel:   cancel,
-		bob:      b,
-		txOpts:   txOpts,
-		privkeys: kp,
-		pubkeys:  pubkp,
+		ctx:       ctx,
+		cancel:    cancel,
+		bob:       b,
+		txOpts:    txOpts,
+		privkeys:  kp,
+		pubkeys:   pubkp,
+		dleqProof: dleq.NewProofWithSecret(sc),
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

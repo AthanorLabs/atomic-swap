@@ -5,28 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
-
 	"github.com/stretchr/testify/require"
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
 	inst, s := newTestInstance(t)
 
-	bkp, err := mcrypto.GenerateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
-	s.privkeys = bkp
-	s.pubkeys = bkp.PublicKeyPair()
 
-	refundKey := s.pubkeys.SpendKey().Bytes()
-	var sr [32]byte
-	copy(sr[:], common.Reverse(refundKey))
+	sr := s.secp256k1Pub.Keccak256()
 
 	duration, err := time.ParseDuration("1440m")
 	require.NoError(t, err)
 	addr, _ := deploySwap(t, inst, s, sr, big.NewInt(1), duration)
-	rs, err := NewRecoveryState(inst, bkp.SpendKey(), addr)
+	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr)
 	require.NoError(t, err)
 	return rs
 }
@@ -55,10 +48,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
-	secret := rs.ss.privkeys.SpendKeyBytes()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
-
+	sc := rs.ss.getSecret()
 	_, err = rs.ss.contract.Refund(rs.ss.txOpts, sc)
 	require.NoError(t, err)
 

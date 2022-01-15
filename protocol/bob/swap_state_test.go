@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"
@@ -78,10 +77,10 @@ func newTestAliceSendKeySMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.K
 	return msg, keysAndProof
 }
 
-func TestSwapState_GenerateKeys(t *testing.T) {
+func TestSwapState_GenerateAndSetKeys(t *testing.T) {
 	_, swapState := newTestInstance(t)
 
-	err := swapState.generateKeys()
+	err := swapState.generateAndSetKeys()
 	require.NoError(t, err)
 	require.NotNil(t, swapState.privkeys)
 	require.NotNil(t, swapState.pubkeys)
@@ -90,14 +89,13 @@ func TestSwapState_GenerateKeys(t *testing.T) {
 
 func TestSwapState_ClaimFunds(t *testing.T) {
 	bob, swapState := newTestInstance(t)
-	err := swapState.generateKeys()
+	err := swapState.generateAndSetKeys()
 	require.NoError(t, err)
 
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	var claimKey [32]byte
-	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
+	claimKey := swapState.secp256k1Pub.Keccak256()
 	swapState.contractAddr, _, swapState.contract, err = swap.DeploySwap(swapState.txOpts, conn,
 		claimKey, [32]byte{}, bob.ethAddress, defaultTimeoutDuration)
 	require.NoError(t, err)
@@ -134,8 +132,7 @@ func deploySwap(t *testing.T, bob *Instance, swapState *swapState, refundKey [32
 
 	tm := big.NewInt(int64(timeout.Seconds()))
 
-	var claimKey [32]byte
-	copy(claimKey[:], common.Reverse(swapState.privkeys.SpendKey().Public().Bytes()))
+	claimKey := swapState.secp256k1Pub.Keccak256()
 
 	swapState.txOpts.Value = amount
 	defer func() {
@@ -151,12 +148,12 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	bob, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := mcrypto.GenerateKeys()
+	aliceKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
+	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
 	msg := &net.NotifyContractDeployed{}
 	resp, done, err := s.HandleProtocolMessage(msg)
@@ -189,12 +186,12 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	defer s.cancel()
 	s.bob.net = new(mockNet)
 	s.nextExpectedMessage = &net.NotifyContractDeployed{}
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := mcrypto.GenerateKeys()
+	aliceKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
+	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
 	msg := &net.NotifyContractDeployed{}
 	resp, done, err := s.HandleProtocolMessage(msg)
@@ -229,7 +226,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	bob, s := newTestInstance(t)
 
 	s.nextExpectedMessage = &net.NotifyReady{}
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
@@ -251,18 +248,17 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 func TestSwapState_handleRefund(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := mcrypto.GenerateKeys()
+	aliceKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
+	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
 
-	var refundKey [32]byte
-	copy(refundKey[:], common.Reverse(aliceKeys.SpendKey().Public().Bytes()))
+	refundKey := aliceKeysAndProof.Secp256k1PublicKey.Keccak256()
 	_, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
@@ -270,7 +266,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
-	secret := aliceKeys.SpendKeyBytes()
+	secret := aliceKeysAndProof.PrivateKeyPair.SpendKeyBytes()
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
@@ -285,28 +281,27 @@ func TestSwapState_handleRefund(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := mcrypto.GenerateKeys()
+	aliceKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
+	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
 
-	var refundKey [32]byte
-	copy(refundKey[:], common.Reverse(aliceKeys.SpendKey().Public().Bytes()))
+	refundKey := aliceKeysAndProof.Secp256k1PublicKey.Keccak256()
 	_, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(s.providesAmount)
 	require.NoError(t, err)
 
-	// call refund w/ Alice's spend key
-	secret := aliceKeys.SpendKeyBytes()
+	// call refund w/ Alice's secret
+	secret := aliceKeysAndProof.DLEqProof.Secret()
 	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
+	copy(sc[:], common.Reverse(secret[:]))
 
 	tx, err := s.contract.Refund(s.txOpts, sc)
 	require.NoError(t, err)
@@ -325,28 +320,27 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	err := s.generateKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	aliceKeys, err := mcrypto.GenerateKeys()
+	aliceKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setAlicePublicKeys(aliceKeys.PublicKeyPair(), nil)
+	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
 
-	var refundKey [32]byte
-	copy(refundKey[:], common.Reverse(aliceKeys.SpendKey().Public().Bytes()))
+	refundKey := aliceKeysAndProof.Secp256k1PublicKey.Keccak256()
 	s.contractAddr, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(s.providesAmount)
 	require.NoError(t, err)
 
-	// call refund w/ Alice's spend key
-	secret := aliceKeys.SpendKeyBytes()
+	// call refund w/ Alice's secret
+	secret := aliceKeysAndProof.DLEqProof.Secret()
 	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
+	copy(sc[:], common.Reverse(secret[:]))
 
 	tx, err := s.contract.Refund(s.txOpts, sc)
 	require.NoError(t, err)
