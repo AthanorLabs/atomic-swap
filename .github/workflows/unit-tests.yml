@@ -49,3 +49,9 @@ jobs:
 
       - name: Run integration tests
         run: ./scripts/run-integration-tests.sh
+
+      - name: Run Hardhat tests
+        run: |
+          cd ethereum
+          npm install --save-dev hardhat
+          npx hardhat test
