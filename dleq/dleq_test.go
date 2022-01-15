@@ -43,12 +43,6 @@ func TestFarcasterDLEqProof_createKeys(t *testing.T) {
 
 	curve := secp256k1.S256()
 
-	// TODO: figure out how this is calculated exactly?
-	// might be ok, as long as the contract can verify the pubkey and secret.
-	// x, y := curve.ScalarBaseMult(proof.secret[:])
-	// require.Equal(t, res.secp256k1X[:], x.Bytes())
-	// require.Equal(t, res.secp256k1Y[:], y.Bytes())
-
 	xb := res.secp256k1Pub.X()
 	yb := res.secp256k1Pub.Y()
 	x := big.NewInt(0).SetBytes(xb[:])
