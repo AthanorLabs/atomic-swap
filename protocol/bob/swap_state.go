@@ -113,6 +113,10 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
+	if err := s.generateAndSetKeys(); err != nil {
+		return nil, err
+	}
+
 	return &net.SendKeysMessage{
 		ProvidedAmount:     s.providesAmount.AsMonero(),
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),

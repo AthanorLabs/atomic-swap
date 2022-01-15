@@ -70,8 +70,14 @@ var (
 
 // TODO: this is kinda sus, make it actually find the bin better. maybe env vars?
 func getFarcasterDLEqBinaryPath() string {
-	bin := "../farcaster-dleq/target/release/dleq-gen"
+	bin := "./farcaster-dleq/target/release/dleq-gen"
 	_, err := os.Stat(bin)
+	if !errors.Is(err, os.ErrNotExist) {
+		return "./farcaster-dleq/target/release/"
+	}
+
+	bin = "../farcaster-dleq/target/release/dleq-gen"
+	_, err = os.Stat(bin)
 	if !errors.Is(err, os.ErrNotExist) {
 		return "../farcaster-dleq/target/release/"
 	}
