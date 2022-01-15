@@ -7,12 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/noot/atomic-swap/common"
 
 	ed25519 "filippo.io/edwards25519"
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 const privateKeySize = 32
@@ -163,6 +161,11 @@ func (k *PrivateSpendKey) Hash() [32]byte {
 func (k *PrivateSpendKey) HashString() string {
 	h := Keccak256(k.key.Bytes())
 	return hex.EncodeToString(h[:])
+}
+
+// Bytes returns the PrivateSpendKey as canonical bytes
+func (k *PrivateSpendKey) Bytes() []byte {
+	return k.key.Bytes()
 }
 
 // PrivateViewKey represents a monero private view key.
@@ -324,11 +327,6 @@ func GenerateKeys() (*PrivateKeyPair, error) {
 	}
 
 	return sk.AsPrivateKeyPair()
-}
-
-// PublicSpendOnSecp256k1 returns a public spend key on the secp256k1 curve
-func PublicSpendOnSecp256k1(k []byte) (x, y *big.Int) {
-	return secp256k1.S256().ScalarBaseMult(k)
 }
 
 // SumSpendAndViewKeys sums two PublicKeyPairs, returning another PublicKeyPair.

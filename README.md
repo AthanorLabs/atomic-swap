@@ -121,6 +121,15 @@ If all goes well, you should see Alice and Bob successfully exchange messages an
 
 ### Developer instructions
 
+##### Compiling DLEq binaries
+
+To compile the farcaster-dleq binaries used, you can run:
+```
+make build-dleq
+```
+
+This will install Rust (if it isn't already installed) and build the binaries. The resulting binaries will be in `./farcaster-dleq/target/release/`.
+
 ##### Compiling contract bindings
 
 If you update the `Swap.sol` contract for some reason, you will need to re-generate the Go bindings for the contract. **Note:** you do *not* need to do this to try out the swap; only if you want to edit the contract for development purposes.

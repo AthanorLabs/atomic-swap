@@ -4,11 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/noot/atomic-swap/alice"
-	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	mcrypto "github.com/noot/atomic-swap/monero/crypto"
+	"github.com/noot/atomic-swap/protocol/alice"
+	"github.com/noot/atomic-swap/protocol/bob"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"

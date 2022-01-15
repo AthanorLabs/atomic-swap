@@ -8,11 +8,11 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/alice"
-	"github.com/noot/atomic-swap/bob"
 	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/alice"
+	"github.com/noot/atomic-swap/protocol/bob"
 	"github.com/noot/atomic-swap/rpc"
 
 	logging "github.com/ipfs/go-log"
