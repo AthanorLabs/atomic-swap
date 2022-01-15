@@ -1,5 +1,5 @@
 {
-  "name": "hardhat-project",
+  "name": "atomic-swap",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
@@ -7,12 +7,13 @@
     "chai": "^4.3.4",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.1",
-    "hardhat": "^2.6.7",
+    "hardhat": "^2.8.0",
     "hardhat-gas-reporter": "^1.0.4",
     "web3": "^1.6.0"
   },
   "dependencies": {
     "noble-ed25519": "^1.2.6",
+    "noble-secp256k1": "^1.2.14",
     "rewire": "^5.0.0"
   }
 }

@@ -100,7 +100,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		}
 	}()
 
-	msgBytes := make([]byte, 2048)
+	msgBytes := make([]byte, 1<<17)
 
 	for {
 		tot, err := readStream(stream, msgBytes[:])

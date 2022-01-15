@@ -267,8 +267,8 @@ func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 	}
 
 	if length > uint64(len(buf)) {
-		log.Warn("received message with size greater than allocated message buffer",
-			"length", length, "buffer size", len(buf))
+		log.Warnf("received message with size greater than allocated message buffer: msg size=%d, buffer size=%d",
+			length, len(buf))
 		return 0, fmt.Errorf("message size greater than allocated message buffer: got %d", length)
 	}
 
