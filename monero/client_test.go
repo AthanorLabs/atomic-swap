@@ -58,6 +58,8 @@ func TestClient_Transfer(t *testing.T) {
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
 	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
+	err = cB.OpenWallet(walletFP, "")
+	require.NoError(t, err)
 
 	// transfer to account A+B
 	_, err = cA.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
