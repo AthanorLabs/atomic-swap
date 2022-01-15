@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/stretchr/testify/require"
 )
 

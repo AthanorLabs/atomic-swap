@@ -1,4 +1,4 @@
-package crypto
+package mcrypto
 
 import (
 	"crypto/rand"
@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/crypto"
 
 	ed25519 "filippo.io/edwards25519"
 )
@@ -141,7 +142,7 @@ func (k *PrivateSpendKey) AsPrivateKeyPair() (*PrivateKeyPair, error) {
 
 // View returns the private view key corresponding to the PrivateSpendKey.
 func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
-	h := Keccak256(k.key.Bytes())
+	h := crypto.Keccak256(k.key.Bytes())
 	vk, err := ed25519.NewScalar().SetBytesWithClamping(h[:])
 	if err != nil {
 		return nil, err
@@ -154,12 +155,12 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 
 // Hash returns the keccak256 of the secret key bytes
 func (k *PrivateSpendKey) Hash() [32]byte {
-	return Keccak256(k.key.Bytes())
+	return crypto.Keccak256(k.key.Bytes())
 }
 
 // HashString returns the keccak256 of the secret key bytes as a hex encoded string
 func (k *PrivateSpendKey) HashString() string {
-	h := Keccak256(k.key.Bytes())
+	h := crypto.Keccak256(k.key.Bytes())
 	return hex.EncodeToString(h[:])
 }
 

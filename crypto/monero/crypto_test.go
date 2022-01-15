@@ -1,12 +1,13 @@
-package crypto
+package mcrypto
 
 import (
 	"encoding/hex"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/crypto"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,7 +54,7 @@ func TestGeneratePrivateKeyPair(t *testing.T) {
 }
 
 func TestKeccak256(t *testing.T) {
-	res := crypto.Keccak256([]byte{1})
-	res2 := Keccak256([]byte{1})
+	res := ethcrypto.Keccak256([]byte{1})
+	res2 := crypto.Keccak256([]byte{1})
 	require.Equal(t, res, res2[:])
 }

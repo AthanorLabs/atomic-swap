@@ -19,10 +19,10 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 
 	"github.com/noot/atomic-swap/common"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"

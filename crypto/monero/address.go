@@ -1,7 +1,8 @@
-package crypto
+package mcrypto
 
 import (
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/crypto"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 type Address string
 
 func getChecksum(data ...[]byte) (result [4]byte) {
-	keccak256 := Keccak256(data...)
+	keccak256 := crypto.Keccak256(data...)
 	copy(result[:], keccak256[:4])
 	return
 }
