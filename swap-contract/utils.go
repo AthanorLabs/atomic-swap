@@ -8,11 +8,11 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/monero/crypto"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 )
 
 // GetSecretFromLog returns the secret from a Claimed or Refunded log
-func GetSecretFromLog(log *ethtypes.Log, event string) (*crypto.PrivateSpendKey, error) {
+func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey, error) {
 	if event != "Refunded" && event != "Claimed" {
 		return nil, errors.New("invalid event name, must be one of Claimed or Refunded")
 	}
@@ -34,7 +34,7 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*crypto.PrivateSpendKey,
 
 	s := res[0].([32]byte)
 
-	sk, err := crypto.NewPrivateSpendKey(common.Reverse(s[:]))
+	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(s[:]))
 	if err != nil {
 		return nil, err
 	}

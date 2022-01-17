@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/rpc"
-	"github.com/noot/atomic-swap/rpcclient"
 )
 
 // MakeOffer calls net_makeOffer.

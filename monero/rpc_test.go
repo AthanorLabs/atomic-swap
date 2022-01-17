@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/monero/crypto"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestCallGenerateFromKeys(t *testing.T) {
-	kp, err := crypto.GenerateKeys()
+	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
 	r, err := rand.Int(rand.Reader, big.NewInt(999))

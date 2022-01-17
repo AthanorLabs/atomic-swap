@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/types"
+	"github.com/noot/atomic-swap/common/types"
 )
 
 type offerManager struct {

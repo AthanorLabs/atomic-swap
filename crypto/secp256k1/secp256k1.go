@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
+	"github.com/noot/atomic-swap/crypto"
 )
 
 // PublicKey represents a secp256k1 public key
@@ -39,7 +39,7 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 
 // Keccak256 returns the heccak256 hash of the x and y coordinates concatenated
 func (k *PublicKey) Keccak256() [32]byte {
-	return mcrypto.Keccak256(append(k.x[:], k.y[:]...))
+	return crypto.Keccak256(append(k.x[:], k.y[:]...))
 }
 
 // X returns the x-coordinate of the key
