@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LGPLv3
-// Implemention based on https://ethresear.ch/t/you-can-kinda-abuse-ecrecover-to-do-ecmul-in-secp256k1-today
+// Implemention based on Vitalik's idea:
+// https://ethresear.ch/t/you-can-kinda-abuse-ecrecover-to-do-ecmul-in-secp256k1-today
 
 pragma solidity ^0.8.5;
 
