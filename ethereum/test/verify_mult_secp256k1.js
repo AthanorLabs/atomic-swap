@@ -9,7 +9,7 @@ function KeyPair(s, pubKey_x, pubKey_y) {
   this.pubKey_y = pubKey_y;
 }
 
-describe("Swap", function () {
+describe("Secp256k1", function () {
   const test_vecs = [
     new KeyPair('0xD30519BCAE8D180DBFCC94FE0B8383DC310185B0BE97B4365083EBCECCD75759',
       '0x3AF1E1EFA4D1E1AD5CB9E3967E98E901DAFCD37C44CF0BFB6C216997F5EE51DF',
@@ -21,23 +21,20 @@ describe("Swap", function () {
 
   let swap;
   beforeEach(async function () {
-    const Swap = await ethers.getContractFactory("SwapMock");
-    swap = await Swap.deploy();
+    const Secp256k1 = await ethers.getContractFactory("Secp256k1");
+    secp256k1 = await Secp256k1.deploy();
   });
 
   it("Should verify commitment correctly with test vecs", async function () {
-    let promises = [];
     test_vecs.forEach(async function (kp, i) {
       const qKeccak = ethers.utils.solidityKeccak256(
         ["uint256", "uint256"],
         [kp.pubKey_x, kp.pubKey_y]);
 
-      console.log(qKeccak)
-
       console.log('Testing %s of %s test vectors...', i + 1, test_vecs.length);
-      promises.push(swap.testVerifySecret(arrayify(kp.s), arrayify(qKeccak)));
+      let ok  = await secp256k1.mulVerify(arrayify(kp.s), arrayify(qKeccak));
+      expect(ok).to.equal(true);
     });
-    await Promise.all(promises);
   });
 
   // TODO: write test with randomly generated secrets
