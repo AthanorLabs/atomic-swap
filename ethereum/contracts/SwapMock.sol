@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPLv3
+// SPDX-License-Identifier: LGPLv3
 
 pragma solidity ^0.8.5;
 
