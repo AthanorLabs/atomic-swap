@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/monero"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,6 +44,11 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 func TestClaimOrRecover_Recover(t *testing.T) {
 	// test case where Bob is able to reclaim his monero, after Alice refunds
 	rs := newTestRecoveryState(t)
+
+	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
+	addr, err := rs.ss.bob.client.GetAddress(0)
+	require.NoError(t, err)
+	_ = daemonClient.GenerateBlocks(addr.Address, 61)
 
 	// lock XMR
 	rs.ss.setAlicePublicKeys(rs.ss.pubkeys, nil)
