@@ -9,6 +9,8 @@ contract Secp256k1 {
     uint256 constant m =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
 
+    // mulVerify returns true if `Q = s * G` on the secp256k1 curve
+    // qKeccak is defined as uint256(keccak256(abi.encodePacked(qx, qy))
     function mulVerify(uint256 scalar, uint256 qKeccak) public pure
         returns(bool)
     {
