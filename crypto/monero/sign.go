@@ -1,4 +1,4 @@
-package crypto
+package mcrypto
 
 import (
 	"crypto/ed25519"

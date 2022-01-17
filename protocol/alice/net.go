@@ -15,7 +15,7 @@ func (a *Instance) Provides() common.ProvidesCoin {
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
-// The input units are ether and monero.
+// The input units are ether that we will provide.
 func (a *Instance) InitiateProtocol(providesAmount float64) (net.SwapState, error) {
 	if err := a.initiate(common.EtherToWei(providesAmount)); err != nil {
 		return nil, err

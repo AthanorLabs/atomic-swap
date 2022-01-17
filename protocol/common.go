@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 )
 
 // KeysAndProof contains a DLEq proof, a secp256k1 public key,

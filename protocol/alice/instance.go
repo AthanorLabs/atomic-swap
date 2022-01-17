@@ -12,9 +12,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
-	mcrypto "github.com/noot/atomic-swap/monero/crypto"
 	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/swap-contract"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -74,14 +72,9 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		return nil, err
 	}
 
-	// TODO: add --gas-limit flag and default params for L2
-	// auth.GasLimit = 35323600
-	// auth.GasPrice = big.NewInt(2000000000)
-
 	pub := pk.Public().(*ecdsa.PublicKey)
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
-
 	return &Instance{
 		ctx:        cfg.Ctx,
 		basepath:   cfg.Basepath,
@@ -105,62 +98,4 @@ func (a *Instance) SetMessageSender(n net.MessageSender) {
 // SetGasPrice sets the ethereum gas price for the instance to use (in wei).
 func (a *Instance) SetGasPrice(gasPrice uint64) {
 	a.gasPrice = big.NewInt(0).SetUint64(gasPrice)
-}
-
-// watchForClaim watches for Bob to call Claim() on the Swap contract.
-// When Claim() is called, revealing Bob's secret s_b, the secret key corresponding
-// to (s_a + s_b) will be sent over this channel, allowing Alice to claim the XMR it contains.
-func (s *swapState) watchForClaim() (<-chan *mcrypto.PrivateKeyPair, error) { //nolint:unused
-	watchOpts := &bind.WatchOpts{
-		Context: s.ctx,
-	}
-
-	out := make(chan *mcrypto.PrivateKeyPair)
-	ch := make(chan *swap.SwapClaimed)
-	defer close(out)
-
-	// watch for Refund() event on chain, calculate unlock key as result
-	sub, err := s.contract.WatchClaimed(watchOpts, ch)
-	if err != nil {
-		return nil, err
-	}
-
-	defer sub.Unsubscribe()
-
-	go func() {
-		log.Debug("watching for claim...")
-		for {
-			select {
-			case claim := <-ch:
-				if claim == nil {
-					continue
-				}
-
-				// got Bob's secret
-				sb := claim.S
-				skB, err := mcrypto.NewPrivateSpendKey(sb[:])
-				if err != nil {
-					log.Error("failed to convert Bob's secret into a key: ", err)
-					return
-				}
-
-				vkA, err := skB.View()
-				if err != nil {
-					log.Error("failed to get view key from Bob's secret spend key: ", err)
-					return
-				}
-
-				skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-				vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-				kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-
-				out <- kpAB
-				return
-			case <-s.ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return out, nil
 }

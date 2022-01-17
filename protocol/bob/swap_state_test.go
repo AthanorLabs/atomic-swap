@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swap-contract"
-	"github.com/noot/atomic-swap/types"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"

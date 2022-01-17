@@ -28,7 +28,7 @@ const (
 var log = logging.Logger("net")
 var _ Host = &host{}
 
-// Host represents a peer-to-peer node (ie. a hash)
+// Host represents a peer-to-peer node (ie. a host)
 type Host interface {
 	Start() error
 	Stop() error

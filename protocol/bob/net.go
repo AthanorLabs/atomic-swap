@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/types"
 
 	"github.com/fatih/color" //nolint:misspell
 )

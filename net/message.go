@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/noot/atomic-swap/types"
+	"github.com/noot/atomic-swap/common/types"
 )
 
 const (

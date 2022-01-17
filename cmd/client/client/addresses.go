@@ -3,8 +3,8 @@ package client
 import (
 	"encoding/json"
 
+	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/rpc"
-	"github.com/noot/atomic-swap/rpcclient"
 )
 
 // Addresses calls net_addresses.

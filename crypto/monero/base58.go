@@ -1,6 +1,6 @@
 // this file is from https://github.com/paxosglobal/moneroutil/tree/33d7e0c11a62d2ac67213781a0b485d0de4aca70
 
-package crypto
+package mcrypto
 
 import (
 	"math/big"
