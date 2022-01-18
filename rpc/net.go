@@ -166,14 +166,14 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinimumAmount float64
-	MaximumAmount float64
-	ExchangeRate  common.ExchangeRate
+	MinimumAmount float64             `json:"minimumAmount"`
+	MaximumAmount float64             `json:"maximumAmount"`
+	ExchangeRate  common.ExchangeRate `json:"exchangeRate"`
 }
 
 // MakeOfferResponse ...
 type MakeOfferResponse struct {
-	ID string
+	ID string `json:"offerID"`
 }
 
 // MakeOffer creates and advertises a new swap offer.
