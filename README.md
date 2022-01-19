@@ -28,40 +28,49 @@ Start ganache-cli with determinstic keys:
 ganache-cli -d
 ```
 
-Start monerod for regtest:
-```
+Start monerod for regtest, this binary is in the monero bin directory:
+```bash
+cd ./monero-x86_64-linux-gnu
 ./monerod --regtest --fixed-difficulty=1 --rpc-bind-port 18081 --offline
 ```
 
-Create a wallet (will represent Bob, who owns XMR):
+Create a wallet for "Bob", who will own XMR later on:
 ```
-./monero-wallet-cli // you will be prompted to create a wallet. remember the name and optionally the password for the upcoming steps
+./monero-wallet-cli // you will be prompted to create a wallet. In the next steps, we will go with "Bob", without password. Remember the name and optionally the password for the upcoming steps
 ```
+You do not need to mine blocks, and you can exit the the wallet-cli once Bob's account has been created by typing "exit".
 
-Start monero-wallet-rpc for Bob creating a wallet (make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
+Start monero-wallet-rpc. At launch it asks to open a wallet, type Bob (make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
 ```
 ./monero-wallet-rpc  --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
 ```
 
 Open the wallet:
+```bash
+curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"Bob","password":""}}' -H 'Content-Type: application/json'
 ```
-$ curl http://localhost:18082/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"test-wallet","password":"mytestpassword"}}' -H 'Content-Type: application/json'
-{
-  "id": "0",
-  "jsonrpc": "2.0",
-  "result": {
-  }
-}
+```bash
+# {
+#   "id": "0",
+#   "jsonrpc": "2.0",
+#   "result": {
+#   }
+# }
 ```
 
-Determine the address of `test-wallet` by running `monero-wallet-cli` and `address all`
+Unless you close the wallet, you will not be able to interract with the wallet, to close it run
+```
+curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"close_wallet","params":{"filename":"Bob","password":""}}' -H 'Content-Type: application/json'
+```
 
-Then, mine some blocks on the monero test chain by running the following RPC command, replacing the address with the one from the previous step:
+Determine the address of `Bob` by running `monero-wallet-cli`, opending Bob wallet and then type `address all`
+
+Then, mine some blocks on the monero test chain by running the following RPC command, replacing the address with the one from the previous step (Bob's wallet):
 ```
 curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB","amount_of_blocks":100}' -H 'Content-Type: application/json'
 ```
 
-This will deposit some XMR in your account.
+This will deposit some XMR in Bob's account.
 
 Start monero-wallet-rpc for Alice (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
 ```
@@ -87,7 +96,7 @@ Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933
 To run as Bob and connect to Alice, replace the bootnode in the following line with what Alice logged, and execute in terminal 2:
 
 ```
-./swapd --dev-bob --wallet-file test-wallet --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
+./swapd --dev-bob --wallet-file Bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWBW1cqB9t5fKP8yZPq3PcWcgbvuNai5ZpAeWFAbs5RNAA
 ```
 
 Note: when using the `--dev-alice` and `--dev-bob` flags, Alice's RPC server runs on http://localhost:5001, Bob's runs on http://localhost:5002 by default.
@@ -101,20 +110,21 @@ Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6
 ```
 
 Now, we can have Alice begin discovering peers who have offers advertised.
-```
-$ ./swapcli discover --provides XMR --search-time 3
-[[/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7]]
-```
-
-Query the returned peer as to how much they XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
-```
-$ ./swapcli query --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7
-Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
+```bash
+./swapcli discover --provides XMR --search-time 3
+# [[/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7]]
 ```
 
-Now, we can tell Alice to initiate the protocol w/ the peer it found (which is Bob):
+Query the returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
+```bash
+./swapcli query --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7
+# Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
 ```
-$ ./swapcli take --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.5
+
+Now, we can tell Alice to initiate the protocol w/ the peer (Bob), the offer (copy the Offer id from above), and a desired amount to swap:
+```bash
+./swapcli take --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.5
+# Swap successful, received 0 ETH
 ```
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.
