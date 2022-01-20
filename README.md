@@ -40,14 +40,14 @@ Create a wallet for "Bob", who will own XMR later on:
 ```
 You do not need to mine blocks, and you can exit the the wallet-cli once Bob's account has been created by typing "exit".
 
-Start monero-wallet-rpc on port 18084. Make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
+Start monero-wallet-rpc for Bob on port 18083. Make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
 ```
-./monero-wallet-rpc --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
+./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
 ```
 
 Open the wallet:
 ```bash
-curl http://localhost:18084/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"Bob","password":""}}' -H 'Content-Type: application/json'
+curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"Bob","password":""}}' -H 'Content-Type: application/json'
 
 # {
 #   "id": "0",
@@ -69,10 +69,6 @@ curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","meth
 
 This will deposit some XMR in Bob's account.
 
-Start monero-wallet-rpc for Bob, on port 18083 (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
-```
-./monero-wallet-rpc  --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
-```
 
 Start monero-wallet-rpc for Alice on port 18084 (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
 ```
