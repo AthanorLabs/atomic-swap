@@ -8,6 +8,7 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 
@@ -58,7 +59,7 @@ func (s *Server) Start() <-chan error {
 
 		log.Infof("starting RPC server on http://localhost:%d", s.port)
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), r); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), handlers.CORS()(r)); err != nil {
 			log.Errorf("failed to start RPC server: %s", err)
 			errCh <- err
 		}
