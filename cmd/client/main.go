@@ -243,16 +243,11 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	c := client.NewClient(endpoint)
-	ok, received, err := c.TakeOffer(maddr, offerID, providesAmount)
+	id, err := c.TakeOffer(maddr, offerID, providesAmount)
 	if err != nil {
 		return err
 	}
 
-	if ok {
-		fmt.Printf("Swap successful, received %v ETH\n", received)
-	} else {
-		fmt.Printf("Swap failed! Please check swapd logs for additional information.")
-	}
-
+	fmt.Printf("Initiated swap with ID=%d\n", id)
 	return nil
 }

@@ -117,6 +117,11 @@ func (s *swapState) ReceivedAmount() float64 {
 	return s.desiredAmount.AsMonero()
 }
 
+// ID returns the ID of the swap
+func (s *swapState) ID() uint64 {
+	return s.id
+}
+
 // ProtocolExited is called by the network when the protocol stream closes.
 // If it closes prematurely, we need to perform recovery.
 func (s *swapState) ProtocolExited() error {

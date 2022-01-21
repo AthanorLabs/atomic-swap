@@ -33,14 +33,13 @@ type SwapState interface {
 
 	// used by RPC
 	SendKeysMessage() (*SendKeysMessage, error)
-	ReceivedAmount() float64
+	ID() uint64
 }
 
 func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
-	// TODO: need a lock for this, otherwise two streams can enter this func
 	if h.swapState != nil {
 		return errors.New("already have ongoing swap")
 	}
@@ -67,7 +66,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) er
 	}
 
 	h.swapState = s
-	h.handleProtocolStreamInner(stream)
+	go h.handleProtocolStreamInner(stream)
 	return nil
 }
 
