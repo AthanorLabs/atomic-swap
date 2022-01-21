@@ -10,6 +10,15 @@
 *.so
 *.dylib
 
+# Monero dir
+monero.tar.bz2
+/monero-x86*
+
+# bin
+swapcli
+swapd
+swaprecover
+
 # Test binary, built with `go test -c`
 *.test
 
