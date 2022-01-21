@@ -7,6 +7,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/swap"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -24,10 +25,11 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Port  uint16
-	Net   Net
-	Alice Alice
-	Bob   Bob
+	Port        uint16
+	Net         Net
+	Alice       Alice
+	Bob         Bob
+	SwapManager SwapManager
 }
 
 // NewServer ...
@@ -84,4 +86,10 @@ type Bob interface {
 	Protocol
 	MakeOffer(offer *types.Offer) error
 	SetMoneroWalletFile(file, password string) error
+}
+
+// SwapManager ...
+type SwapManager interface {
+	GetPastSwap(id uint64) *swap.Info
+	GetOngoingSwap() *swap.Info
 }

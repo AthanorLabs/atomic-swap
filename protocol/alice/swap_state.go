@@ -15,14 +15,13 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
 )
-
-var nextID uint64
 
 var (
 	errMissingKeys    = errors.New("did not receive Bob's public spend or private view key")
@@ -37,10 +36,7 @@ type swapState struct {
 	cancel context.CancelFunc
 	sync.Mutex
 
-	id uint64
-	// amount of ETH we are providing this swap, and the amount of XMR we should receive.
-	providesAmount common.EtherAmount
-	desiredAmount  common.MoneroAmount
+	info *pswap.Info
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -65,10 +61,6 @@ type swapState struct {
 	// channels
 	xmrLockedCh chan struct{}
 	claimedCh   chan struct{}
-
-	// set to true upon creating of the XMR wallet
-	success  bool
-	refunded bool
 }
 
 func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, error) {
@@ -80,21 +72,23 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 	txOpts.GasPrice = a.gasPrice
 	txOpts.GasLimit = a.gasLimit
 
-	ctx, cancel := context.WithCancel(a.ctx)
+	info := pswap.NewInfo(common.ProvidesETH, providesAmount.AsEther(), 0, 0, pswap.Ongoing)
+	if err := a.swapManager.AddSwap(info); err != nil {
+		return nil, err
+	}
 
+	ctx, cancel := context.WithCancel(a.ctx)
 	s := &swapState{
 		ctx:                 ctx,
 		cancel:              cancel,
 		alice:               a,
-		id:                  nextID,
-		providesAmount:      providesAmount,
 		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
+		info:                info,
 	}
 
-	nextID++
 	return s, nil
 }
 
@@ -114,12 +108,20 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
-	return s.desiredAmount.AsMonero()
+	return s.info.ReceivedAmount()
+}
+
+func (s *swapState) providedAmountInWei() common.EtherAmount {
+	return common.EtherToWei(s.info.ProvidedAmount())
+}
+
+func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
+	return common.MoneroToPiconero(s.info.ReceivedAmount())
 }
 
 // ID returns the ID of the swap
 func (s *swapState) ID() uint64 {
-	return s.id
+	return s.info.ID()
 }
 
 // ProtocolExited is called by the network when the protocol stream closes.
@@ -132,10 +134,11 @@ func (s *swapState) ProtocolExited() error {
 		// stop all running goroutines
 		s.cancel()
 		s.alice.swapState = nil
+		s.alice.swapManager.CompleteOngoingSwap()
 	}()
 
-	if s.success {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
+	if s.info.Status() == pswap.Success {
+		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.info.ID())
 		log.Info(str)
 		return nil
 	}
@@ -143,33 +146,35 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
+		s.info.SetStatus(pswap.Aborted)
 		return errors.New("swap cancelled early, but before any locking happened")
 	case *net.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
+			s.info.SetStatus(pswap.Aborted)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
+		s.info.SetStatus(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case *net.NotifyClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
+			s.info.SetStatus(pswap.Aborted)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
+		s.info.SetStatus(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
+		s.info.SetStatus(pswap.Aborted)
 		return errors.New("unexpected message type")
-	}
-
-	if s.refunded {
-		return errors.New("swap refunded")
 	}
 
 	return nil
@@ -244,7 +249,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.id)
+	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.info.ID())
 	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
 		return err
 	}
@@ -303,7 +308,7 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
 	}
 
-	fp := fmt.Sprintf("%s/%d/contractaddress", s.alice.basepath, s.id)
+	fp := fmt.Sprintf("%s/%d/contractaddress", s.alice.basepath, s.info.ID())
 	if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
 		return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
@@ -355,8 +360,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, errors.New("failed to call Refund in Swap.sol")
 	}
 
-	s.success = true
-	s.refunded = true
+	s.info.SetStatus(pswap.Refunded)
 	return tx.Hash(), nil
 }
 
@@ -366,7 +370,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	fp := fmt.Sprintf("%s/%d/swap-secret", s.alice.basepath, s.id)
+	fp := fmt.Sprintf("%s/%d/swap-secret", s.alice.basepath, s.info.ID())
 	if err := mcrypto.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
 		return "", err
 	}

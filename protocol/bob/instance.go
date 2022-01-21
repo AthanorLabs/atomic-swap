@@ -15,6 +15,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -45,6 +46,7 @@ type Instance struct {
 	net net.MessageSender
 
 	offerManager *offerManager
+	swapManager  *swap.Manager
 
 	swapMu    sync.Mutex
 	swapState *swapState
@@ -62,6 +64,7 @@ type Config struct {
 	Environment                common.Environment
 	ChainID                    int64
 	GasPrice                   *big.Int
+	SwapManager                *swap.Manager
 	GasLimit                   uint64
 }
 
@@ -120,6 +123,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		ethAddress:   addr,
 		chainID:      big.NewInt(cfg.ChainID),
 		offerManager: newOfferManager(),
+		swapManager:  cfg.SwapManager,
 	}, nil
 }
 
