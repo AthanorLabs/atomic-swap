@@ -204,5 +204,5 @@ func TestAlice_TakeOffer(t *testing.T) {
 
 	id, err := c.TakeOffer(providers[0][0], offerID, 0.1)
 	require.NoError(t, err)
-	require.Equal(t, 0, id)
+	require.Equal(t, uint64(0), id)
 }
