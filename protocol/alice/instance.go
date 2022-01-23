@@ -13,6 +13,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -43,6 +44,8 @@ type Instance struct {
 	// non-nil if a swap is currently happening, nil otherwise
 	swapMu    sync.Mutex
 	swapState *swapState
+
+	swapManager *swap.Manager
 }
 
 // Config contains the configuration values for a new Alice instance.
@@ -56,6 +59,7 @@ type Config struct {
 	ChainID              int64
 	GasPrice             *big.Int
 	GasLimit             uint64
+	SwapManager          *swap.Manager
 }
 
 // NewInstance returns a new instance of Alice.
@@ -86,7 +90,8 @@ func NewInstance(cfg *Config) (*Instance, error) {
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
 		},
-		chainID: big.NewInt(cfg.ChainID),
+		chainID:     big.NewInt(cfg.ChainID),
+		swapManager: cfg.SwapManager,
 	}, nil
 }
 

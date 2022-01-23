@@ -39,7 +39,7 @@ func (b *Instance) initiate(offerID types.Hash, providesAmount common.MoneroAmou
 		return err
 	}
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.id))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil
 }

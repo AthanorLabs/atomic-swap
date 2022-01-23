@@ -26,10 +26,9 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swap-contract"
 )
-
-var nextID uint64
 
 var (
 	errMissingKeys       = errors.New("did not receive Alice's public spend or view key")
@@ -50,10 +49,8 @@ type swapState struct {
 	cancel context.CancelFunc
 	sync.Mutex
 
-	id             uint64
-	providesAmount common.MoneroAmount
-	desiredAmount  common.EtherAmount
-	offerID        types.Hash
+	info    *pswap.Info
+	offerID types.Hash
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -77,9 +74,7 @@ type swapState struct {
 	// channels
 	readyCh chan struct{}
 
-	// set to true on claiming the ETH or reclaiming XMR
-	completed            bool
-	refunded             bool
+	// address of reclaimed monero wallet, if the swap is refunded
 	moneroReclaimAddress mcrypto.Address
 }
 
@@ -92,22 +87,25 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 	txOpts.GasPrice = b.gasPrice
 	txOpts.GasLimit = b.gasLimit
 
-	ctx, cancel := context.WithCancel(b.ctx)
+	exchangeRate := common.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+	info := pswap.NewInfo(common.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
+		exchangeRate, pswap.Ongoing)
+	if err := b.swapManager.AddSwap(info); err != nil {
+		return nil, err
+	}
 
+	ctx, cancel := context.WithCancel(b.ctx)
 	s := &swapState{
 		ctx:                 ctx,
 		cancel:              cancel,
 		bob:                 b,
-		id:                  nextID,
-		providesAmount:      providesAmount,
-		desiredAmount:       desiredAmount,
 		offerID:             offerID,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
+		info:                info,
 	}
 
-	nextID++
 	return s, nil
 }
 
@@ -118,7 +116,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}
 
 	return &net.SendKeysMessage{
-		ProvidedAmount:     s.providesAmount.AsMonero(),
+		ProvidedAmount:     s.info.ProvidedAmount(),
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
@@ -129,7 +127,12 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
-	return s.desiredAmount.AsEther()
+	return s.info.ReceivedAmount()
+}
+
+// ID returns the ID of the swap
+func (s *swapState) ID() uint64 {
+	return s.info.ID()
 }
 
 // ProtocolExited is called by the network when the protocol stream closes.
@@ -142,28 +145,33 @@ func (s *swapState) ProtocolExited() error {
 		// stop all running goroutines
 		s.cancel()
 		s.bob.swapState = nil
+		s.bob.swapManager.CompleteOngoingSwap()
 	}()
 
-	// TODO: defer this?
-	if s.completed {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.id)
+	if s.info.Status() == pswap.Success {
+		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.ID())
 		log.Info(str)
 
-		if !s.refunded {
-			// remove offer, as it's been taken
-			s.bob.offerManager.deleteOffer(s.offerID)
-		}
+		// remove offer, as it's been taken
+		s.bob.offerManager.deleteOffer(s.offerID)
+		return nil
+	}
 
+	if s.info.Status() == pswap.Refunded {
+		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%d**", s.ID())
+		log.Info(str)
 		return nil
 	}
 
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
+		s.info.SetStatus(pswap.Aborted)
 		return errors.New("protocol exited before any funds were locked")
 	case *net.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
+		s.info.SetStatus(pswap.Aborted)
 		return errors.New("protocol exited before any funds were locked")
 	case *net.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
@@ -184,12 +192,12 @@ func (s *swapState) ProtocolExited() error {
 			return err
 		}
 
-		s.completed = true
-		s.refunded = true // TODO: return this
+		s.info.SetStatus(pswap.Refunded)
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
 	default:
+		s.info.SetStatus(pswap.Aborted)
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		return errors.New("unexpected message type")
 	}
@@ -215,7 +223,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.id)
+	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.ID())
 	if err = mcrypto.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
 		return "", err
 	}
@@ -286,7 +294,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.id)
+	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.ID())
 	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
 		return err
 	}
@@ -346,8 +354,9 @@ func (s *swapState) checkContract() error {
 		return err
 	}
 
-	if balance.Cmp(s.desiredAmount.BigInt()) < 0 {
-		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", balance, s.desiredAmount)
+	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
+	if balance.Cmp(expected) < 0 {
+		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", balance, expected)
 	}
 
 	constructedTopic := ethcommon.HexToHash("0x8d36aa70807342c3036697a846281194626fd4afa892356ad5979e03831ab080")

@@ -13,6 +13,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -38,13 +39,14 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 		EthereumPrivateKey:   common.DefaultPrivKeyAlice,
 		Environment:          common.Development,
 		ChainID:              common.MainnetConfig.EthereumChainID,
+		SwapManager:          pswap.NewManager(),
 	}
 
 	alice, err := NewInstance(cfg)
 	require.NoError(t, err)
 	swapState, err := newSwapState(alice, common.NewEtherAmount(1))
 	require.NoError(t, err)
-	swapState.desiredAmount = common.MoneroAmount(1)
+	swapState.info.SetReceivedAmount(1)
 	return alice, swapState
 }
 
@@ -144,7 +146,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	_, err = s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	s.desiredAmount = 0
+	s.info.SetReceivedAmount(0)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -186,7 +188,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	contractAddr, err := s.deployAndLockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	s.desiredAmount = 0
+	s.info.SetReceivedAmount(0)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -247,12 +249,12 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 257)
 
-	s.desiredAmount = 33333
+	s.info.SetReceivedAmount(33333)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(s.desiredAmount))
+	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(s.info.ReceivedAmount()))
 	require.NoError(t, err)
 	t.Log("transferred to account", xmrAddr)
 
