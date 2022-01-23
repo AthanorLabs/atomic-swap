@@ -116,7 +116,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		}
 
 		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), " msg=", msg.String(),
+			"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
 		)
 
 		var (

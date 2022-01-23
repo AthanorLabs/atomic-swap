@@ -354,7 +354,7 @@ func (s *swapState) checkContract() error {
 		return err
 	}
 
-	expected := common.EtherToWei(s.info.ProvidedAmount()).BigInt()
+	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
 	if balance.Cmp(expected) < 0 {
 		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", balance, expected)
 	}

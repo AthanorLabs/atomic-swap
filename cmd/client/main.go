@@ -86,7 +86,7 @@ var (
 			{
 				Name:    "take",
 				Aliases: []string{"t"},
-				Usage:   "initiate a swap by taking an offerl currently only eth holders can be the takers",
+				Usage:   "initiate a swap by taking an offer; currently only eth holders can be the takers",
 				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -100,6 +100,30 @@ var (
 					&cli.Float64Flag{
 						Name:  "provides-amount",
 						Usage: "amount of coin to send in the swap",
+					},
+					daemonAddrFlag,
+				},
+			},
+			{
+				Name:   "get-past-swap-ids",
+				Usage:  "get past swap IDs",
+				Action: runGetPastSwapIDs,
+				Flags:  []cli.Flag{daemonAddrFlag},
+			},
+			{
+				Name:   "get-ongoing-swap",
+				Usage:  "get information about ongoing swap, if there is one",
+				Action: runGetOngoingSwap,
+				Flags:  []cli.Flag{daemonAddrFlag},
+			},
+			{
+				Name:   "get-past-swap",
+				Usage:  "get information about a past swap with the given ID",
+				Action: runGetPastSwap,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:  "id",
+						Usage: "ID of swap to retrieve info for",
 					},
 					daemonAddrFlag,
 				},
@@ -249,5 +273,69 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Initiated swap with ID=%d\n", id)
+	return nil
+}
+
+func runGetPastSwapIDs(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	ids, err := c.GetPastSwapIDs()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Past swap IDs: %v\n", ids)
+	return nil
+}
+
+func runGetOngoingSwap(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	info, err := c.GetOngoingSwap()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("ID: %d\n Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
+		info.ID,
+		info.Provided,
+		info.ProvidedAmount,
+		info.ReceivedAmount,
+		info.ExchangeRate,
+		info.Status,
+	)
+	return nil
+}
+
+func runGetPastSwap(ctx *cli.Context) error {
+	id := ctx.Uint("id")
+
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	info, err := c.GetPastSwap(uint64(id))
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("ID: %d\n Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
+		id,
+		info.Provided,
+		info.ProvidedAmount,
+		info.ReceivedAmount,
+		info.ExchangeRate,
+		info.Status,
+	)
 	return nil
 }
