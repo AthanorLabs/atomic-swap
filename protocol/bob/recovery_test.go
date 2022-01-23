@@ -24,6 +24,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	addr, _ := deploySwap(t, inst, s, sr, big.NewInt(1), duration)
 	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr)
 	require.NoError(t, err)
+
 	return rs
 }
 
@@ -48,11 +49,11 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	addr, err := rs.ss.bob.client.GetAddress(0)
 	require.NoError(t, err)
-	_ = daemonClient.GenerateBlocks(addr.Address, 61)
+	_ = daemonClient.GenerateBlocks(addr.Address, 121)
 
 	// lock XMR
 	rs.ss.setAlicePublicKeys(rs.ss.pubkeys, nil)
-	addrAB, err := rs.ss.lockFunds(33000)
+	addrAB, err := rs.ss.lockFunds(333)
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
