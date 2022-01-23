@@ -88,7 +88,8 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 	txOpts.GasLimit = b.gasLimit
 
 	exchangeRate := common.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
-	info := pswap.NewInfo(common.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(), exchangeRate, pswap.Ongoing)
+	info := pswap.NewInfo(common.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
+		exchangeRate, pswap.Ongoing)
 	if err := b.swapManager.AddSwap(info); err != nil {
 		return nil, err
 	}

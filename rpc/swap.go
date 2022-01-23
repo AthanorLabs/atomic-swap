@@ -30,7 +30,7 @@ func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastI
 	return nil
 }
 
-// GetPast ...
+// GetPastRequest ...
 type GetPastRequest struct {
 	ID uint64 `json:"id"`
 }
