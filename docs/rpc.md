@@ -130,3 +130,69 @@ curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"perso
 ```
 {"jsonrpc":"2.0","result":null,"id":"0"}
 ```
+
+## `swap` namespace
+
+### `swap_getOngoing`
+
+Gets information about the ongoing swap, if there is one.
+
+Parameters:
+- none
+
+Returns:
+- `id`: the swap's ID. **Note: this is not the same as an offer ID.**
+- `provided`: the coin provided during the swap.
+- `providedAmount`: the amount of coin provided during the swap.
+- `receivedAmount`: the amount of coin expected to be received during the swap.
+- `exchangeRate`: the exchange rate of the swap, expressed in a ratio of XMR/ETH.
+- `status`: the swap's status; should always be "ongoing".
+
+Example:
+```
+curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getOngoing","params":{}}' -H 'Content-Type: application/json'
+```
+```
+{"jsonrpc":"2.0","result":{"ID":3,"provided":"ETH","providedAmount":0.05,"receivedAmount":0,"exchangeRate":0,"status":"ongoing"},"id":"0"}
+```
+
+### `swap_getPastIDs`
+
+Gets all past swap IDs.
+
+Parameters:
+- none
+
+Returns:
+- `ids`: a list of all past swap IDs.
+
+Example:
+```
+curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getPastIDs","params":{}}' -H 'Content-Type: application/json'
+```
+
+```
+{"jsonrpc":"2.0","result":{"ids":[2,3,0,1]},"id":"0"}
+```
+
+### `swap_getPast`
+
+Gets a past swap information for the given swap ID.
+
+Paramters:
+- `id`: the swap ID.
+
+Returns:
+- `provided`: the coin provided during the swap.
+- `providedAmount`: the amount of coin provided during the swap.
+- `receivedAmount`: the amount of coin received during the swap.
+- `exchangeRate`: the exchange rate of the swap, expressed in a ratio of XMR/ETH.
+- `status`: the swap's status, one of `success`, `refunded`, or `aborted`.
+
+```
+curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getPast","params":{"id": 0}}' -H 'Content-Type: application/json'
+```
+
+```
+{"jsonrpc":"2.0","result":{"provided":"ETH","providedAmount":0.05,"receivedAmount":1,"exchangeRate":20,"status":"success"},"id":"0"}
+```

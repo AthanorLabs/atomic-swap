@@ -61,7 +61,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // GetOngoingResponse ...
 type GetOngoingResponse struct {
-	ID             uint64
+	ID             uint64              `json:"id"`
 	Provided       common.ProvidesCoin `json:"provided"`
 	ProvidedAmount float64             `json:"providedAmount"`
 	ReceivedAmount float64             `json:"receivedAmount"`
