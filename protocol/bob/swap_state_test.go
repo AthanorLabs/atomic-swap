@@ -11,6 +11,7 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -22,7 +23,7 @@ import (
 var (
 	_            = logging.SetLogLevel("bob", "debug")
 	testWallet   = "test-wallet"
-	desiredAmout = common.NewEtherAmount(33)
+	desiredAmout = common.EtherToWei(0.33)
 )
 
 type mockNet struct {
@@ -48,6 +49,7 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 		EthereumPrivateKey:   common.DefaultPrivKeyBob,
 		Environment:          common.Development,
 		ChainID:              common.MainnetConfig.EthereumChainID,
+		SwapManager:          pswap.NewManager(),
 	}
 
 	bob, err := NewInstance(cfg)
@@ -165,7 +167,6 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.NoError(t, err)
 	addr, _ := deploySwap(t, bob, s, [32]byte{}, desiredAmout.BigInt(), duration)
 
-	s.providesAmount = 1
 	msg = &net.NotifyContractDeployed{
 		Address: addr.String(),
 	}
@@ -262,7 +263,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	_, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
-	addrAB, err := s.lockFunds(s.providesAmount)
+	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	require.NoError(t, err)
 
 	// call refund w/ Alice's spend key
@@ -295,7 +296,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	_, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(s.providesAmount)
+	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	require.NoError(t, err)
 
 	// call refund w/ Alice's secret
@@ -334,7 +335,7 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	s.contractAddr, s.contract = deploySwap(t, bob, s, refundKey, desiredAmout.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(s.providesAmount)
+	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	require.NoError(t, err)
 
 	// call refund w/ Alice's secret
@@ -357,5 +358,5 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 
 	balance, err := bob.client.GetBalance(0)
 	require.NoError(t, err)
-	require.Equal(t, s.providesAmount.Uint64(), uint64(balance.Balance))
+	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount()).Uint64(), uint64(balance.Balance))
 }

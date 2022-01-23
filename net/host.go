@@ -237,7 +237,7 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 	}
 
 	log.Debug(
-		"Sent message to peer=", s.Conn().RemotePeer(), " message=", msg.String(),
+		"Sent message to peer=", s.Conn().RemotePeer(), " type=", msg.Type(),
 	)
 
 	return nil

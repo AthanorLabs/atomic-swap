@@ -8,8 +8,11 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 )
 
+// MessageType represents the type of a network message
+type MessageType byte
+
 const (
-	QueryResponseType byte = iota //nolint
+	QueryResponseType MessageType = iota //nolint
 	SendKeysMessageType
 	NotifyContractDeployedType
 	NotifyXMRLockType
@@ -18,11 +21,30 @@ const (
 	NotifyRefundType
 )
 
+func (t MessageType) String() string {
+	switch t {
+	case QueryResponseType:
+		return "QueryResponse"
+	case SendKeysMessageType:
+		return "SendKeysMessage"
+	case NotifyContractDeployedType:
+		return "NotifyContractDeployed"
+	case NotifyXMRLockType:
+		return "NotifyXMRLock"
+	case NotifyClaimedType:
+		return "NotifyClaimed"
+	case NotifyRefundType:
+		return "NotifyRefund"
+	default:
+		return "unknown"
+	}
+}
+
 // Message must be implemented by all network messages
 type Message interface {
 	String() string
 	Encode() ([]byte, error)
-	Type() byte
+	Type() MessageType
 }
 
 func decodeMessage(b []byte) (Message, error) {
@@ -30,7 +52,7 @@ func decodeMessage(b []byte) (Message, error) {
 		return nil, errors.New("invalid message bytes")
 	}
 
-	switch b[0] {
+	switch MessageType(b[0]) {
 	case QueryResponseType:
 		var m *QueryResponse
 		if err := json.Unmarshal(b[1:], &m); err != nil {
@@ -91,11 +113,11 @@ func (m *QueryResponse) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{QueryResponseType}, b...), nil
+	return append([]byte{byte(QueryResponseType)}, b...), nil
 }
 
 // Type ...
-func (m *QueryResponse) Type() byte {
+func (m *QueryResponse) Type() MessageType {
 	return QueryResponseType
 }
 
@@ -135,11 +157,11 @@ func (m *SendKeysMessage) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{SendKeysMessageType}, b...), nil
+	return append([]byte{byte(SendKeysMessageType)}, b...), nil
 }
 
 // Type ...
-func (m *SendKeysMessage) Type() byte {
+func (m *SendKeysMessage) Type() MessageType {
 	return SendKeysMessageType
 }
 
@@ -161,11 +183,11 @@ func (m *NotifyContractDeployed) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{NotifyContractDeployedType}, b...), nil
+	return append([]byte{byte(NotifyContractDeployedType)}, b...), nil
 }
 
 // Type ...
-func (m *NotifyContractDeployed) Type() byte {
+func (m *NotifyContractDeployed) Type() MessageType {
 	return NotifyContractDeployedType
 }
 
@@ -186,11 +208,11 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{NotifyXMRLockType}, b...), nil
+	return append([]byte{byte(NotifyXMRLockType)}, b...), nil
 }
 
 // Type ...
-func (m *NotifyXMRLock) Type() byte {
+func (m *NotifyXMRLock) Type() MessageType {
 	return NotifyXMRLockType
 }
 
@@ -209,11 +231,11 @@ func (m *NotifyReady) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{NotifyReadyType}, b...), nil
+	return append([]byte{byte(NotifyReadyType)}, b...), nil
 }
 
 // Type ...
-func (m *NotifyReady) Type() byte {
+func (m *NotifyReady) Type() MessageType {
 	return NotifyReadyType
 }
 
@@ -234,11 +256,11 @@ func (m *NotifyClaimed) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{NotifyClaimedType}, b...), nil
+	return append([]byte{byte(NotifyClaimedType)}, b...), nil
 }
 
 // Type ...
-func (m *NotifyClaimed) Type() byte {
+func (m *NotifyClaimed) Type() MessageType {
 	return NotifyClaimedType
 }
 
@@ -259,10 +281,10 @@ func (m *NotifyRefund) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{NotifyRefundType}, b...), nil
+	return append([]byte{byte(NotifyRefundType)}, b...), nil
 }
 
 // Type ...
-func (m *NotifyRefund) Type() byte {
+func (m *NotifyRefund) Type() MessageType {
 	return NotifyRefundType
 }

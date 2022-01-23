@@ -47,7 +47,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount) error {
 		return err
 	}
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.id))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.info.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	return nil
 }

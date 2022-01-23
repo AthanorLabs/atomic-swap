@@ -13,6 +13,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/alice"
 	"github.com/noot/atomic-swap/protocol/bob"
+	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/rpc"
 
 	logging "github.com/ipfs/go-log"
@@ -153,10 +154,12 @@ func runDaemon(c *cli.Context) error {
 		chainID = cfg.EthereumChainID
 	}
 
+	sm := swap.NewManager()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	a, b, err := getProtocolInstances(ctx, c, env, cfg, chainID, devBob)
+	a, b, err := getProtocolInstances(ctx, c, env, cfg, chainID, devBob, sm)
 	if err != nil {
 		return err
 	}
@@ -233,10 +236,11 @@ func runDaemon(c *cli.Context) error {
 	}
 
 	rpcCfg := &rpc.Config{
-		Port:  rpcPort,
-		Net:   host,
-		Alice: a,
-		Bob:   b,
+		Port:        rpcPort,
+		Net:         host,
+		Alice:       a,
+		Bob:         b,
+		SwapManager: sm,
 	}
 
 	s, err := rpc.NewServer(rpcCfg)
@@ -263,7 +267,7 @@ func runDaemon(c *cli.Context) error {
 }
 
 func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
-	chainID int64, devBob bool) (a aliceHandler, b bobHandler, err error) {
+	chainID int64, devBob bool, sm *swap.Manager) (a aliceHandler, b bobHandler, err error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
@@ -309,6 +313,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		ChainID:              chainID,
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
+		SwapManager:          sm,
 	}
 
 	a, err = alice.NewInstance(aliceCfg)
@@ -334,6 +339,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		ChainID:              chainID,
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
+		SwapManager:          sm,
 	}
 
 	b, err = bob.NewInstance(bobCfg)
