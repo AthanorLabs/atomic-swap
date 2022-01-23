@@ -128,10 +128,8 @@ type TakeOfferRequest struct {
 }
 
 // TakeOfferResponse ...
-// TODO: add Refunded bool
 type TakeOfferResponse struct {
-	Success        bool    `json:"success"`
-	ReceivedAmount float64 `json:"receivedAmount"`
+	ID uint64 `json:"id"`
 }
 
 // TakeOffer initiates a swap with the given peer by taking an offer they've made.
@@ -155,12 +153,10 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		resp.Success = false
 		return err
 	}
 
-	resp.Success = true
-	resp.ReceivedAmount = swapState.ReceivedAmount()
+	resp.ID = swapState.ID()
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swap-contract"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -51,7 +52,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		close(s.claimedCh)
 		log.Info("successfully created monero wallet from our secrets: address=", address)
-		s.success = true
+		s.info.SetStatus(pswap.Success)
 		return nil, true, nil
 	default:
 		return nil, false, errors.New("unexpected message type")
@@ -68,8 +69,11 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	// TODO: get user to confirm amount they will receive!!
-	s.desiredAmount = common.MoneroToPiconero(msg.ProvidedAmount)
+	s.info.SetReceivedAmount(msg.ProvidedAmount)
 	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
+
+	exchangeRate := msg.ProvidedAmount / s.info.ProvidedAmount()
+	s.info.SetExchangeRate(common.ExchangeRate(exchangeRate))
 
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -100,7 +104,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	s.setBobKeys(sk, vk, secp256k1Pub)
-	address, err := s.deployAndLockETH(s.providesAmount)
+	address, err := s.deployAndLockETH(s.providedAmountInWei())
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
@@ -222,9 +226,9 @@ func (s *swapState) handleNotifyXMRLock(msg *net.NotifyXMRLock) (net.Message, er
 	log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.alice.env), balance.Balance)
 
 	// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
-	if balance.Balance < float64(s.desiredAmount) {
+	if balance.Balance < float64(s.receivedAmountInPiconero()) {
 		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
-			balance.Balance, float64(s.desiredAmount))
+			balance.Balance, float64(s.receivedAmountInPiconero()))
 	}
 
 	if err := s.alice.client.CloseWallet(); err != nil {
