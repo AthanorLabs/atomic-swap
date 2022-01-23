@@ -72,6 +72,9 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.info.SetReceivedAmount(msg.ProvidedAmount)
 	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
 
+	exchangeRate := msg.ProvidedAmount / s.info.ProvidedAmount()
+	s.info.SetExchangeRate(common.ExchangeRate(exchangeRate))
+
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
 	}
