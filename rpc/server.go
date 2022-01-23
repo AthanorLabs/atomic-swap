@@ -44,6 +44,10 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager), "swap"); err != nil {
+		return nil, err
+	}
+
 	return &Server{
 		s:    s,
 		port: cfg.Port,
@@ -90,6 +94,7 @@ type Bob interface {
 
 // SwapManager ...
 type SwapManager interface {
+	GetPastIDs() []uint64
 	GetPastSwap(id uint64) *swap.Info
 	GetOngoingSwap() *swap.Info
 }

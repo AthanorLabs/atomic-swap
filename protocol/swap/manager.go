@@ -21,6 +21,21 @@ const (
 	Aborted
 )
 
+func (s Status) String() string {
+	switch s {
+	case Ongoing:
+		return "ongoing"
+	case Success:
+		return "success"
+	case Refunded:
+		return "refunded"
+	case Aborted:
+		return "aborted"
+	default:
+		return "unknown"
+	}
+}
+
 // Info contains the details of the swap as well as its status.
 type Info struct {
 	id             uint64 // ID number of the swap (not the swap offer ID!)
@@ -110,6 +125,18 @@ func (m *Manager) AddSwap(info *Info) error {
 	}
 
 	return nil
+}
+
+func (m *Manager) GetPastIDs() []uint64 {
+	m.RLock()
+	defer m.RUnlock()
+	ids := make([]uint64, len(m.past))
+	i := 0
+	for id := range m.past {
+		ids[i] = id
+		i++
+	}
+	return ids
 }
 
 func (m *Manager) GetPastSwap(id uint64) *Info {
