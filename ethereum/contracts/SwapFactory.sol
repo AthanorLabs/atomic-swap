@@ -35,6 +35,9 @@ contract SwapFactory {
         // this prevents Bob from withdrawing funds without locking funds on the other chain first
         bool isReady;  
 
+        // set to true upon the swap value being claimed or refunded.
+        bool completed;
+
         // the value of this swap.
         uint256 value;      
     }
@@ -66,7 +69,6 @@ contract SwapFactory {
         swap.pubKeyRefund = _pubKeyRefund;
         swap.timeout_0 = block.timestamp + _timeoutDuration;
         swap.timeout_1 = block.timestamp + (_timeoutDuration * 2);
-        swap.isReady = false;
         swap.value = msg.value;
 
         emit New(id, _pubKeyClaim, _pubKeyRefund);
@@ -77,6 +79,7 @@ contract SwapFactory {
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
     function set_ready(uint256 id) public {
+        require(!swaps[id].completed);
         require(swaps[id].owner == msg.sender);
         require(!swaps[id].isReady);
         swaps[id].isReady = true;
@@ -87,34 +90,39 @@ contract SwapFactory {
     // - Alice doesn't call set_ready or refund within t_0, or
     // - Alice calls ready within t_0, in which case Bob can call claim until t_1
     function claim(uint256 id, bytes32 _s) public {
-        require(msg.sender == swaps[id].claimer, "only claimer can claim!");
-        require((block.timestamp >= swaps[id].timeout_0 || swaps[id].isReady), "too early to claim!");
-        require(block.timestamp < swaps[id].timeout_1, "too late to claim!");
+        Swap memory swap = swaps[id];
+        require(!swap.completed);
+        require(msg.sender == swap.claimer, "only claimer can claim!");
+        require((block.timestamp >= swap.timeout_0 || swap.isReady), "too early to claim!");
+        require(block.timestamp < swap.timeout_1, "too late to claim!");
 
-        verifySecret(_s, swaps[id].pubKeyClaim);
+        verifySecret(_s, swap.pubKeyClaim);
         emit Claimed(id, _s);
 
         // send eth to caller (Bob)
-        swaps[id].claimer.transfer(swaps[id].value);
+        swap.claimer.transfer(swap.value);
+        swap.completed = true;
     }
 
     // Alice can claim a refund:
     // - Until t_0 unless she calls set_ready
     // - After t_1, if she called set_ready
     function refund(uint256 id, bytes32 _s) public {
-        require(msg.sender == swaps[id].owner);
+        Swap memory swap = swaps[id];
+        require(!swap.completed);
+        require(msg.sender == swap.owner);
         require(
-            block.timestamp >= swaps[id].timeout_1 ||
-            (block.timestamp < swaps[id].timeout_0 && !swaps[id].isReady),
+            block.timestamp >= swap.timeout_1 ||
+            (block.timestamp < swap.timeout_0 && !swap.isReady),
             "it's the counterparty's turn, unable to refund, try again later"
         );
 
-        verifySecret(_s, swaps[id].pubKeyRefund);
+        verifySecret(_s, swap.pubKeyRefund);
         emit Refunded(id, _s);
 
         // send eth back to owner==caller (Alice)
-        swaps[id].owner.transfer(swaps[id].value);
-        delete swaps[id];
+        swap.owner.transfer(swap.value);
+        swap.completed = true;
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal view {

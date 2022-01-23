@@ -74,7 +74,7 @@ func TestSwap_Claim_vec(t *testing.T) {
 	// now let's try to claim
 	tx, err := swap.Claim(auth, s)
 	require.NoError(t, err)
-	t.Log(tx.Hash())
+	t.Logf("gas cost to call Claim: %d", tx.Gas())
 }
 
 func TestSwap_Claim_random(t *testing.T) {
