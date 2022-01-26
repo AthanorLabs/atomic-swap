@@ -16,7 +16,6 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -48,7 +47,6 @@ type Instance struct {
 
 	offerManager *offerManager
 	swapManager  *swap.Manager
-	swapFactory  *swapfactory.SwapFactory
 
 	swapMu    sync.Mutex
 	swapState *swapState
@@ -68,7 +66,6 @@ type Config struct {
 	GasPrice                   *big.Int
 	SwapManager                *swap.Manager
 	GasLimit                   uint64
-	SwapContract               *swapfactory.SwapFactory
 }
 
 // NewInstance returns a new *bob.Instance.

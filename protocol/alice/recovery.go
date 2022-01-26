@@ -11,7 +11,7 @@ import (
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
 var claimedTopic = ethcommon.HexToHash("0xeddf608ef698454af2fb41c1df7b7e5154ff0d46969f895e0f39c7dfe7e6380a")
@@ -127,7 +127,7 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 func (rs *recoveryState) setContract(address ethcommon.Address) error {
 	var err error
 	rs.contractAddr = address
-	rs.ss.contract, err = swap.NewSwap(address, rs.ss.alice.ethClient)
+	rs.ss.contract, err = swapfactory.NewSwapFactory(address, rs.ss.alice.ethClient)
 	return err
 }
 
@@ -144,7 +144,7 @@ func (rs *recoveryState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoClaimLogsFound
 	}
 
-	sa, err := swap.GetSecretFromLog(&logs[0], "Claimed")
+	sa, err := swapfactory.GetSecretFromLog(&logs[0], "Claimed")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}

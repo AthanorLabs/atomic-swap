@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -51,9 +52,10 @@ type swapState struct {
 	bobAddress            ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
-	contract *swap.Swap
-	t0, t1   time.Time
-	txOpts   *bind.TransactOpts
+	contract       *swapfactory.SwapFactory
+	contractSwapID *big.Int
+	t0, t1         time.Time
+	txOpts         *bind.TransactOpts
 
 	// next expected network message
 	nextExpectedMessage net.Message // TODO: change to type?
@@ -206,28 +208,16 @@ func (s *swapState) setTimeouts() error {
 
 	// TODO: add maxRetries
 	for {
-		log.Debug("attempting to fetch t0 from contract")
+		log.Debug("attempting to fetch timestamps from contract")
 
-		st0, err := s.contract.Timeout0(s.alice.callOpts)
+		info, err := s.contract.Swaps(s.alice.callOpts, s.contractSwapID)
 		if err != nil {
 			time.Sleep(time.Second * 10)
 			continue
 		}
 
-		s.t0 = time.Unix(st0.Int64(), 0)
-		break
-	}
-
-	for {
-		log.Debug("attempting to fetch t1 from contract")
-
-		st1, err := s.contract.Timeout1(s.alice.callOpts)
-		if err != nil {
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		s.t1 = time.Unix(st1.Int64(), 0)
+		s.t0 = time.Unix(info.Timeout0.Int64(), 0)
+		s.t1 = time.Unix(info.Timeout1.Int64(), 0)
 		break
 	}
 
@@ -279,14 +269,14 @@ func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey
 	s.bobSecp256k1PublicKey = secp256k1Pub
 }
 
-// deployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
-func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Address, error) {
+// lockETH the Swap contract function new_swap and locks `amount` ether in it.
+func (s *swapState) lockETH(amount common.EtherAmount) error {
 	if s.pubkeys == nil {
-		return ethcommon.Address{}, errors.New("public keys aren't set")
+		return errors.New("public keys aren't set")
 	}
 
 	if s.bobPublicSpendKey == nil || s.bobPrivateViewKey == nil {
-		return ethcommon.Address{}, errors.New("bob's keys aren't set")
+		return errors.New("bob's keys aren't set")
 	}
 
 	cmtAlice := s.secp256k1Pub.Keccak256()
@@ -297,38 +287,41 @@ func (s *swapState) deployAndLockETH(amount common.EtherAmount) (ethcommon.Addre
 		s.txOpts.Value = nil
 	}()
 
-	address, tx, swap, err := swap.DeploySwap(s.txOpts, s.alice.ethClient,
+	tx, err := s.contract.NewSwap(s.txOpts,
 		cmtBob, cmtAlice, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
-		return ethcommon.Address{}, fmt.Errorf("failed to deploy Swap.sol: %w", err)
+		return fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
 
 	log.Debugf("deploying Swap.sol, amount=%s txHash=%s", amount, tx.Hash())
-	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
-		return ethcommon.Address{}, errors.New("failed to deploy Swap.sol")
+	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
+	if !ok {
+		return errors.New("failed to call new_swap in contract")
 	}
 
-	fp := fmt.Sprintf("%s/%d/contractaddress", s.alice.basepath, s.info.ID())
-	if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
-		return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
+	if len(receipt.Logs) == 0 {
+		return errors.New("expected 1 log, got 0")
 	}
 
-	balance, err := s.alice.ethClient.BalanceAt(s.ctx, address, nil)
+	s.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	if err != nil {
-		return ethcommon.Address{}, err
+		return err
 	}
 
-	log.Debug("contract balance: ", balance)
+	// TODO: move this to startup
+	// fp := fmt.Sprintf("%s/%d/contractaddress", s.alice.basepath, s.info.ID())
+	// if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
+	// 	return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
+	// }
 
-	s.contract = swap
-	return address, nil
+	return nil
 }
 
 // ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.contract.SetReady(s.txOpts)
+	tx, err := s.contract.SetReady(s.txOpts, s.contractSwapID)
 	if err != nil {
 		return err
 	}
@@ -351,7 +344,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.contract.Refund(s.txOpts, sc)
+	tx, err := s.contract.Refund(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

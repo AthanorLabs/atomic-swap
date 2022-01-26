@@ -104,12 +104,12 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	s.setBobKeys(sk, vk, secp256k1Pub)
-	address, err := s.deployAndLockETH(s.providedAmountInWei())
+	err = s.lockETH(s.providedAmountInWei())
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
 
-	log.Info("deployed Swap contract, waiting for XMR to be locked: contract address=", address)
+	log.Info("locked ether in swap contract, waiting for XMR to be locked")
 
 	// set t0 and t1
 	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
@@ -150,7 +150,9 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	out := &net.NotifyContractDeployed{
-		Address: address.String(),
+		// TODO: re-add address
+		// Address: address.String(),
+		ContractSwapID: s.contractSwapID,
 	}
 
 	return out, nil

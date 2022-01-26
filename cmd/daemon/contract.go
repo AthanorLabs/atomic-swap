@@ -20,7 +20,7 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, c
 		err error
 	)
 
-	if env == common.Development && address.String() != "" {
+	if env == common.Development && address.String() == "" {
 		txOpts, err := bind.NewKeyedTransactorWithChainID(privkey, chainID)
 		if err != nil {
 			return nil, err

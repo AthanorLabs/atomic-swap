@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/noot/atomic-swap/common/types"
 )
@@ -168,12 +169,13 @@ func (m *SendKeysMessage) Type() MessageType {
 // NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
 // and locking her ether in it
 type NotifyContractDeployed struct {
-	Address string
+	Address        string
+	ContractSwapID *big.Int
 }
 
 // String ...
 func (m *NotifyContractDeployed) String() string {
-	return "NotifyContractDeployed"
+	return fmt.Sprintf("NotifyContractDeployed Address=%s ContractSwapID=%d", m.Address, m.ContractSwapID)
 }
 
 // Encode ...

@@ -367,7 +367,6 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 		SwapManager:          sm,
-		SwapContract:         contract,
 	}
 
 	b, err = bob.NewInstance(bobCfg)

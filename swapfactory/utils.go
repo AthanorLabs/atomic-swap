@@ -50,7 +50,7 @@ func GetIDFromLog(log *ethtypes.Log) (*big.Int, error) {
 		return nil, err
 	}
 
-	event := "New"
+	const event = "New"
 
 	data := log.Data
 	res, err := abi.Unpack(event, data)

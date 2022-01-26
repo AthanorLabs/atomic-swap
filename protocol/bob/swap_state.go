@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -27,7 +28,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
 var (
@@ -59,10 +60,11 @@ type swapState struct {
 	pubkeys      *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it; set once contract is deployed
-	contract     *swap.Swap
-	contractAddr ethcommon.Address
-	t0, t1       time.Time
-	txOpts       *bind.TransactOpts
+	contract       *swapfactory.SwapFactory
+	contractSwapID *big.Int
+	contractAddr   ethcommon.Address
+	t0, t1         time.Time
+	txOpts         *bind.TransactOpts
 
 	// Alice's keys for this session
 	alicePublicKeys         *mcrypto.PublicKeyPair
@@ -245,7 +247,7 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoRefundLogsFound
 	}
 
-	sa, err := swap.GetSecretFromLog(&logs[0], "Refunded")
+	sa, err := swapfactory.GetSecretFromLog(&logs[0], "Refunded")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}
@@ -256,12 +258,12 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
-	isReady, err := s.contract.IsReady(s.bob.callOpts)
+	info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	if untilT0 > 0 && !isReady {
+	if untilT0 > 0 && !info.IsReady {
 		// we need to wait until t0 to claim
 		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
 		<-time.After(untilT0 + time.Second)
@@ -324,24 +326,18 @@ func (s *swapState) setAlicePublicKeys(sk *mcrypto.PublicKeyPair, secp256k1Pub *
 func (s *swapState) setContract(address ethcommon.Address) error {
 	var err error
 	s.contractAddr = address
-	s.contract, err = swap.NewSwap(address, s.bob.ethClient)
+	s.contract, err = swapfactory.NewSwapFactory(address, s.bob.ethClient)
 	return err
 }
 
 func (s *swapState) setTimeouts() error {
-	st0, err := s.contract.Timeout0(s.bob.callOpts)
+	info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
 	if err != nil {
-		return fmt.Errorf("failed to get timeout0 from contract: err=%w", err)
+		return fmt.Errorf("failed to get swap info from contract: err=%w", err)
 	}
 
-	s.t0 = time.Unix(st0.Int64(), 0)
-
-	st1, err := s.contract.Timeout1(s.bob.callOpts)
-	if err != nil {
-		return fmt.Errorf("failed to get timeout1 from contract: err=%w", err)
-	}
-
-	s.t1 = time.Unix(st1.Int64(), 0)
+	s.t0 = time.Unix(info.Timeout0.Int64(), 0)
+	s.t1 = time.Unix(info.Timeout1.Int64(), 0)
 	return nil
 }
 
@@ -372,7 +368,7 @@ func (s *swapState) checkContract() error {
 		return errors.New("cannot find Constructed log")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(swap.SwapABI))
+	abi, err := abi.JSON(strings.NewReader(swapfactory.SwapFactoryABI))
 	if err != nil {
 		return err
 	}
@@ -465,7 +461,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	sc := s.getSecret()
-	tx, err := s.contract.Claim(s.txOpts, sc)
+	tx, err := s.contract.Claim(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
