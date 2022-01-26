@@ -8,12 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -345,56 +343,57 @@ func (s *swapState) setTimeouts() error {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract() error {
-	balance, err := s.bob.ethClient.BalanceAt(s.ctx, s.contractAddr, nil)
-	if err != nil {
-		return err
-	}
-
-	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
-	if balance.Cmp(expected) < 0 {
-		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", balance, expected)
-	}
-
-	constructedTopic := ethcommon.HexToHash("0x8d36aa70807342c3036697a846281194626fd4afa892356ad5979e03831ab080")
+	newTopic := ethcommon.HexToHash("0x982a99d883f17ecd5797205d5b3674205d7882bb28a9487d736d3799422cd055")
 	logs, err := s.bob.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.contractAddr},
-		Topics:    [][]ethcommon.Hash{{constructedTopic}},
+		Topics:    [][]ethcommon.Hash{{newTopic}},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to filter logs: %w", err)
 	}
 
 	if len(logs) == 0 {
-		return errors.New("cannot find Constructed log")
+		return errors.New("cannot find New log")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(swapfactory.SwapFactoryABI))
-	if err != nil {
-		return err
+	// search for log pertaining to our swap ID
+	var event *swapfactory.SwapFactoryNew
+	for i := len(logs) - 1; i >= 0; i-- {
+		newEvent, err := s.contract.ParseNew(logs[i])
+		if err != nil {
+			return err
+		}
+
+		if newEvent.SwapID.Cmp(s.contractSwapID) == 0 {
+			event = newEvent
+			break
+		}
 	}
 
-	data := logs[0].Data
-	res, err := abi.Unpack("Constructed", data)
-	if err != nil {
-		return err
+	if event == nil {
+		return fmt.Errorf("failed to find New event with given swap ID %d", s.contractSwapID)
 	}
-
-	if len(res) < 2 {
-		return errors.New("constructed event was missing parameters")
-	}
-
-	pkClaim := res[0].([32]byte)
-	pkRefund := res[0].([32]byte)
 
 	// check that contract was constructed with correct secp256k1 keys
 	skOurs := s.secp256k1Pub.Keccak256()
-	if !bytes.Equal(pkClaim[:], skOurs[:]) {
-		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", pkClaim, skOurs)
+	if !bytes.Equal(event.ClaimKey[:], skOurs[:]) {
+		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", event.ClaimKey, skOurs)
 	}
 
 	skTheirs := s.aliceSecp256K1PublicKey.Keccak256()
-	if !bytes.Equal(pkRefund[:], skOurs[:]) {
-		return fmt.Errorf("contract claim key is not expected: got 0x%x, expected 0x%x", pkRefund, skTheirs)
+	if !bytes.Equal(event.RefundKey[:], skTheirs[:]) {
+		return fmt.Errorf("contract refund key is not expected: got 0x%x, expected 0x%x", event.RefundKey, skTheirs)
+	}
+
+	// check value of created swap
+	info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
+	if err != nil {
+		return err
+	}
+
+	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
+	if info.Value.Cmp(expected) < 0 {
+		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", info.Value, expected)
 	}
 
 	return nil

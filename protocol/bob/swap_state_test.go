@@ -104,7 +104,13 @@ func newSwap(t *testing.T, bob *Instance, swapState *swapState, claimKey, refund
 		swapState.txOpts.Value = nil
 	}()
 
-	_, err = contract.NewSwap(swapState.txOpts, claimKey, refundKey, bob.ethAddress, tm)
+	tx, err := contract.NewSwap(swapState.txOpts, claimKey, refundKey, bob.ethAddress, tm)
+	require.NoError(t, err)
+
+	receipt, err := bob.ethClient.TransactionReceipt(context.Background(), tx.Hash())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(receipt.Logs))
+	swapState.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	return addr, contract
@@ -126,7 +132,8 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
-	swapState.contractAddr, swapState.contract = newSwap(t, bob, swapState, claimKey, [32]byte{}, big.NewInt(33), defaultTimeoutDuration)
+	swapState.contractAddr, swapState.contract = newSwap(t, bob, swapState, claimKey,
+		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
 	_, err = swapState.contract.SetReady(swapState.txOpts, defaultContractSwapID)
 	require.NoError(t, err)
@@ -172,7 +179,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 
 	duration, err := time.ParseDuration("2s")
 	require.NoError(t, err)
-	addr, _ := newSwap(t, bob, s, [32]byte{}, [32]byte{}, desiredAmout.BigInt(), duration)
+	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(), desiredAmout.BigInt(), duration)
 
 	msg = &net.NotifyContractDeployed{
 		Address:        addr.String(),
@@ -210,10 +217,11 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 
 	duration, err := time.ParseDuration("15s")
 	require.NoError(t, err)
-	addr, _ := newSwap(t, bob, s, [32]byte{}, [32]byte{}, desiredAmout.BigInt(), duration)
+	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(), desiredAmout.BigInt(), duration)
 
 	msg = &net.NotifyContractDeployed{
-		Address: addr.String(),
+		Address:        addr.String(),
+		ContractSwapID: defaultContractSwapID,
 	}
 
 	resp, done, err = s.HandleProtocolMessage(msg)

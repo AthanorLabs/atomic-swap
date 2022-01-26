@@ -80,7 +80,7 @@ func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 	}
 
 	addr := ethcommon.HexToAddress(contractAddr)
-	rs, err := bob.NewRecoveryState(b, bk, addr)
+	rs, err := bob.NewRecoveryState(b, bk, addr, swapID)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
 	}
 
 	addr := ethcommon.HexToAddress(contractAddr)
-	rs, err := alice.NewRecoveryState(a, ak, addr)
+	rs, err := alice.NewRecoveryState(a, ak, addr, swapID)
 	if err != nil {
 		return nil, err
 	}

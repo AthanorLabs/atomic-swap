@@ -52,6 +52,6 @@ func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*swapfact
 	return swapfactory.NewSwapFactory(addr, client)
 }
 
-func deploySwapFactory(client *ethclient.Client, txOpts *bind.TransactOpts) (ethcommon.Address, *ethtypes.Transaction, *swapfactory.SwapFactory, error) {
+func deploySwapFactory(client *ethclient.Client, txOpts *bind.TransactOpts) (ethcommon.Address, *ethtypes.Transaction, *swapfactory.SwapFactory, error) { //nolint:lll
 	return swapfactory.DeploySwapFactory(txOpts, client)
 }
