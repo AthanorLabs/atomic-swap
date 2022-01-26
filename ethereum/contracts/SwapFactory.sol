@@ -78,9 +78,9 @@ contract SwapFactory {
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
     function set_ready(uint256 id) public {
-        require(!swaps[id].completed);
-        require(swaps[id].owner == msg.sender);
-        require(!swaps[id].isReady);
+        require(!swaps[id].completed, "swap is already completed");
+        require(swaps[id].owner == msg.sender, "only the swap owner can call set_ready");
+        require(!swaps[id].isReady, "swap was already set to ready");
         swaps[id].isReady = true;
         emit Ready(id);
     }

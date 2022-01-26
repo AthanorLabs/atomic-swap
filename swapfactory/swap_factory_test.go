@@ -271,3 +271,72 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, info.Completed)
 }
+
+func TestSwap_MultipleSwaps(t *testing.T) {
+	// test case where contract has multiple swaps happening at once
+	auth, conn, pkA := setupAliceAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy SwapFactory.sol: %d", tx.Gas())
+
+	numSwaps := 16
+	type swapCase struct {
+		id     *big.Int
+		secret [32]byte
+	}
+
+	// setup all swap instances in contract
+	swapCases := []*swapCase{}
+	for i := 0; i < numSwaps; i++ {
+		sc := &swapCase{}
+
+		// generate claim secret and public key
+		dleq := &dleq.FarcasterDLEq{}
+		proof, err := dleq.Prove()
+		require.NoError(t, err)
+		res, err := dleq.Verify(proof)
+		require.NoError(t, err)
+
+		// hash public key
+		cmt := res.Secp256k1PublicKey().Keccak256()
+		secret := proof.Secret()
+		copy(sc.secret[:], common.Reverse(secret[:]))
+
+		tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
+			defaultTimeoutDuration)
+		require.NoError(t, err)
+		t.Logf("gas cost to call new_swap: %d", tx.Gas())
+
+		receipt, err := conn.TransactionReceipt(context.Background(), tx.Hash())
+		require.NoError(t, err)
+		require.Equal(t, 1, len(receipt.Logs))
+		sc.id, err = GetIDFromLog(receipt.Logs[0])
+		require.NoError(t, err)
+
+		swapCases = append(swapCases, sc)
+	}
+
+	for _, sc := range swapCases {
+		// set contract to Ready
+		tx, err = contract.SetReady(auth, sc.id)
+		require.NoError(t, err)
+		t.Logf("gas cost to call SetReady: %d", tx.Gas())
+
+		// now let's try to claim
+		tx, err = contract.Claim(auth, sc.id, sc.secret)
+		require.NoError(t, err)
+		t.Logf("gas cost to call Claim: %d", tx.Gas())
+
+		callOpts := &bind.CallOpts{
+			From:    crypto.PubkeyToAddress(*pub),
+			Context: context.Background(),
+		}
+
+		info, err := contract.Swaps(callOpts, sc.id)
+		require.NoError(t, err)
+		require.True(t, info.Completed)
+	}
+}
