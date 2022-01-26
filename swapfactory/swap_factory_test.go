@@ -295,7 +295,7 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 
 		// generate claim secret and public key
 		dleq := &dleq.FarcasterDLEq{}
-		proof, err := dleq.Prove()
+		proof, err := dleq.Prove() //nolint:govet
 		require.NoError(t, err)
 		res, err := dleq.Verify(proof)
 		require.NoError(t, err)

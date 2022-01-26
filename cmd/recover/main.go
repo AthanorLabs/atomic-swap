@@ -107,8 +107,8 @@ func main() {
 // MoneroRecoverer is implemented by a backend which is able to recover monero
 type MoneroRecoverer interface {
 	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
-	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error)
-	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error)
+	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error)         //nolint:lll
+	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error) //nolint:lll
 }
 
 func runRecoverMonero(c *cli.Context) error {

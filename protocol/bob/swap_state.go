@@ -359,7 +359,7 @@ func (s *swapState) checkContract() error {
 	// search for log pertaining to our swap ID
 	var event *swapfactory.SwapFactoryNew
 	for i := len(logs) - 1; i >= 0; i-- {
-		newEvent, err := s.contract.ParseNew(logs[i])
+		newEvent, err := s.contract.ParseNew(logs[i]) //nolint:govet
 		if err != nil {
 			return err
 		}

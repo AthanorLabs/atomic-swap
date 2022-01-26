@@ -179,7 +179,8 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 
 	duration, err := time.ParseDuration("2s")
 	require.NoError(t, err)
-	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(), desiredAmout.BigInt(), duration)
+	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(),
+		desiredAmout.BigInt(), duration)
 
 	msg = &net.NotifyContractDeployed{
 		Address:        addr.String(),
@@ -217,7 +218,8 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 
 	duration, err := time.ParseDuration("15s")
 	require.NoError(t, err)
-	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(), desiredAmout.BigInt(), duration)
+	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(),
+		desiredAmout.BigInt(), duration)
 
 	msg = &net.NotifyContractDeployed{
 		Address:        addr.String(),

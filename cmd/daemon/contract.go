@@ -16,8 +16,7 @@ import (
 func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, chainID *big.Int,
 	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, error) {
 	var (
-		sf  *swapfactory.SwapFactory
-		err error
+		sf *swapfactory.SwapFactory
 	)
 
 	if env == common.Development && address.String() == "" {
@@ -39,6 +38,7 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, c
 
 		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", addr, tx.Hash())
 	} else {
+		var err error
 		sf, err = getSwapFactory(ec, address)
 		if err != nil {
 			return nil, err
