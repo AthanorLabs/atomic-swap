@@ -96,13 +96,13 @@ func newSwap(t *testing.T, bob *Instance, swapState *swapState, claimKey, refund
 		claimKey = swapState.secp256k1Pub.Keccak256()
 	}
 
+	addr, _, contract, err := swapfactory.DeploySwapFactory(swapState.txOpts, bob.ethClient)
+	require.NoError(t, err)
+
 	swapState.txOpts.Value = amount
 	defer func() {
 		swapState.txOpts.Value = nil
 	}()
-
-	addr, _, contract, err := swapfactory.DeploySwapFactory(swapState.txOpts, bob.ethClient)
-	require.NoError(t, err)
 
 	_, err = contract.NewSwap(swapState.txOpts, claimKey, refundKey, bob.ethAddress, tm)
 	require.NoError(t, err)
