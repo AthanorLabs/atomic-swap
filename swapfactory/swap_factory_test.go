@@ -11,12 +11,12 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	//"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
-	//"github.com/noot/atomic-swap/dleq"
+	"github.com/noot/atomic-swap/dleq"
 )
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
@@ -92,4 +92,146 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	tx, err = contract.Claim(auth, id, s)
 	require.NoError(t, err)
 	t.Logf("gas cost to call claim: %d", tx.Gas())
+}
+
+func TestSwap_Claim_random(t *testing.T) {
+	// generate claim secret and public key
+	dleq := &dleq.FarcasterDLEq{}
+	proof, err := dleq.Prove()
+	require.NoError(t, err)
+	res, err := dleq.Verify(proof)
+	require.NoError(t, err)
+
+	// hash public key
+	cmt := res.Secp256k1PublicKey().Keccak256()
+
+	// deploy swap contract with claim key hash
+	auth, conn, pkA := setupAliceAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy SwapFactory.sol: %d", tx.Gas())
+
+	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
+		defaultTimeoutDuration)
+	require.NoError(t, err)
+	t.Logf("gas cost to call new_swap: %d", tx.Gas())
+
+	receipt, err := conn.TransactionReceipt(context.Background(), tx.Hash())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[0])
+	require.NoError(t, err)
+
+	// set contract to Ready
+	tx, err = contract.SetReady(auth, id)
+	require.NoError(t, err)
+	t.Logf("gas cost to call SetReady: %d", tx.Gas())
+
+	// now let's try to claim
+	var s [32]byte
+	secret := proof.Secret()
+	copy(s[:], common.Reverse(secret[:]))
+	tx, err = contract.Claim(auth, id, s)
+	require.NoError(t, err)
+	t.Logf("gas cost to call Claim: %d", tx.Gas())
+}
+
+func TestSwap_Refund_beforeT0(t *testing.T) {
+	// generate refund secret and public key
+	dleq := &dleq.FarcasterDLEq{}
+	proof, err := dleq.Prove()
+	require.NoError(t, err)
+	res, err := dleq.Verify(proof)
+	require.NoError(t, err)
+
+	// hash public key
+	cmt := res.Secp256k1PublicKey().Keccak256()
+
+	// deploy swap contract with refund key hash
+	auth, conn, pkA := setupAliceAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy SwapFactory.sol: %d", tx.Gas())
+
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr,
+		defaultTimeoutDuration)
+	require.NoError(t, err)
+	t.Logf("gas cost to call new_swap: %d", tx.Gas())
+
+	receipt, err := conn.TransactionReceipt(context.Background(), tx.Hash())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[0])
+	require.NoError(t, err)
+
+	// now let's try to refund
+	var s [32]byte
+	secret := proof.Secret()
+	copy(s[:], common.Reverse(secret[:]))
+	tx, err = contract.Refund(auth, id, s)
+	require.NoError(t, err)
+	t.Logf("gas cost to call Refund: %d", tx.Gas())
+}
+
+func TestSwap_Refund_afterT1(t *testing.T) {
+	// generate refund secret and public key
+	dleq := &dleq.FarcasterDLEq{}
+	proof, err := dleq.Prove()
+	require.NoError(t, err)
+	res, err := dleq.Verify(proof)
+	require.NoError(t, err)
+
+	// hash public key
+	cmt := res.Secp256k1PublicKey().Keccak256()
+
+	// deploy swap contract with refund key hash
+	auth, conn, pkA := setupAliceAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy SwapFactory.sol: %d", tx.Gas())
+
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr,
+		defaultTimeoutDuration)
+	require.NoError(t, err)
+	t.Logf("gas cost to call new_swap: %d", tx.Gas())
+
+	receipt, err := conn.TransactionReceipt(context.Background(), tx.Hash())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[0])
+	require.NoError(t, err)
+
+	// fast forward past t1
+	rpcClient, err := rpc.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+
+	var result string
+	err = rpcClient.Call(&result, "evm_snapshot")
+	require.NoError(t, err)
+
+	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+60)
+	require.NoError(t, err)
+
+	defer func() {
+		var ok bool
+		err = rpcClient.Call(&ok, "evm_revert", result)
+		require.NoError(t, err)
+	}()
+
+	// now let's try to refund
+	var s [32]byte
+	secret := proof.Secret()
+	copy(s[:], common.Reverse(secret[:]))
+	tx, err = contract.Refund(auth, id, s)
+	require.NoError(t, err)
+	t.Logf("gas cost to call Refund: %d", tx.Gas())
 }

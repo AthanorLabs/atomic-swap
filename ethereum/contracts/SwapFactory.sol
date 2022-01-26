@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: LGPLv3
-
 pragma solidity ^0.8.5;
 
 import "./Secp256k1.sol";
