@@ -14,38 +14,35 @@ import (
 )
 
 func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, chainID *big.Int,
-	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, error) {
+	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf *swapfactory.SwapFactory
 	)
 
-	if env == common.Development && address.String() == "" {
+	if env == common.Development && (address == ethcommon.Address{}) {
 		txOpts, err := bind.NewKeyedTransactorWithChainID(privkey, chainID)
 		if err != nil {
-			return nil, err
+			return nil, ethcommon.Address{}, err
 		}
 
 		// deploy SwapFactory.sol
-		var (
-			addr ethcommon.Address
-			tx   *ethtypes.Transaction
-		)
-
-		addr, tx, sf, err = deploySwapFactory(ec, txOpts)
+		var tx *ethtypes.Transaction
+		address, tx, sf, err = deploySwapFactory(ec, txOpts)
 		if err != nil {
-			return nil, err
+			return nil, ethcommon.Address{}, err
 		}
 
-		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", addr, tx.Hash())
+		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
 	} else {
 		var err error
 		sf, err = getSwapFactory(ec, address)
 		if err != nil {
-			return nil, err
+			return nil, ethcommon.Address{}, err
 		}
+		log.Infof("loaded SwapFactory.sol from address %s", address)
 	}
 
-	return sf, nil
+	return sf, address, nil
 }
 
 func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*swapfactory.SwapFactory, error) {

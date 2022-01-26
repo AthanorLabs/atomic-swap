@@ -150,8 +150,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	out := &net.NotifyContractDeployed{
-		// TODO: re-add address
-		// Address: address.String(),
+		Address:        s.alice.contractAddr.String(),
 		ContractSwapID: s.contractSwapID,
 	}
 

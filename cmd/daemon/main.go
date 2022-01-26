@@ -18,6 +18,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/bob"
 	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/rpc"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -262,7 +263,7 @@ func runDaemon(c *cli.Context) error {
 		}
 	}()
 
-	log.Info("started swapd with basepath %d",
+	log.Infof("started swapd with basepath %d",
 		cfg.Basepath,
 	)
 	wait(ctx)
@@ -324,9 +325,12 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		return nil, nil, err
 	}
 
-	contract, err := getOrDeploySwapFactory(contractAddr, env, big.NewInt(chainID), pk, ec)
-	if err != nil {
-		return nil, nil, err
+	var contract *swapfactory.SwapFactory
+	if !devBob {
+		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, big.NewInt(chainID), pk, ec)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	aliceCfg := &alice.Config{
@@ -341,6 +345,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		GasLimit:             uint64(c.Uint("gas-limit")),
 		SwapManager:          sm,
 		SwapContract:         contract,
+		SwapContractAddress:  contractAddr,
 	}
 
 	a, err = alice.NewInstance(aliceCfg)
@@ -374,7 +379,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		return nil, nil, err
 	}
 
-	log.Info("created swap protocol module with monero endpoint %s and ethereum endpoint %s",
+	log.Infof("created swap protocol module with monero endpoint %s and ethereum endpoint %s",
 		moneroEndpoint,
 		ethEndpoint,
 	)
