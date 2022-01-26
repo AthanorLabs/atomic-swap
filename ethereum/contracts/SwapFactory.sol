@@ -90,7 +90,7 @@ contract SwapFactory {
     // - Alice calls ready within t_0, in which case Bob can call claim until t_1
     function claim(uint256 id, bytes32 _s) public {
         Swap memory swap = swaps[id];
-        require(!swap.completed);
+        require(!swap.completed, "swap is already completed");
         require(msg.sender == swap.claimer, "only claimer can claim!");
         require((block.timestamp >= swap.timeout_0 || swap.isReady), "too early to claim!");
         require(block.timestamp < swap.timeout_1, "too late to claim!");
@@ -100,7 +100,7 @@ contract SwapFactory {
 
         // send eth to caller (Bob)
         swap.claimer.transfer(swap.value);
-        swap.completed = true;
+        swaps[id].completed = true;
     }
 
     // Alice can claim a refund:
@@ -108,8 +108,8 @@ contract SwapFactory {
     // - After t_1, if she called set_ready
     function refund(uint256 id, bytes32 _s) public {
         Swap memory swap = swaps[id];
-        require(!swap.completed);
-        require(msg.sender == swap.owner);
+        require(!swap.completed, "swap is already completed");
+        require(msg.sender == swap.owner, "refund must be called by the swap owner");
         require(
             block.timestamp >= swap.timeout_1 ||
             (block.timestamp < swap.timeout_0 && !swap.isReady),
@@ -121,7 +121,7 @@ contract SwapFactory {
 
         // send eth back to owner==caller (Alice)
         swap.owner.transfer(swap.value);
-        swap.completed = true;
+        swaps[id].completed = true;
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal view {

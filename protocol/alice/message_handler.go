@@ -11,7 +11,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
@@ -292,7 +292,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) 
 		return "", errors.New("claim transaction has no logs")
 	}
 
-	skB, err := swap.GetSecretFromLog(receipt.Logs[0], "Claimed")
+	skB, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Claimed")
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret from log: %w", err)
 	}

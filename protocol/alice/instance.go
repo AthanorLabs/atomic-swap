@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -46,8 +47,9 @@ type Instance struct {
 	swapMu    sync.Mutex
 	swapState *swapState
 
-	swapManager *swap.Manager
-	swapFactory *swapfactory.SwapFactory
+	swapManager  *swap.Manager
+	contract     *swapfactory.SwapFactory
+	contractAddr ethcommon.Address
 }
 
 // Config contains the configuration values for a new Alice instance.
@@ -58,6 +60,7 @@ type Config struct {
 	EthereumClient       *ethclient.Client
 	EthereumPrivateKey   *ecdsa.PrivateKey
 	SwapContract         *swapfactory.SwapFactory
+	SwapContractAddress  ethcommon.Address
 	Environment          common.Environment
 	ChainID              *big.Int
 	GasPrice             *big.Int
@@ -83,9 +86,10 @@ func NewInstance(cfg *Config) (*Instance, error) {
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
 		},
-		chainID:     cfg.ChainID,
-		swapManager: cfg.SwapManager,
-		swapFactory: cfg.SwapContract,
+		chainID:      cfg.ChainID,
+		swapManager:  cfg.SwapManager,
+		contract:     cfg.SwapContract,
+		contractAddr: cfg.SwapContractAddress,
 	}, nil
 }
 

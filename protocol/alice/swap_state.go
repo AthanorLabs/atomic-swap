@@ -52,7 +52,6 @@ type swapState struct {
 	bobAddress            ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
-	contract       *swapfactory.SwapFactory
 	contractSwapID *big.Int
 	t0, t1         time.Time
 	txOpts         *bind.TransactOpts
@@ -198,7 +197,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) setTimeouts() error {
-	if s.contract == nil {
+	if s.alice.contract == nil {
 		return errors.New("contract is nil")
 	}
 
@@ -210,7 +209,7 @@ func (s *swapState) setTimeouts() error {
 	for {
 		log.Debug("attempting to fetch timestamps from contract")
 
-		info, err := s.contract.Swaps(s.alice.callOpts, s.contractSwapID)
+		info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
 		if err != nil {
 			time.Sleep(time.Second * 10)
 			continue
@@ -287,7 +286,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 		s.txOpts.Value = nil
 	}()
 
-	tx, err := s.contract.NewSwap(s.txOpts,
+	tx, err := s.alice.contract.NewSwap(s.txOpts,
 		cmtBob, cmtAlice, s.bobAddress, defaultTimeoutDuration)
 	if err != nil {
 		return fmt.Errorf("failed to deploy Swap.sol: %w", err)
@@ -321,7 +320,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.contract.SetReady(s.txOpts, s.contractSwapID)
+	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwapID)
 	if err != nil {
 		return err
 	}
@@ -337,14 +336,14 @@ func (s *swapState) ready() error {
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
-	if s.contract == nil {
+	if s.alice.contract == nil {
 		return ethcommon.Hash{}, errors.New("contract is nil")
 	}
 
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.contract.Refund(s.txOpts, s.contractSwapID, sc)
+	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

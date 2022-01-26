@@ -29,11 +29,11 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 		return nil, err
 	}
 
-	if len(res) == 0 {
-		return nil, errors.New("log had no parameters")
+	if len(res) < 2 {
+		return nil, errors.New("log had not enough parameters")
 	}
 
-	s := res[0].([32]byte)
+	s := res[1].([32]byte)
 
 	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(s[:]))
 	if err != nil {
@@ -59,7 +59,7 @@ func GetIDFromLog(log *ethtypes.Log) (*big.Int, error) {
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("log had no parameters")
+		return nil, errors.New("log had not enough parameters")
 	}
 
 	id := res[0].(*big.Int)

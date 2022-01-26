@@ -92,6 +92,15 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	tx, err = contract.Claim(auth, id, s)
 	require.NoError(t, err)
 	t.Logf("gas cost to call claim: %d", tx.Gas())
+
+	callOpts := &bind.CallOpts{
+		From:    crypto.PubkeyToAddress(*pub),
+		Context: context.Background(),
+	}
+
+	info, err := contract.Swaps(callOpts, id)
+	require.NoError(t, err)
+	require.True(t, info.Completed)
 }
 
 func TestSwap_Claim_random(t *testing.T) {
@@ -137,6 +146,15 @@ func TestSwap_Claim_random(t *testing.T) {
 	tx, err = contract.Claim(auth, id, s)
 	require.NoError(t, err)
 	t.Logf("gas cost to call Claim: %d", tx.Gas())
+
+	callOpts := &bind.CallOpts{
+		From:    crypto.PubkeyToAddress(*pub),
+		Context: context.Background(),
+	}
+
+	info, err := contract.Swaps(callOpts, id)
+	require.NoError(t, err)
+	require.True(t, info.Completed)
 }
 
 func TestSwap_Refund_beforeT0(t *testing.T) {
@@ -177,6 +195,15 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	tx, err = contract.Refund(auth, id, s)
 	require.NoError(t, err)
 	t.Logf("gas cost to call Refund: %d", tx.Gas())
+
+	callOpts := &bind.CallOpts{
+		From:    crypto.PubkeyToAddress(*pub),
+		Context: context.Background(),
+	}
+
+	info, err := contract.Swaps(callOpts, id)
+	require.NoError(t, err)
+	require.True(t, info.Completed)
 }
 
 func TestSwap_Refund_afterT1(t *testing.T) {
@@ -234,4 +261,13 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	tx, err = contract.Refund(auth, id, s)
 	require.NoError(t, err)
 	t.Logf("gas cost to call Refund: %d", tx.Gas())
+
+	callOpts := &bind.CallOpts{
+		From:    crypto.PubkeyToAddress(*pub),
+		Context: context.Background(),
+	}
+
+	info, err := contract.Swaps(callOpts, id)
+	require.NoError(t, err)
+	require.True(t, info.Completed)
 }
