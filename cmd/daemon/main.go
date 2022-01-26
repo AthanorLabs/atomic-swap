@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
 	"github.com/noot/atomic-swap/cmd/utils"
@@ -303,17 +306,41 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
 	}
 
+	var contractAddr ethcommon.Address
+	contractAddrStr := c.String("contract-address")
+	if contractAddrStr == "" {
+		contractAddr = ethcommon.Address{}
+	} else {
+		contractAddr = ethcommon.HexToAddress(contractAddrStr)
+	}
+
+	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	contract, err := getOrDeploySwapFactory(contractAddr, env, big.NewInt(chainID), pk, ec)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	aliceCfg := &alice.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
-		EthereumEndpoint:     ethEndpoint,
-		EthereumPrivateKey:   ethPrivKey,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          env,
-		ChainID:              chainID,
+		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 		SwapManager:          sm,
+		SwapContract:         contract,
 	}
 
 	a, err = alice.NewInstance(aliceCfg)
@@ -333,13 +360,14 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		MoneroDaemonEndpoint: daemonEndpoint,
 		WalletFile:           walletFile,
 		WalletPassword:       walletPassword,
-		EthereumEndpoint:     ethEndpoint,
-		EthereumPrivateKey:   ethPrivKey,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          env,
-		ChainID:              chainID,
+		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 		SwapManager:          sm,
+		SwapContract:         contract,
 	}
 
 	b, err = bob.NewInstance(bobCfg)

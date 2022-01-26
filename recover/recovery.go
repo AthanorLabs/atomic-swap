@@ -3,6 +3,7 @@ package recovery
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
@@ -67,7 +68,7 @@ func (r *recoverer) WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Ad
 
 // RecoverFromBobSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
 func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
-	bobSecret, contractAddr string) (*bob.RecoveryResult, error) {
+	bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error) {
 	bs, err := hex.DecodeString(bobSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode Bob's secret: %w", err)
@@ -89,7 +90,7 @@ func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 
 // RecoverFromAliceSecretAndContract recovers funds by either claiming locked monero or refunding ether.
 func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
-	aliceSecret, contractAddr string) (*alice.RecoveryResult, error) {
+	aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error) {
 	as, err := hex.DecodeString(aliceSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode Alice's secret: %w", err)

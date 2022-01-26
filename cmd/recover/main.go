@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"os"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
 	"github.com/noot/atomic-swap/cmd/utils"
@@ -32,7 +34,6 @@ var (
 	app = &cli.App{
 		Name:  "swaprecover",
 		Usage: "A program for recovering swap funds due to unexpected shutdowns",
-		//Action: runRecover,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "env",
@@ -65,6 +66,10 @@ var (
 			&cli.UintFlag{
 				Name:  "gas-limit",
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
+			},
+			&cli.UintFlag{
+				Name:  "contract-swap-id",
+				Usage: "ID of the swap within the SwapFactory.sol contract",
 			},
 		},
 		Commands: []cli.Command{
@@ -102,8 +107,8 @@ func main() {
 // MoneroRecoverer is implemented by a backend which is able to recover monero
 type MoneroRecoverer interface {
 	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
-	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string) (*bob.RecoveryResult, error)
-	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string) (*alice.RecoveryResult, error)
+	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error)
+	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error)
 }
 
 func runRecoverMonero(c *cli.Context) error {
@@ -128,6 +133,11 @@ func runRecoverMonero(c *cli.Context) error {
 		return errors.New("must also provide one of --contract-addr or --bob-secret")
 	}
 
+	swapID := big.NewInt(int64(c.Uint("contract-swap-id")))
+	if swapID.Uint64() == 0 {
+		log.Warn("provided contract swap ID of 0, this is likely not correct")
+	}
+
 	r, err := getRecoverer(c, env)
 	if err != nil {
 		return err
@@ -149,7 +159,7 @@ func runRecoverMonero(c *cli.Context) error {
 			return err
 		}
 
-		res, err := r.RecoverFromBobSecretAndContract(b, bs, contractAddr)
+		res, err := r.RecoverFromBobSecretAndContract(b, bs, contractAddr, swapID)
 		if err != nil {
 			return err
 		}
@@ -171,7 +181,7 @@ func runRecoverMonero(c *cli.Context) error {
 			return err
 		}
 
-		res, err := r.RecoverFromAliceSecretAndContract(a, as, contractAddr)
+		res, err := r.RecoverFromAliceSecretAndContract(a, as, contractAddr, swapID)
 		if err != nil {
 			return err
 		}
@@ -249,14 +259,24 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
 	}
 
+	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	aliceCfg := &alice.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
-		EthereumEndpoint:     ethEndpoint,
-		EthereumPrivateKey:   ethPrivKey,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          env,
-		ChainID:              chainID,
+		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 	}
@@ -298,14 +318,24 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
 	}
 
+	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	bobCfg := &bob.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
-		EthereumEndpoint:     ethEndpoint,
-		EthereumPrivateKey:   ethPrivKey,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          env,
-		ChainID:              chainID,
+		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 	}
