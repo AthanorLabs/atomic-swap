@@ -105,6 +105,10 @@ var (
 				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
 			},
 			&cli.StringFlag{
+				Name:  "contract-address",
+				Usage: "address of instance of SwapFactory.sol already deployed on-chain",
+			},
+			&cli.StringFlag{
 				Name:  "bootnodes",
 				Usage: "comma-separated string of libp2p bootnodes",
 			},
