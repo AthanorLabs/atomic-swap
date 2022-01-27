@@ -135,7 +135,7 @@ func runRecoverMonero(c *cli.Context) error {
 
 	swapID := big.NewInt(int64(c.Uint("contract-swap-id")))
 	if swapID.Uint64() == 0 {
-		log.Warn("provided contract swap ID of 0, this is likely not correct")
+		log.Warn("provided contract swap ID of 0, this is likely not correct (unless you deployed the contract)")
 	}
 
 	r, err := getRecoverer(c, env)

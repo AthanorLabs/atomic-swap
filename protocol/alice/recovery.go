@@ -93,8 +93,6 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 		return nil, err
 	}
 
-	log.Info("found claim log??", skA != nil)
-
 	// if Bob claimed, let's get our monero
 	if skA != nil {
 		vkA, err := skA.View() //nolint:govet
