@@ -11,7 +11,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
@@ -104,12 +104,12 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	s.setBobKeys(sk, vk, secp256k1Pub)
-	address, err := s.deployAndLockETH(s.providedAmountInWei())
+	err = s.lockETH(s.providedAmountInWei())
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
 
-	log.Info("deployed Swap contract, waiting for XMR to be locked: contract address=", address)
+	log.Info("locked ether in swap contract, waiting for XMR to be locked")
 
 	// set t0 and t1
 	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
@@ -150,7 +150,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.nextExpectedMessage = &net.NotifyXMRLock{}
 
 	out := &net.NotifyContractDeployed{
-		Address: address.String(),
+		Address:        s.alice.contractAddr.String(),
+		ContractSwapID: s.contractSwapID,
 	}
 
 	return out, nil
@@ -290,7 +291,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) 
 		return "", errors.New("claim transaction has no logs")
 	}
 
-	skB, err := swap.GetSecretFromLog(receipt.Logs[0], "Claimed")
+	skB, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Claimed")
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret from log: %w", err)
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -94,7 +94,12 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 		return nil, errMissingAddress
 	}
 
-	log.Infof("got Swap contract address! address=%s", msg.Address)
+	if msg.ContractSwapID == nil {
+		return nil, errors.New("expected swapID in NotifyContractDeployed message")
+	}
+
+	log.Infof("got NotifyContractDeployed; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
+	s.contractSwapID = msg.ContractSwapID
 
 	if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
@@ -191,7 +196,7 @@ func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
 		return "", errors.New("claim transaction has no logs")
 	}
 
-	sa, err := swap.GetSecretFromLog(receipt.Logs[0], "Refunded")
+	sa, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Refunded")
 	if err != nil {
 		return "", err
 	}
