@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
 	"github.com/noot/atomic-swap/cmd/utils"
@@ -15,6 +18,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/bob"
 	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/rpc"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -99,6 +103,10 @@ var (
 			&cli.UintFlag{
 				Name:  "ethereum-chain-id",
 				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
+			},
+			&cli.StringFlag{
+				Name:  "contract-address",
+				Usage: "address of instance of SwapFactory.sol already deployed on-chain",
 			},
 			&cli.StringFlag{
 				Name:  "bootnodes",
@@ -259,7 +267,7 @@ func runDaemon(c *cli.Context) error {
 		}
 	}()
 
-	log.Info("started swapd with basepath %d",
+	log.Infof("started swapd with basepath %d",
 		cfg.Basepath,
 	)
 	wait(ctx)
@@ -303,17 +311,46 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
 	}
 
+	var contractAddr ethcommon.Address
+	contractAddrStr := c.String("contract-address")
+	if contractAddrStr == "" {
+		contractAddr = ethcommon.Address{}
+	} else {
+		contractAddr = ethcommon.HexToAddress(contractAddrStr)
+	}
+
+	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var contract *swapfactory.SwapFactory
+	if !devBob {
+		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
+			big.NewInt(chainID), pk, ec)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	aliceCfg := &alice.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
-		EthereumEndpoint:     ethEndpoint,
-		EthereumPrivateKey:   ethPrivKey,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          env,
-		ChainID:              chainID,
+		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 		SwapManager:          sm,
+		SwapContract:         contract,
+		SwapContractAddress:  contractAddr,
 	}
 
 	a, err = alice.NewInstance(aliceCfg)
@@ -333,10 +370,10 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		MoneroDaemonEndpoint: daemonEndpoint,
 		WalletFile:           walletFile,
 		WalletPassword:       walletPassword,
-		EthereumEndpoint:     ethEndpoint,
-		EthereumPrivateKey:   ethPrivKey,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          env,
-		ChainID:              chainID,
+		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint("gas-limit")),
 		SwapManager:          sm,
@@ -347,7 +384,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		return nil, nil, err
 	}
 
-	log.Info("created swap protocol module with monero endpoint %s and ethereum endpoint %s",
+	log.Infof("created swap protocol module with monero endpoint %s and ethereum endpoint %s",
 		moneroEndpoint,
 		ethEndpoint,
 	)

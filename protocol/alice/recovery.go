@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -11,10 +12,10 @@ import (
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
-	"github.com/noot/atomic-swap/swap-contract"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
-var claimedTopic = ethcommon.HexToHash("0xeddf608ef698454af2fb41c1df7b7e5154ff0d46969f895e0f39c7dfe7e6380a")
+var claimedTopic = ethcommon.HexToHash("0xd5a2476fc450083bbb092dd3f4be92698ffdc2d213e6f1e730c7f44a52f1ccfc")
 
 var (
 	errNoClaimLogsFound = errors.New("no Claimed logs found")
@@ -28,7 +29,7 @@ type recoveryState struct {
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address) (*recoveryState, error) { //nolint:revive
+	contractAddr ethcommon.Address, contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -49,13 +50,14 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 
 	ctx, cancel := context.WithCancel(a.ctx)
 	s := &swapState{
-		ctx:       ctx,
-		cancel:    cancel,
-		alice:     a,
-		txOpts:    txOpts,
-		privkeys:  kp,
-		pubkeys:   pubkp,
-		dleqProof: dleq.NewProofWithSecret(sc),
+		ctx:            ctx,
+		cancel:         cancel,
+		alice:          a,
+		txOpts:         txOpts,
+		privkeys:       kp,
+		pubkeys:        pubkp,
+		dleqProof:      dleq.NewProofWithSecret(sc),
+		contractSwapID: contractSwapID,
 	}
 
 	rs := &recoveryState{
@@ -127,7 +129,7 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 func (rs *recoveryState) setContract(address ethcommon.Address) error {
 	var err error
 	rs.contractAddr = address
-	rs.ss.contract, err = swap.NewSwap(address, rs.ss.alice.ethClient)
+	rs.ss.alice.contract, err = swapfactory.NewSwapFactory(address, rs.ss.alice.ethClient)
 	return err
 }
 
@@ -144,7 +146,7 @@ func (rs *recoveryState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoClaimLogsFound
 	}
 
-	sa, err := swap.GetSecretFromLog(&logs[0], "Claimed")
+	sa, err := swapfactory.GetSecretFromLog(&logs[0], "Claimed")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}

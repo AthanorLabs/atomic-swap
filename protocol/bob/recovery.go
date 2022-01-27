@@ -3,6 +3,7 @@ package bob
 import (
 	"context"
 	"errors"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -18,7 +19,7 @@ type recoveryState struct {
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address) (*recoveryState, error) { //nolint:revive
+	contractAddr ethcommon.Address, contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -39,13 +40,14 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
 
 	ctx, cancel := context.WithCancel(b.ctx)
 	s := &swapState{
-		ctx:       ctx,
-		cancel:    cancel,
-		bob:       b,
-		txOpts:    txOpts,
-		privkeys:  kp,
-		pubkeys:   pubkp,
-		dleqProof: dleq.NewProofWithSecret(sc),
+		ctx:            ctx,
+		cancel:         cancel,
+		bob:            b,
+		txOpts:         txOpts,
+		privkeys:       kp,
+		pubkeys:        pubkp,
+		dleqProof:      dleq.NewProofWithSecret(sc),
+		contractSwapID: contractSwapID,
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

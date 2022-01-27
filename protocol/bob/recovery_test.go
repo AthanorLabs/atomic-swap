@@ -21,8 +21,9 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 
 	duration, err := time.ParseDuration("1440m")
 	require.NoError(t, err)
-	addr, _ := deploySwap(t, inst, s, sr, big.NewInt(1), duration)
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr)
+	addr, _ := newSwap(t, inst, s, [32]byte{}, sr, big.NewInt(1), duration)
+
+	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr, defaultContractSwapID)
 	require.NoError(t, err)
 
 	return rs
@@ -33,7 +34,7 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 	rs := newTestRecoveryState(t)
 
 	// set contract to Ready
-	_, err := rs.ss.contract.SetReady(rs.ss.txOpts)
+	_, err := rs.ss.contract.SetReady(rs.ss.txOpts, rs.ss.contractSwapID)
 	require.NoError(t, err)
 
 	// assert we can claim ether
@@ -58,7 +59,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 
 	// call refund w/ Alice's spend key
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.contract.Refund(rs.ss.txOpts, sc)
+	_, err = rs.ss.contract.Refund(rs.ss.txOpts, rs.ss.contractSwapID, sc)
 	require.NoError(t, err)
 
 	// assert Bob can reclaim his monero
