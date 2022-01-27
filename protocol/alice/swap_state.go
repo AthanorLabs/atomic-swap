@@ -307,12 +307,6 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 		return err
 	}
 
-	// TODO: move this to startup
-	// fp := fmt.Sprintf("%s/%d/contractaddress", s.alice.basepath, s.info.ID())
-	// if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
-	// 	return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
-	// }
-
 	return nil
 }
 

@@ -331,7 +331,8 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 
 	var contract *swapfactory.SwapFactory
 	if !devBob {
-		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, big.NewInt(chainID), pk, ec)
+		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
+			big.NewInt(chainID), pk, ec)
 		if err != nil {
 			return nil, nil, err
 		}

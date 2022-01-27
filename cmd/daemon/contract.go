@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 
 	"github.com/noot/atomic-swap/common"
@@ -13,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, chainID *big.Int,
+func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, basepath string, chainID *big.Int,
 	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf *swapfactory.SwapFactory
@@ -33,6 +34,12 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, c
 		}
 
 		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
+
+		// store the contract address on disk
+		fp := fmt.Sprintf("%s/contractaddress", basepath)
+		if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
+			return nil, ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
+		}
 	} else {
 		var err error
 		sf, err = getSwapFactory(ec, address)
