@@ -15,6 +15,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -45,6 +46,7 @@ type Instance struct {
 	net net.MessageSender
 
 	offerManager *offerManager
+	swapManager  *swap.Manager
 
 	swapMu    sync.Mutex
 	swapState *swapState
@@ -57,11 +59,12 @@ type Config struct {
 	MoneroWalletEndpoint       string
 	MoneroDaemonEndpoint       string // only needed for development
 	WalletFile, WalletPassword string
-	EthereumEndpoint           string
-	EthereumPrivateKey         string
+	EthereumClient             *ethclient.Client
+	EthereumPrivateKey         *ecdsa.PrivateKey
 	Environment                common.Environment
-	ChainID                    int64
+	ChainID                    *big.Int
 	GasPrice                   *big.Int
+	SwapManager                *swap.Manager
 	GasLimit                   uint64
 }
 
@@ -72,17 +75,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		return nil, errors.New("environment is development, must provide monero daemon endpoint")
 	}
 
-	pk, err := crypto.HexToECDSA(cfg.EthereumPrivateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	ec, err := ethclient.Dial(cfg.EthereumEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	pub := pk.Public().(*ecdsa.PublicKey)
+	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// monero-wallet-rpc client
@@ -90,7 +83,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	// open Bob's XMR wallet
 	if cfg.WalletFile != "" {
-		if err = walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
+		if err := walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
 			return nil, err
 		}
 	} else {
@@ -111,15 +104,16 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		daemonClient:   daemonClient,
 		walletFile:     cfg.WalletFile,
 		walletPassword: cfg.WalletPassword,
-		ethClient:      ec,
-		ethPrivKey:     pk,
+		ethClient:      cfg.EthereumClient,
+		ethPrivKey:     cfg.EthereumPrivateKey,
 		callOpts: &bind.CallOpts{
 			From:    addr,
 			Context: cfg.Ctx,
 		},
 		ethAddress:   addr,
-		chainID:      big.NewInt(cfg.ChainID),
+		chainID:      cfg.ChainID,
 		offerManager: newOfferManager(),
+		swapManager:  cfg.SwapManager,
 	}, nil
 }
 

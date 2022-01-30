@@ -1,7 +1,8 @@
-package swap
+package swapfactory
 
 import (
 	"errors"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -17,7 +18,7 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 		return nil, errors.New("invalid event name, must be one of Claimed or Refunded")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(SwapABI))
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
 	if err != nil {
 		return nil, err
 	}
@@ -28,11 +29,11 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 		return nil, err
 	}
 
-	if len(res) == 0 {
-		return nil, errors.New("log had no parameters")
+	if len(res) < 2 {
+		return nil, errors.New("log had not enough parameters")
 	}
 
-	s := res[0].([32]byte)
+	s := res[1].([32]byte)
 
 	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(s[:]))
 	if err != nil {
@@ -40,4 +41,27 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 	}
 
 	return sk, nil
+}
+
+// GetIDFromLog returns the swap ID from a New log.
+func GetIDFromLog(log *ethtypes.Log) (*big.Int, error) {
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	if err != nil {
+		return nil, err
+	}
+
+	const event = "New"
+
+	data := log.Data
+	res, err := abi.Unpack(event, data)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) == 0 {
+		return nil, errors.New("log had not enough parameters")
+	}
+
+	id := res[0].(*big.Int)
+	return id, nil
 }

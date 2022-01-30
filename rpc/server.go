@@ -7,7 +7,9 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/swap"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 
@@ -24,10 +26,11 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Port  uint16
-	Net   Net
-	Alice Alice
-	Bob   Bob
+	Port        uint16
+	Net         Net
+	Alice       Alice
+	Bob         Bob
+	SwapManager SwapManager
 }
 
 // NewServer ...
@@ -39,6 +42,10 @@ func NewServer(cfg *Config) (*Server, error) {
 	}
 
 	if err := s.RegisterService(NewPersonalService(cfg.Bob), "personal"); err != nil {
+		return nil, err
+	}
+
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager), "swap"); err != nil {
 		return nil, err
 	}
 
@@ -56,9 +63,13 @@ func (s *Server) Start() <-chan error {
 		r := mux.NewRouter()
 		r.Handle("/", s.s)
 
+		headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
+		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+		originsOk := handlers.AllowedOrigins([]string{"*"})
+
 		log.Infof("starting RPC server on http://localhost:%d", s.port)
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), r); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
 			log.Errorf("failed to start RPC server: %s", err)
 			errCh <- err
 		}
@@ -84,4 +95,11 @@ type Bob interface {
 	Protocol
 	MakeOffer(offer *types.Offer) error
 	SetMoneroWalletFile(file, password string) error
+}
+
+// SwapManager ...
+type SwapManager interface {
+	GetPastIDs() []uint64
+	GetPastSwap(id uint64) *swap.Info
+	GetOngoingSwap() *swap.Info
 }

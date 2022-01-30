@@ -11,7 +11,8 @@ import (
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/swap-contract"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -58,7 +59,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			TxHash: txHash.String(),
 		}
 
-		s.completed = true
+		s.info.SetStatus(pswap.Success)
 		return out, true, nil
 	case *net.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
@@ -67,8 +68,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, false, err
 		}
 
-		s.completed = true
-		s.refunded = true
+		s.info.SetStatus(pswap.Refunded)
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
@@ -94,13 +94,18 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 		return nil, errMissingAddress
 	}
 
-	log.Infof("got Swap contract address! address=%s", msg.Address)
+	if msg.ContractSwapID == nil {
+		return nil, errors.New("expected swapID in NotifyContractDeployed message")
+	}
+
+	log.Infof("got NotifyContractDeployed; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
+	s.contractSwapID = msg.ContractSwapID
 
 	if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	fp := fmt.Sprintf("%s/%d/contractaddress", s.bob.basepath, s.id)
+	fp := fmt.Sprintf("%s/%d/contractaddress", s.bob.basepath, s.ID())
 	if err := common.WriteContractAddressToFile(fp, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
@@ -109,7 +114,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 		return nil, err
 	}
 
-	addrAB, err := s.lockFunds(s.providesAmount)
+	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
@@ -141,7 +146,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 			}
 
 			log.Debug("funds claimed!")
-			s.completed = true
+			s.info.SetStatus(pswap.Success)
 
 			// send *net.NotifyClaimed
 			if err := s.bob.net.SendSwapMessage(&net.NotifyClaimed{
@@ -191,7 +196,7 @@ func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
 		return "", errors.New("claim transaction has no logs")
 	}
 
-	sa, err := swap.GetSecretFromLog(receipt.Logs[0], "Refunded")
+	sa, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Refunded")
 	if err != nil {
 		return "", err
 	}

@@ -188,11 +188,11 @@ func TestAlice_Query(t *testing.T) {
 	require.Equal(t, exchangeRate, float64(resp.Offers[0].ExchangeRate))
 }
 
-func TestAlice_Initiate(t *testing.T) {
+func TestAlice_TakeOffer(t *testing.T) {
 	startNodes(t)
 
 	bc := client.NewClient(defaultBobDaemonEndpoint)
-	id, err := bc.MakeOffer(0.1, bobProvideAmount, exchangeRate)
+	offerID, err := bc.MakeOffer(0.1, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
@@ -202,8 +202,7 @@ func TestAlice_Initiate(t *testing.T) {
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	ok, received, err := c.TakeOffer(providers[0][0], id, 0.1)
+	id, err := c.TakeOffer(providers[0][0], offerID, 0.1)
 	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, float64(0.1)/exchangeRate, received)
+	require.Equal(t, uint64(0), id)
 }

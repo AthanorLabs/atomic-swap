@@ -7,12 +7,17 @@ import (
 	"testing"
 	"time"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	pswap "github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -30,21 +35,35 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 }
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	require.NoError(t, err)
+
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	require.NoError(t, err)
+	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	require.NoError(t, err)
+
 	cfg := &Config{
 		Ctx:                  context.Background(),
 		Basepath:             "/tmp/alice",
 		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
-		EthereumEndpoint:     common.DefaultEthEndpoint,
-		EthereumPrivateKey:   common.DefaultPrivKeyAlice,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              common.MainnetConfig.EthereumChainID,
+		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		SwapManager:          pswap.NewManager(),
+		SwapContract:         contract,
+		SwapContractAddress:  addr,
 	}
 
 	alice, err := NewInstance(cfg)
 	require.NoError(t, err)
 	swapState, err := newSwapState(alice, common.NewEtherAmount(1))
 	require.NoError(t, err)
-	swapState.desiredAmount = common.MoneroAmount(1)
+	swapState.info.SetReceivedAmount(1)
 	return alice, swapState
 }
 
@@ -113,18 +132,15 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
-	cdMsg, ok := resp.(*net.NotifyContractDeployed)
-	require.True(t, ok)
-
 	// ensure we refund before t0
 	time.Sleep(time.Second * 15)
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
 	require.Equal(t, net.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
-	// check balance of contract is 0
-	balance, err := s.alice.ethClient.BalanceAt(s.ctx, ethcommon.HexToAddress(cdMsg.Address), nil)
+	// check swap is marked completed
+	info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
 	require.NoError(t, err)
-	require.Equal(t, int64(0), balance.Int64())
+	require.True(t, info.Completed)
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
@@ -141,10 +157,10 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.deployAndLockETH(common.NewEtherAmount(1))
+	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	s.desiredAmount = 0
+	s.info.SetReceivedAmount(0)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -183,10 +199,10 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	contractAddr, err := s.deployAndLockETH(common.NewEtherAmount(1))
+	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	s.desiredAmount = 0
+	s.info.SetReceivedAmount(0)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -208,7 +224,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, net.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.alice.ethClient.BalanceAt(s.ctx, contractAddr, nil)
+	balance, err := s.alice.ethClient.BalanceAt(s.ctx, s.alice.contractAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -247,12 +263,12 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 257)
 
-	s.desiredAmount = 33333
+	s.info.SetReceivedAmount(33333)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(s.desiredAmount))
+	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(s.info.ReceivedAmount()))
 	require.NoError(t, err)
 	t.Log("transferred to account", xmrAddr)
 
@@ -282,7 +298,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Claim(s.txOpts, sc)
+	tx, err := s.alice.contract.Claim(s.txOpts, s.contractSwapID, sc)
 	require.NoError(t, err)
 
 	cmsg := &net.NotifyClaimed{

@@ -7,12 +7,15 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -43,6 +46,10 @@ type Instance struct {
 	// non-nil if a swap is currently happening, nil otherwise
 	swapMu    sync.Mutex
 	swapState *swapState
+
+	swapManager  *swap.Manager
+	contract     *swapfactory.SwapFactory
+	contractAddr ethcommon.Address
 }
 
 // Config contains the configuration values for a new Alice instance.
@@ -50,43 +57,39 @@ type Config struct {
 	Ctx                  context.Context
 	Basepath             string
 	MoneroWalletEndpoint string
-	EthereumEndpoint     string
-	EthereumPrivateKey   string
+	EthereumClient       *ethclient.Client
+	EthereumPrivateKey   *ecdsa.PrivateKey
+	SwapContract         *swapfactory.SwapFactory
+	SwapContractAddress  ethcommon.Address
 	Environment          common.Environment
-	ChainID              int64
+	ChainID              *big.Int
 	GasPrice             *big.Int
 	GasLimit             uint64
+	SwapManager          *swap.Manager
 }
 
 // NewInstance returns a new instance of Alice.
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
-	pk, err := crypto.HexToECDSA(cfg.EthereumPrivateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	ec, err := ethclient.Dial(cfg.EthereumEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	pub := pk.Public().(*ecdsa.PublicKey)
+	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
 	return &Instance{
 		ctx:        cfg.Ctx,
 		basepath:   cfg.Basepath,
 		env:        cfg.Environment,
-		ethPrivKey: pk,
-		ethClient:  ec,
+		ethPrivKey: cfg.EthereumPrivateKey,
+		ethClient:  cfg.EthereumClient,
 		client:     monero.NewClient(cfg.MoneroWalletEndpoint),
 		callOpts: &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
 		},
-		chainID: big.NewInt(cfg.ChainID),
+		chainID:      cfg.ChainID,
+		swapManager:  cfg.SwapManager,
+		contract:     cfg.SwapContract,
+		contractAddr: cfg.SwapContractAddress,
 	}, nil
 }
 
