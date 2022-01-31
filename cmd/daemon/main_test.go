@@ -50,7 +50,7 @@ func newTestContext(t *testing.T, description string, flags []string, values []i
 			err = ctx.Set(flags[i], strconv.Itoa(int(values[i].(int64))))
 		case []string:
 			for _, str := range values[i].([]string) {
-				err := ctx.Set(flags[i], str)
+				err = ctx.Set(flags[i], str)
 				require.NoError(t, err)
 			}
 		default:
