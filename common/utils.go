@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,7 +35,7 @@ func Reverse(s []byte) []byte {
 }
 
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
-func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, bool) {
+func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
 	for i := 0; i < maxRetries; i++ {
 		receipt, err := ethclient.TransactionReceipt(ctx, txHash)
 		if err != nil {
@@ -49,10 +50,10 @@ func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash eth
 			receipt.BlockNumber,
 			receipt.CumulativeGasUsed,
 		)
-		return receipt, true
+		return receipt, nil
 	}
 
-	return nil, false
+	return nil, errors.New("failed to get receipt, timed out")
 }
 
 // WriteContractAddressToFile writes the contract address to a file in the given basepath
