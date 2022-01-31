@@ -179,21 +179,6 @@ type daemon struct {
 }
 
 func runDaemon(c *cli.Context) error {
-	// env, cfg, err := utils.GetEnvironment(c)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// devAlice := c.Bool("dev-alice")
-	// devBob := c.Bool("dev-bob")
-
-	// chainID := int64(c.Uint("ethereum-chain-id"))
-	// if chainID == 0 {
-	// 	chainID = cfg.EthereumChainID
-	// }
-
-	// sm := swap.NewManager()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -202,114 +187,8 @@ func runDaemon(c *cli.Context) error {
 		cancel: cancel,
 	}
 
-	// a, b, err := getProtocolInstances(ctx, c, env, cfg, chainID, devBob, sm)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// var bootnodes []string
-	// if c.String("bootnodes") != "" {
-	// 	bootnodes = strings.Split(c.String("bootnodes"), ",")
-	// }
-
-	// k := c.String("libp2p-key")
-	// p := uint16(c.Uint("libp2p-port"))
-	// var (
-	// 	libp2pKey  string
-	// 	libp2pPort uint16
-	// 	rpcPort    uint16
-	// )
-
-	// switch {
-	// case k != "":
-	// 	libp2pKey = k
-	// case devAlice:
-	// 	libp2pKey = defaultAliceLibp2pKey
-	// case devBob:
-	// 	libp2pKey = defaultBobLibp2pKey
-	// default:
-	// 	libp2pKey = defaultLibp2pKey
-	// }
-
-	// switch {
-	// case p != 0:
-	// 	libp2pPort = p
-	// case devAlice:
-	// 	libp2pPort = defaultAliceLibp2pPort
-	// case devBob:
-	// 	libp2pPort = defaultBobLibp2pPort
-	// default:
-	// 	libp2pPort = defaultLibp2pPort
-	// 	//	return errors.New("must provide --libp2p-port")
-	// }
-
-	// netCfg := &net.Config{
-	// 	Ctx:         ctx,
-	// 	Environment: env,
-	// 	ChainID:     chainID,
-	// 	Port:        libp2pPort,
-	// 	KeyFile:     libp2pKey,
-	// 	Bootnodes:   bootnodes,
-	// 	Handler:     b, // handler handles initiated ("taken") swaps
-	// }
-
-	// host, err := net.NewHost(netCfg)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // connect network to protocol handlers
-	// a.SetMessageSender(host)
-	// b.SetMessageSender(host)
-
-	// if err = host.Start(); err != nil {
-	// 	return err
-	// }
-
-	// p = uint16(c.Uint("rpc-port"))
-	// switch {
-	// case p != 0:
-	// 	rpcPort = p
-	// case devAlice:
-	// 	rpcPort = defaultAliceRPCPort
-	// case devBob:
-	// 	rpcPort = defaultBobRPCPort
-	// default:
-	// 	rpcPort = defaultRPCPort
-	// }
-
-	// rpcCfg := &rpc.Config{
-	// 	Port:        rpcPort,
-	// 	Net:         host,
-	// 	Alice:       a,
-	// 	Bob:         b,
-	// 	SwapManager: sm,
-	// }
-
-	// s, err := rpc.NewServer(rpcCfg)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// errCh := s.Start()
-	// go func() {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		return
-	// 	case err := <-errCh:
-	// 		log.Errorf("failed to start RPC server: %s", err)
-	// 		os.Exit(1)
-	// 	}
-	// }()
-
-	// log.Infof("started swapd with basepath %d",
-	// 	cfg.Basepath,
-	// )
-	if err := d.make(c); err != nil {
-		return err
-	}
-
 	d.wait()
+	os.Exit(0)
 	return nil
 }
 
@@ -367,7 +246,6 @@ func (d *daemon) make(c *cli.Context) error {
 		libp2pPort = defaultBobLibp2pPort
 	default:
 		libp2pPort = defaultLibp2pPort
-		//	return errors.New("must provide --libp2p-port")
 	}
 
 	netCfg := &net.Config{

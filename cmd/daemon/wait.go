@@ -23,8 +23,6 @@ func (d *daemon) wait() {
 		case <-d.ctx.Done():
 			fmt.Println("protocol complete, shutting down...")
 		}
-
-		os.Exit(0)
 	}()
 
 	wg.Wait()
