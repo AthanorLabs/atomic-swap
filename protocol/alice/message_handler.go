@@ -282,9 +282,9 @@ func (s *swapState) handleNotifyXMRLock(msg *net.NotifyXMRLock) (net.Message, er
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash))
-	if !ok {
-		return "", errors.New("failed check Claim transaction receipt")
+	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash))
+	if err != nil {
+		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
 	}
 
 	if len(receipt.Logs) == 0 {

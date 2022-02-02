@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"math/big"
+	"os"
 	"testing"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -13,6 +14,19 @@ import (
 )
 
 const defaultAliceAddress = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+
+func TestReverse(t *testing.T) {
+	in := []byte{0xa, 0xb, 0xc}
+	expected := []byte{0xc, 0xb, 0xa}
+	res := Reverse(in)
+	require.Equal(t, expected, in)
+	require.Equal(t, expected, res)
+
+	in2 := [3]byte{0xa, 0xb, 0xc}
+	res = Reverse(in2[:])
+	require.Equal(t, expected, in2[:])
+	require.Equal(t, expected, res)
+}
 
 func TestWaitForReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -47,4 +61,11 @@ func TestWaitForReceipt(t *testing.T) {
 	receipt, err := WaitForReceipt(ctx, ec, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, tx.Hash(), receipt.TxHash)
+}
+
+func TestWriteContractAddrssToFile(t *testing.T) {
+	addr := "0xabcd"
+	basepath := os.TempDir() + "/"
+	err := WriteContractAddressToFile(basepath, addr)
+	require.NoError(t, err)
 }

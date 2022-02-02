@@ -293,9 +293,9 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 	}
 
 	log.Debugf("deploying Swap.sol, amount=%s txHash=%s", amount, tx.Hash())
-	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
-	if !ok {
-		return errors.New("failed to call new_swap in contract")
+	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
+	if err != nil {
+		return fmt.Errorf("failed to call new_swap in contract: %w", err)
 	}
 
 	if len(receipt.Logs) == 0 {
@@ -319,8 +319,8 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
-		return errors.New("failed to set IsReady to true in Swap.sol")
+	if _, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); err != nil {
+		return fmt.Errorf("failed to call is_ready in swap contract: %w", err)
 	}
 
 	return nil
@@ -342,8 +342,8 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
-		return ethcommon.Hash{}, errors.New("failed to call Refund in Swap.sol")
+	if _, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
 	}
 
 	s.info.SetStatus(pswap.Refunded)

@@ -467,8 +467,8 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
 
-	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
-		return ethcommon.Hash{}, errors.New("failed to check Claim transaction receipt")
+	if _, err := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to check claim transaction receipt: %w", err)
 	}
 
 	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)
