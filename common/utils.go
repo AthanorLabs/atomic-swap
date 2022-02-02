@@ -35,7 +35,7 @@ func Reverse(s []byte) []byte {
 }
 
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
-func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
+func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, error) { //nolint:lll
 	for i := 0; i < maxRetries; i++ {
 		receipt, err := ethclient.TransactionReceipt(ctx, txHash)
 		if err != nil {
