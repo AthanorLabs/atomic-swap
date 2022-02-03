@@ -2,6 +2,7 @@ package mcrypto
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -57,4 +58,57 @@ func TestKeccak256(t *testing.T) {
 	res := ethcrypto.Keccak256([]byte{1})
 	res2 := crypto.Keccak256([]byte{1})
 	require.Equal(t, res, res2[:])
+}
+
+func TestPrivateKeyPair_Marshal(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+
+	bz, err := kp.Marshal(common.Mainnet)
+	require.NoError(t, err)
+
+	var res map[string]string
+	err = json.Unmarshal(bz, &res)
+	require.NoError(t, err)
+	require.Equal(t, kp.sk.Hex(), res["PrivateSpendKey"])
+	require.Equal(t, kp.vk.Hex(), res["PrivateViewKey"])
+	require.Equal(t, string(kp.Address(common.Mainnet)), res["Address"])
+	require.Equal(t, common.Mainnet.String(), res["Environment"])
+}
+
+func TestNewPrivateSpendKey(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+
+	sk, err := NewPrivateSpendKey(kp.sk.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, kp.sk.key, sk.key)
+}
+
+func TestNewPrivateViewKeyFromHex(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+
+	vk, err := NewPrivateViewKeyFromHex(kp.vk.Hex())
+	require.NoError(t, err)
+	require.Equal(t, kp.vk.key, vk.key)
+}
+
+func TestNewPublicKeyFromHex(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+
+	pk, err := NewPublicKeyFromHex(kp.sk.Public().Hex())
+	require.NoError(t, err)
+	require.Equal(t, kp.sk.Public().key.Bytes(), pk.key.Bytes())
+}
+
+func TestNewPublicKeyPairFromHex(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+
+	kp2, err := NewPublicKeyPairFromHex(kp.sk.Public().Hex(), kp.vk.Public().Hex())
+	require.NoError(t, err)
+	require.Equal(t, kp.sk.Public().key.Bytes(), kp2.sk.key.Bytes())
+	require.Equal(t, kp.vk.Public().key.Bytes(), kp2.vk.key.Bytes())
 }
