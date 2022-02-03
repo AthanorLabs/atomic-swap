@@ -19,21 +19,20 @@ func TestClient_Transfer(t *testing.T) {
 	}
 
 	const amount = 2800000000
-	cA := NewClient(common.DefaultBobMoneroEndpoint)
+	cBob := NewClient(common.DefaultBobMoneroEndpoint)
 
-	err := cA.OpenWallet("test-wallet", "")
+	err := cBob.OpenWallet("test-wallet", "")
 	require.NoError(t, err)
 
-	aliceAddress, err := cA.callGetAddress(0)
+	bobAddr, err := cBob.callGetAddress(0)
 	require.NoError(t, err)
-	t.Log("aliceAddress", aliceAddress)
 
 	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemon.callGenerateBlocks(aliceAddress.Address, 181)
+	_ = daemon.callGenerateBlocks(bobAddr.Address, 181)
 
 	time.Sleep(time.Second * 10)
 
-	balance, err := cA.GetBalance(0)
+	balance, err := cBob.GetBalance(0)
 	require.NoError(t, err)
 	t.Log("balance: ", balance.Balance)
 	t.Log("unlocked balance: ", balance.UnlockedBalance)
@@ -50,30 +49,29 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 
 	kpABPub := mcrypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
-
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	r, err := rand.Int(rand.Reader, big.NewInt(10000))
 	require.NoError(t, err)
 
-	cB := NewClient(common.DefaultAliceMoneroEndpoint)
+	cAlice := NewClient(common.DefaultAliceMoneroEndpoint)
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
-	err = cB.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
+	err = cAlice.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
-	err = cB.OpenWallet(walletFP, "")
+	err = cAlice.OpenWallet(walletFP, "")
 	require.NoError(t, err)
 
 	// transfer to account A+B
-	_, err = cA.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
+	_, err = cBob.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
 	require.NoError(t, err)
-	err = daemon.callGenerateBlocks(aliceAddress.Address, 1)
+	err = daemon.callGenerateBlocks(bobAddr.Address, 1)
 	require.NoError(t, err)
 
 	for {
 		t.Log("checking balance...")
-		balance, err = cB.GetBalance(0)
+		balance, err = cAlice.GetBalance(0)
 		require.NoError(t, err)
 
 		if balance.Balance > 0 {
@@ -82,28 +80,52 @@ func TestClient_Transfer(t *testing.T) {
 			break
 		}
 
-		_ = daemon.callGenerateBlocks(aliceAddress.Address, 1)
+		_ = daemon.callGenerateBlocks(bobAddr.Address, 1)
 		time.Sleep(time.Second)
 	}
 
-	_ = daemon.callGenerateBlocks(aliceAddress.Address, 16)
+	_ = daemon.callGenerateBlocks(bobAddr.Address, 16)
 
 	// generate spend account for A+B
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
 	// ignore the error for now, as it can error with "Wallet already exists."
-	_ = cB.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
+	_ = cAlice.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
 		fmt.Sprintf("test-wallet-%d", r), "")
 
-	err = cB.refresh()
+	err = cAlice.refresh()
 	require.NoError(t, err)
 
-	balance, err = cB.GetBalance(0)
+	balance, err = cAlice.GetBalance(0)
 	require.NoError(t, err)
-	if balance.Balance == 0 {
-		t.Fatal("no balance in account 0")
-	}
+	require.NotEqual(t, 0, balance.Balance)
 
-	// transfer from account A+B back to Alice's address
-	_, err = cB.Transfer(mcrypto.Address(aliceAddress.Address), 0, 1)
+	// transfer from account A+B back to Bob's address
+	_, err = cAlice.Transfer(mcrypto.Address(bobAddr.Address), 0, 1)
 	require.NoError(t, err)
+}
+
+func TestClient_CloseWallet(t *testing.T) {
+	c := NewClient(common.DefaultBobMoneroEndpoint)
+	err := c.OpenWallet("test-wallet", "")
+	require.NoError(t, err)
+
+	err = c.CloseWallet()
+	require.NoError(t, err)
+
+	err = c.OpenWallet("test-wallet", "")
+	require.NoError(t, err)
+}
+
+func TestClient_GetAccounts(t *testing.T) {
+	c := NewClient(common.DefaultBobMoneroEndpoint)
+	resp, err := c.GetAccounts()
+	require.NoError(t, err)
+	require.Equal(t, 1, len(resp.SubaddressAccounts))
+}
+
+func TestClient_GetHeight(t *testing.T) {
+	c := NewClient(common.DefaultBobMoneroEndpoint)
+	resp, err := c.GetHeight()
+	require.NoError(t, err)
+	require.NotEqual(t, 0, resp)
 }
