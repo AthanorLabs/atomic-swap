@@ -4,6 +4,7 @@ import (
 	"github.com/noot/atomic-swap/net/message"
 )
 
+// SwapState is the interface used by other packages in *alice.swapState or *bob.swapState.
 type SwapState interface {
 	SwapStateNet
 	SwapStateRPC
@@ -16,6 +17,7 @@ type SwapStateNet interface {
 	ProtocolExited() error
 }
 
+// SwapStateRPC contains the methods used by the RPC server into the SwapState.
 type SwapStateRPC interface {
 	SendKeysMessage() (*message.SendKeysMessage, error)
 	ID() uint64

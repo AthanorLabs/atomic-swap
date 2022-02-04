@@ -19,7 +19,7 @@ const (
 	protocolTimeout = time.Second * 5
 )
 
-type SwapState = common.SwapStateNet
+type SwapState = common.SwapStateNet //nolint:revive
 
 func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapState) error {
 	h.swapMu.Lock()

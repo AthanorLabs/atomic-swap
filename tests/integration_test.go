@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/cmd/client/client"
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/stretchr/testify/require"
 )
