@@ -28,4 +28,6 @@ func TestHost_Initiate(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	require.NotNil(t, ha.swapStream)
 	require.NotNil(t, hb.swapStream)
+	require.NotNil(t, ha.swapState)
+	require.NotNil(t, hb.swapState)
 }

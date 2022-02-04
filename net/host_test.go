@@ -20,7 +20,17 @@ func (h *mockHandler) GetOffers() []*types.Offer {
 }
 
 func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error) {
-	return nil, &SendKeysMessage{}, nil
+	return &mockSwapState{}, &SendKeysMessage{}, nil
+}
+
+type mockSwapState struct{}
+
+func (s *mockSwapState) HandleProtocolMessage(msg Message) (resp Message, done bool, err error) {
+	return nil, false, nil
+}
+
+func (s *mockSwapState) ProtocolExited() error {
+	return nil
 }
 
 func newHost(t *testing.T, port uint16) *host {
