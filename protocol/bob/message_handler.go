@@ -10,6 +10,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -37,14 +38,14 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		return nil, false, nil
-	case *net.NotifyContractDeployed:
+	case *message.NotifyContractDeployed:
 		out, err := s.handleNotifyContractDeployed(msg)
 		if err != nil {
 			return nil, true, err
 		}
 
 		return out, false, nil
-	case *net.NotifyReady:
+	case *message.NotifyReady:
 		log.Debug("contract ready, attempting to claim funds...")
 		close(s.readyCh)
 
@@ -55,13 +56,13 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		log.Debug("funds claimed!!")
-		out := &net.NotifyClaimed{
+		out := &message.NotifyClaimed{
 			TxHash: txHash.String(),
 		}
 
 		s.info.SetStatus(pswap.Success)
 		return out, true, nil
-	case *net.NotifyRefund:
+	case *message.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
 		addr, err := s.handleRefund(msg.TxHash)
 		if err != nil {
@@ -78,7 +79,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 func (s *swapState) checkMessageType(msg net.Message) error {
 	// Alice might refund anytime before t0 or after t1, so we should allow this.
-	if _, ok := msg.(*net.NotifyRefund); ok {
+	if _, ok := msg.(*message.NotifyRefund); ok {
 		return nil
 	}
 
@@ -89,7 +90,7 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	return nil
 }
 
-func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed) (net.Message, error) {
+func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDeployed) (net.Message, error) {
 	if msg.Address == "" {
 		return nil, errMissingAddress
 	}
@@ -119,7 +120,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
 
-	out := &net.NotifyXMRLock{
+	out := &message.NotifyXMRLock{
 		Address: string(addrAB),
 	}
 
@@ -148,8 +149,8 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 			log.Debug("funds claimed!")
 			s.info.SetStatus(pswap.Success)
 
-			// send *net.NotifyClaimed
-			if err := s.bob.net.SendSwapMessage(&net.NotifyClaimed{
+			// send *message.NotifyClaimed
+			if err := s.bob.net.SendSwapMessage(&message.NotifyClaimed{
 				TxHash: txHash.String(),
 			}); err != nil {
 				log.Errorf("failed to send NotifyClaimed message: err=%s", err)
@@ -159,7 +160,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *net.NotifyContractDeployed
 		}
 	}()
 
-	s.nextExpectedMessage = &net.NotifyReady{}
+	s.nextExpectedMessage = &message.NotifyReady{}
 	return out, nil
 }
 
@@ -182,7 +183,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setAlicePublicKeys(kp, secp256k1Pub)
-	s.nextExpectedMessage = &net.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyContractDeployed{}
 	return nil
 }
 

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/rpc"
 )
 
@@ -18,7 +18,7 @@ func (c *Client) MakeOffer(min, max, exchangeRate float64) (string, error) {
 	req := &rpc.MakeOfferRequest{
 		MinimumAmount: min,
 		MaximumAmount: max,
-		ExchangeRate:  common.ExchangeRate(exchangeRate),
+		ExchangeRate:  types.ExchangeRate(exchangeRate),
 	}
 
 	params, err := json.Marshal(req)

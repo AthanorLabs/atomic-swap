@@ -24,6 +24,7 @@ import (
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -87,8 +88,8 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 	txOpts.GasPrice = b.gasPrice
 	txOpts.GasLimit = b.gasLimit
 
-	exchangeRate := common.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
-	info := pswap.NewInfo(common.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
+	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
 		exchangeRate, pswap.Ongoing)
 	if err := b.swapManager.AddSwap(info); err != nil {
 		return nil, err
@@ -168,12 +169,12 @@ func (s *swapState) ProtocolExited() error {
 		// we are fine, as we only just initiated the protocol.
 		s.info.SetStatus(pswap.Aborted)
 		return errors.New("protocol exited before any funds were locked")
-	case *net.NotifyContractDeployed:
+	case *message.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
 		s.info.SetStatus(pswap.Aborted)
 		return errors.New("protocol exited before any funds were locked")
-	case *net.NotifyReady:
+	case *message.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
 		txHash, err := s.tryClaim()

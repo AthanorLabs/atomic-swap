@@ -1,292 +1,260 @@
 package net
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"math/big"
+	// "encoding/json"
+	// "errors"
+	// "fmt"
+	// "math/big"
 
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/net/message"
 )
 
-// MessageType represents the type of a network message
-type MessageType byte
-
-const (
-	QueryResponseType MessageType = iota //nolint
-	SendKeysMessageType
-	NotifyContractDeployedType
-	NotifyXMRLockType
-	NotifyReadyType
-	NotifyClaimedType
-	NotifyRefundType
+type (
+	MessageType     = message.MessageType
+	Message         = message.Message
+	QueryResponse   = message.QueryResponse
+	SendKeysMessage = message.SendKeysMessage
 )
 
-func (t MessageType) String() string {
-	switch t {
-	case QueryResponseType:
-		return "QueryResponse"
-	case SendKeysMessageType:
-		return "SendKeysMessage"
-	case NotifyContractDeployedType:
-		return "NotifyContractDeployed"
-	case NotifyXMRLockType:
-		return "NotifyXMRLock"
-	case NotifyClaimedType:
-		return "NotifyClaimed"
-	case NotifyRefundType:
-		return "NotifyRefund"
-	default:
-		return "unknown"
-	}
-}
+// func decodeMessage(b []byte) (Message, error) {
+// 	if len(b) == 0 {
+// 		return nil, errors.New("invalid message bytes")
+// 	}
 
-// Message must be implemented by all network messages
-type Message interface {
-	String() string
-	Encode() ([]byte, error)
-	Type() MessageType
-}
+// 	switch MessageType(b[0]) {
+// 	case QueryResponseType:
+// 		var m *QueryResponse
+// 		if err := json.Unmarshal(b[1:], &m); err != nil {
+// 			return nil, err
+// 		}
+// 		return m, nil
+// 	case SendKeysMessageType:
+// 		var m *SendKeysMessage
+// 		if err := json.Unmarshal(b[1:], &m); err != nil {
+// 			return nil, err
+// 		}
+// 		return m, nil
+// 	case NotifyContractDeployedType:
+// 		var m *NotifyContractDeployed
+// 		if err := json.Unmarshal(b[1:], &m); err != nil {
+// 			return nil, err
+// 		}
+// 		return m, nil
+// 	case NotifyXMRLockType:
+// 		var m *NotifyXMRLock
+// 		if err := json.Unmarshal(b[1:], &m); err != nil {
+// 			return nil, err
+// 		}
+// 		return m, nil
+// 	case NotifyReadyType:
+// 		var m *NotifyReady
+// 		if err := json.Unmarshal(b[1:], &m); err != nil {
+// 			return nil, err
+// 		}
+// 		return m, nil
+// 	case NotifyClaimedType:
+// 		var m *NotifyClaimed
+// 		if err := json.Unmarshal(b[1:], &m); err != nil {
+// 			return nil, err
+// 		}
+// 		return m, nil
+// 	default:
+// 		return nil, errors.New("invalid message type")
+// 	}
+// }
 
-func decodeMessage(b []byte) (Message, error) {
-	if len(b) == 0 {
-		return nil, errors.New("invalid message bytes")
-	}
+// // QueryResponse ...
+// type QueryResponse struct {
+// 	Offers []*types.Offer
+// }
 
-	switch MessageType(b[0]) {
-	case QueryResponseType:
-		var m *QueryResponse
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case SendKeysMessageType:
-		var m *SendKeysMessage
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case NotifyContractDeployedType:
-		var m *NotifyContractDeployed
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case NotifyXMRLockType:
-		var m *NotifyXMRLock
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case NotifyReadyType:
-		var m *NotifyReady
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case NotifyClaimedType:
-		var m *NotifyClaimed
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	default:
-		return nil, errors.New("invalid message type")
-	}
-}
+// // String ...
+// func (m *QueryResponse) String() string {
+// 	return fmt.Sprintf("QueryResponse Offers=%v",
+// 		m.Offers,
+// 	)
+// }
 
-// QueryResponse ...
-type QueryResponse struct {
-	Offers []*types.Offer
-}
+// // Encode ...
+// func (m *QueryResponse) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *QueryResponse) String() string {
-	return fmt.Sprintf("QueryResponse Offers=%v",
-		m.Offers,
-	)
-}
+// 	return append([]byte{byte(QueryResponseType)}, b...), nil
+// }
 
-// Encode ...
-func (m *QueryResponse) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// // Type ...
+// func (m *QueryResponse) Type() MessageType {
+// 	return QueryResponseType
+// }
 
-	return append([]byte{byte(QueryResponseType)}, b...), nil
-}
+// // The below messages are sawp protocol messages, exchanged after the swap has been agreed
+// // upon by both sides.
 
-// Type ...
-func (m *QueryResponse) Type() MessageType {
-	return QueryResponseType
-}
+// // SendKeysMessage is sent by both parties to each other to initiate the protocol
+// type SendKeysMessage struct {
+// 	OfferID            string
+// 	ProvidedAmount     float64
+// 	PublicSpendKey     string
+// 	PublicViewKey      string
+// 	PrivateViewKey     string
+// 	DLEqProof          string
+// 	Secp256k1PublicKey string
+// 	EthAddress         string
+// }
 
-// The below messages are sawp protocol messages, exchanged after the swap has been agreed
-// upon by both sides.
+// // String ...
+// func (m *SendKeysMessage) String() string {
+// 	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
+// 		m.OfferID,
+// 		m.ProvidedAmount,
+// 		m.PublicSpendKey,
+// 		m.PublicViewKey,
+// 		m.PrivateViewKey,
+// 		m.DLEqProof,
+// 		m.Secp256k1PublicKey,
+// 		m.EthAddress,
+// 	)
+// }
 
-// SendKeysMessage is sent by both parties to each other to initiate the protocol
-type SendKeysMessage struct {
-	OfferID            string
-	ProvidedAmount     float64
-	PublicSpendKey     string
-	PublicViewKey      string
-	PrivateViewKey     string
-	DLEqProof          string
-	Secp256k1PublicKey string
-	EthAddress         string
-}
+// // Encode ...
+// func (m *SendKeysMessage) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
-		m.OfferID,
-		m.ProvidedAmount,
-		m.PublicSpendKey,
-		m.PublicViewKey,
-		m.PrivateViewKey,
-		m.DLEqProof,
-		m.Secp256k1PublicKey,
-		m.EthAddress,
-	)
-}
+// 	return append([]byte{byte(SendKeysMessageType)}, b...), nil
+// }
 
-// Encode ...
-func (m *SendKeysMessage) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// // Type ...
+// func (m *SendKeysMessage) Type() MessageType {
+// 	return SendKeysMessageType
+// }
 
-	return append([]byte{byte(SendKeysMessageType)}, b...), nil
-}
+// // NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
+// // and locking her ether in it
+// type NotifyContractDeployed struct {
+// 	Address        string
+// 	ContractSwapID *big.Int
+// }
 
-// Type ...
-func (m *SendKeysMessage) Type() MessageType {
-	return SendKeysMessageType
-}
+// // String ...
+// func (m *NotifyContractDeployed) String() string {
+// 	return fmt.Sprintf("NotifyContractDeployed Address=%s ContractSwapID=%d", m.Address, m.ContractSwapID)
+// }
 
-// NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
-// and locking her ether in it
-type NotifyContractDeployed struct {
-	Address        string
-	ContractSwapID *big.Int
-}
+// // Encode ...
+// func (m *NotifyContractDeployed) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *NotifyContractDeployed) String() string {
-	return fmt.Sprintf("NotifyContractDeployed Address=%s ContractSwapID=%d", m.Address, m.ContractSwapID)
-}
+// 	return append([]byte{byte(NotifyContractDeployedType)}, b...), nil
+// }
 
-// Encode ...
-func (m *NotifyContractDeployed) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// // Type ...
+// func (m *NotifyContractDeployed) Type() MessageType {
+// 	return NotifyContractDeployedType
+// }
 
-	return append([]byte{byte(NotifyContractDeployedType)}, b...), nil
-}
+// // NotifyXMRLock is sent by Bob to Alice after locking his XMR.
+// type NotifyXMRLock struct {
+// 	Address string
+// }
 
-// Type ...
-func (m *NotifyContractDeployed) Type() MessageType {
-	return NotifyContractDeployedType
-}
+// // String ...
+// func (m *NotifyXMRLock) String() string {
+// 	return "NotifyXMRLock"
+// }
 
-// NotifyXMRLock is sent by Bob to Alice after locking his XMR.
-type NotifyXMRLock struct {
-	Address string
-}
+// // Encode ...
+// func (m *NotifyXMRLock) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *NotifyXMRLock) String() string {
-	return "NotifyXMRLock"
-}
+// 	return append([]byte{byte(NotifyXMRLockType)}, b...), nil
+// }
 
-// Encode ...
-func (m *NotifyXMRLock) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// // Type ...
+// func (m *NotifyXMRLock) Type() MessageType {
+// 	return NotifyXMRLockType
+// }
 
-	return append([]byte{byte(NotifyXMRLockType)}, b...), nil
-}
+// // NotifyReady is sent by Alice to Bob after calling Ready() on the contract.
+// type NotifyReady struct{}
 
-// Type ...
-func (m *NotifyXMRLock) Type() MessageType {
-	return NotifyXMRLockType
-}
+// // String ...
+// func (m *NotifyReady) String() string {
+// 	return "NotifyReady"
+// }
 
-// NotifyReady is sent by Alice to Bob after calling Ready() on the contract.
-type NotifyReady struct{}
+// // Encode ...
+// func (m *NotifyReady) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *NotifyReady) String() string {
-	return "NotifyReady"
-}
+// 	return append([]byte{byte(NotifyReadyType)}, b...), nil
+// }
 
-// Encode ...
-func (m *NotifyReady) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// // Type ...
+// func (m *NotifyReady) Type() MessageType {
+// 	return NotifyReadyType
+// }
 
-	return append([]byte{byte(NotifyReadyType)}, b...), nil
-}
+// // NotifyClaimed is sent by Bob to Alice after claiming his ETH.
+// type NotifyClaimed struct {
+// 	TxHash string
+// }
 
-// Type ...
-func (m *NotifyReady) Type() MessageType {
-	return NotifyReadyType
-}
+// // String ...
+// func (m *NotifyClaimed) String() string {
+// 	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
+// }
 
-// NotifyClaimed is sent by Bob to Alice after claiming his ETH.
-type NotifyClaimed struct {
-	TxHash string
-}
+// // Encode ...
+// func (m *NotifyClaimed) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *NotifyClaimed) String() string {
-	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
-}
+// 	return append([]byte{byte(NotifyClaimedType)}, b...), nil
+// }
 
-// Encode ...
-func (m *NotifyClaimed) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// // Type ...
+// func (m *NotifyClaimed) Type() MessageType {
+// 	return NotifyClaimedType
+// }
 
-	return append([]byte{byte(NotifyClaimedType)}, b...), nil
-}
+// // NotifyRefund is sent by Alice to Bob after calling Refund() on the contract.
+// type NotifyRefund struct {
+// 	TxHash string
+// }
 
-// Type ...
-func (m *NotifyClaimed) Type() MessageType {
-	return NotifyClaimedType
-}
+// // String ...
+// func (m *NotifyRefund) String() string {
+// 	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
+// }
 
-// NotifyRefund is sent by Alice to Bob after calling Refund() on the contract.
-type NotifyRefund struct {
-	TxHash string
-}
+// // Encode ...
+// func (m *NotifyRefund) Encode() ([]byte, error) {
+// 	b, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// String ...
-func (m *NotifyRefund) String() string {
-	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
-}
+// 	return append([]byte{byte(NotifyRefundType)}, b...), nil
+// }
 
-// Encode ...
-func (m *NotifyRefund) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return append([]byte{byte(NotifyRefundType)}, b...), nil
-}
-
-// Type ...
-func (m *NotifyRefund) Type() MessageType {
-	return NotifyRefundType
-}
+// // Type ...
+// func (m *NotifyRefund) Type() MessageType {
+// 	return NotifyRefundType
+// }

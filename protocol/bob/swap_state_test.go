@@ -155,7 +155,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, &net.NotifyContractDeployed{}, s.nextExpectedMessage)
+	require.Equal(t, &message.NotifyContractDeployed{}, s.nextExpectedMessage)
 	require.Equal(t, alicePubKeys.SpendKey().Hex(), s.alicePublicKeys.SpendKey().Hex())
 	require.Equal(t, alicePubKeys.ViewKey().Hex(), s.alicePublicKeys.ViewKey().Hex())
 }
@@ -163,7 +163,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T) {
 	bob, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &net.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyContractDeployed{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -171,7 +171,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
-	msg := &net.NotifyContractDeployed{}
+	msg := &message.NotifyContractDeployed{}
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingAddress, err)
 	require.Nil(t, resp)
@@ -182,7 +182,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(),
 		desiredAmout.BigInt(), duration)
 
-	msg = &net.NotifyContractDeployed{
+	msg = &message.NotifyContractDeployed{
 		Address:        addr.String(),
 		ContractSwapID: defaultContractSwapID,
 	}
@@ -190,19 +190,19 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	resp, done, err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyXMRLockType, resp.Type())
+	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.False(t, done)
 	require.NotNil(t, s.contract)
 	require.Equal(t, addr, s.contractAddr)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, &net.NotifyReady{}, s.nextExpectedMessage)
+	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testing.T) {
 	bob, s := newTestInstance(t)
 	defer s.cancel()
 	s.bob.net = new(mockNet)
-	s.nextExpectedMessage = &net.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyContractDeployed{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -210,7 +210,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
-	msg := &net.NotifyContractDeployed{}
+	msg := &message.NotifyContractDeployed{}
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingAddress, err)
 	require.Nil(t, resp)
@@ -221,7 +221,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(),
 		desiredAmout.BigInt(), duration)
 
-	msg = &net.NotifyContractDeployed{
+	msg = &message.NotifyContractDeployed{
 		Address:        addr.String(),
 		ContractSwapID: defaultContractSwapID,
 	}
@@ -229,12 +229,12 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	resp, done, err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyXMRLockType, resp.Type())
+	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.False(t, done)
 	require.NotNil(t, s.contract)
 	require.Equal(t, addr, s.contractAddr)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, &net.NotifyReady{}, s.nextExpectedMessage)
+	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 
 	// TODO: fix this, it's sometimes nil
 	// time.Sleep(duration * 3)
@@ -244,7 +244,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	bob, s := newTestInstance(t)
 
-	s.nextExpectedMessage = &net.NotifyReady{}
+	s.nextExpectedMessage = &message.NotifyReady{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -255,13 +255,13 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	_, err = s.contract.SetReady(s.txOpts, defaultContractSwapID)
 	require.NoError(t, err)
 
-	msg := &net.NotifyReady{}
+	msg := &message.NotifyReady{}
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.True(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyClaimedType, resp.Type())
+	require.Equal(t, message.NotifyClaimedType, resp.Type())
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
@@ -325,7 +325,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	tx, err := s.contract.Refund(s.txOpts, defaultContractSwapID, sc)
 	require.NoError(t, err)
 
-	msg := &net.NotifyRefund{
+	msg := &message.NotifyRefund{
 		TxHash: tx.Hash().String(),
 	}
 
@@ -370,7 +370,7 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
-	s.nextExpectedMessage = &net.NotifyReady{}
+	s.nextExpectedMessage = &message.NotifyReady{}
 	err = s.ProtocolExited()
 	require.NoError(t, err)
 

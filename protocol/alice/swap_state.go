@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -57,7 +59,7 @@ type swapState struct {
 	txOpts         *bind.TransactOpts
 
 	// next expected network message
-	nextExpectedMessage net.Message // TODO: change to type?
+	nextExpectedMessage net.Message
 
 	// channels
 	xmrLockedCh chan struct{}
@@ -73,7 +75,7 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 	txOpts.GasPrice = a.gasPrice
 	txOpts.GasLimit = a.gasLimit
 
-	info := pswap.NewInfo(common.ProvidesETH, providesAmount.AsEther(), 0, 0, pswap.Ongoing)
+	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), 0, 0, pswap.Ongoing)
 	if err := a.swapManager.AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -149,7 +151,7 @@ func (s *swapState) ProtocolExited() error {
 		// we are fine, as we only just initiated the protocol.
 		s.info.SetStatus(pswap.Aborted)
 		return errors.New("swap cancelled early, but before any locking happened")
-	case *net.NotifyXMRLock:
+	case *message.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
@@ -160,7 +162,7 @@ func (s *swapState) ProtocolExited() error {
 
 		s.info.SetStatus(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case *net.NotifyClaimed:
+	case *message.NotifyClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()

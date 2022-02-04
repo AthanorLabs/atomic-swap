@@ -127,7 +127,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyContractDeployedType, resp.Type())
+	require.Equal(t, message.NotifyContractDeployedType, resp.Type())
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
@@ -135,7 +135,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	// ensure we refund before t0
 	time.Sleep(time.Second * 15)
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
-	require.Equal(t, net.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
+	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check swap is marked completed
 	info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
@@ -146,7 +146,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 func TestSwapState_NotifyXMRLock(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &net.NotifyXMRLock{}
+	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
-	msg := &net.NotifyXMRLock{
+	msg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
 	}
 
@@ -172,7 +172,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyReadyType, resp.Type())
+	require.Equal(t, message.NotifyReadyType, resp.Type())
 }
 
 // test the case where the monero is locked, but Bob never claims.
@@ -181,7 +181,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
-	s.nextExpectedMessage = &net.NotifyXMRLock{}
+	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
 	// set timeout to 2s
 	// TODO: pass this as a param to newSwapState
@@ -206,7 +206,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
-	msg := &net.NotifyXMRLock{
+	msg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
 	}
 
@@ -214,14 +214,14 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyReadyType, resp.Type())
+	require.Equal(t, message.NotifyReadyType, resp.Type())
 
-	_, ok := resp.(*net.NotifyReady)
+	_, ok := resp.(*message.NotifyReady)
 	require.True(t, ok)
 
 	time.Sleep(time.Second * 25)
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
-	require.Equal(t, net.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
+	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check balance of contract is 0
 	balance, err := s.alice.ethClient.BalanceAt(s.ctx, s.alice.contractAddr, nil)
@@ -279,7 +279,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	_ = s.alice.client.CloseWallet()
 
-	lmsg := &net.NotifyXMRLock{
+	lmsg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
 	}
 
@@ -287,7 +287,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, net.NotifyReadyType, resp.Type())
+	require.Equal(t, message.NotifyReadyType, resp.Type())
 
 	err = daemonClient.GenerateBlocks(bobAddr.Address, 1)
 	require.NoError(t, err)
@@ -301,7 +301,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	tx, err := s.alice.contract.Claim(s.txOpts, s.contractSwapID, sc)
 	require.NoError(t, err)
 
-	cmsg := &net.NotifyClaimed{
+	cmsg := &message.NotifyClaimed{
 		TxHash: tx.Hash().String(),
 	}
 

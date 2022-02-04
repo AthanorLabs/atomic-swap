@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/net/message"
 
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,25 +19,9 @@ const (
 	protocolTimeout = time.Second * 5
 )
 
-// Handler handles swap initiation messages.
-// It is implemented by *bob.bob
-type Handler interface {
-	GetOffers() []*types.Offer
-	HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error)
-}
+type SwapState = common.SwapStateNet
 
-// SwapState handles incoming protocol messages for an initiated protocol.
-// It is implemented by *alice.swapState and *bob.swapState
-type SwapState interface {
-	HandleProtocolMessage(msg Message) (resp Message, done bool, err error)
-	ProtocolExited() error
-
-	// used by RPC
-	SendKeysMessage() (*SendKeysMessage, error)
-	ID() uint64
-}
-
-func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) error {
+func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapState) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -109,7 +94,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		}
 
 		// decode message based on message type
-		msg, err := decodeMessage(msgBytes[:tot])
+		msg, err := message.DecodeMessage(msgBytes[:tot])
 		if err != nil {
 			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
 			continue

@@ -18,9 +18,9 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	Addresses() []string
 	Advertise()
-	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s net.SwapState) error
+	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error
 }
 
 // NetService is the RPC service prefixed by net_.
@@ -52,8 +52,8 @@ func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesR
 
 // DiscoverRequest ...
 type DiscoverRequest struct {
-	Provides   common.ProvidesCoin `json:"provides"`
-	SearchTime uint64              `json:"searchTime"` // in seconds
+	Provides   types.ProvidesCoin `json:"provides"`
+	SearchTime uint64             `json:"searchTime"` // in seconds
 }
 
 // DiscoverResponse ...
@@ -162,9 +162,9 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinimumAmount float64             `json:"minimumAmount"`
-	MaximumAmount float64             `json:"maximumAmount"`
-	ExchangeRate  common.ExchangeRate `json:"exchangeRate"`
+	MinimumAmount float64            `json:"minimumAmount"`
+	MaximumAmount float64            `json:"maximumAmount"`
+	ExchangeRate  types.ExchangeRate `json:"exchangeRate"`
 }
 
 // MakeOfferResponse ...
@@ -175,7 +175,7 @@ type MakeOfferResponse struct {
 // MakeOffer creates and advertises a new swap offer.
 func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *MakeOfferResponse) error {
 	o := &types.Offer{
-		Provides:      common.ProvidesXMR,
+		Provides:      types.ProvidesXMR,
 		MinimumAmount: req.MinimumAmount,
 		MaximumAmount: req.MaximumAmount,
 		ExchangeRate:  req.ExchangeRate,

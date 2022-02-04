@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 )
 
 var nextID uint64
@@ -42,10 +42,10 @@ func (s Status) String() string {
 // Info contains the details of the swap as well as its status.
 type Info struct {
 	id             uint64 // ID number of the swap (not the swap offer ID!)
-	provides       common.ProvidesCoin
+	provides       types.ProvidesCoin
 	providedAmount float64
 	receivedAmount float64
-	exchangeRate   common.ExchangeRate
+	exchangeRate   types.ExchangeRate
 	status         Status
 }
 
@@ -59,7 +59,7 @@ func (i *Info) ID() uint64 {
 }
 
 // Provides returns the coin that was provided for this swap.
-func (i *Info) Provides() common.ProvidesCoin {
+func (i *Info) Provides() types.ProvidesCoin {
 	return i.provides
 }
 
@@ -74,7 +74,7 @@ func (i *Info) ReceivedAmount() float64 {
 }
 
 // ExchangeRate returns the exchange rate for this swap, represented by a ratio of XMR/ETH.
-func (i *Info) ExchangeRate() common.ExchangeRate {
+func (i *Info) ExchangeRate() types.ExchangeRate {
 	return i.exchangeRate
 }
 
@@ -89,7 +89,7 @@ func (i *Info) SetReceivedAmount(a float64) {
 }
 
 // SetExchangeRate ...
-func (i *Info) SetExchangeRate(r common.ExchangeRate) {
+func (i *Info) SetExchangeRate(r types.ExchangeRate) {
 	i.exchangeRate = r
 }
 
@@ -103,8 +103,8 @@ func (i *Info) SetStatus(s Status) {
 }
 
 // NewInfo ...
-func NewInfo(provides common.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate common.ExchangeRate, status Status) *Info {
+func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64,
+	exchangeRate types.ExchangeRate, status Status) *Info {
 	info := &Info{
 		id:             nextID,
 		provides:       provides,

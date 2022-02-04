@@ -3,13 +3,13 @@ package client
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/rpc"
 )
 
 // Discover calls net_discover.
-func (c *Client) Discover(provides common.ProvidesCoin, searchTime uint64) ([][]string, error) {
+func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error) {
 	const (
 		method = "net_discover"
 	)
