@@ -24,17 +24,17 @@ export const offers = derived<Readable<string[]>, Offer[]>(
 
 export const getOffers = async (peerAddress: string) => {
     isLoadingPeers.set(true)
-    return rpcRequest<NetQueryPeerResult>('net_queryPeer', { "multiaddr": peerAddress })
+    return rpcRequest<NetQueryPeerResult | undefined>('net_queryPeer', { "multiaddr": peerAddress })
         .then(({ result }): Offer[] => {
 
-            return result.offers.map(off => ({
+            return result?.offers.map(off => ({
                 peer: peerAddress,
                 id: intToHexString(off.ID),
                 exchangeRate: off.ExchangeRate,
                 maxAmount: off.MaximumAmount,
                 minAmount: off.MinimumAmount,
                 provides: off.Provides
-            }))
+            })) || []
         })
         .catch(console.error)
         .finally(() => isLoadingPeers.set(false))
