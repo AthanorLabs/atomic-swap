@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -10,23 +11,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var defaultPort uint16 = 5001
+
 type mockHandler struct{}
 
 func (h *mockHandler) GetOffers() []*types.Offer {
-	return nil
+	return []*types.Offer{}
 }
 
 func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error) {
-	return nil, nil, nil
+	return nil, &SendKeysMessage{}, nil
 }
 
-func newHost(t *testing.T) *host {
+func newHost(t *testing.T, port uint16) *host {
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
 		ChainID:     common.GanacheChainID,
-		Port:        5001,
-		KeyFile:     "/tmp/node.key",
+		Port:        port,
+		KeyFile:     fmt.Sprintf("/tmp/node-%d.key", port),
 		Bootnodes:   []string{},
 		Handler:     &mockHandler{},
 	}
@@ -37,5 +40,9 @@ func newHost(t *testing.T) *host {
 }
 
 func TestNewHost(t *testing.T) {
-	_ = newHost(t)
+	h := newHost(t, defaultPort)
+	err := h.Start()
+	require.NoError(t, err)
+	err = h.Stop()
+	require.NoError(t, err)
 }

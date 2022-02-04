@@ -217,6 +217,13 @@ func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
 	return multiaddrs
 }
 
+func (h *host) addrInfo() peer.AddrInfo {
+	return peer.AddrInfo{
+		ID:    h.h.ID(),
+		Addrs: h.h.Addrs(),
+	}
+}
+
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 	encMsg, err := msg.Encode()
 	if err != nil {

@@ -51,6 +51,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 	}
 
 	h.swapState = s
+	h.swapStream = stream
 	go h.handleProtocolStreamInner(stream)
 	return nil
 }
@@ -68,6 +69,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		log.Debug("failed to handling incoming swap stream, already have ongoing swap")
 	}
 
+	h.swapStream = stream
 	h.handleProtocolStreamInner(stream)
 }
 
