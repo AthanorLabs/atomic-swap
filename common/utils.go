@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	logging "github.com/ipfs/go-log"
@@ -84,4 +86,9 @@ func WriteContractAddressToFile(basepath, addr string) error {
 
 	_, err = file.Write(bz)
 	return err
+}
+
+func EthereumPrivateKeyToAddress(privkey *ecdsa.PrivateKey) ethcommon.Address {
+	pub := privkey.Public().(*ecdsa.PublicKey)
+	return ethcrypto.PubkeyToAddress(*pub)
 }

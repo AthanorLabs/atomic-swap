@@ -15,7 +15,7 @@ type MoneroAmount uint64
 
 // MoneroToPiconero converts an amount of standard monero and returns it as a MoneroAmount
 func MoneroToPiconero(amount float64) MoneroAmount {
-	return MoneroAmount(amount * (1000000000000))
+	return MoneroAmount(amount * numMoneroUnits)
 }
 
 // Uint64 ...

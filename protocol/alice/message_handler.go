@@ -174,7 +174,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
-	log.Debugf("generating view-only wallet to check funds: %s", walletName)
 	if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.alice.env), walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}

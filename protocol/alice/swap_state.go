@@ -26,11 +26,6 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
-var (
-	errMissingKeys    = errors.New("did not receive Bob's public spend or private view key")
-	errMissingAddress = errors.New("did not receive Bob's address")
-)
-
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
 type swapState struct {
@@ -150,7 +145,7 @@ func (s *swapState) ProtocolExited() error {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
 		s.info.SetStatus(pswap.Aborted)
-		return errors.New("swap cancelled early, but before any locking happened")
+		return errSwapAborted
 	case *message.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
@@ -177,7 +172,7 @@ func (s *swapState) ProtocolExited() error {
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		s.info.SetStatus(pswap.Aborted)
-		return errors.New("unexpected message type")
+		return errUnexpectedMessageType
 	}
 
 	return nil

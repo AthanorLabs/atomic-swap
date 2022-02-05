@@ -3,9 +3,18 @@ package net
 import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/net/message"
 )
 
 type SwapState = common.SwapStateNet //nolint:revive
+
+//nolint:revive
+type (
+	MessageType     = message.Type
+	Message         = message.Message
+	QueryResponse   = message.QueryResponse
+	SendKeysMessage = message.SendKeysMessage
+)
 
 // MessageSender is implemented by a Host
 type MessageSender interface {

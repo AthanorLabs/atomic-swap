@@ -231,30 +231,34 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyClaimed(t *testing.T) {
-	t.Skip() // TODO: fix this, fails saying the wallet doesn't have balance
-
 	_, s := newTestInstance(t)
 	defer s.cancel()
 
+	s.alice.client = monero.NewClient(common.DefaultBobMoneroEndpoint)
+	err := s.alice.client.OpenWallet("test-wallet", "")
+	require.NoError(t, err)
+
+	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
-	_, _, err := s.HandleProtocolMessage(msg)
+	_, _, err = s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
 	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
+	// handle valid SendKeysMessage
+	msg, err = s.SendKeysMessage()
+	require.NoError(t, err)
+	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
+	msg.EthAddress = common.EthereumPrivateKeyToAddress(s.alice.ethPrivKey).String()
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
-	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
-	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
-
-	viewKey := mcrypto.SumPrivateViewKeys(bobKeysAndProof.PrivateKeyPair.ViewKey(), s.privkeys.ViewKey())
-	t.Log(viewKey.Hex())
+	require.Equal(t, msg.PublicSpendKey, s.bobPublicSpendKey.Hex())
+	require.Equal(t, msg.PrivateViewKey, s.bobPrivateViewKey.Hex())
 
 	// simulate bob locking xmr
 	bobAddr, err := s.alice.client.GetAddress(0)
@@ -262,24 +266,21 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// mine some blocks to get xmr first
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemonClient.GenerateBlocks(bobAddr.Address, 257)
+	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
 
-	s.info.SetReceivedAmount(33333)
-	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
+	amt := common.MoneroAmount(333)
+	s.info.SetReceivedAmount(amt.AsMonero())
+	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(s.info.ReceivedAmount()))
+	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(amt))
 	require.NoError(t, err)
 	t.Log("transferred to account", xmrAddr)
 
-	_ = daemonClient.GenerateBlocks(bobAddr.Address, 16)
+	_ = daemonClient.GenerateBlocks(bobAddr.Address, 100)
 
-	err = s.alice.client.Refresh()
-	require.NoError(t, err)
-
-	_ = s.alice.client.CloseWallet()
-
+	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
 	}
@@ -295,13 +296,14 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// simulate bob calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
-	secret := bobKeysAndProof.PrivateKeyPair.SpendKeyBytes()
+	secret := s.privkeys.SpendKeyBytes()
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
 	tx, err := s.alice.contract.Claim(s.txOpts, s.contractSwapID, sc)
 	require.NoError(t, err)
 
+	// handled the claimed message should result in the monero wallet being created
 	cmsg := &message.NotifyClaimed{
 		TxHash: tx.Hash().String(),
 	}
@@ -310,6 +312,85 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, done)
 	require.Nil(t, resp)
+}
 
-	// check that wallet was generated
+func TestProtocolExited_afterSendKeysMessage(t *testing.T) {
+	_, s := newTestInstance(t)
+	defer s.cancel()
+	s.alice.net = new(mockNet)
+	s.nextExpectedMessage = &message.SendKeysMessage{}
+	err := s.ProtocolExited()
+	require.Equal(t, errSwapAborted, err)
+	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	require.Equal(t, pswap.Aborted, info.Status())
+}
+
+func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
+	_, s := newTestInstance(t)
+	defer s.cancel()
+	s.nextExpectedMessage = &message.NotifyXMRLock{}
+
+	err := s.generateAndSetKeys()
+	require.NoError(t, err)
+
+	bobKeysAndProof, err := generateKeys()
+	require.NoError(t, err)
+
+	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
+		bobKeysAndProof.Secp256k1PublicKey)
+
+	err = s.lockETH(common.NewEtherAmount(1))
+	require.NoError(t, err)
+
+	err = s.ProtocolExited()
+	require.NoError(t, err)
+	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	require.Equal(t, pswap.Refunded, info.Status())
+}
+
+func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
+	_, s := newTestInstance(t)
+	defer s.cancel()
+	s.nextExpectedMessage = &message.NotifyClaimed{}
+
+	err := s.generateAndSetKeys()
+	require.NoError(t, err)
+
+	bobKeysAndProof, err := generateKeys()
+	require.NoError(t, err)
+
+	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
+		bobKeysAndProof.Secp256k1PublicKey)
+
+	err = s.lockETH(common.NewEtherAmount(1))
+	require.NoError(t, err)
+
+	err = s.ProtocolExited()
+	require.NoError(t, err)
+	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	require.Equal(t, pswap.Refunded, info.Status())
+}
+
+func TestProtocolExited_invalidNextMessageType(t *testing.T) {
+	// this case shouldn't ever really happen
+	_, s := newTestInstance(t)
+	defer s.cancel()
+	s.nextExpectedMessage = nil
+
+	err := s.generateAndSetKeys()
+	require.NoError(t, err)
+
+	bobKeysAndProof, err := generateKeys()
+	require.NoError(t, err)
+
+	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
+		bobKeysAndProof.Secp256k1PublicKey)
+
+	err = s.lockETH(common.NewEtherAmount(1))
+	require.NoError(t, err)
+
+	err = s.ProtocolExited()
+	require.Equal(t, errUnexpectedMessageType, err)
+	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	require.Equal(t, pswap.Aborted, info.Status())
 }
