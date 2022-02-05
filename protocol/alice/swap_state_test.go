@@ -35,7 +35,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 	return nil
 }
 
-func newTestInstance(t *testing.T) (*Instance, *swapState) {
+func newTestAlice(t *testing.T) *Instance {
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
@@ -62,6 +62,11 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 
 	alice, err := NewInstance(cfg)
 	require.NoError(t, err)
+	return alice
+}
+
+func newTestInstance(t *testing.T) (*Instance, *swapState) {
+	alice := newTestAlice(t)
 	swapState, err := newSwapState(alice, common.NewEtherAmount(1))
 	require.NoError(t, err)
 	swapState.info.SetReceivedAmount(1)

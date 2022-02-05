@@ -88,6 +88,7 @@ func WriteContractAddressToFile(basepath, addr string) error {
 	return err
 }
 
+// EthereumPrivateKeyToAddress returns the address associated with a private key
 func EthereumPrivateKeyToAddress(privkey *ecdsa.PrivateKey) ethcommon.Address {
 	pub := privkey.Public().(*ecdsa.PublicKey)
 	return ethcrypto.PubkeyToAddress(*pub)
