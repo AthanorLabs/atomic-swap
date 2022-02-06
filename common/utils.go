@@ -2,7 +2,9 @@ package common
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	logging "github.com/ipfs/go-log"
@@ -34,7 +37,7 @@ func Reverse(s []byte) []byte {
 }
 
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
-func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, bool) {
+func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, error) { //nolint:lll
 	for i := 0; i < maxRetries; i++ {
 		receipt, err := ethclient.TransactionReceipt(ctx, txHash)
 		if err != nil {
@@ -49,10 +52,10 @@ func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash eth
 			receipt.BlockNumber,
 			receipt.CumulativeGasUsed,
 		)
-		return receipt, true
+		return receipt, nil
 	}
 
-	return nil, false
+	return nil, errors.New("failed to get receipt, timed out")
 }
 
 // WriteContractAddressToFile writes the contract address to a file in the given basepath
@@ -83,4 +86,10 @@ func WriteContractAddressToFile(basepath, addr string) error {
 
 	_, err = file.Write(bz)
 	return err
+}
+
+// EthereumPrivateKeyToAddress returns the address associated with a private key
+func EthereumPrivateKeyToAddress(privkey *ecdsa.PrivateKey) ethcommon.Address {
+	pub := privkey.Public().(*ecdsa.PublicKey)
+	return ethcrypto.PubkeyToAddress(*pub)
 }

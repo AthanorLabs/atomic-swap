@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common"
-
 	"golang.org/x/crypto/sha3"
 )
 
@@ -33,10 +31,10 @@ func HexToHash(s string) (Hash, error) {
 // Offer represents a swap offer
 type Offer struct {
 	ID            Hash
-	Provides      common.ProvidesCoin
+	Provides      ProvidesCoin
 	MinimumAmount float64
 	MaximumAmount float64
-	ExchangeRate  common.ExchangeRate
+	ExchangeRate  ExchangeRate
 }
 
 // GetID returns the ID of the offer

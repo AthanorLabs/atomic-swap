@@ -10,9 +10,9 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
-// Provides returns common.ProvidesXMR
-func (b *Instance) Provides() common.ProvidesCoin {
-	return common.ProvidesXMR
+// Provides returns types.ProvidesXMR
+func (b *Instance) Provides() types.ProvidesCoin {
+	return types.ProvidesXMR
 }
 
 func (b *Instance) initiate(offerID types.Hash, providesAmount common.MoneroAmount,

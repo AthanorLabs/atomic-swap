@@ -6,7 +6,6 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
 
 	"github.com/gorilla/handlers"
@@ -80,14 +79,14 @@ func (s *Server) Start() <-chan error {
 
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
-	Provides() common.ProvidesCoin
+	Provides() types.ProvidesCoin
 	SetGasPrice(gasPrice uint64)
 }
 
 // Alice ...
 type Alice interface {
 	Protocol
-	InitiateProtocol(providesAmount float64) (net.SwapState, error)
+	InitiateProtocol(providesAmount float64) (common.SwapState, error)
 }
 
 // Bob ...

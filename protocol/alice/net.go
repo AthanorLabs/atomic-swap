@@ -4,19 +4,19 @@ import (
 	"errors"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/fatih/color" //nolint:misspell
 )
 
-// Provides returns common.ProvidesETH
-func (a *Instance) Provides() common.ProvidesCoin {
-	return common.ProvidesETH
+// Provides returns types.ProvidesETH
+func (a *Instance) Provides() types.ProvidesCoin {
+	return types.ProvidesETH
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
-func (a *Instance) InitiateProtocol(providesAmount float64) (net.SwapState, error) {
+func (a *Instance) InitiateProtocol(providesAmount float64) (common.SwapState, error) {
 	if err := a.initiate(common.EtherToWei(providesAmount)); err != nil {
 		return nil, err
 	}

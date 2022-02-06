@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/libp2p/go-libp2p"
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
@@ -33,15 +34,10 @@ type Host interface {
 	Start() error
 	Stop() error
 
-	Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
+	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s SwapState) error
+	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapState) error
 	MessageSender
-}
-
-// MessageSender is implemented by a Host
-type MessageSender interface {
-	SendSwapMessage(Message) error
 }
 
 type host struct {
@@ -184,7 +180,7 @@ func (h *host) Addresses() []string {
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.
 // It searches for up to `searchTime` duration of time.
-func (h *host) Discover(provides common.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
 	return h.discovery.discover(provides, searchTime)
 }
 
@@ -219,6 +215,13 @@ func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
 		multiaddrs = append(multiaddrs, multiaddr)
 	}
 	return multiaddrs
+}
+
+func (h *host) addrInfo() peer.AddrInfo {
+	return peer.AddrInfo{
+		ID:    h.h.ID(),
+		Addrs: h.h.Addrs(),
+	}
 }
 
 func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {

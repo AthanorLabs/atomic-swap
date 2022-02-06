@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/cmd/client/client"
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -153,7 +153,7 @@ func TestAlice_Discover(t *testing.T) {
 	require.NoError(t, err)
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
-	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -162,7 +162,7 @@ func TestAlice_Discover(t *testing.T) {
 func TestBob_Discover(t *testing.T) {
 	startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
-	providers, err := c.Discover(common.ProvidesETH, defaultDiscoverTimeout)
+	providers, err := c.Discover(types.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(providers))
 }
@@ -175,7 +175,7 @@ func TestAlice_Query(t *testing.T) {
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 
-	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -197,7 +197,7 @@ func TestAlice_TakeOffer(t *testing.T) {
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 
-	providers, err := c.Discover(common.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)

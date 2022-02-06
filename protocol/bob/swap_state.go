@@ -24,16 +24,10 @@ import (
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
-)
-
-var (
-	errMissingKeys       = errors.New("did not receive Alice's public spend or view key")
-	errMissingAddress    = errors.New("got empty contract address")
-	errNoRefundLogsFound = errors.New("no refund logs found")
-	errPastClaimTime     = errors.New("past t1, can no longer claim")
 )
 
 var (
@@ -87,8 +81,8 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 	txOpts.GasPrice = b.gasPrice
 	txOpts.GasLimit = b.gasLimit
 
-	exchangeRate := common.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
-	info := pswap.NewInfo(common.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
+	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
 		exchangeRate, pswap.Ongoing)
 	if err := b.swapManager.AddSwap(info); err != nil {
 		return nil, err
@@ -167,13 +161,13 @@ func (s *swapState) ProtocolExited() error {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
 		s.info.SetStatus(pswap.Aborted)
-		return errors.New("protocol exited before any funds were locked")
-	case *net.NotifyContractDeployed:
+		return errSwapAborted
+	case *message.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
 		s.info.SetStatus(pswap.Aborted)
-		return errors.New("protocol exited before any funds were locked")
-	case *net.NotifyReady:
+		return errSwapAborted
+	case *message.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
 		// the funds (ie. wait until after t0)
 		txHash, err := s.tryClaim()
@@ -199,7 +193,7 @@ func (s *swapState) ProtocolExited() error {
 	default:
 		s.info.SetStatus(pswap.Aborted)
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
-		return errors.New("unexpected message type")
+		return errUnexpectedMessageType
 	}
 }
 
@@ -467,8 +461,8 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
 
-	if _, ok := common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); !ok {
-		return ethcommon.Hash{}, errors.New("failed to check Claim transaction receipt")
+	if _, err = common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to check claim transaction receipt: %w", err)
 	}
 
 	balance, err = s.bob.ethClient.BalanceAt(s.ctx, addr, nil)

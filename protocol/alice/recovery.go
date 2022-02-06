@@ -17,10 +17,6 @@ import (
 
 var claimedTopic = ethcommon.HexToHash("0xd5a2476fc450083bbb092dd3f4be92698ffdc2d213e6f1e730c7f44a52f1ccfc")
 
-var (
-	errNoClaimLogsFound = errors.New("no Claimed logs found")
-)
-
 type recoveryState struct {
 	ss           *swapState
 	contractAddr ethcommon.Address

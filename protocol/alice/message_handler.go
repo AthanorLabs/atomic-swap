@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -36,14 +38,14 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		return resp, false, nil
-	case *net.NotifyXMRLock:
+	case *message.NotifyXMRLock:
 		out, err := s.handleNotifyXMRLock(msg)
 		if err != nil {
 			return nil, true, err
 		}
 
 		return out, false, nil
-	case *net.NotifyClaimed:
+	case *message.NotifyClaimed:
 		address, err := s.handleNotifyClaimed(msg.TxHash)
 		if err != nil {
 			log.Error("failed to create monero address: err=", err)
@@ -73,7 +75,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
 
 	exchangeRate := msg.ProvidedAmount / s.info.ProvidedAmount()
-	s.info.SetExchangeRate(common.ExchangeRate(exchangeRate))
+	s.info.SetExchangeRate(types.ExchangeRate(exchangeRate))
 
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -136,7 +138,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
 			// send NotifyRefund msg
-			if err := s.alice.net.SendSwapMessage(&net.NotifyRefund{
+			if err := s.alice.net.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
 			}); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
@@ -147,9 +149,9 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	}()
 
-	s.nextExpectedMessage = &net.NotifyXMRLock{}
+	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
-	out := &net.NotifyContractDeployed{
+	out := &message.NotifyContractDeployed{
 		Address:        s.alice.contractAddr.String(),
 		ContractSwapID: s.contractSwapID,
 	}
@@ -157,7 +159,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	return out, nil
 }
 
-func (s *swapState) handleNotifyXMRLock(msg *net.NotifyXMRLock) (net.Message, error) {
+func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message, error) {
 	if msg.Address == "" {
 		return nil, errors.New("got empty address for locked XMR")
 	}
@@ -172,7 +174,6 @@ func (s *swapState) handleNotifyXMRLock(msg *net.NotifyXMRLock) (net.Message, er
 
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("alice-viewonly-wallet-%s", t)
-	log.Debugf("generating view-only wallet to check funds: %s", walletName)
 	if err := s.alice.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.alice.env), walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
@@ -265,7 +266,7 @@ func (s *swapState) handleNotifyXMRLock(msg *net.NotifyXMRLock) (net.Message, er
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
 			// send NotifyRefund msg
-			if err = s.alice.net.SendSwapMessage(&net.NotifyRefund{
+			if err = s.alice.net.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
 			}); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
@@ -275,16 +276,16 @@ func (s *swapState) handleNotifyXMRLock(msg *net.NotifyXMRLock) (net.Message, er
 		}
 	}()
 
-	s.nextExpectedMessage = &net.NotifyClaimed{}
-	return &net.NotifyReady{}, nil
+	s.nextExpectedMessage = &message.NotifyClaimed{}
+	return &message.NotifyReady{}, nil
 }
 
 // handleNotifyClaimed handles Bob's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create Alice's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash))
-	if !ok {
-		return "", errors.New("failed check Claim transaction receipt")
+	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, ethcommon.HexToHash(txHash))
+	if err != nil {
+		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
 	}
 
 	if len(receipt.Logs) == 0 {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
@@ -75,8 +74,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		return nil, errors.New("environment is development, must provide monero daemon endpoint")
 	}
 
-	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
-	addr := crypto.PubkeyToAddress(*pub)
+	addr := common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
 
 	// monero-wallet-rpc client
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
