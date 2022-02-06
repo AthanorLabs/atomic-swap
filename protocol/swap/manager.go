@@ -1,7 +1,6 @@
 package swap
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/noot/atomic-swap/common/types"
@@ -139,7 +138,7 @@ func (m *Manager) AddSwap(info *Info) error {
 	switch info.status {
 	case Ongoing:
 		if m.ongoing != nil {
-			return errors.New("already have ongoing swap")
+			return errHaveOngoingSwap
 		}
 
 		m.ongoing = info
