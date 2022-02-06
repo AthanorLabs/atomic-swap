@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/noot/atomic-swap/cmd/client/client"
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli"
@@ -162,13 +162,13 @@ func runAddresses(ctx *cli.Context) error {
 }
 
 func runDiscover(ctx *cli.Context) error {
-	provides, err := common.NewProvidesCoin(ctx.String("provides"))
+	provides, err := types.NewProvidesCoin(ctx.String("provides"))
 	if err != nil {
 		return err
 	}
 
 	if provides == "" {
-		provides = common.ProvidesXMR
+		provides = types.ProvidesXMR
 	}
 
 	endpoint := ctx.String("daemon-addr")

@@ -12,14 +12,19 @@ import (
 	"github.com/noot/atomic-swap/common"
 )
 
+const (
+	flagEthereumPrivKey = "ethereum-privkey"
+	flagEnv             = "env"
+)
+
 var log = logging.Logger("cmd")
 
 var defaultEnvironment = common.Development
 
 // GetEthereumPrivateKey returns an ethereum private key hex string given the CLI options.
 func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) (ethPrivKey string, err error) {
-	if c.String("ethereum-privkey") != "" {
-		ethPrivKeyFile := c.String("ethereum-privkey")
+	if c.String(flagEthereumPrivKey) != "" {
+		ethPrivKeyFile := c.String(flagEthereumPrivKey)
 		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
 		if err != nil {
 			return "", fmt.Errorf("failed to read ethereum-privkey file: %w", err)
@@ -49,7 +54,7 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) 
 
 // GetEnvironment returns a common.Environment from the CLI options.
 func GetEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, err error) {
-	switch c.String("env") {
+	switch c.String(flagEnv) {
 	case "mainnet":
 		env = common.Mainnet
 		cfg = common.MainnetConfig

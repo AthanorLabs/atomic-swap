@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,7 +8,7 @@ import (
 	"syscall"
 )
 
-func wait(ctx context.Context) {
+func (d *daemon) wait() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	go func() {
@@ -20,11 +19,10 @@ func wait(ctx context.Context) {
 		select {
 		case <-sigc:
 			fmt.Println("signal interrupt, shutting down...")
-		case <-ctx.Done():
+			d.cancel()
+		case <-d.ctx.Done():
 			fmt.Println("protocol complete, shutting down...")
 		}
-
-		os.Exit(0)
 	}()
 
 	wg.Wait()

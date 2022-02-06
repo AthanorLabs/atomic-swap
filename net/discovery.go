@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -27,7 +27,7 @@ type discovery struct {
 	dht         *dual.DHT
 	h           libp2phost.Host
 	rd          *libp2pdiscovery.RoutingDiscovery
-	provides    []common.ProvidesCoin
+	provides    []types.ProvidesCoin
 	advertiseCh chan struct{}
 }
 
@@ -107,7 +107,7 @@ func (d *discovery) advertise() {
 		select {
 		case <-d.advertiseCh:
 			// TODO: check current offers, as this may change
-			d.provides = []common.ProvidesCoin{common.ProvidesXMR}
+			d.provides = []types.ProvidesCoin{types.ProvidesXMR}
 			doAdvertise()
 		case <-time.After(ttl):
 			doAdvertise()
@@ -117,7 +117,7 @@ func (d *discovery) advertise() {
 	}
 }
 
-func (d *discovery) discover(provides common.ProvidesCoin,
+func (d *discovery) discover(provides types.ProvidesCoin,
 	searchTime time.Duration) ([]peer.AddrInfo, error) {
 	log.Debugf("attempting to find DHT peers that provide %s for %s...", provides, searchTime)
 

@@ -1,4 +1,4 @@
-package common
+package types
 
 // ExchangeRate defines an exchange rate between ETH and XMR.
 // It is defined as the ratio of ETH:XMR that the node wishes to provide.

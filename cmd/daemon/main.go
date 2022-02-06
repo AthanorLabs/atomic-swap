@@ -50,6 +50,29 @@ var (
 	_   = logging.SetLogLevel("rpc", "debug")
 )
 
+const (
+	flagRPCPort    = "rpc-port"
+	flagBasepath   = "basepath"
+	flagLibp2pKey  = "libp2p-key"
+	flagLibp2pPort = "libp2p-port"
+	flagBootnodes  = "bootnodes"
+
+	flagWalletFile           = "wallet-file"
+	flagWalletPassword       = "wallet-password"
+	flagEnv                  = "env"
+	flagMoneroWalletEndpoint = "monero-endpoint"
+	flagMoneroDaemonEndpoint = "monero-daemon-endpoint"
+	flagEthereumEndpoint     = "ethereum-endpoint"
+	flagEthereumPrivKey      = "ethereum-privkey"
+	flagEthereumChainID      = "ethereum-chain-id"
+	flagContractAddress      = "contract-address"
+	flagGasPrice             = "gas-price"
+	flagGasLimit             = "gas-limit"
+
+	flagDevAlice = "dev-alice"
+	flagDevBob   = "dev-bob"
+)
+
 var (
 	app = &cli.App{
 		Name:   "swapd",
@@ -57,74 +80,76 @@ var (
 		Action: runDaemon,
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  "rpc-port",
+				Name:  flagRPCPort,
 				Usage: "port for the daemon RPC server to run on; default 5001",
 			},
 			&cli.StringFlag{
-				Name:  "basepath",
+				Name:  flagBasepath,
 				Usage: "path to store swap artefacts",
 			},
 			&cli.StringFlag{
-				Name:  "libp2p-key",
+				Name:  flagLibp2pKey,
 				Usage: "libp2p private key",
 			},
 			&cli.UintFlag{
-				Name:  "libp2p-port",
+				Name:  flagLibp2pPort,
 				Usage: "libp2p port to listen on",
 			},
 			&cli.StringFlag{
-				Name:  "wallet-file",
-				Usage: "filename of wallet file containing XMR to be swapped; required if running as Bob",
+				Name:  flagWalletFile,
+				Usage: "filename of wallet file containing XMR to be swapped; required if running as XMR provider",
 			},
 			&cli.StringFlag{
-				Name:  "wallet-password",
+				Name:  flagWalletPassword,
 				Usage: "password of wallet file containing XMR to be swapped",
 			},
 			&cli.StringFlag{
-				Name:  "env",
+				Name:  flagEnv,
 				Usage: "environment to use: one of mainnet, stagenet, or dev",
 			},
 			&cli.StringFlag{
-				Name:  "monero-endpoint",
+				Name:  flagMoneroWalletEndpoint,
 				Usage: "monero-wallet-rpc endpoint",
 			},
 			&cli.StringFlag{
-				Name:  "monero-daemon-endpoint",
-				Usage: "monerod RPC endpoint",
+				Name:  flagMoneroDaemonEndpoint,
+				Usage: "monerod RPC endpoint; only used if running in development mode",
 			},
 			&cli.StringFlag{
-				Name:  "ethereum-endpoint",
+				Name:  flagEthereumEndpoint,
 				Usage: "ethereum client endpoint",
 			},
 			&cli.StringFlag{
-				Name:  "ethereum-privkey",
+				Name:  flagEthereumPrivKey,
 				Usage: "file containing a private key hex string",
 			},
 			&cli.UintFlag{
-				Name:  "ethereum-chain-id",
+				Name:  flagEthereumChainID,
 				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
 			},
 			&cli.StringFlag{
-				Name:  "contract-address",
-				Usage: "address of instance of SwapFactory.sol already deployed on-chain",
+				Name:  flagContractAddress,
+				Usage: "address of instance of SwapFactory.sol already deployed on-chain; required if running on mainnet",
 			},
 			&cli.StringFlag{
-				Name:  "bootnodes",
+				Name:  flagBootnodes,
 				Usage: "comma-separated string of libp2p bootnodes",
 			},
 			&cli.UintFlag{
-				Name:  "gas-price",
+				Name:  flagGasPrice,
 				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
 			},
 			&cli.UintFlag{
-				Name:  "gas-limit",
+				Name:  flagGasLimit,
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
 			&cli.BoolFlag{
-				Name: "dev-alice",
+				Name:  flagDevAlice,
+				Usage: "run in development mode and use ETH provider default values",
 			},
 			&cli.BoolFlag{
-				Name: "dev-bob",
+				Name:  flagDevBob,
+				Usage: "run in development mode and use XMR provider default values",
 			},
 		},
 	}
@@ -148,37 +173,58 @@ type bobHandler interface {
 	SetMessageSender(net.MessageSender)
 }
 
+type daemon struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
 func runDaemon(c *cli.Context) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	d := &daemon{
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	err := d.make(c)
+	if err != nil {
+		return err
+	}
+
+	d.wait()
+	os.Exit(0)
+	return nil
+}
+
+func (d *daemon) make(c *cli.Context) error {
 	env, cfg, err := utils.GetEnvironment(c)
 	if err != nil {
 		return err
 	}
 
-	devAlice := c.Bool("dev-alice")
-	devBob := c.Bool("dev-bob")
+	devAlice := c.Bool(flagDevAlice)
+	devBob := c.Bool(flagDevBob)
 
-	chainID := int64(c.Uint("ethereum-chain-id"))
+	chainID := int64(c.Uint(flagEthereumChainID))
 	if chainID == 0 {
 		chainID = cfg.EthereumChainID
 	}
 
 	sm := swap.NewManager()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	a, b, err := getProtocolInstances(ctx, c, env, cfg, chainID, devBob, sm)
+	a, b, err := getProtocolInstances(d.ctx, c, env, cfg, chainID, devBob, sm)
 	if err != nil {
 		return err
 	}
 
 	var bootnodes []string
-	if c.String("bootnodes") != "" {
-		bootnodes = strings.Split(c.String("bootnodes"), ",")
+	if c.String(flagBootnodes) != "" {
+		bootnodes = strings.Split(c.String(flagBootnodes), ",")
 	}
 
-	k := c.String("libp2p-key")
-	p := uint16(c.Uint("libp2p-port"))
+	k := c.String(flagLibp2pKey)
+	p := uint16(c.Uint(flagLibp2pPort))
 	var (
 		libp2pKey  string
 		libp2pPort uint16
@@ -205,11 +251,10 @@ func runDaemon(c *cli.Context) error {
 		libp2pPort = defaultBobLibp2pPort
 	default:
 		libp2pPort = defaultLibp2pPort
-		//	return errors.New("must provide --libp2p-port")
 	}
 
 	netCfg := &net.Config{
-		Ctx:         ctx,
+		Ctx:         d.ctx,
 		Environment: env,
 		ChainID:     chainID,
 		Port:        libp2pPort,
@@ -231,7 +276,7 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
-	p = uint16(c.Uint("rpc-port"))
+	p = uint16(c.Uint(flagRPCPort))
 	switch {
 	case p != 0:
 		rpcPort = p
@@ -259,10 +304,11 @@ func runDaemon(c *cli.Context) error {
 	errCh := s.Start()
 	go func() {
 		select {
-		case <-ctx.Done():
+		case <-d.ctx.Done():
 			return
 		case err := <-errCh:
 			log.Errorf("failed to start RPC server: %s", err)
+			d.cancel()
 			os.Exit(1)
 		}
 	}()
@@ -270,7 +316,6 @@ func runDaemon(c *cli.Context) error {
 	log.Infof("started swapd with basepath %d",
 		cfg.Basepath,
 	)
-	wait(ctx)
 	return nil
 }
 
@@ -280,16 +325,16 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
 
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
+	if c.String(flagMoneroWalletEndpoint) != "" {
+		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else if devBob {
 		moneroEndpoint = common.DefaultBobMoneroEndpoint
 	} else {
 		moneroEndpoint = common.DefaultAliceMoneroEndpoint
 	}
 
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
 	} else {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
@@ -299,20 +344,20 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		return nil, nil, err
 	}
 
-	if c.String("monero-daemon-endpoint") != "" {
-		daemonEndpoint = c.String("monero-daemon-endpoint")
+	if c.String(flagMoneroDaemonEndpoint) != "" {
+		daemonEndpoint = c.String(flagMoneroDaemonEndpoint)
 	} else {
 		daemonEndpoint = cfg.MoneroDaemonEndpoint
 	}
 
 	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
 	var gasPrice *big.Int
-	if c.Uint("gas-price") != 0 {
-		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	if c.Uint(flagGasPrice) != 0 {
+		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
 	var contractAddr ethcommon.Address
-	contractAddrStr := c.String("contract-address")
+	contractAddrStr := c.String(flagContractAddress)
 	if contractAddrStr == "" {
 		contractAddr = ethcommon.Address{}
 	} else {
@@ -347,7 +392,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		Environment:          env,
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint("gas-limit")),
+		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapManager:          sm,
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
@@ -375,7 +420,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		Environment:          env,
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint("gas-limit")),
+		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapManager:          sm,
 	}
 

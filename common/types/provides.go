@@ -1,4 +1,4 @@
-package common
+package types
 
 import "errors"
 
@@ -13,9 +13,9 @@ var (
 // NewProvidesCoin converts a string to a ProvidesCoin.
 func NewProvidesCoin(s string) (ProvidesCoin, error) {
 	switch s {
-	case "XMR":
+	case "XMR", "xmr":
 		return ProvidesXMR, nil
-	case "ETH":
+	case "ETH", "eth":
 		return ProvidesETH, nil
 	default:
 		return "", errors.New("invalid ProvidesCoin")

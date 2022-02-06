@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -22,11 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
-)
-
-var (
-	errMissingKeys    = errors.New("did not receive Bob's public spend or private view key")
-	errMissingAddress = errors.New("did not receive Bob's address")
 )
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
@@ -57,7 +54,7 @@ type swapState struct {
 	txOpts         *bind.TransactOpts
 
 	// next expected network message
-	nextExpectedMessage net.Message // TODO: change to type?
+	nextExpectedMessage net.Message
 
 	// channels
 	xmrLockedCh chan struct{}
@@ -73,7 +70,7 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 	txOpts.GasPrice = a.gasPrice
 	txOpts.GasLimit = a.gasLimit
 
-	info := pswap.NewInfo(common.ProvidesETH, providesAmount.AsEther(), 0, 0, pswap.Ongoing)
+	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), 0, 0, pswap.Ongoing)
 	if err := a.swapManager.AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -148,8 +145,8 @@ func (s *swapState) ProtocolExited() error {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
 		s.info.SetStatus(pswap.Aborted)
-		return errors.New("swap cancelled early, but before any locking happened")
-	case *net.NotifyXMRLock:
+		return errSwapAborted
+	case *message.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
@@ -160,7 +157,7 @@ func (s *swapState) ProtocolExited() error {
 
 		s.info.SetStatus(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case *net.NotifyClaimed:
+	case *message.NotifyClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
@@ -175,7 +172,7 @@ func (s *swapState) ProtocolExited() error {
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		s.info.SetStatus(pswap.Aborted)
-		return errors.New("unexpected message type")
+		return errUnexpectedMessageType
 	}
 
 	return nil
@@ -293,9 +290,9 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 	}
 
 	log.Debugf("deploying Swap.sol, amount=%s txHash=%s", amount, tx.Hash())
-	receipt, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
-	if !ok {
-		return errors.New("failed to call new_swap in contract")
+	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
+	if err != nil {
+		return fmt.Errorf("failed to call new_swap in contract: %w", err)
 	}
 
 	if len(receipt.Logs) == 0 {
@@ -319,8 +316,8 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
-		return errors.New("failed to set IsReady to true in Swap.sol")
+	if _, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); err != nil {
+		return fmt.Errorf("failed to call is_ready in swap contract: %w", err)
 	}
 
 	return nil
@@ -342,8 +339,8 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	if _, ok := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); !ok {
-		return ethcommon.Hash{}, errors.New("failed to call Refund in Swap.sol")
+	if _, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
 	}
 
 	s.info.SetStatus(pswap.Refunded)

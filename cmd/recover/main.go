@@ -20,6 +20,20 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
+const (
+	flagEnv                  = "env"
+	flagMoneroWalletEndpoint = "monero-endpoint"
+	flagEthereumEndpoint     = "ethereum-endpoint"
+	flagEthereumPrivateKey   = "ethereum-privkey"
+	flagEthereumChainID      = "ethereum-chain-id"
+	flagGasPrice             = "gas-price"
+	flagGasLimit             = "gas-limit"
+	flagContractSwapID       = "contract-swap-id"
+	flagAliceSecret          = "alice-secret"
+	flagBobSecret            = "bob-secret"
+	flagContractAddr         = "contract-addr"
+)
+
 var (
 	log = logging.Logger("cmd")
 	_   = logging.SetLogLevel("alice", "debug")
@@ -32,66 +46,53 @@ var (
 
 var (
 	app = &cli.App{
-		Name:  "swaprecover",
-		Usage: "A program for recovering swap funds due to unexpected shutdowns",
+		Name:   "swaprecover",
+		Usage:  "A program for recovering swap funds due to unexpected shutdowns",
+		Action: runRecover,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "env",
+				Name:  flagEnv,
 				Usage: "environment to use: one of mainnet, stagenet, or dev",
 			},
 			&cli.StringFlag{
-				Name:  "monero-endpoint",
+				Name:  flagMoneroWalletEndpoint,
 				Usage: "monero-wallet-rpc endpoint",
 			},
 			&cli.StringFlag{
-				Name:  "monero-daemon-endpoint",
-				Usage: "monerod RPC endpoint",
-			},
-			&cli.StringFlag{
-				Name:  "ethereum-endpoint",
+				Name:  flagEthereumEndpoint,
 				Usage: "ethereum client endpoint",
 			},
 			&cli.StringFlag{
-				Name:  "ethereum-privkey",
+				Name:  flagEthereumPrivateKey,
 				Usage: "file containing a private key hex string",
 			},
 			&cli.UintFlag{
-				Name:  "ethereum-chain-id",
+				Name:  flagEthereumChainID,
 				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
 			},
 			&cli.UintFlag{
-				Name:  "gas-price",
+				Name:  flagGasPrice,
 				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
 			},
 			&cli.UintFlag{
-				Name:  "gas-limit",
+				Name:  flagGasLimit,
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
 			&cli.UintFlag{
-				Name:  "contract-swap-id",
+				Name:  flagContractSwapID,
 				Usage: "ID of the swap within the SwapFactory.sol contract",
 			},
-		},
-		Commands: []cli.Command{
-			{
-				Name:    "monero",
-				Aliases: []string{"xmr"},
-				Usage:   "recover monero funds from an aborted swap; must provide 2/3 of --alice-secret, --bob-secret, and --contract-addr", //nolint:lll
-				Action:  runRecoverMonero,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "alice-secret",
-						Usage: "Alice's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
-					},
-					&cli.StringFlag{
-						Name:  "bob-secret",
-						Usage: "Bob's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
-					},
-					&cli.StringFlag{
-						Name:  "contract-addr",
-						Usage: "address of deployed ethereum swap contract, can be found in the basepath (default ~/.atomicswap)", //nolint:lll
-					},
-				},
+			&cli.StringFlag{
+				Name:  flagAliceSecret,
+				Usage: "Alice's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
+			},
+			&cli.StringFlag{
+				Name:  flagBobSecret,
+				Usage: "Bob's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
+			},
+			&cli.StringFlag{
+				Name:  flagContractAddr,
+				Usage: "address of deployed ethereum swap contract, can be found in the basepath (default ~/.atomicswap)", //nolint:lll
 			},
 		},
 	}
@@ -104,17 +105,28 @@ func main() {
 	}
 }
 
-// MoneroRecoverer is implemented by a backend which is able to recover monero
-type MoneroRecoverer interface {
+// Recoverer is implemented by a backend which is able to recover monero
+type Recoverer interface {
 	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
 	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error)         //nolint:lll
 	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error) //nolint:lll
 }
 
-func runRecoverMonero(c *cli.Context) error {
-	as := c.String("alice-secret")
-	bs := c.String("bob-secret")
-	contractAddr := c.String("contract-addr")
+type instance struct {
+	getRecovererFunc func(c *cli.Context, env common.Environment) (Recoverer, error)
+}
+
+func runRecover(c *cli.Context) error {
+	inst := &instance{
+		getRecovererFunc: getRecoverer,
+	}
+	return inst.recover(c)
+}
+
+func (inst *instance) recover(c *cli.Context) error {
+	as := c.String(flagAliceSecret)
+	bs := c.String(flagBobSecret)
+	contractAddr := c.String(flagContractAddr)
 
 	env, cfg, err := utils.GetEnvironment(c)
 	if err != nil {
@@ -133,12 +145,12 @@ func runRecoverMonero(c *cli.Context) error {
 		return errors.New("must also provide one of --contract-addr or --bob-secret")
 	}
 
-	swapID := big.NewInt(int64(c.Uint("contract-swap-id")))
+	swapID := big.NewInt(int64(c.Uint(flagContractSwapID)))
 	if swapID.Uint64() == 0 {
 		log.Warn("provided contract swap ID of 0, this is likely not correct (unless you deployed the contract)")
 	}
 
-	r, err := getRecoverer(c, env)
+	r, err := inst.getRecovererFunc(c, env)
 	if err != nil {
 		return err
 	}
@@ -201,24 +213,24 @@ func runRecoverMonero(c *cli.Context) error {
 	return nil
 }
 
-func getRecoverer(c *cli.Context, env common.Environment) (MoneroRecoverer, error) {
+func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 	var (
 		moneroEndpoint, ethEndpoint string
 	)
 
-	if c.String("monero-endpoint") != "" {
+	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
 		moneroEndpoint = common.DefaultBobMoneroEndpoint
 	}
 
-	if c.String("ethereum-endpoint") != "" {
+	if c.String(flagEthereumEndpoint) != "" {
 		ethEndpoint = c.String("ethereum-endpoint")
 	} else {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	log.Info("created recovery module with monero endpoint %s and ethereum endpoint %s",
+	log.Infof("created recovery module with monero endpoint %s and ethereum endpoint %s",
 		moneroEndpoint,
 		ethEndpoint,
 	)
@@ -231,19 +243,19 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		moneroEndpoint, ethEndpoint string
 	)
 
-	chainID := int64(c.Uint("ethereum-chain-id"))
+	chainID := int64(c.Uint(flagEthereumChainID))
 	if chainID == 0 {
 		chainID = cfg.EthereumChainID
 	}
 
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
+	if c.String(flagMoneroWalletEndpoint) != "" {
+		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else {
 		moneroEndpoint = common.DefaultAliceMoneroEndpoint
 	}
 
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
 	} else {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
@@ -255,8 +267,8 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 
 	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
 	var gasPrice *big.Int
-	if c.Uint("gas-price") != 0 {
-		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	if c.Uint(flagGasPrice) != 0 {
+		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
 	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
@@ -278,7 +290,7 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		Environment:          env,
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint("gas-limit")),
+		GasLimit:             uint64(c.Uint(flagGasLimit)),
 	}
 
 	return alice.NewInstance(aliceCfg)
@@ -290,19 +302,19 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 		moneroEndpoint, ethEndpoint string
 	)
 
-	chainID := int64(c.Uint("ethereum-chain-id"))
+	chainID := int64(c.Uint(flagEthereumChainID))
 	if chainID == 0 {
 		chainID = cfg.EthereumChainID
 	}
 
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
+	if c.String(flagMoneroWalletEndpoint) != "" {
+		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else {
 		moneroEndpoint = common.DefaultBobMoneroEndpoint
 	}
 
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
 	} else {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
@@ -314,8 +326,8 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 
 	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
 	var gasPrice *big.Int
-	if c.Uint("gas-price") != 0 {
-		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	if c.Uint(flagGasPrice) != 0 {
+		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
 	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
@@ -332,12 +344,13 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
+		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint, // TODO: only set if env=development
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint("gas-limit")),
+		GasLimit:             uint64(c.Uint(flagGasLimit)),
 	}
 
 	b, err := bob.NewInstance(bobCfg)

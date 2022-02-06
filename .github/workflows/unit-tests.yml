@@ -47,6 +47,9 @@ jobs:
       - name: Run unit tests
         run: ./scripts/run-unit-tests.sh
 
+      - name: Run coverage
+        run: bash <(curl -s https://codecov.io/bash)
+
       - name: Run integration tests
         run: ./scripts/run-integration-tests.sh
 

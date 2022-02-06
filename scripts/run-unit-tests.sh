@@ -33,7 +33,7 @@ sleep 10
 
 # run unit tests
 echo "running unit tests..."
-go test ./... -v -short -timeout=30m
+go test ./... -v -short -timeout=30m -covermode=atomic -coverprofile=coverage.out
 OK=$?
 
 # kill processes

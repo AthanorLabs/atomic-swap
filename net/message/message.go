@@ -1,4 +1,4 @@
-package net
+package message
 
 import (
 	"encoding/json"
@@ -9,12 +9,12 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 )
 
-// MessageType represents the type of a network message
-type MessageType byte
+// Type represents the type of a network message
+type Type byte
 
 const (
-	QueryResponseType MessageType = iota //nolint
-	SendKeysMessageType
+	QueryResponseType Type = iota //nolint
+	SendKeysType
 	NotifyContractDeployedType
 	NotifyXMRLockType
 	NotifyReadyType
@@ -22,11 +22,11 @@ const (
 	NotifyRefundType
 )
 
-func (t MessageType) String() string {
+func (t Type) String() string {
 	switch t {
 	case QueryResponseType:
 		return "QueryResponse"
-	case SendKeysMessageType:
+	case SendKeysType:
 		return "SendKeysMessage"
 	case NotifyContractDeployedType:
 		return "NotifyContractDeployed"
@@ -45,22 +45,23 @@ func (t MessageType) String() string {
 type Message interface {
 	String() string
 	Encode() ([]byte, error)
-	Type() MessageType
+	Type() Type
 }
 
-func decodeMessage(b []byte) (Message, error) {
+// DecodeMessage decodes the given bytes into a Message
+func DecodeMessage(b []byte) (Message, error) {
 	if len(b) == 0 {
 		return nil, errors.New("invalid message bytes")
 	}
 
-	switch MessageType(b[0]) {
+	switch Type(b[0]) {
 	case QueryResponseType:
 		var m *QueryResponse
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
-	case SendKeysMessageType:
+	case SendKeysType:
 		var m *SendKeysMessage
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
@@ -118,7 +119,7 @@ func (m *QueryResponse) Encode() ([]byte, error) {
 }
 
 // Type ...
-func (m *QueryResponse) Type() MessageType {
+func (m *QueryResponse) Type() Type {
 	return QueryResponseType
 }
 
@@ -158,12 +159,12 @@ func (m *SendKeysMessage) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{byte(SendKeysMessageType)}, b...), nil
+	return append([]byte{byte(SendKeysType)}, b...), nil
 }
 
 // Type ...
-func (m *SendKeysMessage) Type() MessageType {
-	return SendKeysMessageType
+func (m *SendKeysMessage) Type() Type {
+	return SendKeysType
 }
 
 // NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
@@ -189,7 +190,7 @@ func (m *NotifyContractDeployed) Encode() ([]byte, error) {
 }
 
 // Type ...
-func (m *NotifyContractDeployed) Type() MessageType {
+func (m *NotifyContractDeployed) Type() Type {
 	return NotifyContractDeployedType
 }
 
@@ -214,7 +215,7 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 }
 
 // Type ...
-func (m *NotifyXMRLock) Type() MessageType {
+func (m *NotifyXMRLock) Type() Type {
 	return NotifyXMRLockType
 }
 
@@ -237,7 +238,7 @@ func (m *NotifyReady) Encode() ([]byte, error) {
 }
 
 // Type ...
-func (m *NotifyReady) Type() MessageType {
+func (m *NotifyReady) Type() Type {
 	return NotifyReadyType
 }
 
@@ -262,7 +263,7 @@ func (m *NotifyClaimed) Encode() ([]byte, error) {
 }
 
 // Type ...
-func (m *NotifyClaimed) Type() MessageType {
+func (m *NotifyClaimed) Type() Type {
 	return NotifyClaimedType
 }
 
@@ -287,6 +288,6 @@ func (m *NotifyRefund) Encode() ([]byte, error) {
 }
 
 // Type ...
-func (m *NotifyRefund) Type() MessageType {
+func (m *NotifyRefund) Type() Type {
 	return NotifyRefundType
 }

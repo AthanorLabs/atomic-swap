@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 )
 
 // SwapService handles information about ongoing or past swaps.
@@ -37,11 +37,11 @@ type GetPastRequest struct {
 
 // GetPastResponse ...
 type GetPastResponse struct {
-	Provided       common.ProvidesCoin `json:"provided"`
-	ProvidedAmount float64             `json:"providedAmount"`
-	ReceivedAmount float64             `json:"receivedAmount"`
-	ExchangeRate   common.ExchangeRate `json:"exchangeRate"`
-	Status         string              `json:"status"`
+	Provided       types.ProvidesCoin `json:"provided"`
+	ProvidedAmount float64            `json:"providedAmount"`
+	ReceivedAmount float64            `json:"receivedAmount"`
+	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
+	Status         string             `json:"status"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -61,12 +61,12 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // GetOngoingResponse ...
 type GetOngoingResponse struct {
-	ID             uint64              `json:"id"`
-	Provided       common.ProvidesCoin `json:"provided"`
-	ProvidedAmount float64             `json:"providedAmount"`
-	ReceivedAmount float64             `json:"receivedAmount"`
-	ExchangeRate   common.ExchangeRate `json:"exchangeRate"`
-	Status         string              `json:"status"`
+	ID             uint64             `json:"id"`
+	Provided       types.ProvidesCoin `json:"provided"`
+	ProvidedAmount float64            `json:"providedAmount"`
+	ReceivedAmount float64            `json:"receivedAmount"`
+	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
+	Status         string             `json:"status"`
 }
 
 // GetOngoing returns information about the ongoing swap, if there is one.
