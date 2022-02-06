@@ -42,7 +42,7 @@ var (
 	defaultContractSwapID     = big.NewInt(0)
 )
 
-func newTestInstance(t *testing.T) (*Instance, *swapState) {
+func newTestBob(t *testing.T) *Instance {
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyBob)
 	require.NoError(t, err)
 
@@ -70,13 +70,18 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	require.NoError(t, err)
 
 	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 121)
+	return bob
+}
+
+func newTestInstance(t *testing.T) (*Instance, *swapState) {
+	bob := newTestBob(t)
 
 	swapState, err := newSwapState(bob, types.Hash{}, common.MoneroAmount(33), desiredAmout)
 	require.NoError(t, err)
 	return bob, swapState
 }
 
-func newTestAliceSendKeySMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+func newTestAliceSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
@@ -142,6 +147,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
 	require.NotEqual(t, "", txHash)
+	require.Equal(t, pswap.Ongoing, swapState.info.Status())
 }
 
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
@@ -151,7 +157,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
-	msg, aliceKeysAndProof := newTestAliceSendKeySMessage(t)
+	msg, aliceKeysAndProof := newTestAliceSendKeysMessage(t)
 	alicePubKeys := aliceKeysAndProof.PublicKeyPair
 
 	err = s.handleSendKeysMessage(msg)
@@ -159,6 +165,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	require.Equal(t, &message.NotifyContractDeployed{}, s.nextExpectedMessage)
 	require.Equal(t, alicePubKeys.SpendKey().Hex(), s.alicePublicKeys.SpendKey().Hex())
 	require.Equal(t, alicePubKeys.ViewKey().Hex(), s.alicePublicKeys.ViewKey().Hex())
+	require.Equal(t, pswap.Ongoing, s.info.Status())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T) {
@@ -197,6 +204,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.Equal(t, addr, s.contractAddr)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
+	require.Equal(t, pswap.Ongoing, s.info.Status())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testing.T) {
@@ -238,8 +246,9 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 
 	// TODO: fix this, it's sometimes nil
-	// time.Sleep(duration * 3)
-	// require.NotNil(t, s.bob.net.(*mockNet).msg)
+	time.Sleep(duration * 3)
+	require.NotNil(t, s.bob.net.(*mockNet).msg)
+	require.Equal(t, pswap.Success, s.info.Status())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
@@ -263,6 +272,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.True(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyClaimedType, resp.Type())
+	require.Equal(t, pswap.Success, s.info.Status())
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
@@ -334,6 +344,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, done)
 	require.Nil(t, resp)
+	require.Equal(t, pswap.Refunded, s.info.Status())
 }
 
 // test that if the protocol exits early, and Alice refunds, Bob can reclaim his monero
@@ -378,4 +389,57 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	balance, err := bob.client.GetBalance(0)
 	require.NoError(t, err)
 	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount()).Uint64(), uint64(balance.Balance))
+	require.Equal(t, pswap.Refunded, s.info.Status())
+}
+
+func TestSwapState_ProtocolExited_Aborted(t *testing.T) {
+	_, s := newTestInstance(t)
+	s.nextExpectedMessage = &message.SendKeysMessage{}
+	err := s.ProtocolExited()
+	require.Equal(t, errSwapAborted, err)
+	require.Equal(t, pswap.Aborted, s.info.Status())
+
+	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	err = s.ProtocolExited()
+	require.Equal(t, errSwapAborted, err)
+	require.Equal(t, pswap.Aborted, s.info.Status())
+
+	s.nextExpectedMessage = nil
+	err = s.ProtocolExited()
+	require.Equal(t, errUnexpectedMessageType, err)
+	require.Equal(t, pswap.Aborted, s.info.Status())
+}
+
+func TestSwapState_ProtocolExited_Success(t *testing.T) {
+	b, s := newTestInstance(t)
+	offer := &types.Offer{
+		Provides:      types.ProvidesXMR,
+		MinimumAmount: 0.1,
+		MaximumAmount: 0.2,
+		ExchangeRate:  0.1,
+	}
+	b.MakeOffer(offer)
+	s.offerID = offer.GetID()
+
+	s.info.SetStatus(pswap.Success)
+	err := s.ProtocolExited()
+	require.NoError(t, err)
+	require.Nil(t, b.offerManager.getOffer(offer.GetID()))
+}
+
+func TestSwapState_ProtocolExited_Refunded(t *testing.T) {
+	b, s := newTestInstance(t)
+	offer := &types.Offer{
+		Provides:      types.ProvidesXMR,
+		MinimumAmount: 0.1,
+		MaximumAmount: 0.2,
+		ExchangeRate:  0.1,
+	}
+	b.MakeOffer(offer)
+	s.offerID = offer.GetID()
+
+	s.info.SetStatus(pswap.Refunded)
+	err := s.ProtocolExited()
+	require.NoError(t, err)
+	require.NotNil(t, b.offerManager.getOffer(offer.GetID()))
 }
