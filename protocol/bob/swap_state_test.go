@@ -70,6 +70,8 @@ func newTestBob(t *testing.T) *Instance {
 	require.NoError(t, err)
 
 	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 121)
+	err = bob.client.Refresh()
+	require.NoError(t, err)
 	return bob
 }
 
