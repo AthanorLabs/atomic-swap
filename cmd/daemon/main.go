@@ -198,10 +198,10 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	devAlice := c.Bool("dev-alice")
-	devBob := c.Bool("dev-bob")
+	devAlice := c.Bool(flagDevAlice)
+	devBob := c.Bool(flagDevBob)
 
-	chainID := int64(c.Uint("ethereum-chain-id"))
+	chainID := int64(c.Uint(flagEthereumChainID))
 	if chainID == 0 {
 		chainID = cfg.EthereumChainID
 	}
@@ -214,12 +214,12 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 
 	var bootnodes []string
-	if c.String("bootnodes") != "" {
-		bootnodes = strings.Split(c.String("bootnodes"), ",")
+	if c.String(flagBootnodes) != "" {
+		bootnodes = strings.Split(c.String(flagBootnodes), ",")
 	}
 
-	k := c.String("libp2p-key")
-	p := uint16(c.Uint("libp2p-port"))
+	k := c.String(flagLibp2pKey)
+	p := uint16(c.Uint(flagLibp2pPort))
 	var (
 		libp2pKey  string
 		libp2pPort uint16
@@ -271,7 +271,7 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	p = uint16(c.Uint("rpc-port"))
+	p = uint16(c.Uint(flagRPCPort))
 	switch {
 	case p != 0:
 		rpcPort = p
@@ -320,16 +320,16 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
 
-	if c.String("monero-endpoint") != "" {
-		moneroEndpoint = c.String("monero-endpoint")
+	if c.String(flagMoneroWalletEndpoint) != "" {
+		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else if devBob {
 		moneroEndpoint = common.DefaultBobMoneroEndpoint
 	} else {
 		moneroEndpoint = common.DefaultAliceMoneroEndpoint
 	}
 
-	if c.String("ethereum-endpoint") != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
 	} else {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
@@ -339,20 +339,20 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		return nil, nil, err
 	}
 
-	if c.String("monero-daemon-endpoint") != "" {
-		daemonEndpoint = c.String("monero-daemon-endpoint")
+	if c.String(flagMoneroDaemonEndpoint) != "" {
+		daemonEndpoint = c.String(flagMoneroDaemonEndpoint)
 	} else {
 		daemonEndpoint = cfg.MoneroDaemonEndpoint
 	}
 
 	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
 	var gasPrice *big.Int
-	if c.Uint("gas-price") != 0 {
-		gasPrice = big.NewInt(int64(c.Uint("gas-price")))
+	if c.Uint(flagGasPrice) != 0 {
+		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
 	var contractAddr ethcommon.Address
-	contractAddrStr := c.String("contract-address")
+	contractAddrStr := c.String(flagContractAddress)
 	if contractAddrStr == "" {
 		contractAddr = ethcommon.Address{}
 	} else {
@@ -387,7 +387,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		Environment:          env,
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint("gas-limit")),
+		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapManager:          sm,
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
@@ -415,7 +415,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		Environment:          env,
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint("gas-limit")),
+		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapManager:          sm,
 	}
 

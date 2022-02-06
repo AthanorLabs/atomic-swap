@@ -23,7 +23,6 @@ import (
 const (
 	flagEnv                  = "env"
 	flagMoneroWalletEndpoint = "monero-endpoint"
-	flagMoneroDaemonEndpoint = "monero-daemon-endpoint"
 	flagEthereumEndpoint     = "ethereum-endpoint"
 	flagEthereumPrivateKey   = "ethereum-privkey"
 	flagEthereumChainID      = "ethereum-chain-id"

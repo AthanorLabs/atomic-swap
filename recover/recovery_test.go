@@ -27,7 +27,7 @@ func newRecoverer(t *testing.T) *recoverer {
 	return r
 }
 
-func newSwap(t *testing.T, claimKey, refundKey [32]byte, amount *big.Int, setReady bool) (ethcommon.Address, *big.Int) {
+func newSwap(t *testing.T, claimKey, refundKey [32]byte, setReady bool) (ethcommon.Address, *big.Int) {
 	tm := big.NewInt(defaulTimeout)
 
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
@@ -128,7 +128,7 @@ func TestRecoverer_RecoverFromBobSecretAndContract_Claim(t *testing.T) {
 	b := newBobInstance(t)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, swapID := newSwap(t, claimKey, [32]byte{}, big.NewInt(0), true)
+	addr, swapID := newSwap(t, claimKey, [32]byte{}, true)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromBobSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(), addr.String(), swapID)
@@ -143,7 +143,7 @@ func TestRecoverer_RecoverFromBobSecretAndContract_Claim_afterTimeout(t *testing
 	b := newBobInstance(t)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, swapID := newSwap(t, claimKey, [32]byte{}, big.NewInt(0), false)
+	addr, swapID := newSwap(t, claimKey, [32]byte{}, false)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromBobSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(), addr.String(), swapID)
@@ -158,7 +158,7 @@ func TestRecoverer_RecoverFromAliceSecretAndContract_Refund(t *testing.T) {
 	a := newAliceInstance(t)
 
 	refundKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, swapID := newSwap(t, [32]byte{}, refundKey, big.NewInt(0), false)
+	addr, swapID := newSwap(t, [32]byte{}, refundKey, false)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromAliceSecretAndContract(a, keys.PrivateKeyPair.SpendKey().Hex(), addr.String(), swapID)

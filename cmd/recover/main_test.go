@@ -73,13 +73,15 @@ func (r *mockRecoverer) WalletFromSecrets(aliceSecret, bobSecret string) (mcrypt
 	return mcrypto.Address(""), nil
 }
 
-func (r *mockRecoverer) RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error) {
+func (r *mockRecoverer) RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string,
+	swapID *big.Int) (*bob.RecoveryResult, error) {
 	return &bob.RecoveryResult{
 		Claimed: true,
 	}, nil
 }
 
-func (r *mockRecoverer) RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error) {
+func (r *mockRecoverer) RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string,
+	swapID *big.Int) (*alice.RecoveryResult, error) {
 	return &alice.RecoveryResult{
 		Claimed: true,
 	}, nil
