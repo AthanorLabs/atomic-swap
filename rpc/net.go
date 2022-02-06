@@ -153,6 +153,7 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
+		_ = swapState.ProtocolExited()
 		return err
 	}
 

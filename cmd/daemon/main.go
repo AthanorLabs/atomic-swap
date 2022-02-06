@@ -187,6 +187,11 @@ func runDaemon(c *cli.Context) error {
 		cancel: cancel,
 	}
 
+	err := d.make(c)
+	if err != nil {
+		return err
+	}
+
 	d.wait()
 	os.Exit(0)
 	return nil
