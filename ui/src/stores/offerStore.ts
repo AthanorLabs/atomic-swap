@@ -4,7 +4,8 @@ import { peers } from './peerStore'
 import type { NetQueryPeerResult, Offer } from 'src/types';
 import { intToHexString } from 'src/utils';
 
-export const isLoadingPeers = writable(false)
+export const isLoadingOffers = writable(false)
+export const selectedOffer = writable<Offer | undefined>()
 
 export const offers = derived<Readable<string[]>, Offer[]>(
     peers,
@@ -23,7 +24,7 @@ export const offers = derived<Readable<string[]>, Offer[]>(
 )
 
 export const getOffers = async (peerAddress: string) => {
-    isLoadingPeers.set(true)
+    isLoadingOffers.set(true)
     return rpcRequest<NetQueryPeerResult | undefined>('net_queryPeer', { "multiaddr": peerAddress })
         .then(({ result }): Offer[] => {
 
@@ -37,5 +38,5 @@ export const getOffers = async (peerAddress: string) => {
             })) || []
         })
         .catch(console.error)
-        .finally(() => isLoadingPeers.set(false))
+        .finally(() => isLoadingOffers.set(false))
 }

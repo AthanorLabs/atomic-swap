@@ -7,31 +7,19 @@
     Label,
     SortValue,
   } from '@smui/data-table'
-  import MenuSurface, { MenuSurfaceComponentDev } from '@smui/menu-surface'
-  import Textfield from '@smui/textfield'
   import Button from '@smui/button'
   import IconButton from '@smui/icon-button'
   import type { Offer } from 'src/types'
-  import { offers } from '../stores/offerStore'
+  import { offers, selectedOffer } from '../stores/offerStore'
   import { isLoadingPeers } from '../stores/peerStore'
   import LinearProgress from '@smui/linear-progress'
   import Identicon from '../components/Identicon.svelte'
   import Tooltip, { Wrapper } from '@smui/tooltip'
-  import { rpcRequest } from 'src/utils'
-  import type { NetTakeOfferResult } from 'src/types/NetTakeOffer'
 
   $: sortedOffers = $offers
-  $: closed = !$isLoadingPeers
+  $: linearProgressClosed = !$isLoadingPeers
   let sort: keyof Offer = 'id'
   let sortDirection: Lowercase<keyof typeof SortValue> = 'ascending'
-  let selectedOffer: Offer | undefined
-
-  let surface: MenuSurfaceComponentDev
-  let amountProvided: number | null = null
-  let isSuccess = false
-  let receivedAmount = 0
-
-  $: console.log('isSuccess', isSuccess, receivedAmount)
 
   function handleSort() {
     sortedOffers = $offers.sort((a, b) => {
@@ -43,26 +31,6 @@
       }
       return Number(aVal) - Number(bVal)
     })
-  }
-
-  const handleTakeOffer = (offer: Offer) => {
-    selectedOffer = offer
-  }
-
-  const handleSendTakeOffer = () => {
-    rpcRequest<NetTakeOfferResult | undefined>('net_takeOffer', {
-      multiaddr: selectedOffer?.peer,
-      offerID: selectedOffer?.id,
-      providesAmount: amountProvided,
-    })
-      .then(({ result }) => {
-        if (result?.success) {
-          receivedAmount = result.receivedAmount
-          isSuccess = true
-        }
-      })
-      .catch(console.error)
-      .finally(() => isLoadingPeers.set(false))
   }
 </script>
 
@@ -77,25 +45,6 @@
 
 <!-- {"jsonrpc":"2.0","result":{"success":true,"receivedAmount":2.999999999999},"id":"0"} -->
 <div>
-  <MenuSurface
-    bind:this={surface}
-    open={!!selectedOffer}
-    anchorCorner="BOTTOM_LEFT"
-  >
-    <div
-      style="margin: 1em; display: flex; flex-direction: column; align-items: flex-end;"
-    >
-      <Textfield bind:value={amountProvided} label="Amount" type="number" />
-      {#if amountProvided && amountProvided > 0}
-        You will receive {selectedOffer &&
-          amountProvided / selectedOffer?.exchangeRate}
-        {selectedOffer?.provides || ''}
-      {/if}
-      <Button style="margin-top: 1em;" on:click={handleSendTakeOffer}>
-        Submit
-      </Button>
-    </div>
-  </MenuSurface>
   <DataTable
     sortable
     bind:sort
@@ -164,14 +113,14 @@
           <Cell>{offer.minAmount}</Cell>
           <Cell>{offer.provides}</Cell>
           <Cell>
-            <Button on:click={() => handleTakeOffer(offer)}>Take</Button>
+            <Button on:click={() => selectedOffer.set(offer)}>Take</Button>
           </Cell>
         </Row>
       {/each}
     </Body>
     <LinearProgress
       indeterminate
-      bind:closed
+      bind:closed={linearProgressClosed}
       aria-label="Data is being loaded..."
       slot="progress"
     />
