@@ -121,14 +121,14 @@
         {/if}
       </section>
     </Content>
-    <Actions>
-      <Button
-        on:click={handleSendTakeOffer}
-        disabled={isLoadingSwap || !!error || !willReceive}
-      >
-        <Label>Swap</Label>
-      </Button>
-    </Actions>
+    <!-- <Actions> -->
+    <Button
+      on:click={handleSendTakeOffer}
+      disabled={isLoadingSwap || !!error || !willReceive}
+    >
+      <Label>Swap</Label>
+    </Button>
+    <!-- </Actions> -->
   </Dialog>
 {/if}
 
