@@ -54,9 +54,9 @@
   $: console.log('isSuccess', isSuccess, receivedAmount)
   $: console.log('$selectedOffer.maxAmount', $selectedOffer?.maxAmount)
 
-  const handleSendTakeOffer = async () => {
+  const handleSendTakeOffer = () => {
     isLoadingSwap = true
-    await rpcRequest<NetTakeOfferResult | undefined>('net_takeOffer', {
+    rpcRequest<NetTakeOfferResult | undefined>('net_takeOffer', {
       multiaddr: $selectedOffer?.peer,
       offerID: $selectedOffer?.id,
       providesAmount: Number(amountProvided),
