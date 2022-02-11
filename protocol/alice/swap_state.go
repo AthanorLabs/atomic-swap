@@ -236,11 +236,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.pubkeys = keysAndProof.PublicKeyPair
 
 	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.info.ID())
-	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env); err != nil {
-		return err
-	}
-
-	return nil
+	return mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env)
 }
 
 // generateKeys generates Alice's monero spend and view keys (S_b, V_b), a secp256k1 public key,

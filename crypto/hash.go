@@ -6,7 +6,7 @@ import "github.com/ebfe/keccak"
 func Keccak256(data ...[]byte) (result [32]byte) {
 	h := keccak.New256()
 	for _, b := range data {
-		h.Write(b)
+		_, _ = h.Write(b)
 	}
 	r := h.Sum(nil)
 	copy(result[:], r)
