@@ -36,7 +36,7 @@ type Config struct {
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob), "net"); err != nil {
+	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager), "net"); err != nil { //nolint:lll
 		return nil, err
 	}
 
