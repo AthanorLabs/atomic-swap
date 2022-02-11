@@ -28,14 +28,16 @@ type NetService struct {
 	net   Net
 	alice Alice
 	bob   Bob
+	sm    SwapManager
 }
 
 // NewNetService ...
-func NewNetService(net Net, alice Alice, bob Bob) *NetService {
+func NewNetService(net Net, alice Alice, bob Bob, sm SwapManager) *NetService {
 	return &NetService{
 		net:   net,
 		alice: alice,
 		bob:   bob,
+		sm:    sm,
 	}
 }
 
@@ -158,6 +160,58 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 	}
 
 	resp.ID = swapState.ID()
+	return nil
+}
+
+// TakeOfferSyncResponse ...
+type TakeOfferSyncResponse struct {
+	ID     uint64 `json:"id"`
+	Status string `json:"status"`
+}
+
+// TakeOfferSync initiates a swap with the given peer by taking an offer they've made.
+// It synchronously waits until the swap is completed before returning its status.
+func (s *NetService) TakeOfferSync(_ *http.Request, req *TakeOfferRequest,
+	resp *TakeOfferSyncResponse) error {
+	swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
+	if err != nil {
+		return err
+	}
+
+	skm, err := swapState.SendKeysMessage()
+	if err != nil {
+		return err
+	}
+
+	skm.OfferID = req.OfferID
+	skm.ProvidedAmount = req.ProvidesAmount
+
+	who, err := net.StringToAddrInfo(req.Multiaddr)
+	if err != nil {
+		return err
+	}
+
+	if err = s.net.Initiate(who, skm, swapState); err != nil {
+		_ = swapState.ProtocolExited()
+		return err
+	}
+
+	resp.ID = swapState.ID()
+
+	const checkSwapSleepDuration = time.Millisecond * 100
+
+	for {
+		time.Sleep(checkSwapSleepDuration)
+
+		info := s.sm.GetPastSwap(resp.ID)
+		if info == nil {
+			continue
+		}
+
+		resp.Status = info.Status().String()
+		break
+	}
+
 	return nil
 }
 
