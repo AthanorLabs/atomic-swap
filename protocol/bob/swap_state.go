@@ -289,11 +289,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.pubkeys = keysAndProof.PublicKeyPair
 
 	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.ID())
-	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
-		return err
-	}
-
-	return nil
+	return mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env)
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {

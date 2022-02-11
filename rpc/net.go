@@ -163,6 +163,7 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 	return nil
 }
 
+// TakeOfferSyncResponse ...
 type TakeOfferSyncResponse struct {
 	ID     uint64 `json:"id"`
 	Status string `json:"status"`

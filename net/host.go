@@ -142,11 +142,7 @@ func (h *host) Start() error {
 		return err
 	}
 
-	if err := h.discovery.start(); err != nil {
-		return err
-	}
-
-	return nil
+	return h.discovery.start()
 }
 
 // close closes host services and the libp2p host (host services first)
