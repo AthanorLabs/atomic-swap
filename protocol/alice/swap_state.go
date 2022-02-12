@@ -136,7 +136,13 @@ func (s *swapState) ProtocolExited() error {
 	}()
 
 	if s.info.Status() == pswap.Success {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.info.ID())
+		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
+		log.Info(str)
+		return nil
+	}
+
+	if s.info.Status() == pswap.Refunded {
+		str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
 		log.Info(str)
 		return nil
 	}
@@ -169,6 +175,18 @@ func (s *swapState) ProtocolExited() error {
 
 		s.info.SetStatus(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
+	case nil:
+		skA, err := s.filterForClaim()
+		if err != nil {
+			return err
+		}
+
+		addr, err := s.claimMonero(skA)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("claimed monero: address=%s", addr)
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		s.info.SetStatus(pswap.Aborted)
@@ -176,6 +194,36 @@ func (s *swapState) ProtocolExited() error {
 	}
 
 	return nil
+}
+
+// doRefund is called by the RPC function swap_refund.
+// If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
+func (s *swapState) doRefund() (ethcommon.Hash, error) {
+	switch s.nextExpectedMessage.(type) {
+	case *message.NotifyXMRLock, *message.NotifyClaimed:
+		// the XMR has been locked, but the ETH hasn't been claimed.
+		// we can refund in this case.
+		txHash, err := s.tryRefund()
+		if err != nil {
+			s.info.SetStatus(pswap.Aborted)
+			log.Errorf("failed to refund: err=%s", err)
+			return ethcommon.Hash{}, err
+		}
+
+		s.info.SetStatus(pswap.Refunded)
+		log.Infof("refunded ether: transaction hash=%s", txHash)
+
+		// send NotifyRefund msg
+		if err = s.alice.net.SendSwapMessage(&message.NotifyRefund{
+			TxHash: txHash.String(),
+		}); err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to send refund message: err=%w", err)
+		}
+
+		return txHash, nil
+	default:
+		return ethcommon.Hash{}, errCannotRefund
+	}
 }
 
 func (s *swapState) tryRefund() (ethcommon.Hash, error) {
