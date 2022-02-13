@@ -28,7 +28,7 @@ type SwapStateRPC interface {
 type Stage byte
 
 const (
-	ExpectingKeysStage Stage = iota
+	ExpectingKeysStage Stage = iota //nolint:revive
 	KeysExchangedStage
 	ContractDeployedStage
 	XMRLockedStage
@@ -36,6 +36,8 @@ const (
 	ClaimOrRefundStage
 	UnknownStage
 )
+
+const unknownString string = "unknown"
 
 // String ...
 func (s Stage) String() string {
@@ -53,7 +55,7 @@ func (s Stage) String() string {
 	case ClaimOrRefundStage:
 		return "ClaimOrRefund"
 	default:
-		return "unknown"
+		return unknownString
 	}
 }
 
@@ -73,6 +75,6 @@ func (s Stage) Info() string {
 	case ClaimOrRefundStage:
 		return "the locked funds have been claimed or refunded"
 	default:
-		return "unknown"
+		return unknownString
 	}
 }

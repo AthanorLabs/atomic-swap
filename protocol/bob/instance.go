@@ -134,3 +134,8 @@ func (b *Instance) SetGasPrice(gasPrice uint64) {
 func (b *Instance) openWallet() error { //nolint
 	return b.client.OpenWallet(b.walletFile, b.walletPassword)
 }
+
+// GetOngoingSwapState ...
+func (b *Instance) GetOngoingSwapState() common.SwapState {
+	return b.swapState
+}
