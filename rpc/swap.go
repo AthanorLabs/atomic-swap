@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 )
 
@@ -12,13 +13,15 @@ import (
 type SwapService struct {
 	sm    SwapManager
 	alice Alice
+	bob   Bob
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, alice Alice) *SwapService {
+func NewSwapService(sm SwapManager, alice Alice, bob Bob) *SwapService {
 	return &SwapService{
 		sm:    sm,
 		alice: alice,
+		bob:   bob,
 	}
 }
 
@@ -110,5 +113,35 @@ func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundRespon
 	}
 
 	resp.TxHash = txHash.String()
+	return nil
+}
+
+// GetStageResponse ...
+type GetStageResponse struct {
+	Stage string `json:"stage"`
+	Info  string `json:"info"`
+}
+
+// GetStage returns the stage of the ongoing swap, if there is one.
+func (s *SwapService) GetStage(_ *http.Request, _ *interface{}, resp *GetStageResponse) error {
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return errors.New("no current ongoing swap")
+	}
+
+	var swapState common.SwapState
+	switch info.Provides() {
+	case types.ProvidesETH:
+		swapState = s.alice.GetOngoingSwapState()
+	case types.ProvidesXMR:
+		swapState = s.bob.GetOngoingSwapState()
+	}
+
+	if swapState == nil {
+		return errors.New("failed to get current swap state")
+	}
+
+	resp.Stage = swapState.Stage().String()
+	resp.Info = swapState.Stage().Info()
 	return nil
 }

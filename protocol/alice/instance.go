@@ -115,3 +115,8 @@ func (a *Instance) Refund() (ethcommon.Hash, error) {
 
 	return a.swapState.doRefund()
 }
+
+// GetOngoingSwapState ...
+func (a *Instance) GetOngoingSwapState() common.SwapState {
+	return a.swapState
+}
