@@ -380,7 +380,7 @@ func TestProtocolExited_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = nil
+	s.nextExpectedMessage = &message.NotifyContractDeployed{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
