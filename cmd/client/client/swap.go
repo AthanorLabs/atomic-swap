@@ -108,3 +108,26 @@ func (c *Client) Refund() (*rpc.RefundResponse, error) {
 
 	return res, nil
 }
+
+// GetStage calls swap_getStage
+func (c *Client) GetStage() (*rpc.GetStageResponse, error) {
+	const (
+		method = "swap_getStage"
+	)
+
+	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("failed to call %s: %w", method, resp.Error)
+	}
+
+	var res *rpc.GetStageResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
