@@ -1,22 +1,12 @@
 <script lang="ts">
   import Spacer from './components/Spacer.svelte'
   import LayoutGrid, { Cell, InnerGrid } from '@smui/layout-grid'
-  import Button, { Label } from '@smui/button'
+  import Button from '@smui/button'
   import { peers, getPeers } from './stores/peerStore'
-  import { offers, selectedOffer } from './stores/offerStore'
+  import { offers } from './stores/offerStore'
   import OffersTable from './components/OffersTable.svelte'
   import StatCard from './components/StatCard.svelte'
   import TakeDealDrawer from './components/TakeDealDialog.svelte'
-  import type { Offer } from './types'
-
-  const offer: Offer = {
-    id: '123123123123123123123123123123',
-    exchangeRate: 0.05,
-    maxAmount: 1,
-    minAmount: 0.1,
-    peer: 'someone',
-    provides: 'XMR',
-  }
 
   const handleRefreshClick = () => {
     getPeers()
@@ -24,9 +14,6 @@
 </script>
 
 <main>
-  <Button on:click={() => selectedOffer.set(offer)}>
-    <Label>Open Dialog</Label>
-  </Button>
   <LayoutGrid>
     <Spacer />
     <Cell spanDevices={{ desktop: 8, tablet: 6, phone: 12 }}>

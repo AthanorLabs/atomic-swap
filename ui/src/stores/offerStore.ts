@@ -10,18 +10,21 @@ export const selectedOffer = writable<Offer | undefined>()
 export const offers = derived<Readable<string[]>, Offer[]>(
     peers,
     ($peers, set) => {
-        // loop over all the peers the get their offers
-        $peers.reduce(async (acc: Promise<Offer[]>, curr: string) => {
-            const previousPeersOffers = await acc
-            const currentOffers = await getOffers(curr) || []
-            return [...previousPeersOffers, ...currentOffers]
-        }
-            , Promise.resolve([])
-        )
+        refreshOffers($peers)
             .then(off => set(off))
     },
     []
 )
+
+export const refreshOffers = ($peers: string[]) =>
+    // loop over all the peers the get their offers
+    $peers.reduce(async (acc: Promise<Offer[]>, curr: string) => {
+        const previousPeersOffers = await acc
+        const currentOffers = await getOffers(curr) || []
+        return [...previousPeersOffers, ...currentOffers]
+    }
+        , Promise.resolve([])
+    )
 
 export const getOffers = async (peerAddress: string) => {
     isLoadingOffers.set(true)

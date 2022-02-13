@@ -1,9 +1,10 @@
 <script lang="ts">
   import Dialog, { Title, Content, Actions } from '@smui/dialog'
   import Button, { Label } from '@smui/button'
-  import type { NetTakeOfferResult } from 'src/types/NetTakeOffer'
+  import type { NetTakeOfferSyncResult } from 'src/types/NetTakeOfferSync'
   import { getCorrespondingToken, rpcRequest } from 'src/utils'
   import { selectedOffer } from '../stores/offerStore'
+  import { getPeers } from '../stores/peerStore'
   import Textfield from '@smui/textfield'
   import { mdiSwapVertical } from '@mdi/js'
   import { Icon } from '@smui/icon-button'
@@ -13,23 +14,13 @@
 
   let amountProvided: number | null = null
   let isSuccess = false
-  let receivedAmount = 0
   let isLoadingSwap = false
   let error = ''
 
-  $: console.log(
-    'willReceive < $selectedOffer.minAmount',
-    willReceive,
-    $selectedOffer?.minAmount
-  )
   $: willReceive =
     amountProvided && amountProvided > 0 && $selectedOffer?.exchangeRate
       ? amountProvided / $selectedOffer.exchangeRate
       : 0
-
-  $: if (willReceive === 0) {
-    error = ''
-  }
 
   $: if (
     willReceive !== 0 &&
@@ -51,20 +42,19 @@
     error = ''
   }
 
-  $: console.log('isSuccess', isSuccess, receivedAmount)
-  $: console.log('$selectedOffer.maxAmount', $selectedOffer?.maxAmount)
+  $: console.log('isSuccess', isSuccess)
 
   const handleSendTakeOffer = () => {
     isLoadingSwap = true
-    rpcRequest<NetTakeOfferResult | undefined>('net_takeOffer', {
+    rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {
       multiaddr: $selectedOffer?.peer,
       offerID: $selectedOffer?.id,
       providesAmount: Number(amountProvided),
     })
       .then(({ result }) => {
-        if (result?.success) {
-          receivedAmount = result.receivedAmount
+        if (result?.status === 'success') {
           isSuccess = true
+          getPeers()
         }
       })
       .catch(console.error)
@@ -75,7 +65,6 @@
     selectedOffer.set(undefined)
     amountProvided = 0
     willReceive = 0
-    receivedAmount = 0
   }
 </script>
 
@@ -95,11 +84,21 @@
     <Content id="mandatory-content">
       <section class="container">
         {#if isLoadingSwap}
-          <div class="loader">
+          <div class="flexBox">
             <CircularProgress
               style="height: 48px; width: 48px;"
               indeterminate
             />
+            <p>Swapping, please be patient...</p>
+          </div>
+        {:else if isSuccess}
+          <div class="flexBox">
+            <span class="material-icons circleCheck"> check_circle </span>
+            <p class="successMessage">
+              Yay, you received {willReceive}{getCorrespondingToken(
+                $selectedOffer.provides
+              )}
+            </p>
           </div>
         {:else}
           <Textfield
@@ -121,14 +120,20 @@
         {/if}
       </section>
     </Content>
-    <!-- <Actions> -->
-    <Button
-      on:click={handleSendTakeOffer}
-      disabled={isLoadingSwap || !!error || !willReceive}
-    >
-      <Label>Swap</Label>
-    </Button>
-    <!-- </Actions> -->
+    {#if isSuccess}
+      <Actions>
+        <Button>
+          <Label>Done</Label>
+        </Button>
+      </Actions>
+    {:else}
+      <Button
+        on:click={handleSendTakeOffer}
+        disabled={isLoadingSwap || !!error || !willReceive}
+      >
+        <Label>Swap</Label>
+      </Button>
+    {/if}
   </Dialog>
 {/if}
 
@@ -144,11 +149,17 @@
     font-size: x-large;
   }
 
-  .loader {
+  .flexBox {
     display: flex;
     justify-content: center;
     align-items: center;
     flex: 1;
+    flex-direction: column;
+  }
+
+  .circleCheck {
+    font-size: 45px;
+    color: darkcyan;
   }
 
   * :global(.swapIcon) {
