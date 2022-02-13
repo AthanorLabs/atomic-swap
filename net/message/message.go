@@ -91,6 +91,12 @@ func DecodeMessage(b []byte) (Message, error) {
 			return nil, err
 		}
 		return m, nil
+	case NotifyRefundType:
+		var m *NotifyRefund
+		if err := json.Unmarshal(b[1:], &m); err != nil {
+			return nil, err
+		}
+		return m, nil
 	default:
 		return nil, errors.New("invalid message type")
 	}

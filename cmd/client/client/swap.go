@@ -85,3 +85,26 @@ func (c *Client) GetPastSwap(id uint64) (*rpc.GetPastResponse, error) {
 
 	return res, nil
 }
+
+// Refund calls swap_refund
+func (c *Client) Refund() (*rpc.RefundResponse, error) {
+	const (
+		method = "swap_refund"
+	)
+
+	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("failed to call %s: %w", method, resp.Error)
+	}
+
+	var res *rpc.RefundResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

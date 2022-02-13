@@ -8,6 +8,7 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/protocol/swap"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -44,7 +45,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice), "swap"); err != nil {
 		return nil, err
 	}
 
@@ -87,6 +88,7 @@ type Protocol interface {
 type Alice interface {
 	Protocol
 	InitiateProtocol(providesAmount float64) (common.SwapState, error)
+	Refund() (ethcommon.Hash, error)
 }
 
 // Bob ...
