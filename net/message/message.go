@@ -15,11 +15,12 @@ type Type byte
 const (
 	QueryResponseType Type = iota //nolint
 	SendKeysType
-	NotifyContractDeployedType
+	NotifyContractDeployedType // TODO: rename to NotifyETHLockType
 	NotifyXMRLockType
 	NotifyReadyType
 	NotifyClaimedType
 	NotifyRefundType
+	NilType
 )
 
 func (t Type) String() string {
@@ -87,6 +88,12 @@ func DecodeMessage(b []byte) (Message, error) {
 		return m, nil
 	case NotifyClaimedType:
 		var m *NotifyClaimed
+		if err := json.Unmarshal(b[1:], &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	case NotifyRefundType:
+		var m *NotifyRefund
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}

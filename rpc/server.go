@@ -8,6 +8,7 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/protocol/swap"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -36,7 +37,7 @@ type Config struct {
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob), "net"); err != nil {
+	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager), "net"); err != nil { //nolint:lll
 		return nil, err
 	}
 
@@ -44,7 +45,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob), "swap"); err != nil {
 		return nil, err
 	}
 
@@ -81,12 +82,14 @@ func (s *Server) Start() <-chan error {
 type Protocol interface {
 	Provides() types.ProvidesCoin
 	SetGasPrice(gasPrice uint64)
+	GetOngoingSwapState() common.SwapState
 }
 
 // Alice ...
 type Alice interface {
 	Protocol
 	InitiateProtocol(providesAmount float64) (common.SwapState, error)
+	Refund() (ethcommon.Hash, error)
 }
 
 // Bob ...

@@ -128,6 +128,18 @@ var (
 					daemonAddrFlag,
 				},
 			},
+			{
+				Name:   "refund",
+				Usage:  "if we are the ETH provider for an ongoing swap, refund it if possible.",
+				Action: runRefund,
+				Flags:  []cli.Flag{daemonAddrFlag},
+			},
+			{
+				Name:   "get-stage",
+				Usage:  "get the stage of the current swap.",
+				Action: runGetStage,
+				Flags:  []cli.Flag{daemonAddrFlag},
+			},
 		},
 		Flags: []cli.Flag{daemonAddrFlag},
 	}
@@ -337,5 +349,37 @@ func runGetPastSwap(ctx *cli.Context) error {
 		info.ExchangeRate,
 		info.Status,
 	)
+	return nil
+}
+
+func runRefund(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	resp, err := c.Refund()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Refunded successfully, transaction hash: %s\n", resp.TxHash)
+	return nil
+}
+
+func runGetStage(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	resp, err := c.GetStage()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Info)
 	return nil
 }

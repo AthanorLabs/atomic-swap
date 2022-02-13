@@ -102,3 +102,21 @@ func (a *Instance) SetMessageSender(n net.MessageSender) {
 func (a *Instance) SetGasPrice(gasPrice uint64) {
 	a.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
+
+// Refund is called by the RPC function swap_refund.
+// If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
+func (a *Instance) Refund() (ethcommon.Hash, error) {
+	a.swapMu.Lock()
+	defer a.swapMu.Unlock()
+
+	if a.swapState == nil {
+		return ethcommon.Hash{}, errNoOngoingSwap
+	}
+
+	return a.swapState.doRefund()
+}
+
+// GetOngoingSwapState ...
+func (a *Instance) GetOngoingSwapState() common.SwapState {
+	return a.swapState
+}

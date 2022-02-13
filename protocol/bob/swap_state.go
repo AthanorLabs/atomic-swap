@@ -124,6 +124,14 @@ func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount()
 }
 
+func (s *swapState) Stage() common.Stage {
+	if s.nextExpectedMessage == nil {
+		return pcommon.GetStage(message.NilType)
+	}
+
+	return pcommon.GetStage(s.nextExpectedMessage.Type())
+}
+
 // ID returns the ID of the swap
 func (s *swapState) ID() uint64 {
 	return s.info.ID()
@@ -143,7 +151,7 @@ func (s *swapState) ProtocolExited() error {
 	}()
 
 	if s.info.Status() == pswap.Success {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.ID())
+		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
 		log.Info(str)
 
 		// remove offer, as it's been taken
@@ -289,11 +297,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.pubkeys = keysAndProof.PublicKeyPair
 
 	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.ID())
-	if err := mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env); err != nil {
-		return err
-	}
-
-	return nil
+	return mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env)
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {

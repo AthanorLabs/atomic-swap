@@ -84,7 +84,7 @@ type RecoveryResult struct {
 // It returns a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 	// check if Bob claimed
-	skA, err := rs.filterForClaim()
+	skA, err := rs.ss.filterForClaim()
 	if !errors.Is(err, errNoClaimLogsFound) && err != nil {
 		return nil, err
 	}
@@ -129,9 +129,9 @@ func (rs *recoveryState) setContract(address ethcommon.Address) error {
 	return err
 }
 
-func (rs *recoveryState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
-	logs, err := rs.ss.alice.ethClient.FilterLogs(rs.ss.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{rs.contractAddr},
+func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
+	logs, err := s.alice.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
+		Addresses: []ethcommon.Address{s.alice.contractAddr},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
 	})
 	if err != nil {

@@ -97,8 +97,7 @@ Parameters:
 - `providesAmount`: amount of ETH you will be providing. Must be between the offer's `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you must provide between 0.1 ETH and 0.5 ETH.
 
 Returns:
-- `success`: boolean indicating whether the swap completed successfully or not.
-- `receivedAmount`: amount of XMR received, if the swap completed successfully.
+- `id`: ID of the initiated swap.
 
 Example:
 ```
@@ -106,7 +105,29 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_t
 ```
 
 ```
-{"jsonrpc":"2.0","result":{"success":true,"receivedAmount":2.999999999999},"id":"0"}
+{"jsonrpc":"2.0","result":{"id":1},"id":"0"}
+```
+
+### `net_takeOfferSync`
+
+Take an advertised swap offer. This call will initiate and execute an atomic swap. It will not return until the swap has completed, after which it will return whether the swap was successful or not. **Note:** You must be the ETH holder to take a swap.
+
+Parameters:
+- `multiaddr`: multiaddress of the peer to swap with.
+- `offerID`: ID of the swap offer.
+- `providesAmount`: amount of ETH you will be providing. Must be between the offer's `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you must provide between 0.1 ETH and 0.5 ETH.
+
+Returns:
+- `id`: ID of the initiated swap.
+- `status`: the swap's status, one of `success`, `refunded`, or `aborted`.
+
+Example:
+```
+curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_takeOffer","params":{"multiaddr":"/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID":"12b9d56a4c568c772a4e099aaed03a457256d6680562be2a518753f75d75b7ad", "providesAmount": 0.3}}' -H 'Content-Type: application/json'
+```
+
+```
+{"jsonrpc":"2.0","result":{"id":1,"status":"success"},"id":"0"}
 ```
 
 
@@ -153,7 +174,7 @@ Example:
 curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getOngoing","params":{}}' -H 'Content-Type: application/json'
 ```
 ```
-{"jsonrpc":"2.0","result":{"ID":3,"provided":"ETH","providedAmount":0.05,"receivedAmount":0,"exchangeRate":0,"status":"ongoing"},"id":"0"}
+{"jsonrpc":"2.0","result":{"id":3,"provided":"ETH","providedAmount":0.05,"receivedAmount":0,"exchangeRate":0,"status":"ongoing"},"id":"0"}
 ```
 
 ### `swap_getPastIDs`

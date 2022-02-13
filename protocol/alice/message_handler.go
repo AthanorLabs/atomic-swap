@@ -54,6 +54,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		close(s.claimedCh)
 		log.Info("successfully created monero wallet from our secrets: address=", address)
+		s.nextExpectedMessage = nil
 		s.info.SetStatus(pswap.Success)
 		return nil, true, nil
 	default:
@@ -163,6 +164,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	if msg.Address == "" {
 		return nil, errors.New("got empty address for locked XMR")
 	}
+
 	// check that XMR was locked in expected account, and confirm amount
 	vk := mcrypto.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
 	sk := mcrypto.SumPublicKeys(s.bobPublicSpendKey, s.pubkeys.SpendKey())
