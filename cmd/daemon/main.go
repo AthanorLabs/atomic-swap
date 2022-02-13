@@ -36,6 +36,7 @@ const (
 
 	// default RPC port
 	defaultRPCPort      = 5005
+	defaultWSPort       = 8080
 	defaultAliceRPCPort = 5001
 	defaultBobRPCPort   = 5002
 )
@@ -290,6 +291,7 @@ func (d *daemon) make(c *cli.Context) error {
 
 	rpcCfg := &rpc.Config{
 		Port:        rpcPort,
+		WsPort:      defaultWSPort, // TODO: get from flag
 		Net:         host,
 		Alice:       a,
 		Bob:         b,
