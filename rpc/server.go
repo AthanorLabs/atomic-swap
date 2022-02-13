@@ -45,7 +45,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob), "swap"); err != nil {
 		return nil, err
 	}
 
@@ -82,6 +82,7 @@ func (s *Server) Start() <-chan error {
 type Protocol interface {
 	Provides() types.ProvidesCoin
 	SetGasPrice(gasPrice uint64)
+	GetOngoingSwapState() common.SwapState
 }
 
 // Alice ...
