@@ -65,6 +65,7 @@
     selectedOffer.set(undefined)
     amountProvided = 0
     willReceive = 0
+    isSuccess = false
   }
 </script>
 
@@ -95,9 +96,7 @@
           <div class="flexBox">
             <span class="material-icons circleCheck"> check_circle </span>
             <p class="successMessage">
-              Yay, you received {willReceive}{getCorrespondingToken(
-                $selectedOffer.provides
-              )}
+              Yay, you received {willReceive}{$selectedOffer.provides}
             </p>
           </div>
         {:else}
