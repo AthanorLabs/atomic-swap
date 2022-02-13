@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/noot/atomic-swap/common/types"
@@ -9,13 +10,15 @@ import (
 
 // SwapService handles information about ongoing or past swaps.
 type SwapService struct {
-	sm SwapManager
+	sm    SwapManager
+	alice Alice
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager) *SwapService {
+func NewSwapService(sm SwapManager, alice Alice) *SwapService {
 	return &SwapService{
-		sm: sm,
+		sm:    sm,
+		alice: alice,
 	}
 }
 
@@ -82,5 +85,30 @@ func (s *SwapService) GetOngoing(_ *http.Request, _ *interface{}, resp *GetOngoi
 	resp.ReceivedAmount = info.ReceivedAmount()
 	resp.ExchangeRate = info.ExchangeRate()
 	resp.Status = info.Status().String()
+	return nil
+}
+
+// RefundResponse ...
+type RefundResponse struct {
+	TxHash string `json:"transactionHash"`
+}
+
+// Refund refunds the ongoing swap if we are the ETH provider.
+func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundResponse) error {
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return errors.New("no current ongoing swap")
+	}
+
+	if info.Provides() != types.ProvidesETH {
+		return errors.New("cannot refund if not the ETH provider")
+	}
+
+	txHash, err := s.alice.Refund()
+	if err != nil {
+		return fmt.Errorf("failed to refund: %w", err)
+	}
+
+	resp.TxHash = txHash.String()
 	return nil
 }

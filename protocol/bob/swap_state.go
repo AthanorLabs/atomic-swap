@@ -151,7 +151,7 @@ func (s *swapState) ProtocolExited() error {
 	}()
 
 	if s.info.Status() == pswap.Success {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully! id=%d**", s.ID())
+		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
 		log.Info(str)
 
 		// remove offer, as it's been taken
