@@ -15,11 +15,12 @@ type Type byte
 const (
 	QueryResponseType Type = iota //nolint
 	SendKeysType
-	NotifyContractDeployedType
+	NotifyContractDeployedType // TODO: rename to NotifyETHLockType
 	NotifyXMRLockType
 	NotifyReadyType
 	NotifyClaimedType
 	NotifyRefundType
+	NilType
 )
 
 func (t Type) String() string {
