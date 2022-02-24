@@ -2,11 +2,11 @@
   import Spacer from './components/Spacer.svelte'
   import LayoutGrid, { Cell, InnerGrid } from '@smui/layout-grid'
   import Button from '@smui/button'
-  // import CircularProgress from '@smui/circular-progress'
-  import { peers, getPeers, isLoadingPeers } from './stores/peerStore'
+  import { peers, getPeers } from './stores/peerStore'
   import { offers } from './stores/offerStore'
   import OffersTable from './components/OffersTable.svelte'
   import StatCard from './components/StatCard.svelte'
+  import TakeDealDrawer from './components/TakeDealDialog.svelte'
 
   const handleRefreshClick = () => {
     getPeers()
@@ -30,19 +30,8 @@
       </InnerGrid>
       <br />
       <OffersTable />
-      <!-- <h2>Peers:</h2>
-      {#if $isLoadingPeers}
-        <div class="loader">
-          <CircularProgress style="height: 32px; width: 32px;" indeterminate />
-        </div>
-      {:else}
-        {#each $peers as peer}
-          <pre>{peer}</pre>
-        {/each}
-      {/if}
-      <h2>Offers:</h2>
-      <pre>{JSON.stringify($offers, null, 4)}</pre> -->
     </Cell>
+    <TakeDealDrawer />
   </LayoutGrid>
 </main>
 
