@@ -14,6 +14,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	defaultJSONRPCVersion = "2.0"
+
+	subscribeNewPeer    = "net_subscribeNewPeer"
+	subscribeSwapStatus = "swap_subscribeStatus"
+)
+
 var upgrader = websocket.Upgrader{}
 
 type wsServer struct {
@@ -30,6 +37,7 @@ func newWsServer(sm SwapManager, a Alice, b Bob) *wsServer {
 	}
 }
 
+// ServeHTTP ...
 func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -37,7 +45,7 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -61,19 +69,13 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Request represents a JSON-RPC request
 type Request struct {
-	JsonRPC string                 `json:"jsonrpc"`
+	JSONRPC string                 `json:"jsonrpc"`
 	Method  string                 `json:"method"`
 	Params  map[string]interface{} `json:"params"`
 	ID      uint64                 `json:"id"`
 }
-
-const (
-	defaultJsonRPCVersion = "2.0"
-
-	subscribeNewPeer    = "net_subscribeNewPeer"
-	subscribeSwapStatus = "swap_subscribeStatus"
-)
 
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 	switch req.Method {
@@ -96,6 +98,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 	}
 }
 
+// SubscribeSwapStatusResponse ...
 type SubscribeSwapStatusResponse struct {
 	Stage string `json:"stage"`
 }
@@ -108,7 +111,7 @@ func (s *wsServer) subscribeSwapStatus(conn *websocket.Conn, id uint64) error {
 	for {
 		info := s.sm.GetOngoingSwap()
 		if info == nil {
-			info := s.sm.GetPastSwap(id)
+			info = s.sm.GetPastSwap(id)
 			if info == nil {
 				return errors.New("unable to find swap with given ID")
 			}
@@ -162,7 +165,7 @@ func writeResponse(conn *websocket.Conn, result interface{}) error {
 	}
 
 	resp := &rpcclient.ServerResponse{
-		Version: defaultJsonRPCVersion,
+		Version: defaultJSONRPCVersion,
 		Result:  bz,
 	}
 
@@ -171,7 +174,7 @@ func writeResponse(conn *websocket.Conn, result interface{}) error {
 
 func writeError(conn *websocket.Conn, err error) error {
 	resp := &rpcclient.ServerResponse{
-		Version: defaultJsonRPCVersion,
+		Version: defaultJSONRPCVersion,
 		Error: &rpcclient.Error{
 			Message: err.Error(),
 		},
