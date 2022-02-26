@@ -210,10 +210,34 @@ Returns:
 - `exchangeRate`: the exchange rate of the swap, expressed in a ratio of XMR/ETH.
 - `status`: the swap's status, one of `success`, `refunded`, or `aborted`.
 
+Example:
 ```
 curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getPast","params":{"id": 0}}' -H 'Content-Type: application/json'
 ```
 
 ```
 {"jsonrpc":"2.0","result":{"provided":"ETH","providedAmount":0.05,"receivedAmount":1,"exchangeRate":20,"status":"success"},"id":"0"}
+```
+
+## websocket subscriptions
+
+The daemon also runs a websockets server that can be used to subscribe to push notifications for updates. You can use the command-line tool `wscat` to easy connect to a websockets server.
+
+### `swap_subscribeStatus`
+
+Subscribe to updates of status of a swap. Pushes a notification each time the stage updates, and a final push when the swap completes, containing its completion status.
+
+Paramters:
+- `id`: the swap ID.
+
+Returns:
+- `stage`: the swap's stage or exit status.
+
+Example:
+```
+$ wscat -c ws://localhost:8081
+# Connected (press CTRL+C to quit)
+# > {"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}
+# < {"jsonrpc":"2.0","result":{"stage":"ContractDeployed"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"refunded"},"error":null,"id":null}
 ```
