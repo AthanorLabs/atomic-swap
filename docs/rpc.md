@@ -221,7 +221,7 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_
 
 ## websocket subscriptions
 
-The daemon also runs a websockets server that can be used to subscribe to push notifications for updates. You can use the command-line tool `wscat` to easy connect to a websockets server.
+The daemon also runs a websockets server that can be used to subscribe to push notifications for updates. You can use the command-line tool `wscat` to easily connect to a websockets server.
 
 ### `swap_subscribeStatus`
 
