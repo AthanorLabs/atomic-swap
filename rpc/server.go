@@ -20,13 +20,16 @@ var log = logging.Logger("rpc")
 
 // Server represents the JSON-RPC server
 type Server struct {
-	s    *rpc.Server
-	port uint16
+	s        *rpc.Server
+	wsServer *wsServer
+	port     uint16
+	wsPort   uint16
 }
 
 // Config ...
 type Config struct {
 	Port        uint16
+	WsPort      uint16
 	Net         Net
 	Alice       Alice
 	Bob         Bob
@@ -50,8 +53,10 @@ func NewServer(cfg *Config) (*Server, error) {
 	}
 
 	return &Server{
-		s:    s,
-		port: cfg.Port,
+		s:        s,
+		wsServer: newWsServer(cfg.SwapManager, cfg.Alice, cfg.Bob),
+		port:     cfg.Port,
+		wsPort:   cfg.WsPort,
 	}, nil
 }
 
@@ -70,7 +75,23 @@ func (s *Server) Start() <-chan error {
 		log.Infof("starting RPC server on http://localhost:%d", s.port)
 
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
-			log.Errorf("failed to start RPC server: %s", err)
+			log.Errorf("failed to start http RPC server: %s", err)
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		r := mux.NewRouter()
+		r.Handle("/", s.wsServer)
+
+		headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
+		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+		originsOk := handlers.AllowedOrigins([]string{"*"})
+
+		log.Infof("starting websockets server on ws://localhost:%d", s.wsPort)
+
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
+			log.Errorf("failed to start websockets RPC server: %s", err)
 			errCh <- err
 		}
 	}()

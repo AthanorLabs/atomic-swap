@@ -38,6 +38,10 @@ const (
 	defaultRPCPort      = 5005
 	defaultAliceRPCPort = 5001
 	defaultBobRPCPort   = 5002
+
+	defaultWSPort      = 8080
+	defaultAliceWSPort = 8081
+	defaultBobWSPort   = 8082
 )
 
 var (
@@ -52,6 +56,7 @@ var (
 
 const (
 	flagRPCPort    = "rpc-port"
+	flagWSPort     = "ws-port"
 	flagBasepath   = "basepath"
 	flagLibp2pKey  = "libp2p-key"
 	flagLibp2pPort = "libp2p-port"
@@ -82,6 +87,10 @@ var (
 			&cli.UintFlag{
 				Name:  flagRPCPort,
 				Usage: "port for the daemon RPC server to run on; default 5001",
+			},
+			&cli.UintFlag{
+				Name:  flagWSPort,
+				Usage: "port for the daemon RPC websockets server to run on; default 8080",
 			},
 			&cli.StringFlag{
 				Name:  flagBasepath,
@@ -288,8 +297,20 @@ func (d *daemon) make(c *cli.Context) error {
 		rpcPort = defaultRPCPort
 	}
 
+	wsPort := uint16(c.Uint(flagWSPort))
+	switch {
+	case wsPort != 0:
+	case devAlice:
+		wsPort = defaultAliceWSPort
+	case devBob:
+		wsPort = defaultBobWSPort
+	default:
+		wsPort = defaultWSPort
+	}
+
 	rpcCfg := &rpc.Config{
 		Port:        rpcPort,
+		WsPort:      wsPort,
 		Net:         host,
 		Alice:       a,
 		Bob:         b,
