@@ -54,7 +54,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: new(wsServer),
+		wsServer: newWsServer(cfg.SwapManager, cfg.Alice, cfg.Bob),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -88,7 +88,7 @@ func (s *Server) Start() <-chan error {
 		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 		originsOk := handlers.AllowedOrigins([]string{"*"})
 
-		log.Infof("starting websockets server on http://localhost:%d", s.wsPort)
+		log.Infof("starting websockets server on ws://localhost:%d", s.wsPort)
 
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
 			log.Errorf("failed to start websockets RPC server: %s", err)

@@ -59,6 +59,10 @@ func (i *Info) ID() uint64 {
 
 // Provides returns the coin that was provided for this swap.
 func (i *Info) Provides() types.ProvidesCoin {
+	if i == nil {
+		return ""
+	}
+
 	return i.provides
 }
 
