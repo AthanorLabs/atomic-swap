@@ -1,5 +1,5 @@
 
 export type NetTakeOfferSyncResult = {
-    status: 'success' | 'failed'
+    status: 'success' | 'aborted'
     id: number
 }

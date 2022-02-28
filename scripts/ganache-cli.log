@@ -54,5 +54,152 @@ eth_sendRawTransaction
   Contract created: 0xe78a0f7e598cc8b0bb87894b0f60dd2a88d6a8ab
   Gas usage: 1534986
   Block Number: 1
-  Block Time: Mon Feb 28 2022 18:04:11 GMT+0000 (Western European Standard Time)
+  Block Time: Mon Feb 28 2022 18:57:26 GMT+0000 (Western European Standard Time)
 
+eth_getBalance
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0xdf64477da19192f94b8554b65e51c675411eff5f652532c7735e96f877a16353
+  Gas usage: 193913
+  Block Number: 2
+  Block Time: Mon Feb 28 2022 19:01:10 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_call
+eth_getLogs
+eth_call
+eth_call
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0xb34294fafc020e85066f14d4fe8a2cdecfbd8eaa88a7011bbc98f29969adba1f
+  Gas usage: 46646
+  Block Number: 3
+  Block Time: Mon Feb 28 2022 19:01:34 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_getBalance
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0xd6d5e93292be28d804110c68d4c75d625ac737f9eae86fa6d1664499a88d0a08
+  Gas usage: 52092
+  Block Number: 4
+  Block Time: Mon Feb 28 2022 19:01:35 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_getBalance
+eth_getTransactionReceipt
+eth_getBalance
+eth_getBalance
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0xf223a37f87304361755e267a6d889c080aff866c2fc4cb0d7581fae964824ad6
+  Gas usage: 178913
+  Block Number: 5
+  Block Time: Mon Feb 28 2022 19:02:46 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_call
+eth_getLogs
+eth_call
+eth_call
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0x3a722ed0d0c41a70b333aecd1156eb91487ec160d0a54a68c030d401548c295e
+  Gas usage: 46658
+  Block Number: 6
+  Block Time: Mon Feb 28 2022 19:02:49 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_getBalance
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0x42b56de2b4ffefa52ecce08ceb996b1614a2be235547f7cab77a05d0c181a5ab
+  Gas usage: 52116
+  Block Number: 7
+  Block Time: Mon Feb 28 2022 19:02:49 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_getBalance
+eth_getTransactionReceipt
+eth_getBalance
+eth_getBalance
+eth_getBalance
+eth_getBalance
+eth_getBalance
+eth_getBalance
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0x87514696bfd0f583614b6104b6ff1e251890013b54ad2c7464776ea78965c216
+  Gas usage: 178913
+  Block Number: 8
+  Block Time: Mon Feb 28 2022 19:03:55 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_call
+eth_getLogs
+eth_call
+eth_call
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0xae08b16bf18763a7b96b5288fa260ff5d1b632606900ddaf1b1c9067a9697e0d
+  Gas usage: 46658
+  Block Number: 9
+  Block Time: Mon Feb 28 2022 19:03:57 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_getBalance
+eth_getBlockByNumber
+eth_gasPrice
+eth_getCode
+eth_estimateGas
+eth_getTransactionCount
+eth_sendRawTransaction
+
+  Transaction: 0x3bd0e9bf69f6d5a464870ebb196a8e975bac23194327c0aa64367053c6f8885a
+  Gas usage: 52116
+  Block Number: 10
+  Block Time: Mon Feb 28 2022 19:03:58 GMT+0000 (Western European Standard Time)
+
+eth_getTransactionReceipt
+eth_getBalance
+eth_getTransactionReceipt

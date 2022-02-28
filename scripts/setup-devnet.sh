@@ -27,6 +27,9 @@ sleep 10
 echo "mine blocks for Bob"
 curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe","amount_of_blocks":100}' -H 'Content-Type: application/json' &> $LOG_DIR/block-mining-bob.log &
 
+echo "Zzz... 15s"
+sleep 15
+
 echo "start monero-wallet-rpc for Alice on port 18084"
 ./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir . &> $LOG_DIR/alice-wallet-rpc.log &
 

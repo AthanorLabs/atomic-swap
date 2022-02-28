@@ -16,6 +16,7 @@
   let isSuccess = false
   let isLoadingSwap = false
   let error = ''
+  let swapError = ''
 
   $: willReceive =
     amountProvided && amountProvided > 0 && $selectedOffer?.exchangeRate
@@ -42,8 +43,6 @@
     error = ''
   }
 
-  $: console.log('isSuccess', isSuccess)
-
   const handleSendTakeOffer = () => {
     isLoadingSwap = true
     rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {
@@ -55,17 +54,23 @@
         if (result?.status === 'success') {
           isSuccess = true
           getPeers()
+        } else if (result?.status === 'aborted') {
+          swapError = 'Something went wrong. Please check your node logs'
         }
       })
-      .catch(console.error)
+      .catch((e: Error) => {
+        console.error('error when swapping', e)
+        swapError = e.message
+      })
       .finally(() => (isLoadingSwap = false))
   }
 
-  const onReset = () => {
-    selectedOffer.set(undefined)
+  const onReset = (resetOffer = true) => {
+    resetOffer && selectedOffer.set(undefined)
     amountProvided = 0
     willReceive = 0
     isSuccess = false
+    swapError = ''
   }
 </script>
 
@@ -73,7 +78,7 @@
   <Dialog
     open={true}
     on:SMUIDialog:action={() => console.log('action')}
-    on:SMUIDialog:closed={onReset}
+    on:SMUIDialog:closed={() => onReset(true)}
     aria-labelledby="mandatory-title"
     aria-describedby="mandatory-content"
   >
@@ -94,9 +99,16 @@
           </div>
         {:else if isSuccess}
           <div class="flexBox">
-            <span class="material-icons circleCheck"> check_circle </span>
+            <span class="material-icons circleCheck">check_circle</span>
             <p class="successMessage">
               Yay, you received {willReceive}{$selectedOffer.provides}
+            </p>
+          </div>
+        {:else if !!swapError}
+          <div class="flexBox">
+            <span class="material-icons circleCross">error_outline</span>
+            <p class="errorMessage">
+              {swapError}
             </p>
           </div>
         {:else}
@@ -125,6 +137,10 @@
           <Label>Done</Label>
         </Button>
       </Actions>
+    {:else if !!swapError}
+      <Button on:click={() => onReset(false)}>
+        <Label>Back</Label>
+      </Button>
     {:else}
       <Button
         on:click={handleSendTakeOffer}
@@ -159,6 +175,11 @@
   .circleCheck {
     font-size: 45px;
     color: darkcyan;
+  }
+
+  .circleCross {
+    font-size: 45px;
+    color: var(--mdc-theme-error, #b00020);
   }
 
   * :global(.swapIcon) {
