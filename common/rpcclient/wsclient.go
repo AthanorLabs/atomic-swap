@@ -10,19 +10,24 @@ import (
 	"github.com/noot/atomic-swap/common"
 )
 
+// DefaultJSONRPCVersion ...
 const DefaultJSONRPCVersion = "2.0"
 
 var log = logging.Logger("rpcclient")
 
+// WsClient ...
 type WsClient interface {
 	SubscribeSwapStatus(id uint64) (<-chan common.Stage, error)
+	TakeOfferAndSubscribe(multiaddr, offerID string,
+		providesAmount float64) (id uint64, ch <-chan common.StageOrExitStatus, err error)
 }
 
 type wsClient struct {
 	conn *websocket.Conn
 }
 
-func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) {
+// NewWsClient ...
+func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///nolint:revive
 	conn, _, err := (&websocket.Dialer{}).DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -33,6 +38,8 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) {
 	}, nil
 }
 
+// SubscribeSwapStatus returns a channel that is written to each time the swap's status updates.
+// If there is no swap with the given ID, it returns an error.
 func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan common.Stage, error) {
 	req := &Request{
 		JSONRPC: DefaultJSONRPCVersion,

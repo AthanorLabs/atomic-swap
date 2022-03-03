@@ -110,11 +110,13 @@ func (s ExitStatus) String() string {
 	}
 }
 
+// StageOrExitStatus ...
 type StageOrExitStatus struct {
 	Stage      *Stage
 	ExitStatus *ExitStatus
 }
 
+// String ...
 func (s *StageOrExitStatus) String() string {
 	if s.Stage != nil {
 		return s.Stage.String()
@@ -127,11 +129,13 @@ func (s *StageOrExitStatus) String() string {
 	return unknownString
 }
 
+// SetStage ...
 func (s *StageOrExitStatus) SetStage(stage Stage) {
 	s.Stage = &stage
 	s.ExitStatus = nil
 }
 
+// SetExitStatus ...
 func (s *StageOrExitStatus) SetExitStatus(es ExitStatus) {
 	s.Stage = nil
 	s.ExitStatus = &es

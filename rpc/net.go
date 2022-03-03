@@ -168,7 +168,8 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 	return nil
 }
 
-func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64) (uint64, <-chan common.StageOrExitStatus, error) {
+func (s *NetService) takeOffer(multiaddr, offerID string,
+	providesAmount float64) (uint64, <-chan common.StageOrExitStatus, error) {
 	swapState, err := s.alice.InitiateProtocol(providesAmount)
 	if err != nil {
 		return 0, nil, err

@@ -10,11 +10,11 @@ import (
 var nextID uint64
 
 type (
-	Status = common.ExitStatus
+	Status = common.ExitStatus //nolint:revive
 )
 
 const (
-	Ongoing  = common.Ongoing
+	Ongoing  = common.Ongoing //nolint:revive
 	Success  = common.Success
 	Refunded = common.Refunded
 	Aborted  = common.Aborted

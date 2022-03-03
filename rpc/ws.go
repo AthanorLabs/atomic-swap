@@ -22,6 +22,7 @@ const (
 
 var upgrader = websocket.Upgrader{}
 
+//nolint:revive
 type (
 	Request                     = rpcclient.Request
 	Response                    = rpcclient.Response
@@ -191,7 +192,11 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 
 	for {
 		select {
-		case status := <-statusCh:
+		case status, ok := <-statusCh:
+			if !ok {
+				return nil
+			}
+
 			resp := &SubscribeSwapStatusResponse{
 				Stage: status.String(),
 			}

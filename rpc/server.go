@@ -44,7 +44,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	s.RegisterCodec(NewCodec(), "application/json")
 
 	ns := NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager)
-	if err := s.RegisterService(ns, "net"); err != nil { //nolint:lll
+	if err := s.RegisterService(ns, "net"); err != nil {
 		return nil, err
 	}
 
