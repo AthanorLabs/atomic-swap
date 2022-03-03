@@ -1,11 +1,11 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpcclient"
@@ -15,25 +15,34 @@ import (
 )
 
 const (
-	defaultJSONRPCVersion = "2.0"
-
 	subscribeNewPeer    = "net_subscribeNewPeer"
+	subscribeTakeOffer  = "net_takeOfferAndSubscribe"
 	subscribeSwapStatus = "swap_subscribeStatus"
 )
 
 var upgrader = websocket.Upgrader{}
 
+type (
+	Request                     = rpcclient.Request
+	Response                    = rpcclient.Response
+	SubscribeSwapStatusResponse = rpcclient.SubscribeSwapStatusResponse
+)
+
 type wsServer struct {
+	ctx   context.Context
 	sm    SwapManager
 	alice Alice
 	bob   Bob
+	ns    *NetService
 }
 
-func newWsServer(sm SwapManager, a Alice, b Bob) *wsServer {
+func newWsServer(ctx context.Context, sm SwapManager, a Alice, b Bob, ns *NetService) *wsServer {
 	return &wsServer{
+		ctx:   ctx,
 		sm:    sm,
 		alice: a,
 		bob:   b,
+		ns:    ns,
 	}
 }
 
@@ -69,14 +78,6 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Request represents a JSON-RPC request
-type Request struct {
-	JSONRPC string                 `json:"jsonrpc"`
-	Method  string                 `json:"method"`
-	Params  map[string]interface{} `json:"params"`
-	ID      uint64                 `json:"id"`
-}
-
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 	switch req.Method {
 	case subscribeNewPeer:
@@ -92,70 +93,133 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 			return fmt.Errorf("failed to cast id parameter to float64: got %T", idi)
 		}
 
-		return s.subscribeSwapStatus(conn, uint64(id))
+		return s.subscribeSwapStatus(s.ctx, conn, uint64(id))
+	case subscribeTakeOffer:
+		maddri, has := req.Params["multiaddr"]
+		if !has {
+			return errors.New("params missing multiaddr field")
+		}
+
+		maddr, ok := maddri.(string)
+		if !ok {
+			return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", maddri)
+		}
+
+		offerIDi, has := req.Params["offerID"]
+		if !has {
+			return errors.New("params missing offerID field")
+		}
+
+		offerID, ok := offerIDi.(string)
+		if !ok {
+			return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", offerIDi)
+		}
+
+		providesi, has := req.Params["providesAmount"]
+		if !has {
+			return errors.New("params missing providesAmount field")
+		}
+
+		providesAmount, ok := providesi.(float64)
+		if !ok {
+			return fmt.Errorf("failed to cast providesAmount parameter to float64: got %T", providesi)
+		}
+
+		id, ch, err := s.ns.takeOffer(maddr, offerID, providesAmount)
+		if err != nil {
+			return err
+		}
+
+		return s.subscribeTakeOffer(s.ctx, conn, id, ch)
 	default:
 		return errors.New("invalid method")
 	}
 }
 
-// SubscribeSwapStatusResponse ...
-type SubscribeSwapStatusResponse struct {
-	Stage string `json:"stage"`
-}
+func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
+	id uint64, statusCh <-chan common.StageOrExitStatus) error {
+	// firstly write swap ID
+	idMsg := map[string]uint64{
+		"id": id,
+	}
 
-// subscribeSwapStatus writes the swap's stage to the connection every time it updates.
-// when the swap completes, it writes the final status then closes the connection.
-// example: `{"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}`
-func (s *wsServer) subscribeSwapStatus(conn *websocket.Conn, id uint64) error {
-	var prevStage common.Stage
+	if err := writeResponse(conn, idMsg); err != nil {
+		return err
+	}
+
 	for {
-		info := s.sm.GetOngoingSwap()
-		if info == nil {
-			info = s.sm.GetPastSwap(id)
-			if info == nil {
-				return errors.New("unable to find swap with given ID")
+		select {
+		case status, ok := <-statusCh:
+			if !ok {
+				return nil
 			}
 
 			resp := &SubscribeSwapStatusResponse{
-				Stage: info.Status().String(),
+				Stage: status.String(),
 			}
 
 			if err := writeResponse(conn, resp); err != nil {
 				return err
 			}
-
+		case <-ctx.Done():
 			return nil
 		}
-
-		var swapState common.SwapState
-		switch info.Provides() {
-		case types.ProvidesETH:
-			swapState = s.alice.GetOngoingSwapState()
-		case types.ProvidesXMR:
-			swapState = s.bob.GetOngoingSwapState()
-		}
-
-		if swapState == nil {
-			// we probably completed the swap, continue to call GetPastSwap
-			continue
-		}
-
-		currStage := swapState.Stage()
-		if currStage == prevStage {
-			time.Sleep(time.Millisecond * 10)
-			continue
-		}
-
-		resp := &SubscribeSwapStatusResponse{
-			Stage: currStage.String(),
-		}
-
-		if err := writeResponse(conn, resp); err != nil {
-			return err
-		}
-
-		prevStage = currStage
 	}
+}
+
+// subscribeSwapStatus writes the swap's stage to the connection every time it updates.
+// when the swap completes, it writes the final status then closes the connection.
+// example: `{"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}`
+func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id uint64) error {
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return s.writeSwapExitStatus(conn, id)
+	}
+
+	var statusCh <-chan common.StageOrExitStatus
+	switch info.Provides() {
+	case types.ProvidesETH:
+		statusCh = s.alice.GetOngoingSwapStatusCh()
+	case types.ProvidesXMR:
+		statusCh = s.bob.GetOngoingSwapStatusCh()
+	}
+
+	if statusCh == nil {
+		// we probably completed the swap, continue to call GetPastSwap
+		return s.writeSwapExitStatus(conn, id)
+	}
+
+	for {
+		select {
+		case status := <-statusCh:
+			resp := &SubscribeSwapStatusResponse{
+				Stage: status.String(),
+			}
+
+			if err := writeResponse(conn, resp); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id uint64) error {
+	info := s.sm.GetPastSwap(id)
+	if info == nil {
+		return errors.New("unable to find swap with given ID")
+	}
+
+	resp := &SubscribeSwapStatusResponse{
+		Stage: info.Status().String(),
+	}
+
+	if err := writeResponse(conn, resp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func writeResponse(conn *websocket.Conn, result interface{}) error {
@@ -164,8 +228,8 @@ func writeResponse(conn *websocket.Conn, result interface{}) error {
 		return err
 	}
 
-	resp := &rpcclient.ServerResponse{
-		Version: defaultJSONRPCVersion,
+	resp := &Response{
+		Version: rpcclient.DefaultJSONRPCVersion,
 		Result:  bz,
 	}
 
@@ -173,8 +237,8 @@ func writeResponse(conn *websocket.Conn, result interface{}) error {
 }
 
 func writeError(conn *websocket.Conn, err error) error {
-	resp := &rpcclient.ServerResponse{
-		Version: defaultJSONRPCVersion,
+	resp := &Response{
+		Version: rpcclient.DefaultJSONRPCVersion,
 		Error: &rpcclient.Error{
 			Message: err.Error(),
 		},

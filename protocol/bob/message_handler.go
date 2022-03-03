@@ -60,7 +60,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			TxHash: txHash.String(),
 		}
 
-		s.info.SetStatus(pswap.Success)
+		s.clearNextExpectedMessage(pswap.Success)
 		return out, true, nil
 	case *message.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
@@ -69,11 +69,27 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, false, err
 		}
 
-		s.info.SetStatus(pswap.Refunded)
+		s.clearNextExpectedMessage(pswap.Refunded)
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
 		return nil, true, errors.New("unexpected message type")
+	}
+}
+
+func (s *swapState) clearNextExpectedMessage(status common.ExitStatus) {
+	s.nextExpectedMessage = nil
+	s.statusCh <- common.StageOrExitStatus{
+		ExitStatus: &status,
+	}
+	s.info.SetStatus(status)
+}
+
+func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	s.nextExpectedMessage = msg
+	stage := pcommon.GetStage(msg.Type())
+	s.statusCh <- common.StageOrExitStatus{
+		Stage: &stage,
 	}
 }
 
@@ -147,7 +163,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 			}
 
 			log.Debug("funds claimed!")
-			s.info.SetStatus(pswap.Success)
+			s.clearNextExpectedMessage(pswap.Success)
 
 			// send *message.NotifyClaimed
 			if err := s.bob.net.SendSwapMessage(&message.NotifyClaimed{
@@ -160,7 +176,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 		}
 	}()
 
-	s.nextExpectedMessage = &message.NotifyReady{}
+	s.setNextExpectedMessage(&message.NotifyReady{})
 	return out, nil
 }
 
@@ -183,7 +199,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setAlicePublicKeys(kp, secp256k1Pub)
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.setNextExpectedMessage(&message.NotifyContractDeployed{})
 	return nil
 }
 

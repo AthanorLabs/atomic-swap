@@ -136,31 +136,63 @@ type TakeOfferResponse struct {
 
 // TakeOffer initiates a swap with the given peer by taking an offer they've made.
 func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *TakeOfferResponse) error {
-	swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
+	// swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// skm, err := swapState.SendKeysMessage()
+	// if err != nil {
+	// 	return err
+	// }
+
+	// skm.OfferID = req.OfferID
+	// skm.ProvidedAmount = req.ProvidesAmount
+
+	// who, err := net.StringToAddrInfo(req.Multiaddr)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// if err = s.net.Initiate(who, skm, swapState); err != nil {
+	// 	_ = swapState.ProtocolExited()
+	// 	return err
+	// }
+
+	id, _, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
+	}
+
+	resp.ID = id
+	return nil
+}
+
+func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64) (uint64, <-chan common.StageOrExitStatus, error) {
+	swapState, err := s.alice.InitiateProtocol(providesAmount)
+	if err != nil {
+		return 0, nil, err
 	}
 
 	skm, err := swapState.SendKeysMessage()
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 
-	skm.OfferID = req.OfferID
-	skm.ProvidedAmount = req.ProvidesAmount
+	skm.OfferID = offerID
+	skm.ProvidedAmount = providesAmount
 
-	who, err := net.StringToAddrInfo(req.Multiaddr)
+	who, err := net.StringToAddrInfo(multiaddr)
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
 		_ = swapState.ProtocolExited()
-		return err
+		return 0, nil, err
 	}
 
-	resp.ID = swapState.ID()
-	return nil
+	return swapState.ID(), s.alice.GetOngoingSwapStatusCh(), nil
 }
 
 // TakeOfferSyncResponse ...

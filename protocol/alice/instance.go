@@ -120,3 +120,15 @@ func (a *Instance) Refund() (ethcommon.Hash, error) {
 func (a *Instance) GetOngoingSwapState() common.SwapState {
 	return a.swapState
 }
+
+// GetOngoingSwapStatusCh ...
+func (a *Instance) GetOngoingSwapStatusCh() <-chan common.StageOrExitStatus {
+	a.swapMu.Lock()
+	defer a.swapMu.Unlock()
+
+	if a.swapState == nil {
+		return nil
+	}
+
+	return a.swapState.statusCh
+}

@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -28,6 +29,7 @@ type Server struct {
 
 // Config ...
 type Config struct {
+	Ctx         context.Context
 	Port        uint16
 	WsPort      uint16
 	Net         Net
@@ -40,7 +42,9 @@ type Config struct {
 func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
-	if err := s.RegisterService(NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager), "net"); err != nil { //nolint:lll
+
+	ns := NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager)
+	if err := s.RegisterService(ns, "net"); err != nil { //nolint:lll
 		return nil, err
 	}
 
@@ -54,7 +58,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.SwapManager, cfg.Alice, cfg.Bob),
+		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, cfg.Alice, cfg.Bob, ns),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -104,6 +108,7 @@ type Protocol interface {
 	Provides() types.ProvidesCoin
 	SetGasPrice(gasPrice uint64)
 	GetOngoingSwapState() common.SwapState
+	GetOngoingSwapStatusCh() <-chan common.StageOrExitStatus
 }
 
 // Alice ...

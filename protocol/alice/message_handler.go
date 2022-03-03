@@ -54,11 +54,26 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		close(s.claimedCh)
 		log.Info("successfully created monero wallet from our secrets: address=", address)
-		s.nextExpectedMessage = nil
-		s.info.SetStatus(pswap.Success)
+		s.clearNextExpectedMessage(pswap.Success)
 		return nil, true, nil
 	default:
 		return nil, false, errors.New("unexpected message type")
+	}
+}
+
+func (s *swapState) clearNextExpectedMessage(status common.ExitStatus) {
+	s.nextExpectedMessage = nil
+	s.statusCh <- common.StageOrExitStatus{
+		ExitStatus: &status,
+	}
+	s.info.SetStatus(status)
+}
+
+func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	s.nextExpectedMessage = msg
+	stage := pcommon.GetStage(msg.Type())
+	s.statusCh <- common.StageOrExitStatus{
+		Stage: &stage,
 	}
 }
 
@@ -150,7 +165,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	}()
 
-	s.nextExpectedMessage = &message.NotifyXMRLock{}
+	s.setNextExpectedMessage(&message.NotifyXMRLock{})
 
 	out := &message.NotifyContractDeployed{
 		Address:        s.alice.contractAddr.String(),
@@ -278,7 +293,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		}
 	}()
 
-	s.nextExpectedMessage = &message.NotifyClaimed{}
+	s.setNextExpectedMessage(&message.NotifyClaimed{})
 	return &message.NotifyReady{}, nil
 }
 

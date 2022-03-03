@@ -3,40 +3,22 @@ package swap
 import (
 	"sync"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 )
 
 var nextID uint64
 
-// Status represents the status of a swap.
-type Status byte
-
-const (
-	// Ongoing represents an ongoing swap.
-	Ongoing Status = iota
-	// Success represents a successful swap.
-	Success
-	// Refunded represents a swap that was refunded.
-	Refunded
-	// Aborted represents the case where the swap aborts before any funds are locked.
-	Aborted
+type (
+	Status = common.ExitStatus
 )
 
-// String ...
-func (s Status) String() string {
-	switch s {
-	case Ongoing:
-		return "ongoing"
-	case Success:
-		return "success"
-	case Refunded:
-		return "refunded"
-	case Aborted:
-		return "aborted"
-	default:
-		return "unknown"
-	}
-}
+const (
+	Ongoing  = common.Ongoing
+	Success  = common.Success
+	Refunded = common.Refunded
+	Aborted  = common.Aborted
+)
 
 // Info contains the details of the swap as well as its status.
 type Info struct {
@@ -140,7 +122,7 @@ func (m *Manager) AddSwap(info *Info) error {
 	defer m.Unlock()
 
 	switch info.status {
-	case Ongoing:
+	case common.Ongoing:
 		if m.ongoing != nil {
 			return errHaveOngoingSwap
 		}

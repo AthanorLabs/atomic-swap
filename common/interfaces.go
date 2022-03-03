@@ -78,3 +78,61 @@ func (s Stage) Info() string {
 		return unknownString
 	}
 }
+
+// ExitStatus represents the exit status of a swap.
+// It is "Ongoing" if the swap is still ongoing.
+type ExitStatus byte
+
+const (
+	// Ongoing represents an ongoing swap.
+	Ongoing ExitStatus = iota
+	// Success represents a successful swap.
+	Success
+	// Refunded represents a swap that was refunded.
+	Refunded
+	// Aborted represents the case where the swap aborts before any funds are locked.
+	Aborted
+)
+
+// String ...
+func (s ExitStatus) String() string {
+	switch s {
+	case Ongoing:
+		return "ongoing"
+	case Success:
+		return "success"
+	case Refunded:
+		return "refunded"
+	case Aborted:
+		return "aborted"
+	default:
+		return "unknown"
+	}
+}
+
+type StageOrExitStatus struct {
+	Stage      *Stage
+	ExitStatus *ExitStatus
+}
+
+func (s *StageOrExitStatus) String() string {
+	if s.Stage != nil {
+		return s.Stage.String()
+	}
+
+	if s.ExitStatus != nil {
+		return s.ExitStatus.String()
+	}
+
+	return unknownString
+}
+
+func (s *StageOrExitStatus) SetStage(stage Stage) {
+	s.Stage = &stage
+	s.ExitStatus = nil
+}
+
+func (s *StageOrExitStatus) SetExitStatus(es ExitStatus) {
+	s.Stage = nil
+	s.ExitStatus = &es
+}

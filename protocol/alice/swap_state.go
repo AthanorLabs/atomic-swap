@@ -34,7 +34,8 @@ type swapState struct {
 	cancel context.CancelFunc
 	sync.Mutex
 
-	info *pswap.Info
+	info     *pswap.Info
+	statusCh chan common.StageOrExitStatus
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -85,6 +86,12 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
 		info:                info,
+		statusCh:            make(chan common.StageOrExitStatus, 7),
+	}
+
+	stage := common.ExpectingKeysStage
+	s.statusCh <- common.StageOrExitStatus{
+		Stage: &stage,
 	}
 
 	return s, nil
@@ -158,30 +165,30 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
-		s.info.SetStatus(pswap.Aborted)
+		s.clearNextExpectedMessage(pswap.Aborted)
 		return errSwapAborted
 	case *message.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
-			s.info.SetStatus(pswap.Aborted)
+			s.clearNextExpectedMessage(pswap.Aborted)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
-		s.info.SetStatus(pswap.Refunded)
+		s.clearNextExpectedMessage(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case *message.NotifyClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
-			s.info.SetStatus(pswap.Aborted)
+			s.clearNextExpectedMessage(pswap.Aborted)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
-		s.info.SetStatus(pswap.Refunded)
+		s.clearNextExpectedMessage(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case nil:
 		skA, err := s.filterForClaim()
@@ -197,7 +204,7 @@ func (s *swapState) ProtocolExited() error {
 		log.Infof("claimed monero: address=%s", addr)
 	default:
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
-		s.info.SetStatus(pswap.Aborted)
+		s.clearNextExpectedMessage(pswap.Aborted)
 		return errUnexpectedMessageType
 	}
 
@@ -213,12 +220,12 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 		// we can refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
-			s.info.SetStatus(pswap.Aborted)
+			s.clearNextExpectedMessage(pswap.Aborted)
 			log.Errorf("failed to refund: err=%s", err)
 			return ethcommon.Hash{}, err
 		}
 
-		s.info.SetStatus(pswap.Refunded)
+		s.clearNextExpectedMessage(pswap.Refunded)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 
 		// send NotifyRefund msg
@@ -341,7 +348,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 		return fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
 
-	log.Debugf("deploying Swap.sol, amount=%s txHash=%s", amount, tx.Hash())
+	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())
 	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
 	if err != nil {
 		return fmt.Errorf("failed to call new_swap in contract: %w", err)
@@ -395,7 +402,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
 	}
 
-	s.info.SetStatus(pswap.Refunded)
+	s.clearNextExpectedMessage(pswap.Refunded)
 	return tx.Hash(), nil
 }
 

@@ -42,8 +42,9 @@ type swapState struct {
 	cancel context.CancelFunc
 	sync.Mutex
 
-	info    *pswap.Info
-	offerID types.Hash
+	info     *pswap.Info
+	offerID  types.Hash
+	statusCh chan common.StageOrExitStatus
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -98,6 +99,12 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
 		info:                info,
+		statusCh:            make(chan common.StageOrExitStatus, 7),
+	}
+
+	stage := common.ExpectingKeysStage
+	s.statusCh <- common.StageOrExitStatus{
+		Stage: &stage,
 	}
 
 	return s, nil
@@ -168,12 +175,12 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
-		s.info.SetStatus(pswap.Aborted)
+		s.clearNextExpectedMessage(pswap.Aborted)
 		return errSwapAborted
 	case *message.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
-		s.info.SetStatus(pswap.Aborted)
+		s.clearNextExpectedMessage(pswap.Aborted)
 		return errSwapAborted
 	case *message.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
@@ -194,12 +201,12 @@ func (s *swapState) ProtocolExited() error {
 			return err
 		}
 
-		s.info.SetStatus(pswap.Refunded)
+		s.clearNextExpectedMessage(pswap.Refunded)
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
 	default:
-		s.info.SetStatus(pswap.Aborted)
+		s.clearNextExpectedMessage(pswap.Aborted)
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		return errUnexpectedMessageType
 	}

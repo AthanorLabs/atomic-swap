@@ -139,3 +139,15 @@ func (b *Instance) openWallet() error { //nolint
 func (b *Instance) GetOngoingSwapState() common.SwapState {
 	return b.swapState
 }
+
+// GetOngoingSwapStatusCh ...
+func (b *Instance) GetOngoingSwapStatusCh() <-chan common.StageOrExitStatus {
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+
+	if b.swapState == nil {
+		return nil
+	}
+
+	return b.swapState.statusCh
+}
