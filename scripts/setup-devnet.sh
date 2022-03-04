@@ -11,7 +11,6 @@ pkill -e -f monero;
 pkill -e -f ganache-cli;
 killall -v swapd;
 pkill -e -f swapcli;
-rm -rf $LOG_DIR/*;
 
 echo "start ganache-cli"
 ganache-cli -d &> $LOG_DIR/ganache-cli.log &
