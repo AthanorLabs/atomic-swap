@@ -56,6 +56,9 @@
           getPeers()
         } else if (result?.status === 'aborted') {
           swapError = 'Something went wrong. Please check your node logs'
+        } else if (result?.status === 'refunded') {
+          swapError =
+            'Something went wrong. Swap funds refunded, please check the logs for more info'
         }
       })
       .catch((e: Error) => {

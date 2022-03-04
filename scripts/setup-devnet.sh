@@ -2,7 +2,8 @@
 
 # useful dir relative to this script
 MONERO_DIR="../monero-x86_64-linux-gnu-v0.17.3.0"
-LOG_DIR="../log"
+# either a TMPDIR is set, or use /tmp
+LOG_DIR=${TMPDIR:-"/tmp"}
 ALICE_P2P_ADDRESS="12D3KooWF5dTdfrVv6oFwGGGyobfxtZBVhVR654wt5ED6PU1SBqd"
 
 echo "cleanup"
