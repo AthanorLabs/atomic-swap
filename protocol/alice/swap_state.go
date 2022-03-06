@@ -122,14 +122,6 @@ func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
 	return common.MoneroToPiconero(s.info.ReceivedAmount())
 }
 
-// func (s *swapState) Status() types.Status {
-// 	if s.nextExpectedMessage == nil {
-// 		return pcommon.GetStage(message.NilType)
-// 	}
-
-// 	return pcommon.GetStage(s.nextExpectedMessage.Type())
-// }
-
 // ID returns the ID of the swap
 func (s *swapState) ID() uint64 {
 	return s.info.ID()

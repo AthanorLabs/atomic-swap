@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	//"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 
