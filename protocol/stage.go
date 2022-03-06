@@ -19,6 +19,6 @@ func GetStatus(t message.Type) types.Status {
 	case message.NotifyClaimedType:
 		return types.ContractReady
 	default:
-		return types.UnknownStage
+		return types.UnknownStatus
 	}
 }

@@ -61,6 +61,7 @@ func (i *Info) Status() Status {
 	return i.status
 }
 
+// StatusCh returns the swap's status update channel.
 func (i *Info) StatusCh() <-chan types.Status {
 	return i.statusCh
 }

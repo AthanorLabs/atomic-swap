@@ -15,10 +15,35 @@ const (
 	CompletedRefund
 	// CompletedAbort represents the case where the swap aborts before any funds are locked.
 	CompletedAbort
-	UnknownStage
+	UnknownStatus
 )
 
 const unknownString string = "unknown"
+
+// NewStatus returns a Status from the given string.
+// If there is no match, it returns UnknownStatus
+func NewStatus(str string) Status {
+	switch str {
+	case "ExpectingKeys":
+		return ExpectingKeys
+	case "KeysExchanged":
+		return KeysExchanged
+	case "ContractDeployed":
+		return ContractDeployed
+	case "XMRLocked":
+		return XMRLocked
+	case "ContractReady":
+		return ContractReady
+	case "Success":
+		return CompletedSuccess
+	case "Refunded":
+		return CompletedRefund
+	case "Aborted":
+		return CompletedAbort
+	default:
+		return UnknownStatus
+	}
+}
 
 // String ...
 func (s Status) String() string {
@@ -68,73 +93,12 @@ func (s Status) Info() string {
 	}
 }
 
+// IsOngoing returns true if the status means the swap has not completed
 func (s Status) IsOngoing() bool {
 	switch s {
-	case ExpectingKeys, KeysExchanged, ContractDeployed, XMRLocked, ContractReady, UnknownStage:
+	case ExpectingKeys, KeysExchanged, ContractDeployed, XMRLocked, ContractReady, UnknownStatus:
 		return true
 	default:
 		return false
 	}
 }
-
-// // ExitStatus represents the exit status of a swap.
-// // It is "Ongoing" if the swap is still ongoing.
-// type ExitStatus byte
-
-// const (
-// 	// Ongoing represents an ongoing swap.
-// 	Ongoing ExitStatus = iota
-// 	// Success represents a successful swap.
-// 	Success
-// 	// Refunded represents a swap that was refunded.
-// 	Refunded
-// 	// Aborted represents the case where the swap aborts before any funds are locked.
-// 	Aborted
-// )
-
-// // String ...
-// func (s ExitStatus) String() string {
-// 	switch s {
-// 	case Ongoing:
-// 		return "ongoing"
-// 	case Success:
-// 		return "success"
-// 	case Refunded:
-// 		return "refunded"
-// 	case Aborted:
-// 		return "aborted"
-// 	default:
-// 		return "unknown"
-// 	}
-// }
-
-// // StageOrExitStatus ...
-// type StageOrExitStatus struct {
-// 	Stage      *Stage
-// 	ExitStatus *ExitStatus
-// }
-
-// // String ...
-// func (s *StageOrExitStatus) String() string {
-// 	if s.Stage != nil {
-// 		return s.Stage.String()
-// 	}
-
-// 	if s.ExitStatus != nil {
-// 		return s.ExitStatus.String()
-// 	}
-
-// 	return unknownString
-// }
-
-// // SetStage ...
-// func (s *StageOrExitStatus) SetStage(stage Stage) {
-// 	s.Stage = &stage
-// 	s.ExitStatus = nil
-// }
-
-// // SetExitStatus ...
-// func (s *StageOrExitStatus) SetExitStatus(es ExitStatus) {
-// 	s.Stage = nil
-// 	s.ExitStatus = &es
-// }

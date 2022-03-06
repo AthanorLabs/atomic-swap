@@ -297,14 +297,10 @@ func runTake(ctx *cli.Context) error {
 
 		fmt.Printf("Initiated swap with ID=%d\n", id)
 
-		for {
-			select {
-			case stage, ok := <-statusCh:
-				if !ok {
-					return nil
-				}
-
-				fmt.Printf("> Stage updated: %s\n", stage)
+		for stage := range statusCh {
+			fmt.Printf("> Stage updated: %s\n", stage)
+			if !stage.IsOngoing() {
+				return nil
 			}
 		}
 

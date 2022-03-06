@@ -10,7 +10,7 @@ import (
 
 func TestManager_AddSwap_Ongoing(t *testing.T) {
 	m := NewManager()
-	info := NewInfo(types.ProvidesXMR, 1, 1, 0.1, Ongoing)
+	info := NewInfo(types.ProvidesXMR, 1, 1, 0.1, types.ExpectingKeys, nil)
 
 	err := m.AddSwap(info)
 	require.NoError(t, err)
@@ -32,7 +32,7 @@ func TestManager_AddSwap_Past(t *testing.T) {
 
 	info := &Info{
 		id:     1,
-		status: Success,
+		status: types.CompletedSuccess,
 	}
 
 	err := m.AddSwap(info)
@@ -41,7 +41,7 @@ func TestManager_AddSwap_Past(t *testing.T) {
 
 	info = &Info{
 		id:     2,
-		status: Success,
+		status: types.CompletedSuccess,
 	}
 
 	err = m.AddSwap(info)

@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -327,7 +328,7 @@ func TestProtocolExited_afterSendKeysMessage(t *testing.T) {
 	err := s.ProtocolExited()
 	require.Equal(t, errSwapAborted, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Aborted, info.Status())
+	require.Equal(t, types.CompletedAbort, info.Status())
 }
 
 func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
@@ -350,7 +351,7 @@ func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
 	err = s.ProtocolExited()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Refunded, info.Status())
+	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
 func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
@@ -373,7 +374,7 @@ func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
 	err = s.ProtocolExited()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Refunded, info.Status())
+	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
 func TestProtocolExited_invalidNextMessageType(t *testing.T) {
@@ -397,5 +398,5 @@ func TestProtocolExited_invalidNextMessageType(t *testing.T) {
 	err = s.ProtocolExited()
 	require.Equal(t, errUnexpectedMessageType, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Aborted, info.Status())
+	require.Equal(t, types.CompletedAbort, info.Status())
 }

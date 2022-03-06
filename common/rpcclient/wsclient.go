@@ -6,9 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/noot/atomic-swap/common/types"
+
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"
-	//"github.com/noot/atomic-swap/common"
 )
 
 // DefaultJSONRPCVersion ...
@@ -18,9 +19,9 @@ var log = logging.Logger("rpcclient")
 
 // WsClient ...
 type WsClient interface {
-	SubscribeSwapStatus(id uint64) (<-chan string, error)
+	SubscribeSwapStatus(id uint64) (<-chan types.Status, error)
 	TakeOfferAndSubscribe(multiaddr, offerID string,
-		providesAmount float64) (id uint64, ch <-chan string, err error)
+		providesAmount float64) (id uint64, ch <-chan types.Status, err error)
 }
 
 type wsClient struct {
@@ -41,7 +42,7 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 
 // SubscribeSwapStatus returns a channel that is written to each time the swap's status updates.
 // If there is no swap with the given ID, it returns an error.
-func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan string, error) {
+func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 	req := &Request{
 		JSONRPC: DefaultJSONRPCVersion,
 		Method:  "swap_subscribeStatus",
@@ -55,7 +56,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan string, error) {
 		return nil, err
 	}
 
-	respCh := make(chan string)
+	respCh := make(chan types.Status)
 
 	go func() {
 		defer close(respCh)
@@ -86,7 +87,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan string, error) {
 				break
 			}
 
-			respCh <- status.Stage
+			respCh <- types.NewStatus(status.Stage)
 		}
 	}()
 
@@ -94,7 +95,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan string, error) {
 }
 
 func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
-	providesAmount float64) (id uint64, ch <-chan string, err error) {
+	providesAmount float64) (id uint64, ch <-chan types.Status, err error) {
 	req := &Request{
 		JSONRPC: DefaultJSONRPCVersion,
 		Method:  "net_takeOfferAndSubscribe",
@@ -106,7 +107,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		ID: 0,
 	}
 
-	if err := c.conn.WriteJSON(req); err != nil {
+	if err = c.conn.WriteJSON(req); err != nil {
 		return 0, nil, err
 	}
 
@@ -137,7 +138,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		return 0, nil, errors.New("websocket response did not contain ID")
 	}
 
-	respCh := make(chan string)
+	respCh := make(chan types.Status)
 
 	go func() {
 		defer close(respCh)
@@ -168,7 +169,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 				break
 			}
 
-			respCh <- status.Stage
+			respCh <- types.NewStatus(status.Stage)
 		}
 	}()
 
