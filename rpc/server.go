@@ -108,7 +108,6 @@ type Protocol interface {
 	Provides() types.ProvidesCoin
 	SetGasPrice(gasPrice uint64)
 	GetOngoingSwapState() common.SwapState
-	GetOngoingSwapStatusCh() <-chan common.StageOrExitStatus
 }
 
 // Alice ...

@@ -44,7 +44,7 @@ type swapState struct {
 
 	info     *pswap.Info
 	offerID  types.Hash
-	statusCh chan common.StageOrExitStatus
+	statusCh chan types.Status
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -83,8 +83,11 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 	txOpts.GasLimit = b.gasLimit
 
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+	stage := types.ExpectingKeys
+	statusCh := make(chan types.Status, 7)
+	statusCh <- stage
 	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, pswap.Ongoing)
+		exchangeRate, stage, statusCh)
 	if err := b.swapManager.AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -99,12 +102,7 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
 		info:                info,
-		statusCh:            make(chan common.StageOrExitStatus, 7),
-	}
-
-	stage := common.ExpectingKeysStage
-	s.statusCh <- common.StageOrExitStatus{
-		Stage: &stage,
+		statusCh:            statusCh,
 	}
 
 	return s, nil
@@ -131,14 +129,6 @@ func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount()
 }
 
-func (s *swapState) Stage() common.Stage {
-	if s.nextExpectedMessage == nil {
-		return pcommon.GetStage(message.NilType)
-	}
-
-	return pcommon.GetStage(s.nextExpectedMessage.Type())
-}
-
 // ID returns the ID of the swap
 func (s *swapState) ID() uint64 {
 	return s.info.ID()
@@ -157,7 +147,7 @@ func (s *swapState) ProtocolExited() error {
 		s.bob.swapManager.CompleteOngoingSwap()
 	}()
 
-	if s.info.Status() == pswap.Success {
+	if s.info.Status() == types.CompletedSuccess {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
 		log.Info(str)
 
@@ -166,7 +156,7 @@ func (s *swapState) ProtocolExited() error {
 		return nil
 	}
 
-	if s.info.Status() == pswap.Refunded {
+	if s.info.Status() == types.CompletedRefund {
 		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%d**", s.ID())
 		log.Info(str)
 		return nil
@@ -175,12 +165,12 @@ func (s *swapState) ProtocolExited() error {
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
-		s.clearNextExpectedMessage(pswap.Aborted)
+		s.clearNextExpectedMessage(types.CompletedAbort)
 		return errSwapAborted
 	case *message.NotifyContractDeployed:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
-		s.clearNextExpectedMessage(pswap.Aborted)
+		s.clearNextExpectedMessage(types.CompletedAbort)
 		return errSwapAborted
 	case *message.NotifyReady:
 		// we already locked our funds - need to wait until we can claim
@@ -201,12 +191,12 @@ func (s *swapState) ProtocolExited() error {
 			return err
 		}
 
-		s.clearNextExpectedMessage(pswap.Refunded)
+		s.clearNextExpectedMessage(types.CompletedRefund)
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
 	default:
-		s.clearNextExpectedMessage(pswap.Aborted)
+		s.clearNextExpectedMessage(types.CompletedAbort)
 		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
 		return errUnexpectedMessageType
 	}

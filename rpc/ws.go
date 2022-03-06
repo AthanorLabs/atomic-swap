@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/noot/atomic-swap/common"
+	//"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 
@@ -138,7 +138,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 }
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	id uint64, statusCh <-chan common.StageOrExitStatus) error {
+	id uint64, statusCh <-chan types.Status) error {
 	// firstly write swap ID
 	idMsg := map[string]uint64{
 		"id": id,
@@ -177,19 +177,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 		return s.writeSwapExitStatus(conn, id)
 	}
 
-	var statusCh <-chan common.StageOrExitStatus
-	switch info.Provides() {
-	case types.ProvidesETH:
-		statusCh = s.alice.GetOngoingSwapStatusCh()
-	case types.ProvidesXMR:
-		statusCh = s.bob.GetOngoingSwapStatusCh()
-	}
-
-	if statusCh == nil {
-		// we probably completed the swap, continue to call GetPastSwap
-		return s.writeSwapExitStatus(conn, id)
-	}
-
+	statusCh := info.StatusCh()
 	for {
 		select {
 		case status, ok := <-statusCh:

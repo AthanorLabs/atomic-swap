@@ -12,7 +12,6 @@ import (
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -54,27 +53,24 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		close(s.claimedCh)
 		log.Info("successfully created monero wallet from our secrets: address=", address)
-		s.clearNextExpectedMessage(pswap.Success)
+		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return nil, true, nil
 	default:
 		return nil, false, errors.New("unexpected message type")
 	}
 }
 
-func (s *swapState) clearNextExpectedMessage(status common.ExitStatus) {
+func (s *swapState) clearNextExpectedMessage(status types.Status) {
 	s.nextExpectedMessage = nil
-	s.statusCh <- common.StageOrExitStatus{
-		ExitStatus: &status,
-	}
+	s.statusCh <- status
 	s.info.SetStatus(status)
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
 	s.nextExpectedMessage = msg
-	stage := pcommon.GetStage(msg.Type())
-	s.statusCh <- common.StageOrExitStatus{
-		Stage: &stage,
-	}
+	// TODO: check stage is not unknown (ie. swap completed)
+	stage := pcommon.GetStatus(msg.Type())
+	s.statusCh <- stage
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {

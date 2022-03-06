@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -136,29 +137,6 @@ type TakeOfferResponse struct {
 
 // TakeOffer initiates a swap with the given peer by taking an offer they've made.
 func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *TakeOfferResponse) error {
-	// swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// skm, err := swapState.SendKeysMessage()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// skm.OfferID = req.OfferID
-	// skm.ProvidedAmount = req.ProvidesAmount
-
-	// who, err := net.StringToAddrInfo(req.Multiaddr)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if err = s.net.Initiate(who, skm, swapState); err != nil {
-	// 	_ = swapState.ProtocolExited()
-	// 	return err
-	// }
-
 	id, _, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
@@ -169,7 +147,7 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 }
 
 func (s *NetService) takeOffer(multiaddr, offerID string,
-	providesAmount float64) (uint64, <-chan common.StageOrExitStatus, error) {
+	providesAmount float64) (uint64, <-chan types.Status, error) {
 	swapState, err := s.alice.InitiateProtocol(providesAmount)
 	if err != nil {
 		return 0, nil, err
@@ -193,7 +171,12 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return 0, nil, err
 	}
 
-	return swapState.ID(), s.alice.GetOngoingSwapStatusCh(), nil
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return 0, nil, errors.New("failed to get swap info after initiating")
+	}
+
+	return swapState.ID(), info.StatusCh(), nil
 }
 
 // TakeOfferSyncResponse ...

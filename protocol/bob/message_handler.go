@@ -8,11 +8,11 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -60,7 +60,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			TxHash: txHash.String(),
 		}
 
-		s.clearNextExpectedMessage(pswap.Success)
+		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return out, true, nil
 	case *message.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
@@ -69,7 +69,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, false, err
 		}
 
-		s.clearNextExpectedMessage(pswap.Refunded)
+		s.clearNextExpectedMessage(types.CompletedRefund)
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
@@ -77,20 +77,17 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 	}
 }
 
-func (s *swapState) clearNextExpectedMessage(status common.ExitStatus) {
+func (s *swapState) clearNextExpectedMessage(status types.Status) {
 	s.nextExpectedMessage = nil
-	s.statusCh <- common.StageOrExitStatus{
-		ExitStatus: &status,
-	}
+	s.statusCh <- status
 	s.info.SetStatus(status)
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
 	s.nextExpectedMessage = msg
-	stage := pcommon.GetStage(msg.Type())
-	s.statusCh <- common.StageOrExitStatus{
-		Stage: &stage,
-	}
+	// TODO: check stage is not unknown (ie. swap completed)
+	stage := pcommon.GetStatus(msg.Type())
+	s.statusCh <- stage
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {
@@ -163,7 +160,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 			}
 
 			log.Debug("funds claimed!")
-			s.clearNextExpectedMessage(pswap.Success)
+			s.clearNextExpectedMessage(types.CompletedSuccess)
 
 			// send *message.NotifyClaimed
 			if err := s.bob.net.SendSwapMessage(&message.NotifyClaimed{

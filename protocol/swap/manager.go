@@ -3,21 +3,13 @@ package swap
 import (
 	"sync"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 )
 
 var nextID uint64
 
 type (
-	Status = common.ExitStatus //nolint:revive
-)
-
-const (
-	Ongoing  = common.Ongoing //nolint:revive
-	Success  = common.Success
-	Refunded = common.Refunded
-	Aborted  = common.Aborted
+	Status = types.Status //nolint:revive
 )
 
 // Info contains the details of the swap as well as its status.
@@ -28,6 +20,7 @@ type Info struct {
 	receivedAmount float64
 	exchangeRate   types.ExchangeRate
 	status         Status
+	statusCh       <-chan types.Status
 }
 
 // ID returns the swap ID.
@@ -68,6 +61,10 @@ func (i *Info) Status() Status {
 	return i.status
 }
 
+func (i *Info) StatusCh() <-chan types.Status {
+	return i.statusCh
+}
+
 // SetReceivedAmount ...
 func (i *Info) SetReceivedAmount(a float64) {
 	i.receivedAmount = a
@@ -89,7 +86,7 @@ func (i *Info) SetStatus(s Status) {
 
 // NewInfo ...
 func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate, status Status) *Info {
+	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
 	info := &Info{
 		id:             nextID,
 		provides:       provides,
@@ -97,6 +94,7 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 		receivedAmount: receivedAmount,
 		exchangeRate:   exchangeRate,
 		status:         status,
+		statusCh:       statusCh,
 	}
 	nextID++
 	return info
@@ -121,8 +119,8 @@ func (m *Manager) AddSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
 
-	switch info.status {
-	case common.Ongoing:
+	switch info.status.IsOngoing() {
+	case true:
 		if m.ongoing != nil {
 			return errHaveOngoingSwap
 		}
