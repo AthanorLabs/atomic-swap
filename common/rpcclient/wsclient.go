@@ -30,10 +30,12 @@ type wsClient struct {
 
 // NewWsClient ...
 func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///nolint:revive
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, endpoint, nil)
+	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial endpoint: %w", err)
 	}
+
+	resp.Body.Close()
 
 	return &wsClient{
 		conn: conn,
