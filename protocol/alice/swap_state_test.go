@@ -139,8 +139,15 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
+	for status := range s.statusCh {
+		if status == types.CompletedRefund {
+			break
+		} else if !status.IsOngoing() {
+			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
+		}
+	}
+
 	// ensure we refund before t0
-	time.Sleep(time.Second * 15)
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
@@ -226,7 +233,14 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	_, ok := resp.(*message.NotifyReady)
 	require.True(t, ok)
 
-	time.Sleep(time.Second * 25)
+	for status := range s.statusCh {
+		if status == types.CompletedRefund {
+			break
+		} else if !status.IsOngoing() {
+			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
+		}
+	}
+
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 

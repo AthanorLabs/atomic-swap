@@ -62,15 +62,19 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 func (s *swapState) clearNextExpectedMessage(status types.Status) {
 	s.nextExpectedMessage = nil
-	s.statusCh <- status
 	s.info.SetStatus(status)
+	if s.statusCh != nil {
+		s.statusCh <- status
+	}
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
 	s.nextExpectedMessage = msg
 	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
-	s.statusCh <- stage
+	if s.statusCh != nil {
+		s.statusCh <- stage
+	}
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {

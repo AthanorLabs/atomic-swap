@@ -247,8 +247,14 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 
-	// TODO: fix this, it's sometimes nil
-	time.Sleep(duration * 3)
+	for status := range s.statusCh {
+		if status == types.CompletedSuccess {
+			break
+		} else if !status.IsOngoing() {
+			t.Fatalf("got wrong exit status %s, expected CompletedSuccess", status)
+		}
+	}
+
 	require.NotNil(t, s.bob.net.(*mockNet).msg)
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }

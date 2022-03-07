@@ -72,7 +72,7 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 	txOpts.GasLimit = a.gasLimit
 
 	stage := types.ExpectingKeys
-	statusCh := make(chan types.Status, 7)
+	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
 	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), 0, 0, stage, statusCh)
 	if err := a.swapManager.AddSwap(info); err != nil {
