@@ -288,7 +288,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
 
-	amt := common.MoneroAmount(333)
+	amt := common.MoneroAmount(1)
 	s.info.SetReceivedAmount(amt.AsMonero())
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
