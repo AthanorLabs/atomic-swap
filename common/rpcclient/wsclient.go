@@ -35,7 +35,9 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 		return nil, fmt.Errorf("failed to dial endpoint: %w", err)
 	}
 
-	resp.Body.Close()
+	if err = resp.Body.Close(); err != nil {
+		return nil, err
+	}
 
 	return &wsClient{
 		conn: conn,
