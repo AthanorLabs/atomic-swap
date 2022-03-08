@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -136,31 +137,46 @@ type TakeOfferResponse struct {
 
 // TakeOffer initiates a swap with the given peer by taking an offer they've made.
 func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *TakeOfferResponse) error {
-	swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
+	id, _, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
+	}
+
+	resp.ID = id
+	return nil
+}
+
+func (s *NetService) takeOffer(multiaddr, offerID string,
+	providesAmount float64) (uint64, <-chan types.Status, error) {
+	swapState, err := s.alice.InitiateProtocol(providesAmount)
+	if err != nil {
+		return 0, nil, err
 	}
 
 	skm, err := swapState.SendKeysMessage()
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 
-	skm.OfferID = req.OfferID
-	skm.ProvidedAmount = req.ProvidesAmount
+	skm.OfferID = offerID
+	skm.ProvidedAmount = providesAmount
 
-	who, err := net.StringToAddrInfo(req.Multiaddr)
+	who, err := net.StringToAddrInfo(multiaddr)
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
 		_ = swapState.ProtocolExited()
-		return err
+		return 0, nil, err
 	}
 
-	resp.ID = swapState.ID()
-	return nil
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return 0, nil, errors.New("failed to get swap info after initiating")
+	}
+
+	return swapState.ID(), info.StatusCh(), nil
 }
 
 // TakeOfferSyncResponse ...

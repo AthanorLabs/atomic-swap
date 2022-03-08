@@ -32,9 +32,9 @@ func TestMain(m *testing.M) {
 	}
 
 	cmd := exec.Command("../scripts/build.sh")
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%s\n%s", out, err))
 	}
 
 	os.Exit(m.Run())

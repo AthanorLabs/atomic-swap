@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/noot/atomic-swap/cmd/client/client"
+	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 
 	logging "github.com/ipfs/go-log"
@@ -100,6 +102,10 @@ var (
 					&cli.Float64Flag{
 						Name:  "provides-amount",
 						Usage: "amount of coin to send in the swap",
+					},
+					&cli.BoolFlag{
+						Name:  "subscribe",
+						Usage: "subscribe to push notifications about the swap's status",
 					},
 					daemonAddrFlag,
 				},
@@ -276,6 +282,29 @@ func runTake(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
 	if endpoint == "" {
 		endpoint = defaultSwapdAddress
+	}
+
+	if ctx.Bool("subscribe") {
+		c, err := rpcclient.NewWsClient(context.Background(), endpoint)
+		if err != nil {
+			return err
+		}
+
+		id, statusCh, err := c.TakeOfferAndSubscribe(maddr, offerID, providesAmount)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Initiated swap with ID=%d\n", id)
+
+		for stage := range statusCh {
+			fmt.Printf("> Stage updated: %s\n", stage)
+			if !stage.IsOngoing() {
+				return nil
+			}
+		}
+
+		return nil
 	}
 
 	c := client.NewClient(endpoint)

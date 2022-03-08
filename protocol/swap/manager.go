@@ -8,35 +8,9 @@ import (
 
 var nextID uint64
 
-// Status represents the status of a swap.
-type Status byte
-
-const (
-	// Ongoing represents an ongoing swap.
-	Ongoing Status = iota
-	// Success represents a successful swap.
-	Success
-	// Refunded represents a swap that was refunded.
-	Refunded
-	// Aborted represents the case where the swap aborts before any funds are locked.
-	Aborted
+type (
+	Status = types.Status //nolint:revive
 )
-
-// String ...
-func (s Status) String() string {
-	switch s {
-	case Ongoing:
-		return "ongoing"
-	case Success:
-		return "success"
-	case Refunded:
-		return "refunded"
-	case Aborted:
-		return "aborted"
-	default:
-		return "unknown"
-	}
-}
 
 // Info contains the details of the swap as well as its status.
 type Info struct {
@@ -46,6 +20,7 @@ type Info struct {
 	receivedAmount float64
 	exchangeRate   types.ExchangeRate
 	status         Status
+	statusCh       <-chan types.Status
 }
 
 // ID returns the swap ID.
@@ -86,6 +61,11 @@ func (i *Info) Status() Status {
 	return i.status
 }
 
+// StatusCh returns the swap's status update channel.
+func (i *Info) StatusCh() <-chan types.Status {
+	return i.statusCh
+}
+
 // SetReceivedAmount ...
 func (i *Info) SetReceivedAmount(a float64) {
 	i.receivedAmount = a
@@ -107,7 +87,7 @@ func (i *Info) SetStatus(s Status) {
 
 // NewInfo ...
 func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate, status Status) *Info {
+	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
 	info := &Info{
 		id:             nextID,
 		provides:       provides,
@@ -115,6 +95,7 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 		receivedAmount: receivedAmount,
 		exchangeRate:   exchangeRate,
 		status:         status,
+		statusCh:       statusCh,
 	}
 	nextID++
 	return info
@@ -139,8 +120,8 @@ func (m *Manager) AddSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
 
-	switch info.status {
-	case Ongoing:
+	switch info.status.IsOngoing() {
+	case true:
 		if m.ongoing != nil {
 			return errHaveOngoingSwap
 		}

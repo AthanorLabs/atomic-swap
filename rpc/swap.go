@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 )
 
@@ -129,19 +128,7 @@ func (s *SwapService) GetStage(_ *http.Request, _ *interface{}, resp *GetStageRe
 		return errors.New("no current ongoing swap")
 	}
 
-	var swapState common.SwapState
-	switch info.Provides() {
-	case types.ProvidesETH:
-		swapState = s.alice.GetOngoingSwapState()
-	case types.ProvidesXMR:
-		swapState = s.bob.GetOngoingSwapState()
-	}
-
-	if swapState == nil {
-		return errors.New("failed to get current swap state")
-	}
-
-	resp.Stage = swapState.Stage().String()
-	resp.Info = swapState.Stage().Info()
+	resp.Stage = info.Status().String()
+	resp.Info = info.Status().Info()
 	return nil
 }
