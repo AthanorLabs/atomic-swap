@@ -28,35 +28,8 @@ var (
 	}
 )
 
-// ServerResponse is the JSON format of a response
-type ServerResponse struct {
-	// JSON-RPC Version
-	Version string `json:"jsonrpc"`
-	// Resulting values
-	Result json.RawMessage `json:"result"`
-	// Any generated errors
-	Error *Error `json:"error"`
-	// Request id
-	ID *json.RawMessage `json:"id"`
-}
-
-// ErrCode is a int type used for the rpc error codes
-type ErrCode int
-
-// Error is a struct that holds the error message and the error code for a error
-type Error struct {
-	Message   string                 `json:"message"`
-	ErrorCode ErrCode                `json:"code"`
-	Data      map[string]interface{} `json:"data"`
-}
-
-// Error ...
-func (e *Error) Error() string {
-	return fmt.Sprintf("message=%s; code=%d; data=%v", e.Message, e.ErrorCode, e.Data)
-}
-
 // PostRPC posts a JSON-RPC call to the given endpoint.
-func PostRPC(endpoint, method, params string) (*ServerResponse, error) {
+func PostRPC(endpoint, method, params string) (*Response, error) {
 	data := []byte(`{"jsonrpc":"2.0","method":"` + method + `","params":` + params + `,"id":0}`)
 	buf := &bytes.Buffer{}
 	_, err := buf.Write(data)
@@ -88,7 +61,7 @@ func PostRPC(endpoint, method, params string) (*ServerResponse, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var sv *ServerResponse
+	var sv *Response
 	if err = json.Unmarshal(body, &sv); err != nil {
 		return nil, err
 	}

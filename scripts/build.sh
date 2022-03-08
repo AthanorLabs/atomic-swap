@@ -1,9 +1,20 @@
 #!/bin/bash
 
-cd cmd/daemon && go build -o swapd 
+cd cmd/daemon 
+if ! go build -o swapd ; then
+	exit 1
+fi
 mv swapd ../..
-cd ../client && go build -o swapcli
+
+cd ../client 
+if ! go build -o swapcli ; then 
+	exit 1
+fi
 mv swapcli ../..
-cd ../recover && go build -o swaprecover
+
+cd ../recover
+if ! go build -o swaprecover ; then 
+	exit 1
+fi
 mv swaprecover ../..
 cd ../..

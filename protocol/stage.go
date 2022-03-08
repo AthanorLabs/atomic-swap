@@ -1,26 +1,24 @@
 package protocol
 
 import (
-	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net/message"
 )
 
-// GetStage returns the stage corresponding to a next expected message type.
-func GetStage(t message.Type) common.Stage {
+// GetStatus returns the status corresponding to a next expected message type.
+func GetStatus(t message.Type) types.Status {
 	switch t {
 	case message.SendKeysType:
-		return common.ExpectingKeysStage
+		return types.ExpectingKeys
 	case message.NotifyContractDeployedType:
-		return common.KeysExchangedStage
+		return types.KeysExchanged
 	case message.NotifyXMRLockType:
-		return common.ContractDeployedStage
+		return types.ContractDeployed
 	case message.NotifyReadyType:
-		return common.XMRLockedStage
+		return types.XMRLocked
 	case message.NotifyClaimedType:
-		return common.ContractReadyStage
-	case message.NilType:
-		return common.ClaimOrRefundStage
+		return types.ContractReady
 	default:
-		return common.UnknownStage
+		return types.UnknownStatus
 	}
 }

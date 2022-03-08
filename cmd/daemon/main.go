@@ -309,6 +309,7 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 
 	rpcCfg := &rpc.Config{
+		Ctx:         d.ctx,
 		Port:        rpcPort,
 		WsPort:      wsPort,
 		Net:         host,

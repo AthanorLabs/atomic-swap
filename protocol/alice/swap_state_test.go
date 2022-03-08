@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -138,8 +139,15 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
+	for status := range s.statusCh {
+		if status == types.CompletedRefund {
+			break
+		} else if !status.IsOngoing() {
+			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
+		}
+	}
+
 	// ensure we refund before t0
-	time.Sleep(time.Second * 15)
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
@@ -225,7 +233,14 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	_, ok := resp.(*message.NotifyReady)
 	require.True(t, ok)
 
-	time.Sleep(time.Second * 25)
+	for status := range s.statusCh {
+		if status == types.CompletedRefund {
+			break
+		} else if !status.IsOngoing() {
+			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
+		}
+	}
+
 	require.NotNil(t, s.alice.net.(*mockNet).msg)
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
@@ -273,7 +288,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
 
-	amt := common.MoneroAmount(333)
+	amt := common.MoneroAmount(1)
 	s.info.SetReceivedAmount(amt.AsMonero())
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
@@ -327,7 +342,7 @@ func TestProtocolExited_afterSendKeysMessage(t *testing.T) {
 	err := s.ProtocolExited()
 	require.Equal(t, errSwapAborted, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Aborted, info.Status())
+	require.Equal(t, types.CompletedAbort, info.Status())
 }
 
 func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
@@ -350,7 +365,7 @@ func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
 	err = s.ProtocolExited()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Refunded, info.Status())
+	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
 func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
@@ -373,7 +388,7 @@ func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
 	err = s.ProtocolExited()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Refunded, info.Status())
+	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
 func TestProtocolExited_invalidNextMessageType(t *testing.T) {
@@ -397,5 +412,5 @@ func TestProtocolExited_invalidNextMessageType(t *testing.T) {
 	err = s.ProtocolExited()
 	require.Equal(t, errUnexpectedMessageType, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
-	require.Equal(t, pswap.Aborted, info.Status())
+	require.Equal(t, types.CompletedAbort, info.Status())
 }

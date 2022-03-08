@@ -8,11 +8,11 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -60,7 +60,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			TxHash: txHash.String(),
 		}
 
-		s.info.SetStatus(pswap.Success)
+		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return out, true, nil
 	case *message.NotifyRefund:
 		// generate monero wallet, regaining control over locked funds
@@ -69,11 +69,28 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, false, err
 		}
 
-		s.info.SetStatus(pswap.Refunded)
+		s.clearNextExpectedMessage(types.CompletedRefund)
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
 		return nil, true, errors.New("unexpected message type")
+	}
+}
+
+func (s *swapState) clearNextExpectedMessage(status types.Status) {
+	s.nextExpectedMessage = nil
+	s.info.SetStatus(status)
+	if s.statusCh != nil {
+		s.statusCh <- status
+	}
+}
+
+func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	s.nextExpectedMessage = msg
+	// TODO: check stage is not unknown (ie. swap completed)
+	stage := pcommon.GetStatus(msg.Type())
+	if s.statusCh != nil {
+		s.statusCh <- stage
 	}
 }
 
@@ -147,7 +164,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 			}
 
 			log.Debug("funds claimed!")
-			s.info.SetStatus(pswap.Success)
+			s.clearNextExpectedMessage(types.CompletedSuccess)
 
 			// send *message.NotifyClaimed
 			if err := s.bob.net.SendSwapMessage(&message.NotifyClaimed{
@@ -160,7 +177,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 		}
 	}()
 
-	s.nextExpectedMessage = &message.NotifyReady{}
+	s.setNextExpectedMessage(&message.NotifyReady{})
 	return out, nil
 }
 
@@ -183,7 +200,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setAlicePublicKeys(kp, secp256k1Pub)
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.setNextExpectedMessage(&message.NotifyContractDeployed{})
 	return nil
 }
 
