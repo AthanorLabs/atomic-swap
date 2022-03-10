@@ -211,12 +211,9 @@ Returns:
 - `status`: the swap's status, one of `success`, `refunded`, or `aborted`.
 
 Example:
-```
+```bash
 curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getPast","params":{"id": 0}}' -H 'Content-Type: application/json'
-```
-
-```
-{"jsonrpc":"2.0","result":{"provided":"ETH","providedAmount":0.05,"receivedAmount":1,"exchangeRate":20,"status":"success"},"id":"0"}
+# {"jsonrpc":"2.0","result":{"provided":"ETH","providedAmount":0.05,"receivedAmount":1,"exchangeRate":20,"status":"success"},"id":"0"}
 ```
 
 ## websocket subscriptions
@@ -231,13 +228,65 @@ Paramters:
 - `id`: the swap ID.
 
 Returns:
-- `stage`: the swap's stage or exit status.
+- `status`: the swap's status.
 
 Example:
-```
-$ wscat -c ws://localhost:8081
+```bash
+wscat -c ws://localhost:8081
 # Connected (press CTRL+C to quit)
 # > {"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}
 # < {"jsonrpc":"2.0","result":{"stage":"ContractDeployed"},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"refunded"},"error":null,"id":null}
+```
+
+### `net_makeOfferAndSubscribe`
+
+Make a swap offer and subscribe to updates on it. A notification will be pushed with the swap ID when the offer is taken, as well as status updates after that, until the swap has completed.
+
+Parameters:
+- `minimumAmount`: minimum amount to swap, in XMR.
+- `maximumAmount`: maximum amount to swap, in XMR.
+- `exchangeRate`: exchange rate of ETH-XMR for the swap, expressed in a fraction of XMR/ETH. For example, if you wish to trade 10 XMR for 1 ETH, the exchange rate would be 0.1.
+
+Returns:
+- `offerID`: ID of the swap offer.
+- `id`: ID of the swap, when the offer is taken and a swap is initiated.
+- `status`: the swap's status.
+
+Example (including notifications when swap is taken):
+```bash
+wscat -c ws://localhost:8082
+# Connected (press CTRL+C to quit)
+# > {"jsonrpc":"2.0", "method":"net_makeOfferAndSubscribe", "params": {"minimumAmount": 0.1, "maximumAmount": 1, "exchangeRate": 0.05}, "id": 0}
+# < {"jsonrpc":"2.0","result":{"offerID":"cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"id":0},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"ExpectingKeys"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"KeysExchanged"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"XMRLocked"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"Success"},"error":null,"id":null}
+```
+
+### `net_takeOfferAndSubscribe`
+
+Take an advertised swap offer and subscribe to updates on it. This call will initiate and execute an atomic swap. 
+
+Parameters:
+- `multiaddr`: multiaddress of the peer to swap with.
+- `offerID`: ID of the swap offer.
+- `providesAmount`: amount of ETH you will be providing. Must be between the offer's `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you must provide between 0.1 ETH and 0.5 ETH.
+
+Returns:
+- `id`: ID of the initiated swap.
+- `status`: the swap's status.
+
+Example:
+```bash
+wscat -c ws://localhost:8081
+# Connected (press CTRL+C to quit)
+# > {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"multiaddr": "/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID": "cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9", "providesAmount": 0.05}, "id": 0}
+# < {"jsonrpc":"2.0","result":{"id":0},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"ExpectingKeys"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"ContractDeployed"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"ContractReady"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"Success"},"error":null,"id":null}
 ```

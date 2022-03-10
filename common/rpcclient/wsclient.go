@@ -103,7 +103,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 				break
 			}
 
-			respCh <- types.NewStatus(status.Stage)
+			respCh <- types.NewStatus(status.Status)
 		}
 	}()
 
@@ -200,7 +200,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 				break
 			}
 
-			respCh <- types.NewStatus(status.Stage)
+			respCh <- types.NewStatus(status.Status)
 		}
 	}()
 

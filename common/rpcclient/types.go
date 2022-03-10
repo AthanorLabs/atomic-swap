@@ -7,10 +7,10 @@ import (
 
 // Request represents a JSON-RPC request
 type Request struct {
-	JSONRPC string `json:"jsonrpc"`
-	Method  string `json:"method"`
-	Params  []byte `json:"params"`
-	ID      uint64 `json:"id"`
+	JSONRPC string          `json:"jsonrpc"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params"`
+	ID      uint64          `json:"id"`
 }
 
 // Response is the JSON format of a response
@@ -38,5 +38,5 @@ func (e *Error) Error() string {
 
 // SubscribeSwapStatusResponse ...
 type SubscribeSwapStatusResponse struct {
-	Stage string `json:"stage"`
+	Status string `json:"status"`
 }

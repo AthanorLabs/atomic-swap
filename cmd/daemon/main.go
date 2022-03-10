@@ -335,7 +335,7 @@ func (d *daemon) make(c *cli.Context) error {
 		}
 	}()
 
-	log.Infof("started swapd with basepath %d",
+	log.Infof("started swapd with basepath %s",
 		cfg.Basepath,
 	)
 	return nil
