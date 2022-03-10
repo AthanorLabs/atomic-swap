@@ -12,7 +12,7 @@ type DaemonClient interface {
 }
 
 // NewDaemonClient returns a new monerod client.
-func NewDaemonClient(endpoint string) *client { //nolint:revive
+func NewDaemonClient(endpoint string) *client {
 	return &client{
 		endpoint: endpoint,
 	}
