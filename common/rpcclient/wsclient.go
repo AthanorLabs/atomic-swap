@@ -44,16 +44,27 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 	}, nil
 }
 
+type SubscribeSwapStatusRequestParams struct {
+	ID uint64 `json:"id"`
+}
+
 // SubscribeSwapStatus returns a channel that is written to each time the swap's status updates.
 // If there is no swap with the given ID, it returns an error.
 func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
+	params := &SubscribeSwapStatusRequestParams{
+		ID: id,
+	}
+
+	bz, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+
 	req := &Request{
 		JSONRPC: DefaultJSONRPCVersion,
 		Method:  "swap_subscribeStatus",
-		Params: map[string]interface{}{
-			"id": id,
-		},
-		ID: 0,
+		Params:  bz,
+		ID:      0,
 	}
 
 	if err := c.conn.WriteJSON(req); err != nil {
@@ -98,17 +109,30 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 	return respCh, nil
 }
 
+type SubscribeTakeOfferParams struct {
+	Multiaddr      string  `json:"multiaddr"`
+	OfferID        string  `json:"offerID"`
+	ProvidesAmount float64 `json:"providesAmount"`
+}
+
 func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	providesAmount float64) (id uint64, ch <-chan types.Status, err error) {
+	params := &SubscribeTakeOfferParams{
+		Multiaddr:      multiaddr,
+		OfferID:        offerID,
+		ProvidesAmount: providesAmount,
+	}
+
+	bz, err := json.Marshal(params)
+	if err != nil {
+		return 0, nil, err
+	}
+
 	req := &Request{
 		JSONRPC: DefaultJSONRPCVersion,
 		Method:  "net_takeOfferAndSubscribe",
-		Params: map[string]interface{}{
-			"multiaddr":      multiaddr,
-			"offerID":        offerID,
-			"providesAmount": providesAmount,
-		},
-		ID: 0,
+		Params:  bz,
+		ID:      0,
 	}
 
 	if err = c.conn.WriteJSON(req); err != nil {

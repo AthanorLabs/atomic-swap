@@ -15,6 +15,7 @@ import (
 
 const (
 	subscribeNewPeer    = "net_subscribeNewPeer"
+	subscribeMakeOffer  = "net_makeOfferAndSubscribe"
 	subscribeTakeOffer  = "net_takeOfferAndSubscribe"
 	subscribeSwapStatus = "swap_subscribeStatus"
 )
@@ -29,20 +30,16 @@ type (
 )
 
 type wsServer struct {
-	ctx   context.Context
-	sm    SwapManager
-	alice Alice
-	bob   Bob
-	ns    *NetService
+	ctx context.Context
+	sm  SwapManager
+	ns  *NetService
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, a Alice, b Bob, ns *NetService) *wsServer {
+func newWsServer(ctx context.Context, sm SwapManager, ns *NetService) *wsServer {
 	return &wsServer{
-		ctx:   ctx,
-		sm:    sm,
-		alice: a,
-		bob:   b,
-		ns:    ns,
+		ctx: ctx,
+		sm:  sm,
+		ns:  ns,
 	}
 }
 
@@ -78,54 +75,67 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// type SubscribeTakeOfferParams struct {
+// 	Multiaddr string  `json:"multiaddr"`
+// 	OfferID string  `json:"offerID"`
+// 	ProvidesAmount float64  `json:"providesAmount"`
+// }
+
+type SubscribeTakeOfferRequest struct {
+	JSONRPC string                              `json:"jsonrpc"`
+	Method  string                              `json:"method"`
+	Params  *rpcclient.SubscribeTakeOfferParams `json:"params"`
+	ID      uint64                              `json:"id"`
+}
+
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 	switch req.Method {
 	case subscribeNewPeer:
 		return errors.New("unimplemented")
 	case subscribeSwapStatus:
-		idi, has := req.Params["id"] // TODO: make const
-		if !has {
-			return errors.New("params missing id field")
+		var params *rpcclient.SubscribeSwapStatusRequestParams
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		id, ok := idi.(float64)
-		if !ok {
-			return fmt.Errorf("failed to cast id parameter to float64: got %T", idi)
-		}
-
-		return s.subscribeSwapStatus(s.ctx, conn, uint64(id))
+		return s.subscribeSwapStatus(s.ctx, conn, params.ID)
 	case subscribeTakeOffer:
-		maddri, has := req.Params["multiaddr"]
-		if !has {
-			return errors.New("params missing multiaddr field")
+		// maddri, has := req.Params["multiaddr"]
+		// if !has {
+		// 	return errors.New("params missing multiaddr field")
+		// }
+
+		// maddr, ok := maddri.(string)
+		// if !ok {
+		// 	return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", maddri)
+		// }
+
+		// offerIDi, has := req.Params["offerID"]
+		// if !has {
+		// 	return errors.New("params missing offerID field")
+		// }
+
+		// offerID, ok := offerIDi.(string)
+		// if !ok {
+		// 	return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", offerIDi)
+		// }
+
+		// providesi, has := req.Params["providesAmount"]
+		// if !has {
+		// 	return errors.New("params missing providesAmount field")
+		// }
+
+		// providesAmount, ok := providesi.(float64)
+		// if !ok {
+		// 	return fmt.Errorf("failed to cast providesAmount parameter to float64: got %T", providesi)
+		// }
+
+		var params *rpcclient.SubscribeTakeOfferParams
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		maddr, ok := maddri.(string)
-		if !ok {
-			return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", maddri)
-		}
-
-		offerIDi, has := req.Params["offerID"]
-		if !has {
-			return errors.New("params missing offerID field")
-		}
-
-		offerID, ok := offerIDi.(string)
-		if !ok {
-			return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", offerIDi)
-		}
-
-		providesi, has := req.Params["providesAmount"]
-		if !has {
-			return errors.New("params missing providesAmount field")
-		}
-
-		providesAmount, ok := providesi.(float64)
-		if !ok {
-			return fmt.Errorf("failed to cast providesAmount parameter to float64: got %T", providesi)
-		}
-
-		id, ch, err := s.ns.takeOffer(maddr, offerID, providesAmount)
+		id, ch, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}

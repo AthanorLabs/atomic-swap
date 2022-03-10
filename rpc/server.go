@@ -58,7 +58,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, cfg.Alice, cfg.Bob, ns),
+		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, ns),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil

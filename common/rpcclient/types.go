@@ -7,22 +7,18 @@ import (
 
 // Request represents a JSON-RPC request
 type Request struct {
-	JSONRPC string                 `json:"jsonrpc"`
-	Method  string                 `json:"method"`
-	Params  map[string]interface{} `json:"params"`
-	ID      uint64                 `json:"id"`
+	JSONRPC string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  []byte `json:"params"`
+	ID      uint64 `json:"id"`
 }
 
 // Response is the JSON format of a response
 type Response struct {
-	// JSON-RPC Version
-	Version string `json:"jsonrpc"`
-	// Resulting values
-	Result json.RawMessage `json:"result"`
-	// Any generated errors
-	Error *Error `json:"error"`
-	// Request id
-	ID *json.RawMessage `json:"id"`
+	Version string           `json:"jsonrpc"`
+	Result  json.RawMessage  `json:"result"`
+	Error   *Error           `json:"error"`
+	ID      *json.RawMessage `json:"id"`
 }
 
 // ErrCode is a int type used for the rpc error codes
