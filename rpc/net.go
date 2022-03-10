@@ -245,6 +245,17 @@ type MakeOfferResponse struct {
 
 // MakeOffer creates and advertises a new swap offer.
 func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *MakeOfferResponse) error {
+	id, err := s.makeOffer(req)
+	if err != nil {
+		return err
+	}
+
+	resp.ID = id
+	s.net.Advertise()
+	return nil
+}
+
+func (s *NetService) makeOffer(req *MakeOfferRequest) (string, error) {
 	o := &types.Offer{
 		Provides:      types.ProvidesXMR,
 		MinimumAmount: req.MinimumAmount,
@@ -253,13 +264,10 @@ func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *Mak
 	}
 
 	if err := s.bob.MakeOffer(o); err != nil {
-		return err
+		return "", err
 	}
 
-	resp.ID = o.GetID().String()
-
-	s.net.Advertise()
-	return nil
+	return o.GetID().String(), nil
 }
 
 // SetGasPriceRequest ...

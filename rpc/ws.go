@@ -75,13 +75,6 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type SubscribeTakeOfferRequest struct {
-	JSONRPC string                              `json:"jsonrpc"`
-	Method  string                              `json:"method"`
-	Params  *rpcclient.SubscribeTakeOfferParams `json:"params"`
-	ID      uint64                              `json:"id"`
-}
-
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 	switch req.Method {
 	case subscribeNewPeer:
@@ -105,6 +98,18 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 		}
 
 		return s.subscribeTakeOffer(s.ctx, conn, id, ch)
+	case subscribeMakeOffer:
+		var params *MakeOfferRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
+		}
+
+		offerID, err := s.ns.makeOffer(params)
+		if err != nil {
+			return err
+		}
+
+		return s.subscribeMakeOffer(s.ctx, conn, offerID)
 	default:
 		return errors.New("invalid method")
 	}
@@ -139,6 +144,10 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 			return nil
 		}
 	}
+}
+
+func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn, offerID string) error {
+	return nil
 }
 
 // subscribeSwapStatus writes the swap's stage to the connection every time it updates.

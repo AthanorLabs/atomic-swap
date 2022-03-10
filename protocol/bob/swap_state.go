@@ -43,7 +43,7 @@ type swapState struct {
 	sync.Mutex
 
 	info     *pswap.Info
-	offerID  types.Hash
+	offer    *types.Offer
 	statusCh chan types.Status
 
 	// our keys for this session
@@ -69,11 +69,12 @@ type swapState struct {
 	// channels
 	readyCh chan struct{}
 
-	// address of reclaimed monero wallet, if the swap is refunded
+	// address of reclaimed monero wallet, if the swap is refunded77
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
+func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, providesAmount common.MoneroAmount,
+	desiredAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -84,7 +85,9 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
-	statusCh := make(chan types.Status, 7)
+	if statusCh == nil {
+		statusCh = make(chan types.Status, 7)
+	}
 	statusCh <- stage
 	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
 		exchangeRate, stage, statusCh)
@@ -97,7 +100,7 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 		ctx:                 ctx,
 		cancel:              cancel,
 		bob:                 b,
-		offerID:             offerID,
+		offer:               offer,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
@@ -145,14 +148,16 @@ func (s *swapState) ProtocolExited() error {
 		s.cancel()
 		s.bob.swapState = nil
 		s.bob.swapManager.CompleteOngoingSwap()
+
+		if s.info.Status() != types.CompletedSuccess {
+			// re-add offer, as it wasn't taken successfully
+			s.bob.offerManager.putOffer(s.offer)
+		}
 	}()
 
 	if s.info.Status() == types.CompletedSuccess {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
 		log.Info(str)
-
-		// remove offer, as it's been taken
-		s.bob.offerManager.deleteOffer(s.offerID)
 		return nil
 	}
 

@@ -44,6 +44,7 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 	}, nil
 }
 
+// SubscribeSwapStatusRequestParams ...
 type SubscribeSwapStatusRequestParams struct {
 	ID uint64 `json:"id"`
 }
@@ -109,6 +110,8 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 	return respCh, nil
 }
 
+// SubscribeTakeOfferParams ...
+// TODO: duplciate of rpc.TakeOfferRequest
 type SubscribeTakeOfferParams struct {
 	Multiaddr      string  `json:"multiaddr"`
 	OfferID        string  `json:"offerID"`

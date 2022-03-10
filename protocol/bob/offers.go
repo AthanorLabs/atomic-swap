@@ -8,25 +8,43 @@ import (
 )
 
 type offerManager struct {
-	offers map[types.Hash]*types.Offer
+	offers   map[types.Hash]*types.Offer
+	takenChs map[types.Hash]chan struct{}
+
+	// this channel is later used as the swap's statusCh when the offer is taken
+	takenStatusChs map[types.Hash]chan types.Status
 }
 
 func newOfferManager() *offerManager {
 	return &offerManager{
-		offers: make(map[types.Hash]*types.Offer),
+		offers:         make(map[types.Hash]*types.Offer),
+		takenChs:       make(map[types.Hash]chan struct{}),
+		takenStatusChs: make(map[types.Hash]chan types.Status),
 	}
 }
 
 func (om *offerManager) putOffer(o *types.Offer) {
 	om.offers[o.GetID()] = o
+	om.takenChs[o.GetID()] = make(chan struct{})
+	om.takenStatusChs[o.GetID()] = make(chan types.Status, 7)
 }
 
-func (om *offerManager) getOffer(id types.Hash) *types.Offer {
-	return om.offers[id]
-}
+func (om *offerManager) getAndDeleteOffer(id types.Hash) (*types.Offer, chan types.Status) {
+	offer, has := om.offers[id]
+	if !has {
+		return nil, nil
+	}
 
-func (om *offerManager) deleteOffer(id types.Hash) {
+	statusCh := om.takenStatusChs[id]
+
 	delete(om.offers, id)
+
+	// close takenCh when offer is taken
+	close(om.takenChs[id])
+	delete(om.takenChs, id)
+
+	delete(om.takenStatusChs, id)
+	return offer, statusCh
 }
 
 // MakeOffer makes a new swap offer.

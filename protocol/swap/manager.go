@@ -104,14 +104,16 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 // Manager tracks current and past swaps.
 type Manager struct {
 	sync.RWMutex
-	ongoing *Info
-	past    map[uint64]*Info
+	ongoing     *Info
+	past        map[uint64]*Info
+	offersTaken map[string]uint64 // map of offerID -> swapID
 }
 
 // NewManager ...
 func NewManager() *Manager {
 	return &Manager{
-		past: make(map[uint64]*Info),
+		past:        make(map[uint64]*Info),
+		offersTaken: make(map[string]uint64),
 	}
 }
 
