@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/cmd/client/client"
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/monero"
 
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +26,7 @@ const (
 	defaultBobDaemonEndpoint   = "http://localhost:5002"
 	defaultDiscoverTimeout     = 2 // 2 seconds
 
-	bobProvideAmount = float64(44.4)
+	bobProvideAmount = float64(1.0)
 	exchangeRate     = float64(0.05)
 )
 
@@ -42,6 +44,19 @@ func TestMain(m *testing.M) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(fmt.Sprintf("%s\n%s", out, err))
+	}
+
+	c := monero.NewClient(common.DefaultBobMoneroEndpoint)
+	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
+	bobAddr, err := c.GetAddress(0)
+	if err != nil {
+		panic(err)
+	}
+
+	_ = d.GenerateBlocks(bobAddr.Address, 512)
+	err = c.Refresh()
+	if err != nil {
+		panic(err)
 	}
 
 	os.Exit(m.Run())

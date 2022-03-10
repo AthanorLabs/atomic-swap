@@ -11,6 +11,13 @@ type DaemonClient interface {
 	GenerateBlocks(address string, amount uint) error
 }
 
+// NewDaemonClient returns a new monerod client.
+func NewDaemonClient(endpoint string) *client { //nolint:revive
+	return &client{
+		endpoint: endpoint,
+	}
+}
+
 type generateBlocksRequest struct {
 	Address        string `json:"wallet_address"`
 	AmountOfBlocks uint   `json:"amount_of_blocks"`
