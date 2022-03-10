@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -18,14 +19,19 @@ import (
 )
 
 const (
-	defaultRPCPort    uint16 = 3001
-	defaultWSPort     uint16 = 3002
-	defaultWSEndpoint        = "ws://localhost:3002"
-	testSwapID        uint64 = 77
-	testMultiaddr            = "/ip4/192.168.0.102/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"
+	testSwapID    uint64 = 77
+	testMultiaddr        = "/ip4/192.168.0.102/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"
 )
 
-var testTImeout = time.Second * 5
+var (
+	testTImeout           = time.Second * 5
+	defaultRPCPort uint16 = 3001
+	defaultWSPort  uint16 = 4002
+)
+
+func defaultWSEndpoint() string {
+	return fmt.Sprintf("ws://localhost:%d", defaultWSPort)
+}
 
 type mockNet struct{}
 
@@ -102,6 +108,9 @@ func newServer(t *testing.T) *Server {
 		cancel()
 	})
 
+	defaultRPCPort++
+	defaultWSPort++
+
 	cfg := &Config{
 		Ctx:         ctx,
 		Port:        defaultRPCPort,
@@ -118,7 +127,7 @@ func newServer(t *testing.T) *Server {
 		err := <-errCh
 		require.NoError(t, err)
 	}()
-	time.Sleep(time.Second) // let server start up
+	time.Sleep(time.Millisecond * 300) // let server start up
 
 	return s
 }
@@ -130,7 +139,28 @@ func TestSubscribeSwapStatus(t *testing.T) {
 	t.Cleanup(func() {
 		cancel()
 	})
-	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint)
+	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
+	require.NoError(t, err)
+
+	ch, err := c.SubscribeSwapStatus(testSwapID)
+	require.NoError(t, err)
+
+	select {
+	case status := <-ch:
+		require.Equal(t, types.CompletedSuccess, status)
+	case <-time.After(testTImeout):
+		t.Fatal("test timed out")
+	}
+}
+
+func TestSubscribeTakeOffer(t *testing.T) {
+	_ = newServer(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
 	require.NoError(t, err)
 
 	id, ch, err := c.TakeOfferAndSubscribe(testMultiaddr, "", 1)
