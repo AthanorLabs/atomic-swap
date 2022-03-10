@@ -425,7 +425,6 @@ func TestSwapState_ProtocolExited_Success(t *testing.T) {
 		MaximumAmount: 0.2,
 		ExchangeRate:  0.1,
 	}
-	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.ProtocolExited()

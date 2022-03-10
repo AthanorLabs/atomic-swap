@@ -104,12 +104,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		offerID, err := s.ns.makeOffer(params)
+		offerID, swapIDCh, statusCh, err := s.ns.makeOffer(params)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeMakeOffer(s.ctx, conn, offerID)
+		return s.subscribeMakeOffer(s.ctx, conn, offerID, swapIDCh, statusCh)
 	default:
 		return errors.New("invalid method")
 	}
@@ -146,8 +146,59 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 	}
 }
 
-func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn, offerID string) error {
-	return nil
+func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
+	offerID string, swapIDCh <-chan uint64, statusCh <-chan types.Status) error {
+	// firstly write offer ID
+	idMsg := map[string]string{
+		"offerID": offerID,
+	}
+
+	if err := writeResponse(conn, idMsg); err != nil {
+		return err
+	}
+
+	// then check for swap ID to be sent when swap is initiated
+	var taken bool
+	for {
+		if taken {
+			break
+		}
+
+		select {
+		case id := <-swapIDCh:
+			idMsg := map[string]uint64{
+				"id": id,
+			}
+
+			if err := writeResponse(conn, idMsg); err != nil {
+				return err
+			}
+
+			taken = true
+		case <-ctx.Done():
+			return nil
+		}
+	}
+
+	// finally, read the swap's status
+	for {
+		select {
+		case status, ok := <-statusCh:
+			if !ok {
+				return nil
+			}
+
+			resp := &SubscribeSwapStatusResponse{
+				Stage: status.String(),
+			}
+
+			if err := writeResponse(conn, resp); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 // subscribeSwapStatus writes the swap's stage to the connection every time it updates.

@@ -120,7 +120,7 @@ type Alice interface {
 // Bob ...
 type Bob interface {
 	Protocol
-	MakeOffer(offer *types.Offer) error
+	MakeOffer(offer *types.Offer) (<-chan uint64, <-chan types.Status, error)
 	SetMoneroWalletFile(file, password string) error
 }
 
