@@ -31,9 +31,9 @@ GANACHE_CLI_PID=$!
 # wait for servers to start
 sleep 10
 
-# run unit tests
-echo "running unit tests..."
-go test ./tests -v
+# run tests
+echo "running integration tests..."
+TESTS=integration go test ./tests -v
 OK=$?
 
 # kill processes

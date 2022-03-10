@@ -16,6 +16,9 @@ import (
 )
 
 const (
+	testsEnv        = "TESTS"
+	integrationMode = "integration"
+
 	defaultAliceTestLibp2pKey  = "alice.key"
 	defaultAliceDaemonEndpoint = "http://localhost:5001"
 	defaultBobDaemonEndpoint   = "http://localhost:5002"
@@ -28,6 +31,10 @@ const (
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if testing.Short() {
+		os.Exit(0)
+	}
+
+	if os.Getenv(testsEnv) != integrationMode {
 		os.Exit(0)
 	}
 
