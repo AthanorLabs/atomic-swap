@@ -153,6 +153,28 @@ func TestSubscribeSwapStatus(t *testing.T) {
 	}
 }
 
+// TODO: add unit test
+// func TestSubscribeMakeOffer(t *testing.T) {
+// 	_ = newServer(t)
+
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	t.Cleanup(func() {
+// 		cancel()
+// 	})
+// 	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
+// 	require.NoError(t, err)
+
+// 	id, ch, err := c.MakeOfferAndSubscribe(0.1, 1, 0.05)
+// 	require.NoError(t, err)
+// 	require.Equal(t, id, testSwapID)
+// 	select {
+// 	case status := <-ch:
+// 		require.Equal(t, types.CompletedSuccess, status)
+// 	case <-time.After(testTImeout):
+// 		t.Fatal("test timed out")
+// 	}
+// }
+
 func TestSubscribeTakeOffer(t *testing.T) {
 	_ = newServer(t)
 

@@ -58,7 +58,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	offer, swapIDCh, statusCh := b.offerManager.getAndDeleteOffer(id)
+	offer, offerExtra := b.offerManager.getAndDeleteOffer(id)
 	if offer == nil {
 		return nil, nil, errors.New("failed to find offer with given ID")
 	}
@@ -73,12 +73,12 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, errors.New("amount provided by taker is too low for offer")
 	}
 
-	if err = b.initiate(offer, statusCh, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
+	if err = b.initiate(offer, offerExtra.StatusCh, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
 		return nil, nil, err
 	}
 
-	swapIDCh <- b.swapState.info.ID()
-	close(swapIDCh)
+	offerExtra.IDCh <- b.swapState.info.ID()
+	close(offerExtra.IDCh)
 
 	if err = b.swapState.handleSendKeysMessage(msg); err != nil {
 		return nil, nil, err

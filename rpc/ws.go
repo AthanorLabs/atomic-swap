@@ -104,12 +104,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		offerID, swapIDCh, statusCh, err := s.ns.makeOffer(params)
+		offerID, offerExtra, err := s.ns.makeOffer(params)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeMakeOffer(s.ctx, conn, offerID, swapIDCh, statusCh)
+		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
 	default:
 		return errors.New("invalid method")
 	}
@@ -147,7 +147,9 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 }
 
 func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
-	offerID string, swapIDCh <-chan uint64, statusCh <-chan types.Status) error {
+	offerID string, offerExtra *types.OfferExtra) error {
+	// TODO: write infofile
+
 	// firstly write offer ID
 	idMsg := map[string]string{
 		"offerID": offerID,
@@ -165,7 +167,7 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 		}
 
 		select {
-		case id := <-swapIDCh:
+		case id := <-offerExtra.IDCh:
 			idMsg := map[string]uint64{
 				"id": id,
 			}
@@ -183,7 +185,7 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 	// finally, read the swap's status
 	for {
 		select {
-		case status, ok := <-statusCh:
+		case status, ok := <-offerExtra.StatusCh:
 			if !ok {
 				return nil
 			}
