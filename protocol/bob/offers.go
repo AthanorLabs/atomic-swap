@@ -20,7 +20,8 @@ type offerManager struct {
 
 func newOfferManager(basepath string) *offerManager {
 	return &offerManager{
-		offers: make(map[types.Hash]*offerWithExtra),
+		offers:   make(map[types.Hash]*offerWithExtra),
+		basepath: basepath,
 	}
 }
 

@@ -15,7 +15,7 @@ func (b *Instance) Provides() types.ProvidesCoin {
 	return types.ProvidesXMR
 }
 
-func (b *Instance) initiate(offer *types.Offer, statusCh chan types.Status, providesAmount common.MoneroAmount,
+func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, providesAmount common.MoneroAmount,
 	desiredAmount common.EtherAmount) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
@@ -34,7 +34,7 @@ func (b *Instance) initiate(offer *types.Offer, statusCh chan types.Status, prov
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	b.swapState, err = newSwapState(b, offer, statusCh, providesAmount, desiredAmount)
+	b.swapState, err = newSwapState(b, offer, offerExtra.StatusCh, offerExtra.InfoFile, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, errors.New("amount provided by taker is too low for offer")
 	}
 
-	if err = b.initiate(offer, offerExtra.StatusCh, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
+	if err = b.initiate(offer, offerExtra, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
 		return nil, nil, err
 	}
 

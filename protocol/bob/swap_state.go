@@ -41,6 +41,7 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
+	infofile string
 
 	info     *pswap.Info
 	offer    *types.Offer
@@ -73,7 +74,7 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, providesAmount common.MoneroAmount,
+func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, infofile string, providesAmount common.MoneroAmount,
 	desiredAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
@@ -101,11 +102,16 @@ func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, p
 		cancel:              cancel,
 		bob:                 b,
 		offer:               offer,
+		infofile:            infofile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
 		info:                info,
 		statusCh:            statusCh,
+	}
+
+	if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
+		return nil, err
 	}
 
 	return s, nil
@@ -227,8 +233,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.ID())
-	if err = mcrypto.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
+	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -298,8 +303,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.ID())
-	return mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env)
+	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.bob.env)
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {
