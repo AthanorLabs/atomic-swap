@@ -82,6 +82,10 @@ var (
 						Name:  "exchange-rate",
 						Usage: "desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
 					},
+					&cli.BoolFlag{
+						Name:  "subscribe",
+						Usage: "subscribe to push notifications about the swap's status",
+					},
 					daemonAddrFlag,
 				},
 			},

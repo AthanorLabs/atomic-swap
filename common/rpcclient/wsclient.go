@@ -3,7 +3,6 @@ package rpcclient
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/noot/atomic-swap/common/types"
@@ -118,6 +117,12 @@ type SubscribeTakeOfferParams struct {
 	ProvidesAmount float64 `json:"providesAmount"`
 }
 
+// TakeOfferResponse ...
+type TakeOfferResponse struct {
+	ID       uint64 `json:"id"`
+	InfoFile string `json:"infoFile"`
+}
+
 func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	providesAmount float64) (id uint64, ch <-chan types.Status, err error) {
 	params := &SubscribeTakeOfferParams{
@@ -159,14 +164,9 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	}
 
 	log.Debugf("received message over websockets: %s", message)
-	var idResp map[string]uint64
+	var idResp *TakeOfferResponse
 	if err := json.Unmarshal(resp.Result, &idResp); err != nil {
-		return 0, nil, fmt.Errorf("failed to unmarshal response: %s", err)
-	}
-
-	id, ok := idResp["id"]
-	if !ok {
-		return 0, nil, errors.New("websocket response did not contain ID")
+		return 0, nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
 	}
 
 	respCh := make(chan types.Status)
@@ -196,7 +196,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 			log.Debugf("received message over websockets: %s", message)
 			var status *SubscribeSwapStatusResponse
 			if err := json.Unmarshal(resp.Result, &status); err != nil {
-				log.Warnf("failed to unmarshal response: %s", err)
+				log.Warnf("failed to unmarshal swap status response: %s", err)
 				break
 			}
 
