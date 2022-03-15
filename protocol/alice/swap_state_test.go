@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -24,6 +25,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
+
+var infofile = os.TempDir() + "/test.keys"
 
 var _ = logging.SetLogLevel("alice", "debug")
 
@@ -68,7 +71,7 @@ func newTestAlice(t *testing.T) *Instance {
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	alice := newTestAlice(t)
-	swapState, err := newSwapState(alice, common.NewEtherAmount(1))
+	swapState, err := newSwapState(alice, infofile, common.NewEtherAmount(1))
 	require.NoError(t, err)
 	swapState.info.SetReceivedAmount(1)
 	return alice, swapState

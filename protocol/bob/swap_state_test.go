@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
+
+var infofile = os.TempDir() + "/test.keys"
 
 var (
 	_            = logging.SetLogLevel("bob", "debug")
@@ -77,7 +80,7 @@ func newTestBob(t *testing.T) *Instance {
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	bob := newTestBob(t)
-	swapState, err := newSwapState(bob, &types.Offer{}, nil, common.MoneroAmount(33), desiredAmout)
+	swapState, err := newSwapState(bob, &types.Offer{}, nil, infofile, common.MoneroAmount(33), desiredAmout)
 	require.NoError(t, err)
 	return bob, swapState
 }

@@ -18,7 +18,7 @@ func TestBob_HandleInitiateMessage(t *testing.T) {
 		MaximumAmount: 0.002,
 		ExchangeRate:  0.1,
 	}
-	_, _, err := b.MakeOffer(offer)
+	_, err := b.MakeOffer(offer)
 	require.NoError(t, err)
 	msg, _ := newTestAliceSendKeysMessage(t)
 	msg.OfferID = offer.GetID().String()

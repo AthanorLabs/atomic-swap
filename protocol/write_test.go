@@ -17,3 +17,9 @@ func TestWriteKeysToFile(t *testing.T) {
 	err = WriteKeysToFile(os.TempDir()+"/test.keys", kp, common.Development)
 	require.NoError(t, err)
 }
+
+func TestWriteContractAddrssToFile(t *testing.T) {
+	addr := "0xabcd"
+	err := WriteContractAddressToFile(os.TempDir()+"/test.keys", addr)
+	require.NoError(t, err)
+}

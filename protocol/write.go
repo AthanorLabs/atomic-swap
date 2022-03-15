@@ -16,7 +16,7 @@ type infoFileContents struct {
 	SharedSwapPrivateKey *mcrypto.PrivateKeyInfo
 }
 
-// WriteContractAddressToFile writes the contract address to a file in the given basepath
+// WriteContractAddressToFile writes the contract address to the given file
 func WriteContractAddressToFile(infofile, addr string) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
@@ -34,6 +34,7 @@ func WriteContractAddressToFile(infofile, addr string) error {
 	return err
 }
 
+// WriteSwapIDToFile writes the swap ID to the given file
 func WriteSwapIDToFile(infofile string, id uint64) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
@@ -51,7 +52,7 @@ func WriteSwapIDToFile(infofile string, id uint64) error {
 	return err
 }
 
-// WriteKeysToFile writes the given private key pair to a file within the given path.
+// WriteKeysToFile writes the given private key pair to the given file
 func WriteKeysToFile(infofile string, keys *mcrypto.PrivateKeyPair, env common.Environment) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
@@ -69,7 +70,7 @@ func WriteKeysToFile(infofile string, keys *mcrypto.PrivateKeyPair, env common.E
 	return err
 }
 
-// WriteSharedSwapKeyPairToFile writes the given private key pair to a file within the given path.
+// WriteSharedSwapKeyPairToFile writes the given private key pair to the given file
 func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair, env common.Environment) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
@@ -98,7 +99,7 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 		contents *infoFileContents
 	)
 	if !exists {
-		err := makeDir(filepath.Dir(infofile))
+		err = makeDir(filepath.Dir(infofile))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -108,12 +109,12 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 			return nil, nil, err
 		}
 	} else {
-		file, err = os.OpenFile(filepath.Clean(infofile), os.O_RDWR, 0755)
+		file, err = os.OpenFile(filepath.Clean(infofile), os.O_RDWR, 0600)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		bz, err := os.ReadFile(infofile)
+		bz, err := os.ReadFile(filepath.Clean(infofile))
 		if err != nil {
 			return nil, nil, err
 		}

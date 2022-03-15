@@ -74,8 +74,8 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, infofile string, providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount) (*swapState, error) {
+func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, infofile string,
+	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
