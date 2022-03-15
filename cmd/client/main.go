@@ -253,6 +253,32 @@ func runMake(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
+	if ctx.Bool("subscribe") {
+		c, err := rpcclient.NewWsClient(context.Background(), endpoint)
+		if err != nil {
+			return err
+		}
+
+		id, takenCh, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Made offer with ID=%s\n", id)
+
+		taken := <-takenCh
+		fmt.Printf("Offer taken! Swap ID=%d\n", taken.ID)
+
+		for stage := range statusCh {
+			fmt.Printf("> Stage updated: %s\n", stage)
+			if !stage.IsOngoing() {
+				return nil
+			}
+		}
+
+		return nil
+	}
+
 	c := client.NewClient(endpoint)
 	id, err := c.MakeOffer(min, max, exchangeRate)
 	if err != nil {
