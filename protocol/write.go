@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -101,12 +102,12 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 	if !exists {
 		err = makeDir(filepath.Dir(infofile))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to make directory %s: %w", filepath.Dir(infofile), err)
 		}
 
 		file, err = os.Create(filepath.Clean(infofile))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to create file %s: %w", filepath.Clean(infofile), err)
 		}
 	} else {
 		file, err = os.OpenFile(filepath.Clean(infofile), os.O_RDWR, 0600)
@@ -140,8 +141,7 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 	return file, contents, nil
 }
 
-func makeDir(path string) error {
-	dir := filepath.Dir(path)
+func makeDir(dir string) error {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
