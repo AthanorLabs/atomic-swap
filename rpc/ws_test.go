@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -100,6 +101,9 @@ func (*mockSwapState) SendKeysMessage() (*message.SendKeysMessage, error) {
 }
 func (*mockSwapState) ID() uint64 {
 	return testSwapID
+}
+func (*mockSwapState) InfoFile() string {
+	return os.TempDir() + "test.infofile"
 }
 
 func newServer(t *testing.T) *Server {

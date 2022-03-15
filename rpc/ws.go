@@ -92,12 +92,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		id, ch, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
+		id, ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, id, ch)
+		return s.subscribeTakeOffer(s.ctx, conn, id, ch, infofile)
 	case subscribeMakeOffer:
 		var params *MakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -116,13 +116,13 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 }
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	id uint64, statusCh <-chan types.Status) error {
-	// firstly write swap ID
-	idMsg := map[string]uint64{
-		"id": id,
+	id uint64, statusCh <-chan types.Status, infofile string) error {
+	resp := &TakeOfferResponse{
+		ID:       id,
+		InfoFile: infofile,
 	}
 
-	if err := writeResponse(conn, idMsg); err != nil {
+	if err := writeResponse(conn, resp); err != nil {
 		return err
 	}
 
@@ -148,14 +148,14 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 
 func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 	offerID string, offerExtra *types.OfferExtra) error {
-	// TODO: write infofile
 
 	// firstly write offer ID
-	idMsg := map[string]string{
-		"offerID": offerID,
+	resp := &MakeOfferResponse{
+		ID:       offerID,
+		InfoFile: offerExtra.InfoFile,
 	}
 
-	if err := writeResponse(conn, idMsg); err != nil {
+	if err := writeResponse(conn, resp); err != nil {
 		return err
 	}
 

@@ -21,5 +21,5 @@ type SwapStateNet interface {
 type SwapStateRPC interface {
 	SendKeysMessage() (*message.SendKeysMessage, error)
 	ID() uint64
-	//Status() types.Status
+	InfoFile() string
 }
