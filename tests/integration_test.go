@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	//"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -20,15 +21,16 @@ import (
 )
 
 const (
-	testsEnv        = "TESTS"
-	integrationMode = "integration"
+	testsEnv          = "TESTS"
+	integrationMode   = "integration"
+	generateBlocksEnv = "GENERATEBLOCKS"
 
 	defaultAliceTestLibp2pKey    = "alice.key"
 	defaultAliceDaemonEndpoint   = "http://localhost:5001"
 	defaultAliceDaemonWSEndpoint = "ws://localhost:8081"
 	defaultBobDaemonEndpoint     = "http://localhost:5002"
-	defaultBobDaemonWSEndpoint   = "ws://localhost:8082"
-	defaultDiscoverTimeout       = 2 // 2 seconds
+	defaultBobDaemonWSEndpoint   = "ws://localhost:8082" //nolint
+	defaultDiscoverTimeout       = 2                     // 2 seconds
 
 	bobProvideAmount = float64(1.0)
 	exchangeRate     = float64(0.05)
@@ -57,10 +59,15 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	_ = d.GenerateBlocks(bobAddr.Address, 512)
-	err = c.Refresh()
-	if err != nil {
-		panic(err)
+	if os.Getenv(generateBlocksEnv) != "false" {
+		fmt.Println("> Generating blocks for test setup...")
+		_ = d.GenerateBlocks(bobAddr.Address, 512)
+		err = c.Refresh()
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("> Completed generating blocks.")
 	}
 
 	os.Exit(m.Run())
@@ -110,7 +117,7 @@ func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) {
 		wg.Wait()
 	})
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 5)
 }
 
 func startAlice(t *testing.T, done <-chan struct{}) []string {
@@ -215,40 +222,49 @@ func TestAlice_Query(t *testing.T) {
 }
 
 func TestAlice_TakeOffer(t *testing.T) {
-	const testTimeout = time.Second * 5
+	//const testTimeout = time.Second * 5
 
 	startNodes(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	bc := client.NewClient(defaultBobDaemonEndpoint)
+	offerID, err := bc.MakeOffer(0.1, 1, 0.05)
 	require.NoError(t, err)
 
-	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
-		types.ExchangeRate(exchangeRate))
-	require.NoError(t, err)
+	// bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	// require.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	// offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+	// 	types.ExchangeRate(exchangeRate))
+	// require.NoError(t, err)
 
-	go func() {
-		select {
-		case taken := <-takenCh:
-			t.Log("swap ID: ", taken.ID)
-		case <-time.After(testTimeout):
-			t.Fatal("make offer subscription timed out")
-		}
+	errCh := make(chan error, 2)
 
-		for status := range statusCh {
-			if !status.IsOngoing() {
-				continue
-			}
+	// var wg sync.WaitGroup
+	// wg.Add(2)
 
-			require.Equal(t, types.CompletedSuccess, status)
-		}
+	// go func() {
+	// 	defer close(errCh)
 
-		wg.Done()
-	}()
+	// 	select {
+	// 	case taken := <-takenCh:
+	// 		require.NotNil(t, taken)
+	// 		t.Log("swap ID: ", taken.ID)
+	// 	case <-time.After(testTimeout):
+	// 		errCh <- errors.New("make offer subscription timed out")
+	// 	}
+
+	// 	for status := range statusCh {
+	// 		if !status.IsOngoing() {
+	// 			continue
+	// 		}
+
+	// 		require.Equal(t, types.CompletedSuccess, status)
+	// 	}
+
+	// 	wg.Done()
+	// }()
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
@@ -260,21 +276,30 @@ func TestAlice_TakeOffer(t *testing.T) {
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	id, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.1)
+	id, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), id)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
 		for status := range takerStatusCh {
-			if !status.IsOngoing() {
+			fmt.Println("> Got status:", status)
+			if status.IsOngoing() {
 				continue
 			}
 
-			require.Equal(t, types.CompletedSuccess, status)
-		}
+			if status != types.CompletedSuccess {
+				errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
+			}
 
-		wg.Done()
+			return
+		}
 	}()
 
 	wg.Wait()
+	err = <-errCh
+	require.NoError(t, err)
 }

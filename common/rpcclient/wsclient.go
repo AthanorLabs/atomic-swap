@@ -200,8 +200,11 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 				break
 			}
 
+			fmt.Println("putting status", status.Status)
 			respCh <- types.NewStatus(status.Status)
 		}
+
+		fmt.Println("returning from TakeOfferAndSubscribe goroutine")
 	}()
 
 	return idResp.ID, respCh, nil
