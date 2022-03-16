@@ -66,7 +66,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestAlice_Discover(t *testing.T) {
-	//startNodes(t)
 	bc := client.NewClient(defaultBobDaemonEndpoint)
 	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
@@ -79,7 +78,6 @@ func TestAlice_Discover(t *testing.T) {
 }
 
 func TestBob_Discover(t *testing.T) {
-	//startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
 	providers, err := c.Discover(types.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -87,7 +85,6 @@ func TestBob_Discover(t *testing.T) {
 }
 
 func TestAlice_Query(t *testing.T) {
-	//startNodes(t)
 	bc := client.NewClient(defaultBobDaemonEndpoint)
 	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
@@ -101,7 +98,7 @@ func TestAlice_Query(t *testing.T) {
 
 	resp, err := c.Query(providers[0][0])
 	require.NoError(t, err)
-	require.Equal(t, 1, len(resp.Offers))
+	require.GreaterOrEqual(t, len(resp.Offers), 1)
 	require.Equal(t, bobProvideAmount, resp.Offers[0].MinimumAmount)
 	require.Equal(t, bobProvideAmount, resp.Offers[0].MaximumAmount)
 	require.Equal(t, exchangeRate, float64(resp.Offers[0].ExchangeRate))
@@ -110,13 +107,8 @@ func TestAlice_Query(t *testing.T) {
 func TestTakeOffer_HappyPath(t *testing.T) {
 	const testTimeout = time.Second * 5
 
-	//startNodes(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	// bc := client.NewClient(defaultBobDaemonEndpoint)
-	// offerID, err := bc.MakeOffer(0.1, 1, 0.05)
-	// require.NoError(t, err)
 
 	bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
 	require.NoError(t, err)
@@ -170,9 +162,6 @@ func TestTakeOffer_HappyPath(t *testing.T) {
 
 	id, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
-
-	// var wg sync.WaitGroup
-	// wg.Add(1)
 
 	go func() {
 		defer wg.Done()
