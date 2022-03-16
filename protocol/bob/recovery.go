@@ -10,6 +10,7 @@ import (
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
+	pcommon "github.com/noot/atomic-swap/protocol"
 )
 
 type recoveryState struct {
@@ -48,6 +49,7 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
+		infofile:       pcommon.GetSwapRecoveryFilepath(b.basepath),
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

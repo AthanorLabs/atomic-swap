@@ -58,7 +58,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, cfg.Alice, cfg.Bob, ns),
+		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, ns),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -120,8 +120,9 @@ type Alice interface {
 // Bob ...
 type Bob interface {
 	Protocol
-	MakeOffer(offer *types.Offer) error
+	MakeOffer(offer *types.Offer) (*types.OfferExtra, error)
 	SetMoneroWalletFile(file, password string) error
+	GetOffers() []*types.Offer
 }
 
 // SwapManager ...

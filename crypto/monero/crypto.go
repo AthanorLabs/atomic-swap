@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -81,15 +80,23 @@ func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
 	return kp.vk
 }
 
-// Marshal JSON-marshals the private key pair, providing its PrivateSpendKey, PrivateViewKey, Address,
+// PrivateKeyInfo ...
+type PrivateKeyInfo struct {
+	PrivateSpendKey string
+	PrivateViewKey  string
+	Address         string
+	Environment     string
+}
+
+// Info return the private key pair as PrivateKeyInfo, providing its PrivateSpendKey, PrivateViewKey, Address,
 // and Environment. This is intended to be written to a file, which someone can use to regenerate the wallet.
-func (kp *PrivateKeyPair) Marshal(env common.Environment) ([]byte, error) {
-	m := make(map[string]string)
-	m["PrivateSpendKey"] = kp.sk.Hex()
-	m["PrivateViewKey"] = kp.vk.Hex()
-	m["Address"] = string(kp.Address(env))
-	m["Environment"] = env.String()
-	return json.Marshal(m)
+func (kp *PrivateKeyPair) Info(env common.Environment) *PrivateKeyInfo {
+	return &PrivateKeyInfo{
+		PrivateSpendKey: kp.sk.Hex(),
+		PrivateViewKey:  kp.vk.Hex(),
+		Address:         string(kp.Address(env)),
+		Environment:     env.String(),
+	}
 }
 
 // PrivateSpendKey represents a monero private spend key

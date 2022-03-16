@@ -2,7 +2,6 @@ package mcrypto
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -58,22 +57,6 @@ func TestKeccak256(t *testing.T) {
 	res := ethcrypto.Keccak256([]byte{1})
 	res2 := crypto.Keccak256([]byte{1})
 	require.Equal(t, res, res2[:])
-}
-
-func TestPrivateKeyPair_Marshal(t *testing.T) {
-	kp, err := GenerateKeys()
-	require.NoError(t, err)
-
-	bz, err := kp.Marshal(common.Mainnet)
-	require.NoError(t, err)
-
-	var res map[string]string
-	err = json.Unmarshal(bz, &res)
-	require.NoError(t, err)
-	require.Equal(t, kp.sk.Hex(), res["PrivateSpendKey"])
-	require.Equal(t, kp.vk.Hex(), res["PrivateViewKey"])
-	require.Equal(t, string(kp.Address(common.Mainnet)), res["Address"])
-	require.Equal(t, common.Mainnet.String(), res["Environment"])
 }
 
 func TestNewPrivateSpendKey(t *testing.T) {

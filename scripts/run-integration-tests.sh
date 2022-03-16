@@ -31,15 +31,28 @@ GANACHE_CLI_PID=$!
 # wait for servers to start
 sleep 10
 
-# run unit tests
-echo "running unit tests..."
-go test ./tests -v
+# start alice and bob swapd instances
+echo "starting alice, logs in ./tests/alice.log"
+bash scripts/build.sh
+./swapd --dev-alice --libp2p-key=./tests/alice.key &> ./tests/alice.log &
+ALICE_PID=$!
+sleep 3
+echo "starting bob, logs in ./tests/bob.log"
+./swapd --dev-bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 --wallet-file test-wallet &> ./tests/bob.log &
+BOB_PID=$!
+sleep 3 
+
+# run tests
+echo "running integration tests..."
+TESTS=integration go test ./tests -v
 OK=$?
 
 # kill processes
 kill $MONERO_WALLET_CLI_BOB_PID
 kill $MONERO_WALLET_CLI_ALICE_PID
 kill $GANACHE_CLI_PID
+kill $ALICE_PID
+kill $BOB_PID
 # rm -rf ./alice-test-keys
 # rm -rf ./bob-test-keys
 exit $OK

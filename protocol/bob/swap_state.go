@@ -41,9 +41,10 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
+	infofile string
 
 	info     *pswap.Info
-	offerID  types.Hash
+	offer    *types.Offer
 	statusCh chan types.Status
 
 	// our keys for this session
@@ -69,11 +70,12 @@ type swapState struct {
 	// channels
 	readyCh chan struct{}
 
-	// address of reclaimed monero wallet, if the swap is refunded
+	// address of reclaimed monero wallet, if the swap is refunded77
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) { //nolint:lll
+func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, infofile string,
+	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -84,7 +86,9 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
-	statusCh := make(chan types.Status, 7)
+	if statusCh == nil {
+		statusCh = make(chan types.Status, 7)
+	}
 	statusCh <- stage
 	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
 		exchangeRate, stage, statusCh)
@@ -97,12 +101,17 @@ func newSwapState(b *Instance, offerID types.Hash, providesAmount common.MoneroA
 		ctx:                 ctx,
 		cancel:              cancel,
 		bob:                 b,
-		offerID:             offerID,
+		offer:               offer,
+		infofile:            infofile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		txOpts:              txOpts,
 		info:                info,
 		statusCh:            statusCh,
+	}
+
+	if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
+		return nil, err
 	}
 
 	return s, nil
@@ -122,6 +131,11 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
 		EthAddress:         s.bob.ethAddress.String(),
 	}, nil
+}
+
+// InfoFile returns the swap's infofile path
+func (s *swapState) InfoFile() string {
+	return s.infofile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -145,14 +159,16 @@ func (s *swapState) ProtocolExited() error {
 		s.cancel()
 		s.bob.swapState = nil
 		s.bob.swapManager.CompleteOngoingSwap()
+
+		if s.info.Status() != types.CompletedSuccess {
+			// re-add offer, as it wasn't taken successfully
+			s.bob.offerManager.putOffer(s.offer)
+		}
 	}()
 
 	if s.info.Status() == types.CompletedSuccess {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
 		log.Info(str)
-
-		// remove offer, as it's been taken
-		s.bob.offerManager.deleteOffer(s.offerID)
 		return nil
 	}
 
@@ -222,8 +238,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	fp := fmt.Sprintf("%s/%d/swap-secret", s.bob.basepath, s.ID())
-	if err = mcrypto.WriteKeysToFile(fp, kpAB, s.bob.env); err != nil {
+	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.bob.env); err != nil {
 		return "", err
 	}
 
@@ -293,8 +308,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	fp := fmt.Sprintf("%s/%d/bob-secret", s.bob.basepath, s.ID())
-	return mcrypto.WriteKeysToFile(fp, s.privkeys, s.bob.env)
+	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.bob.env)
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {

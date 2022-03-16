@@ -123,8 +123,7 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	fp := fmt.Sprintf("%s/%d/contractaddress", s.bob.basepath, s.ID())
-	if err := common.WriteContractAddressToFile(fp, msg.Address); err != nil {
+	if err := pcommon.WriteContractAddressToFile(s.infofile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 

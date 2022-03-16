@@ -15,6 +15,7 @@ import (
 
 const (
 	subscribeNewPeer    = "net_subscribeNewPeer"
+	subscribeMakeOffer  = "net_makeOfferAndSubscribe"
 	subscribeTakeOffer  = "net_takeOfferAndSubscribe"
 	subscribeSwapStatus = "swap_subscribeStatus"
 )
@@ -29,20 +30,16 @@ type (
 )
 
 type wsServer struct {
-	ctx   context.Context
-	sm    SwapManager
-	alice Alice
-	bob   Bob
-	ns    *NetService
+	ctx context.Context
+	sm  SwapManager
+	ns  *NetService
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, a Alice, b Bob, ns *NetService) *wsServer {
+func newWsServer(ctx context.Context, sm SwapManager, ns *NetService) *wsServer {
 	return &wsServer{
-		ctx:   ctx,
-		sm:    sm,
-		alice: a,
-		bob:   b,
-		ns:    ns,
+		ctx: ctx,
+		sm:  sm,
+		ns:  ns,
 	}
 }
 
@@ -83,67 +80,49 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 	case subscribeNewPeer:
 		return errors.New("unimplemented")
 	case subscribeSwapStatus:
-		idi, has := req.Params["id"] // TODO: make const
-		if !has {
-			return errors.New("params missing id field")
+		var params *rpcclient.SubscribeSwapStatusRequestParams
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		id, ok := idi.(float64)
-		if !ok {
-			return fmt.Errorf("failed to cast id parameter to float64: got %T", idi)
-		}
-
-		return s.subscribeSwapStatus(s.ctx, conn, uint64(id))
+		return s.subscribeSwapStatus(s.ctx, conn, params.ID)
 	case subscribeTakeOffer:
-		maddri, has := req.Params["multiaddr"]
-		if !has {
-			return errors.New("params missing multiaddr field")
+		var params *rpcclient.SubscribeTakeOfferParams
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		maddr, ok := maddri.(string)
-		if !ok {
-			return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", maddri)
-		}
-
-		offerIDi, has := req.Params["offerID"]
-		if !has {
-			return errors.New("params missing offerID field")
-		}
-
-		offerID, ok := offerIDi.(string)
-		if !ok {
-			return fmt.Errorf("failed to cast multiaddr parameter to string: got %T", offerIDi)
-		}
-
-		providesi, has := req.Params["providesAmount"]
-		if !has {
-			return errors.New("params missing providesAmount field")
-		}
-
-		providesAmount, ok := providesi.(float64)
-		if !ok {
-			return fmt.Errorf("failed to cast providesAmount parameter to float64: got %T", providesi)
-		}
-
-		id, ch, err := s.ns.takeOffer(maddr, offerID, providesAmount)
+		id, ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, id, ch)
+		return s.subscribeTakeOffer(s.ctx, conn, id, ch, infofile)
+	case subscribeMakeOffer:
+		var params *MakeOfferRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
+		}
+
+		offerID, offerExtra, err := s.ns.makeOffer(params)
+		if err != nil {
+			return err
+		}
+
+		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
 	default:
 		return errors.New("invalid method")
 	}
 }
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	id uint64, statusCh <-chan types.Status) error {
-	// firstly write swap ID
-	idMsg := map[string]uint64{
-		"id": id,
+	id uint64, statusCh <-chan types.Status, infofile string) error {
+	resp := &TakeOfferResponse{
+		ID:       id,
+		InfoFile: infofile,
 	}
 
-	if err := writeResponse(conn, idMsg); err != nil {
+	if err := writeResponse(conn, resp); err != nil {
 		return err
 	}
 
@@ -155,7 +134,64 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 			}
 
 			resp := &SubscribeSwapStatusResponse{
-				Stage: status.String(),
+				Status: status.String(),
+			}
+
+			if err := writeResponse(conn, resp); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
+	offerID string, offerExtra *types.OfferExtra) error {
+
+	// firstly write offer ID
+	resp := &MakeOfferResponse{
+		ID:       offerID,
+		InfoFile: offerExtra.InfoFile,
+	}
+
+	if err := writeResponse(conn, resp); err != nil {
+		return err
+	}
+
+	// then check for swap ID to be sent when swap is initiated
+	var taken bool
+	for {
+		if taken {
+			break
+		}
+
+		select {
+		case id := <-offerExtra.IDCh:
+			idMsg := map[string]uint64{
+				"id": id,
+			}
+
+			if err := writeResponse(conn, idMsg); err != nil {
+				return err
+			}
+
+			taken = true
+		case <-ctx.Done():
+			return nil
+		}
+	}
+
+	// finally, read the swap's status
+	for {
+		select {
+		case status, ok := <-offerExtra.StatusCh:
+			if !ok {
+				return nil
+			}
+
+			resp := &SubscribeSwapStatusResponse{
+				Status: status.String(),
 			}
 
 			if err := writeResponse(conn, resp); err != nil {
@@ -185,7 +221,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 			}
 
 			resp := &SubscribeSwapStatusResponse{
-				Stage: status.String(),
+				Status: status.String(),
 			}
 
 			if err := writeResponse(conn, resp); err != nil {
@@ -204,7 +240,7 @@ func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id uint64) error {
 	}
 
 	resp := &SubscribeSwapStatusResponse{
-		Stage: info.Status().String(),
+		Status: info.Status().String(),
 	}
 
 	if err := writeResponse(conn, resp); err != nil {

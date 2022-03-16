@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
+
+var infofile = os.TempDir() + "/test.keys"
 
 var (
 	_            = logging.SetLogLevel("bob", "debug")
@@ -77,8 +80,7 @@ func newTestBob(t *testing.T) *Instance {
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	bob := newTestBob(t)
-
-	swapState, err := newSwapState(bob, types.Hash{}, common.MoneroAmount(33), desiredAmout)
+	swapState, err := newSwapState(bob, &types.Offer{}, nil, infofile, common.MoneroAmount(33), desiredAmout)
 	require.NoError(t, err)
 	return bob, swapState
 }
@@ -420,34 +422,31 @@ func TestSwapState_ProtocolExited_Aborted(t *testing.T) {
 
 func TestSwapState_ProtocolExited_Success(t *testing.T) {
 	b, s := newTestInstance(t)
-	offer := &types.Offer{
+	s.offer = &types.Offer{
 		Provides:      types.ProvidesXMR,
 		MinimumAmount: 0.1,
 		MaximumAmount: 0.2,
 		ExchangeRate:  0.1,
 	}
-	b.MakeOffer(offer)
-	s.offerID = offer.GetID()
 
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.ProtocolExited()
 	require.NoError(t, err)
-	require.Nil(t, b.offerManager.getOffer(offer.GetID()))
+	require.Nil(t, b.offerManager.offers[s.offer.GetID()])
 }
 
 func TestSwapState_ProtocolExited_Refunded(t *testing.T) {
 	b, s := newTestInstance(t)
-	offer := &types.Offer{
+	s.offer = &types.Offer{
 		Provides:      types.ProvidesXMR,
 		MinimumAmount: 0.1,
 		MaximumAmount: 0.2,
 		ExchangeRate:  0.1,
 	}
-	b.MakeOffer(offer)
-	s.offerID = offer.GetID()
+	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.ProtocolExited()
 	require.NoError(t, err)
-	require.NotNil(t, b.offerManager.getOffer(offer.GetID()))
+	require.NotNil(t, b.offerManager.offers[s.offer.GetID()])
 }

@@ -33,6 +33,7 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
+	infofile string
 
 	info     *pswap.Info
 	statusCh chan types.Status
@@ -62,7 +63,7 @@ type swapState struct {
 	claimedCh   chan struct{}
 }
 
-func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, error) {
+func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -84,12 +85,21 @@ func newSwapState(a *Instance, providesAmount common.EtherAmount) (*swapState, e
 		ctx:                 ctx,
 		cancel:              cancel,
 		alice:               a,
+		infofile:            infofile,
 		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
 		info:                info,
 		statusCh:            statusCh,
+	}
+
+	if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
+		return nil, err
+	}
+
+	if err := pcommon.WriteContractAddressToFile(s.infofile, a.contractAddr.String()); err != nil {
+		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
 	return s, nil
@@ -107,6 +117,11 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
 	}, nil
+}
+
+// InfoFile returns the swap's infofile path
+func (s *swapState) InfoFile() string {
+	return s.infofile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -288,8 +303,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	fp := fmt.Sprintf("%s/%d/alice-secret", s.alice.basepath, s.info.ID())
-	return mcrypto.WriteKeysToFile(fp, s.privkeys, s.alice.env)
+	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.alice.env)
 }
 
 // generateKeys generates Alice's monero spend and view keys (S_b, V_b), a secp256k1 public key,
@@ -402,8 +416,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	fp := fmt.Sprintf("%s/%d/swap-secret", s.alice.basepath, s.info.ID())
-	if err := mcrypto.WriteKeysToFile(fp, kpAB, s.alice.env); err != nil {
+	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.alice.env); err != nil {
 		return "", err
 	}
 

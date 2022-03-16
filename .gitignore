@@ -52,3 +52,4 @@ Cargo.lock
 
 *.key
 log
+*.log

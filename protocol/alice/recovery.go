@@ -12,6 +12,7 @@ import (
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
+	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -54,6 +55,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
+		infofile:       pcommon.GetSwapRecoveryFilepath(a.basepath),
 	}
 
 	rs := &recoveryState{
