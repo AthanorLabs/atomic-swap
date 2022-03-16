@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/noot/atomic-swap/cmd/client/client"
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/monero"
 
@@ -21,10 +23,12 @@ const (
 	testsEnv        = "TESTS"
 	integrationMode = "integration"
 
-	defaultAliceTestLibp2pKey  = "alice.key"
-	defaultAliceDaemonEndpoint = "http://localhost:5001"
-	defaultBobDaemonEndpoint   = "http://localhost:5002"
-	defaultDiscoverTimeout     = 2 // 2 seconds
+	defaultAliceTestLibp2pKey    = "alice.key"
+	defaultAliceDaemonEndpoint   = "http://localhost:5001"
+	defaultAliceDaemonWSEndpoint = "ws://localhost:8081"
+	defaultBobDaemonEndpoint     = "http://localhost:5002"
+	defaultBobDaemonWSEndpoint   = "ws://localhost:8082"
+	defaultDiscoverTimeout       = 2 // 2 seconds
 
 	bobProvideAmount = float64(1.0)
 	exchangeRate     = float64(0.05)
@@ -211,20 +215,66 @@ func TestAlice_Query(t *testing.T) {
 }
 
 func TestAlice_TakeOffer(t *testing.T) {
-	startNodes(t)
+	const testTimeout = time.Second * 5
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
-	offerID, err := bc.MakeOffer(0.1, bobProvideAmount, exchangeRate)
+	startNodes(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	bwsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
+	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+		types.ExchangeRate(exchangeRate))
+	require.NoError(t, err)
 
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		select {
+		case taken := <-takenCh:
+			t.Log("swap ID: ", taken.ID)
+		case <-time.After(testTimeout):
+			t.Fatal("make offer subscription timed out")
+		}
+
+		for status := range statusCh {
+			if !status.IsOngoing() {
+				continue
+			}
+
+			require.Equal(t, types.CompletedSuccess, status)
+		}
+
+		wg.Done()
+	}()
+
+	c := client.NewClient(defaultAliceDaemonEndpoint)
+	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	require.NoError(t, err)
+
+	// TODO: implement discovery over websockets
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	id, err := c.TakeOffer(providers[0][0], offerID, 0.1)
+	id, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.1)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), id)
+
+	go func() {
+		for status := range takerStatusCh {
+			if !status.IsOngoing() {
+				continue
+			}
+
+			require.Equal(t, types.CompletedSuccess, status)
+		}
+
+		wg.Done()
+	}()
+
+	wg.Wait()
 }

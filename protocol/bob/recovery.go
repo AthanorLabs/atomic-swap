@@ -49,7 +49,7 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
-		infofile:       pcommon.GetSwapRecoveryFilepath(a.basepath),
+		infofile:       pcommon.GetSwapRecoveryFilepath(b.basepath),
 	}
 
 	if err := s.setContract(contractAddr); err != nil {
