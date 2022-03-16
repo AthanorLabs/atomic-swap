@@ -204,7 +204,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		}
 	}()
 
-	return id, respCh, nil
+	return idResp.ID, respCh, nil
 }
 
 // MakeOfferRequest ...
