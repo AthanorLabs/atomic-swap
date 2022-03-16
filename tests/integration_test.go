@@ -117,6 +117,10 @@ func TestTakeOffer_HappyPath(t *testing.T) {
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
+	bc := client.NewClient(defaultBobDaemonEndpoint)
+	offersBefore, err := bc.GetOffers()
+	require.NoError(t, err)
+
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
 
@@ -184,4 +188,8 @@ func TestTakeOffer_HappyPath(t *testing.T) {
 	require.NoError(t, err)
 	bobSwapID := <-bobIDCh
 	require.Equal(t, id, bobSwapID)
+
+	offersAfter, err := bc.GetOffers()
+	require.NoError(t, err)
+	require.Equal(t, 1, len(offersBefore)-len(offersAfter))
 }

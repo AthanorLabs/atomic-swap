@@ -122,6 +122,7 @@ type Bob interface {
 	Protocol
 	MakeOffer(offer *types.Offer) (*types.OfferExtra, error)
 	SetMoneroWalletFile(file, password string) error
+	GetOffers() []*types.Offer
 }
 
 // SwapManager ...
