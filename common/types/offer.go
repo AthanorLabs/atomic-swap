@@ -63,3 +63,10 @@ func (o *Offer) String() string {
 		o.ExchangeRate,
 	)
 }
+
+// OfferExtra represents extra data that is passed when an offer is made.
+type OfferExtra struct {
+	IDCh     chan uint64
+	StatusCh chan Status
+	InfoFile string
+}

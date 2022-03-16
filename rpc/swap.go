@@ -132,3 +132,14 @@ func (s *SwapService) GetStage(_ *http.Request, _ *interface{}, resp *GetStageRe
 	resp.Info = info.Status().Info()
 	return nil
 }
+
+// GetOffersResponse ...
+type GetOffersResponse struct {
+	Offers []*types.Offer `json:"offers"`
+}
+
+// GetOffers returns the currently available offers.
+func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
+	resp.Offers = s.bob.GetOffers()
+	return nil
+}

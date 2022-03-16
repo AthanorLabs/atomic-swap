@@ -110,7 +110,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		},
 		ethAddress:   addr,
 		chainID:      cfg.ChainID,
-		offerManager: newOfferManager(),
+		offerManager: newOfferManager(cfg.Basepath),
 		swapManager:  cfg.SwapManager,
 	}, nil
 }

@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"math/big"
-	"os"
 	"testing"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -61,11 +60,4 @@ func TestWaitForReceipt(t *testing.T) {
 	receipt, err := WaitForReceipt(ctx, ec, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, tx.Hash(), receipt.TxHash)
-}
-
-func TestWriteContractAddrssToFile(t *testing.T) {
-	addr := "0xabcd"
-	basepath := os.TempDir() + "/"
-	err := WriteContractAddressToFile(basepath, addr)
-	require.NoError(t, err)
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	pcommon "github.com/noot/atomic-swap/protocol"
 
 	"github.com/fatih/color" //nolint:misspell
 )
@@ -42,7 +43,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount) error {
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	a.swapState, err = newSwapState(a, providesAmount)
+	a.swapState, err = newSwapState(a, pcommon.GetSwapInfoFilepath(a.basepath), providesAmount)
 	if err != nil {
 		return err
 	}

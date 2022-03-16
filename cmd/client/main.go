@@ -82,6 +82,10 @@ var (
 						Name:  "exchange-rate",
 						Usage: "desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
 					},
+					&cli.BoolFlag{
+						Name:  "subscribe",
+						Usage: "subscribe to push notifications about the swap's status",
+					},
 					daemonAddrFlag,
 				},
 			},
@@ -251,6 +255,32 @@ func runMake(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
 	if endpoint == "" {
 		endpoint = defaultSwapdAddress
+	}
+
+	if ctx.Bool("subscribe") {
+		c, err := rpcclient.NewWsClient(context.Background(), endpoint)
+		if err != nil {
+			return err
+		}
+
+		id, takenCh, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Made offer with ID=%s\n", id)
+
+		taken := <-takenCh
+		fmt.Printf("Offer taken! Swap ID=%d\n", taken.ID)
+
+		for stage := range statusCh {
+			fmt.Printf("> Stage updated: %s\n", stage)
+			if !stage.IsOngoing() {
+				return nil
+			}
+		}
+
+		return nil
 	}
 
 	c := client.NewClient(endpoint)

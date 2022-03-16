@@ -106,6 +106,11 @@ Firstly, we need Bob to make an offer and advertise it, so that Alice can take i
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
+Alternatively, you can make the offer via websockets and get notified when the swap is taken:
+```bash
+./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --daemon-addr=ws://localhost:8082 --subscribe
+```
+
 Now, we can have Alice begin discovering peers who have offers advertised.
 ```bash
 ./swapcli discover --provides XMR --search-time 3
@@ -122,6 +127,11 @@ Now, we can tell Alice to initiate the protocol w/ the peer (Bob), the offer (co
 ```bash
 ./swapcli take --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
 # Initiated swap with ID=0
+```
+
+Alternatively, you can take the offer via websockets and get notified when the swap status updates:
+```bash
+./swapcli take --multiaddr /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --daemon-addr=ws://localhost:8081
 ```
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.

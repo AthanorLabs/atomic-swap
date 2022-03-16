@@ -5,44 +5,66 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	pcommon "github.com/noot/atomic-swap/protocol"
 )
 
-type offerManager struct {
-	offers map[types.Hash]*types.Offer
+type offerWithExtra struct {
+	offer *types.Offer
+	extra *types.OfferExtra
 }
 
-func newOfferManager() *offerManager {
+type offerManager struct {
+	offers   map[types.Hash]*offerWithExtra
+	basepath string
+}
+
+func newOfferManager(basepath string) *offerManager {
 	return &offerManager{
-		offers: make(map[types.Hash]*types.Offer),
+		offers:   make(map[types.Hash]*offerWithExtra),
+		basepath: basepath,
 	}
 }
 
-func (om *offerManager) putOffer(o *types.Offer) {
-	om.offers[o.GetID()] = o
+func (om *offerManager) putOffer(o *types.Offer) *types.OfferExtra {
+	extra := &types.OfferExtra{
+		IDCh:     make(chan uint64, 1),
+		StatusCh: make(chan types.Status, 7),
+		InfoFile: pcommon.GetSwapInfoFilepath(om.basepath),
+	}
+
+	oe := &offerWithExtra{
+		offer: o,
+		extra: extra,
+	}
+
+	om.offers[o.GetID()] = oe
+	return extra
 }
 
-func (om *offerManager) getOffer(id types.Hash) *types.Offer {
-	return om.offers[id]
-}
+func (om *offerManager) getAndDeleteOffer(id types.Hash) (*types.Offer, *types.OfferExtra) {
+	offer, has := om.offers[id]
+	if !has {
+		return nil, nil
+	}
 
-func (om *offerManager) deleteOffer(id types.Hash) {
 	delete(om.offers, id)
+	return offer.offer, offer.extra
 }
 
 // MakeOffer makes a new swap offer.
-func (b *Instance) MakeOffer(o *types.Offer) error {
+func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
 	balance, err := b.client.GetBalance(0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if common.MoneroAmount(balance.UnlockedBalance) < common.MoneroToPiconero(o.MaximumAmount) {
-		return errors.New("unlocked balance is less than maximum offer amount")
+		return nil, errors.New("unlocked balance is less than maximum offer amount")
 	}
 
-	b.offerManager.putOffer(o)
+	extra := b.offerManager.putOffer(o)
 	log.Infof("created new offer: %v", o)
-	return nil
+	return extra, nil
 }
 
 // GetOffers returns all current offers.
@@ -50,7 +72,7 @@ func (b *Instance) GetOffers() []*types.Offer {
 	offers := make([]*types.Offer, len(b.offerManager.offers))
 	i := 0
 	for _, o := range b.offerManager.offers {
-		offers[i] = o
+		offers[i] = o.offer
 		i++
 	}
 	return offers

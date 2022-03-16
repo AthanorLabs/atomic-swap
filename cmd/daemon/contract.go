@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/noot/atomic-swap/common"
+	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -37,7 +38,7 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, b
 
 		// store the contract address on disk
 		fp := fmt.Sprintf("%s/contractaddress", basepath)
-		if err = common.WriteContractAddressToFile(fp, address.String()); err != nil {
+		if err = pcommon.WriteContractAddressToFile(fp, address.String()); err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
 		}
 	} else {
