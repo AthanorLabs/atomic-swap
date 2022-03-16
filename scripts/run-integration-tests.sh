@@ -31,6 +31,15 @@ GANACHE_CLI_PID=$!
 # wait for servers to start
 sleep 10
 
+# start alice and bob swapd instances
+echo "starting alice, logs in ./tests/alice.log"
+bash scripts/build.sh
+./swapd --dev-alice --libp2p-key=./tests/alice.key &> ./tests/alice.log &
+sleep 3
+echo "starting bob, logs in ./tests/bob.log"
+./swapd --dev-bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 --wallet-file test-wallet &> ./tests/bob.log &
+sleep 3 
+
 # run tests
 echo "running integration tests..."
 TESTS=integration go test ./tests -v

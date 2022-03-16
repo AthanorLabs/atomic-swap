@@ -6,10 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
+	//"os/exec"
 	"sync"
 	"testing"
-	"time"
+	//"time"
 
 	"github.com/noot/atomic-swap/cmd/client/client"
 	"github.com/noot/atomic-swap/common"
@@ -46,11 +46,11 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
-	cmd := exec.Command("../scripts/build.sh")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		panic(fmt.Sprintf("%s\n%s", out, err))
-	}
+	// cmd := exec.Command("../scripts/build.sh")
+	// out, err := cmd.CombinedOutput()
+	// if err != nil {
+	// 	panic(fmt.Sprintf("%s\n%s", out, err))
+	// }
 
 	c := monero.NewClient(common.DefaultBobMoneroEndpoint)
 	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
@@ -73,114 +73,114 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) {
-	cmd := exec.Command("../swapd", args...)
+// func startSwapDaemon(t *testing.T, done <-chan struct{}, args ...string) {
+// 	cmd := exec.Command("../swapd", args...)
 
-	wg := new(sync.WaitGroup)
-	wg.Add(2)
+// 	wg := new(sync.WaitGroup)
+// 	wg.Add(2)
 
-	type errOut struct {
-		err error
-		out string
-	}
+// 	type errOut struct {
+// 		err error
+// 		out string
+// 	}
 
-	errCh := make(chan *errOut)
-	go func() {
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			errCh <- &errOut{
-				err: err,
-				out: string(out),
-			}
-		}
+// 	errCh := make(chan *errOut)
+// 	go func() {
+// 		out, err := cmd.CombinedOutput()
+// 		if err != nil {
+// 			errCh <- &errOut{
+// 				err: err,
+// 				out: string(out),
+// 			}
+// 		}
 
-		wg.Done()
-	}()
+// 		wg.Done()
+// 	}()
 
-	go func() {
-		defer wg.Done()
+// 	go func() {
+// 		defer wg.Done()
 
-		select {
-		case <-done:
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-			// drain errCh
-			<-errCh
-			return
-		case err := <-errCh:
-			fmt.Println("program exited early: ", err.err)
-			fmt.Println("output: ", err.out)
-		}
-	}()
+// 		select {
+// 		case <-done:
+// 			_ = cmd.Process.Kill()
+// 			_ = cmd.Wait()
+// 			// drain errCh
+// 			<-errCh
+// 			return
+// 		case err := <-errCh:
+// 			fmt.Println("program exited early: ", err.err)
+// 			fmt.Println("output: ", err.out)
+// 		}
+// 	}()
 
-	t.Cleanup(func() {
-		wg.Wait()
-	})
+// 	t.Cleanup(func() {
+// 		wg.Wait()
+// 	})
 
-	time.Sleep(time.Second * 5)
-}
+// 	time.Sleep(time.Second * 5)
+// }
 
-func startAlice(t *testing.T, done <-chan struct{}) []string {
-	startSwapDaemon(t, done, "--dev-alice",
-		"--libp2p-key", defaultAliceTestLibp2pKey,
-	)
-	c := client.NewClient(defaultAliceDaemonEndpoint)
-	addrs, err := c.Addresses()
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(addrs), 1)
-	return addrs
-}
+// func startAlice(t *testing.T, done <-chan struct{}) []string {
+// 	startSwapDaemon(t, done, "--dev-alice",
+// 		"--libp2p-key", defaultAliceTestLibp2pKey,
+// 	)
+// 	c := client.NewClient(defaultAliceDaemonEndpoint)
+// 	addrs, err := c.Addresses()
+// 	require.NoError(t, err)
+// 	require.GreaterOrEqual(t, len(addrs), 1)
+// 	return addrs
+// }
 
-func startBob(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
-	startSwapDaemon(t, done, "--dev-bob",
-		"--bootnodes", aliceMultiaddr,
-		"--wallet-file", "test-wallet",
-	)
-}
+// func startBob(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
+// 	startSwapDaemon(t, done, "--dev-bob",
+// 		"--bootnodes", aliceMultiaddr,
+// 		"--wallet-file", "test-wallet",
+// 	)
+// }
 
-// charlie doesn't provide any coin or participate in any swap.
-// he is just a node running the p2p protocol.
-func startCharlie(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
-	startSwapDaemon(t, done,
-		"--libp2p-port", "9955",
-		"--rpc-port", "5003",
-		"--bootnodes", aliceMultiaddr)
-}
+// // charlie doesn't provide any coin or participate in any swap.
+// // he is just a node running the p2p protocol.
+// func startCharlie(t *testing.T, done <-chan struct{}, aliceMultiaddr string) {
+// 	startSwapDaemon(t, done,
+// 		"--libp2p-port", "9955",
+// 		"--rpc-port", "5003",
+// 		"--bootnodes", aliceMultiaddr)
+// }
 
-func startNodes(t *testing.T) {
-	done := make(chan struct{})
+// func startNodes(t *testing.T) {
+// 	done := make(chan struct{})
 
-	addrs := startAlice(t, done)
-	startBob(t, done, addrs[0])
-	startCharlie(t, done, addrs[0])
+// 	addrs := startAlice(t, done)
+// 	startBob(t, done, addrs[0])
+// 	startCharlie(t, done, addrs[0])
 
-	t.Cleanup(func() {
-		close(done)
-	})
-}
+// 	t.Cleanup(func() {
+// 		close(done)
+// 	})
+// }
 
-func TestStartAlice(t *testing.T) {
-	done := make(chan struct{})
-	_ = startAlice(t, done)
-	close(done)
-}
+// func TestStartAlice(t *testing.T) {
+// 	done := make(chan struct{})
+// 	_ = startAlice(t, done)
+// 	close(done)
+// }
 
-func TestStartBob(t *testing.T) {
-	done := make(chan struct{})
-	addrs := startAlice(t, done)
-	startBob(t, done, addrs[0])
-	close(done)
-}
+// func TestStartBob(t *testing.T) {
+// 	done := make(chan struct{})
+// 	addrs := startAlice(t, done)
+// 	startBob(t, done, addrs[0])
+// 	close(done)
+// }
 
-func TestStartCharlie(t *testing.T) {
-	done := make(chan struct{})
-	addrs := startAlice(t, done)
-	startCharlie(t, done, addrs[0])
-	close(done)
-}
+// func TestStartCharlie(t *testing.T) {
+// 	done := make(chan struct{})
+// 	addrs := startAlice(t, done)
+// 	startCharlie(t, done, addrs[0])
+// 	close(done)
+// }
 
 func TestAlice_Discover(t *testing.T) {
-	startNodes(t)
+	//startNodes(t)
 	bc := client.NewClient(defaultBobDaemonEndpoint)
 	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestAlice_Discover(t *testing.T) {
 }
 
 func TestBob_Discover(t *testing.T) {
-	startNodes(t)
+	//startNodes(t)
 	c := client.NewClient(defaultBobDaemonEndpoint)
 	providers, err := c.Discover(types.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestBob_Discover(t *testing.T) {
 }
 
 func TestAlice_Query(t *testing.T) {
-	startNodes(t)
+	//startNodes(t)
 	bc := client.NewClient(defaultBobDaemonEndpoint)
 	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestAlice_Query(t *testing.T) {
 func TestAlice_TakeOffer(t *testing.T) {
 	//const testTimeout = time.Second * 5
 
-	startNodes(t)
+	//startNodes(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
