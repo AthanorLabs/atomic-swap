@@ -248,7 +248,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.alice.ethClient.BalanceAt(s.ctx, s.alice.contractAddr, nil)
+	balance, err := s.alice.ethClient.BalanceAt(context.Background(), s.alice.contractAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
