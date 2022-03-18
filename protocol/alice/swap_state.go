@@ -380,8 +380,14 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
+	const revertSwapCompleted = "swap is already completed"
+
 	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwapID)
 	if err != nil {
+		if err.Error() == revertSwapCompleted && !s.info.Status().IsOngoing() {
+			return nil
+		}
+
 		return err
 	}
 
@@ -407,7 +413,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
-		if err.Error() == revertSwapCompleted {
+		if err.Error() == revertSwapCompleted && !s.info.Status().IsOngoing() {
 			return ethcommon.Hash{}, nil
 		}
 
