@@ -147,3 +147,10 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		}
 	}
 }
+
+// CloseProtocolStream closes the current swap protocol stream.
+func (h *host) CloseProtocolStream() {
+	stream := h.swapStream
+	log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
+	_ = stream.Close()
+}

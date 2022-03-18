@@ -49,6 +49,7 @@ func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
 func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error {
 	return nil
 }
+func (*mockNet) CloseProtocolStream() {}
 
 type mockSwapManager struct{}
 

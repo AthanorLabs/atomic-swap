@@ -152,6 +152,10 @@ func (s *swapState) ID() uint64 {
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not doing anything in regards to the protoco.
 func (s *swapState) Exit() error {
+	if s == nil {
+		return errors.New("swap state is nil")
+	}
+
 	s.Lock()
 	defer s.Unlock()
 
@@ -183,12 +187,12 @@ func (s *swapState) Exit() error {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
 		s.clearNextExpectedMessage(types.CompletedAbort)
-		return errSwapAborted
+		return nil
 	case *message.NotifyETHLocked:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
 		s.clearNextExpectedMessage(types.CompletedAbort)
-		return errSwapAborted
+		return nil
 	case *message.NotifyReady:
 		// we should check if Alice refunded, if so then check contract for secret
 		address, err := s.tryReclaimMonero()

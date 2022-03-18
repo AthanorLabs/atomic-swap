@@ -14,14 +14,16 @@ type SwapService struct {
 	sm    SwapManager
 	alice Alice
 	bob   Bob
+	net   Net
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, alice Alice, bob Bob) *SwapService {
+func NewSwapService(sm SwapManager, alice Alice, bob Bob, net Net) *SwapService {
 	return &SwapService{
 		sm:    sm,
 		alice: alice,
 		bob:   bob,
+		net:   net,
 	}
 }
 
@@ -169,6 +171,7 @@ func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelRespon
 	if err := ss.Exit(); err != nil {
 		return err
 	}
+	s.net.CloseProtocolStream()
 
 	info = s.sm.GetPastSwap(info.ID())
 	resp.Status = info.Status()

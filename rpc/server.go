@@ -52,7 +52,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob, cfg.Net), "swap"); err != nil {
 		return nil, err
 	}
 

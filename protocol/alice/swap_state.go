@@ -172,7 +172,7 @@ func (s *swapState) Exit() error {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
 		s.clearNextExpectedMessage(types.CompletedAbort)
-		return errSwapAborted
+		return nil
 	case *message.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()

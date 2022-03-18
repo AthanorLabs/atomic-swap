@@ -20,6 +20,10 @@ import (
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+	if s == nil {
+		return nil, true, errors.New("swap state is nil")
+	}
+
 	s.Lock()
 	defer s.Unlock()
 
@@ -199,7 +203,6 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setAlicePublicKeys(kp, secp256k1Pub)
-	s.setNextExpectedMessage(&message.NotifyETHLocked{})
 	return nil
 }
 
