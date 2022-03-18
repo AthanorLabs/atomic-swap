@@ -396,6 +396,8 @@ func (s *swapState) ready() error {
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
+	const revertSwapCompleted = "swap is already completed"
+
 	if s.alice.contract == nil {
 		return ethcommon.Hash{}, errors.New("contract is nil")
 	}
@@ -405,6 +407,10 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
+		if err.Error() == revertSwapCompleted {
+			return ethcommon.Hash{}, nil
+		}
+
 		return ethcommon.Hash{}, err
 	}
 
