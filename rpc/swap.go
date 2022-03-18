@@ -97,6 +97,7 @@ type RefundResponse struct {
 }
 
 // Refund refunds the ongoing swap if we are the ETH provider.
+// TODO: remove in favour of swap_cancel?
 func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundResponse) error {
 	info := s.sm.GetOngoingSwap()
 	if info == nil {

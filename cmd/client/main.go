@@ -145,6 +145,12 @@ var (
 				Flags:  []cli.Flag{daemonAddrFlag},
 			},
 			{
+				Name:   "cancel",
+				Usage:  "cancel the ongoing swap if possible.",
+				Action: runCancel,
+				Flags:  []cli.Flag{daemonAddrFlag},
+			},
+			{
 				Name:   "get-stage",
 				Usage:  "get the stage of the current swap.",
 				Action: runGetStage,
@@ -424,6 +430,22 @@ func runRefund(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Refunded successfully, transaction hash: %s\n", resp.TxHash)
+	return nil
+}
+
+func runCancel(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	resp, err := c.Cancel()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Cancelled successfully, exit status: %s\n", resp)
 	return nil
 }
 
