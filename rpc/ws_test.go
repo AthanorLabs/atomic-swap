@@ -93,7 +93,7 @@ type mockSwapState struct{}
 func (*mockSwapState) HandleProtocolMessage(msg message.Message) (resp message.Message, done bool, err error) {
 	return nil, true, nil
 }
-func (*mockSwapState) ProtocolExited() error {
+func (*mockSwapState) Exit() error {
 	return nil
 }
 func (*mockSwapState) SendKeysMessage() (*message.SendKeysMessage, error) {

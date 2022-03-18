@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 )
 
@@ -141,5 +142,34 @@ type GetOffersResponse struct {
 // GetOffers returns the currently available offers.
 func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
 	resp.Offers = s.bob.GetOffers()
+	return nil
+}
+
+// CancelResponse ...
+type CancelResponse struct {
+	Status types.Status `json:"status"`
+}
+
+// Cancel attempts to cancel the currently ongoing swap, if there is one.
+func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelResponse) error {
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return errors.New("no current ongoing swap")
+	}
+
+	var ss common.SwapState
+	switch info.Provides() {
+	case types.ProvidesETH:
+		ss = s.alice.GetOngoingSwapState()
+	case types.ProvidesXMR:
+		ss = s.bob.GetOngoingSwapState()
+	}
+
+	if err := ss.Exit(); err != nil {
+		return err
+	}
+
+	info = s.sm.GetPastSwap(info.ID())
+	resp.Status = info.Status()
 	return nil
 }

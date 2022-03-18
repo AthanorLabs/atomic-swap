@@ -148,9 +148,10 @@ func (s *swapState) ID() uint64 {
 	return s.info.ID()
 }
 
-// ProtocolExited is called by the network when the protocol stream closes.
-// If it closes prematurely, we need to perform recovery.
-func (s *swapState) ProtocolExited() error {
+// Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
+// It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
+// If the swap already completed successfully, this function does not doing anything in regards to the protoco.
+func (s *swapState) Exit() error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -213,7 +214,7 @@ func (s *swapState) ProtocolExited() error {
 		return nil
 	default:
 		s.clearNextExpectedMessage(types.CompletedAbort)
-		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
+		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
 		return errUnexpectedMessageType
 	}
 }

@@ -14,7 +14,7 @@ type SwapState interface {
 // It is implemented by *alice.swapState and *bob.swapState
 type SwapStateNet interface {
 	HandleProtocolMessage(msg message.Message) (resp message.Message, done bool, err error)
-	ProtocolExited() error
+	Exit() error
 }
 
 // SwapStateRPC contains the methods used by the RPC server into the SwapState.
@@ -22,4 +22,5 @@ type SwapStateRPC interface {
 	SendKeysMessage() (*message.SendKeysMessage, error)
 	ID() uint64
 	InfoFile() string
+	Exit() error
 }

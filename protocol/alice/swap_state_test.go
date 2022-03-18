@@ -337,18 +337,18 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-func TestProtocolExited_afterSendKeysMessage(t *testing.T) {
+func TestExit_afterSendKeysMessage(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
-	err := s.ProtocolExited()
+	err := s.Exit()
 	require.Equal(t, errSwapAborted, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }
 
-func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
+func TestExit_afterNotifyXMRLock(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
@@ -365,13 +365,13 @@ func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
-func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
+func TestExit_afterNotifyClaimed(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyClaimed{}
@@ -388,13 +388,13 @@ func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
-func TestProtocolExited_invalidNextMessageType(t *testing.T) {
+func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	_, s := newTestInstance(t)
 	defer s.cancel()
@@ -412,7 +412,7 @@ func TestProtocolExited_invalidNextMessageType(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())

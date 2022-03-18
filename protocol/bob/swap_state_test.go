@@ -358,7 +358,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 }
 
 // test that if the protocol exits early, and Alice refunds, Bob can reclaim his monero
-func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
+func TestSwapState_Exit_Reclaim(t *testing.T) {
 	bob, s := newTestInstance(t)
 
 	err := s.generateAndSetKeys()
@@ -393,7 +393,7 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
 	s.nextExpectedMessage = &message.NotifyReady{}
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.NoError(t, err)
 
 	balance, err := bob.client.GetBalance(0)
@@ -402,25 +402,25 @@ func TestSwapState_ProtocolExited_Reclaim(t *testing.T) {
 	require.Equal(t, types.CompletedRefund, s.info.Status())
 }
 
-func TestSwapState_ProtocolExited_Aborted(t *testing.T) {
+func TestSwapState_Exit_Aborted(t *testing.T) {
 	_, s := newTestInstance(t)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
-	err := s.ProtocolExited()
+	err := s.Exit()
 	require.Equal(t, errSwapAborted, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 
 	s.nextExpectedMessage = &message.NotifyContractDeployed{}
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.Equal(t, errSwapAborted, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 
 	s.nextExpectedMessage = nil
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }
 
-func TestSwapState_ProtocolExited_Success(t *testing.T) {
+func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestInstance(t)
 	s.offer = &types.Offer{
 		Provides:      types.ProvidesXMR,
@@ -430,12 +430,12 @@ func TestSwapState_ProtocolExited_Success(t *testing.T) {
 	}
 
 	s.info.SetStatus(types.CompletedSuccess)
-	err := s.ProtocolExited()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.Nil(t, b.offerManager.offers[s.offer.GetID()])
 }
 
-func TestSwapState_ProtocolExited_Refunded(t *testing.T) {
+func TestSwapState_Exit_Refunded(t *testing.T) {
 	b, s := newTestInstance(t)
 	s.offer = &types.Offer{
 		Provides:      types.ProvidesXMR,
@@ -446,7 +446,7 @@ func TestSwapState_ProtocolExited_Refunded(t *testing.T) {
 	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedRefund)
-	err := s.ProtocolExited()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.NotNil(t, b.offerManager.offers[s.offer.GetID()])
 }

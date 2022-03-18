@@ -169,7 +169,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		_ = swapState.ProtocolExited()
+		_ = swapState.Exit()
 		return 0, nil, "", err
 	}
 
@@ -211,7 +211,7 @@ func (s *NetService) TakeOfferSync(_ *http.Request, req *TakeOfferRequest,
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		_ = swapState.ProtocolExited()
+		_ = swapState.Exit()
 		return err
 	}
 
