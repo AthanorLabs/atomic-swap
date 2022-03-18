@@ -200,6 +200,10 @@ func TestSuccess(t *testing.T) {
 }
 
 func TestRefund_AliceCancels(t *testing.T) {
+	if os.Getenv(generateBlocksEnv) != falseStr {
+		generateBlocks(64)
+	}
+	
 	const testTimeout = time.Second * 5
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -405,6 +409,10 @@ func TestRefund_BobCancels(t *testing.T) {
 // TestAbort_AliceCancels tests the case where Alice cancels the swap before any funds are locked.
 // Both parties should abort the swap successfully.
 func TestAbort_AliceCancels(t *testing.T) {
+	if os.Getenv(generateBlocksEnv) != falseStr {
+		generateBlocks(64)
+	}
+
 	const testTimeout = time.Second * 5
 
 	ctx, cancel := context.WithCancel(context.Background())
