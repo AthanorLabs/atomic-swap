@@ -137,7 +137,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyContractDeployedType, resp.Type())
+	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
@@ -398,7 +398,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyETHLocked{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)

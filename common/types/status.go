@@ -6,7 +6,7 @@ type Status byte
 const (
 	ExpectingKeys Status = iota //nolint:revive
 	KeysExchanged
-	ContractDeployed
+	ETHLocked // TODO: rename to ETHLocked
 	XMRLocked
 	ContractReady
 	// CompletedSuccess represents a successful swap.
@@ -28,8 +28,8 @@ func NewStatus(str string) Status {
 		return ExpectingKeys
 	case "KeysExchanged":
 		return KeysExchanged
-	case "ContractDeployed":
-		return ContractDeployed
+	case "ETHLocked":
+		return ETHLocked
 	case "XMRLocked":
 		return XMRLocked
 	case "ContractReady":
@@ -52,8 +52,8 @@ func (s Status) String() string {
 		return "ExpectingKeys"
 	case KeysExchanged:
 		return "KeysExchanged"
-	case ContractDeployed:
-		return "ContractDeployed"
+	case ETHLocked:
+		return "ETHLocked"
 	case XMRLocked:
 		return "XMRLocked"
 	case ContractReady:
@@ -76,7 +76,7 @@ func (s Status) Info() string {
 		return "keys have not yet been exchanged"
 	case KeysExchanged:
 		return "keys have been exchanged, but no value has been locked"
-	case ContractDeployed:
+	case ETHLocked:
 		return "the ETH provider has locked their ether, but no XMR has been locked"
 	case XMRLocked:
 		return "both the XMR and ETH providers have locked their funds"
@@ -96,7 +96,7 @@ func (s Status) Info() string {
 // IsOngoing returns true if the status means the swap has not completed
 func (s Status) IsOngoing() bool {
 	switch s {
-	case ExpectingKeys, KeysExchanged, ContractDeployed, XMRLocked, ContractReady, UnknownStatus:
+	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady, UnknownStatus:
 		return true
 	default:
 		return false

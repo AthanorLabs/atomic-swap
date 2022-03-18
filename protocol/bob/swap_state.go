@@ -184,26 +184,30 @@ func (s *swapState) Exit() error {
 		// we are fine, as we only just initiated the protocol.
 		s.clearNextExpectedMessage(types.CompletedAbort)
 		return errSwapAborted
-	case *message.NotifyContractDeployed:
+	case *message.NotifyETHLocked:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
 		s.clearNextExpectedMessage(types.CompletedAbort)
 		return errSwapAborted
 	case *message.NotifyReady:
-		// we already locked our funds - need to wait until we can claim
-		// the funds (ie. wait until after t0)
-		txHash, err := s.tryClaim()
-		if err != nil {
-			log.Errorf("failed to claim funds: err=%s", err)
-		} else {
-			log.Infof("claimed ether! transaction hash=%s", txHash)
-			return nil
-		}
-
 		// we should check if Alice refunded, if so then check contract for secret
 		address, err := s.tryReclaimMonero()
 		if err != nil {
 			log.Errorf("failed to check for refund: err=%s", err)
+
+			// TODO: depending on the error, we should either retry to refund or try to claim.
+			// we should wait for both events in the contract and proceed accordingly.
+			//
+			// we already locked our funds - need to wait until we can claim
+			// the funds (ie. wait until after t0)
+			txHash, err := s.tryClaim()
+			if err != nil {
+				log.Errorf("failed to claim funds: err=%s", err)
+			} else {
+				log.Infof("claimed ether! transaction hash=%s", txHash)
+				return nil
+			}
+
 			// TODO: keep retrying until success
 			return err
 		}

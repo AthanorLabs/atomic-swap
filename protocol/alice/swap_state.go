@@ -253,7 +253,12 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 	// TODO: also check if IsReady == true
 
-	if untilT0 > 0 && untilT1 < 0 {
+	isReady, err := s.alice.contract.IsReady(s.alice.callOpts, s.contractSwapID)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	if (untilT0 > 0 || isReady) && untilT1 < 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
 		log.Infof("waiting until time %s to refund", s.t1)
 		<-time.After(untilT1)

@@ -34,7 +34,7 @@ sleep 10
 # start alice and bob swapd instances
 echo "starting alice, logs in ./tests/alice.log"
 bash scripts/build.sh
-./swapd --dev-alice --libp2p-key=./tests/alice.key &> ./tests/alice.log &
+TESTS=integration ./swapd --dev-alice --libp2p-key=./tests/alice.key &> ./tests/alice.log &
 ALICE_PID=$!
 sleep 3
 echo "starting bob, logs in ./tests/bob.log"

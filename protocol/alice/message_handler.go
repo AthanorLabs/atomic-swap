@@ -78,6 +78,14 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {
+	if msg == nil {
+		return errors.New("message is nil")
+	}
+
+	if s.nextExpectedMessage == nil {
+		return nil
+	}
+
 	if msg.Type() != s.nextExpectedMessage.Type() {
 		return errors.New("received unexpected message")
 	}
@@ -167,7 +175,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	s.setNextExpectedMessage(&message.NotifyXMRLock{})
 
-	out := &message.NotifyContractDeployed{
+	out := &message.NotifyETHLocked{
 		Address:        s.alice.contractAddr.String(),
 		ContractSwapID: s.contractSwapID,
 	}
@@ -281,6 +289,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			}
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
+			s.clearNextExpectedMessage(types.CompletedRefund) // TODO: duplicate?
 
 			// send NotifyRefund msg
 			if err = s.alice.net.SendSwapMessage(&message.NotifyRefund{
@@ -288,6 +297,8 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			}); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
+
+			_ = s.Exit()
 		case <-s.claimedCh:
 			return
 		}

@@ -166,16 +166,16 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, &message.NotifyContractDeployed{}, s.nextExpectedMessage)
+	require.Equal(t, &message.NotifyETHLocked{}, s.nextExpectedMessage)
 	require.Equal(t, alicePubKeys.SpendKey().Hex(), s.alicePublicKeys.SpendKey().Hex())
 	require.Equal(t, alicePubKeys.ViewKey().Hex(), s.alicePublicKeys.ViewKey().Hex())
 	require.True(t, s.info.Status().IsOngoing())
 }
 
-func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T) {
+func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	bob, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyETHLocked{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -183,7 +183,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
-	msg := &message.NotifyContractDeployed{}
+	msg := &message.NotifyETHLocked{}
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingAddress, err)
 	require.Nil(t, resp)
@@ -194,7 +194,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(),
 		desiredAmout.BigInt(), duration)
 
-	msg = &message.NotifyContractDeployed{
+	msg = &message.NotifyETHLocked{
 		Address:        addr.String(),
 		ContractSwapID: defaultContractSwapID,
 	}
@@ -211,11 +211,11 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_ok(t *testing.T)
 	require.True(t, s.info.Status().IsOngoing())
 }
 
-func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testing.T) {
+func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	bob, s := newTestInstance(t)
 	defer s.cancel()
 	s.bob.net = new(mockNet)
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyETHLocked{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -223,7 +223,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	require.NoError(t, err)
 	s.setAlicePublicKeys(aliceKeysAndProof.PublicKeyPair, aliceKeysAndProof.Secp256k1PublicKey)
 
-	msg := &message.NotifyContractDeployed{}
+	msg := &message.NotifyETHLocked{}
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingAddress, err)
 	require.Nil(t, resp)
@@ -234,7 +234,7 @@ func TestSwapState_HandleProtocolMessage_NotifyContractDeployed_timeout(t *testi
 	addr, _ := newSwap(t, bob, s, s.secp256k1Pub.Keccak256(), s.aliceSecp256K1PublicKey.Keccak256(),
 		desiredAmout.BigInt(), duration)
 
-	msg = &message.NotifyContractDeployed{
+	msg = &message.NotifyETHLocked{
 		Address:        addr.String(),
 		ContractSwapID: defaultContractSwapID,
 	}
@@ -409,7 +409,7 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	require.Equal(t, errSwapAborted, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyETHLocked{}
 	err = s.Exit()
 	require.Equal(t, errSwapAborted, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())

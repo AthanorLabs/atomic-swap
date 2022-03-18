@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
+	"os"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -72,6 +73,11 @@ type Config struct {
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
+	// TODO: make this configurable via RPC
+	if os.Getenv("TESTS") == "integration" {
+		defaultTimeoutDuration = big.NewInt(10) // 10s
+	}
+
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
