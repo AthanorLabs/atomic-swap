@@ -406,12 +406,12 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	_, s := newTestInstance(t)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
-	require.Equal(t, errSwapAborted, err)
+	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
 	err = s.Exit()
-	require.Equal(t, errSwapAborted, err)
+	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 
 	s.nextExpectedMessage = nil

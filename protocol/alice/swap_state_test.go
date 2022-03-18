@@ -343,7 +343,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
-	require.Equal(t, errSwapAborted, err)
+	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }

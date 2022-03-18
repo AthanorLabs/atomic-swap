@@ -203,6 +203,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setAlicePublicKeys(kp, secp256k1Pub)
+	s.setNextExpectedMessage(&message.NotifyETHLocked{})
 	return nil
 }
 

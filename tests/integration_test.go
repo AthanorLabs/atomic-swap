@@ -203,7 +203,7 @@ func TestRefund_AliceCancels(t *testing.T) {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
-	
+
 	const testTimeout = time.Second * 5
 
 	ctx, cancel := context.WithCancel(context.Background())
