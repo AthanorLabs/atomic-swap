@@ -44,7 +44,11 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 	return nil, nil
 }
 func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
-	return &net.QueryResponse{}, nil
+	return &net.QueryResponse{
+		Offers: []*types.Offer{
+			&types.Offer{},
+		},
+	}, nil
 }
 func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error {
 	return nil
@@ -191,7 +195,9 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
 	require.NoError(t, err)
 
-	id, ch, err := c.TakeOfferAndSubscribe(testMultiaddr, "", 1)
+	offerID := (&types.Offer{}).GetID()
+
+	id, ch, err := c.TakeOfferAndSubscribe(testMultiaddr, offerID.String(), 1)
 	require.NoError(t, err)
 	require.Equal(t, id, testSwapID)
 	select {
