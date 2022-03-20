@@ -46,6 +46,35 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 	return sk, nil
 }
 
+// CheckIfLogIDMatches returns true if the sawp ID in the log matches the given ID, false otherwise.
+func CheckIfLogIDMatches(log ethtypes.Log, event string, id *big.Int) (bool, error) {
+	if event != "Refunded" && event != "Claimed" {
+		return false, errors.New("invalid event name, must be one of Claimed or Refunded")
+	}
+
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	if err != nil {
+		return false, err
+	}
+
+	data := log.Data
+	res, err := abi.Unpack(event, data)
+	if err != nil {
+		return false, err
+	}
+
+	if len(res) < 2 {
+		return false, errors.New("log had not enough parameters")
+	}
+
+	eventID := res[0].(*big.Int)
+	if eventID.Cmp(id) != 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) (*big.Int, error) {
 	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))

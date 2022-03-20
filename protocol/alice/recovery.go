@@ -9,6 +9,7 @@ import (
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
@@ -132,6 +133,8 @@ func (rs *recoveryState) setContract(address ethcommon.Address) error {
 }
 
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
+	const claimedEvent = "Claimed"
+
 	logs, err := s.alice.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.alice.contractAddr},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
@@ -144,7 +147,29 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoClaimLogsFound
 	}
 
-	sa, err := swapfactory.GetSecretFromLog(&logs[0], "Claimed")
+	var (
+		foundLog ethtypes.Log
+		found    bool
+	)
+
+	for _, log := range logs {
+		matches, err := swapfactory.CheckIfLogIDMatches(log, claimedEvent, s.contractSwapID) //nolint:govet
+		if err != nil {
+			continue
+		}
+
+		if matches {
+			foundLog = log
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, errNoClaimLogsFound
+	}
+
+	sa, err := swapfactory.GetSecretFromLog(&foundLog, claimedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}

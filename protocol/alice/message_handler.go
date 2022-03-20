@@ -51,7 +51,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, err
 		}
 
-		close(s.claimedCh)
 		log.Info("successfully created monero wallet from our secrets: address=", address)
 		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return nil, true, nil
@@ -65,6 +64,10 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 	s.info.SetStatus(status)
 	if s.statusCh != nil {
 		s.statusCh <- status
+	}
+
+	if status == types.CompletedSuccess {
+		close(s.claimedCh)
 	}
 }
 
@@ -155,6 +158,13 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until - timeoutBuffer):
+			s.Lock()
+			defer s.Unlock()
+
+			if !s.info.Status().IsOngoing() {
+				return
+			}
+
 			// Bob hasn't locked yet, let's call refund
 			txhash, err := s.refund()
 			if err != nil {
@@ -284,6 +294,13 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until + time.Second):
+			s.Lock()
+			defer s.Unlock()
+
+			if !s.info.Status().IsOngoing() {
+				return
+			}
+
 			// Bob hasn't claimed, and we're after t_1. let's call Refund
 			txhash, err := s.refund()
 			if err != nil {

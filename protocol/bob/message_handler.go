@@ -170,6 +170,14 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until + time.Second):
+			s.Lock()
+			defer s.Unlock()
+
+			if !s.info.Status().IsOngoing() {
+				// swap was already completed, just return
+				return
+			}
+
 			// we can now call Claim()
 			txHash, err := s.claimFunds()
 			if err != nil {

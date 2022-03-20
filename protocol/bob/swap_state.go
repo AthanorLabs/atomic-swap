@@ -15,6 +15,7 @@ import (
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/fatih/color" //nolint:misspell
 
@@ -162,6 +163,8 @@ func (s *swapState) Exit() error {
 	s.Lock()
 	defer s.Unlock()
 
+	log.Infof("attempting to exit swap")
+
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
@@ -209,6 +212,11 @@ func (s *swapState) Exit() error {
 			// the funds (ie. wait until after t0)
 			txHash, err := s.tryClaim()
 			if err != nil {
+				// TODO: this shouldn't happen, as it means we had a race condition somewhere
+				if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
+					return nil
+				}
+
 				log.Errorf("failed to claim funds: err=%s", err)
 			} else {
 				log.Infof("claimed ether! transaction hash=%s", txHash)
@@ -259,6 +267,8 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
+	const refundedEvent = "Refunded"
+
 	logs, err := s.bob.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.contractAddr},
 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
@@ -271,7 +281,29 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoRefundLogsFound
 	}
 
-	sa, err := swapfactory.GetSecretFromLog(&logs[0], "Refunded")
+	var (
+		foundLog ethtypes.Log
+		found    bool
+	)
+
+	for _, log := range logs {
+		matches, err := swapfactory.CheckIfLogIDMatches(log, refundedEvent, s.contractSwapID) //nolint:govet
+		if err != nil {
+			continue
+		}
+
+		if matches {
+			foundLog = log
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, errNoRefundLogsFound
+	}
+
+	sa, err := swapfactory.GetSecretFromLog(&foundLog, refundedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}
@@ -483,10 +515,6 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 	tx, err := s.contract.Claim(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
-		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
-			return ethcommon.Hash{}, nil
-		}
-
 		return ethcommon.Hash{}, err
 	}
 

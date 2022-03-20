@@ -180,6 +180,10 @@ func (s *swapState) Exit() error {
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
+			if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
+				return nil
+			}
+
 			s.clearNextExpectedMessage(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
@@ -277,9 +281,9 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Debugf("tryRefund isReady=%v untilT0=%d untilT1=%d", isReady, untilT0, untilT1)
+	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs", isReady, untilT0.Seconds(), untilT1.Seconds())
 
-	if (untilT0 > 0 || isReady) && untilT1 < 0 {
+	if (untilT0 > 0 || isReady) && untilT1 > 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
 		log.Infof("waiting until time %s to refund", s.t1)
 		<-time.After(untilT1)
@@ -430,10 +434,6 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
-		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
-			return ethcommon.Hash{}, nil
-		}
-
 		return ethcommon.Hash{}, err
 	}
 

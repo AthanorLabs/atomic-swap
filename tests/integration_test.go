@@ -130,12 +130,12 @@ func TestSuccess(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
+	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
-		defer close(errCh)
 		defer wg.Done()
 
 		select {
@@ -191,8 +191,13 @@ func TestSuccess(t *testing.T) {
 	}()
 
 	wg.Wait()
-	err = <-errCh
-	require.NoError(t, err)
+
+	select {
+	case err = <-errCh:
+		require.NoError(t, err)
+	default:
+	}
+
 	bobSwapID := <-bobIDCh
 	require.Equal(t, id, bobSwapID)
 
@@ -224,12 +229,12 @@ func TestRefund_AliceCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
+	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
-		defer close(errCh)
 		defer wg.Done()
 
 		select {
@@ -292,8 +297,13 @@ func TestRefund_AliceCancels(t *testing.T) {
 	}()
 
 	wg.Wait()
-	err = <-errCh
-	require.NoError(t, err)
+
+	select {
+	case err = <-errCh:
+		require.NoError(t, err)
+	default:
+	}
+
 	bobSwapID := <-bobIDCh
 	require.Equal(t, id, bobSwapID)
 
@@ -310,10 +320,10 @@ func TestRefund_BobCancels_untilAfterT1(t *testing.T) {
 }
 
 // TestRefund_BobCancels_afterIsReady tests the case where Alice and Bob both lock their funds,
-// but Bob goes offline until past isReady==true and t0. When Bob comes back online, he should claim
-// the ETH, causing Alice to also claim the XMR.
+// but Bob goes offline until past isReady==true and t0, but comes online before t1.
+//  When Bob comes back online, he should claim the ETH, causing Alice to also claim the XMR.
 func TestRefund_BobCancels_afterIsReady(t *testing.T) {
-	testRefundBobCancels(t, 60, types.CompletedSuccess)
+	testRefundBobCancels(t, 30, types.CompletedSuccess)
 }
 
 func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) {
@@ -458,6 +468,7 @@ func TestAbort_AliceCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
+	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -525,8 +536,13 @@ func TestAbort_AliceCancels(t *testing.T) {
 	}()
 
 	wg.Wait()
-	err = <-errCh
-	require.NoError(t, err)
+
+	select {
+	case err = <-errCh:
+		require.NoError(t, err)
+	default:
+	}
+
 	bobSwapID := <-bobIDCh
 	require.Equal(t, id, bobSwapID)
 
@@ -562,6 +578,7 @@ func TestAbort_BobCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
+	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -634,8 +651,13 @@ func TestAbort_BobCancels(t *testing.T) {
 	}()
 
 	wg.Wait()
-	err = <-errCh
-	require.NoError(t, err)
+
+	select {
+	case err = <-errCh:
+		require.NoError(t, err)
+	default:
+	}
+
 	bobSwapID := <-bobIDCh
 	require.Equal(t, id, bobSwapID)
 
