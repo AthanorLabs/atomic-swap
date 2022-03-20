@@ -128,6 +128,8 @@ func (a *Instance) GetOngoingSwapState() common.SwapState {
 	return a.swapState
 }
 
+// SetSwapTimeout sets the duration between the swap being initiated on-chain and the timeout t0,
+// and the duration between t0 and t1.
 func (a *Instance) SetSwapTimeout(timeout time.Duration) {
 	a.swapTimeout = timeout
 }

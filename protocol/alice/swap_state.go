@@ -194,7 +194,7 @@ func (s *swapState) Exit() error {
 		if err != nil {
 			// seems like Bob claimed already - try to claim monero
 			if strings.Contains(err.Error(), revertSwapCompleted) {
-				skA, err := s.filterForClaim()
+				skA, err := s.filterForClaim() //nolint:govet
 				if err != nil {
 					return err
 				}

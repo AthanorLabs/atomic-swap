@@ -416,7 +416,7 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 	wg.Wait()
 
 	select {
-	case err := <-errCh:
+	case err = <-errCh:
 		require.NoError(t, err)
 	default:
 	}
@@ -426,7 +426,11 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 
 	offersAfter, err := bcli.GetOffers()
 	require.NoError(t, err)
-	require.Equal(t, len(offersBefore), len(offersAfter))
+	if expectedExitStatus != types.CompletedSuccess {
+		require.Equal(t, len(offersBefore), len(offersAfter))
+	} else {
+		require.Equal(t, 1, len(offersBefore)-len(offersAfter))
+	}
 }
 
 // TestAbort_AliceCancels tests the case where Alice cancels the swap before any funds are locked.

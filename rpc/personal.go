@@ -31,10 +31,12 @@ func (s *PersonalService) SetMoneroWalletFile(_ *http.Request, req *SetMoneroWal
 	return s.bob.SetMoneroWalletFile(req.WalletFile, req.WalletPassword)
 }
 
+// SetSwapTimeoutRequest ...
 type SetSwapTimeoutRequest struct {
 	Timeout uint64 `json:"timeout"` // timeout in seconds
 }
 
+// SetSwapTimeout ...
 func (s *PersonalService) SetSwapTimeout(_ *http.Request, req *SetSwapTimeoutRequest, _ *interface{}) error {
 	timeout := time.Second * time.Duration(req.Timeout)
 	s.alice.SetSwapTimeout(timeout)

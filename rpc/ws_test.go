@@ -88,7 +88,7 @@ func (*mockAlice) InitiateProtocol(providesAmount float64) (common.SwapState, er
 func (*mockAlice) Refund() (ethcommon.Hash, error) {
 	return ethcommon.Hash{}, nil
 }
-func (*mockAlice) SetSwapTimeout(_ uint64) {}
+func (*mockAlice) SetSwapTimeout(_ time.Duration) {}
 
 type mockSwapState struct{}
 
