@@ -220,6 +220,7 @@ func (s *swapState) Exit() error {
 				log.Errorf("failed to claim funds: err=%s", err)
 			} else {
 				log.Infof("claimed ether! transaction hash=%s", txHash)
+				s.clearNextExpectedMessage(types.CompletedSuccess)
 				return nil
 			}
 
