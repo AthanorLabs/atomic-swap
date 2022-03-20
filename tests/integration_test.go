@@ -25,11 +25,11 @@ const (
 	generateBlocksEnv = "GENERATEBLOCKS"
 	falseStr          = "false"
 
-	defaultAliceDaemonEndpoint   = "http://localhost:5001"
-	defaultAliceDaemonWSEndpoint = "ws://localhost:8081"
-	defaultBobDaemonEndpoint     = "http://localhost:5002"
-	defaultBobDaemonWSEndpoint   = "ws://localhost:8082"
-	defaultCharlieDaemonEndpoint = "http://localhost:5003"
+	defaultAliceDaemonEndpoint     = "http://localhost:5001"
+	defaultAliceDaemonWSEndpoint   = "ws://localhost:8081"
+	defaultBobDaemonEndpoint       = "http://localhost:5002"
+	defaultBobDaemonWSEndpoint     = "ws://localhost:8082"
+	defaultCharlieDaemonWSEndpoint = "ws://localhost:8083"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
 
@@ -619,16 +619,18 @@ func TestAbort_BobCancels(t *testing.T) {
 }
 
 // TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.
-// Only one should succeed.
+// Only one should succeed, the other should return an error or Abort status.
 func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	const testTimeout = time.Second * 5
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	bc := client.NewClient(defaultBobDaemonEndpoint)
 	offerID, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
 	ac := client.NewClient(defaultAliceDaemonEndpoint)
-	cc := client.NewClient(defaultCharlieDaemonEndpoint)
 
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -638,16 +640,52 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	errCh := make(chan error)
 
 	go func() {
-		_, err = ac.TakeOffer(providers[0][0], offerID, 0.05)
+		wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+		require.NoError(t, err)
+
+		_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 		if err != nil {
 			errCh <- err
+			return
+		}
+
+		for status := range takerStatusCh {
+			fmt.Println("> Alice got status:", status)
+			if status.IsOngoing() {
+				continue
+			}
+
+			if status != types.CompletedSuccess {
+				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+			}
+
+			fmt.Println("> Alice exited successfully")
+			return
 		}
 	}()
 
 	go func() {
-		_, err = cc.TakeOffer(providers[0][0], offerID, 0.05)
+		wsc, err := rpcclient.NewWsClient(ctx, defaultCharlieDaemonWSEndpoint)
+		require.NoError(t, err)
+
+		_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 		if err != nil {
 			errCh <- err
+			return
+		}
+
+		for status := range takerStatusCh {
+			fmt.Println("> Alice got status:", status)
+			if status.IsOngoing() {
+				continue
+			}
+
+			if status != types.CompletedSuccess {
+				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+			}
+
+			fmt.Println("> Alice exited successfully")
+			return
 		}
 	}()
 
