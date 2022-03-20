@@ -46,7 +46,7 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
 	return &net.QueryResponse{
 		Offers: []*types.Offer{
-			&types.Offer{},
+			{},
 		},
 	}, nil
 }
