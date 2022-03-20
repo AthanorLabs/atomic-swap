@@ -11,12 +11,43 @@
   import { Svg } from '@smui/common/elements'
   import CircularProgress from '@smui/circular-progress'
   import HelperText from '@smui/textfield/helper-text'
+  // import { io } from 'socket.io-client'
+  import { onMount } from 'svelte'
+  const WS_ADDRESS = 'ws://127.0.0.1:8081'
 
+  // let socket = io(WS_ADDRESS)
+  // webSocket.onopen = function (event) {
+  //   console.log('onopen -->')
+  //   webSocket.send("Here's some text that the server is urgently awaiting!")
+  // }
   let amountProvided: number | null = null
   let isSuccess = false
   let isLoadingSwap = false
   let error = ''
   let swapError = ''
+
+  onMount(() => {
+    const webSocket = new WebSocket(WS_ADDRESS)
+    // let socket = io(WS_ADDRESS, { transports: ['websocket'] })
+    // socket.on('connect', () => {
+    //   console.log(socket.connected) // true
+    // })
+    // socket.on('disconnect', () => {
+    //   console.log(socket.connected) // false
+    // })
+    // socket.on('error', (e) => {
+    //   console.log('error', e)
+    // })
+    webSocket.onopen = () => {
+      console.log('opened')
+    }
+    webSocket.onmessage = (e) => {
+      console.log('message:', e)
+    }
+    webSocket.onerror = (e) => {
+      console.log('errror', e)
+    }
+  })
 
   $: willReceive =
     amountProvided && amountProvided > 0 && $selectedOffer?.exchangeRate
@@ -45,6 +76,7 @@
 
   const handleSendTakeOffer = () => {
     isLoadingSwap = true
+
     rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {
       multiaddr: $selectedOffer?.peer,
       offerID: $selectedOffer?.id,
@@ -89,6 +121,7 @@
       <Title class="title" id="mandatory-title">
         Swap offer {$selectedOffer.id}
       </Title>
+      <span>{$selectedOffer.peer}</span>
     </div>
     <Content id="mandatory-content">
       <section class="container">
