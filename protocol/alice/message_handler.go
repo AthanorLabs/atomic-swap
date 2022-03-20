@@ -147,7 +147,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	go func() {
 		// TODO: this variable is so that we definitely refund before t0.
 		// this will vary based on environment (eg. development should be very small, a network with slower block times should be longer)
-		const timeoutBuffer = time.Minute 
+		const timeoutBuffer = time.Second * 5
 		until := time.Until(s.t0)
 
 		select {

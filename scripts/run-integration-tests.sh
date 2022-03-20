@@ -41,6 +41,10 @@ echo "starting bob, logs in ./tests/bob.log"
 ./swapd --dev-bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 --wallet-file test-wallet &> ./tests/bob.log &
 BOB_PID=$!
 sleep 3 
+echo "starting charlie, logs in ./tests/charlie.log"
+./swapd --libp2p-port 9955 --rpc-port 5003 --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 &> ./tests/charlie.log &
+CHARLIE_PID=$!
+sleep 3 
 
 # run tests
 echo "running integration tests..."
@@ -53,6 +57,7 @@ kill $MONERO_WALLET_CLI_ALICE_PID
 kill $GANACHE_CLI_PID
 kill $ALICE_PID
 kill $BOB_PID
+kill $CHARLIE_PID
 # rm -rf ./alice-test-keys
 # rm -rf ./bob-test-keys
 exit $OK

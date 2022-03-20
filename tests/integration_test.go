@@ -29,7 +29,9 @@ const (
 	defaultAliceDaemonWSEndpoint = "ws://localhost:8081"
 	defaultBobDaemonEndpoint     = "http://localhost:5002"
 	defaultBobDaemonWSEndpoint   = "ws://localhost:8082"
-	defaultDiscoverTimeout       = 2 // 2 seconds
+	defaultCharlieDaemonEndpoint = "http://localhost:5003"
+
+	defaultDiscoverTimeout = 2 // 2 seconds
 
 	bobProvideAmount = float64(1.0)
 	exchangeRate     = float64(0.05)
@@ -327,13 +329,13 @@ func TestRefund_BobCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
+	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		defer close(errCh)
 
 		select {
 		case taken := <-takenCh:
@@ -619,5 +621,47 @@ func TestAbort_BobCancels(t *testing.T) {
 // TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.
 // Only one should succeed.
 func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
+	const testTimeout = time.Second * 5
 
+	bc := client.NewClient(defaultBobDaemonEndpoint)
+	offerID, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
+	require.NoError(t, err)
+
+	ac := client.NewClient(defaultAliceDaemonEndpoint)
+	cc := client.NewClient(defaultCharlieDaemonEndpoint)
+
+	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(providers))
+	require.GreaterOrEqual(t, len(providers[0]), 2)
+
+	errCh := make(chan error)
+
+	go func() {
+		_, err = ac.TakeOffer(providers[0][0], offerID, 0.05)
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		_, err = cc.TakeOffer(providers[0][0], offerID, 0.05)
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		require.NotNil(t, err)
+		t.Log("got expected error", err)
+	case <-time.After(testTimeout):
+		t.Fatalf("did not get error from Alice or Charlie")
+	}
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("should only have one error! also got %s", err)
+	default:
+	}
 }
