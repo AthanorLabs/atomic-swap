@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +26,8 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
 )
+
+const revertSwapCompleted = "swap is already completed"
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
@@ -380,11 +383,9 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	const revertSwapCompleted = "swap is already completed"
-
 	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwapID)
 	if err != nil {
-		if err.Error() == revertSwapCompleted && !s.info.Status().IsOngoing() {
+		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
 		}
 
@@ -402,8 +403,6 @@ func (s *swapState) ready() error {
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
-	const revertSwapCompleted = "swap is already completed"
-
 	if s.alice.contract == nil {
 		return ethcommon.Hash{}, errors.New("contract is nil")
 	}
@@ -413,7 +412,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	log.Infof("attempting to call Refund()...")
 	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
 	if err != nil {
-		if err.Error() == revertSwapCompleted && !s.info.Status().IsOngoing() {
+		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return ethcommon.Hash{}, nil
 		}
 

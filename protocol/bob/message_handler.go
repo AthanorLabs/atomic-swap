@@ -90,6 +90,10 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	if s == nil {
+		return
+	}
+
 	s.nextExpectedMessage = msg
 	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
@@ -99,6 +103,14 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {
+	if msg == nil {
+		return errors.New("message is nil")
+	}
+
+	if s == nil || s.nextExpectedMessage == nil {
+		return nil
+	}
+
 	// Alice might refund anytime before t0 or after t1, so we should allow this.
 	if _, ok := msg.(*message.NotifyRefund); ok {
 		return nil

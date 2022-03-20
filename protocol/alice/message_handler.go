@@ -145,7 +145,9 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	// start goroutine to check that Bob locks before t_0
 	go func() {
-		const timeoutBuffer = time.Minute * 5
+		// TODO: this variable is so that we definitely refund before t0.
+		// this will vary based on environment (eg. development should be very small, a network with slower block times should be longer)
+		const timeoutBuffer = time.Minute 
 		until := time.Until(s.t0)
 
 		select {

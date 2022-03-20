@@ -246,7 +246,7 @@ func TestRefund_AliceCancels(t *testing.T) {
 			}
 
 			if status != types.CompletedRefund {
-				errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
+				errCh <- fmt.Errorf("swap did not refund successfully for Bob: exit status was %s", status)
 			}
 
 			return
@@ -276,12 +276,13 @@ func TestRefund_AliceCancels(t *testing.T) {
 			fmt.Println("> Alice cancelled swap!")
 			exitStatus, err := c.Cancel() //nolint:govet
 			if err != nil {
+				t.Log("Alice got error", err)
 				errCh <- err
 				return
 			}
 
 			if exitStatus != types.CompletedRefund {
-				errCh <- fmt.Errorf("did not refund successfully: exit status was %s", exitStatus)
+				errCh <- fmt.Errorf("did not refund successfully for Alice: exit status was %s", exitStatus)
 			}
 
 			return
@@ -613,4 +614,10 @@ func TestAbort_BobCancels(t *testing.T) {
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, len(offersBefore), len(offersAfter))
+}
+
+// TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.
+// Only one should succeed.
+func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
+
 }

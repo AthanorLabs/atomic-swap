@@ -75,7 +75,7 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	// TODO: make this configurable via RPC
 	if os.Getenv("TESTS") == "integration" {
-		defaultTimeoutDuration = big.NewInt(10) // 10s
+		defaultTimeoutDuration = big.NewInt(60) // 60s
 	}
 
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
