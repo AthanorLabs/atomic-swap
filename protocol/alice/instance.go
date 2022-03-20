@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"os"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -23,7 +23,7 @@ import (
 
 var (
 	log                    = logging.Logger("alice")
-	defaultTimeoutDuration = big.NewInt(60 * 60 * 24) // 1 day = 60s * 60min * 24hr
+	defaultTimeoutDuration = time.Hour * 24
 )
 
 // Instance implements the functionality that will be used by a user who owns ETH
@@ -35,12 +35,13 @@ type Instance struct {
 
 	client monero.Client
 
-	ethPrivKey *ecdsa.PrivateKey
-	ethClient  *ethclient.Client
-	callOpts   *bind.CallOpts
-	chainID    *big.Int
-	gasPrice   *big.Int
-	gasLimit   uint64
+	ethPrivKey  *ecdsa.PrivateKey
+	ethClient   *ethclient.Client
+	callOpts    *bind.CallOpts
+	chainID     *big.Int
+	gasPrice    *big.Int
+	gasLimit    uint64
+	swapTimeout time.Duration
 
 	net net.MessageSender
 
@@ -73,9 +74,8 @@ type Config struct {
 // It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
-	// TODO: make this configurable via RPC
-	if os.Getenv("TESTS") == "integration" {
-		defaultTimeoutDuration = big.NewInt(60) // 60s
+	if cfg.Environment == common.Development {
+		defaultTimeoutDuration = time.Minute
 	}
 
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
@@ -96,6 +96,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		swapManager:  cfg.SwapManager,
 		contract:     cfg.SwapContract,
 		contractAddr: cfg.SwapContractAddress,
+		swapTimeout:  defaultTimeoutDuration,
 	}, nil
 }
 
@@ -125,4 +126,8 @@ func (a *Instance) Refund() (ethcommon.Hash, error) {
 // GetOngoingSwapState ...
 func (a *Instance) GetOngoingSwapState() common.SwapState {
 	return a.swapState
+}
+
+func (a *Instance) SetSwapTimeout(timeout time.Duration) {
+	a.swapTimeout = timeout
 }

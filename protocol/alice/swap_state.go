@@ -157,19 +157,19 @@ func (s *swapState) Exit() error {
 		s.cancel()
 		s.alice.swapState = nil
 		s.alice.swapManager.CompleteOngoingSwap()
+
+		if s.info.Status() == types.CompletedSuccess {
+			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
+			log.Info(str)
+			return
+		}
+
+		if s.info.Status() == types.CompletedRefund {
+			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
+			log.Info(str)
+			return
+		}
 	}()
-
-	if s.info.Status() == types.CompletedSuccess {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
-		log.Info(str)
-		return nil
-	}
-
-	if s.info.Status() == types.CompletedRefund {
-		str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
-		log.Info(str)
-		return nil
-	}
 
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
@@ -192,6 +192,23 @@ func (s *swapState) Exit() error {
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
+			// seems like Bob claimed already - try to claim monero
+			if strings.Contains(err.Error(), revertSwapCompleted) {
+				skA, err := s.filterForClaim()
+				if err != nil {
+					return err
+				}
+
+				addr, err := s.claimMonero(skA)
+				if err != nil {
+					return err
+				}
+
+				log.Infof("claimed monero: address=%s", addr)
+				s.clearNextExpectedMessage(types.CompletedSuccess)
+				return nil
+			}
+
 			s.clearNextExpectedMessage(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
@@ -211,6 +228,7 @@ func (s *swapState) Exit() error {
 		}
 
 		log.Infof("claimed monero: address=%s", addr)
+		s.clearNextExpectedMessage(types.CompletedSuccess)
 	default:
 		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
 		s.clearNextExpectedMessage(types.CompletedAbort)
@@ -254,12 +272,12 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
 
-	// TODO: also check if IsReady == true
-
 	isReady, err := s.alice.contract.IsReady(s.alice.callOpts, s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
+
+	log.Debugf("tryRefund isReady=%v untilT0=%d untilT1=%d", isReady, untilT0, untilT1)
 
 	if (untilT0 > 0 || isReady) && untilT1 < 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
@@ -356,7 +374,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 	}()
 
 	tx, err := s.alice.contract.NewSwap(s.txOpts,
-		cmtBob, cmtAlice, s.bobAddress, defaultTimeoutDuration)
+		cmtBob, cmtAlice, s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())))
 	if err != nil {
 		return fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}

@@ -109,7 +109,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 }
@@ -117,16 +117,12 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 // test the case where Alice deploys and locks her eth, but Bob never locks his monero.
 // Alice should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	_, s := newTestInstance(t)
+	inst, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
 
 	// set timeout to 2s
-	// TODO: pass this as a param to newSwapState
-	defaultTimeoutDuration = big.NewInt(2)
-	defer func() {
-		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
-	}()
+	inst.swapTimeout = time.Second * 2
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -138,7 +134,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
-	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, inst.swapTimeout, s.t1.Sub(s.t0))
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
@@ -195,17 +191,11 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 // test the case where the monero is locked, but Bob never claims.
 // Alice should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	_, s := newTestInstance(t)
+	inst, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
-
-	// set timeout to 2s
-	// TODO: pass this as a param to newSwapState
-	defaultTimeoutDuration = big.NewInt(3)
-	defer func() {
-		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
-	}()
+	inst.swapTimeout = time.Second * 3
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -279,7 +269,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
 	require.Equal(t, msg.PublicSpendKey, s.bobPublicSpendKey.Hex())
 	require.Equal(t, msg.PrivateViewKey, s.bobPrivateViewKey.Hex())
 

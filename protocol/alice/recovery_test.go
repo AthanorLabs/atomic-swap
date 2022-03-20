@@ -72,7 +72,7 @@ func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
 	err = rpcClient.Call(&result, "evm_snapshot")
 	require.NoError(t, err)
 
-	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+360)
+	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Seconds()*2+360)
 	require.NoError(t, err)
 
 	defer func() {

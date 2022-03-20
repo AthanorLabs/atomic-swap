@@ -44,7 +44,7 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 	return nil, nil
 }
 func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
-	return nil, nil
+	return &net.QueryResponse{}, nil
 }
 func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error {
 	return nil
@@ -88,6 +88,7 @@ func (*mockAlice) InitiateProtocol(providesAmount float64) (common.SwapState, er
 func (*mockAlice) Refund() (ethcommon.Hash, error) {
 	return ethcommon.Hash{}, nil
 }
+func (*mockAlice) SetSwapTimeout(_ uint64) {}
 
 type mockSwapState struct{}
 

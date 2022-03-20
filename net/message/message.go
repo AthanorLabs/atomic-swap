@@ -33,6 +33,8 @@ func (t Type) String() string {
 		return "NotifyETHLocked"
 	case NotifyXMRLockType:
 		return "NotifyXMRLock"
+	case NotifyReadyType:
+		return "NotifyReady"
 	case NotifyClaimedType:
 		return "NotifyClaimed"
 	case NotifyRefundType:

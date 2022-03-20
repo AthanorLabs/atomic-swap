@@ -34,6 +34,9 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 	}
 
 	s := res[1].([32]byte)
+	if s == [32]byte{} {
+		return nil, errors.New("got zero secret key from contract")
+	}
 
 	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(s[:]))
 	if err != nil {

@@ -156,6 +156,18 @@ var (
 				Action: runGetStage,
 				Flags:  []cli.Flag{daemonAddrFlag},
 			},
+			{
+				Name:   "set-swap-timeout",
+				Usage:  "set the duration between swap initiation and t0 and t0 and t1, in seconds",
+				Action: runSetSwapTimeout,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:  "duration",
+						Usage: "duration of timeout, in seconds",
+					},
+					daemonAddrFlag,
+				},
+			},
 		},
 		Flags: []cli.Flag{daemonAddrFlag},
 	}
@@ -462,5 +474,23 @@ func runGetStage(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Info)
+	return nil
+}
+
+func runSetSwapTimeout(ctx *cli.Context) error {
+	duration := ctx.Uint("duration")
+
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := client.NewClient(endpoint)
+	err := c.SetSwapTimeout(uint64(duration))
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Set timeout duration to %ds", duration)
 	return nil
 }

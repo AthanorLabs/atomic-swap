@@ -302,10 +302,21 @@ func TestRefund_AliceCancels(t *testing.T) {
 	require.Equal(t, len(offersBefore), len(offersAfter))
 }
 
-// This test simulates the case where Alice and Bob both lock their funds, but Bob goes offline
+// TestRefund_BobCancels_untilAfterT1 tests the case where Alice and Bob both lock their funds, but Bob goes offline
 // until time t1 in the swap contract passes. This triggers Alice to refund, which Bob will then
 // "come online" to see, and he will then refund also.
-func TestRefund_BobCancels(t *testing.T) {
+func TestRefund_BobCancels_untilAfterT1(t *testing.T) {
+	testRefundBobCancels(t, 5, types.CompletedRefund)
+}
+
+// TestRefund_BobCancels_afterIsReady tests the case where Alice and Bob both lock their funds,
+// but Bob goes offline until past isReady==true and t0. When Bob comes back online, he should claim
+// the ETH, causing Alice to also claim the XMR.
+func TestRefund_BobCancels_afterIsReady(t *testing.T) {
+	testRefundBobCancels(t, 60, types.CompletedSuccess)
+}
+
+func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
@@ -323,8 +334,7 @@ func TestRefund_BobCancels(t *testing.T) {
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
-	offersBefore, err := bc.GetOffers()
+	offersBefore, err := bcli.GetOffers()
 	require.NoError(t, err)
 
 	bobIDCh := make(chan uint64, 1)
@@ -359,8 +369,9 @@ func TestRefund_BobCancels(t *testing.T) {
 				return
 			}
 
-			if exitStatus != types.CompletedRefund {
-				errCh <- fmt.Errorf("did not refund successfully: exit status was %s", exitStatus)
+			if exitStatus != expectedExitStatus {
+				errCh <- fmt.Errorf("did not get expected exit status for Bob: got %s, expected %s", exitStatus, expectedExitStatus)
+				return
 			}
 
 			fmt.Println("> Bob refunded successfully")
@@ -370,6 +381,9 @@ func TestRefund_BobCancels(t *testing.T) {
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	require.NoError(t, err)
+
+	err = c.SetSwapTimeout(swapTimeout)
 	require.NoError(t, err)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
@@ -389,8 +403,9 @@ func TestRefund_BobCancels(t *testing.T) {
 				continue
 			}
 
-			if status != types.CompletedRefund {
-				errCh <- fmt.Errorf("swap did not refund successfully: got %s", status)
+			if status != expectedExitStatus {
+				errCh <- fmt.Errorf("did not get expected exit status for Alice: got %s, expected %s", status, expectedExitStatus)
+				return
 			}
 
 			fmt.Println("> Alice refunded successfully")
@@ -399,12 +414,17 @@ func TestRefund_BobCancels(t *testing.T) {
 	}()
 
 	wg.Wait()
-	err = <-errCh
-	require.NoError(t, err)
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	default:
+	}
+
 	bobSwapID := <-bobIDCh
 	require.Equal(t, id, bobSwapID)
 
-	offersAfter, err := bc.GetOffers()
+	offersAfter, err := bcli.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, len(offersBefore), len(offersAfter))
 }
@@ -569,6 +589,7 @@ func TestAbort_BobCancels(t *testing.T) {
 
 			if exitStatus != types.CompletedAbort {
 				errCh <- fmt.Errorf("did not abort successfully: exit status was %s", exitStatus)
+				return
 			}
 
 			fmt.Println("> Bob exited successfully")
@@ -600,6 +621,7 @@ func TestAbort_BobCancels(t *testing.T) {
 
 			if status != types.CompletedAbort && status != types.CompletedRefund {
 				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				return
 			}
 
 			fmt.Println("> Alice exited successfully")
@@ -657,6 +679,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 
 			if status != types.CompletedSuccess {
 				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				return
 			}
 
 			fmt.Println("> Alice exited successfully")
@@ -682,6 +705,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 
 			if status != types.CompletedSuccess {
 				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				return
 			}
 
 			fmt.Println("> Alice exited successfully")
