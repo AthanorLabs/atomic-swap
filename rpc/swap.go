@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 )
 
@@ -13,14 +14,16 @@ type SwapService struct {
 	sm    SwapManager
 	alice Alice
 	bob   Bob
+	net   Net
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, alice Alice, bob Bob) *SwapService {
+func NewSwapService(sm SwapManager, alice Alice, bob Bob, net Net) *SwapService {
 	return &SwapService{
 		sm:    sm,
 		alice: alice,
 		bob:   bob,
+		net:   net,
 	}
 }
 
@@ -96,6 +99,7 @@ type RefundResponse struct {
 }
 
 // Refund refunds the ongoing swap if we are the ETH provider.
+// TODO: remove in favour of swap_cancel?
 func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundResponse) error {
 	info := s.sm.GetOngoingSwap()
 	if info == nil {
@@ -141,5 +145,35 @@ type GetOffersResponse struct {
 // GetOffers returns the currently available offers.
 func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
 	resp.Offers = s.bob.GetOffers()
+	return nil
+}
+
+// CancelResponse ...
+type CancelResponse struct {
+	Status types.Status `json:"status"`
+}
+
+// Cancel attempts to cancel the currently ongoing swap, if there is one.
+func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelResponse) error {
+	info := s.sm.GetOngoingSwap()
+	if info == nil {
+		return errors.New("no current ongoing swap")
+	}
+
+	var ss common.SwapState
+	switch info.Provides() {
+	case types.ProvidesETH:
+		ss = s.alice.GetOngoingSwapState()
+	case types.ProvidesXMR:
+		ss = s.bob.GetOngoingSwapState()
+	}
+
+	if err := ss.Exit(); err != nil {
+		return err
+	}
+	s.net.CloseProtocolStream()
+
+	info = s.sm.GetPastSwap(info.ID())
+	resp.Status = info.Status()
 	return nil
 }

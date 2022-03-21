@@ -69,6 +69,10 @@ func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
 
 // GetOffers returns all current offers.
 func (b *Instance) GetOffers() []*types.Offer {
+	// lock entire instance, as if an offer is taken a swap will be deleted
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+
 	offers := make([]*types.Offer, len(b.offerManager.offers))
 	i := 0
 	for _, o := range b.offerManager.offers {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +26,8 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
 )
+
+const revertSwapCompleted = "swap is already completed"
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
@@ -142,9 +145,10 @@ func (s *swapState) ID() uint64 {
 	return s.info.ID()
 }
 
-// ProtocolExited is called by the network when the protocol stream closes.
-// If it closes prematurely, we need to perform recovery.
-func (s *swapState) ProtocolExited() error {
+// Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
+// It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
+// If the swap already completed successfully, this function does not doing anything in regards to the protoco.
+func (s *swapState) Exit() error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -153,29 +157,35 @@ func (s *swapState) ProtocolExited() error {
 		s.cancel()
 		s.alice.swapState = nil
 		s.alice.swapManager.CompleteOngoingSwap()
+
+		if s.info.Status() == types.CompletedSuccess {
+			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
+			log.Info(str)
+			return
+		}
+
+		if s.info.Status() == types.CompletedRefund {
+			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
+			log.Info(str)
+			return
+		}
 	}()
 
-	if s.info.Status() == types.CompletedSuccess {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
-		log.Info(str)
-		return nil
-	}
-
-	if s.info.Status() == types.CompletedRefund {
-		str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
-		log.Info(str)
-		return nil
-	}
+	log.Debugf("attempting to exit swap: nextExpectedMessage=%s", s.nextExpectedMessage)
 
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.
 		s.clearNextExpectedMessage(types.CompletedAbort)
-		return errSwapAborted
+		return nil
 	case *message.NotifyXMRLock:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
+			if strings.Contains(err.Error(), revertSwapCompleted) {
+				return s.tryClaim()
+			}
+
 			s.clearNextExpectedMessage(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
@@ -188,6 +198,11 @@ func (s *swapState) ProtocolExited() error {
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
+			// seems like Bob claimed already - try to claim monero
+			if strings.Contains(err.Error(), revertSwapCompleted) {
+				return s.tryClaim()
+			}
+
 			s.clearNextExpectedMessage(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
@@ -196,23 +211,33 @@ func (s *swapState) ProtocolExited() error {
 		s.clearNextExpectedMessage(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case nil:
-		skA, err := s.filterForClaim()
-		if err != nil {
-			return err
-		}
-
-		addr, err := s.claimMonero(skA)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("claimed monero: address=%s", addr)
+		return s.tryClaim()
 	default:
-		log.Errorf("unexpected nextExpectedMessage in ProtocolExited: type=%T", s.nextExpectedMessage)
+		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
 		s.clearNextExpectedMessage(types.CompletedAbort)
 		return errUnexpectedMessageType
 	}
 
+	return nil
+}
+
+func (s *swapState) tryClaim() error {
+	if !s.info.Status().IsOngoing() {
+		return nil
+	}
+
+	skA, err := s.filterForClaim()
+	if err != nil {
+		return err
+	}
+
+	addr, err := s.claimMonero(skA)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("claimed monero: address=%s", addr)
+	s.clearNextExpectedMessage(types.CompletedSuccess)
 	return nil
 }
 
@@ -250,9 +275,14 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
 
-	// TODO: also check if IsReady == true
+	isReady, err := s.alice.contract.IsReady(s.alice.callOpts, s.contractSwapID)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
 
-	if untilT0 > 0 && untilT1 < 0 {
+	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs", isReady, untilT0.Seconds(), untilT1.Seconds())
+
+	if (untilT0 > 0 || isReady) && untilT1 > 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
 		log.Infof("waiting until time %s to refund", s.t1)
 		<-time.After(untilT1)
@@ -347,7 +377,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 	}()
 
 	tx, err := s.alice.contract.NewSwap(s.txOpts,
-		cmtBob, cmtAlice, s.bobAddress, defaultTimeoutDuration)
+		cmtBob, cmtAlice, s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())))
 	if err != nil {
 		return fmt.Errorf("failed to deploy Swap.sol: %w", err)
 	}
@@ -376,6 +406,10 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 func (s *swapState) ready() error {
 	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwapID)
 	if err != nil {
+		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
+			return nil
+		}
+
 		return err
 	}
 
@@ -411,6 +445,10 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
+	if !s.info.Status().IsOngoing() {
+		return "", errors.New("swap has already completed")
+	}
+
 	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
 	vkAB := mcrypto.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
@@ -420,5 +458,11 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
-	return monero.CreateMoneroWallet("alice-swap-wallet", s.alice.env, s.alice.client, kpAB)
+	addr, err := monero.CreateMoneroWallet("alice-swap-wallet", s.alice.env, s.alice.client, kpAB)
+	if err != nil {
+		return "", err
+	}
+
+	close(s.claimedCh)
+	return addr, nil
 }

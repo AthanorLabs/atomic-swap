@@ -10,10 +10,10 @@ func GetStatus(t message.Type) types.Status {
 	switch t {
 	case message.SendKeysType:
 		return types.ExpectingKeys
-	case message.NotifyContractDeployedType:
+	case message.NotifyETHLockedType:
 		return types.KeysExchanged
 	case message.NotifyXMRLockType:
-		return types.ContractDeployed
+		return types.ETHLocked
 	case message.NotifyReadyType:
 		return types.XMRLocked
 	case message.NotifyClaimedType:

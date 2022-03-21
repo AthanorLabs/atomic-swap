@@ -6,6 +6,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/net/message"
 
 	"github.com/fatih/color" //nolint:misspell
 )
@@ -89,5 +90,6 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
+	defer b.swapState.setNextExpectedMessage(&message.NotifyETHLocked{})
 	return b.swapState, resp, nil
 }
