@@ -58,6 +58,10 @@ func (i *Info) ExchangeRate() types.ExchangeRate {
 
 // Status returns the swap's status.
 func (i *Info) Status() Status {
+	if i == nil {
+		return 0
+	}
+
 	return i.status
 }
 

@@ -109,7 +109,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 }
@@ -117,16 +117,12 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 // test the case where Alice deploys and locks her eth, but Bob never locks his monero.
 // Alice should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	_, s := newTestInstance(t)
+	inst, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
 
 	// set timeout to 2s
-	// TODO: pass this as a param to newSwapState
-	defaultTimeoutDuration = big.NewInt(2)
-	defer func() {
-		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
-	}()
+	inst.swapTimeout = time.Second * 2
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -137,8 +133,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyContractDeployedType, resp.Type())
-	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, message.NotifyETHLockedType, resp.Type())
+	require.Equal(t, inst.swapTimeout, s.t1.Sub(s.t0))
 	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
 	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
 
@@ -195,17 +191,11 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 // test the case where the monero is locked, but Bob never claims.
 // Alice should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	_, s := newTestInstance(t)
+	inst, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
-
-	// set timeout to 2s
-	// TODO: pass this as a param to newSwapState
-	defaultTimeoutDuration = big.NewInt(3)
-	defer func() {
-		defaultTimeoutDuration = big.NewInt(60 * 60 * 24)
-	}()
+	inst.swapTimeout = time.Second * 3
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -248,7 +238,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.alice.ethClient.BalanceAt(s.ctx, s.alice.contractAddr, nil)
+	balance, err := s.alice.ethClient.BalanceAt(context.Background(), s.alice.contractAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -279,7 +269,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, time.Second*time.Duration(defaultTimeoutDuration.Int64()), s.t1.Sub(s.t0))
+	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
 	require.Equal(t, msg.PublicSpendKey, s.bobPublicSpendKey.Hex())
 	require.Equal(t, msg.PrivateViewKey, s.bobPrivateViewKey.Hex())
 
@@ -337,18 +327,18 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-func TestProtocolExited_afterSendKeysMessage(t *testing.T) {
+func TestExit_afterSendKeysMessage(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
-	err := s.ProtocolExited()
-	require.Equal(t, errSwapAborted, err)
+	err := s.Exit()
+	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }
 
-func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
+func TestExit_afterNotifyXMRLock(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
@@ -365,13 +355,13 @@ func TestProtocolExited_afterNotifyXMRLock(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
-func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
+func TestExit_afterNotifyClaimed(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyClaimed{}
@@ -388,17 +378,17 @@ func TestProtocolExited_afterNotifyClaimed(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.NoError(t, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
-func TestProtocolExited_invalidNextMessageType(t *testing.T) {
+func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyContractDeployed{}
+	s.nextExpectedMessage = &message.NotifyETHLocked{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -412,7 +402,7 @@ func TestProtocolExited_invalidNextMessageType(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	err = s.ProtocolExited()
+	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
 	info := s.alice.swapManager.GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())

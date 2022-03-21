@@ -20,6 +20,10 @@ import (
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+	if s == nil {
+		return nil, true, errors.New("swap state is nil")
+	}
+
 	s.Lock()
 	defer s.Unlock()
 
@@ -38,8 +42,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		}
 
 		return nil, false, nil
-	case *message.NotifyContractDeployed:
-		out, err := s.handleNotifyContractDeployed(msg)
+	case *message.NotifyETHLocked:
+		out, err := s.handleNotifyETHLocked(msg)
 		if err != nil {
 			return nil, true, err
 		}
@@ -86,6 +90,10 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	if s == nil {
+		return
+	}
+
 	s.nextExpectedMessage = msg
 	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
@@ -95,6 +103,14 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {
+	if msg == nil {
+		return errors.New("message is nil")
+	}
+
+	if s == nil || s.nextExpectedMessage == nil {
+		return nil
+	}
+
 	// Alice might refund anytime before t0 or after t1, so we should allow this.
 	if _, ok := msg.(*message.NotifyRefund); ok {
 		return nil
@@ -107,16 +123,16 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	return nil
 }
 
-func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDeployed) (net.Message, error) {
+func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Message, error) {
 	if msg.Address == "" {
 		return nil, errMissingAddress
 	}
 
 	if msg.ContractSwapID == nil {
-		return nil, errors.New("expected swapID in NotifyContractDeployed message")
+		return nil, errors.New("expected swapID in NotifyETHLocked message")
 	}
 
-	log.Infof("got NotifyContractDeployed; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
+	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
 	s.contractSwapID = msg.ContractSwapID
 
 	if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
@@ -154,11 +170,20 @@ func (s *swapState) handleNotifyContractDeployed(msg *message.NotifyContractDepl
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until + time.Second):
+			s.Lock()
+			defer s.Unlock()
+
+			if !s.info.Status().IsOngoing() {
+				// swap was already completed, just return
+				return
+			}
+
 			// we can now call Claim()
 			txHash, err := s.claimFunds()
 			if err != nil {
 				log.Errorf("failed to claim: err=%s", err)
 				// TODO: retry claim, depending on error
+				_ = s.exit()
 				return
 			}
 
@@ -199,7 +224,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setAlicePublicKeys(kp, secp256k1Pub)
-	s.setNextExpectedMessage(&message.NotifyContractDeployed{})
+	s.setNextExpectedMessage(&message.NotifyETHLocked{})
 	return nil
 }
 

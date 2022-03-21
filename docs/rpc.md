@@ -235,7 +235,7 @@ Example:
 wscat -c ws://localhost:8081
 # Connected (press CTRL+C to quit)
 # > {"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}
-# < {"jsonrpc":"2.0","result":{"stage":"ContractDeployed"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"ETHLocked"},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"refunded"},"error":null,"id":null}
 ```
 
@@ -286,7 +286,7 @@ wscat -c ws://localhost:8081
 # > {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"multiaddr": "/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID": "cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9", "providesAmount": 0.05}, "id": 0}
 # < {"jsonrpc":"2.0","result":{"id":0},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"ExpectingKeys"},"error":null,"id":null}
-# < {"jsonrpc":"2.0","result":{"stage":"ContractDeployed"},"error":null,"id":null}
+# < {"jsonrpc":"2.0","result":{"stage":"ETHLocked"},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"ContractReady"},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"Success"},"error":null,"id":null}
 ```

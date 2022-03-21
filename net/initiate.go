@@ -77,7 +77,8 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
 		if h.swapState != nil {
-			if err := h.swapState.ProtocolExited(); err != nil {
+			log.Debugf("exiting swap...")
+			if err := h.swapState.Exit(); err != nil {
 				log.Errorf("failed to exit protocol: err=%s", err)
 			}
 			h.swapState = nil
@@ -146,4 +147,11 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 			return
 		}
 	}
+}
+
+// CloseProtocolStream closes the current swap protocol stream.
+func (h *host) CloseProtocolStream() {
+	stream := h.swapStream
+	log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
+	_ = stream.Close()
 }

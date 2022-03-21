@@ -22,6 +22,7 @@ type Net interface {
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error
+	CloseProtocolStream()
 }
 
 // NetService is the RPC service prefixed by net_.
@@ -150,6 +151,28 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 
 func (s *NetService) takeOffer(multiaddr, offerID string,
 	providesAmount float64) (uint64, <-chan types.Status, string, error) {
+	who, err := net.StringToAddrInfo(multiaddr)
+	if err != nil {
+		return 0, nil, "", err
+	}
+
+	queryResp, err := s.net.Query(who)
+	if err != nil {
+		return 0, nil, "", err
+	}
+
+	var found bool
+	for _, offer := range queryResp.Offers {
+		if offer.GetID().String() == offerID {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return 0, nil, "", errors.New("peer does not have offer with given ID")
+	}
+
 	swapState, err := s.alice.InitiateProtocol(providesAmount)
 	if err != nil {
 		return 0, nil, "", err
@@ -163,13 +186,8 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
 
-	who, err := net.StringToAddrInfo(multiaddr)
-	if err != nil {
-		return 0, nil, "", err
-	}
-
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		_ = swapState.ProtocolExited()
+		_ = swapState.Exit()
 		return 0, nil, "", err
 	}
 
@@ -211,7 +229,7 @@ func (s *NetService) TakeOfferSync(_ *http.Request, req *TakeOfferRequest,
 	}
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		_ = swapState.ProtocolExited()
+		_ = swapState.Exit()
 		return err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
@@ -48,11 +49,11 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewPersonalService(cfg.Bob), "personal"); err != nil {
+	if err := s.RegisterService(NewPersonalService(cfg.Alice, cfg.Bob), "personal"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob, cfg.Net), "swap"); err != nil {
 		return nil, err
 	}
 
@@ -115,6 +116,7 @@ type Alice interface {
 	Protocol
 	InitiateProtocol(providesAmount float64) (common.SwapState, error)
 	Refund() (ethcommon.Hash, error)
+	SetSwapTimeout(timeout time.Duration)
 }
 
 // Bob ...

@@ -44,11 +44,16 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 	return nil, nil
 }
 func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
-	return nil, nil
+	return &net.QueryResponse{
+		Offers: []*types.Offer{
+			{},
+		},
+	}, nil
 }
 func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error {
 	return nil
 }
+func (*mockNet) CloseProtocolStream() {}
 
 type mockSwapManager struct{}
 
@@ -87,13 +92,14 @@ func (*mockAlice) InitiateProtocol(providesAmount float64) (common.SwapState, er
 func (*mockAlice) Refund() (ethcommon.Hash, error) {
 	return ethcommon.Hash{}, nil
 }
+func (*mockAlice) SetSwapTimeout(_ time.Duration) {}
 
 type mockSwapState struct{}
 
 func (*mockSwapState) HandleProtocolMessage(msg message.Message) (resp message.Message, done bool, err error) {
 	return nil, true, nil
 }
-func (*mockSwapState) ProtocolExited() error {
+func (*mockSwapState) Exit() error {
 	return nil
 }
 func (*mockSwapState) SendKeysMessage() (*message.SendKeysMessage, error) {
@@ -189,7 +195,9 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
 	require.NoError(t, err)
 
-	id, ch, err := c.TakeOfferAndSubscribe(testMultiaddr, "", 1)
+	offerID := (&types.Offer{}).GetID()
+
+	id, ch, err := c.TakeOfferAndSubscribe(testMultiaddr, offerID.String(), 1)
 	require.NoError(t, err)
 	require.Equal(t, id, testSwapID)
 	select {

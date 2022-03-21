@@ -85,6 +85,12 @@ contract SwapFactory {
         emit Ready(id);
     }
 
+    // is_ready returns whether a swap has been set to "ready" or not.
+    // note: it will return false, not revert, if the swap does not exist.
+    function is_ready(uint256 id) public view returns (bool) {
+        return swaps[id].isReady;
+    }
+
     // Bob can claim if:
     // - Alice doesn't call set_ready or refund within t_0, or
     // - Alice calls ready within t_0, in which case Bob can call claim until t_1
