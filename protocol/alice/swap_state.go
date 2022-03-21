@@ -181,7 +181,7 @@ func (s *swapState) Exit() error {
 		txHash, err := s.tryRefund()
 		if err != nil {
 			if strings.Contains(err.Error(), revertSwapCompleted) {
-				return s.handleRevertSwapCompleted()
+				return s.tryClaim()
 			}
 
 			s.clearNextExpectedMessage(types.CompletedAbort)
@@ -198,7 +198,7 @@ func (s *swapState) Exit() error {
 		if err != nil {
 			// seems like Bob claimed already - try to claim monero
 			if strings.Contains(err.Error(), revertSwapCompleted) {
-				return s.handleRevertSwapCompleted()
+				return s.tryClaim()
 			}
 
 			s.clearNextExpectedMessage(types.CompletedAbort)
@@ -209,18 +209,7 @@ func (s *swapState) Exit() error {
 		s.clearNextExpectedMessage(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case nil:
-		skA, err := s.filterForClaim()
-		if err != nil {
-			return err
-		}
-
-		addr, err := s.claimMonero(skA)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("claimed monero: address=%s", addr)
-		s.clearNextExpectedMessage(types.CompletedSuccess)
+		return s.tryClaim()
 	default:
 		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
 		s.clearNextExpectedMessage(types.CompletedAbort)
@@ -230,7 +219,11 @@ func (s *swapState) Exit() error {
 	return nil
 }
 
-func (s *swapState) handleRevertSwapCompleted() error {
+func (s *swapState) tryClaim() error {
+	if !s.info.Status().IsOngoing() {
+		return nil
+	}
+
 	skA, err := s.filterForClaim()
 	if err != nil {
 		return err

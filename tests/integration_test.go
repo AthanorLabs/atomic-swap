@@ -668,7 +668,7 @@ func TestAbort_BobCancels(t *testing.T) {
 // TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.
 // Only one should succeed, the other should return an error or Abort status.
 func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
-	const testTimeout = time.Second * 5
+	const testTimeout = time.Second * 30
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -741,7 +741,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	select {
 	case err := <-errCh:
 		require.NotNil(t, err)
-		t.Log("got expected error", err)
+		t.Log("got expected error:", err)
 	case <-time.After(testTimeout):
 		t.Fatalf("did not get error from Alice or Charlie")
 	}
