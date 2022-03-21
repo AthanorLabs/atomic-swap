@@ -321,6 +321,7 @@ func TestRefund_AliceCancels(t *testing.T) {
 // "come online" to see, and he will then refund also.
 func TestRefund_BobCancels_untilAfterT1(t *testing.T) {
 	testRefundBobCancels(t, 5, types.CompletedRefund)
+	time.Sleep(time.Second * 5)
 }
 
 // TestRefund_BobCancels_afterIsReady tests the case where Alice and Bob both lock their funds,
