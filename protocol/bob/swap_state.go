@@ -162,6 +162,13 @@ func (s *swapState) Exit() error {
 
 	s.Lock()
 	defer s.Unlock()
+	return s.exit()
+}
+
+func (s *swapState) exit() error {
+	if s == nil {
+		return errors.New("swap state is nil")
+	}
 
 	log.Debugf("attempting to exit swap: nextExpectedMessage=%v", s.nextExpectedMessage)
 

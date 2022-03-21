@@ -183,7 +183,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 			if err != nil {
 				log.Errorf("failed to claim: err=%s", err)
 				// TODO: retry claim, depending on error
-				_ = s.Exit()
+				_ = s.exit()
 				return
 			}
 
