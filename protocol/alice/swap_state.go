@@ -171,6 +171,8 @@ func (s *swapState) Exit() error {
 		}
 	}()
 
+	log.Debugf("attempting to exit swap: current status=%s", pcommon.GetStatus(s.nextExpectedMessage.Type()))
+
 	switch s.nextExpectedMessage.(type) {
 	case *net.SendKeysMessage:
 		// we are fine, as we only just initiated the protocol.

@@ -163,7 +163,7 @@ func (s *swapState) Exit() error {
 	s.Lock()
 	defer s.Unlock()
 
-	log.Infof("attempting to exit swap")
+	log.Debugf("attempting to exit swap: current status=%s", pcommon.GetStatus(s.nextExpectedMessage.Type()))
 
 	defer func() {
 		// stop all running goroutines
