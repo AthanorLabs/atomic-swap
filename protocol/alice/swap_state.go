@@ -455,5 +455,11 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
-	return monero.CreateMoneroWallet("alice-swap-wallet", s.alice.env, s.alice.client, kpAB)
+	addr, err := monero.CreateMoneroWallet("alice-swap-wallet", s.alice.env, s.alice.client, kpAB)
+	if err != nil {
+		return "", err
+	}
+
+	close(s.claimedCh)
+	return addr, nil
 }

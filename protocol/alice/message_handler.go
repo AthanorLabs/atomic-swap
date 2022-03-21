@@ -65,10 +65,6 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 	if s.statusCh != nil {
 		s.statusCh <- status
 	}
-
-	if status == types.CompletedSuccess {
-		close(s.claimedCh)
-	}
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
