@@ -446,6 +446,10 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
+	if !s.info.Status().IsOngoing() {
+		return "", errors.New("swap has already completed")
+	}
+
 	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
 	vkAB := mcrypto.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
