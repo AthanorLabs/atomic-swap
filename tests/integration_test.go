@@ -130,7 +130,6 @@ func TestSuccess(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
-	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -211,7 +210,10 @@ func TestRefund_AliceCancels(t *testing.T) {
 		generateBlocks(64)
 	}
 
-	const testTimeout = time.Second * 5
+	const (
+		testTimeout = time.Second * 5
+		swapTimeout = 5 // 5s
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -229,7 +231,6 @@ func TestRefund_AliceCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
-	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -262,6 +263,9 @@ func TestRefund_AliceCancels(t *testing.T) {
 
 	c := client.NewClient(defaultAliceDaemonEndpoint)
 	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	require.NoError(t, err)
+
+	err = c.SetSwapTimeout(swapTimeout)
 	require.NoError(t, err)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
@@ -349,7 +353,6 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
-	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -468,13 +471,11 @@ func TestAbort_AliceCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
-	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
-		defer close(errCh)
 		defer wg.Done()
 
 		select {
@@ -578,7 +579,6 @@ func TestAbort_BobCancels(t *testing.T) {
 
 	bobIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
-	defer close(errCh)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -632,7 +632,6 @@ func TestAbort_BobCancels(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		defer close(errCh)
 
 		for status := range takerStatusCh {
 			fmt.Println("> Alice got status:", status)

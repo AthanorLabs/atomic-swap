@@ -180,8 +180,8 @@ func (s *swapState) Exit() error {
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
-			if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
-				return nil
+			if strings.Contains(err.Error(), revertSwapCompleted) {
+				return s.handleRevertSwapCompleted()
 			}
 
 			s.clearNextExpectedMessage(types.CompletedAbort)
@@ -198,19 +198,7 @@ func (s *swapState) Exit() error {
 		if err != nil {
 			// seems like Bob claimed already - try to claim monero
 			if strings.Contains(err.Error(), revertSwapCompleted) {
-				skA, err := s.filterForClaim() //nolint:govet
-				if err != nil {
-					return err
-				}
-
-				addr, err := s.claimMonero(skA)
-				if err != nil {
-					return err
-				}
-
-				log.Infof("claimed monero: address=%s", addr)
-				s.clearNextExpectedMessage(types.CompletedSuccess)
-				return nil
+				return s.handleRevertSwapCompleted()
 			}
 
 			s.clearNextExpectedMessage(types.CompletedAbort)
@@ -239,6 +227,22 @@ func (s *swapState) Exit() error {
 		return errUnexpectedMessageType
 	}
 
+	return nil
+}
+
+func (s *swapState) handleRevertSwapCompleted() error {
+	skA, err := s.filterForClaim()
+	if err != nil {
+		return err
+	}
+
+	addr, err := s.claimMonero(skA)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("claimed monero: address=%s", addr)
+	s.clearNextExpectedMessage(types.CompletedSuccess)
 	return nil
 }
 

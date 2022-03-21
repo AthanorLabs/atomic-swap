@@ -57,6 +57,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		infofile:       pcommon.GetSwapRecoveryFilepath(a.basepath),
+		claimedCh:      make(chan struct{}),
 	}
 
 	rs := &recoveryState{
