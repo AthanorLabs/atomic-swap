@@ -156,4 +156,4 @@ If you'd like to contribute, feel free to fork the repo and make a pull request.
 
 ## Donations
 
-The work on this project is currently not funded. If you'd like to donate, you can send XMR to the following address: `48WX8KhD8ECgnRBonmDdUecGt8LtQjjesDRzxAjj7tie4CdhtqeBjSLWHhNKMc52kWayq365czkN3MV62abQobTcT1Xe6xC`
+The work on this project is currently funded via a [Monero CCS Proposal](https://ccs.getmonero.org/proposals/noot-eth-xmr-atomic-swap.html) If you would like help fund this project, feel free to contribute to a follow-up CCS proposal when it's ready for funding. In the meantime, check out other [CCS proposals ready for funding](https://ccs.getmonero.org/funding-required/).
