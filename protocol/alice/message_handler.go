@@ -93,12 +93,12 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	// TODO: get user to confirm amount they will receive!!
-	s.info.SetReceivedAmount(msg.ProvidedAmount)
-	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
-
-	exchangeRate := msg.ProvidedAmount / s.info.ProvidedAmount()
-	s.info.SetExchangeRate(types.ExchangeRate(exchangeRate))
+	if msg.ProvidedAmount < s.info.ReceivedAmount() {
+		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
+			msg.ProvidedAmount,
+			s.info.ReceivedAmount(),
+		)
+	}
 
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -127,6 +127,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	if err != nil {
 		return nil, err
 	}
+
+	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
 
 	s.setBobKeys(sk, vk, secp256k1Pub)
 	err = s.lockETH(s.providedAmountInWei())

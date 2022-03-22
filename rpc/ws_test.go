@@ -86,7 +86,7 @@ func (*mockAlice) SetGasPrice(gasPrice uint64) {}
 func (*mockAlice) GetOngoingSwapState() common.SwapState {
 	return new(mockSwapState)
 }
-func (*mockAlice) InitiateProtocol(providesAmount float64) (common.SwapState, error) {
+func (*mockAlice) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
 func (*mockAlice) Refund() (ethcommon.Hash, error) {
