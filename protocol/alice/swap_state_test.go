@@ -71,9 +71,8 @@ func newTestAlice(t *testing.T) *Instance {
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	alice := newTestAlice(t)
-	swapState, err := newSwapState(alice, infofile, common.NewEtherAmount(1))
+	swapState, err := newSwapState(alice, infofile, common.NewEtherAmount(1), common.MoneroAmount(0), 1)
 	require.NoError(t, err)
-	swapState.info.SetReceivedAmount(1)
 	return alice, swapState
 }
 
@@ -173,7 +172,6 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	s.info.SetReceivedAmount(0)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -209,7 +207,6 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	s.info.SetReceivedAmount(0)
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -246,6 +243,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 func TestSwapState_NotifyClaimed(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
+	s.alice.swapTimeout = time.Minute * 2
 
 	s.alice.client = monero.NewClient(common.DefaultBobMoneroEndpoint)
 	err := s.alice.client.OpenWallet("test-wallet", "")
@@ -269,7 +267,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
+	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
 	require.Equal(t, msg.PublicSpendKey, s.bobPublicSpendKey.Hex())
 	require.Equal(t, msg.PrivateViewKey, s.bobPrivateViewKey.Hex())
 
@@ -282,7 +280,6 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
 
 	amt := common.MoneroAmount(1)
-	s.info.SetReceivedAmount(amt.AsMonero())
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 

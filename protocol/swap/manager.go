@@ -70,16 +70,6 @@ func (i *Info) StatusCh() <-chan types.Status {
 	return i.statusCh
 }
 
-// SetReceivedAmount ...
-func (i *Info) SetReceivedAmount(a float64) {
-	i.receivedAmount = a
-}
-
-// SetExchangeRate ...
-func (i *Info) SetExchangeRate(r types.ExchangeRate) {
-	i.exchangeRate = r
-}
-
 // SetStatus ...
 func (i *Info) SetStatus(s Status) {
 	if i == nil {
