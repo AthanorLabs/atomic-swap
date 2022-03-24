@@ -267,7 +267,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
+	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
 	require.Equal(t, msg.PublicSpendKey, s.bobPublicSpendKey.Hex())
 	require.Equal(t, msg.PrivateViewKey, s.bobPrivateViewKey.Hex())
 
