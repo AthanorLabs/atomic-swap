@@ -72,7 +72,7 @@ func newTestBob(t *testing.T) *Instance {
 	bobAddr, err := bob.client.GetAddress(0)
 	require.NoError(t, err)
 
-	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 256)
+	_ = bob.daemonClient.GenerateBlocks(bobAddr.Address, 512)
 	err = bob.client.Refresh()
 	require.NoError(t, err)
 	return bob

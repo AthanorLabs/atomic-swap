@@ -93,12 +93,12 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	// TODO: get user to confirm amount they will receive!!
-	s.info.SetReceivedAmount(msg.ProvidedAmount)
-	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
-
-	exchangeRate := msg.ProvidedAmount / s.info.ProvidedAmount()
-	s.info.SetExchangeRate(types.ExchangeRate(exchangeRate))
+	if msg.ProvidedAmount < s.info.ReceivedAmount() {
+		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
+			msg.ProvidedAmount,
+			s.info.ReceivedAmount(),
+		)
+	}
 
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -128,6 +128,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
+	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
+
 	s.setBobKeys(sk, vk, secp256k1Pub)
 	err = s.lockETH(s.providedAmountInWei())
 	if err != nil {
@@ -150,6 +152,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		const timeoutBuffer = time.Second * 5
 		until := time.Until(s.t0)
 
+		log.Debugf("time until refund: %ds", until.Seconds())
+
 		select {
 		case <-s.ctx.Done():
 			return
@@ -169,6 +173,21 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			}
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
+
+			if s == nil {
+				log.Error("swap state is nil")
+				return
+			}
+
+			if s.alice == nil {
+				log.Error("s.alice is nil")
+				return
+			}
+
+			if s.alice.net == nil {
+				log.Error("s.alice.net is nil")
+				return
+			}
 
 			// send NotifyRefund msg
 			if err := s.alice.net.SendSwapMessage(&message.NotifyRefund{

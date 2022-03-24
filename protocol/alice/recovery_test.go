@@ -2,6 +2,7 @@ package alice
 
 import (
 	"testing"
+	"time"
 
 	"github.com/noot/atomic-swap/common"
 
@@ -11,6 +12,7 @@ import (
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
 	inst, s := newTestInstance(t)
+	inst.swapTimeout = time.Second * 10
 	akp, err := generateKeys()
 	require.NoError(t, err)
 

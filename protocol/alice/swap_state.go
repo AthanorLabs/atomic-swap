@@ -66,7 +66,8 @@ type swapState struct {
 	claimedCh   chan struct{}
 }
 
-func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount) (*swapState, error) {
+func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount,
+	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -78,7 +79,8 @@ func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmoun
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
-	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), 0, 0, stage, statusCh)
+	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
+		exhangeRate, stage, statusCh)
 	if err := a.swapManager.AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -379,7 +381,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 	tx, err := s.alice.contract.NewSwap(s.txOpts,
 		cmtBob, cmtAlice, s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())))
 	if err != nil {
-		return fmt.Errorf("failed to deploy Swap.sol: %w", err)
+		return fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
 	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())

@@ -114,7 +114,7 @@ type Protocol interface {
 // Alice ...
 type Alice interface {
 	Protocol
-	InitiateProtocol(providesAmount float64) (common.SwapState, error)
+	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
 	Refund() (ethcommon.Hash, error)
 	SetSwapTimeout(timeout time.Duration)
 }
