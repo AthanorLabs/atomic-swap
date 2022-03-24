@@ -243,6 +243,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 func TestSwapState_NotifyClaimed(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
+	s.alice.swapTimeout = time.Minute * 2
 
 	s.alice.client = monero.NewClient(common.DefaultBobMoneroEndpoint)
 	err := s.alice.client.OpenWallet("test-wallet", "")

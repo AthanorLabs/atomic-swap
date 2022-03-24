@@ -152,6 +152,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		const timeoutBuffer = time.Second * 5
 		until := time.Until(s.t0)
 
+		log.Debugf("time until refund: %ds", until.Seconds())
+
 		select {
 		case <-s.ctx.Done():
 			return

@@ -15,7 +15,7 @@ type Type byte
 const (
 	QueryResponseType Type = iota //nolint
 	SendKeysType
-	NotifyETHLockedType // TODO: rename to NotifyETHLockType
+	NotifyETHLockedType
 	NotifyXMRLockType
 	NotifyReadyType
 	NotifyClaimedType
