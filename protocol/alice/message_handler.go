@@ -172,6 +172,21 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
+			if s == nil {
+				log.Error("swap state is nil")
+				return
+			}
+
+			if s.alice == nil {
+				log.Error("s.alice is nil")
+				return
+			}
+
+			if s.alice.net == nil {
+				log.Error("s.alice.net is nil")
+				return
+			}
+
 			// send NotifyRefund msg
 			if err := s.alice.net.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
