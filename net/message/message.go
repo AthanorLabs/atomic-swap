@@ -15,7 +15,7 @@ type Type byte
 const (
 	QueryResponseType Type = iota //nolint
 	SendKeysType
-	NotifyContractDeployedType // TODO: rename to NotifyETHLockType
+	NotifyETHLockedType
 	NotifyXMRLockType
 	NotifyReadyType
 	NotifyClaimedType
@@ -29,10 +29,12 @@ func (t Type) String() string {
 		return "QueryResponse"
 	case SendKeysType:
 		return "SendKeysMessage"
-	case NotifyContractDeployedType:
-		return "NotifyContractDeployed"
+	case NotifyETHLockedType:
+		return "NotifyETHLocked"
 	case NotifyXMRLockType:
 		return "NotifyXMRLock"
+	case NotifyReadyType:
+		return "NotifyReady"
 	case NotifyClaimedType:
 		return "NotifyClaimed"
 	case NotifyRefundType:
@@ -68,8 +70,8 @@ func DecodeMessage(b []byte) (Message, error) {
 			return nil, err
 		}
 		return m, nil
-	case NotifyContractDeployedType:
-		var m *NotifyContractDeployed
+	case NotifyETHLockedType:
+		var m *NotifyETHLocked
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
@@ -174,31 +176,31 @@ func (m *SendKeysMessage) Type() Type {
 	return SendKeysType
 }
 
-// NotifyContractDeployed is sent by Alice to Bob after deploying the swap contract
+// NotifyETHLocked is sent by Alice to Bob after deploying the swap contract
 // and locking her ether in it
-type NotifyContractDeployed struct {
+type NotifyETHLocked struct {
 	Address        string
 	ContractSwapID *big.Int
 }
 
 // String ...
-func (m *NotifyContractDeployed) String() string {
-	return fmt.Sprintf("NotifyContractDeployed Address=%s ContractSwapID=%d", m.Address, m.ContractSwapID)
+func (m *NotifyETHLocked) String() string {
+	return fmt.Sprintf("NotifyETHLocked Address=%s ContractSwapID=%d", m.Address, m.ContractSwapID)
 }
 
 // Encode ...
-func (m *NotifyContractDeployed) Encode() ([]byte, error) {
+func (m *NotifyETHLocked) Encode() ([]byte, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	return append([]byte{byte(NotifyContractDeployedType)}, b...), nil
+	return append([]byte{byte(NotifyETHLockedType)}, b...), nil
 }
 
 // Type ...
-func (m *NotifyContractDeployed) Type() Type {
-	return NotifyContractDeployedType
+func (m *NotifyETHLocked) Type() Type {
+	return NotifyETHLockedType
 }
 
 // NotifyXMRLock is sent by Bob to Alice after locking his XMR.

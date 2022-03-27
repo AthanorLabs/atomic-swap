@@ -51,7 +51,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 			return nil, true, err
 		}
 
-		close(s.claimedCh)
 		log.Info("successfully created monero wallet from our secrets: address=", address)
 		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return nil, true, nil
@@ -78,6 +77,14 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 }
 
 func (s *swapState) checkMessageType(msg net.Message) error {
+	if msg == nil {
+		return errors.New("message is nil")
+	}
+
+	if s.nextExpectedMessage == nil {
+		return nil
+	}
+
 	if msg.Type() != s.nextExpectedMessage.Type() {
 		return errors.New("received unexpected message")
 	}
@@ -86,12 +93,12 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	// TODO: get user to confirm amount they will receive!!
-	s.info.SetReceivedAmount(msg.ProvidedAmount)
-	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
-
-	exchangeRate := msg.ProvidedAmount / s.info.ProvidedAmount()
-	s.info.SetExchangeRate(types.ExchangeRate(exchangeRate))
+	if msg.ProvidedAmount < s.info.ReceivedAmount() {
+		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
+			msg.ProvidedAmount,
+			s.info.ReceivedAmount(),
+		)
+	}
 
 	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
 		return nil, errMissingKeys
@@ -121,6 +128,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
+	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
+
 	s.setBobKeys(sk, vk, secp256k1Pub)
 	err = s.lockETH(s.providedAmountInWei())
 	if err != nil {
@@ -137,13 +146,25 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	// start goroutine to check that Bob locks before t_0
 	go func() {
-		const timeoutBuffer = time.Minute * 5
+		// TODO: this variable is so that we definitely refund before t0.
+		// this will vary based on environment (eg. development should be very small,
+		// a network with slower block times should be longer)
+		const timeoutBuffer = time.Second * 5
 		until := time.Until(s.t0)
+
+		log.Debugf("time until refund: %ds", until.Seconds())
 
 		select {
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until - timeoutBuffer):
+			s.Lock()
+			defer s.Unlock()
+
+			if !s.info.Status().IsOngoing() {
+				return
+			}
+
 			// Bob hasn't locked yet, let's call refund
 			txhash, err := s.refund()
 			if err != nil {
@@ -152,6 +173,21 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			}
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
+
+			if s == nil {
+				log.Error("swap state is nil")
+				return
+			}
+
+			if s.alice == nil {
+				log.Error("s.alice is nil")
+				return
+			}
+
+			if s.alice.net == nil {
+				log.Error("s.alice.net is nil")
+				return
+			}
 
 			// send NotifyRefund msg
 			if err := s.alice.net.SendSwapMessage(&message.NotifyRefund{
@@ -167,7 +203,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	s.setNextExpectedMessage(&message.NotifyXMRLock{})
 
-	out := &message.NotifyContractDeployed{
+	out := &message.NotifyETHLocked{
 		Address:        s.alice.contractAddr.String(),
 		ContractSwapID: s.contractSwapID,
 	}
@@ -273,6 +309,13 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until + time.Second):
+			s.Lock()
+			defer s.Unlock()
+
+			if !s.info.Status().IsOngoing() {
+				return
+			}
+
 			// Bob hasn't claimed, and we're after t_1. let's call Refund
 			txhash, err := s.refund()
 			if err != nil {
@@ -281,6 +324,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			}
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
+			s.clearNextExpectedMessage(types.CompletedRefund) // TODO: duplicate?
 
 			// send NotifyRefund msg
 			if err = s.alice.net.SendSwapMessage(&message.NotifyRefund{
@@ -288,6 +332,8 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			}); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
+
+			_ = s.Exit()
 		case <-s.claimedCh:
 			return
 		}

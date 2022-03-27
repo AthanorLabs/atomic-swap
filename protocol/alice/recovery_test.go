@@ -2,6 +2,7 @@ package alice
 
 import (
 	"testing"
+	"time"
 
 	"github.com/noot/atomic-swap/common"
 
@@ -11,6 +12,7 @@ import (
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
 	inst, s := newTestInstance(t)
+	inst.swapTimeout = time.Second * 10
 	akp, err := generateKeys()
 	require.NoError(t, err)
 
@@ -72,7 +74,7 @@ func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
 	err = rpcClient.Call(&result, "evm_snapshot")
 	require.NoError(t, err)
 
-	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+360)
+	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Seconds()*2+360)
 	require.NoError(t, err)
 
 	defer func() {

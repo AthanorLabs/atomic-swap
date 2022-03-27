@@ -22,6 +22,7 @@ type Net interface {
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error
+	CloseProtocolStream()
 }
 
 // NetService is the RPC service prefixed by net_.
@@ -150,7 +151,33 @@ func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *Tak
 
 func (s *NetService) takeOffer(multiaddr, offerID string,
 	providesAmount float64) (uint64, <-chan types.Status, string, error) {
-	swapState, err := s.alice.InitiateProtocol(providesAmount)
+	who, err := net.StringToAddrInfo(multiaddr)
+	if err != nil {
+		return 0, nil, "", err
+	}
+
+	queryResp, err := s.net.Query(who)
+	if err != nil {
+		return 0, nil, "", err
+	}
+
+	var (
+		found bool
+		offer *types.Offer
+	)
+	for _, maybeOffer := range queryResp.Offers {
+		if maybeOffer.GetID().String() == offerID {
+			found = true
+			offer = maybeOffer
+			break
+		}
+	}
+
+	if !found {
+		return 0, nil, "", errors.New("peer does not have offer with given ID")
+	}
+
+	swapState, err := s.alice.InitiateProtocol(providesAmount, offer)
 	if err != nil {
 		return 0, nil, "", err
 	}
@@ -163,13 +190,8 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
 
-	who, err := net.StringToAddrInfo(multiaddr)
-	if err != nil {
-		return 0, nil, "", err
-	}
-
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		_ = swapState.ProtocolExited()
+		_ = swapState.Exit()
 		return 0, nil, "", err
 	}
 
@@ -192,31 +214,13 @@ type TakeOfferSyncResponse struct {
 // It synchronously waits until the swap is completed before returning its status.
 func (s *NetService) TakeOfferSync(_ *http.Request, req *TakeOfferRequest,
 	resp *TakeOfferSyncResponse) error {
-	swapState, err := s.alice.InitiateProtocol(req.ProvidesAmount)
+	id, _, infofile, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
 	}
 
-	skm, err := swapState.SendKeysMessage()
-	if err != nil {
-		return err
-	}
-
-	skm.OfferID = req.OfferID
-	skm.ProvidedAmount = req.ProvidesAmount
-
-	who, err := net.StringToAddrInfo(req.Multiaddr)
-	if err != nil {
-		return err
-	}
-
-	if err = s.net.Initiate(who, skm, swapState); err != nil {
-		_ = swapState.ProtocolExited()
-		return err
-	}
-
-	resp.ID = swapState.ID()
-	resp.InfoFile = swapState.InfoFile()
+	resp.ID = id
+	resp.InfoFile = infofile
 
 	const checkSwapSleepDuration = time.Millisecond * 100
 

@@ -29,7 +29,7 @@ func (s *mockSwapState) HandleProtocolMessage(msg Message) (resp Message, done b
 	return nil, false, nil
 }
 
-func (s *mockSwapState) ProtocolExited() error {
+func (s *mockSwapState) Exit() error {
 	return nil
 }
 

@@ -17,15 +17,19 @@ func (a *Instance) Provides() types.ProvidesCoin {
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
-func (a *Instance) InitiateProtocol(providesAmount float64) (common.SwapState, error) {
-	if err := a.initiate(common.EtherToWei(providesAmount)); err != nil {
+func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
+	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
+	err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
+		offer.ExchangeRate)
+	if err != nil {
 		return nil, err
 	}
 
 	return a.swapState, nil
 }
 
-func (a *Instance) initiate(providesAmount common.EtherAmount) error {
+func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
+	exchangeRate types.ExchangeRate) error {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
@@ -43,7 +47,8 @@ func (a *Instance) initiate(providesAmount common.EtherAmount) error {
 		return errors.New("balance lower than amount to be provided")
 	}
 
-	a.swapState, err = newSwapState(a, pcommon.GetSwapInfoFilepath(a.basepath), providesAmount)
+	a.swapState, err = newSwapState(a, pcommon.GetSwapInfoFilepath(a.basepath), providesAmount,
+		receivedAmount, exchangeRate)
 	if err != nil {
 		return err
 	}

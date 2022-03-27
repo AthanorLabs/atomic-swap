@@ -5,7 +5,6 @@ import (
 )
 
 var (
-	errSwapAborted           = errors.New("protocol exited before any funds were locked")
 	errUnexpectedMessageType = errors.New("unexpected message type")
 	errMissingKeys           = errors.New("did not receive Alice's public spend or view key")
 	errMissingAddress        = errors.New("got empty contract address")

@@ -58,22 +58,16 @@ func (i *Info) ExchangeRate() types.ExchangeRate {
 
 // Status returns the swap's status.
 func (i *Info) Status() Status {
+	if i == nil {
+		return 0
+	}
+
 	return i.status
 }
 
 // StatusCh returns the swap's status update channel.
 func (i *Info) StatusCh() <-chan types.Status {
 	return i.statusCh
-}
-
-// SetReceivedAmount ...
-func (i *Info) SetReceivedAmount(a float64) {
-	i.receivedAmount = a
-}
-
-// SetExchangeRate ...
-func (i *Info) SetExchangeRate(r types.ExchangeRate) {
-	i.exchangeRate = r
 }
 
 // SetStatus ...
