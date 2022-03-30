@@ -21,6 +21,8 @@ type WsClient interface {
 	SubscribeSwapStatus(id uint64) (<-chan types.Status, error)
 	TakeOfferAndSubscribe(multiaddr, offerID string,
 		providesAmount float64) (id uint64, ch <-chan types.Status, err error)
+	MakeOfferAndSubscribe(min, max float64,
+		exchangeRate types.ExchangeRate) (string, <-chan *MakeOfferTakenResponse, <-chan types.Status, error)
 }
 
 type wsClient struct {

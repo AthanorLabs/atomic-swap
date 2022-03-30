@@ -17,4 +17,10 @@ if ! go build -o swaprecover ; then
 	exit 1
 fi
 mv swaprecover ../..
+
+cd ../tester
+if ! go build -o swaptester ; then 
+	exit 1
+fi
+mv swaptester ../..
 cd ../..
