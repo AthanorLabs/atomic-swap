@@ -169,7 +169,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -204,7 +204,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -349,7 +349,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -372,7 +372,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -396,7 +396,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()

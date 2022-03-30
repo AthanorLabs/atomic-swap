@@ -94,6 +94,10 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 		return
 	}
 
+	if msg == s.nextExpectedMessage {
+		return
+	}
+
 	s.nextExpectedMessage = msg
 	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
@@ -143,7 +147,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	if err := s.checkContract(); err != nil {
+	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
 
@@ -209,8 +213,6 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
 		return errMissingKeys
 	}
-
-	log.Debug("got Alice's public keys")
 
 	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
 	if err != nil {

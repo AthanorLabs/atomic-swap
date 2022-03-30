@@ -23,7 +23,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 
 	s.setBobKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
 	s.bobAddress = inst.callOpts.From
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), inst.contractAddr, s.contractSwapID)

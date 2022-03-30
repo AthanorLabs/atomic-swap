@@ -21,17 +21,17 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, b
 		sf *swapfactory.SwapFactory
 	)
 
-	if env == common.Development && (address == ethcommon.Address{}) {
+	if env != common.Mainnet && (address == ethcommon.Address{}) {
 		txOpts, err := bind.NewKeyedTransactorWithChainID(privkey, chainID)
 		if err != nil {
-			return nil, ethcommon.Address{}, err
+			return nil, ethcommon.Address{}, fmt.Errorf("failed to make transactor: %w", err)
 		}
 
 		// deploy SwapFactory.sol
 		var tx *ethtypes.Transaction
 		address, tx, sf, err = deploySwapFactory(ec, txOpts)
 		if err != nil {
-			return nil, ethcommon.Address{}, err
+			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w; please check your chain ID", err)
 		}
 
 		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())

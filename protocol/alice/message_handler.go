@@ -128,10 +128,10 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
+	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v ETH", msg.ProvidedAmount, s.info.ProvidedAmount()))
 
 	s.setBobKeys(sk, vk, secp256k1Pub)
-	err = s.lockETH(s.providedAmountInWei())
+	txHash, err := s.lockETH(s.providedAmountInWei())
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
@@ -152,7 +152,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		const timeoutBuffer = time.Second * 5
 		until := time.Until(s.t0)
 
-		log.Debugf("time until refund: %ds", until.Seconds())
+		log.Debugf("time until refund: %vs", until.Seconds())
 
 		select {
 		case <-s.ctx.Done():
@@ -205,6 +205,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	out := &message.NotifyETHLocked{
 		Address:        s.alice.contractAddr.String(),
+		TxHash:         txHash.String(),
 		ContractSwapID: s.contractSwapID,
 	}
 
@@ -296,7 +297,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("failed to call Ready: %w", err)
 	}
 
-	log.Debug("set swap.IsReady to true")
+	log.Info("XMR was locked successfully, setting contract to ready...")
 
 	if err := s.setTimeouts(); err != nil {
 		return nil, fmt.Errorf("failed to set timeouts: %w", err)

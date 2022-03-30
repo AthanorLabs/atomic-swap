@@ -361,13 +361,13 @@ func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey
 }
 
 // lockETH the Swap contract function new_swap and locks `amount` ether in it.
-func (s *swapState) lockETH(amount common.EtherAmount) error {
+func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
-		return errors.New("public keys aren't set")
+		return ethcommon.Hash{}, errors.New("public keys aren't set")
 	}
 
 	if s.bobPublicSpendKey == nil || s.bobPrivateViewKey == nil {
-		return errors.New("bob's keys aren't set")
+		return ethcommon.Hash{}, errors.New("bob's keys aren't set")
 	}
 
 	cmtAlice := s.secp256k1Pub.Keccak256()
@@ -381,25 +381,25 @@ func (s *swapState) lockETH(amount common.EtherAmount) error {
 	tx, err := s.alice.contract.NewSwap(s.txOpts,
 		cmtBob, cmtAlice, s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())))
 	if err != nil {
-		return fmt.Errorf("failed to instantiate swap on-chain: %w", err)
+		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
 	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())
 	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
 	if err != nil {
-		return fmt.Errorf("failed to call new_swap in contract: %w", err)
+		return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
 	}
 
 	if len(receipt.Logs) == 0 {
-		return errors.New("expected 1 log, got 0")
+		return ethcommon.Hash{}, errors.New("expected 1 log, got 0")
 	}
 
 	s.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	if err != nil {
-		return err
+		return ethcommon.Hash{}, err
 	}
 
-	return nil
+	return tx.Hash(), nil
 }
 
 // ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
