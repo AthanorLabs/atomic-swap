@@ -2,25 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	// "errors"
-	// "math/big"
+	"math/big"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	// ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	// "github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
 	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
-	// mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	// "github.com/noot/atomic-swap/protocol/alice"
-	// "github.com/noot/atomic-swap/protocol/bob"
-	// recovery "github.com/noot/atomic-swap/recover"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -77,13 +72,13 @@ func runTester(c *cli.Context) error {
 		config = defaultConfigFile
 	}
 
-	bz, err := ioutil.ReadFile(config)
+	bz, err := ioutil.ReadFile(filepath.Clean(config))
 	if err != nil {
 		return err
 	}
 
 	var endpoints []string
-	if err := json.Unmarshal(bz, endpoints); err != nil {
+	if err := json.Unmarshal(bz, &endpoints); err != nil {
 		return fmt.Errorf("failed to unmarshal endpoints in config file: %w", err)
 	}
 
@@ -98,7 +93,7 @@ func runTester(c *cli.Context) error {
 			rsl:      rsl,
 			endpoint: endpoint,
 			errCh:    errChs[i],
-			wg:       wg,
+			wg:       &wg,
 			idx:      i,
 		}
 		go d.test(ctx)
@@ -120,7 +115,7 @@ type daemon struct {
 	endpoint string
 	wsc      rpcclient.WsClient
 	errCh    chan error
-	wg       sync.WaitGroup
+	wg       *sync.WaitGroup
 	idx      int
 }
 
@@ -135,12 +130,32 @@ func (d *daemon) test(ctx context.Context) {
 		return
 	}
 
-	for {
-		d.makeOffer()
-		if ctx.Err() != nil {
-			return
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		for {
+			d.makeOffer()
+			if ctx.Err() != nil {
+				return
+			}
 		}
-	}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		for {
+			d.takeOffer()
+			if ctx.Err() != nil {
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
 }
 
 func (d *daemon) logErrors(ctx context.Context) {
@@ -154,6 +169,61 @@ func (d *daemon) logErrors(ctx context.Context) {
 	}
 }
 
+func (d *daemon) takeOffer() {
+	const defaultDiscoverTimeout = uint64(3) // 3s
+	providers, err := d.wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	if err != nil {
+		d.errCh <- err
+		return
+	}
+
+	if len(providers) == 0 {
+		return
+	}
+
+	makerIdx := getRandomInt(len(providers))
+
+	// TODO: only advertize non-local addrs (if not in dev mode)
+	resp, err := d.wsc.Query(providers[makerIdx][0])
+	if err != nil {
+		d.errCh <- err
+		return
+	}
+
+	offerIdx := getRandomInt(len(resp.Offers))
+	offer := resp.Offers[offerIdx]
+	// TODO: pick random amount between min and max
+	providesAmount := offer.ExchangeRate.ToETH(offer.MinimumAmount)
+
+	start := time.Now()
+
+	_, takerStatusCh, err := d.wsc.TakeOfferAndSubscribe(providers[makerIdx][0],
+		offer.GetID().String(), providesAmount)
+	if err != nil {
+		d.errCh <- err
+		return
+	}
+
+	for status := range takerStatusCh {
+		if status.IsOngoing() {
+			continue
+		}
+
+		if status != types.CompletedSuccess {
+			d.errCh <- fmt.Errorf("swap did not complete successfully for taker: got %s", status)
+		}
+
+		d.rsl.logTakerStatus(status)
+		d.rsl.logSwapDuration(time.Since(start))
+		return
+	}
+}
+
+func getRandomInt(max int) int {
+	i, _ := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	return int(i.Int64())
+}
+
 func (d *daemon) makeOffer() {
 	_, takenCh, statusCh, err := d.wsc.MakeOfferAndSubscribe(minProvidesAmount, maxProvidesAmount,
 		exchangeRate)
@@ -164,14 +234,12 @@ func (d *daemon) makeOffer() {
 
 	// TODO: also log swap duration
 
-	select {
-	case taken := <-takenCh:
-		if taken == nil {
-			return
-		}
-		// case <-time.After(testTimeout):
-		// 	errCh <- errors.New("make offer subscription timed out")
+	taken := <-takenCh
+	if taken == nil {
+		return
 	}
+
+	start := time.Now()
 
 	for status := range statusCh {
 		// fmt.Println("> maker got status:", status)
@@ -180,10 +248,11 @@ func (d *daemon) makeOffer() {
 		}
 
 		if status != types.CompletedSuccess {
-			d.errCh <- fmt.Errorf("swap did not refund successfully for maker: exit status was %s", status)
+			d.errCh <- fmt.Errorf("swap did not complete successfully for maker: exit status was %s", status)
 		}
 
 		d.rsl.logMakerStatus(status)
+		d.rsl.logSwapDuration(time.Since(start))
 		return
 	}
 }

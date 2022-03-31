@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/noot/atomic-swap/common/rpcclient"
-	"github.com/noot/atomic-swap/rpc"
+	"github.com/noot/atomic-swap/common/rpctypes"
 )
 
 // TakeOffer calls net_takeOffer.
@@ -14,7 +14,7 @@ func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64)
 		method = "net_takeOffer"
 	)
 
-	req := &rpc.TakeOfferRequest{
+	req := &rpctypes.TakeOfferRequest{
 		Multiaddr:      maddr,
 		OfferID:        offerID,
 		ProvidesAmount: providesAmount,
@@ -34,7 +34,7 @@ func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64)
 		return 0, fmt.Errorf("failed to call %s: %w", method, resp.Error)
 	}
 
-	var res *rpc.TakeOfferResponse
+	var res *rpctypes.TakeOfferResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return 0, err
 	}

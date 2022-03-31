@@ -5,19 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"
 )
 
-// DefaultJSONRPCVersion ...
-const DefaultJSONRPCVersion = "2.0"
-
 var log = logging.Logger("rpcclient")
 
 // WsClient ...
 type WsClient interface {
+	Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error)
+	Query(maddr string) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id uint64) (<-chan types.Status, error)
 	TakeOfferAndSubscribe(multiaddr, offerID string,
 		providesAmount float64) (id uint64, ch <-chan types.Status, err error)
@@ -45,15 +45,103 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 	}, nil
 }
 
-// SubscribeSwapStatusRequestParams ...
-type SubscribeSwapStatusRequestParams struct {
-	ID uint64 `json:"id"`
+func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error) {
+	params := &rpctypes.DiscoverRequest{
+		Provides:   provides,
+		SearchTime: searchTime,
+	}
+
+	bz, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &rpctypes.Request{
+		JSONRPC: rpctypes.DefaultJSONRPCVersion,
+		Method:  "net_discover",
+		Params:  bz,
+		ID:      0,
+	}
+
+	if err = c.conn.WriteJSON(req); err != nil {
+		return nil, err
+	}
+
+	// read ID from connection
+	_, message, err := c.conn.ReadMessage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read websockets message: %s", err)
+	}
+
+	var resp *rpctypes.Response
+	err = json.Unmarshal(message, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+	}
+
+	log.Debugf("received message over websockets: %s", message)
+	var dresp *rpctypes.DiscoverResponse
+	if err := json.Unmarshal(resp.Result, &dresp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
+	}
+
+	return dresp.Peers, nil
+}
+
+func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
+	params := &rpctypes.QueryPeerRequest{
+		Multiaddr: maddr,
+	}
+
+	bz, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &rpctypes.Request{
+		JSONRPC: rpctypes.DefaultJSONRPCVersion,
+		Method:  "net_queryPeer",
+		Params:  bz,
+		ID:      0,
+	}
+
+	if err = c.conn.WriteJSON(req); err != nil {
+		return nil, err
+	}
+
+	// read ID from connection
+	_, message, err := c.conn.ReadMessage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read websockets message: %s", err)
+	}
+
+	var resp *rpctypes.Response
+	err = json.Unmarshal(message, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+	}
+
+	log.Debugf("received message over websockets: %s", message)
+	var dresp *rpctypes.QueryPeerResponse
+	if err := json.Unmarshal(resp.Result, &dresp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
+	}
+
+	return dresp, nil
 }
 
 // SubscribeSwapStatus returns a channel that is written to each time the swap's status updates.
 // If there is no swap with the given ID, it returns an error.
 func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
-	params := &SubscribeSwapStatusRequestParams{
+	params := &rpctypes.SubscribeSwapStatusRequest{
 		ID: id,
 	}
 
@@ -62,8 +150,8 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 		return nil, err
 	}
 
-	req := &Request{
-		JSONRPC: DefaultJSONRPCVersion,
+	req := &rpctypes.Request{
+		JSONRPC: rpctypes.DefaultJSONRPCVersion,
 		Method:  "swap_subscribeStatus",
 		Params:  bz,
 		ID:      0,
@@ -85,7 +173,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 				break
 			}
 
-			var resp *Response
+			var resp *rpctypes.Response
 			err = json.Unmarshal(message, &resp)
 			if err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
@@ -98,7 +186,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			var status *SubscribeSwapStatusResponse
+			var status *rpctypes.SubscribeSwapStatusResponse
 			if err := json.Unmarshal(resp.Result, &status); err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
@@ -111,23 +199,9 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 	return respCh, nil
 }
 
-// SubscribeTakeOfferParams ...
-// TODO: duplciate of rpc.TakeOfferRequest
-type SubscribeTakeOfferParams struct {
-	Multiaddr      string  `json:"multiaddr"`
-	OfferID        string  `json:"offerID"`
-	ProvidesAmount float64 `json:"providesAmount"`
-}
-
-// TakeOfferResponse ...
-type TakeOfferResponse struct {
-	ID       uint64 `json:"id"`
-	InfoFile string `json:"infoFile"`
-}
-
 func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	providesAmount float64) (id uint64, ch <-chan types.Status, err error) {
-	params := &SubscribeTakeOfferParams{
+	params := &rpctypes.TakeOfferRequest{
 		Multiaddr:      multiaddr,
 		OfferID:        offerID,
 		ProvidesAmount: providesAmount,
@@ -138,8 +212,8 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		return 0, nil, err
 	}
 
-	req := &Request{
-		JSONRPC: DefaultJSONRPCVersion,
+	req := &rpctypes.Request{
+		JSONRPC: rpctypes.DefaultJSONRPCVersion,
 		Method:  "net_takeOfferAndSubscribe",
 		Params:  bz,
 		ID:      0,
@@ -155,7 +229,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		return 0, nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
-	var resp *Response
+	var resp *rpctypes.Response
 	err = json.Unmarshal(message, &resp)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to unmarshal response: %w", err)
@@ -166,7 +240,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	}
 
 	log.Debugf("received message over websockets: %s", message)
-	var idResp *TakeOfferResponse
+	var idResp *rpctypes.TakeOfferResponse
 	if err := json.Unmarshal(resp.Result, &idResp); err != nil {
 		return 0, nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
 	}
@@ -183,7 +257,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 				break
 			}
 
-			var resp *Response
+			var resp *rpctypes.Response
 			err = json.Unmarshal(message, &resp)
 			if err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
@@ -196,7 +270,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			var status *SubscribeSwapStatusResponse
+			var status *rpctypes.SubscribeSwapStatusResponse
 			if err := json.Unmarshal(resp.Result, &status); err != nil {
 				log.Warnf("failed to unmarshal swap status response: %s", err)
 				break
@@ -209,20 +283,6 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	return idResp.ID, respCh, nil
 }
 
-// MakeOfferRequest ...
-// TODO: duplicate of rpc.MakeOfferRequest
-type MakeOfferRequest struct {
-	MinimumAmount float64            `json:"minimumAmount"`
-	MaximumAmount float64            `json:"maximumAmount"`
-	ExchangeRate  types.ExchangeRate `json:"exchangeRate"`
-}
-
-// MakeOfferResponse ...
-type MakeOfferResponse struct {
-	ID       string `json:"offerID"`
-	InfoFile string `json:"infoFile"`
-}
-
 // MakeOfferTakenResponse contains the swap ID
 type MakeOfferTakenResponse struct {
 	ID uint64 `json:"id"`
@@ -230,7 +290,7 @@ type MakeOfferTakenResponse struct {
 
 func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 	exchangeRate types.ExchangeRate) (string, <-chan *MakeOfferTakenResponse, <-chan types.Status, error) {
-	params := &MakeOfferRequest{
+	params := &rpctypes.MakeOfferRequest{
 		MinimumAmount: min,
 		MaximumAmount: max,
 		ExchangeRate:  exchangeRate,
@@ -241,8 +301,8 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 		return "", nil, nil, err
 	}
 
-	req := &Request{
-		JSONRPC: DefaultJSONRPCVersion,
+	req := &rpctypes.Request{
+		JSONRPC: rpctypes.DefaultJSONRPCVersion,
 		Method:  "net_makeOfferAndSubscribe", // TODO: use const
 		Params:  bz,
 		ID:      0,
@@ -258,7 +318,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 		return "", nil, nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
-	var resp *Response
+	var resp *rpctypes.Response
 	err = json.Unmarshal(message, &resp)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to unmarshal response: %w", err)
@@ -270,7 +330,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 
 	// read synchronous response (offer ID and infofile)
 	log.Debugf("received message over websockets: %s", message)
-	var respData *MakeOfferResponse
+	var respData *rpctypes.MakeOfferResponse
 	if err := json.Unmarshal(resp.Result, &respData); err != nil {
 		return "", nil, nil, fmt.Errorf("failed to unmarshal response: %s", err)
 	}
@@ -289,7 +349,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 			return
 		}
 
-		var resp *Response
+		var resp *rpctypes.Response
 		err = json.Unmarshal(message, &resp)
 		if err != nil {
 			log.Warnf("failed to unmarshal response: %s", err)
@@ -317,7 +377,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 				break
 			}
 
-			var resp *Response
+			var resp *rpctypes.Response
 			err = json.Unmarshal(message, &resp)
 			if err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
@@ -330,7 +390,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			var status *SubscribeSwapStatusResponse
+			var status *rpctypes.SubscribeSwapStatusResponse
 			if err := json.Unmarshal(resp.Result, &status); err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
