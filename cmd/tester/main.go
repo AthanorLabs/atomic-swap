@@ -94,6 +94,7 @@ func runTester(c *cli.Context) error {
 	}
 
 	rsl := newResultLogger()
+	defer rsl.printStats()
 
 	var wg sync.WaitGroup
 	wg.Add(len(endpoints))
@@ -238,6 +239,7 @@ func (d *daemon) takeOffer() {
 	}
 
 	for status := range takerStatusCh {
+		log.Debugf("> taker %d got status:", d.idx, status)
 		if status.IsOngoing() {
 			continue
 		}
@@ -279,7 +281,7 @@ func (d *daemon) makeOffer() {
 	start := time.Now()
 
 	for status := range statusCh {
-		// fmt.Println("> maker got status:", status)
+		log.Debugf("> maker %d got status:", d.idx, status)
 		if status.IsOngoing() {
 			continue
 		}
@@ -318,4 +320,27 @@ func (l *resultLogger) logTakerStatus(s types.Status) {
 
 func (l *resultLogger) logSwapDuration(duration time.Duration) {
 	l.durations = append(l.durations, duration)
+}
+
+func (l *resultLogger) averageDuration() time.Duration {
+	sum := time.Duration(0)
+	for _, dur := range l.durations {
+		sum += dur
+	}
+	return sum / time.Duration(len(l.durations))
+}
+
+func (l *resultLogger) printStats() {
+	log.Infof("> total swaps=%d", len(l.durations))
+	log.Infof("> [maker] aborted %d | refunded %d | success %d",
+		l.maker[types.CompletedAbort],
+		l.maker[types.CompletedRefund],
+		l.maker[types.CompletedSuccess],
+	)
+	log.Infof("> [taker] aborted %d | refunded %d | success %d",
+		l.taker[types.CompletedAbort],
+		l.taker[types.CompletedRefund],
+		l.taker[types.CompletedSuccess],
+	)
+	log.Infof("> average swap duration: %dms", l.averageDuration().Milliseconds())
 }
