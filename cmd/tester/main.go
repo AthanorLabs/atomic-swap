@@ -75,6 +75,8 @@ func runTester(c *cli.Context) error {
 		timeout = time.Minute * time.Duration(timeoutMins)
 	}
 
+	log.Infof("starting to test, total duration is %dmins", timeout.Minutes())
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -138,7 +140,7 @@ type daemon struct {
 }
 
 func (d *daemon) test(ctx context.Context) {
-	log.Infof("starting tester for node at index %d...", d.idx)
+	log.Infof("starting tester for node %s at index %d...", d.endpoint, d.idx)
 
 	defer d.wg.Done()
 	go d.logErrors(ctx)
