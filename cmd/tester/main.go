@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	mrand "math/rand"
 	"os"
 	"path/filepath"
 	"sync"
@@ -120,6 +121,8 @@ type daemon struct {
 }
 
 func (d *daemon) test(ctx context.Context) {
+	log.Infof("starting tester for node at index %d...", d.idx)
+
 	defer d.wg.Done()
 	go d.logErrors(ctx)
 
@@ -141,6 +144,9 @@ func (d *daemon) test(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
+
+			sleep := getRandomInt(10)
+			time.Sleep(time.Second * time.Duration(sleep))
 		}
 	}()
 
@@ -148,6 +154,9 @@ func (d *daemon) test(ctx context.Context) {
 		defer wg.Done()
 
 		for {
+			sleep := getRandomInt(10)
+			time.Sleep(time.Second * time.Duration(sleep))
+
 			d.takeOffer()
 			if ctx.Err() != nil {
 				return
@@ -170,6 +179,8 @@ func (d *daemon) logErrors(ctx context.Context) {
 }
 
 func (d *daemon) takeOffer() {
+	log.Debugf("node %d discovering offers...", d.idx)
+
 	const defaultDiscoverTimeout = uint64(3) // 3s
 	providers, err := d.wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	if err != nil {
@@ -182,9 +193,12 @@ func (d *daemon) takeOffer() {
 	}
 
 	makerIdx := getRandomInt(len(providers))
+	peer := providers[makerIdx][0]
+
+	log.Debugf("node %d querying peer %s...", d.idx, peer)
 
 	// TODO: only advertize non-local addrs (if not in dev mode)
-	resp, err := d.wsc.Query(providers[makerIdx][0])
+	resp, err := d.wsc.Query(peer)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -192,12 +206,15 @@ func (d *daemon) takeOffer() {
 
 	offerIdx := getRandomInt(len(resp.Offers))
 	offer := resp.Offers[offerIdx]
-	// TODO: pick random amount between min and max
-	providesAmount := offer.ExchangeRate.ToETH(offer.MinimumAmount)
+
+	// pick random amount between min and max
+	amount := offer.MinimumAmount + mrand.Float64()*(offer.MaximumAmount-offer.MinimumAmount) //nolint:gosec
+	providesAmount := offer.ExchangeRate.ToETH(amount)
 
 	start := time.Now()
+	log.Infof("node %d taking offer %s", d.idx, offer.GetID().String())
 
-	_, takerStatusCh, err := d.wsc.TakeOfferAndSubscribe(providers[makerIdx][0],
+	_, takerStatusCh, err := d.wsc.TakeOfferAndSubscribe(peer,
 		offer.GetID().String(), providesAmount)
 	if err != nil {
 		d.errCh <- err
@@ -225,14 +242,16 @@ func getRandomInt(max int) int {
 }
 
 func (d *daemon) makeOffer() {
-	_, takenCh, statusCh, err := d.wsc.MakeOfferAndSubscribe(minProvidesAmount, maxProvidesAmount,
+	log.Infof("node %d making offer...", d.idx)
+
+	offerID, takenCh, statusCh, err := d.wsc.MakeOfferAndSubscribe(minProvidesAmount, maxProvidesAmount,
 		exchangeRate)
 	if err != nil {
 		d.errCh <- err
 		return
 	}
 
-	// TODO: also log swap duration
+	log.Infof("node %d made offer %s", d.idx, offerID)
 
 	taken := <-takenCh
 	if taken == nil {

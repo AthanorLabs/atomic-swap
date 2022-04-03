@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
@@ -26,6 +27,7 @@ type WsClient interface {
 }
 
 type wsClient struct {
+	sync.Mutex
 	conn *websocket.Conn
 }
 
@@ -43,6 +45,12 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 	return &wsClient{
 		conn: conn,
 	}, nil
+}
+
+func (c *wsClient) writeJSON(msg *rpctypes.Request) error {
+	c.Lock()
+	defer c.Unlock()
+	return c.conn.WriteJSON(msg)
 }
 
 func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error) {
@@ -63,7 +71,7 @@ func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][
 		ID:      0,
 	}
 
-	if err = c.conn.WriteJSON(req); err != nil {
+	if err = c.writeJSON(req); err != nil {
 		return nil, err
 	}
 
@@ -109,7 +117,7 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 		ID:      0,
 	}
 
-	if err = c.conn.WriteJSON(req); err != nil {
+	if err = c.writeJSON(req); err != nil {
 		return nil, err
 	}
 
@@ -157,7 +165,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 		ID:      0,
 	}
 
-	if err := c.conn.WriteJSON(req); err != nil {
+	if err = c.writeJSON(req); err != nil {
 		return nil, err
 	}
 
@@ -219,7 +227,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		ID:      0,
 	}
 
-	if err = c.conn.WriteJSON(req); err != nil {
+	if err = c.writeJSON(req); err != nil {
 		return 0, nil, err
 	}
 
@@ -308,7 +316,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 		ID:      0,
 	}
 
-	if err = c.conn.WriteJSON(req); err != nil {
+	if err = c.writeJSON(req); err != nil {
 		return "", nil, nil, err
 	}
 

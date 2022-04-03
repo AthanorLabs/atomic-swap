@@ -438,10 +438,17 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		}
 	}
 
+	walletFile := c.String("wallet-file")
+
+	// empty password is ok
+	walletPassword := c.String("wallet-password")
+
 	aliceCfg := &alice.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
+		MoneroWalletFile:     walletFile,
+		MoneroWalletPassword: walletPassword,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
@@ -457,11 +464,6 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 	if err != nil {
 		return nil, nil, err
 	}
-
-	walletFile := c.String("wallet-file")
-
-	// empty password is ok
-	walletPassword := c.String("wallet-password")
 
 	bobCfg := &bob.Config{
 		Ctx:                  ctx,

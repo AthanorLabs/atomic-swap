@@ -68,7 +68,12 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	if msg == s.nextExpectedMessage {
+		return
+	}
+
 	s.nextExpectedMessage = msg
+
 	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
 	if s.statusCh != nil {
@@ -355,6 +360,8 @@ func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) 
 	if len(receipt.Logs) == 0 {
 		return "", errors.New("claim transaction has no logs")
 	}
+
+	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
 
 	skB, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Claimed")
 	if err != nil {

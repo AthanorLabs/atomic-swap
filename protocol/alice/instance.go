@@ -3,6 +3,7 @@ package alice
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
@@ -33,7 +35,9 @@ type Instance struct {
 	env      common.Environment
 	basepath string
 
-	client monero.Client
+	client                     monero.Client
+	walletFile, walletPassword string
+	walletAddress              mcrypto.Address
 
 	ethPrivKey  *ecdsa.PrivateKey
 	ethClient   *ethclient.Client
@@ -56,18 +60,19 @@ type Instance struct {
 
 // Config contains the configuration values for a new Alice instance.
 type Config struct {
-	Ctx                  context.Context
-	Basepath             string
-	MoneroWalletEndpoint string
-	EthereumClient       *ethclient.Client
-	EthereumPrivateKey   *ecdsa.PrivateKey
-	SwapContract         *swapfactory.SwapFactory
-	SwapContractAddress  ethcommon.Address
-	Environment          common.Environment
-	ChainID              *big.Int
-	GasPrice             *big.Int
-	GasLimit             uint64
-	SwapManager          *swap.Manager
+	Ctx                                    context.Context
+	Basepath                               string
+	MoneroWalletEndpoint                   string
+	MoneroWalletFile, MoneroWalletPassword string
+	EthereumClient                         *ethclient.Client
+	EthereumPrivateKey                     *ecdsa.PrivateKey
+	SwapContract                           *swapfactory.SwapFactory
+	SwapContractAddress                    ethcommon.Address
+	Environment                            common.Environment
+	ChainID                                *big.Int
+	GasPrice                               *big.Int
+	GasLimit                               uint64
+	SwapManager                            *swap.Manager
 }
 
 // NewInstance returns a new instance of Alice.
@@ -80,14 +85,43 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
 
+	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
+
+	// open XMR wallet, if it exists
+	if cfg.MoneroWalletFile != "" {
+		if err := walletClient.OpenWallet(cfg.MoneroWalletFile, cfg.MoneroWalletPassword); err != nil {
+			return nil, err
+		}
+	} else {
+		log.Info("monero wallet file not set; creating wallet swap-deposit-wallet")
+		err := walletClient.CreateWallet("swap-deposit-wallet", "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create swap deposit wallet: %w", err)
+		}
+	}
+
+	// get wallet address to deposit funds into at end of swap
+	address, err := walletClient.GetAddress(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get monero wallet address: %w", err)
+	}
+
+	err = walletClient.CloseWallet()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close wallet: %w", err)
+	}
+
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
 	return &Instance{
-		ctx:        cfg.Ctx,
-		basepath:   cfg.Basepath,
-		env:        cfg.Environment,
-		ethPrivKey: cfg.EthereumPrivateKey,
-		ethClient:  cfg.EthereumClient,
-		client:     monero.NewClient(cfg.MoneroWalletEndpoint),
+		ctx:            cfg.Ctx,
+		basepath:       cfg.Basepath,
+		env:            cfg.Environment,
+		ethPrivKey:     cfg.EthereumPrivateKey,
+		ethClient:      cfg.EthereumClient,
+		client:         walletClient,
+		walletFile:     cfg.MoneroWalletFile,
+		walletPassword: cfg.MoneroWalletPassword,
+		walletAddress:  mcrypto.Address(address.Address),
 		callOpts: &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
