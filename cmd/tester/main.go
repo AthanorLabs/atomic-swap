@@ -214,7 +214,6 @@ func (d *daemon) takeOffer() {
 
 	log.Debugf("node %d querying peer %s...", d.idx, peer)
 
-	// TODO: only advertize non-local addrs (if not in dev mode)
 	resp, err := d.wsc.Query(peer)
 	if err != nil {
 		d.errCh <- err
