@@ -22,11 +22,13 @@ import (
 )
 
 const (
-	flagEnv    = "env"
-	flagConfig = "config"
+	flagConfig  = "config"
+	flagTimeout = "timeout"
 
 	defaultConfigFile = "testerconfig.json"
 )
+
+var defaultTimeout = time.Minute * 15
 
 var (
 	log = logging.Logger("cmd")
@@ -45,12 +47,12 @@ var (
 		Action: runTester,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  flagEnv,
-				Usage: "environment to use: one of mainnet, stagenet, or dev",
-			},
-			&cli.StringFlag{
 				Name:  flagConfig,
 				Usage: "path to configuration file containing swapd websockets endpoints",
+			},
+			&cli.UintFlag{
+				Name:  flagTimeout,
+				Usage: "time for which to run tester, in minutes; default=15mins",
 			},
 		},
 	}
@@ -64,8 +66,16 @@ func main() {
 }
 
 func runTester(c *cli.Context) error {
-	var defaultTimeout = time.Minute * 10
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	var timeout time.Duration
+
+	timeoutMins := c.Uint(flagTimeout)
+	if timeoutMins == 0 {
+		timeout = defaultTimeout
+	} else {
+		timeout = time.Minute * time.Duration(timeoutMins)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	config := c.String(flagConfig)
@@ -108,8 +118,14 @@ const (
 	// XMR offer amounts
 	minProvidesAmount = 0.01
 	maxProvidesAmount = 0.1
-	exchangeRate      = types.ExchangeRate(1) // TODO: vary this
+	minExchangeRate   = 0.9
+	maxExchangeRate   = 1.1
 )
+
+func getRandomExchangeRate() types.ExchangeRate {
+	rate := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
+	return types.ExchangeRate(rate)
+}
 
 type daemon struct {
 	rsl      *resultLogger
@@ -244,8 +260,10 @@ func getRandomInt(max int) int {
 func (d *daemon) makeOffer() {
 	log.Infof("node %d making offer...", d.idx)
 
-	offerID, takenCh, statusCh, err := d.wsc.MakeOfferAndSubscribe(minProvidesAmount, maxProvidesAmount,
-		exchangeRate)
+	offerID, takenCh, statusCh, err := d.wsc.MakeOfferAndSubscribe(minProvidesAmount,
+		maxProvidesAmount,
+		getRandomExchangeRate(),
+	)
 	if err != nil {
 		d.errCh <- err
 		return

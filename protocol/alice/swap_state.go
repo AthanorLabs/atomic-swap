@@ -477,6 +477,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
+	log.Infof("transferred %v XMR to %s", s.info.ReceivedAmount(), s.alice.walletAddress)
 
 	close(s.claimedCh)
 	return addr, nil
@@ -488,6 +489,8 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 			return s.ctx.Err()
 		}
 
+		log.Infof("checking if balance unlocked...")
+
 		balance, err := s.alice.client.GetBalance(0)
 		if err != nil {
 			return fmt.Errorf("failed to get balance: %w", err)
@@ -497,6 +500,6 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 			return nil
 		}
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 30)
 	}
 }

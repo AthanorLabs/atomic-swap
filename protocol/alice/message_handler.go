@@ -45,13 +45,12 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		return out, false, nil
 	case *message.NotifyClaimed:
-		address, err := s.handleNotifyClaimed(msg.TxHash)
+		_, err := s.handleNotifyClaimed(msg.TxHash)
 		if err != nil {
 			log.Error("failed to create monero address: err=", err)
 			return nil, true, err
 		}
 
-		log.Info("successfully created monero wallet from our secrets: address=", address)
 		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return nil, true, nil
 	default:
