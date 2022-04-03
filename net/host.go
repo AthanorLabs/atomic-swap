@@ -174,7 +174,20 @@ func (h *host) Start() error {
 		return err
 	}
 
+	go h.logPeers()
+
 	return h.discovery.start()
+}
+
+func (h *host) logPeers() {
+	for {
+		if h.ctx.Err() != nil {
+			return
+		}
+
+		log.Infof("peer count: %d", len(h.h.Network().Peers()))
+		time.Sleep(time.Second * 30)
+	}
 }
 
 // close closes host services and the libp2p host (host services first)
