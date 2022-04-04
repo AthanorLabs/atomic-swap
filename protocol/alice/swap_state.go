@@ -473,11 +473,17 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	_, err = s.alice.client.SweepAll(s.alice.walletAddress, 0)
+	res, err := s.alice.client.SweepAll(s.alice.walletAddress, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
-	log.Infof("transferred %v XMR to %s", s.info.ReceivedAmount(), s.alice.walletAddress)
+
+	if len(res.AmountList) == 0 {
+		return "", fmt.Errorf("sweep all did not return any amounts")
+	}
+
+	amount := res.AmountList[0]
+	log.Infof("transferred %v XMR to %s", amount, s.alice.walletAddress)
 
 	close(s.claimedCh)
 	return addr, nil
@@ -490,6 +496,12 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		}
 
 		log.Infof("checking if balance unlocked...")
+
+		if s.alice.env == common.Development {
+			daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
+			_ = daemonClient.GenerateBlocks(string(s.alice.walletAddress), 64)
+			_ = s.alice.client.Refresh()
+		}
 
 		balance, err := s.alice.client.GetBalance(0)
 		if err != nil {

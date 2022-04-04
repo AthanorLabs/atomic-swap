@@ -102,6 +102,8 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 
 		rs.ss.setBobKeys(skA.Public(), vkA, nil)
 
+		fmt.Println(skA.Hex())
+
 		addr, err := rs.ss.claimMonero(skA)
 		if err != nil {
 			return nil, err

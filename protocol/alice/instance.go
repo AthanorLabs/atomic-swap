@@ -23,6 +23,10 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
+const (
+	swapDepositWallet = "swap-deposit-wallet"
+)
+
 var (
 	log                    = logging.Logger("alice")
 	defaultTimeoutDuration = time.Hour * 24
@@ -93,10 +97,13 @@ func NewInstance(cfg *Config) (*Instance, error) {
 			return nil, err
 		}
 	} else {
+		// TODO: prompt user for wallet or error if not in dev mode
 		log.Info("monero wallet file not set; creating wallet swap-deposit-wallet")
-		err := walletClient.CreateWallet("swap-deposit-wallet", "")
+		err := walletClient.CreateWallet(swapDepositWallet, "")
 		if err != nil {
-			return nil, fmt.Errorf("failed to create swap deposit wallet: %w", err)
+			if err := walletClient.OpenWallet(swapDepositWallet, ""); err != nil {
+				return nil, fmt.Errorf("failed to create or open swap deposit wallet: %w", err)
+			}
 		}
 	}
 

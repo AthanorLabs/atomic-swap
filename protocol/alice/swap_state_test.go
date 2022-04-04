@@ -66,6 +66,18 @@ func newTestAlice(t *testing.T) *Instance {
 
 	alice, err := NewInstance(cfg)
 	require.NoError(t, err)
+
+	err = alice.client.OpenWallet(swapDepositWallet, "")
+	require.NoError(t, err)
+
+	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
+
+	_ = daemonClient.GenerateBlocks(string(alice.walletAddress), 64)
+	err = alice.client.Refresh()
+	require.NoError(t, err)
+
+	_ = alice.client.CloseWallet()
+
 	return alice
 }
 
@@ -279,7 +291,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
 
-	amt := common.MoneroAmount(1)
+	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
