@@ -12,7 +12,7 @@ export const getPeers = () => {
     isLoadingPeers.set(true)
     return rpcRequest<NetDiscoverResult>('net_discover', { searchTime: 3 })
         .then(({ result }) => {
-            const sanitizePeers = sanitizeAddresses(result.peers[0])
+            const sanitizePeers = sanitizeAddresses(result.peers)
             peers.set(sanitizePeers)
         })
         .catch(console.error)

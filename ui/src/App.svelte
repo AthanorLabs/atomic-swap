@@ -3,7 +3,7 @@
   import LayoutGrid, { Cell, InnerGrid } from '@smui/layout-grid'
   import Button from '@smui/button'
   import { peers, getPeers } from './stores/peerStore'
-  import { offers } from './stores/offerStore'
+  import { offers, refreshOffers } from './stores/offerStore'
   import OffersTable from './components/OffersTable.svelte'
   import StatCard from './components/StatCard.svelte'
   import TakeDealDrawer from './components/TakeDealDialog.svelte'
