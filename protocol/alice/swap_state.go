@@ -483,7 +483,10 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	}
 
 	amount := res.AmountList[0]
-	log.Infof("transferred %v XMR to %s", amount, s.alice.walletAddress)
+	log.Infof("transferred %v XMR to %s",
+		common.MoneroAmount(amount).AsMonero(),
+		s.alice.walletAddress,
+	)
 
 	close(s.claimedCh)
 	return addr, nil
