@@ -21,7 +21,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 
 	duration, err := time.ParseDuration("1440m")
 	require.NoError(t, err)
-	addr, _ := newSwap(t, inst, s, [32]byte{}, sr, big.NewInt(1), duration)
+	addr, _, _ := newSwap(t, inst, s, [32]byte{}, sr, big.NewInt(1), duration)
 
 	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr, defaultContractSwapID)
 	require.NoError(t, err)

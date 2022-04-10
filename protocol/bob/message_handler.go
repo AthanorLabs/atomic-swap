@@ -143,18 +143,26 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
+	log.Infof("contract set")
+
 	if err := pcommon.WriteContractAddressToFile(s.infofile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
+
+	log.Infof("wrote to file")
 
 	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
 
+	log.Infof("checked contract")
+
 	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
+
+	log.Infof("locked funds")
 
 	out := &message.NotifyXMRLock{
 		Address: string(addrAB),
@@ -164,6 +172,8 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	if err := s.setTimeouts(); err != nil {
 		return nil, err
 	}
+
+	log.Infof("timeouts set")
 
 	go func() {
 		until := time.Until(s.t0)
