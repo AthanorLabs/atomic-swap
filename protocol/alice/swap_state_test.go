@@ -256,7 +256,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	s.alice.swapTimeout = time.Minute * 2
 
 	// close swap-deposit-wallet
-	_ = alice.client.CloseWallet()
+	_ = s.alice.client.CloseWallet()
 
 	s.alice.client = monero.NewClient(common.DefaultBobMoneroEndpoint)
 	err := s.alice.client.OpenWallet("test-wallet", "")
