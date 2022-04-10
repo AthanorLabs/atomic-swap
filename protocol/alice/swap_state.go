@@ -465,6 +465,11 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
+	if !s.alice.transferBack {
+		log.Infof("monero claimed in account %s", addr)
+		return addr, nil
+	}
+
 	log.Infof("monero claimed in account %s; transferring to original account %s",
 		addr, s.alice.walletAddress)
 

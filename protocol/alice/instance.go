@@ -42,6 +42,7 @@ type Instance struct {
 	client                     monero.Client
 	walletFile, walletPassword string
 	walletAddress              mcrypto.Address
+	transferBack               bool // transfer back to original account
 
 	ethPrivKey  *ecdsa.PrivateKey
 	ethClient   *ethclient.Client
@@ -68,6 +69,7 @@ type Config struct {
 	Basepath                               string
 	MoneroWalletEndpoint                   string
 	MoneroWalletFile, MoneroWalletPassword string
+	TransferBack                           bool
 	EthereumClient                         *ethclient.Client
 	EthereumPrivateKey                     *ecdsa.PrivateKey
 	SwapContract                           *swapfactory.SwapFactory
@@ -91,31 +93,16 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
 
-	// open XMR wallet, if it exists
-	if cfg.MoneroWalletFile != "" {
-		if err := walletClient.OpenWallet(cfg.MoneroWalletFile, cfg.MoneroWalletPassword); err != nil {
+	var (
+		address mcrypto.Address
+		err     error
+	)
+
+	if cfg.TransferBack {
+		address, err = getAddress(walletClient, cfg.MoneroWalletFile, cfg.MoneroWalletPassword)
+		if err != nil {
 			return nil, err
 		}
-	} else {
-		// TODO: prompt user for wallet or error if not in dev mode
-		log.Info("monero wallet file not set; creating wallet swap-deposit-wallet")
-		err := walletClient.CreateWallet(swapDepositWallet, "")
-		if err != nil {
-			if err := walletClient.OpenWallet(swapDepositWallet, ""); err != nil {
-				return nil, fmt.Errorf("failed to create or open swap deposit wallet: %w", err)
-			}
-		}
-	}
-
-	// get wallet address to deposit funds into at end of swap
-	address, err := walletClient.GetAddress(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get monero wallet address: %w", err)
-	}
-
-	err = walletClient.CloseWallet()
-	if err != nil {
-		return nil, fmt.Errorf("failed to close wallet: %w", err)
 	}
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
@@ -128,7 +115,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		client:         walletClient,
 		walletFile:     cfg.MoneroWalletFile,
 		walletPassword: cfg.MoneroWalletPassword,
-		walletAddress:  mcrypto.Address(address.Address),
+		walletAddress:  address,
 		callOpts: &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),
 			Context: cfg.Ctx,
@@ -139,6 +126,37 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		contractAddr: cfg.SwapContractAddress,
 		swapTimeout:  defaultTimeoutDuration,
 	}, nil
+}
+
+func getAddress(walletClient monero.Client, file, password string) (mcrypto.Address, error) {
+	// open XMR wallet, if it exists
+	if file != "" {
+		if err := walletClient.OpenWallet(file, password); err != nil {
+			return "", err
+		}
+	} else {
+		// TODO: prompt user for wallet or error if not in dev mode
+		log.Info("monero wallet file not set; creating wallet swap-deposit-wallet")
+		err := walletClient.CreateWallet(swapDepositWallet, "")
+		if err != nil {
+			if err := walletClient.OpenWallet(swapDepositWallet, ""); err != nil {
+				return "", fmt.Errorf("failed to create or open swap deposit wallet: %w", err)
+			}
+		}
+	}
+
+	// get wallet address to deposit funds into at end of swap
+	address, err := walletClient.GetAddress(0)
+	if err != nil {
+		return "", fmt.Errorf("failed to get monero wallet address: %w", err)
+	}
+
+	err = walletClient.CloseWallet()
+	if err != nil {
+		return "", fmt.Errorf("failed to close wallet: %w", err)
+	}
+
+	return mcrypto.Address(address.Address), nil
 }
 
 // SetMessageSender sets the Instance's net.MessageSender interface.
