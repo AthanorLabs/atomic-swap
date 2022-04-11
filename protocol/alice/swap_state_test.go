@@ -66,16 +66,6 @@ func newTestAlice(t *testing.T) *Instance {
 
 	alice, err := NewInstance(cfg)
 	require.NoError(t, err)
-
-	err = alice.client.OpenWallet(swapDepositWallet, "")
-	require.NoError(t, err)
-
-	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
-
-	_ = daemonClient.GenerateBlocks(string(alice.walletAddress), 64)
-	err = alice.client.Refresh()
-	require.NoError(t, err)
-
 	return alice
 }
 
