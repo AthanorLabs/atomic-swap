@@ -67,6 +67,10 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	if s == nil || s.nextExpectedMessage == nil {
+		return
+	}
+
 	if msg.Type() == s.nextExpectedMessage.Type() {
 		return
 	}
