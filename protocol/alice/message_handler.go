@@ -45,13 +45,12 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 
 		return out, false, nil
 	case *message.NotifyClaimed:
-		address, err := s.handleNotifyClaimed(msg.TxHash)
+		_, err := s.handleNotifyClaimed(msg.TxHash)
 		if err != nil {
 			log.Error("failed to create monero address: err=", err)
 			return nil, true, err
 		}
 
-		log.Info("successfully created monero wallet from our secrets: address=", address)
 		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return nil, true, nil
 	default:
@@ -68,7 +67,16 @@ func (s *swapState) clearNextExpectedMessage(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedMessage(msg net.Message) {
+	if s == nil || s.nextExpectedMessage == nil {
+		return
+	}
+
+	if msg.Type() == s.nextExpectedMessage.Type() {
+		return
+	}
+
 	s.nextExpectedMessage = msg
+
 	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
 	if s.statusCh != nil {
@@ -128,10 +136,10 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	log.Infof(color.New(color.Bold).Sprintf("you will be receiving %v XMR", msg.ProvidedAmount))
+	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v ETH", msg.ProvidedAmount, s.info.ProvidedAmount()))
 
 	s.setBobKeys(sk, vk, secp256k1Pub)
-	err = s.lockETH(s.providedAmountInWei())
+	txHash, err := s.lockETH(s.providedAmountInWei())
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract: %w", err)
 	}
@@ -152,7 +160,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		const timeoutBuffer = time.Second * 5
 		until := time.Until(s.t0)
 
-		log.Debugf("time until refund: %ds", until.Seconds())
+		log.Debugf("time until refund: %vs", until.Seconds())
 
 		select {
 		case <-s.ctx.Done():
@@ -205,6 +213,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	out := &message.NotifyETHLocked{
 		Address:        s.alice.contractAddr.String(),
+		TxHash:         txHash.String(),
 		ContractSwapID: s.contractSwapID,
 	}
 
@@ -296,7 +305,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("failed to call Ready: %w", err)
 	}
 
-	log.Debug("set swap.IsReady to true")
+	log.Info("XMR was locked successfully, setting contract to ready...")
 
 	if err := s.setTimeouts(); err != nil {
 		return nil, fmt.Errorf("failed to set timeouts: %w", err)
@@ -354,6 +363,8 @@ func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) 
 	if len(receipt.Logs) == 0 {
 		return "", errors.New("claim transaction has no logs")
 	}
+
+	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
 
 	skB, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Claimed")
 	if err != nil {

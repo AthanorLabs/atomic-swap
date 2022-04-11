@@ -91,13 +91,11 @@ func (d *discovery) advertise() {
 			}
 		}
 
-		if len(d.provides) == 0 {
-			ttl, err = d.rd.Advertise(d.ctx, "")
-			if err != nil {
-				log.Debugf("failed to advertise in the DHT: err=%s", err)
-				ttl = tryAdvertiseTimeout
-				return
-			}
+		ttl, err = d.rd.Advertise(d.ctx, "")
+		if err != nil {
+			log.Debugf("failed to advertise in the DHT: err=%s", err)
+			ttl = tryAdvertiseTimeout
+			return
 		}
 
 		ttl = defaultAdvertiseTTL
@@ -119,9 +117,12 @@ func (d *discovery) advertise() {
 
 func (d *discovery) discover(provides types.ProvidesCoin,
 	searchTime time.Duration) ([]peer.AddrInfo, error) {
-	log.Debugf("attempting to find DHT peers that provide %s for %s...", provides, searchTime)
+	log.Debugf("attempting to find DHT peers that provide [%s] for %vs...",
+		provides,
+		searchTime.Seconds(),
+	)
 
-	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))
+	peerCh, err := d.rd.FindPeers(d.ctx, string("XMR"))
 	if err != nil {
 		return nil, err
 	}

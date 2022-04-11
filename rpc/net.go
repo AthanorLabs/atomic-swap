@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
 
@@ -54,19 +55,8 @@ func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesR
 	return nil
 }
 
-// DiscoverRequest ...
-type DiscoverRequest struct {
-	Provides   types.ProvidesCoin `json:"provides"`
-	SearchTime uint64             `json:"searchTime"` // in seconds
-}
-
-// DiscoverResponse ...
-type DiscoverResponse struct {
-	Peers [][]string `json:"peers"`
-}
-
 // Discover discovers peers over the network that provide a certain coin up for `SearchTime` duration of time.
-func (s *NetService) Discover(_ *http.Request, req *DiscoverRequest, resp *DiscoverResponse) error {
+func (s *NetService) Discover(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.DiscoverResponse) error {
 	searchTime, err := time.ParseDuration(fmt.Sprintf("%ds", req.SearchTime))
 	if err != nil {
 		return err
@@ -97,19 +87,9 @@ func addrInfoToStrings(addrInfo peer.AddrInfo) []string {
 	return strs
 }
 
-// QueryPeerRequest ...
-type QueryPeerRequest struct {
-	// Multiaddr of peer to query
-	Multiaddr string `json:"multiaddr"`
-}
-
-// QueryPeerResponse ...
-type QueryPeerResponse struct {
-	Offers []*types.Offer `json:"offers"`
-}
-
 // QueryPeer queries a peer for the coins they provide, their maximum amounts, and desired exchange rate.
-func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *QueryPeerResponse) error {
+func (s *NetService) QueryPeer(_ *http.Request, req *rpctypes.QueryPeerRequest,
+	resp *rpctypes.QueryPeerResponse) error {
 	who, err := net.StringToAddrInfo(req.Multiaddr)
 	if err != nil {
 		return err
@@ -124,21 +104,9 @@ func (s *NetService) QueryPeer(_ *http.Request, req *QueryPeerRequest, resp *Que
 	return nil
 }
 
-// TakeOfferRequest ...
-type TakeOfferRequest struct {
-	Multiaddr      string  `json:"multiaddr"`
-	OfferID        string  `json:"offerID"`
-	ProvidesAmount float64 `json:"providesAmount"`
-}
-
-// TakeOfferResponse ...
-type TakeOfferResponse struct {
-	ID       uint64 `json:"id"`
-	InfoFile string `json:"infoFile"`
-}
-
 // TakeOffer initiates a swap with the given peer by taking an offer they've made.
-func (s *NetService) TakeOffer(_ *http.Request, req *TakeOfferRequest, resp *TakeOfferResponse) error {
+func (s *NetService) TakeOffer(_ *http.Request, req *rpctypes.TakeOfferRequest,
+	resp *rpctypes.TakeOfferResponse) error {
 	id, _, infofile, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
@@ -212,7 +180,7 @@ type TakeOfferSyncResponse struct {
 
 // TakeOfferSync initiates a swap with the given peer by taking an offer they've made.
 // It synchronously waits until the swap is completed before returning its status.
-func (s *NetService) TakeOfferSync(_ *http.Request, req *TakeOfferRequest,
+func (s *NetService) TakeOfferSync(_ *http.Request, req *rpctypes.TakeOfferRequest,
 	resp *TakeOfferSyncResponse) error {
 	id, _, infofile, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
@@ -239,21 +207,9 @@ func (s *NetService) TakeOfferSync(_ *http.Request, req *TakeOfferRequest,
 	return nil
 }
 
-// MakeOfferRequest ...
-type MakeOfferRequest struct {
-	MinimumAmount float64            `json:"minimumAmount"`
-	MaximumAmount float64            `json:"maximumAmount"`
-	ExchangeRate  types.ExchangeRate `json:"exchangeRate"`
-}
-
-// MakeOfferResponse ...
-type MakeOfferResponse struct {
-	ID       string `json:"offerID"`
-	InfoFile string `json:"infoFile"`
-}
-
 // MakeOffer creates and advertises a new swap offer.
-func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *MakeOfferResponse) error {
+func (s *NetService) MakeOffer(_ *http.Request, req *rpctypes.MakeOfferRequest,
+	resp *rpctypes.MakeOfferResponse) error {
 	id, extra, err := s.makeOffer(req)
 	if err != nil {
 		return err
@@ -265,7 +221,7 @@ func (s *NetService) MakeOffer(_ *http.Request, req *MakeOfferRequest, resp *Mak
 	return nil
 }
 
-func (s *NetService) makeOffer(req *MakeOfferRequest) (string, *types.OfferExtra, error) {
+func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.OfferExtra, error) {
 	o := &types.Offer{
 		Provides:      types.ProvidesXMR,
 		MinimumAmount: req.MinimumAmount,

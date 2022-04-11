@@ -1,9 +1,12 @@
-package rpcclient
+package rpctypes
 
 import (
 	"encoding/json"
 	"fmt"
 )
+
+// DefaultJSONRPCVersion ...
+const DefaultJSONRPCVersion = "2.0"
 
 // Request represents a JSON-RPC request
 type Request struct {
@@ -34,9 +37,4 @@ type Error struct {
 // Error ...
 func (e *Error) Error() string {
 	return fmt.Sprintf("message=%s; code=%d; data=%v", e.Message, e.ErrorCode, e.Data)
-}
-
-// SubscribeSwapStatusResponse ...
-type SubscribeSwapStatusResponse struct {
-	Status string `json:"status"`
 }

@@ -74,6 +74,50 @@ type Destination struct {
 	Address string `json:"address"`
 }
 
+type sweepAllRequest struct {
+	Address      string `json:"address"`
+	AccountIndex uint   `json:"account_index"`
+}
+
+// SweepAllResponse ...
+type SweepAllResponse struct {
+	AmountList []uint   `json:"amount_list"`
+	FeeList    []uint   `json:"fee_list"`
+	TxHashList []string `json:"tx_hash_list"`
+}
+
+func (c *client) callSweepAll(to string, accountIdx uint) (*SweepAllResponse, error) {
+	const (
+		method = "sweep_all"
+	)
+
+	req := &sweepAllRequest{
+		AccountIndex: accountIdx,
+		Address:      to,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+
+	var res *SweepAllResponse
+	if err = json.Unmarshal(resp.Result, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 type transferRequest struct {
 	Destinations []Destination `json:"destinations"`
 	AccountIndex uint          // optional
@@ -238,6 +282,38 @@ func (c *client) callOpenWallet(filename, password string) error {
 	req := &openWalletRequest{
 		Filename: filename,
 		Password: password,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	return nil
+}
+
+type createWalletRequest struct {
+	Filename string `json:"filename"`
+	Password string `json:"password"`
+	Language string `json:"language"`
+}
+
+func (c *client) callCreateWallet(filename, password string) error {
+	const method = "create_wallet"
+
+	req := &createWalletRequest{
+		Filename: filename,
+		Password: password,
+		Language: "English",
 	}
 
 	params, err := json.Marshal(req)

@@ -403,36 +403,24 @@ func (s *swapState) setTimeouts() error {
 // checkContract checks the contract's balance and Claim/Refund keys.
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
-func (s *swapState) checkContract() error {
-	newTopic := ethcommon.HexToHash("0x982a99d883f17ecd5797205d5b3674205d7882bb28a9487d736d3799422cd055")
-	logs, err := s.bob.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{s.contractAddr},
-		Topics:    [][]ethcommon.Hash{{newTopic}},
-	})
+func (s *swapState) checkContract(txHash ethcommon.Hash) error {
+	receipt, err := common.WaitForReceipt(s.ctx, s.bob.ethClient, txHash)
 	if err != nil {
-		return fmt.Errorf("failed to filter logs: %w", err)
+		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
 	}
 
-	if len(logs) == 0 {
+	// check that New log was emitted
+	if len(receipt.Logs) == 0 {
 		return errors.New("cannot find New log")
 	}
 
-	// search for log pertaining to our swap ID
-	var event *swapfactory.SwapFactoryNew
-	for i := len(logs) - 1; i >= 0; i-- {
-		newEvent, err := s.contract.ParseNew(logs[i]) //nolint:govet
-		if err != nil {
-			return err
-		}
-
-		if newEvent.SwapID.Cmp(s.contractSwapID) == 0 {
-			event = newEvent
-			break
-		}
+	event, err := s.contract.ParseNew(*receipt.Logs[0])
+	if err != nil {
+		return err
 	}
 
-	if event == nil {
-		return fmt.Errorf("failed to find New event with given swap ID %d", s.contractSwapID)
+	if event.SwapID.Cmp(s.contractSwapID) != 0 {
+		return errors.New("unexpected swap ID was emitted by New log")
 	}
 
 	// check that contract was constructed with correct secp256k1 keys
@@ -517,7 +505,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Info("Bob's balance before claim: ", balance)
+	log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	sc := s.getSecret()
@@ -526,7 +514,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Infof("sent Claim tx, tx hash=%s", tx.Hash())
+	log.Infof("sent claim tx, tx hash=%s", tx.Hash())
 
 	if _, err = common.WaitForReceipt(s.ctx, s.bob.ethClient, tx.Hash()); err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to check claim transaction receipt: %w", err)
@@ -537,6 +525,6 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Info("Bob's balance after claim: ", balance)
+	log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	return tx.Hash(), nil
 }

@@ -42,7 +42,7 @@ func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash eth
 			continue
 		}
 
-		log.Debugf("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
+		log.Infof("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
 			txHash,
 			receipt.BlockHash,
 			receipt.BlockNumber,

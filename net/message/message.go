@@ -180,12 +180,17 @@ func (m *SendKeysMessage) Type() Type {
 // and locking her ether in it
 type NotifyETHLocked struct {
 	Address        string
+	TxHash         string
 	ContractSwapID *big.Int
 }
 
 // String ...
 func (m *NotifyETHLocked) String() string {
-	return fmt.Sprintf("NotifyETHLocked Address=%s ContractSwapID=%d", m.Address, m.ContractSwapID)
+	return fmt.Sprintf("NotifyETHLocked Address=%s TxHash=%s ContractSwapID=%d",
+		m.Address,
+		m.TxHash,
+		m.ContractSwapID,
+	)
 }
 
 // Encode ...

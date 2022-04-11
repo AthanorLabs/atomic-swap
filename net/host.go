@@ -17,6 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/chyeh/pubip"
 	logging "github.com/ipfs/go-log"
 )
 
@@ -78,7 +79,7 @@ func NewHost(cfg *Config) (*host, error) { //nolint:revive
 
 	key, err := loadKey(cfg.KeyFile)
 	if err != nil {
-		fmt.Println("failed to load libp2p key, generating key...", cfg.KeyFile)
+		log.Debugf("failed to load libp2p key, generating key %s...", cfg.KeyFile)
 		key, err = generateKey(0, cfg.KeyFile)
 		if err != nil {
 			return nil, err
@@ -90,12 +91,43 @@ func NewHost(cfg *Config) (*host, error) { //nolint:revive
 		return nil, err
 	}
 
+	var externalAddr ma.Multiaddr
+	ip, err := pubip.Get()
+	if err != nil {
+		log.Warnf("failed to get public IP error: %v", err)
+	} else {
+		log.Debugf("got public IP address %s", ip)
+		externalAddr, err = ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ip, cfg.Port))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(addr),
 		libp2p.DisableRelay(),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
+		libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
+			if cfg.Environment == common.Development {
+				return as
+			}
+
+			// only advertize non-local addrs (if not in dev mode)
+			addrs := []ma.Multiaddr{}
+			for _, addr := range as {
+				if !privateIPs.AddrBlocked(addr) {
+					addrs = append(addrs, addr)
+				}
+			}
+
+			if externalAddr == nil {
+				return addrs
+			}
+
+			return append(addrs, externalAddr)
+		}),
 	}
 
 	// format bootnodes
@@ -142,7 +174,20 @@ func (h *host) Start() error {
 		return err
 	}
 
+	go h.logPeers()
+
 	return h.discovery.start()
+}
+
+func (h *host) logPeers() {
+	for {
+		if h.ctx.Err() != nil {
+			return
+		}
+
+		log.Infof("peer count: %d", len(h.h.Network().Peers()))
+		time.Sleep(time.Second * 30)
+	}
 }
 
 // close closes host services and the libp2p host (host services first)
