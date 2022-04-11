@@ -51,6 +51,8 @@ func TestMain(m *testing.M) {
 		generateBlocks(512)
 	}
 
+	go generateBlocksAsync()
+
 	os.Exit(m.Run())
 }
 
@@ -70,6 +72,25 @@ func generateBlocks(num uint) {
 	}
 
 	fmt.Println("> Completed generating blocks.")
+}
+
+func generateBlocksAsync() {
+	c := monero.NewClient(common.DefaultBobMoneroEndpoint)
+	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
+	bobAddr, err := c.GetAddress(0)
+	if err != nil {
+		panic(err)
+	}
+
+	// generate 1 block per second
+	for {
+		time.Sleep(time.Second)
+		_ = d.GenerateBlocks(bobAddr.Address, 1)
+		err = c.Refresh()
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func TestAlice_Discover(t *testing.T) {

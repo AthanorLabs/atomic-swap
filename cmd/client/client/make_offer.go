@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/rpc"
 )
 
 // MakeOffer calls net_makeOffer.
@@ -15,7 +15,7 @@ func (c *Client) MakeOffer(min, max, exchangeRate float64) (string, error) {
 		method = "net_makeOffer"
 	)
 
-	req := &rpc.MakeOfferRequest{
+	req := &rpctypes.MakeOfferRequest{
 		MinimumAmount: min,
 		MaximumAmount: max,
 		ExchangeRate:  types.ExchangeRate(exchangeRate),
@@ -35,7 +35,7 @@ func (c *Client) MakeOffer(min, max, exchangeRate float64) (string, error) {
 		return "", fmt.Errorf("failed to call %s: %w", method, resp.Error)
 	}
 
-	var res *rpc.MakeOfferResponse
+	var res *rpctypes.MakeOfferResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return "", err
 	}

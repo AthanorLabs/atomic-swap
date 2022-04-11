@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/gorilla/websocket"
@@ -21,13 +21,6 @@ const (
 )
 
 var upgrader = websocket.Upgrader{}
-
-//nolint:revive
-type (
-	Request                     = rpcclient.Request
-	Response                    = rpcclient.Response
-	SubscribeSwapStatusResponse = rpcclient.SubscribeSwapStatusResponse
-)
 
 type wsServer struct {
 	ctx context.Context
@@ -60,7 +53,7 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var req *Request
+		var req *rpctypes.Request
 		err = json.Unmarshal(message, &req)
 		if err != nil {
 			_ = writeError(conn, err)
@@ -75,19 +68,45 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
+func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
 	case subscribeNewPeer:
 		return errors.New("unimplemented")
+	case "net_discover":
+		var params *rpctypes.DiscoverRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
+		}
+
+		resp := new(rpctypes.DiscoverResponse)
+		err := s.ns.Discover(nil, params, resp)
+		if err != nil {
+			return err
+		}
+
+		return writeResponse(conn, resp)
+	case "net_queryPeer":
+		var params *rpctypes.QueryPeerRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
+		}
+
+		resp := new(rpctypes.QueryPeerResponse)
+		err := s.ns.QueryPeer(nil, params, resp)
+		if err != nil {
+			return err
+		}
+
+		return writeResponse(conn, resp)
 	case subscribeSwapStatus:
-		var params *rpcclient.SubscribeSwapStatusRequestParams
+		var params *rpctypes.SubscribeSwapStatusRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
 		return s.subscribeSwapStatus(s.ctx, conn, params.ID)
 	case subscribeTakeOffer:
-		var params *rpcclient.SubscribeTakeOfferParams
+		var params *rpctypes.TakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
@@ -99,7 +118,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 
 		return s.subscribeTakeOffer(s.ctx, conn, id, ch, infofile)
 	case subscribeMakeOffer:
-		var params *MakeOfferRequest
+		var params *rpctypes.MakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
@@ -118,7 +137,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *Request) error {
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 	id uint64, statusCh <-chan types.Status, infofile string) error {
-	resp := &TakeOfferResponse{
+	resp := &rpctypes.TakeOfferResponse{
 		ID:       id,
 		InfoFile: infofile,
 	}
@@ -134,7 +153,7 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 				return nil
 			}
 
-			resp := &SubscribeSwapStatusResponse{
+			resp := &rpctypes.SubscribeSwapStatusResponse{
 				Status: status.String(),
 			}
 
@@ -149,9 +168,7 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 
 func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 	offerID string, offerExtra *types.OfferExtra) error {
-
-	// firstly write offer ID
-	resp := &MakeOfferResponse{
+	resp := &rpctypes.MakeOfferResponse{
 		ID:       offerID,
 		InfoFile: offerExtra.InfoFile,
 	}
@@ -191,7 +208,7 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 				return nil
 			}
 
-			resp := &SubscribeSwapStatusResponse{
+			resp := &rpctypes.SubscribeSwapStatusResponse{
 				Status: status.String(),
 			}
 
@@ -221,7 +238,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 				return nil
 			}
 
-			resp := &SubscribeSwapStatusResponse{
+			resp := &rpctypes.SubscribeSwapStatusResponse{
 				Status: status.String(),
 			}
 
@@ -240,7 +257,7 @@ func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id uint64) error {
 		return errors.New("unable to find swap with given ID")
 	}
 
-	resp := &SubscribeSwapStatusResponse{
+	resp := &rpctypes.SubscribeSwapStatusResponse{
 		Status: info.Status().String(),
 	}
 
@@ -257,8 +274,8 @@ func writeResponse(conn *websocket.Conn, result interface{}) error {
 		return err
 	}
 
-	resp := &Response{
-		Version: rpcclient.DefaultJSONRPCVersion,
+	resp := &rpctypes.Response{
+		Version: rpctypes.DefaultJSONRPCVersion,
 		Result:  bz,
 	}
 
@@ -266,9 +283,9 @@ func writeResponse(conn *websocket.Conn, result interface{}) error {
 }
 
 func writeError(conn *websocket.Conn, err error) error {
-	resp := &Response{
-		Version: rpcclient.DefaultJSONRPCVersion,
-		Error: &rpcclient.Error{
+	resp := &rpctypes.Response{
+		Version: rpctypes.DefaultJSONRPCVersion,
+		Error: &rpctypes.Error{
 			Message: err.Error(),
 		},
 	}

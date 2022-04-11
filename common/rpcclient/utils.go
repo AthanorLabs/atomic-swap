@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/noot/atomic-swap/common/rpctypes"
 )
 
 var (
@@ -29,7 +31,7 @@ var (
 )
 
 // PostRPC posts a JSON-RPC call to the given endpoint.
-func PostRPC(endpoint, method, params string) (*Response, error) {
+func PostRPC(endpoint, method, params string) (*rpctypes.Response, error) {
 	data := []byte(`{"jsonrpc":"2.0","method":"` + method + `","params":` + params + `,"id":0}`)
 	buf := &bytes.Buffer{}
 	_, err := buf.Write(data)
@@ -61,7 +63,7 @@ func PostRPC(endpoint, method, params string) (*Response, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var sv *Response
+	var sv *rpctypes.Response
 	if err = json.Unmarshal(body, &sv); err != nil {
 		return nil, err
 	}
