@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
