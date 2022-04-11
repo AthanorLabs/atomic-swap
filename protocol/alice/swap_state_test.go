@@ -169,7 +169,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -204,7 +204,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -245,6 +245,9 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	defer s.cancel()
 	s.alice.swapTimeout = time.Minute * 2
 
+	// close swap-deposit-wallet
+	_ = s.alice.client.CloseWallet()
+
 	s.alice.client = monero.NewClient(common.DefaultBobMoneroEndpoint)
 	err := s.alice.client.OpenWallet("test-wallet", "")
 	require.NoError(t, err)
@@ -279,7 +282,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
 
-	amt := common.MoneroAmount(1)
+	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
@@ -349,7 +352,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -372,7 +375,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -396,7 +399,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
 		bobKeysAndProof.Secp256k1PublicKey)
 
-	err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()

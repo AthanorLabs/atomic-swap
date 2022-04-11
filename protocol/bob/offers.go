@@ -26,6 +26,11 @@ func newOfferManager(basepath string) *offerManager {
 }
 
 func (om *offerManager) putOffer(o *types.Offer) *types.OfferExtra {
+	offer, has := om.offers[o.GetID()]
+	if has {
+		return offer.extra
+	}
+
 	extra := &types.OfferExtra{
 		IDCh:     make(chan uint64, 1),
 		StatusCh: make(chan types.Status, 7),

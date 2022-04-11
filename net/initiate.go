@@ -143,7 +143,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 		}
 
 		if done {
-			log.Info("protocol complete!")
+			log.Debug("protocol complete!")
 			return
 		}
 	}

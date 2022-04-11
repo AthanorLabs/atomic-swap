@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/rpc"
 )
 
 // Discover calls net_discover.
@@ -14,7 +14,7 @@ func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]s
 		method = "net_discover"
 	)
 
-	req := &rpc.DiscoverRequest{
+	req := &rpctypes.DiscoverRequest{
 		Provides:   provides,
 		SearchTime: searchTime,
 	}
@@ -33,7 +33,7 @@ func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]s
 		return nil, resp.Error
 	}
 
-	var res *rpc.DiscoverResponse
+	var res *rpctypes.DiscoverResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return nil, err
 	}

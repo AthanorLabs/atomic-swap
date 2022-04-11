@@ -12,10 +12,12 @@ type Client interface {
 	GetAddress(idx uint) (*getAddressResponse, error)
 	GetBalance(idx uint) (*GetBalanceResponse, error)
 	Transfer(to mcrypto.Address, accountIdx, amount uint) (*TransferResponse, error)
+	SweepAll(to mcrypto.Address, accountIdx uint) (*SweepAllResponse, error)
 	GenerateFromKeys(kp *mcrypto.PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, address mcrypto.Address, filename, password string) error
 	GetHeight() (uint, error)
 	Refresh() error
+	CreateWallet(filename, password string) error
 	OpenWallet(filename, password string) error
 	CloseWallet() error
 }
@@ -48,6 +50,10 @@ func (c *client) Transfer(to mcrypto.Address, accountIdx, amount uint) (*Transfe
 	return c.callTransfer([]Destination{destination}, accountIdx)
 }
 
+func (c *client) SweepAll(to mcrypto.Address, accountIdx uint) (*SweepAllResponse, error) {
+	return c.callSweepAll(string(to), accountIdx)
+}
+
 func (c *client) GenerateFromKeys(kp *mcrypto.PrivateKeyPair, filename, password string, env common.Environment) error {
 	return c.callGenerateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(env), filename, password)
 }
@@ -78,6 +84,10 @@ func (c *client) refresh() error {
 	}
 
 	return nil
+}
+
+func (c *client) CreateWallet(filename, password string) error {
+	return c.callCreateWallet(filename, password)
 }
 
 func (c *client) OpenWallet(filename, password string) error {

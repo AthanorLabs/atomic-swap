@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"os"
 	"strings"
@@ -46,12 +47,6 @@ const (
 
 var (
 	log = logging.Logger("cmd")
-	_   = logging.SetLogLevel("alice", "debug")
-	_   = logging.SetLogLevel("bob", "debug")
-	_   = logging.SetLogLevel("common", "debug")
-	_   = logging.SetLogLevel("cmd", "debug")
-	_   = logging.SetLogLevel("net", "debug")
-	_   = logging.SetLogLevel("rpc", "debug")
 )
 
 const (
@@ -76,6 +71,8 @@ const (
 
 	flagDevAlice = "dev-alice"
 	flagDevBob   = "dev-bob"
+
+	flagLog = "log"
 )
 
 var (
@@ -160,6 +157,10 @@ var (
 				Name:  flagDevBob,
 				Usage: "run in development mode and use XMR provider default values",
 			},
+			&cli.StringFlag{
+				Name:  flagLog,
+				Usage: "set log level: one of [error|warn|info|debug]",
+			},
 		},
 	}
 )
@@ -187,7 +188,39 @@ type daemon struct {
 	cancel context.CancelFunc
 }
 
+func setLogLevels(c *cli.Context) error {
+	const (
+		levelError = "error"
+		levelWarn  = "warn"
+		levelInfo  = "info"
+		levelDebug = "debug"
+	)
+
+	level := c.String(flagLog)
+	if level == "" {
+		level = levelInfo
+	}
+
+	switch level {
+	case levelError, levelWarn, levelInfo, levelDebug:
+	default:
+		return errors.New("invalid log level")
+	}
+
+	_ = logging.SetLogLevel("alice", level)
+	_ = logging.SetLogLevel("bob", level)
+	_ = logging.SetLogLevel("common", level)
+	_ = logging.SetLogLevel("cmd", level)
+	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("rpc", level)
+	return nil
+}
+
 func runDaemon(c *cli.Context) error {
+	if err := setLogLevels(c); err != nil {
+		return err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -405,10 +438,17 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		}
 	}
 
+	walletFile := c.String("wallet-file")
+
+	// empty password is ok
+	walletPassword := c.String("wallet-password")
+
 	aliceCfg := &alice.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
+		MoneroWalletFile:     walletFile,
+		MoneroWalletPassword: walletPassword,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
@@ -424,11 +464,6 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 	if err != nil {
 		return nil, nil, err
 	}
-
-	walletFile := c.String("wallet-file")
-
-	// empty password is ok
-	walletPassword := c.String("wallet-password")
 
 	bobCfg := &bob.Config{
 		Ctx:                  ctx,
