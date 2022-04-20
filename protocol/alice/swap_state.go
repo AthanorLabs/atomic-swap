@@ -68,6 +68,10 @@ type swapState struct {
 
 func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount,
 	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
+	if a.contract == nil {
+		return nil, errors.New("no swap contract found")
+	}
+
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err

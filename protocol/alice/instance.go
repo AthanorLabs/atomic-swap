@@ -105,6 +105,10 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		}
 	}
 
+	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
+		return nil, fmt.Errorf("must provide swap contract and address")
+	}
+
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
 	return &Instance{
 		ctx:            cfg.Ctx,

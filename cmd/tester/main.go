@@ -24,21 +24,14 @@ import (
 const (
 	flagConfig  = "config"
 	flagTimeout = "timeout"
+	flagLog     = "log"
 
 	defaultConfigFile = "testerconfig.json"
 )
 
 var defaultTimeout = time.Minute * 15
 
-var (
-	log = logging.Logger("cmd")
-	_   = logging.SetLogLevel("alice", "debug")
-	_   = logging.SetLogLevel("bob", "debug")
-	_   = logging.SetLogLevel("common", "debug")
-	_   = logging.SetLogLevel("cmd", "debug")
-	_   = logging.SetLogLevel("net", "debug")
-	_   = logging.SetLogLevel("rpc", "debug")
-)
+var log = logging.Logger("cmd")
 
 var (
 	app = &cli.App{
@@ -54,6 +47,10 @@ var (
 				Name:  flagTimeout,
 				Usage: "time for which to run tester, in minutes; default=15mins",
 			},
+			&cli.StringFlag{
+				Name:  flagLog,
+				Usage: "set log level: one of [error|warn|info|debug]",
+			},
 		},
 	}
 )
@@ -65,7 +62,42 @@ func main() {
 	}
 }
 
+func setLogLevels(c *cli.Context) error {
+	const (
+		levelError = "error"
+		levelWarn  = "warn"
+		levelInfo  = "info"
+		levelDebug = "debug"
+	)
+
+	_ = logging.SetLogLevel("cmd", levelInfo)
+
+	level := c.String(flagLog)
+	if level == "" {
+		level = levelInfo
+	}
+
+	switch level {
+	case levelError, levelWarn, levelInfo, levelDebug:
+	default:
+		return fmt.Errorf("invalid log level")
+	}
+
+	_ = logging.SetLogLevel("alice", level)
+	_ = logging.SetLogLevel("bob", level)
+	_ = logging.SetLogLevel("common", level)
+	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("rpcclient", level)
+	return nil
+}
+
 func runTester(c *cli.Context) error {
+	err := setLogLevels(c)
+	if err != nil {
+		return err
+	}
+
 	var timeout time.Duration
 
 	timeoutMins := c.Uint(flagTimeout)
@@ -75,7 +107,7 @@ func runTester(c *cli.Context) error {
 		timeout = time.Minute * time.Duration(timeoutMins)
 	}
 
-	log.Infof("starting to test, total duration is %dmins", timeout.Minutes())
+	log.Infof("starting to test, total duration is %vmins", timeout.Minutes())
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -133,7 +165,6 @@ func getRandomExchangeRate() types.ExchangeRate {
 type daemon struct {
 	rsl      *resultLogger
 	endpoint string
-	wsc      rpcclient.WsClient
 	errCh    chan error
 	wg       *sync.WaitGroup
 	idx      int
@@ -145,13 +176,6 @@ func (d *daemon) test(ctx context.Context) {
 	defer d.wg.Done()
 	go d.logErrors(ctx)
 
-	var err error
-	d.wsc, err = rpcclient.NewWsClient(ctx, d.endpoint)
-	if err != nil {
-		d.errCh <- err
-		return
-	}
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -159,12 +183,12 @@ func (d *daemon) test(ctx context.Context) {
 		defer wg.Done()
 
 		for {
-			d.makeOffer()
+			d.makeOffer(ctx)
 			if ctx.Err() != nil {
 				return
 			}
 
-			sleep := getRandomInt(10)
+			sleep := getRandomInt(60) + 3
 			time.Sleep(time.Second * time.Duration(sleep))
 		}
 	}()
@@ -173,10 +197,10 @@ func (d *daemon) test(ctx context.Context) {
 		defer wg.Done()
 
 		for {
-			sleep := getRandomInt(10)
+			sleep := getRandomInt(60) + 3
 			time.Sleep(time.Second * time.Duration(sleep))
 
-			d.takeOffer()
+			d.takeOffer(ctx)
 			if ctx.Err() != nil {
 				return
 			}
@@ -197,11 +221,18 @@ func (d *daemon) logErrors(ctx context.Context) {
 	}
 }
 
-func (d *daemon) takeOffer() {
+func (d *daemon) takeOffer(ctx context.Context) {
 	log.Debugf("node %d discovering offers...", d.idx)
+	wsc, err := rpcclient.NewWsClient(ctx, d.endpoint)
+	if err != nil {
+		d.errCh <- err
+		return
+	}
+
+	defer wsc.Close()
 
 	const defaultDiscoverTimeout = uint64(3) // 3s
-	providers, err := d.wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -216,9 +247,13 @@ func (d *daemon) takeOffer() {
 
 	log.Debugf("node %d querying peer %s...", d.idx, peer)
 
-	resp, err := d.wsc.Query(peer)
+	resp, err := wsc.Query(peer)
 	if err != nil {
 		d.errCh <- err
+		return
+	}
+
+	if len(resp.Offers) == 0 {
 		return
 	}
 
@@ -232,7 +267,7 @@ func (d *daemon) takeOffer() {
 	start := time.Now()
 	log.Infof("node %d taking offer %s", d.idx, offer.GetID().String())
 
-	_, takerStatusCh, err := d.wsc.TakeOfferAndSubscribe(peer,
+	_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(peer,
 		offer.GetID().String(), providesAmount)
 	if err != nil {
 		d.errCh <- err
@@ -240,7 +275,7 @@ func (d *daemon) takeOffer() {
 	}
 
 	for status := range takerStatusCh {
-		log.Debugf("> taker %d got status:", d.idx, status)
+		log.Debugf("> taker (node %d) got status: %s", d.idx, status)
 		if status.IsOngoing() {
 			continue
 		}
@@ -260,14 +295,22 @@ func getRandomInt(max int) int {
 	return int(i.Int64())
 }
 
-func (d *daemon) makeOffer() {
+func (d *daemon) makeOffer(ctx context.Context) {
 	log.Infof("node %d making offer...", d.idx)
+	wsc, err := rpcclient.NewWsClient(ctx, d.endpoint)
+	if err != nil {
+		d.errCh <- err
+		return
+	}
 
-	offerID, takenCh, statusCh, err := d.wsc.MakeOfferAndSubscribe(minProvidesAmount,
+	defer wsc.Close()
+
+	offerID, takenCh, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmount,
 		maxProvidesAmount,
 		getRandomExchangeRate(),
 	)
 	if err != nil {
+		log.Errorf("failed to make offer (node %d): %s", d.idx, err)
 		d.errCh <- err
 		return
 	}
@@ -276,13 +319,14 @@ func (d *daemon) makeOffer() {
 
 	taken := <-takenCh
 	if taken == nil {
+		log.Warn("got nil from takenCh")
 		return
 	}
 
 	start := time.Now()
 
 	for status := range statusCh {
-		log.Debugf("> maker %d got status:", d.idx, status)
+		log.Debugf("> maker (node %d) got status: %s", d.idx, status)
 		if status.IsOngoing() {
 			continue
 		}
