@@ -20,7 +20,13 @@ const (
 	subscribeSwapStatus = "swap_subscribeStatus"
 )
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: checkOriginFunc,
+}
+
+func checkOriginFunc(r *http.Request) bool {
+	return true
+}
 
 type wsServer struct {
 	ctx context.Context

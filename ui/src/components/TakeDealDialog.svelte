@@ -30,6 +30,9 @@
     webSocket.onmessage = (e) => {
       console.log('message:', e)
     }
+    webSocket.onclose = (e) => {
+      console.log('closed:', e)
+    }
     webSocket.onerror = (e) => {
       console.log('errror', e)
     }
