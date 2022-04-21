@@ -109,8 +109,13 @@ func runTester(c *cli.Context) error {
 
 	log.Infof("starting to test, total duration is %vmins", timeout.Minutes())
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	timer := time.After(timeout)
+	done := make(chan struct{})
+
+	go func() {
+		<-timer
+		close(done)
+	}()
 
 	config := c.String(flagConfig)
 	if config == "" {
@@ -135,6 +140,8 @@ func runTester(c *cli.Context) error {
 
 	errChs := make([]chan error, len(endpoints))
 	for i, endpoint := range endpoints {
+		errChs[i] = make(chan error, 16)
+
 		d := &daemon{
 			rsl:      rsl,
 			endpoint: endpoint,
@@ -142,7 +149,7 @@ func runTester(c *cli.Context) error {
 			wg:       &wg,
 			idx:      i,
 		}
-		go d.test(ctx)
+		go d.test(done)
 	}
 
 	wg.Wait()
@@ -170,26 +177,28 @@ type daemon struct {
 	idx      int
 }
 
-func (d *daemon) test(ctx context.Context) {
+func (d *daemon) test(done <-chan struct{}) {
 	log.Infof("starting tester for node %s at index %d...", d.endpoint, d.idx)
 
 	defer d.wg.Done()
-	go d.logErrors(ctx)
+	go d.logErrors(done)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
+		var sleep int
 
 		for {
-			d.makeOffer(ctx)
-			if ctx.Err() != nil {
+			select {
+			case <-time.After(time.Second * time.Duration(sleep)):
+				d.makeOffer(done)
+			case <-done:
 				return
 			}
 
-			sleep := getRandomInt(60) + 3
-			time.Sleep(time.Second * time.Duration(sleep))
+			sleep = getRandomInt(60) + 3
 		}
 	}()
 
@@ -198,32 +207,34 @@ func (d *daemon) test(ctx context.Context) {
 
 		for {
 			sleep := getRandomInt(60) + 3
-			time.Sleep(time.Second * time.Duration(sleep))
 
-			d.takeOffer(ctx)
-			if ctx.Err() != nil {
+			select {
+			case <-time.After(time.Second * time.Duration(sleep)):
+				d.takeOffer(done)
+			case <-done:
 				return
 			}
 		}
 	}()
 
 	wg.Wait()
+	log.Warnf("node %d returning from d.test", d.idx)
 }
 
-func (d *daemon) logErrors(ctx context.Context) {
+func (d *daemon) logErrors(done <-chan struct{}) {
 	for {
 		select {
-		case <-ctx.Done():
-			return
+		// case <-done:
+		// 	return
 		case err := <-d.errCh:
-			log.Errorf("endpoint %d: %w", d.idx, err)
+			log.Errorf("endpoint %d: %s", d.idx, err)
 		}
 	}
 }
 
-func (d *daemon) takeOffer(ctx context.Context) {
+func (d *daemon) takeOffer(done <-chan struct{}) {
 	log.Debugf("node %d discovering offers...", d.idx)
-	wsc, err := rpcclient.NewWsClient(ctx, d.endpoint)
+	wsc, err := rpcclient.NewWsClient(context.Background(), d.endpoint)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -274,19 +285,24 @@ func (d *daemon) takeOffer(ctx context.Context) {
 		return
 	}
 
-	for status := range takerStatusCh {
-		log.Debugf("> taker (node %d) got status: %s", d.idx, status)
-		if status.IsOngoing() {
-			continue
-		}
+	for {
+		select {
+		case <-done:
+			return
+		case status := <-takerStatusCh:
+			log.Infof("> taker (node %d) got status: %s", d.idx, status)
+			if status.IsOngoing() {
+				continue
+			}
 
-		if status != types.CompletedSuccess {
-			d.errCh <- fmt.Errorf("swap did not complete successfully for taker: got %s", status)
-		}
+			if status != types.CompletedSuccess {
+				d.errCh <- fmt.Errorf("swap did not complete successfully for taker: got %s", status)
+			}
 
-		d.rsl.logTakerStatus(status)
-		d.rsl.logSwapDuration(time.Since(start))
-		return
+			d.rsl.logTakerStatus(status)
+			d.rsl.logSwapDuration(time.Since(start))
+			return
+		}
 	}
 }
 
@@ -295,9 +311,9 @@ func getRandomInt(max int) int {
 	return int(i.Int64())
 }
 
-func (d *daemon) makeOffer(ctx context.Context) {
+func (d *daemon) makeOffer(done <-chan struct{}) {
 	log.Infof("node %d making offer...", d.idx)
-	wsc, err := rpcclient.NewWsClient(ctx, d.endpoint)
+	wsc, err := rpcclient.NewWsClient(context.Background(), d.endpoint)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -317,27 +333,36 @@ func (d *daemon) makeOffer(ctx context.Context) {
 
 	log.Infof("node %d made offer %s", d.idx, offerID)
 
-	taken := <-takenCh
-	if taken == nil {
-		log.Warn("got nil from takenCh")
+	select {
+	case <-done:
 		return
+	case taken := <-takenCh:
+		if taken == nil {
+			log.Warn("got nil from takenCh")
+			return
+		}
 	}
 
 	start := time.Now()
 
-	for status := range statusCh {
-		log.Debugf("> maker (node %d) got status: %s", d.idx, status)
-		if status.IsOngoing() {
-			continue
-		}
+	for {
+		select {
+		case <-done:
+			return
+		case status := <-statusCh:
+			log.Infof("> maker (node %d) got status: %s", d.idx, status)
+			if status.IsOngoing() {
+				continue
+			}
 
-		if status != types.CompletedSuccess {
-			d.errCh <- fmt.Errorf("swap did not complete successfully for maker: exit status was %s", status)
-		}
+			if status != types.CompletedSuccess {
+				d.errCh <- fmt.Errorf("swap did not complete successfully for maker: exit status was %s", status)
+			}
 
-		d.rsl.logMakerStatus(status)
-		d.rsl.logSwapDuration(time.Since(start))
-		return
+			d.rsl.logMakerStatus(status)
+			d.rsl.logSwapDuration(time.Since(start))
+			return
+		}
 	}
 }
 
@@ -368,6 +393,10 @@ func (l *resultLogger) logSwapDuration(duration time.Duration) {
 }
 
 func (l *resultLogger) averageDuration() time.Duration {
+	if len(l.durations) == 0 {
+		return 0
+	}
+
 	sum := time.Duration(0)
 	for _, dur := range l.durations {
 		sum += dur
