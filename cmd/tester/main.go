@@ -224,8 +224,8 @@ func (d *daemon) test(done <-chan struct{}) {
 func (d *daemon) logErrors(done <-chan struct{}) {
 	for {
 		select {
-		// case <-done:
-		// 	return
+		case <-done:
+			return
 		case err := <-d.errCh:
 			log.Errorf("endpoint %d: %s", d.idx, err)
 		}
