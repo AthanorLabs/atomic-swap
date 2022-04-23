@@ -246,13 +246,19 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		log.Infof("waiting for new blocks...")
 		// wait for 2 new blocks, otherwise balance might be 0
 		// TODO: check transaction hash
-		if err := monero.WaitForBlocks(s.alice.client); err != nil {
+		height, err := monero.WaitForBlocks(s.alice.client)
+		if err != nil {
 			return nil, err
 		}
 
-		if err := monero.WaitForBlocks(s.alice.client); err != nil {
+		log.Infof("monero block height: %d", height)
+
+		height, err = monero.WaitForBlocks(s.alice.client)
+		if err != nil {
 			return nil, err
 		}
+
+		log.Infof("monero block height: %d", height)
 	}
 
 	log.Debug("refreshing client...")
