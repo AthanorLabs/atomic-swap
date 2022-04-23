@@ -20,14 +20,13 @@ import (
 var claimedTopic = ethcommon.HexToHash("0xd5a2476fc450083bbb092dd3f4be92698ffdc2d213e6f1e730c7f44a52f1ccfc")
 
 type recoveryState struct {
-	ss           *swapState
-	contractAddr ethcommon.Address
+	ss *swapState
 }
 
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address, contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
+	contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -62,10 +61,6 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 
 	rs := &recoveryState{
 		ss: s,
-	}
-
-	if err := rs.setContract(contractAddr); err != nil {
-		return nil, err
 	}
 
 	if err := rs.ss.setTimeouts(); err != nil {
@@ -125,14 +120,6 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 		Refunded: true,
 		TxHash:   txHash,
 	}, nil
-}
-
-// setContract sets the contract in which Alice has locked her ETH.
-func (rs *recoveryState) setContract(address ethcommon.Address) error {
-	var err error
-	rs.contractAddr = address
-	rs.ss.alice.contract, err = swapfactory.NewSwapFactory(address, rs.ss.alice.ethClient)
-	return err
 }
 
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {

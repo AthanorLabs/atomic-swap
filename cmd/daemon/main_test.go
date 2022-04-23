@@ -84,8 +84,8 @@ func TestDaemon_DevAlice(t *testing.T) {
 func TestDaemon_DevBob(t *testing.T) {
 	c := newTestContext(t,
 		"test --dev-bob",
-		[]string{flagDevBob},
-		[]interface{}{true},
+		[]string{flagDevBob, flagDeploy},
+		[]interface{}{true, true},
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

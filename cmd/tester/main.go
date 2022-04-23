@@ -10,6 +10,7 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -148,6 +149,7 @@ func runTester(c *cli.Context) error {
 			errCh:    errChs[i],
 			wg:       &wg,
 			idx:      i,
+			stop:     make(chan struct{}),
 		}
 		go d.test(done)
 	}
@@ -175,6 +177,7 @@ type daemon struct {
 	errCh    chan error
 	wg       *sync.WaitGroup
 	idx      int
+	stop     chan struct{}
 }
 
 func (d *daemon) test(done <-chan struct{}) {
@@ -196,6 +199,8 @@ func (d *daemon) test(done <-chan struct{}) {
 				d.makeOffer(done)
 			case <-done:
 				return
+			case <-d.stop:
+				return
 			}
 
 			sleep = getRandomInt(60) + 3
@@ -213,6 +218,8 @@ func (d *daemon) test(done <-chan struct{}) {
 				d.takeOffer(done)
 			case <-done:
 				return
+			case <-d.stop:
+				return
 			}
 		}
 	}()
@@ -228,6 +235,9 @@ func (d *daemon) logErrors(done <-chan struct{}) {
 			return
 		case err := <-d.errCh:
 			log.Errorf("endpoint %d: %s", d.idx, err)
+			if strings.Contains(err.Error(), "connection refused") {
+				close(d.stop)
+			}
 		}
 	}
 }

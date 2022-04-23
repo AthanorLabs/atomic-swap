@@ -2,7 +2,7 @@
 
 bash ./scripts/install-monero-linux.sh
 echo "starting monerod..."
-./monero-x86_64-linux-gnu-v0.17.3.0/monerod --detach --stagenet --rpc-bind-port 18081 &
+./monero-x86_64-linux-gnu-v0.17.3.0/monerod --detach --stagenet &
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
