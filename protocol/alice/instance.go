@@ -87,6 +87,8 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development {
 		defaultTimeoutDuration = time.Minute
+	} else if cfg.Environment == common.Stagenet {
+		defaultTimeoutDuration = time.Hour
 	}
 
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
