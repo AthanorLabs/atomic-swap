@@ -68,6 +68,7 @@ func (k *PublicKey) String() string {
 	return hex.EncodeToString(append(k.x[:], k.y[:]...))
 }
 
+// Compress returns the 33-byte compressed public key
 func (k *PublicKey) Compress() [33]byte {
 	x := big.NewInt(0).SetBytes(k.x[:])
 	y := big.NewInt(0).SetBytes(k.y[:])

@@ -4,13 +4,15 @@ import (
 	"errors"
 
 	"github.com/noot/atomic-swap/crypto/secp256k1"
+	dleq "github.com/noot/cgo-dleq"
 
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/noot/cgo-dleq"
 )
 
+// CGODLEq is a wrapper around the CGO bindings to dleq-rs
 type CGODLEq struct{}
 
+// Prove generates a new DLEq proof
 func (d *CGODLEq) Prove() (*Proof, error) {
 	proof, pk, err := dleq.Ed25519Secp256k1Prove()
 	if err != nil {
@@ -26,6 +28,7 @@ func (d *CGODLEq) Prove() (*Proof, error) {
 	}, nil
 }
 
+// Verify verifies a DLEq proof
 func (d *CGODLEq) Verify(proof *Proof) (*VerifyResult, error) {
 	ed25519Pub, secp256k1Pub, err := dleq.Ed25519Secp256k1Verify(proof.proof)
 	if err != nil {
