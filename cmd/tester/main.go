@@ -178,6 +178,7 @@ type daemon struct {
 	wg       *sync.WaitGroup
 	idx      int
 	stop     chan struct{}
+	swapMu   sync.Mutex
 }
 
 func (d *daemon) test(done <-chan struct{}) {
@@ -295,6 +296,9 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 		return
 	}
 
+	d.swapMu.Lock()
+	defer d.swapMu.Unlock()
+
 	for {
 		select {
 		case <-done:
@@ -352,6 +356,9 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 			return
 		}
 	}
+
+	d.swapMu.Lock()
+	defer d.swapMu.Unlock()
 
 	start := time.Now()
 
