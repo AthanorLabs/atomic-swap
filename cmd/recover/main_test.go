@@ -80,7 +80,7 @@ func (r *mockRecoverer) RecoverFromBobSecretAndContract(b *bob.Instance, bobSecr
 	}, nil
 }
 
-func (r *mockRecoverer) RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string,
+func (r *mockRecoverer) RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string,
 	swapID *big.Int) (*alice.RecoveryResult, error) {
 	return &alice.RecoveryResult{
 		Claimed: true,

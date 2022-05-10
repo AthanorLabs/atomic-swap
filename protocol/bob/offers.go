@@ -86,3 +86,10 @@ func (b *Instance) GetOffers() []*types.Offer {
 	}
 	return offers
 }
+
+// ClearOffers clears all offers.
+func (b *Instance) ClearOffers() {
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+	b.offerManager.offers = make(map[types.Hash]*offerWithExtra)
+}

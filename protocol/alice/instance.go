@@ -87,6 +87,8 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development {
 		defaultTimeoutDuration = time.Minute
+	} else if cfg.Environment == common.Stagenet {
+		defaultTimeoutDuration = time.Hour
 	}
 
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
@@ -103,6 +105,10 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
+		return nil, fmt.Errorf("must provide swap contract and address")
 	}
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured

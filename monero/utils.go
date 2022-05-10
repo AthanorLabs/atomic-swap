@@ -20,27 +20,31 @@ var (
 )
 
 // WaitForBlocks waits for a new block to arrive.
-func WaitForBlocks(client Client) error {
+func WaitForBlocks(client Client) (uint, error) {
 	prevHeight, err := client.GetHeight()
 	if err != nil {
-		return fmt.Errorf("failed to get height: %w", err)
+		return 0, fmt.Errorf("failed to get height: %w", err)
 	}
 
 	for i := 0; i < maxRetries; i++ {
+		if err := client.Refresh(); err != nil {
+			return 0, err
+		}
+
 		height, err := client.GetHeight()
 		if err != nil {
 			continue
 		}
 
 		if height > prevHeight {
-			return nil
+			return height, nil
 		}
 
 		log.Infof("waiting for next block, current height=%d", height)
 		time.Sleep(blockSleepDuration)
 	}
 
-	return fmt.Errorf("timed out waiting for next block")
+	return 0, fmt.Errorf("timed out waiting for next block")
 }
 
 // CreateMoneroWallet creates a monero wallet from a private keypair.

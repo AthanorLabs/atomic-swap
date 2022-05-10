@@ -243,16 +243,25 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
 	if s.alice.env != common.Development {
+		log.Infof("waiting for new blocks...")
 		// wait for 2 new blocks, otherwise balance might be 0
 		// TODO: check transaction hash
-		if err := monero.WaitForBlocks(s.alice.client); err != nil {
+		height, err := monero.WaitForBlocks(s.alice.client)
+		if err != nil {
 			return nil, err
 		}
 
-		if err := monero.WaitForBlocks(s.alice.client); err != nil {
+		log.Infof("monero block height: %d", height)
+
+		height, err = monero.WaitForBlocks(s.alice.client)
+		if err != nil {
 			return nil, err
 		}
+
+		log.Infof("monero block height: %d", height)
 	}
+
+	log.Debug("refreshing client...")
 
 	if err := s.alice.client.Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh client: %w", err)

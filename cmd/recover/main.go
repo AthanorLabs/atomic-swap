@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
@@ -16,6 +17,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/alice"
 	"github.com/noot/atomic-swap/protocol/bob"
 	recovery "github.com/noot/atomic-swap/recover"
+	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -108,8 +110,8 @@ func main() {
 // Recoverer is implemented by a backend which is able to recover monero
 type Recoverer interface {
 	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
-	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error)         //nolint:lll
-	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error) //nolint:lll
+	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error) //nolint:lll
+	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string, swapID *big.Int) (*alice.RecoveryResult, error)       //nolint:lll
 }
 
 type instance struct {
@@ -188,12 +190,13 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	if as != "" && contractAddr != "" {
-		a, err := createAliceInstance(context.Background(), c, env, cfg)
+		addr := ethcommon.HexToAddress(contractAddr)
+		a, err := createAliceInstance(context.Background(), c, env, cfg, addr)
 		if err != nil {
 			return err
 		}
 
-		res, err := r.RecoverFromAliceSecretAndContract(a, as, contractAddr, swapID)
+		res, err := r.RecoverFromAliceSecretAndContract(a, as, swapID)
 		if err != nil {
 			return err
 		}
@@ -238,7 +241,7 @@ func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 }
 
 func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environment,
-	cfg common.Config) (*alice.Instance, error) {
+	cfg common.Config, contractAddr ethcommon.Address) (*alice.Instance, error) {
 	var (
 		moneroEndpoint, ethEndpoint string
 	)
@@ -281,6 +284,11 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		return nil, err
 	}
 
+	contract, err := swapfactory.NewSwapFactory(contractAddr, ec)
+	if err != nil {
+		return nil, err
+	}
+
 	aliceCfg := &alice.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
@@ -291,6 +299,8 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		ChainID:              big.NewInt(chainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint(flagGasLimit)),
+		SwapContract:         contract,
+		SwapContractAddress:  contractAddr,
 	}
 
 	return alice.NewInstance(aliceCfg)
