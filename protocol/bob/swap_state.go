@@ -482,7 +482,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 		_ = s.bob.daemonClient.GenerateBlocks(bobAddr.Address, 2)
 	} else {
 		// otherwise, wait for new blocks
-		height, err := monero.WaitForBlocks(s.bob.client)
+		height, err := monero.WaitForBlocks(s.bob.client, 1)
 		if err != nil {
 			return "", err
 		}
