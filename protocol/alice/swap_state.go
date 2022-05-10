@@ -68,6 +68,10 @@ type swapState struct {
 
 func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount,
 	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
+	if a.contract == nil {
+		return nil, errors.New("no swap contract found")
+	}
+
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -107,7 +111,27 @@ func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmoun
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
+	go s.waitForSendKeysMessage()
+
 	return s, nil
+}
+
+func (s *swapState) waitForSendKeysMessage() {
+	waitDuration := time.Minute
+	timer := time.After(waitDuration)
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-timer:
+	}
+
+	// check if we've received a response from the counterparty yet
+	if s.nextExpectedMessage != (&net.SendKeysMessage{}) {
+		return
+	}
+
+	// if not, just exit the swap
+	_ = s.Exit()
 }
 
 // SendKeysMessage ...

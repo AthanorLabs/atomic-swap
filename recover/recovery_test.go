@@ -27,7 +27,8 @@ func newRecoverer(t *testing.T) *recoverer {
 	return r
 }
 
-func newSwap(t *testing.T, claimKey, refundKey [32]byte, setReady bool) (ethcommon.Address, *big.Int) {
+func newSwap(t *testing.T, claimKey, refundKey [32]byte,
+	setReady bool) (ethcommon.Address, *swapfactory.SwapFactory, *big.Int) {
 	tm := big.NewInt(defaulTimeout)
 
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
@@ -59,10 +60,10 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte, setReady bool) (ethcomm
 		require.NoError(t, err)
 	}
 
-	return addr, swapID
+	return addr, contract, swapID
 }
 
-func newAliceInstance(t *testing.T) *alice.Instance {
+func newAliceInstance(t *testing.T, addr ethcommon.Address, contract *swapfactory.SwapFactory) *alice.Instance {
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
 	require.NoError(t, err)
 
@@ -76,6 +77,8 @@ func newAliceInstance(t *testing.T) *alice.Instance {
 		EthereumClient:       ec,
 		ChainID:              big.NewInt(common.GanacheChainID),
 		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
+		SwapContract:         contract,
+		SwapContractAddress:  addr,
 	}
 
 	a, err := alice.NewInstance(cfg)
@@ -128,7 +131,7 @@ func TestRecoverer_RecoverFromBobSecretAndContract_Claim(t *testing.T) {
 	b := newBobInstance(t)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, swapID := newSwap(t, claimKey, [32]byte{}, true)
+	addr, _, swapID := newSwap(t, claimKey, [32]byte{}, true)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromBobSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(), addr.String(), swapID)
@@ -147,7 +150,7 @@ func TestRecoverer_RecoverFromBobSecretAndContract_Claim_afterTimeout(t *testing
 	b := newBobInstance(t)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, swapID := newSwap(t, claimKey, [32]byte{}, false)
+	addr, _, swapID := newSwap(t, claimKey, [32]byte{}, false)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromBobSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(), addr.String(), swapID)
@@ -163,13 +166,13 @@ func TestRecoverer_RecoverFromAliceSecretAndContract_Refund(t *testing.T) {
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
-	a := newAliceInstance(t)
-
 	refundKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, swapID := newSwap(t, [32]byte{}, refundKey, false)
+	addr, contract, swapID := newSwap(t, [32]byte{}, refundKey, false)
+
+	a := newAliceInstance(t, addr, contract)
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromAliceSecretAndContract(a, keys.PrivateKeyPair.SpendKey().Hex(), addr.String(), swapID)
+	res, err := r.RecoverFromAliceSecretAndContract(a, keys.PrivateKeyPair.SpendKey().Hex(), swapID)
 	require.NoError(t, err)
 	require.True(t, res.Refunded)
 }

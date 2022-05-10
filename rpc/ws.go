@@ -160,6 +160,10 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 			if err := writeResponse(conn, resp); err != nil {
 				return err
 			}
+
+			if !status.IsOngoing() {
+				return nil
+			}
 		case <-ctx.Done():
 			return nil
 		}
@@ -215,6 +219,10 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 			if err := writeResponse(conn, resp); err != nil {
 				return err
 			}
+
+			if !status.IsOngoing() {
+				return nil
+			}
 		case <-ctx.Done():
 			return nil
 		}
@@ -244,6 +252,10 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 
 			if err := writeResponse(conn, resp); err != nil {
 				return err
+			}
+
+			if !status.IsOngoing() {
+				return nil
 			}
 		case <-ctx.Done():
 			return nil

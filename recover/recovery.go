@@ -90,7 +90,7 @@ func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 
 // RecoverFromAliceSecretAndContract recovers funds by either claiming locked monero or refunding ether.
 func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
-	aliceSecret, contractAddr string, swapID *big.Int) (*alice.RecoveryResult, error) {
+	aliceSecret string, swapID *big.Int) (*alice.RecoveryResult, error) {
 	as, err := hex.DecodeString(aliceSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode Alice's secret: %w", err)
@@ -101,8 +101,7 @@ func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
 		return nil, err
 	}
 
-	addr := ethcommon.HexToAddress(contractAddr)
-	rs, err := alice.NewRecoveryState(a, ak, addr, swapID)
+	rs, err := alice.NewRecoveryState(a, ak, swapID)
 	if err != nil {
 		return nil, err
 	}

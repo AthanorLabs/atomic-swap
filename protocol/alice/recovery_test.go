@@ -36,7 +36,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), inst.contractAddr, s.contractSwapID)
+	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), s.contractSwapID)
 	require.NoError(t, err)
 	return rs
 }

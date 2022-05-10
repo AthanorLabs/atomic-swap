@@ -17,6 +17,7 @@ var log = logging.Logger("rpcclient")
 
 // WsClient ...
 type WsClient interface {
+	Close()
 	Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error)
 	Query(maddr string) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id uint64) (<-chan types.Status, error)
@@ -27,7 +28,8 @@ type WsClient interface {
 }
 
 type wsClient struct {
-	sync.Mutex
+	wmu  sync.Mutex
+	rmu  sync.Mutex
 	conn *websocket.Conn
 }
 
@@ -47,10 +49,25 @@ func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///n
 	}, nil
 }
 
+func (c *wsClient) Close() {
+	_ = c.conn.Close()
+}
+
 func (c *wsClient) writeJSON(msg *rpctypes.Request) error {
-	c.Lock()
-	defer c.Unlock()
+	c.wmu.Lock()
+	defer c.wmu.Unlock()
 	return c.conn.WriteJSON(msg)
+}
+
+func (c *wsClient) read() ([]byte, error) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+	_, message, err := c.conn.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
+
+	return message, nil
 }
 
 func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error) {
@@ -75,8 +92,7 @@ func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][
 		return nil, err
 	}
 
-	// read ID from connection
-	_, message, err := c.conn.ReadMessage()
+	message, err := c.read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
@@ -122,7 +138,7 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 	}
 
 	// read ID from connection
-	_, message, err := c.conn.ReadMessage()
+	message, err := c.read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
@@ -175,7 +191,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 		defer close(respCh)
 
 		for {
-			_, message, err := c.conn.ReadMessage()
+			message, err := c.read()
 			if err != nil {
 				log.Warnf("failed to read websockets message: %s", err)
 				break
@@ -200,7 +216,11 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 				break
 			}
 
-			respCh <- types.NewStatus(status.Status)
+			s := types.NewStatus(status.Status)
+			respCh <- s
+			if !s.IsOngoing() {
+				return
+			}
 		}
 	}()
 
@@ -232,7 +252,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	}
 
 	// read ID from connection
-	_, message, err := c.conn.ReadMessage()
+	message, err := c.read()
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
@@ -259,7 +279,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		defer close(respCh)
 
 		for {
-			_, message, err := c.conn.ReadMessage()
+			message, err := c.read()
 			if err != nil {
 				log.Warnf("failed to read websockets message: %s", err)
 				break
@@ -284,7 +304,11 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 				break
 			}
 
-			respCh <- types.NewStatus(status.Status)
+			s := types.NewStatus(status.Status)
+			respCh <- s
+			if !s.IsOngoing() {
+				return
+			}
 		}
 	}()
 
@@ -316,15 +340,21 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 		ID:      0,
 	}
 
+	log.Debug("writing net_makeOfferAndSubscribe")
+
 	if err = c.writeJSON(req); err != nil {
 		return "", nil, nil, err
 	}
 
+	log.Debugf("wrote")
+
 	// read ID from connection
-	_, message, err := c.conn.ReadMessage()
+	message, err := c.read()
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
+
+	log.Debugf("got response")
 
 	var resp *rpctypes.Response
 	err = json.Unmarshal(message, &resp)
@@ -351,7 +381,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 		defer close(takenCh)
 
 		// read if swap was taken
-		_, message, err := c.conn.ReadMessage()
+		message, err := c.read()
 		if err != nil {
 			log.Warnf("failed to read websockets message: %s", err)
 			return
@@ -379,7 +409,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 		takenCh <- taken
 
 		for {
-			_, message, err := c.conn.ReadMessage()
+			message, err := c.read()
 			if err != nil {
 				log.Warnf("failed to read websockets message: %s", err)
 				break
@@ -404,7 +434,11 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 				break
 			}
 
-			respCh <- types.NewStatus(status.Status)
+			s := types.NewStatus(status.Status)
+			respCh <- s
+			if !s.IsOngoing() {
+				return
+			}
 		}
 	}()
 
