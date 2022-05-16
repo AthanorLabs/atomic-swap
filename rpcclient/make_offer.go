@@ -1,10 +1,9 @@
-package client
+package rpcclient
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
 )
@@ -26,7 +25,7 @@ func (c *Client) MakeOffer(min, max, exchangeRate float64) (string, error) {
 		return "", err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return "", err
 	}

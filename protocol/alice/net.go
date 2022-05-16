@@ -1,8 +1,6 @@
 package alice
 
 import (
-	"errors"
-
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	pcommon "github.com/noot/atomic-swap/protocol"
@@ -34,7 +32,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 	defer a.swapMu.Unlock()
 
 	if a.swapState != nil {
-		return errors.New("protocol already in progress")
+		return errProtocolAlreadyInProgress
 	}
 
 	balance, err := a.ethClient.BalanceAt(a.ctx, a.callOpts.From, nil)
@@ -44,7 +42,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 
 	// check user's balance and that they actually have what they will provide
 	if balance.Cmp(providesAmount.BigInt()) <= 0 {
-		return errors.New("balance lower than amount to be provided")
+		return errBalanceTooLow
 	}
 
 	a.swapState, err = newSwapState(a, pcommon.GetSwapInfoFilepath(a.basepath), providesAmount,

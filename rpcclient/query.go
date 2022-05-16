@@ -1,9 +1,8 @@
-package client
+package rpcclient
 
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/rpctypes"
 )
 
@@ -22,7 +21,7 @@ func (c *Client) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 		return nil, err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}

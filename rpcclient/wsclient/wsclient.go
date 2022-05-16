@@ -1,4 +1,4 @@
-package rpcclient
+package wsclient
 
 import (
 	"context"

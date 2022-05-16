@@ -19,32 +19,35 @@ var (
 	log = logging.Logger("monero")
 )
 
-// WaitForBlocks waits for a new block to arrive.
-func WaitForBlocks(client Client) (uint, error) {
+// WaitForBlocks waits for `count` new blocks to arrive.
+// It returns the height of the chain.
+func WaitForBlocks(client Client, count int) (uint, error) {
 	prevHeight, err := client.GetHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get height: %w", err)
 	}
 
-	for i := 0; i < maxRetries; i++ {
-		if err := client.Refresh(); err != nil {
-			return 0, err
-		}
+	for j := 0; j < count; j++ {
+		for i := 0; i < maxRetries; i++ {
+			if err := client.Refresh(); err != nil {
+				return 0, err
+			}
 
-		height, err := client.GetHeight()
-		if err != nil {
-			continue
-		}
+			height, err := client.GetHeight()
+			if err != nil {
+				continue
+			}
 
-		if height > prevHeight {
-			return height, nil
-		}
+			if height > prevHeight {
+				return height, nil
+			}
 
-		log.Infof("waiting for next block, current height=%d", height)
-		time.Sleep(blockSleepDuration)
+			log.Infof("waiting for next block, current height=%d", height)
+			time.Sleep(blockSleepDuration)
+		}
 	}
 
-	return 0, fmt.Errorf("timed out waiting for next block")
+	return 0, fmt.Errorf("timed out waiting for blocks")
 }
 
 // CreateMoneroWallet creates a monero wallet from a private keypair.
