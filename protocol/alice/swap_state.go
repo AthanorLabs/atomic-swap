@@ -3,7 +3,6 @@ package alice
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -69,7 +68,7 @@ type swapState struct {
 func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount,
 	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
 	if a.contract == nil {
-		return nil, errors.New("no swap contract found")
+		return nil, errNoSwapContractSet
 	}
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
@@ -319,7 +318,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 func (s *swapState) setTimeouts() error {
 	if s.alice.contract == nil {
-		return errors.New("contract is nil")
+		return errNoSwapContractSet
 	}
 
 	if (s.t0 != time.Time{}) && (s.t1 != time.Time{}) {
@@ -387,11 +386,11 @@ func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey
 // lockETH the Swap contract function new_swap and locks `amount` ether in it.
 func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
-		return ethcommon.Hash{}, errors.New("public keys aren't set")
+		return ethcommon.Hash{}, errNoPublicKeysSet
 	}
 
 	if s.bobPublicSpendKey == nil || s.bobPrivateViewKey == nil {
-		return ethcommon.Hash{}, errors.New("bob's keys aren't set")
+		return ethcommon.Hash{}, errCounterpartyKeysNotSet
 	}
 
 	cmtAlice := s.secp256k1Pub.Keccak256()
@@ -415,7 +414,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	if len(receipt.Logs) == 0 {
-		return ethcommon.Hash{}, errors.New("expected 1 log, got 0")
+		return ethcommon.Hash{}, errSwapInstantiationNoLogs
 	}
 
 	s.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
@@ -451,7 +450,7 @@ func (s *swapState) ready() error {
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
 	if s.alice.contract == nil {
-		return ethcommon.Hash{}, errors.New("contract is nil")
+		return ethcommon.Hash{}, errNoSwapContractSet
 	}
 
 	sc := s.getSecret()
@@ -472,7 +471,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
 	if !s.info.Status().IsOngoing() {
-		return "", errors.New("swap has already completed")
+		return "", errSwapCompleted
 	}
 
 	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())

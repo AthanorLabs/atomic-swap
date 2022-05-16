@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -157,7 +156,7 @@ func (s *swapState) ID() uint64 {
 // If the swap already completed successfully, this function does not doing anything in regards to the protoco.
 func (s *swapState) Exit() error {
 	if s == nil {
-		return errors.New("swap state is nil")
+		return errNilSwapState
 	}
 
 	s.Lock()
@@ -167,7 +166,7 @@ func (s *swapState) Exit() error {
 
 func (s *swapState) exit() error {
 	if s == nil {
-		return errors.New("swap state is nil")
+		return errNilSwapState
 	}
 
 	log.Debugf("attempting to exit swap: nextExpectedMessage=%v", s.nextExpectedMessage)
@@ -411,7 +410,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 
 	// check that New log was emitted
 	if len(receipt.Logs) == 0 {
-		return errors.New("cannot find New log")
+		return errCannotFindNewLog
 	}
 
 	event, err := s.contract.ParseNew(*receipt.Logs[0])
@@ -420,7 +419,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	}
 
 	if event.SwapID.Cmp(s.contractSwapID) != 0 {
-		return errors.New("unexpected swap ID was emitted by New log")
+		return errUnexpectedSwapID
 	}
 
 	// check that contract was constructed with correct secp256k1 keys

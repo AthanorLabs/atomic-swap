@@ -1,7 +1,6 @@
 package bob
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
 	if s == nil {
-		return nil, true, errors.New("swap state is nil")
+		return nil, true, errNilSwapState
 	}
 
 	s.Lock()
@@ -77,7 +76,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
-		return nil, true, errors.New("unexpected message type")
+		return nil, true, errUnexpectedMessageType
 	}
 }
 
@@ -108,7 +107,7 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 
 func (s *swapState) checkMessageType(msg net.Message) error {
 	if msg == nil {
-		return errors.New("message is nil")
+		return errNilMessage
 	}
 
 	if s == nil || s.nextExpectedMessage == nil {
@@ -121,7 +120,7 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	}
 
 	if msg.Type() != s.nextExpectedMessage.Type() {
-		return errors.New("received unexpected message")
+		return errIncorrectMessageType
 	}
 
 	return nil
@@ -133,7 +132,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	if msg.ContractSwapID == nil {
-		return nil, errors.New("expected swapID in NotifyETHLocked message")
+		return nil, errNilContractSwapID
 	}
 
 	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
@@ -237,7 +236,7 @@ func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
 	}
 
 	if len(receipt.Logs) == 0 {
-		return "", errors.New("claim transaction has no logs")
+		return "", errClaimTxHasNoLogs
 	}
 
 	sa, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Refunded")

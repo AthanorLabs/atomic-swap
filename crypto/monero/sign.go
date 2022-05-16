@@ -6,6 +6,11 @@ import (
 	"errors"
 )
 
+var (
+	errInvalidSignatureLength = errors.New("invalid length for signature")
+	errNoPrivateKeySeed       = errors.New("private key does not have seed, key must be created with GenerateKeys")
+)
+
 // Signature represents an ed25519 signature
 type Signature struct {
 	s []byte
@@ -20,7 +25,7 @@ func NewSignatureFromHex(s string) (*Signature, error) {
 	}
 
 	if len(b) != ed25519.SignatureSize {
-		return nil, errors.New("invalid length for signature")
+		return nil, errInvalidSignatureLength
 	}
 
 	return &Signature{
@@ -37,7 +42,7 @@ func (s *Signature) Hex() string {
 // The private key must have been created with GenerateKeys().
 func (k *PrivateSpendKey) Sign(msg []byte) (*Signature, error) {
 	if k.seed == [32]byte{} {
-		return nil, errors.New("private key does not have seed, key must be created with GenerateKeys")
+		return nil, errNoPrivateKeySeed
 	}
 
 	pub := k.Public().key.Bytes()

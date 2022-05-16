@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
@@ -234,7 +233,7 @@ func runDiscover(ctx *cli.Context) error {
 func runQuery(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
 	if maddr == "" {
-		return errors.New("must provide peer's multiaddress with --multiaddr")
+		return errNoMultiaddr
 	}
 
 	endpoint := ctx.String("daemon-addr")
@@ -257,17 +256,17 @@ func runQuery(ctx *cli.Context) error {
 func runMake(ctx *cli.Context) error {
 	min := ctx.Float64("min-amount")
 	if min == 0 {
-		return errors.New("must provide non-zero --min-amount")
+		return errNoMinAmount
 	}
 
 	max := ctx.Float64("max-amount")
 	if max == 0 {
-		return errors.New("must provide non-zero --max-amount")
+		return errNoMaxAmount
 	}
 
 	exchangeRate := ctx.Float64("exchange-rate")
 	if exchangeRate == 0 {
-		return errors.New("must provide non-zero --exchange-rate")
+		return errNoExchangeRate
 	}
 
 	endpoint := ctx.String("daemon-addr")
@@ -314,17 +313,17 @@ func runMake(ctx *cli.Context) error {
 func runTake(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
 	if maddr == "" {
-		return errors.New("must provide peer's multiaddress with --multiaddr")
+		return errNoMultiaddr
 	}
 
 	offerID := ctx.String("offer-id")
 	if offerID == "" {
-		return errors.New("must provide --offer-id")
+		return errNoOfferID
 	}
 
 	providesAmount := ctx.Float64("provides-amount")
 	if providesAmount == 0 {
-		return errors.New("must provide --provides-amount")
+		return errNoProvidesAmount
 	}
 
 	endpoint := ctx.String("daemon-addr")

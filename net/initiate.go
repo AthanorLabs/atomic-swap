@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -24,7 +23,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 	defer h.swapMu.Unlock()
 
 	if h.swapState != nil {
-		return errors.New("already have ongoing swap")
+		return errSwapAlreadyInProgress
 	}
 
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)

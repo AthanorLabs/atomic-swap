@@ -1,8 +1,6 @@
 package bob
 
 import (
-	"errors"
-
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	pcommon "github.com/noot/atomic-swap/protocol"
@@ -64,7 +62,7 @@ func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
 	}
 
 	if common.MoneroAmount(balance.UnlockedBalance) < common.MoneroToPiconero(o.MaximumAmount) {
-		return nil, errors.New("unlocked balance is less than maximum offer amount")
+		return nil, errUnlockedBalanceTooLow
 	}
 
 	extra := b.offerManager.putOffer(o)

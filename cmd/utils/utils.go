@@ -21,6 +21,11 @@ var log = logging.Logger("cmd")
 
 var defaultEnvironment = common.Development
 
+var (
+	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
+	errInvalidEnv           = errors.New("--env must be one of mainnet, stagenet, or dev")
+)
+
 // GetEthereumPrivateKey returns an ethereum private key hex string given the CLI options.
 func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) (ethPrivKey string, err error) {
 	if c.String(flagEthereumPrivKey) != "" {
@@ -38,7 +43,7 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) 
 	} else {
 		if env != common.Development {
 			// TODO: allow this to be set via RPC
-			return "", errors.New("must provide --ethereum-privkey file for non-development environment")
+			return "", errNoEthereumPrivateKey
 		}
 
 		log.Warn("no ethereum private key file provided, using ganache deterministic key")
@@ -68,7 +73,7 @@ func GetEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, 
 		env = defaultEnvironment
 		cfg = common.DevelopmentConfig
 	default:
-		return 0, common.Config{}, errors.New("--env must be one of mainnet, stagenet, or dev")
+		return 0, common.Config{}, errInvalidEnv
 	}
 
 	return env, cfg, nil

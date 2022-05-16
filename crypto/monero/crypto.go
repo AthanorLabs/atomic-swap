@@ -108,7 +108,7 @@ type PrivateSpendKey struct {
 // NewPrivateSpendKey returns a new PrivateSpendKey from the given canonically-encoded scalar.
 func NewPrivateSpendKey(b []byte) (*PrivateSpendKey, error) {
 	if len(b) != privateKeySize {
-		return nil, errors.New("input is not 32 bytes")
+		return nil, errInvalidInput
 	}
 
 	sk, err := ed25519.NewScalar().SetCanonicalBytes(b)

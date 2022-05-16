@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -71,7 +70,7 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
 	case subscribeNewPeer:
-		return errors.New("unimplemented")
+		return errUnimplemented
 	case "net_discover":
 		var params *rpctypes.DiscoverRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -131,7 +130,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		s.ns.net.Advertise()
 		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
 	default:
-		return errors.New("invalid method")
+		return errInvalidMethod
 	}
 }
 
@@ -266,7 +265,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id uint64) error {
 	info := s.sm.GetPastSwap(id)
 	if info == nil {
-		return errors.New("unable to find swap with given ID")
+		return errNoSwapWithID
 	}
 
 	resp := &rpctypes.SubscribeSwapStatusResponse{
