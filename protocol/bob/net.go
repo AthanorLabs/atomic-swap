@@ -1,8 +1,6 @@
 package bob
 
 import (
-	"errors"
-
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
@@ -22,7 +20,7 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 	defer b.swapMu.Unlock()
 
 	if b.swapState != nil {
-		return errors.New("protocol already in progress")
+		return errProtocolAlreadyInProgress
 	}
 
 	balance, err := b.client.GetBalance(0)
@@ -32,7 +30,7 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 
 	// check user's balance and that they actually have what they will provide
 	if balance.UnlockedBalance <= float64(providesAmount) {
-		return errors.New("balance lower than amount to be provided")
+		return errBalanceTooLow
 	}
 
 	b.swapState, err = newSwapState(b, offer, offerExtra.StatusCh, offerExtra.InfoFile, providesAmount, desiredAmount)
@@ -65,17 +63,17 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 
 	offer, offerExtra := b.offerManager.getAndDeleteOffer(id)
 	if offer == nil {
-		return nil, nil, errors.New("failed to find offer with given ID")
+		return nil, nil, errNoOfferWithID
 	}
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 
 	if providedAmount < offer.MinimumAmount {
-		return nil, nil, errors.New("amount provided by taker is too low for offer")
+		return nil, nil, errAmountProvidedTooLow
 	}
 
 	if providedAmount > offer.MaximumAmount {
-		return nil, nil, errors.New("amount provided by taker is too low for offer")
+		return nil, nil, errAmountProvidedTooHigh
 	}
 
 	if err = b.initiate(offer, offerExtra, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll

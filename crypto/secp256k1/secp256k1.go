@@ -10,6 +10,10 @@ import (
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
+var (
+	errInvalidPubkeyLength = errors.New("encoded public key is not 64 bytes")
+)
+
 // PublicKey represents a secp256k1 public key
 type PublicKey struct {
 	x, y [32]byte
@@ -39,7 +43,7 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 	}
 
 	if len(k) != 64 {
-		return nil, errors.New("encoded public key is not 64 bytes")
+		return nil, errInvalidPubkeyLength
 	}
 
 	pk := &PublicKey{}

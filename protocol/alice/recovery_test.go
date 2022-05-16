@@ -24,15 +24,6 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	s.setBobKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
 	s.bobAddress = inst.callOpts.From
 
-	// skAB := mcrypto.SumPrivateSpendKeys(s.privkeys.SpendKey(), s.privkeys.SpendKey())
-	// vkAB := mcrypto.SumPrivateViewKeys(s.privkeys.ViewKey(), s.privkeys.ViewKey())
-	// kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-	// require.NoError(t, err)
-	// xmrAddr := kpAB.Address(common.Development)
-
-	// _, err = inst.client.Transfer(xmrAddr, 0, 1000000000)
-	// require.NoError(t, err)
-
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 

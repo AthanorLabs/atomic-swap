@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"os"
 
@@ -136,15 +135,15 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	if as == "" && bs == "" {
-		return errors.New("must also provide one of --alice-secret or --bob-secret")
+		return errNoSecretsProvided
 	}
 
 	if as == "" && contractAddr == "" {
-		return errors.New("must also provide one of --alice-secret or --contract-addr")
+		return errNoAliceSecretOrContractProvided
 	}
 
 	if contractAddr == "" && bs == "" {
-		return errors.New("must also provide one of --contract-addr or --bob-secret")
+		return errNoBobSecretOrContractProvided
 	}
 
 	swapID := big.NewInt(int64(c.Uint(flagContractSwapID)))

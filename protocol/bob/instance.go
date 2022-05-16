@@ -3,7 +3,6 @@ package bob
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"math/big"
 	"sync"
 
@@ -71,7 +70,7 @@ type Config struct {
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
 func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
-		return nil, errors.New("environment is development, must provide monero daemon endpoint")
+		return nil, errMustProvideDaemonEndpoint
 	}
 
 	addr := common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)

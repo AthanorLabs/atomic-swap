@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -231,7 +230,7 @@ func (h *host) SendSwapMessage(msg Message) error {
 	defer h.swapMu.Unlock()
 
 	if h.swapStream == nil {
-		return errors.New("no swap currently happening")
+		return errNoOngoingSwap
 	}
 
 	return h.writeToStream(h.swapStream, msg)
@@ -294,7 +293,7 @@ func (h *host) handleConn(conn libp2pnetwork.Conn) {
 // readStream reads from the stream into the given buffer, returning the number of bytes read
 func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
 	if stream == nil {
-		return 0, errors.New("stream is nil")
+		return 0, errNilStream
 	}
 
 	var (
@@ -349,7 +348,7 @@ func (h *host) bootstrap() error {
 	}
 
 	if failed == len(h.bootnodes) && len(h.bootnodes) != 0 {
-		return errors.New("failed to bootstrap to any bootnode")
+		return errFailedToBootstrap
 	}
 
 	return nil

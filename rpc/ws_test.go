@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/rpcclient/wsclient"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -149,7 +149,7 @@ func TestSubscribeSwapStatus(t *testing.T) {
 	t.Cleanup(func() {
 		cancel()
 	})
-	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
+	c, err := wsclient.NewWsClient(ctx, defaultWSEndpoint())
 	require.NoError(t, err)
 
 	ch, err := c.SubscribeSwapStatus(testSwapID)
@@ -192,7 +192,7 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	t.Cleanup(func() {
 		cancel()
 	})
-	c, err := rpcclient.NewWsClient(ctx, defaultWSEndpoint())
+	c, err := wsclient.NewWsClient(ctx, defaultWSEndpoint())
 	require.NoError(t, err)
 
 	offerID := (&types.Offer{}).GetID()

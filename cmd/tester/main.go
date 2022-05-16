@@ -16,8 +16,10 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/rpcclient/wsclient"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -26,13 +28,17 @@ const (
 	flagConfig  = "config"
 	flagTimeout = "timeout"
 	flagLog     = "log"
+	flagDev     = "dev"
 
 	defaultConfigFile = "testerconfig.json"
 )
 
-var defaultTimeout = time.Minute * 15
-
-var log = logging.Logger("cmd")
+var (
+	defaultTimeout      = time.Minute * 15
+	log                 = logging.Logger("cmd")
+	isDev               = false
+	defaultMoneroClient monero.Client
+)
 
 var (
 	app = &cli.App{
@@ -51,6 +57,10 @@ var (
 			&cli.StringFlag{
 				Name:  flagLog,
 				Usage: "set log level: one of [error|warn|info|debug]",
+			},
+			&cli.BoolFlag{
+				Name:  flagDev,
+				Usage: "run tester in development environment",
 			},
 		},
 	}
@@ -90,6 +100,7 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("rpcclient", level)
+	_ = logging.SetLogLevel("wsclient", level)
 	return nil
 }
 
@@ -97,6 +108,12 @@ func runTester(c *cli.Context) error {
 	err := setLogLevels(c)
 	if err != nil {
 		return err
+	}
+
+	isDev = c.Bool(flagDev)
+	if !isDev {
+		// TODO: add a flag to specify local endpoint
+		defaultMoneroClient = monero.NewClient(common.DefaultBobMoneroEndpoint)
 	}
 
 	var timeout time.Duration
@@ -169,6 +186,20 @@ const (
 func getRandomExchangeRate() types.ExchangeRate {
 	rate := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
 	return types.ExchangeRate(rate)
+}
+
+func generateBlocks() {
+	cBob := monero.NewClient(common.DefaultAliceMoneroEndpoint)
+
+	bobAddr, err := cBob.GetAddress(0)
+	if err != nil {
+		log.Errorf("failed to get default monero address: %s", err)
+		return
+	}
+
+	log.Infof("development: generating blocks...")
+	dclient := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
+	_ = dclient.GenerateBlocks(bobAddr.Address, 128)
 }
 
 type daemon struct {
@@ -245,7 +276,7 @@ func (d *daemon) logErrors(done <-chan struct{}) {
 
 func (d *daemon) takeOffer(done <-chan struct{}) {
 	log.Debugf("node %d discovering offers...", d.idx)
-	wsc, err := rpcclient.NewWsClient(context.Background(), d.endpoint)
+	wsc, err := wsclient.NewWsClient(context.Background(), d.endpoint)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -314,7 +345,11 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 			}
 
 			d.rsl.logTakerStatus(status)
-			d.rsl.logSwapDuration(time.Since(start))
+
+			if status != types.CompletedAbort {
+				d.rsl.logSwapDuration(time.Since(start))
+			}
+
 			return
 		}
 	}
@@ -327,7 +362,7 @@ func getRandomInt(max int) int {
 
 func (d *daemon) makeOffer(done <-chan struct{}) {
 	log.Infof("node %d making offer...", d.idx)
-	wsc, err := rpcclient.NewWsClient(context.Background(), d.endpoint)
+	wsc, err := wsclient.NewWsClient(context.Background(), d.endpoint)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -342,6 +377,18 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 	if err != nil {
 		log.Errorf("failed to make offer (node %d): %s", d.idx, err)
 		d.errCh <- err
+
+		if strings.Contains(err.Error(), "unlocked balance is less than maximum") {
+			if isDev {
+				generateBlocks()
+			} else {
+				_, err := monero.WaitForBlocks(defaultMoneroClient, 10)
+				if err != nil {
+					log.Errorf("failed to wait for blocks: %s", err)
+				}
+			}
+		}
+
 		return
 	}
 
@@ -377,7 +424,10 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 			}
 
 			d.rsl.logMakerStatus(status)
-			d.rsl.logSwapDuration(time.Since(start))
+			if status != types.CompletedAbort {
+				d.rsl.logSwapDuration(time.Since(start))
+			}
+
 			return
 		}
 	}
