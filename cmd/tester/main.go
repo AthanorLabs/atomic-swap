@@ -17,9 +17,9 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/rpcclient/wsclient"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -100,6 +100,7 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("rpcclient", level)
+	_ = logging.SetLogLevel("wsclient", level)
 	return nil
 }
 
@@ -275,7 +276,7 @@ func (d *daemon) logErrors(done <-chan struct{}) {
 
 func (d *daemon) takeOffer(done <-chan struct{}) {
 	log.Debugf("node %d discovering offers...", d.idx)
-	wsc, err := rpcclient.NewWsClient(context.Background(), d.endpoint)
+	wsc, err := wsclient.NewWsClient(context.Background(), d.endpoint)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -361,7 +362,7 @@ func getRandomInt(max int) int {
 
 func (d *daemon) makeOffer(done <-chan struct{}) {
 	log.Infof("node %d making offer...", d.idx)
-	wsc, err := rpcclient.NewWsClient(context.Background(), d.endpoint)
+	wsc, err := wsclient.NewWsClient(context.Background(), d.endpoint)
 	if err != nil {
 		d.errCh <- err
 		return

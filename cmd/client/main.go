@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/noot/atomic-swap/cmd/client/client"
-	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/rpcclient"
+	"github.com/noot/atomic-swap/rpcclient/wsclient"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli"
@@ -191,7 +191,7 @@ func runAddresses(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	addrs, err := c.Addresses()
 	if err != nil {
 		return err
@@ -218,7 +218,7 @@ func runDiscover(ctx *cli.Context) error {
 
 	searchTime := ctx.Uint("search-time")
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	peers, err := c.Discover(provides, uint64(searchTime))
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func runQuery(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	res, err := c.Query(maddr)
 	if err != nil {
 		return err
@@ -276,7 +276,7 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	if ctx.Bool("subscribe") {
-		c, err := rpcclient.NewWsClient(context.Background(), endpoint)
+		c, err := wsclient.NewWsClient(context.Background(), endpoint)
 		if err != nil {
 			return err
 		}
@@ -301,7 +301,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	id, err := c.MakeOffer(min, max, exchangeRate)
 	if err != nil {
 		return err
@@ -333,7 +333,7 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	if ctx.Bool("subscribe") {
-		c, err := rpcclient.NewWsClient(context.Background(), endpoint)
+		c, err := wsclient.NewWsClient(context.Background(), endpoint)
 		if err != nil {
 			return err
 		}
@@ -355,7 +355,7 @@ func runTake(ctx *cli.Context) error {
 		return nil
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	id, err := c.TakeOffer(maddr, offerID, providesAmount)
 	if err != nil {
 		return err
@@ -371,7 +371,7 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	ids, err := c.GetPastSwapIDs()
 	if err != nil {
 		return err
@@ -387,7 +387,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	info, err := c.GetOngoingSwap()
 	if err != nil {
 		return err
@@ -412,7 +412,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	info, err := c.GetPastSwap(uint64(id))
 	if err != nil {
 		return err
@@ -435,7 +435,7 @@ func runRefund(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	resp, err := c.Refund()
 	if err != nil {
 		return err
@@ -451,7 +451,7 @@ func runCancel(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	resp, err := c.Cancel()
 	if err != nil {
 		return err
@@ -467,7 +467,7 @@ func runGetStage(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	resp, err := c.GetStage()
 	if err != nil {
 		return err
@@ -485,7 +485,7 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
-	c := client.NewClient(endpoint)
+	c := rpcclient.NewClient(endpoint)
 	err := c.SetSwapTimeout(uint64(duration))
 	if err != nil {
 		return err

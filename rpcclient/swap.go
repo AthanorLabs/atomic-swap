@@ -1,10 +1,10 @@
-package client
+package rpcclient
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/rpc"
 )
 
@@ -14,7 +14,7 @@ func (c *Client) GetPastSwapIDs() ([]uint64, error) {
 		method = "swap_getPastIDs"
 	)
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (c *Client) GetOngoingSwap() (*rpc.GetOngoingResponse, error) {
 		method = "swap_getOngoing"
 	)
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (c *Client) GetPastSwap(id uint64) (*rpc.GetPastResponse, error) {
 		return nil, err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (c *Client) Refund() (*rpc.RefundResponse, error) {
 		method = "swap_refund"
 	)
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (c *Client) GetStage() (*rpc.GetStageResponse, error) {
 		method = "swap_getStage"
 	)
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return nil, err
 	}

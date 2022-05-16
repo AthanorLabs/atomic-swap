@@ -2,7 +2,7 @@ package monero
 
 import (
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 )
 
@@ -74,7 +74,7 @@ func (c *client) Refresh() error {
 func (c *client) refresh() error {
 	const method = "refresh"
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (c *client) OpenWallet(filename, password string) error {
 func (c *client) CloseWallet() error {
 	const method = "close_wallet"
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return err
 	}

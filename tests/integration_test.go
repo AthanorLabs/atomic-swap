@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/noot/atomic-swap/cmd/client/client"
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/rpcclient"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/rpcclient"
+	"github.com/noot/atomic-swap/rpcclient/wsclient"
 
 	"github.com/stretchr/testify/require"
 )
@@ -94,11 +94,11 @@ func generateBlocksAsync() {
 }
 
 func TestAlice_Discover(t *testing.T) {
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
@@ -106,18 +106,18 @@ func TestAlice_Discover(t *testing.T) {
 }
 
 func TestBob_Discover(t *testing.T) {
-	c := client.NewClient(defaultBobDaemonEndpoint)
+	c := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	providers, err := c.Discover(types.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(providers))
 }
 
 func TestAlice_Query(t *testing.T) {
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -138,14 +138,14 @@ func TestSuccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
@@ -181,8 +181,8 @@ func TestSuccess(t *testing.T) {
 		}
 	}()
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	// TODO: implement discovery over websockets
@@ -239,14 +239,14 @@ func TestRefund_AliceCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
@@ -282,8 +282,8 @@ func TestRefund_AliceCancels(t *testing.T) {
 		}
 	}()
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	err = c.SetSwapTimeout(swapTimeout)
@@ -362,8 +362,8 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bcli := client.NewClient(defaultBobDaemonEndpoint)
-	bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bcli := rpcclient.NewClient(defaultBobDaemonEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
@@ -414,8 +414,8 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 		}
 	}()
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	err = c.SetSwapTimeout(swapTimeout)
@@ -480,14 +480,14 @@ func TestAbort_AliceCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
@@ -523,8 +523,8 @@ func TestAbort_AliceCancels(t *testing.T) {
 		}
 	}()
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
@@ -587,15 +587,15 @@ func TestAbort_BobCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bcli := client.NewClient(defaultBobDaemonEndpoint)
-	bwsc, err := rpcclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bcli := rpcclient.NewClient(defaultBobDaemonEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
@@ -640,8 +640,8 @@ func TestAbort_BobCancels(t *testing.T) {
 		}
 	}()
 
-	c := client.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
@@ -695,11 +695,11 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bc := client.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
 	offerID, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	ac := client.NewClient(defaultAliceDaemonEndpoint)
+	ac := rpcclient.NewClient(defaultAliceDaemonEndpoint)
 
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -709,7 +709,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	errCh := make(chan error)
 
 	go func() {
-		wsc, err := rpcclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+		wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
 		require.NoError(t, err)
 
 		_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
@@ -735,7 +735,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	}()
 
 	go func() {
-		wsc, err := rpcclient.NewWsClient(ctx, defaultCharlieDaemonWSEndpoint)
+		wsc, err := wsclient.NewWsClient(ctx, defaultCharlieDaemonWSEndpoint)
 		require.NoError(t, err)
 
 		_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)

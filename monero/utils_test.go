@@ -20,7 +20,7 @@ func TestWaitForBlocks(t *testing.T) {
 		_ = daemon.callGenerateBlocks(addr.Address, 181)
 	}()
 
-	_, err = WaitForBlocks(c)
+	_, err = WaitForBlocks(c, 1)
 	require.NoError(t, err)
 }
 
