@@ -344,7 +344,11 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 			}
 
 			d.rsl.logTakerStatus(status)
-			d.rsl.logSwapDuration(time.Since(start))
+
+			if status != types.CompletedAbort {
+				d.rsl.logSwapDuration(time.Since(start))
+			}
+
 			return
 		}
 	}
@@ -419,7 +423,10 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 			}
 
 			d.rsl.logMakerStatus(status)
-			d.rsl.logSwapDuration(time.Since(start))
+			if status != types.CompletedAbort {
+				d.rsl.logSwapDuration(time.Since(start))
+			}
+
 			return
 		}
 	}
