@@ -345,6 +345,10 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 // It returns Bob's public spend key and his private view key, so that Alice can see
 // if the funds are locked.
 func (s *swapState) generateAndSetKeys() error {
+	if s == nil {
+		return errNilSwapState
+	}
+
 	if s.privkeys != nil {
 		return nil
 	}
