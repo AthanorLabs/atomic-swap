@@ -138,7 +138,12 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
 	s.contractSwapID = msg.ContractSwapID
 
-	if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
+	contractAddr := ethcommon.HexToAddress(msg.Address)
+	if err := checkContractCode(s.ctx, s.bob.ethClient, contractAddr); err != nil {
+		return nil, err
+	}
+
+	if err := s.setContract(contractAddr); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
