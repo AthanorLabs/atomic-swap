@@ -33,11 +33,12 @@ mkdir node-keys
 - https://goerli-faucet.pk910.de/
 - https://goerlifaucet.com/
 - https://goerli-faucet.mudit.blog/
+
 If you don't have any luck with these, please message me on twitter/reddit (@elizabethereum) with your Goerli address, and I can send you some GoETH.
 
 7. Obtain a Goerli JSON-RPC endpoint. You can get one from infura.io, or you can sync your own node, or ask a friend for their endpoint. 
 
-7. Install go 1.18:
+8. Install go 1.18:
 ```bash
 wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
 rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
@@ -45,19 +46,19 @@ echo "export PATH=$PATH:/usr/local/go/bin" >> .profile
 source .profile
 ```
 
-8. Clone and build the atomic-swap binaries:
+9. Clone and build the atomic-swap binaries:
 ```bash
 git clone https://github.com/noot/atomic-swap.git
 cd atomic-swap
 make build
 ```
 
-9. Copy `goerli.key` into this directory. If you are using an Infura Goerli endpoint, copy-paste your API key into the field below following the `--ethereum-endpoint` flag. Otherwise, change `--ethereum-endpoint` to point to your endpoint. Finally, start the `swapd` atomic swap daemon process:
+10. Copy `goerli.key` into this directory. If you are using an Infura Goerli endpoint, copy-paste your API key into the field below following the `--ethereum-endpoint` flag. Otherwise, change `--ethereum-endpoint` to point to your endpoint. Finally, start the `swapd` atomic swap daemon process:
 ```bash
 ./swapd --env stagenet --ethereum-privkey=goerli.key --monero-endpoint=http://localhost:18083/json_rpc --wallet-file=stagenet-wallet --ethereum-endpoint=https://goerli.infura.io/v3/<your-api-key> --ethereum-chain-id=5 --contract-address=0xe532f0C720dCD102854281aeF1a8Be01f464C8fE --bootnodes /ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5,/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN,/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLbfkLZZvvn8Lxs1KDU3u7gyvBk88ZNtJBbugytBr5RCG,/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5,/ip4/164.92.103.160/tcp/9900/p2p/12D3KooWAZtRECEv7zN69zU1e7sPrHbMgfqFUn7QTLh1pKGiMuaM,/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz,/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu,/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6,/ip4/206.189.47.220/tcp/9900/p2p/12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB
 ```
 
-> Note: by default, an HTTP JSON-RPC endpoint runs on http://localhost:5005 and a Websockets endpoint runs on ws://localhost:8080.
+> Note: by default, an HTTP JSON-RPC endpoint runs on http://localhost:5005 and a Websockets endpoint runs on ws://localhost:6005.
 
 > Note: please also see the [RPC documentation](./rpc.md) for complete documentation on available RPC calls and their parameters.
 
@@ -97,13 +98,13 @@ TODO: add pics for these 2 steps
 
 > Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. Since we're on testnet, it's not critical what you set it to. 
 
-3a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much GoETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
+3. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much GoETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
 ```bash
 ./swapcli take --multiaddr /ip4/192.168.0.101/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
 # Initiated swap with ID=0
 ```
 
-3b. Alternatively, you can take the offer via websockets and get notified when the swap status updates:
+3. b. Alternatively, you can take the offer via websockets and get notified when the swap status updates:
 ```bash
 ./swapcli take --multiaddr /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --daemon-addr=ws://localhost:8081
 ```
@@ -127,17 +128,18 @@ curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"get
 3. Fund this address with some stagenet XMR. You can try the faucets here:
 - https://stagenet-faucet.xmr-tw.org/
 - https://community.rino.io/faucet/stagenet/
+
 If you don't have any luck with these, please message me on twitter/reddit (@elizabethereum) with your stagenet address, and I can send you some stagenet XMR.
 
-4a. Make an offer with `swapcli`:
+4. a. Make an offer with `swapcli`:
 ```bash
 ./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --daemon-addr http://localhost:5005
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
-4b. Alternatively, make an offer and subscribe to updates on it with `swapcli`:
+4. b. Alternatively, make an offer and subscribe to updates on it with `swapcli`:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --daemon-addr ws://localhost:8080 --subscribe
+./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --daemon-addr ws://localhost:6005 --subscribe
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
