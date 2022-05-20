@@ -149,8 +149,8 @@ When a peer takes your offer, you will see logs in `swapd` notifying you that a 
 
 ## Troubleshooting
 
-Ideally, the exist case of the swap should be `Success`. If this is not the case, it will either be one of `Refunded` or `Aborted`.
-- `Refunded` means that the swap refunded after your funds were already locked. The only value you would lose in this case is transaction fees.
+Ideally, the exit case of the swap should be `Success`. If this is not the case, it will either be one of `Refunded` or `Aborted`.
+- `Refunded` means that the swap refunded after your funds were already locked. In this case, you would lose  transaction fees.
 - `Aborted` means that the swap exited before any funds were locked, so nothing was lost except time.
 
 Neither of these should happen, so if they happen, it indicates an issue either on your side or the remote peer's side.
