@@ -61,10 +61,8 @@ make build
 
 10. Copy `goerli.key` into this directory. If you are using an Infura Goerli endpoint, copy-paste your API key into the field below following the `--ethereum-endpoint` flag. Otherwise, change `--ethereum-endpoint` to point to your endpoint. Finally, start the `swapd` atomic swap daemon process:
 ```bash
-./swapd --env stagenet --ethereum-privkey=goerli.key --monero-endpoint=http://localhost:18083/json_rpc --wallet-file=stagenet-wallet --ethereum-endpoint=https://goerli.infura.io/v3/<your-api-key> --ethereum-chain-id=5 --contract-address=0xe532f0C720dCD102854281aeF1a8Be01f464C8fE --bootnodes /ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5,/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN,/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLbfkLZZvvn8Lxs1KDU3u7gyvBk88ZNtJBbugytBr5RCG,/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5,/ip4/164.92.103.160/tcp/9900/p2p/12D3KooWAZtRECEv7zN69zU1e7sPrHbMgfqFUn7QTLh1pKGiMuaM,/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz,/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu,/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6,/ip4/206.189.47.220/tcp/9900/p2p/12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB
+./swapd --env stagenet --ethereum-privkey=goerli.key --monero-endpoint=http://localhost:18083/json_rpc --wallet-file=stagenet-wallet --ethereum-endpoint=https://goerli.infura.io/v3/<your-api-key> --ethereum-chain-id=5 --contract-address=0xe532f0C720dCD102854281aeF1a8Be01f464C8fE --bootnodes /ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5,/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN,/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLbfkLZZvvn8Lxs1KDU3u7gyvBk88ZNtJBbugytBr5RCG,/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5,/ip4/164.92.103.160/tcp/9900/p2p/12D3KooWAZtRECEv7zN69zU1e7sPrHbMgfqFUn7QTLh1pKGiMuaM,/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz,/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu,/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6,/ip4/206.189.47.220/tcp/9900/p2p/12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB --rpc-port=5001
 ```
-
-> Note: by default, an HTTP JSON-RPC endpoint runs on http://localhost:5005 and a Websockets endpoint runs on ws://localhost:6005.
 
 > Note: please also see the [RPC documentation](./rpc.md) for complete documentation on available RPC calls and their parameters.
 
@@ -84,15 +82,18 @@ yarn start
 
 2. Navigate to http://localhost:8080 to see the UI running. It will automatically connect to your `swapd` process and try to find offers. You can also refresh the offers by clicking `refresh`.
 
+![ui](./images/ui.png)
+
 3. When you find an offer you'd like to take, press the `take` button to input the amount of ETH you'd like to provide. Then, confirm the offer. If all goes well, you should see the swap complete in the logs of `swapd`.
 
-TODO: add pics for these 2 steps
+![ui](./images/ui-take.png)
+![ui](./images/ui-swapping.png)
 
 ### CLI
 
 1. Search for existing XMR offers using `swapcli`:
 ```bash
-./swapcli discover --provides XMR --search-time 3
+./swapcli discover --provides XMR --search-time 3 --daemon-addr=http://localhost:5005
 # [[/ip4/127.0.0.1/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
