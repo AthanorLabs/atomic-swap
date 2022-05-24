@@ -173,7 +173,7 @@ A few common errors are:
 
 You can also try the swap on another Ethereum or EVM-compatible testnet. However, you'll need to run your own maker nodes. 
 
-To connect to a different Ethereum network, follow `Setup` steps 4-7 but with your desired network. Then, start `swapd` with your specified private key file, endpoint, and chain ID. Common chain IDs can be found [here](https://besu.hyperledger.org/en/stable/Concepts/NetworkID-And-ChainID/).
+To connect to a different Ethereum network, follow [Setup](#setup) steps 4-7 but with your desired network. Then, start `swapd` with your specified private key file, endpoint, and chain ID. Common chain IDs can be found [here](https://besu.hyperledger.org/en/stable/Concepts/NetworkID-And-ChainID/).
 
 > Note: this command will deploy a new instance of `Swap.sol` to the network, as it has not been deployed onto any other networks currently. If you want to use an already-deployed swap contract, remove the `--deploy` flag and pass in the address using `--contract-addr=<addr>`. You need to have funds in your account to deploy the contract.
 
