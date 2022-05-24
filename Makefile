@@ -17,5 +17,8 @@ install:
 build:
 	./scripts/build.sh
 
+build-all:
+	ALL=true ./scripts/build.sh
+	
 build-dleq:
 	./scripts/install-rust.sh && cd farcaster-dleq && cargo build --release && cd ..
