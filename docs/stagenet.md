@@ -4,11 +4,15 @@ Currently, an initial version of the swap is deployed onto the Goerli (Ethereum 
 
 > Note: a swap on stagenet currenty takes around 10-20 minutes due to block times.
 
+> Note: the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all your (testnet) funds. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
+
 ## Setup 
 
 The atomic swap daemon requires a connection to a monero-wallet-rpc process connected to a stagenet daemon, a Goerli network endpoint, and a Goerli network private key funded with some GoETH. 
 
-1. Install Monero if you haven't already:
+1. Install the Monero CLI if you haven't already. You can get it [here](https://www.getmonero.org/downloads/#cli):
+
+For Linux 64-bit, you can do:
 ```bash
 curl -L https://downloads.getmonero.org/cli/linux64 > monero.tar.bz2
 tar xjvf monero.tar.bz2
@@ -38,7 +42,9 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 7. Obtain a Goerli JSON-RPC endpoint. You can get one from infura.io, or you can sync your own node, or ask a friend for their endpoint. 
 
-8. Install go 1.18:
+8. Install go 1.18 from [here](https://go.dev/doc/install).
+
+For Linux 64-bit, you can do:
 ```bash
 wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
 rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
@@ -146,6 +152,8 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 > Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. Since we're on testnet, it's not critical what you set it to. 
 
 When a peer takes your offer, you will see logs in `swapd` notifying you that a swap has been initiated. If all goes well, you should receive the GoETH in the Goerli account created earlier.
+
+> Note: if you exit the `swapd` process, your offers are currently not saved, so when you restart you will not have any offers.
 
 ## Troubleshooting
 
