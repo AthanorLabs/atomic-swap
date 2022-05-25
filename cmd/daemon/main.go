@@ -40,7 +40,7 @@ const (
 	defaultAliceRPCPort = 5001
 	defaultBobRPCPort   = 5002
 
-	defaultWSPort      = 8080
+	defaultWSPort      = 6005
 	defaultAliceWSPort = 8081
 	defaultBobWSPort   = 8082
 )

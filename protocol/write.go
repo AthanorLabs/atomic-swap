@@ -26,7 +26,7 @@ func WriteContractAddressToFile(infofile, addr string) error {
 
 	contents.ContractAddress = addr
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func WriteSwapIDToFile(infofile string, id uint64) error {
 
 	contents.SwapID = id
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func WriteKeysToFile(infofile string, keys *mcrypto.PrivateKeyPair, env common.E
 
 	contents.PrivateKeyInfo = keys.Info(env)
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair,
 
 	contents.SharedSwapPrivateKey = keys.Info(env)
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
