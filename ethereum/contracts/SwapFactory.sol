@@ -74,6 +74,9 @@ contract SwapFactory {
 
         bytes32 swapID = keccak256(abi.encode(swap));
 
+        // make sure this isn't overriding an existing swap
+        require(swaps[swapID] == Stage.INVALID);
+
         emit New(swapID, _pubKeyClaim, _pubKeyRefund);
         swaps[swapID] = Stage.PENDING;
         return swapID;
