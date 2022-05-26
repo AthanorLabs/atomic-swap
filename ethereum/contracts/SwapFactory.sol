@@ -122,7 +122,7 @@ contract SwapFactory {
     function refund(Swap memory _swap, bytes32 _s) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
-        require(swapStage != Stage.COMPLETED, "swap is already completed");
+        require(swapStage != Stage.COMPLETED && swapStage != Stage.INVALID, "swap is already completed");
         require(msg.sender == _swap.owner, "refund must be called by the swap owner");
         require(
             block.timestamp >= _swap.timeout_1 ||
