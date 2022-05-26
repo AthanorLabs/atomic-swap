@@ -4,9 +4,18 @@ pragma solidity ^0.8.5;
 import "./Secp256k1.sol";
 
 contract SwapFactory {
-    Secp256k1 immutable secp256k1;
 
-    uint256 nextID;
+    // Swap state is PENDING when the swap is first created and funded
+    // Alice sets Stage to READY when she sees the funds locked on the other chain.
+    // this prevents Bob from withdrawing funds without locking funds on the other chain first
+    // Stage is set to COMPLETED upon the swap value being claimed or refunded.
+
+    enum Stage {
+        INVALID,
+        PENDING,
+        READY,
+        COMPLETED
+    }
 
     struct Swap {
         // contract creator, Alice
@@ -30,36 +39,28 @@ contract SwapFactory {
         // timestamp after which Bob cannot claim, only Alice can refund.
         uint256 timeout_1;
 
-        // Alice sets ready to true when she sees the funds locked on the other chain.
-        // this prevents Bob from withdrawing funds without locking funds on the other chain first
-        bool isReady;  
-
-        // set to true upon the swap value being claimed or refunded.
-        bool completed;
-
         // the value of this swap.
-        uint256 value;      
+        uint256 value;
+
+        // choose random
+        uint256 nonce;
     }
 
-    mapping(uint256 => Swap) public swaps;
+    mapping(bytes32 => Stage) public swaps;
 
-    event New(uint256 swapID, bytes32 claimKey, bytes32 refundKey);
-    event Ready(uint256 swapID);
-    event Claimed(uint256 swapID, bytes32 s);
-    event Refunded(uint256 swapID, bytes32 s);
-
-    constructor() {
-        secp256k1 = new Secp256k1();
-    }
+    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey);
+    event Ready(bytes32 swapID);
+    event Claimed(bytes32 swapID, bytes32 s);
+    event Refunded(bytes32 swapID, bytes32 s);
 
     // new_swap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
     function new_swap(bytes32 _pubKeyClaim, 
         bytes32 _pubKeyRefund, 
         address payable _claimer, 
-        uint256 _timeoutDuration
-    ) public payable returns (uint256) {
-        uint256 id = nextID;
+        uint256 _timeoutDuration,
+        uint256 _nonce
+    ) public payable returns (bytes32) {
 
         Swap memory swap;
         swap.owner = payable(msg.sender);
@@ -69,70 +70,74 @@ contract SwapFactory {
         swap.timeout_0 = block.timestamp + _timeoutDuration;
         swap.timeout_1 = block.timestamp + (_timeoutDuration * 2);
         swap.value = msg.value;
+        swap.nonce = _nonce;
 
-        emit New(id, _pubKeyClaim, _pubKeyRefund);
-        nextID += 1;
-        swaps[id] = swap;
-        return id;
+        bytes32 swapID = keccak256(abi.encode(swap));
+
+        emit New(swapID, _pubKeyClaim, _pubKeyRefund);
+        swaps[swapID] = Stage.PENDING;
+        return swapID;
     }
 
     // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
-    function set_ready(uint256 id) public {
-        require(!swaps[id].completed, "swap is already completed");
-        require(swaps[id].owner == msg.sender, "only the swap owner can call set_ready");
-        require(!swaps[id].isReady, "swap was already set to ready");
-        swaps[id].isReady = true;
-        emit Ready(id);
+    function set_ready(Swap memory _swap) public {
+        bytes32 swapID = keccak256(abi.encode(_swap));
+        require(swaps[swapID] == Stage.PENDING, "swap is not in PENDING state");
+        require(_swap.owner == msg.sender, "only the swap owner can call set_ready");
+        swaps[swapID] = Stage.READY;
+        emit Ready(swapID);
     }
 
     // is_ready returns whether a swap has been set to "ready" or not.
     // note: it will return false, not revert, if the swap does not exist.
-    function is_ready(uint256 id) public view returns (bool) {
-        return swaps[id].isReady;
+    function is_ready(bytes32 _swapID) public view returns (bool) {
+        return swaps[_swapID] == Stage.READY;
     }
 
     // Bob can claim if:
     // - Alice doesn't call set_ready or refund within t_0, or
     // - Alice calls ready within t_0, in which case Bob can call claim until t_1
-    function claim(uint256 id, bytes32 _s) public {
-        Swap memory swap = swaps[id];
-        require(!swap.completed, "swap is already completed");
-        require(msg.sender == swap.claimer, "only claimer can claim!");
-        require((block.timestamp >= swap.timeout_0 || swap.isReady), "too early to claim!");
-        require(block.timestamp < swap.timeout_1, "too late to claim!");
+    function claim(Swap memory _swap, bytes32 _s) public {
+        bytes32 swapID = keccak256(abi.encode(_swap));
+        Stage swapStage = swaps[swapID];
+        require(swapStage != Stage.COMPLETED && swapStage != Stage.INVALID, "swap is already completed");
+        require(msg.sender == _swap.claimer, "only claimer can claim!");
+        require((block.timestamp >= _swap.timeout_0 || swapStage == Stage.READY), "too early to claim!");
+        require(block.timestamp < _swap.timeout_1, "too late to claim!");
 
-        verifySecret(_s, swap.pubKeyClaim);
-        emit Claimed(id, _s);
+        verifySecret(_s, _swap.pubKeyClaim);
+        emit Claimed(swapID, _s);
 
         // send eth to caller (Bob)
-        swap.claimer.transfer(swap.value);
-        swaps[id].completed = true;
+        _swap.claimer.transfer(_swap.value);
+        swaps[swapID] = Stage.COMPLETED;
     }
 
     // Alice can claim a refund:
     // - Until t_0 unless she calls set_ready
     // - After t_1, if she called set_ready
-    function refund(uint256 id, bytes32 _s) public {
-        Swap memory swap = swaps[id];
-        require(!swap.completed, "swap is already completed");
-        require(msg.sender == swap.owner, "refund must be called by the swap owner");
+    function refund(Swap memory _swap, bytes32 _s) public {
+        bytes32 swapID = keccak256(abi.encode(_swap));
+        Stage swapStage = swaps[swapID];
+        require(swapStage != Stage.COMPLETED, "swap is already completed");
+        require(msg.sender == _swap.owner, "refund must be called by the swap owner");
         require(
-            block.timestamp >= swap.timeout_1 ||
-            (block.timestamp < swap.timeout_0 && !swap.isReady),
+            block.timestamp >= _swap.timeout_1 ||
+            (block.timestamp < _swap.timeout_0 && swapStage == Stage.READY),
             "it's the counterparty's turn, unable to refund, try again later"
         );
 
-        verifySecret(_s, swap.pubKeyRefund);
-        emit Refunded(id, _s);
+        verifySecret(_s, _swap.pubKeyRefund);
+        emit Refunded(swapID, _s);
 
         // send eth back to owner==caller (Alice)
-        swap.owner.transfer(swap.value);
-        swaps[id].completed = true;
+        _swap.owner.transfer(_swap.value);
+        swaps[swapID] = Stage.COMPLETED;
     }
 
-    function verifySecret(bytes32 _s, bytes32 pubKey) internal view {
+    function verifySecret(bytes32 _s, bytes32 pubKey) internal pure {
         require(
-            secp256k1.mulVerify(uint256(_s), uint256(pubKey)),
+            Secp256k1.mulVerify(uint256(_s), uint256(pubKey)),
             "provided secret does not match the expected public key"
         );
     }
