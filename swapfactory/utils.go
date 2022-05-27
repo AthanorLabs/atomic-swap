@@ -12,6 +12,13 @@ import (
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 )
 
+const (
+	INVALID byte = iota
+	PENDING
+	READY
+	COMPLETED
+)
+
 // GetSecretFromLog returns the secret from a Claimed or Refunded log
 func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey, error) {
 	if event != "Refunded" && event != "Claimed" {
@@ -76,10 +83,10 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id *big.Int) (bool, err
 }
 
 // GetIDFromLog returns the swap ID from a New log.
-func GetIDFromLog(log *ethtypes.Log) (*big.Int, error) {
+func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
 	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	const event = "New"
@@ -87,13 +94,38 @@ func GetIDFromLog(log *ethtypes.Log) (*big.Int, error) {
 	data := log.Data
 	res, err := abi.Unpack(event, data)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("log had not enough parameters")
+		return [32]byte{}, errors.New("log didn't have enough parameters")
 	}
 
-	id := res[0].(*big.Int)
+	id := res[0].([32]byte)
 	return id, nil
+}
+
+// GetTimeoutsFromLog returns the timeouts from a New event.
+func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	const event = "New"
+
+	data := log.Data
+	res, err := abi.Unpack(event, data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(res) < 5 {
+		return nil, nil, errors.New("log didn't have enough parameters")
+	}
+
+	t0 := res[3].(*big.Int)
+	t1 := res[4].(*big.Int)
+	return t0, t1, nil
+
 }

@@ -48,7 +48,7 @@ contract SwapFactory {
 
     mapping(bytes32 => Stage) public swaps;
 
-    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey);
+    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey, uint256 timeout_0, uint256 timeout_1);
     event Ready(bytes32 swapID);
     event Claimed(bytes32 swapID, bytes32 s);
     event Refunded(bytes32 swapID, bytes32 s);
@@ -77,7 +77,7 @@ contract SwapFactory {
         // make sure this isn't overriding an existing swap
         require(swaps[swapID] == Stage.INVALID);
 
-        emit New(swapID, _pubKeyClaim, _pubKeyRefund);
+        emit New(swapID, _pubKeyClaim, _pubKeyRefund, swap.timeout_0, swap.timeout_1);
         swaps[swapID] = Stage.PENDING;
         return swapID;
     }
@@ -126,7 +126,7 @@ contract SwapFactory {
         require(msg.sender == _swap.owner, "refund must be called by the swap owner");
         require(
             block.timestamp >= _swap.timeout_1 ||
-            (block.timestamp < _swap.timeout_0 && swapStage == Stage.READY),
+            (block.timestamp < _swap.timeout_0 && swapStage != Stage.READY),
             "it's the counterparty's turn, unable to refund, try again later"
         );
 
