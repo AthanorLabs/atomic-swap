@@ -145,7 +145,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	var infofile *pcommon.InfoFileContents
-	if err := json.Unmarshal(infofileBytes, infofile); err != nil {
+	if err := json.Unmarshal(infofileBytes, &infofile); err != nil {
 		return err
 	}
 
