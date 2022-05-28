@@ -11,6 +11,8 @@ import (
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
+// InfoFileContents represents the contents of the swap info file used in case
+// of recovery.
 type InfoFileContents struct {
 	ContractAddress      string
 	ContractSwapID       [32]byte
@@ -36,24 +38,6 @@ func WriteContractAddressToFile(infofile, addr string) error {
 	_, err = file.Write(bz)
 	return err
 }
-
-// // WriteSwapIDToFile writes the swap ID to the given file
-// func WriteSwapIDToFile(infofile string, id uint64) error {
-// 	file, contents, err := setupFile(infofile)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	contents.SwapID = id
-
-// 	bz, err := json.MarshalIndent(contents, "", "\t")
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	_, err = file.Write(bz)
-// 	return err
-// }
 
 // WriteContractSwapToFile writes the given Swap contract struct to the given file
 func WriteContractSwapToFile(infofile string, swapID [32]byte, swap swapfactory.SwapFactorySwap) error {

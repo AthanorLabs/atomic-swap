@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	StageInvalid byte = iota
+	StageInvalid byte = iota //nolint:revive
 	StagePending
 	StageReady
 	StageCompleted

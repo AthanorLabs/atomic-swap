@@ -22,6 +22,7 @@ func GetSwapRecoveryFilepath(basepath string) string {
 	return path
 }
 
+// ConvertContractSwapToMsg converts a swapfactory.SwapFactorySwap to a *message.ContractSwap
 func ConvertContractSwapToMsg(swap swapfactory.SwapFactorySwap) *message.ContractSwap {
 	return &message.ContractSwap{
 		Owner:        swap.Owner,

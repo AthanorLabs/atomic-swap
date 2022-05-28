@@ -19,8 +19,8 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address, contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
+func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr ethcommon.Address,
+	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err

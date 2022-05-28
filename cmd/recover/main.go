@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"path/filepath"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -139,13 +140,13 @@ func (inst *instance) recover(c *cli.Context) error {
 		return errMustProvideInfoFile
 	}
 
-	infofileBytes, err := ioutil.ReadFile(infofilePath)
+	infofileBytes, err := ioutil.ReadFile(filepath.Clean(infofilePath))
 	if err != nil {
 		return err
 	}
 
 	var infofile *pcommon.InfoFileContents
-	if err := json.Unmarshal(infofileBytes, &infofile); err != nil {
+	if err = json.Unmarshal(infofileBytes, &infofile); err != nil {
 		return err
 	}
 
