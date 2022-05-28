@@ -7,6 +7,8 @@ import (
 	"math/big"
 
 	"github.com/noot/atomic-swap/common/types"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Type represents the type of a network message
@@ -176,20 +178,34 @@ func (m *SendKeysMessage) Type() Type {
 	return SendKeysType
 }
 
+// ContractSwap is the same as swapfactory.SwapFactorySwap
+type ContractSwap struct {
+	Owner        ethcommon.Address
+	Claimer      ethcommon.Address
+	PubKeyClaim  [32]byte
+	PubKeyRefund [32]byte
+	Timeout0     *big.Int
+	Timeout1     *big.Int
+	Value        *big.Int
+	Nonce        *big.Int
+}
+
 // NotifyETHLocked is sent by Alice to Bob after deploying the swap contract
 // and locking her ether in it
 type NotifyETHLocked struct {
 	Address        string
 	TxHash         string
-	ContractSwapID *big.Int
+	ContractSwapID [32]byte
+	ContractSwap   *ContractSwap
 }
 
 // String ...
 func (m *NotifyETHLocked) String() string {
-	return fmt.Sprintf("NotifyETHLocked Address=%s TxHash=%s ContractSwapID=%d",
+	return fmt.Sprintf("NotifyETHLocked Address=%s TxHash=%s ContractSwapID=%d ContractSwap=%v",
 		m.Address,
 		m.TxHash,
 		m.ContractSwapID,
+		m.ContractSwap,
 	)
 }
 
