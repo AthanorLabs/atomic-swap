@@ -46,6 +46,8 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 	_, err = rs.ss.alice.contract.Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 
+	t.Log("Bob claimed ETH...")
+
 	// assert we can claim the monero
 	res, err := rs.ClaimOrRefund()
 	require.NoError(t, err)

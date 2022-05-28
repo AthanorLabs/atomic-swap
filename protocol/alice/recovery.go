@@ -16,7 +16,8 @@ import (
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
-var claimedTopic = ethcommon.HexToHash("0xd5a2476fc450083bbb092dd3f4be92698ffdc2d213e6f1e730c7f44a52f1ccfc")
+// TODO: don't hard-code this
+var claimedTopic = ethcommon.HexToHash("0x38d6042dbdae8e73a7f6afbabd3fbe0873f9f5ed3cd71294591c3908c2e65fee")
 
 type recoveryState struct {
 	ss *swapState
@@ -93,8 +94,6 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 		}
 
 		rs.ss.setBobKeys(skA.Public(), vkA, nil)
-
-		fmt.Println(skA.Hex())
 
 		addr, err := rs.ss.claimMonero(skA)
 		if err != nil {
