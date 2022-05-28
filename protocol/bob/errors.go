@@ -20,6 +20,7 @@ var (
 	errCannotFindNewLog          = errors.New("cannot find New log")
 	errUnexpectedSwapID          = errors.New("unexpected swap ID was emitted by New log")
 	errInvalidSwapContract       = errors.New("given contract address does not contain correct code")
+	errSwapIDMismatch            = errors.New("hash of swap struct does not match swap ID")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

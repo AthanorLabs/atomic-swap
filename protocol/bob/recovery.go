@@ -3,7 +3,6 @@ package bob
 import (
 	"context"
 	"errors"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -11,6 +10,7 @@ import (
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
 type recoveryState struct {
@@ -19,8 +19,8 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address, contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
+func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr ethcommon.Address,
+	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
 	if err != nil {
 		return nil, err
@@ -49,12 +49,15 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
+		contractSwap:   contractSwap,
 		infofile:       pcommon.GetSwapRecoveryFilepath(b.basepath),
 	}
 
 	if err := s.setContract(contractAddr); err != nil {
 		return nil, err
 	}
+
+	s.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
 	return &recoveryState{
 		ss: s,
 	}, nil
@@ -72,10 +75,6 @@ type RecoveryResult struct {
 // ClaimOrRecover either claims ether or recovers monero by creating a wallet.
 // It returns a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
-	if err := rs.ss.setTimeouts(); err != nil {
-		return nil, err
-	}
-
 	// check if Alice refunded
 	skA, err := rs.ss.filterForRefund()
 	if !errors.Is(err, errNoRefundLogsFound) && err != nil {

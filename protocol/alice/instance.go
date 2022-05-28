@@ -42,7 +42,7 @@ type Instance struct {
 	client                     monero.Client
 	walletFile, walletPassword string
 	walletAddress              mcrypto.Address
-	transferBack               bool // transfer back to original account
+	transferBack               bool // transfer xmr back to original account
 
 	ethPrivKey  *ecdsa.PrivateKey
 	ethClient   *ethclient.Client
