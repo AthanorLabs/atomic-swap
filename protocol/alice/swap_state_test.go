@@ -150,9 +150,9 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
 
 	// check swap is marked completed
-	info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
+	stage, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
 	require.NoError(t, err)
-	require.True(t, info.Completed)
+	require.Equal(t, swapfactory.StageCompleted, stage)
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
@@ -313,7 +313,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.alice.contract.Claim(s.txOpts, s.contractSwapID, sc)
+	tx, err := s.alice.contract.Claim(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	// handled the claimed message should result in the monero wallet being created

@@ -115,7 +115,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 	stage, err := contract.Swaps(callOpts, id)
 	require.NoError(t, err)
-	require.Equal(t, COMPLETED, stage)
+	require.Equal(t, StageCompleted, stage)
 }
 
 func TestSwap_Claim_random(t *testing.T) {
@@ -184,7 +184,7 @@ func TestSwap_Claim_random(t *testing.T) {
 
 	stage, err := contract.Swaps(callOpts, id)
 	require.NoError(t, err)
-	require.Equal(t, COMPLETED, stage)
+	require.Equal(t, StageCompleted, stage)
 }
 
 func TestSwap_Refund_beforeT0(t *testing.T) {
@@ -248,7 +248,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 
 	stage, err := contract.Swaps(callOpts, id)
 	require.NoError(t, err)
-	require.Equal(t, COMPLETED, stage)
+	require.Equal(t, StageCompleted, stage)
 }
 
 func TestSwap_Refund_afterT1(t *testing.T) {
@@ -329,7 +329,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 
 	stage, err := contract.Swaps(callOpts, id)
 	require.NoError(t, err)
-	require.Equal(t, COMPLETED, stage)
+	require.Equal(t, StageCompleted, stage)
 }
 
 func TestSwap_MultipleSwaps(t *testing.T) {
@@ -413,6 +413,6 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 
 		stage, err := contract.Swaps(callOpts, sc.id)
 		require.NoError(t, err)
-		require.Equal(t, COMPLETED, stage)
+		require.Equal(t, StageCompleted, stage)
 	}
 }

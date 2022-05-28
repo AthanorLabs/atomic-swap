@@ -131,12 +131,19 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, errMissingAddress
 	}
 
-	if msg.ContractSwapID == nil {
+	if msg.ContractSwapID == [32]byte{} {
 		return nil, errNilContractSwapID
 	}
 
 	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
+
+	// validate that swap ID == keccak256(swap struct)
+	if err := checkContractSwapID(msg); err != nil {
+		return nil, err
+	}
+
 	s.contractSwapID = msg.ContractSwapID
+	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
 	if err := checkContractCode(s.ctx, s.bob.ethClient, contractAddr); err != nil {
@@ -155,6 +162,10 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, err
 	}
 
+	// TODO: check these (in checkContract)
+	// TODO: check value
+	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+
 	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
@@ -162,11 +173,6 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 
 	out := &message.NotifyXMRLock{
 		Address: string(addrAB),
-	}
-
-	// set t0 and t1
-	if err := s.setTimeouts(); err != nil {
-		return nil, err
 	}
 
 	go func() {

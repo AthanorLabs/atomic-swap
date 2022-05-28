@@ -42,7 +42,6 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 
 var (
 	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
-	defaultContractSwapID     = big.NewInt(0)
 )
 
 func newTestBob(t *testing.T) *Instance {
@@ -114,7 +113,8 @@ func newSwap(t *testing.T, bob *Instance, swapState *swapState, claimKey, refund
 		swapState.txOpts.Value = nil
 	}()
 
-	tx, err := contract.NewSwap(swapState.txOpts, claimKey, refundKey, bob.ethAddress, tm)
+	nonce := big.NewInt(0)
+	tx, err := contract.NewSwap(swapState.txOpts, claimKey, refundKey, bob.ethAddress, tm, nonce)
 	require.NoError(t, err)
 
 	receipt, err := bob.ethClient.TransactionReceipt(context.Background(), tx.Hash())
@@ -122,6 +122,20 @@ func newSwap(t *testing.T, bob *Instance, swapState *swapState, claimKey, refund
 	require.Equal(t, 1, len(receipt.Logs))
 	swapState.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
+
+	t0, t1, err := swapfactory.GetTimeoutsFromLog(receipt.Logs[0])
+	require.NoError(t, err)
+
+	swapState.contractSwap = swapfactory.SwapFactorySwap{
+		Owner:        bob.ethAddress,
+		Claimer:      bob.ethAddress,
+		PubKeyClaim:  claimKey,
+		PubKeyRefund: refundKey,
+		Timeout0:     t0,
+		Timeout1:     t1,
+		Value:        amount,
+		Nonce:        nonce,
+	}
 
 	return addr, tx.Hash(), contract
 }
@@ -145,7 +159,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	swapState.contractAddr, _, swapState.contract = newSwap(t, bob, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
-	_, err = swapState.contract.SetReady(swapState.txOpts, defaultContractSwapID)
+	_, err = swapState.contract.SetReady(swapState.txOpts, swapState.contractSwap)
 	require.NoError(t, err)
 
 	txHash, err := swapState.claimFunds()
@@ -196,8 +210,9 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	msg = &message.NotifyETHLocked{
 		Address:        addr.String(),
-		ContractSwapID: defaultContractSwapID,
+		ContractSwapID: s.contractSwapID,
 		TxHash:         hash.String(),
+		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
 	resp, done, err = s.HandleProtocolMessage(msg)
@@ -242,8 +257,9 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 
 	msg = &message.NotifyETHLocked{
 		Address:        addr.String(),
-		ContractSwapID: defaultContractSwapID,
+		ContractSwapID: s.contractSwapID,
 		TxHash:         hash.String(),
+		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
 	resp, done, err = s.HandleProtocolMessage(msg)
@@ -279,7 +295,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	_, _, s.contract = newSwap(t, bob, s, [32]byte{}, [32]byte{}, desiredAmout.BigInt(), duration)
 
-	_, err = s.contract.SetReady(s.txOpts, defaultContractSwapID)
+	_, err = s.contract.SetReady(s.txOpts, s.contractSwap)
 	require.NoError(t, err)
 
 	msg := &message.NotifyReady{}
@@ -317,7 +333,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Refund(s.txOpts, defaultContractSwapID, sc)
+	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	addr, err := s.handleRefund(tx.Hash().String())
@@ -350,7 +366,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	tx, err := s.contract.Refund(s.txOpts, defaultContractSwapID, sc)
+	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	msg := &message.NotifyRefund{
@@ -390,7 +406,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	tx, err := s.contract.Refund(s.txOpts, defaultContractSwapID, sc)
+	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	receipt, err := bob.ethClient.TransactionReceipt(s.ctx, tx.Hash())

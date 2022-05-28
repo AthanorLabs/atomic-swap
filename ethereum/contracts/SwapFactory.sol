@@ -63,7 +63,7 @@ contract SwapFactory {
     ) public payable returns (bytes32) {
 
         Swap memory swap;
-        swap.owner = payable(msg.sender);
+        swap.owner = payable(msg.sender); 
         swap.claimer = _claimer;
         swap.pubKeyClaim = _pubKeyClaim;
         swap.pubKeyRefund = _pubKeyRefund;

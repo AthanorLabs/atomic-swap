@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/noot/atomic-swap/net/message"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+// TODO: redo this (how tf do i not hardcode this)
 func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr ethcommon.Address) error {
+	return nil
+
 	code, err := ec.CodeAt(ctx, contractAddr, nil)
 	if err != nil {
 		return err
@@ -29,4 +33,17 @@ func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr e
 	}
 
 	return nil
+}
+
+func convertContractSwap(msg *message.ContractSwap) swapfactory.SwapFactorySwap {
+	return swapfactory.SwapFactorySwap{
+		Owner:        msg.Owner,
+		Claimer:      msg.Claimer,
+		PubKeyClaim:  msg.PubKeyClaim,
+		PubKeyRefund: msg.PubKeyRefund,
+		Timeout0:     msg.Timeout0,
+		Timeout1:     msg.Timeout1,
+		Value:        msg.Value,
+		Nonce:        msg.Nonce,
+	}
 }

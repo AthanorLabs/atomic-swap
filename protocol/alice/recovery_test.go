@@ -27,7 +27,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), s.contractSwapID)
+	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 	return rs
 }
@@ -43,7 +43,7 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.alice.contract.Claim(rs.ss.txOpts, rs.ss.contractSwapID, sc)
+	_, err = rs.ss.alice.contract.Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 
 	// assert we can claim the monero

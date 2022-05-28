@@ -1,6 +1,7 @@
 package swapfactory
 
 import (
+	"bytes"
 	"errors"
 	"math/big"
 	"strings"
@@ -13,10 +14,10 @@ import (
 )
 
 const (
-	INVALID byte = iota
-	PENDING
-	READY
-	COMPLETED
+	StageInvalid byte = iota
+	StagePending
+	StageReady
+	StageCompleted
 )
 
 // GetSecretFromLog returns the secret from a Claimed or Refunded log
@@ -53,8 +54,8 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 	return sk, nil
 }
 
-// CheckIfLogIDMatches returns true if the sawp ID in the log matches the given ID, false otherwise.
-func CheckIfLogIDMatches(log ethtypes.Log, event string, id *big.Int) (bool, error) {
+// CheckIfLogIDMatches returns true if the swap ID in the log matches the given ID, false otherwise.
+func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, error) {
 	if event != "Refunded" && event != "Claimed" {
 		return false, errors.New("invalid event name, must be one of Claimed or Refunded")
 	}
@@ -74,8 +75,8 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id *big.Int) (bool, err
 		return false, errors.New("log had not enough parameters")
 	}
 
-	eventID := res[0].(*big.Int)
-	if eventID.Cmp(id) != 0 {
+	eventID := res[0].([32]byte)
+	if !bytes.Equal(eventID[:], id[:]) {
 		return false, nil
 	}
 

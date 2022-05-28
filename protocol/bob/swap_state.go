@@ -58,7 +58,8 @@ type swapState struct {
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contract       *swapfactory.SwapFactory
-	contractSwapID *big.Int
+	contractSwapID [32]byte
+	contractSwap   swapfactory.SwapFactorySwap
 	contractAddr   ethcommon.Address
 	t0, t1         time.Time
 	txOpts         *bind.TransactOpts
@@ -321,12 +322,12 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
-	info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
+	stage, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	if untilT0 > 0 && !info.IsReady {
+	if untilT0 > 0 && stage != swapfactory.StageReady {
 		// we need to wait until t0 to claim
 		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
 		<-time.After(untilT0 + time.Second)
@@ -392,15 +393,9 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 	return err
 }
 
-func (s *swapState) setTimeouts() error {
-	info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
-	if err != nil {
-		return fmt.Errorf("failed to get swap info from contract: err=%w", err)
-	}
-
-	s.t0 = time.Unix(info.Timeout0.Int64(), 0)
-	s.t1 = time.Unix(info.Timeout1.Int64(), 0)
-	return nil
+func (s *swapState) setTimeouts(t0, t1 *big.Int) {
+	s.t0 = time.Unix(t0.Int64(), 0)
+	s.t1 = time.Unix(t1.Int64(), 0)
 }
 
 // checkContract checks the contract's balance and Claim/Refund keys.
@@ -422,7 +417,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return err
 	}
 
-	if event.SwapID.Cmp(s.contractSwapID) != 0 {
+	if !bytes.Equal(event.SwapID[:], s.contractSwapID[:]) {
 		return errUnexpectedSwapID
 	}
 
@@ -437,16 +432,18 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("contract refund key is not expected: got 0x%x, expected 0x%x", event.RefundKey, skTheirs)
 	}
 
-	// check value of created swap
-	info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
-	if err != nil {
-		return err
-	}
+	// TODO: check timeouts
 
-	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
-	if info.Value.Cmp(expected) < 0 {
-		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", info.Value, expected)
-	}
+	// // check value of created swap
+	// info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
+	// if info.Value.Cmp(expected) < 0 {
+	// 	return fmt.Errorf("contract does not have expected balance: got %s, expected %s", info.Value, expected)
+	// }
 
 	return nil
 }
@@ -515,7 +512,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
 	sc := s.getSecret()
-	tx, err := s.contract.Claim(s.txOpts, s.contractSwapID, sc)
+	tx, err := s.contract.Claim(s.txOpts, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

@@ -2,6 +2,7 @@ package alice
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -53,7 +54,8 @@ type swapState struct {
 	bobAddress            ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
-	contractSwapID *big.Int
+	contractSwapID [32]byte
+	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
 	txOpts         *bind.TransactOpts
 
@@ -316,31 +318,32 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	return s.refund()
 }
 
-func (s *swapState) setTimeouts() error {
-	if s.alice.contract == nil {
-		return errNoSwapContractSet
-	}
+func (s *swapState) setTimeouts(t0, t1 *big.Int) {
+	s.t0 = time.Unix(t0.Int64(), 0)
+	s.t1 = time.Unix(t1.Int64(), 0)
 
-	if (s.t0 != time.Time{}) && (s.t1 != time.Time{}) {
-		return nil
-	}
+	// if s.alice.contract == nil {
+	// 	return errNoSwapContractSet
+	// }
 
-	// TODO: add maxRetries
-	for {
-		log.Debug("attempting to fetch timestamps from contract")
+	// if (s.t0 != time.Time{}) && (s.t1 != time.Time{}) {
+	// 	return nil
+	// }
 
-		info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
-		if err != nil {
-			time.Sleep(time.Second * 10)
-			continue
-		}
+	// // TODO: add maxRetries
+	// for {
+	// 	log.Debug("attempting to fetch timestamps from contract")
 
-		s.t0 = time.Unix(info.Timeout0.Int64(), 0)
-		s.t1 = time.Unix(info.Timeout1.Int64(), 0)
-		break
-	}
+	// 	info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
+	// 	if err != nil {
+	// 		time.Sleep(time.Second * 10)
+	// 		continue
+	// 	}
 
-	return nil
+	// 	s.t0 = time.Unix(info.Timeout0.Int64(), 0)
+	// 	s.t1 = time.Unix(info.Timeout1.Int64(), 0)
+	// 	break
+	// }
 }
 
 func (s *swapState) generateAndSetKeys() error {
@@ -401,8 +404,9 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		s.txOpts.Value = nil
 	}()
 
-	tx, err := s.alice.contract.NewSwap(s.txOpts,
-		cmtBob, cmtAlice, s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())))
+	nonce := generateNonce()
+	tx, err := s.alice.contract.NewSwap(s.txOpts, cmtBob, cmtAlice,
+		s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())), nonce)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
@@ -422,6 +426,24 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
+	t0, t1, err := swapfactory.GetTimeoutsFromLog(receipt.Logs[0])
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	s.setTimeouts(t0, t1)
+
+	s.contractSwap = swapfactory.SwapFactorySwap{
+		Owner:        s.alice.callOpts.From,
+		Claimer:      s.bobAddress,
+		PubKeyClaim:  cmtBob,
+		PubKeyRefund: cmtAlice,
+		Timeout0:     t0,
+		Timeout1:     t1,
+		Value:        amount.BigInt(),
+		Nonce:        nonce,
+	}
+
 	return tx.Hash(), nil
 }
 
@@ -429,7 +451,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwapID)
+	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -456,7 +478,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
+	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -545,4 +567,11 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 
 		time.Sleep(time.Second * 30)
 	}
+}
+
+func generateNonce() *big.Int {
+	u256PlusOne := big.NewInt(0).Lsh(big.NewInt(1), 256)
+	maxU256 := big.NewInt(0).Sub(u256PlusOne, big.NewInt(1))
+	n, _ := rand.Int(rand.Reader, maxU256)
+	return n
 }

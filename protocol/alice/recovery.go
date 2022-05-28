@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -26,7 +25,7 @@ type recoveryState struct {
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
-	contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
+	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -55,6 +54,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
+		contractSwap:   contractSwap,
 		infofile:       pcommon.GetSwapRecoveryFilepath(a.basepath),
 		claimedCh:      make(chan struct{}),
 	}
@@ -63,10 +63,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 		ss: s,
 	}
 
-	if err := rs.ss.setTimeouts(); err != nil {
-		return nil, err
-	}
-
+	rs.ss.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
 	return rs, nil
 }
 

@@ -145,12 +145,6 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	log.Info("locked ether in swap contract, waiting for XMR to be locked")
 
-	// set t0 and t1
-	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
-	if err := s.setTimeouts(); err != nil {
-		return nil, err
-	}
-
 	// start goroutine to check that Bob locks before t_0
 	go func() {
 		// TODO: this variable is so that we definitely refund before t0.
@@ -214,6 +208,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		Address:        s.alice.contractAddr.String(),
 		TxHash:         txHash.String(),
 		ContractSwapID: s.contractSwapID,
+		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
 	return out, nil
@@ -307,10 +302,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	}
 
 	log.Info("XMR was locked successfully, setting contract to ready...")
-
-	if err := s.setTimeouts(); err != nil {
-		return nil, fmt.Errorf("failed to set timeouts: %w", err)
-	}
 
 	go func() {
 		until := time.Until(s.t1)
