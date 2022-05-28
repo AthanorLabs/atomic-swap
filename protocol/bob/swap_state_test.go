@@ -137,6 +137,7 @@ func newSwap(t *testing.T, bob *Instance, swapState *swapState, claimKey, refund
 		Nonce:        nonce,
 	}
 
+	swapState.setTimeouts(t0, t1)
 	return addr, tx.Hash(), contract
 }
 

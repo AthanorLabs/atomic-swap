@@ -114,9 +114,9 @@ func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, i
 		statusCh:            statusCh,
 	}
 
-	if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
-		return nil, err
-	}
+	// if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
+	// 	return nil, err
+	// }
 
 	return s, nil
 }

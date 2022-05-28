@@ -8,11 +8,13 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
-type infoFileContents struct {
+type InfoFileContents struct {
 	ContractAddress      string
-	SwapID               uint64
+	ContractSwapID       [32]byte
+	ContractSwap         swapfactory.SwapFactorySwap
 	PrivateKeyInfo       *mcrypto.PrivateKeyInfo
 	SharedSwapPrivateKey *mcrypto.PrivateKeyInfo
 }
@@ -35,14 +37,33 @@ func WriteContractAddressToFile(infofile, addr string) error {
 	return err
 }
 
-// WriteSwapIDToFile writes the swap ID to the given file
-func WriteSwapIDToFile(infofile string, id uint64) error {
+// // WriteSwapIDToFile writes the swap ID to the given file
+// func WriteSwapIDToFile(infofile string, id uint64) error {
+// 	file, contents, err := setupFile(infofile)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	contents.SwapID = id
+
+// 	bz, err := json.MarshalIndent(contents, "", "\t")
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	_, err = file.Write(bz)
+// 	return err
+// }
+
+// WriteContractSwapToFile writes the given Swap contract struct to the given file
+func WriteContractSwapToFile(infofile string, swapID [32]byte, swap swapfactory.SwapFactorySwap) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
 		return err
 	}
 
-	contents.SwapID = id
+	contents.ContractSwapID = swapID
+	contents.ContractSwap = swap
 
 	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
@@ -89,7 +110,7 @@ func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair,
 	return err
 }
 
-func setupFile(infofile string) (*os.File, *infoFileContents, error) {
+func setupFile(infofile string) (*os.File, *InfoFileContents, error) {
 	exists, err := exists(infofile)
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +118,7 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 
 	var (
 		file     *os.File
-		contents *infoFileContents
+		contents *InfoFileContents
 	)
 	if !exists {
 		err = makeDir(filepath.Dir(infofile))
@@ -135,7 +156,7 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 	}
 
 	if contents == nil {
-		contents = &infoFileContents{}
+		contents = &InfoFileContents{}
 	}
 
 	return file, contents, nil

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"math/big"
 	"os"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/protocol/alice"
 	"github.com/noot/atomic-swap/protocol/bob"
 	recovery "github.com/noot/atomic-swap/recover"
@@ -29,10 +32,9 @@ const (
 	flagEthereumChainID      = "ethereum-chain-id"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
-	flagContractSwapID       = "contract-swap-id"
-	flagAliceSecret          = "alice-secret"
-	flagBobSecret            = "bob-secret"
-	flagContractAddr         = "contract-addr"
+	flagInfoFile             = "infofile"
+	flagXMRMaker             = "xmrmaker"
+	flagXMRTaker             = "xmrtaker"
 )
 
 var (
@@ -79,21 +81,17 @@ var (
 				Name:  flagGasLimit,
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
-			&cli.UintFlag{
-				Name:  flagContractSwapID,
-				Usage: "ID of the swap within the SwapFactory.sol contract",
-			},
 			&cli.StringFlag{
-				Name:  flagAliceSecret,
-				Usage: "Alice's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
+				Name:  flagInfoFile,
+				Usage: "path to swap infofile",
 			},
-			&cli.StringFlag{
-				Name:  flagBobSecret,
-				Usage: "Bob's swap secret, can be found in the basepath (default ~/.atomicswap), format is a hex-encoded string", //nolint:lll
+			&cli.BoolFlag{
+				Name:  flagXMRMaker,
+				Usage: "true if recovering as an xmr-maker",
 			},
-			&cli.StringFlag{
-				Name:  flagContractAddr,
-				Usage: "address of deployed ethereum swap contract, can be found in the basepath (default ~/.atomicswap)", //nolint:lll
+			&cli.BoolFlag{
+				Name:  flagXMRTaker,
+				Usage: "true if recovering as an xmr-taker",
 			},
 		},
 	}
@@ -106,11 +104,11 @@ func main() {
 	}
 }
 
-// Recoverer is implemented by a backend which is able to recover monero
+// Recoverer is implemented by a backend which is able to recover swap funds
 type Recoverer interface {
-	WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error)
-	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID *big.Int) (*bob.RecoveryResult, error) //nolint:lll
-	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string, swapID *big.Int) (*alice.RecoveryResult, error)       //nolint:lll
+	WalletFromSharedSecret(secret *mcrypto.PrivateKeyInfo) (mcrypto.Address, error)
+	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*bob.RecoveryResult, error) //nolint:lll
+	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*alice.RecoveryResult, error)       //nolint:lll
 }
 
 type instance struct {
@@ -125,39 +123,47 @@ func runRecover(c *cli.Context) error {
 }
 
 func (inst *instance) recover(c *cli.Context) error {
-	as := c.String(flagAliceSecret)
-	bs := c.String(flagBobSecret)
-	contractAddr := c.String(flagContractAddr)
+	xmrmaker := c.Bool(flagXMRMaker)
+	xmrtaker := c.Bool(flagXMRTaker)
+	if !xmrmaker && !xmrtaker {
+		return errMustSpecifyXMRMakerOrTaker
+	}
 
 	env, cfg, err := utils.GetEnvironment(c)
 	if err != nil {
 		return err
 	}
 
-	if as == "" && bs == "" {
-		return errNoSecretsProvided
+	infofilePath := c.String(flagInfoFile)
+	if infofilePath == "" {
+		return errMustProvideInfoFile
 	}
 
-	if as == "" && contractAddr == "" {
-		return errNoAliceSecretOrContractProvided
+	infofileBytes, err := ioutil.ReadFile(infofilePath)
+	if err != nil {
+		return err
 	}
 
-	if contractAddr == "" && bs == "" {
-		return errNoBobSecretOrContractProvided
+	var infofile *pcommon.InfoFileContents
+	if err := json.Unmarshal(infofileBytes, infofile); err != nil {
+		return err
 	}
 
-	swapID := big.NewInt(int64(c.Uint(flagContractSwapID)))
-	if swapID.Uint64() == 0 {
-		log.Warn("provided contract swap ID of 0, this is likely not correct (unless you deployed the contract)")
-	}
+	// if as == "" && contractAddr == "" {
+	// 	return errNoAliceSecretOrContractProvided
+	// }
+
+	// if contractAddr == "" && bs == "" {
+	// 	return errNoBobSecretOrContractProvided
+	// }
 
 	r, err := inst.getRecovererFunc(c, env)
 	if err != nil {
 		return err
 	}
 
-	if as != "" && bs != "" {
-		addr, err := r.WalletFromSecrets(as, bs)
+	if infofile.SharedSwapPrivateKey != nil {
+		addr, err := r.WalletFromSharedSecret(infofile.SharedSwapPrivateKey)
 		if err != nil {
 			return err
 		}
@@ -166,13 +172,16 @@ func (inst *instance) recover(c *cli.Context) error {
 		return nil
 	}
 
-	if bs != "" && contractAddr != "" {
+	contractAddr := infofile.ContractAddress
+
+	if xmrmaker {
 		b, err := createBobInstance(context.Background(), c, env, cfg)
 		if err != nil {
 			return err
 		}
 
-		res, err := r.RecoverFromBobSecretAndContract(b, bs, contractAddr, swapID)
+		res, err := r.RecoverFromBobSecretAndContract(b, infofile.PrivateKeyInfo.PrivateSpendKey,
+			contractAddr, infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
 		}
@@ -188,14 +197,15 @@ func (inst *instance) recover(c *cli.Context) error {
 		}
 	}
 
-	if as != "" && contractAddr != "" {
+	if xmrtaker {
 		addr := ethcommon.HexToAddress(contractAddr)
 		a, err := createAliceInstance(context.Background(), c, env, cfg, addr)
 		if err != nil {
 			return err
 		}
 
-		res, err := r.RecoverFromAliceSecretAndContract(a, as, swapID)
+		res, err := r.RecoverFromAliceSecretAndContract(a, infofile.PrivateKeyInfo.PrivateSpendKey,
+			infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
 		}

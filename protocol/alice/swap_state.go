@@ -104,9 +104,9 @@ func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmoun
 		statusCh:            statusCh,
 	}
 
-	if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
-		return nil, err
-	}
+	// if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
+	// 	return nil, err
+	// }
 
 	if err := pcommon.WriteContractAddressToFile(s.infofile, a.contractAddr.String()); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
@@ -442,6 +442,10 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		Timeout1:     t1,
 		Value:        amount.BigInt(),
 		Nonce:        nonce,
+	}
+
+	if err := pcommon.WriteContractSwapToFile(s.infofile, s.contractSwapID, s.contractSwap); err != nil {
+		return ethcommon.Hash{}, err
 	}
 
 	return tx.Hash(), nil

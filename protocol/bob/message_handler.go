@@ -145,6 +145,10 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
+	if err := pcommon.WriteContractSwapToFile(s.infofile, s.contractSwapID, s.contractSwap); err != nil {
+		return nil, err
+	}
+
 	contractAddr := ethcommon.HexToAddress(msg.Address)
 	if err := checkContractCode(s.ctx, s.bob.ethClient, contractAddr); err != nil {
 		return nil, err
