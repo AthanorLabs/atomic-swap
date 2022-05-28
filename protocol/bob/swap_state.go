@@ -114,10 +114,6 @@ func newSwapState(b *Instance, offer *types.Offer, statusCh chan types.Status, i
 		statusCh:            statusCh,
 	}
 
-	// if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
-	// 	return nil, err
-	// }
-
 	return s, nil
 }
 
@@ -434,16 +430,12 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 
 	// TODO: check timeouts
 
-	// // check value of created swap
-	// info, err := s.contract.Swaps(s.bob.callOpts, s.contractSwapID)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
-	// if info.Value.Cmp(expected) < 0 {
-	// 	return fmt.Errorf("contract does not have expected balance: got %s, expected %s", info.Value, expected)
-	// }
+	// check value of created swap
+	value := s.contractSwap.Value
+	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
+	if value.Cmp(expected) < 0 {
+		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", value, expected)
+	}
 
 	return nil
 }

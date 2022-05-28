@@ -73,11 +73,6 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 		return "", fmt.Errorf("failed to decode spend key: %w", err)
 	}
 
-	// vkBytes, err := hex.DecodeString(pk.PrivateViewKey)
-	// if err != nil {
-	// 	return "", fmt.Errorf("failed to decode view key: %w", err)
-	// }
-
 	sk, err := mcrypto.NewPrivateSpendKey(skBytes)
 	if err != nil {
 		return "", err
@@ -87,12 +82,6 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 	if err != nil {
 		return "", err
 	}
-
-	// sk := mcrypto.SumPrivateSpendKeys(ak, bk)
-	// kp, err := sk.AsPrivateKeyPair()
-	// if err != nil {
-	// 	return "", err
-	// }
 
 	kp := mcrypto.NewPrivateKeyPair(sk, vk)
 	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)

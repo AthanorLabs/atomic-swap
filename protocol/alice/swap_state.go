@@ -104,16 +104,11 @@ func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmoun
 		statusCh:            statusCh,
 	}
 
-	// if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
-	// 	return nil, err
-	// }
-
 	if err := pcommon.WriteContractAddressToFile(s.infofile, a.contractAddr.String()); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
 	go s.waitForSendKeysMessage()
-
 	return s, nil
 }
 
@@ -321,29 +316,6 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 	s.t0 = time.Unix(t0.Int64(), 0)
 	s.t1 = time.Unix(t1.Int64(), 0)
-
-	// if s.alice.contract == nil {
-	// 	return errNoSwapContractSet
-	// }
-
-	// if (s.t0 != time.Time{}) && (s.t1 != time.Time{}) {
-	// 	return nil
-	// }
-
-	// // TODO: add maxRetries
-	// for {
-	// 	log.Debug("attempting to fetch timestamps from contract")
-
-	// 	info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
-	// 	if err != nil {
-	// 		time.Sleep(time.Second * 10)
-	// 		continue
-	// 	}
-
-	// 	s.t0 = time.Unix(info.Timeout0.Int64(), 0)
-	// 	s.t1 = time.Unix(info.Timeout1.Int64(), 0)
-	// 	break
-	// }
 }
 
 func (s *swapState) generateAndSetKeys() error {
