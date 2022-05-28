@@ -18,7 +18,7 @@ func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr e
 	}
 
 	expectedCode := ethcommon.FromHex(swapfactory.SwapFactoryBin)
-	if !bytes.Equal(expectedCode, code) {
+	if !bytes.Contains(expectedCode, code) {
 		return errInvalidSwapContract
 	}
 
