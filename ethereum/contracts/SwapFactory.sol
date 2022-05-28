@@ -3,7 +3,7 @@ pragma solidity ^0.8.5;
 
 import "./Secp256k1.sol";
 
-contract SwapFactory {
+contract SwapFactory is Secp256k1 {
 
     // Swap state is PENDING when the swap is first created and funded
     // Alice sets Stage to READY when she sees the funds locked on the other chain.
@@ -140,7 +140,7 @@ contract SwapFactory {
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal pure {
         require(
-            Secp256k1.mulVerify(uint256(_s), uint256(pubKey)),
+            mulVerify(uint256(_s), uint256(pubKey)),
             "provided secret does not match the expected public key"
         );
     }
