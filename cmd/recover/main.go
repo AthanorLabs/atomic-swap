@@ -149,14 +149,6 @@ func (inst *instance) recover(c *cli.Context) error {
 		return err
 	}
 
-	// if as == "" && contractAddr == "" {
-	// 	return errNoAliceSecretOrContractProvided
-	// }
-
-	// if contractAddr == "" && bs == "" {
-	// 	return errNoBobSecretOrContractProvided
-	// }
-
 	r, err := inst.getRecovererFunc(c, env)
 	if err != nil {
 		return err
