@@ -91,7 +91,14 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
+	var ethAddress ethcommon.Address
+	if cfg.EthereumPrivateKey != nil {
+		pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
+		ethAddress = crypto.PubkeyToAddress(*pub)
+	} else {
+		// TODO: probably need an RPC call to set eth address at runtime
+		ethAddress = cfg.EthereumAddress
+	}
 
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
 
@@ -123,7 +130,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		walletPassword: cfg.MoneroWalletPassword,
 		walletAddress:  address,
 		callOpts: &bind.CallOpts{
-			From:    crypto.PubkeyToAddress(*pub),
+			From:    ethAddress,
 			Context: cfg.Ctx,
 		},
 		chainID:      cfg.ChainID,

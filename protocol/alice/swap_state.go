@@ -73,9 +73,11 @@ func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmoun
 		return nil, errNoSwapContractSet
 	}
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
-	if err != nil {
-		return nil, err
+	if a.ethPrivKey != nil {
+		txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	txOpts.GasPrice = a.gasPrice
