@@ -7,8 +7,8 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/protocol/alice"
-	"github.com/noot/atomic-swap/protocol/bob"
+	"github.com/noot/atomic-swap/protocol/xmrmaker"
+	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -35,16 +35,16 @@ func NewRecoverer(env common.Environment, moneroEndpoint, ethEndpoint string) (*
 	}, nil
 }
 
-// WalletFromSecrets generates a monero wallet from the given Alice and Bob secrets.
-func (r *recoverer) WalletFromSecrets(aliceSecret, bobSecret string) (mcrypto.Address, error) {
-	as, err := hex.DecodeString(aliceSecret)
+// WalletFromSecrets generates a monero wallet from the given XMRTaker and XMRMaker secrets.
+func (r *recoverer) WalletFromSecrets(xmrtakerSecret, xmrmakerSecret string) (mcrypto.Address, error) {
+	as, err := hex.DecodeString(xmrtakerSecret)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode bob's secret: %w", err)
+		return "", fmt.Errorf("failed to decode xmrmaker's secret: %w", err)
 	}
 
-	bs, err := hex.DecodeString(bobSecret)
+	bs, err := hex.DecodeString(xmrmakerSecret)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode bob's secret: %w", err)
+		return "", fmt.Errorf("failed to decode xmrmaker's secret: %w", err)
 	}
 
 	ak, err := mcrypto.NewPrivateSpendKey(as)
@@ -87,12 +87,12 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)
 }
 
-// RecoverFromBobSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
-func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
-	bobSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*bob.RecoveryResult, error) {
-	bs, err := hex.DecodeString(bobSecret)
+// RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
+func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b *xmrmaker.Instance,
+	xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
+	bs, err := hex.DecodeString(xmrmakerSecret)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode Bob's secret: %w", err)
+		return nil, fmt.Errorf("failed to decode XMRMaker's secret: %w", err)
 	}
 
 	bk, err := mcrypto.NewPrivateSpendKey(bs)
@@ -101,7 +101,7 @@ func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 	}
 
 	addr := ethcommon.HexToAddress(contractAddr)
-	rs, err := bob.NewRecoveryState(b, bk, addr, swapID, swap)
+	rs, err := xmrmaker.NewRecoveryState(b, bk, addr, swapID, swap)
 	if err != nil {
 		return nil, err
 	}
@@ -109,12 +109,12 @@ func (r *recoverer) RecoverFromBobSecretAndContract(b *bob.Instance,
 	return rs.ClaimOrRecover()
 }
 
-// RecoverFromAliceSecretAndContract recovers funds by either claiming locked monero or refunding ether.
-func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
-	aliceSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*alice.RecoveryResult, error) {
-	as, err := hex.DecodeString(aliceSecret)
+// RecoverFromXMRTakerSecretAndContract recovers funds by either claiming locked monero or refunding ether.
+func (r *recoverer) RecoverFromXMRTakerSecretAndContract(a *xmrtaker.Instance,
+	xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
+	as, err := hex.DecodeString(xmrtakerSecret)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode Alice's secret: %w", err)
+		return nil, fmt.Errorf("failed to decode XMRTaker's secret: %w", err)
 	}
 
 	ak, err := mcrypto.NewPrivateSpendKey(as)
@@ -122,7 +122,7 @@ func (r *recoverer) RecoverFromAliceSecretAndContract(a *alice.Instance,
 		return nil, err
 	}
 
-	rs, err := alice.NewRecoveryState(a, ak, swapID, swap)
+	rs, err := xmrtaker.NewRecoveryState(a, ak, swapID, swap)
 	if err != nil {
 		return nil, err
 	}

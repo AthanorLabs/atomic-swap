@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"github.com/noot/atomic-swap/common"

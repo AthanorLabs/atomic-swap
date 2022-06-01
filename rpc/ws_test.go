@@ -77,22 +77,22 @@ func (*mockSwapManager) GetOngoingSwap() *swap.Info {
 	)
 }
 
-type mockAlice struct{}
+type mockXMRTaker struct{}
 
-func (*mockAlice) Provides() types.ProvidesCoin {
+func (*mockXMRTaker) Provides() types.ProvidesCoin {
 	return types.ProvidesETH
 }
-func (*mockAlice) SetGasPrice(gasPrice uint64) {}
-func (*mockAlice) GetOngoingSwapState() common.SwapState {
+func (*mockXMRTaker) SetGasPrice(gasPrice uint64) {}
+func (*mockXMRTaker) GetOngoingSwapState() common.SwapState {
 	return new(mockSwapState)
 }
-func (*mockAlice) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
+func (*mockXMRTaker) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
-func (*mockAlice) Refund() (ethcommon.Hash, error) {
+func (*mockXMRTaker) Refund() (ethcommon.Hash, error) {
 	return ethcommon.Hash{}, nil
 }
-func (*mockAlice) SetSwapTimeout(_ time.Duration) {}
+func (*mockXMRTaker) SetSwapTimeout(_ time.Duration) {}
 
 type mockSwapState struct{}
 
@@ -127,7 +127,7 @@ func newServer(t *testing.T) *Server {
 		WsPort:      defaultWSPort,
 		Net:         new(mockNet),
 		SwapManager: new(mockSwapManager),
-		Alice:       new(mockAlice),
+		XMRTaker:    new(mockXMRTaker),
 	}
 
 	s, err := NewServer(cfg)

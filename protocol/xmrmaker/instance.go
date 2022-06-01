@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	log = logging.Logger("bob")
+	log = logging.Logger("xmrmaker")
 )
 
 // Instance implements the functionality that will be needed by a user who owns XMR
@@ -50,7 +50,7 @@ type Instance struct {
 	swapState *swapState
 }
 
-// Config contains the configuration values for a new Bob instance.
+// Config contains the configuration values for a new XMRMaker instance.
 type Config struct {
 	Ctx                        context.Context
 	Basepath                   string
@@ -66,8 +66,8 @@ type Config struct {
 	GasLimit                   uint64
 }
 
-// NewInstance returns a new *bob.Instance.
-// It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains Bob's XMR.
+// NewInstance returns a new *xmrmaker.Instance.
+// It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains XMRMaker's XMR.
 func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
 		return nil, errMustProvideDaemonEndpoint
@@ -78,7 +78,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 	// monero-wallet-rpc client
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
 
-	// open Bob's XMR wallet
+	// open XMRMaker's XMR wallet
 	if cfg.WalletFile != "" {
 		if err := walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
 			return nil, err

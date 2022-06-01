@@ -24,29 +24,29 @@ echo "starting monerod..."
 echo "Zzz... 10s"
 sleep 10
 
-echo "mine blocks for Bob"
+echo "mine blocks for XMRMaker"
 curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe","amount_of_blocks":100}' -H 'Content-Type: application/json' &> $LOG_DIR/block-mining-bob.log &
 
 echo "Zzz... 15s"
 sleep 15
 
-echo "start monero-wallet-rpc for Alice on port 18084"
+echo "start monero-wallet-rpc for XMRTaker on port 18084"
 ./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir . &> $LOG_DIR/alice-wallet-rpc.log &
 
-echo "start monero-wallet-rpc for Bob on port 18083"
+echo "start monero-wallet-rpc for XMRMaker on port 18083"
 ./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir . &> $LOG_DIR/bob-wallet-rpc.log &
 
-echo "launch Alice swapd"
-../swapd --dev-alice  &> $LOG_DIR/alice-swapd.log &
+echo "launch XMRTaker swapd"
+../swapd --dev-xmrtaker  &> $LOG_DIR/alice-swapd.log &
 
 echo "Zzz... 10s"
 sleep 10
 
-echo "launch Bob swapd"
-../swapd --dev-bob --wallet-file Bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/$ALICE_P2P_ADDRESS &> $LOG_DIR/bob-swapd.log &
+echo "launch XMRMaker swapd"
+../swapd --dev-xmrmaker --wallet-file XMRMaker --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/$ALICE_P2P_ADDRESS &> $LOG_DIR/bob-swapd.log &
 
 echo "Zzz... 10s"
 sleep 10
 
-echo "let Bob make an offer"
+echo "let XMRMaker make an offer"
 ../swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --daemon-addr=http://localhost:5002

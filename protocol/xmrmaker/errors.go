@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ var (
 	// various instance and swap errors
 	errMustProvideDaemonEndpoint = errors.New("environment is development, must provide monero daemon endpoint")
 	errUnexpectedMessageType     = errors.New("unexpected message type")
-	errMissingKeys               = errors.New("did not receive Alice's public spend or view key")
+	errMissingKeys               = errors.New("did not receive XMRTaker's public spend or view key")
 	errMissingAddress            = errors.New("got empty contract address")
 	errNoRefundLogsFound         = errors.New("no refund logs found")
 	errPastClaimTime             = errors.New("past t1, can no longer claim")

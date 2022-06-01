@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"context"
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	log                    = logging.Logger("alice")
+	log                    = logging.Logger("xmrtaker")
 	defaultTimeoutDuration = time.Hour * 24
 )
 
@@ -63,7 +63,7 @@ type Instance struct {
 	contractAddr ethcommon.Address
 }
 
-// Config contains the configuration values for a new Alice instance.
+// Config contains the configuration values for a new XMRTaker instance.
 type Config struct {
 	Ctx                                    context.Context
 	Basepath                               string
@@ -81,8 +81,8 @@ type Config struct {
 	SwapManager                            *swap.Manager
 }
 
-// NewInstance returns a new instance of Alice.
-// It accepts an endpoint to a monero-wallet-rpc instance where Alice will generate
+// NewInstance returns a new instance of XMRTaker.
+// It accepts an endpoint to a monero-wallet-rpc instance where XMRTaker will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development {
@@ -111,7 +111,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		return nil, errNilSwapContractOrAddress
 	}
 
-	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured
+	// TODO: check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured
 	return &Instance{
 		ctx:            cfg.Ctx,
 		basepath:       cfg.Basepath,

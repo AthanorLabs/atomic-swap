@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAlice_InitiateProtocol(t *testing.T) {
-	a := newTestAlice(t)
+func TestXMRTaker_InitiateProtocol(t *testing.T) {
+	a := newTestXMRTaker(t)
 	s, err := a.InitiateProtocol(3.33, &types.Offer{
 		ExchangeRate: 1,
 	})

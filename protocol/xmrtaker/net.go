@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"github.com/noot/atomic-swap/common"

@@ -10,7 +10,7 @@ import (
 )
 
 func TestNet_Discover(t *testing.T) {
-	ns := NewNetService(new(mockNet), new(mockAlice), nil, new(mockSwapManager))
+	ns := NewNetService(new(mockNet), new(mockXMRTaker), nil, new(mockSwapManager))
 
 	req := &rpctypes.DiscoverRequest{
 		Provides: "",
@@ -24,7 +24,7 @@ func TestNet_Discover(t *testing.T) {
 }
 
 func TestNet_Query(t *testing.T) {
-	ns := NewNetService(new(mockNet), new(mockAlice), nil, new(mockSwapManager))
+	ns := NewNetService(new(mockNet), new(mockXMRTaker), nil, new(mockSwapManager))
 
 	req := &rpctypes.QueryPeerRequest{
 		Multiaddr: "/ip4/127.0.0.1/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
@@ -38,7 +38,7 @@ func TestNet_Query(t *testing.T) {
 }
 
 func TestNet_TakeOffer(t *testing.T) {
-	ns := NewNetService(new(mockNet), new(mockAlice), nil, new(mockSwapManager))
+	ns := NewNetService(new(mockNet), new(mockXMRTaker), nil, new(mockSwapManager))
 
 	offer := &types.Offer{}
 
@@ -56,7 +56,7 @@ func TestNet_TakeOffer(t *testing.T) {
 }
 
 func TestNet_TakeOfferSync(t *testing.T) {
-	ns := NewNetService(new(mockNet), new(mockAlice), nil, new(mockSwapManager))
+	ns := NewNetService(new(mockNet), new(mockXMRTaker), nil, new(mockSwapManager))
 
 	offer := &types.Offer{}
 

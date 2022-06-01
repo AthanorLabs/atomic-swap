@@ -21,10 +21,10 @@ import (
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 
-func setupAliceAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
+func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
-	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
@@ -32,7 +32,7 @@ func setupAliceAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa
 }
 
 func TestSwapFactory_NewSwap(t *testing.T) {
-	auth, conn, _ := setupAliceAuth(t)
+	auth, conn, _ := setupXMRTakerAuth(t)
 	address, tx, contract, err := DeploySwapFactory(auth, conn)
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
@@ -64,7 +64,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	cmt := pk.Keccak256()
 
 	// deploy swap contract with claim key hash
-	auth, conn, pkA := setupAliceAuth(t)
+	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -130,7 +130,7 @@ func TestSwap_Claim_random(t *testing.T) {
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with claim key hash
-	auth, conn, pkA := setupAliceAuth(t)
+	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -199,7 +199,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with refund key hash
-	auth, conn, pkA := setupAliceAuth(t)
+	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -263,7 +263,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with refund key hash
-	auth, conn, pkA := setupAliceAuth(t)
+	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -334,7 +334,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 
 func TestSwap_MultipleSwaps(t *testing.T) {
 	// test case where contract has multiple swaps happening at once
-	auth, conn, pkA := setupAliceAuth(t)
+	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 

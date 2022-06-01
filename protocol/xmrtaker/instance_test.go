@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestGetAddress(t *testing.T) {
-	c := monero.NewClient(common.DefaultAliceMoneroEndpoint)
+	c := monero.NewClient(common.DefaultXMRTakerMoneroEndpoint)
 	addr, err := getAddress(c, "", "")
 	require.NoError(t, err)
 

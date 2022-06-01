@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"fmt"
@@ -114,7 +114,7 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 		return nil
 	}
 
-	// Alice might refund anytime before t0 or after t1, so we should allow this.
+	// XMRTaker might refund anytime before t0 or after t1, so we should allow this.
 	if _, ok := msg.(*message.NotifyRefund); ok {
 		return nil
 	}
@@ -150,7 +150,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if err := checkContractCode(s.ctx, s.bob.ethClient, contractAddr); err != nil {
+	if err := checkContractCode(s.ctx, s.xmrmaker.ethClient, contractAddr); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +208,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 			s.clearNextExpectedMessage(types.CompletedSuccess)
 
 			// send *message.NotifyClaimed
-			if err := s.bob.net.SendSwapMessage(&message.NotifyClaimed{
+			if err := s.xmrmaker.net.SendSwapMessage(&message.NotifyClaimed{
 				TxHash: txHash.String(),
 			}); err != nil {
 				log.Errorf("failed to send NotifyClaimed message: err=%s", err)
@@ -229,7 +229,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 
 	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
 	if err != nil {
-		return fmt.Errorf("failed to generate Alice's public keys: %w", err)
+		return fmt.Errorf("failed to generate XMRTaker's public keys: %w", err)
 	}
 
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
@@ -238,13 +238,13 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 		return err
 	}
 
-	s.setAlicePublicKeys(kp, secp256k1Pub)
+	s.setXMRTakerPublicKeys(kp, secp256k1Pub)
 	s.setNextExpectedMessage(&message.NotifyETHLocked{})
 	return nil
 }
 
 func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
-	receipt, err := s.bob.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
+	receipt, err := s.xmrmaker.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err
 	}

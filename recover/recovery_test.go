@@ -8,8 +8,8 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/alice"
-	"github.com/noot/atomic-swap/protocol/bob"
+	"github.com/noot/atomic-swap/protocol/xmrmaker"
+	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,7 +22,7 @@ import (
 var defaulTimeout int64 = 5 // 5 seconds
 
 func newRecoverer(t *testing.T) *recoverer {
-	r, err := NewRecoverer(common.Development, common.DefaultBobMoneroEndpoint, common.DefaultEthEndpoint)
+	r, err := NewRecoverer(common.Development, common.DefaultXMRMakerMoneroEndpoint, common.DefaultEthEndpoint)
 	require.NoError(t, err)
 	return r
 }
@@ -31,7 +31,7 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	setReady bool) (ethcommon.Address, *swapfactory.SwapFactory, [32]byte, swapfactory.SwapFactorySwap) {
 	tm := big.NewInt(defaulTimeout)
 
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
@@ -43,12 +43,12 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
-	pkBob, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pkXMRMaker, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	nonce := big.NewInt(0)
-	bobAddress := common.EthereumPrivateKeyToAddress(pkBob)
-	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, bobAddress,
+	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
+	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress,
 		tm, nonce)
 	require.NoError(t, err)
 
@@ -63,7 +63,7 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 
 	swap := swapfactory.SwapFactorySwap{
 		Owner:        txOpts.From,
-		Claimer:      bobAddress,
+		Claimer:      xmrmakerAddress,
 		PubKeyClaim:  claimKey,
 		PubKeyRefund: refundKey,
 		Timeout0:     t0,
@@ -80,47 +80,47 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	return addr, contract, swapID, swap
 }
 
-func newAliceInstance(t *testing.T, addr ethcommon.Address, contract *swapfactory.SwapFactory) *alice.Instance {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
+func newXMRTakerInstance(t *testing.T, addr ethcommon.Address, contract *swapfactory.SwapFactory) *xmrtaker.Instance {
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	cfg := &alice.Config{
+	cfg := &xmrtaker.Config{
 		Ctx:                  context.Background(),
 		Environment:          common.Development,
 		EthereumPrivateKey:   pk,
 		EthereumClient:       ec,
 		ChainID:              big.NewInt(common.GanacheChainID),
-		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
+		MoneroWalletEndpoint: common.DefaultXMRTakerMoneroEndpoint,
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
 	}
 
-	a, err := alice.NewInstance(cfg)
+	a, err := xmrtaker.NewInstance(cfg)
 	require.NoError(t, err)
 	return a
 }
 
-func newBobInstance(t *testing.T) *bob.Instance {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyBob)
+func newXMRMakerInstance(t *testing.T) *xmrmaker.Instance {
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	cfg := &bob.Config{
+	cfg := &xmrmaker.Config{
 		Ctx:                  context.Background(),
 		Environment:          common.Development,
 		EthereumPrivateKey:   pk,
 		EthereumClient:       ec,
 		ChainID:              big.NewInt(common.GanacheChainID),
-		MoneroWalletEndpoint: common.DefaultBobMoneroEndpoint,
+		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 	}
 
-	b, err := bob.NewInstance(cfg)
+	b, err := xmrmaker.NewInstance(cfg)
 	require.NoError(t, err)
 	return b
 }
@@ -141,23 +141,23 @@ func TestRecoverer_WalletFromSecrets(t *testing.T) {
 	require.Equal(t, kpAB.Address(common.Development), addr)
 }
 
-func TestRecoverer_RecoverFromBobSecretAndContract_Claim(t *testing.T) {
+func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
-	b := newBobInstance(t)
+	b := newXMRMakerInstance(t)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, _, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromBobSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(),
+	res, err := r.RecoverFromXMRMakerSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(),
 		addr.String(), swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Claimed)
 }
 
-func TestRecoverer_RecoverFromBobSecretAndContract_Claim_afterTimeout(t *testing.T) {
+func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *testing.T) {
 	if testing.Short() {
 		t.Skip() // TODO: fails on CI with "no contract code at address"
 	}
@@ -165,19 +165,19 @@ func TestRecoverer_RecoverFromBobSecretAndContract_Claim_afterTimeout(t *testing
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
-	b := newBobInstance(t)
+	b := newXMRMakerInstance(t)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, _, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromBobSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(),
+	res, err := r.RecoverFromXMRMakerSecretAndContract(b, keys.PrivateKeyPair.SpendKey().Hex(),
 		addr.String(), swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Claimed)
 }
 
-func TestRecoverer_RecoverFromAliceSecretAndContract_Refund(t *testing.T) {
+func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
 	if testing.Short() {
 		t.Skip() // TODO: fails on CI with "no contract code at address"
 	}
@@ -188,10 +188,10 @@ func TestRecoverer_RecoverFromAliceSecretAndContract_Refund(t *testing.T) {
 	refundKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, [32]byte{}, refundKey, false)
 
-	a := newAliceInstance(t, addr, contract)
+	a := newXMRTakerInstance(t, addr, contract)
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromAliceSecretAndContract(a, keys.PrivateKeyPair.SpendKey().Hex(),
+	res, err := r.RecoverFromXMRTakerSecretAndContract(a, keys.PrivateKeyPair.SpendKey().Hex(),
 		swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Refunded)

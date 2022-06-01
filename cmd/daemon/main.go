@@ -15,9 +15,9 @@ import (
 	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/protocol/alice"
-	"github.com/noot/atomic-swap/protocol/bob"
 	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/protocol/xmrmaker"
+	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/rpc"
 	"github.com/noot/atomic-swap/swapfactory"
 
@@ -26,23 +26,23 @@ import (
 
 const (
 	// default libp2p ports
-	defaultLibp2pPort      = 9900
-	defaultAliceLibp2pPort = 9933
-	defaultBobLibp2pPort   = 9934
+	defaultLibp2pPort         = 9900
+	defaultXMRTakerLibp2pPort = 9933
+	defaultXMRMakerLibp2pPort = 9934
 
 	// default libp2p key files
-	defaultLibp2pKey      = "node.key"
-	defaultAliceLibp2pKey = "alice.key"
-	defaultBobLibp2pKey   = "bob.key"
+	defaultLibp2pKey         = "node.key"
+	defaultXMRTakerLibp2pKey = "xmrtaker.key"
+	defaultXMRMakerLibp2pKey = "xmrmaker.key"
 
 	// default RPC port
-	defaultRPCPort      = 5005
-	defaultAliceRPCPort = 5001
-	defaultBobRPCPort   = 5002
+	defaultRPCPort         = 5005
+	defaultXMRTakerRPCPort = 5001
+	defaultXMRMakerRPCPort = 5002
 
-	defaultWSPort      = 6005
-	defaultAliceWSPort = 8081
-	defaultBobWSPort   = 8082
+	defaultWSPort         = 6005
+	defaultXMRTakerWSPort = 8081
+	defaultXMRMakerWSPort = 8082
 )
 
 var (
@@ -69,8 +69,8 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 
-	flagDevAlice     = "dev-alice"
-	flagDevBob       = "dev-bob"
+	flagDevXMRTaker  = "dev-xmrtaker"
+	flagDevXMRMaker  = "dev-xmrmaker"
 	flagDeploy       = "deploy"
 	flagTransferBack = "transfer-back"
 
@@ -152,11 +152,11 @@ var (
 				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
 			&cli.BoolFlag{
-				Name:  flagDevAlice,
+				Name:  flagDevXMRTaker,
 				Usage: "run in development mode and use ETH provider default values",
 			},
 			&cli.BoolFlag{
-				Name:  flagDevBob,
+				Name:  flagDevXMRMaker,
 				Usage: "run in development mode and use XMR provider default values",
 			},
 			&cli.BoolFlag{
@@ -182,14 +182,14 @@ func main() {
 	}
 }
 
-type aliceHandler interface {
-	rpc.Alice
+type xmrtakerHandler interface {
+	rpc.XMRTaker
 	SetMessageSender(net.MessageSender)
 }
 
-type bobHandler interface {
+type xmrmakerHandler interface {
 	net.Handler
-	rpc.Bob
+	rpc.XMRMaker
 	SetMessageSender(net.MessageSender)
 }
 
@@ -217,8 +217,8 @@ func setLogLevels(c *cli.Context) error {
 		return errors.New("invalid log level")
 	}
 
-	_ = logging.SetLogLevel("alice", level)
-	_ = logging.SetLogLevel("bob", level)
+	_ = logging.SetLogLevel("xmrtaker", level)
+	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("common", level)
 	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("net", level)
@@ -255,8 +255,8 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	devAlice := c.Bool(flagDevAlice)
-	devBob := c.Bool(flagDevBob)
+	devXMRTaker := c.Bool(flagDevXMRTaker)
+	devXMRMaker := c.Bool(flagDevXMRMaker)
 
 	chainID := int64(c.Uint(flagEthereumChainID))
 	if chainID == 0 {
@@ -265,7 +265,7 @@ func (d *daemon) make(c *cli.Context) error {
 
 	sm := swap.NewManager()
 
-	a, b, err := getProtocolInstances(d.ctx, c, env, cfg, chainID, devBob, sm)
+	a, b, err := getProtocolInstances(d.ctx, c, env, cfg, chainID, devXMRMaker, sm)
 	if err != nil {
 		return err
 	}
@@ -286,10 +286,10 @@ func (d *daemon) make(c *cli.Context) error {
 	switch {
 	case k != "":
 		libp2pKey = k
-	case devAlice:
-		libp2pKey = defaultAliceLibp2pKey
-	case devBob:
-		libp2pKey = defaultBobLibp2pKey
+	case devXMRTaker:
+		libp2pKey = defaultXMRTakerLibp2pKey
+	case devXMRMaker:
+		libp2pKey = defaultXMRMakerLibp2pKey
 	default:
 		libp2pKey = defaultLibp2pKey
 	}
@@ -297,10 +297,10 @@ func (d *daemon) make(c *cli.Context) error {
 	switch {
 	case p != 0:
 		libp2pPort = p
-	case devAlice:
-		libp2pPort = defaultAliceLibp2pPort
-	case devBob:
-		libp2pPort = defaultBobLibp2pPort
+	case devXMRTaker:
+		libp2pPort = defaultXMRTakerLibp2pPort
+	case devXMRMaker:
+		libp2pPort = defaultXMRMakerLibp2pPort
 	default:
 		libp2pPort = defaultLibp2pPort
 	}
@@ -332,10 +332,10 @@ func (d *daemon) make(c *cli.Context) error {
 	switch {
 	case p != 0:
 		rpcPort = p
-	case devAlice:
-		rpcPort = defaultAliceRPCPort
-	case devBob:
-		rpcPort = defaultBobRPCPort
+	case devXMRTaker:
+		rpcPort = defaultXMRTakerRPCPort
+	case devXMRMaker:
+		rpcPort = defaultXMRMakerRPCPort
 	default:
 		rpcPort = defaultRPCPort
 	}
@@ -343,10 +343,10 @@ func (d *daemon) make(c *cli.Context) error {
 	wsPort := uint16(c.Uint(flagWSPort))
 	switch {
 	case wsPort != 0:
-	case devAlice:
-		wsPort = defaultAliceWSPort
-	case devBob:
-		wsPort = defaultBobWSPort
+	case devXMRTaker:
+		wsPort = defaultXMRTakerWSPort
+	case devXMRMaker:
+		wsPort = defaultXMRMakerWSPort
 	default:
 		wsPort = defaultWSPort
 	}
@@ -356,8 +356,8 @@ func (d *daemon) make(c *cli.Context) error {
 		Port:        rpcPort,
 		WsPort:      wsPort,
 		Net:         host,
-		Alice:       a,
-		Bob:         b,
+		XMRTaker:    a,
+		XMRMaker:    b,
 		SwapManager: sm,
 	}
 
@@ -385,17 +385,17 @@ func (d *daemon) make(c *cli.Context) error {
 }
 
 func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
-	chainID int64, devBob bool, sm *swap.Manager) (a aliceHandler, b bobHandler, err error) {
+	chainID int64, devXMRMaker bool, sm *swap.Manager) (a xmrtakerHandler, b xmrmakerHandler, err error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
 
 	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
-	} else if devBob {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
+	} else if devXMRMaker {
+		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
 	} else {
-		moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		moneroEndpoint = common.DefaultXMRTakerMoneroEndpoint
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -404,7 +404,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devBob)
+	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devXMRMaker)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -442,7 +442,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 	var contract *swapfactory.SwapFactory
 	deploy := c.Bool(flagDeploy)
 
-	if !devBob || deploy {
+	if !devXMRMaker || deploy {
 		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
 			big.NewInt(chainID), pk, ec)
 		if err != nil {
@@ -455,7 +455,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 	// empty password is ok
 	walletPassword := c.String("wallet-password")
 
-	aliceCfg := &alice.Config{
+	xmrtakerCfg := &xmrtaker.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
@@ -473,12 +473,12 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		TransferBack:         c.Bool(flagTransferBack),
 	}
 
-	a, err = alice.NewInstance(aliceCfg)
+	a, err = xmrtaker.NewInstance(xmrtakerCfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	bobCfg := &bob.Config{
+	xmrmakerCfg := &xmrmaker.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
@@ -494,7 +494,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		SwapManager:          sm,
 	}
 
-	b, err = bob.NewInstance(bobCfg)
+	b, err = xmrmaker.NewInstance(xmrmakerCfg)
 	if err != nil {
 		return nil, nil, err
 	}

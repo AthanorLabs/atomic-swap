@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func TestCheckContractCode(t *testing.T) {
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyBob)
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const defaultAliceAddress = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+const defaultXMRTakerAddress = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
 
 func TestReverse(t *testing.T) {
 	in := []byte{0xa, 0xb, 0xc}
@@ -34,10 +34,10 @@ func TestWaitForReceipt(t *testing.T) {
 	ec, err := ethclient.Dial(DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk, err := ethcrypto.HexToECDSA(DefaultPrivKeyAlice)
+	pk, err := ethcrypto.HexToECDSA(DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 
-	nonce, err := ec.PendingNonceAt(ctx, ethcommon.HexToAddress(defaultAliceAddress))
+	nonce, err := ec.PendingNonceAt(ctx, ethcommon.HexToAddress(defaultXMRTakerAddress))
 	require.NoError(t, err)
 
 	to := ethcommon.Address{}

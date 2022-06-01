@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type recoveryState struct {
 	ss *swapState
 }
 
-// NewRecoveryState returns a new *bob.recoveryState,
+// NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr ethcommon.Address,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
@@ -43,7 +43,7 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr
 	s := &swapState{
 		ctx:            ctx,
 		cancel:         cancel,
-		bob:            b,
+		xmrmaker:       b,
 		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,
@@ -75,20 +75,20 @@ type RecoveryResult struct {
 // ClaimOrRecover either claims ether or recovers monero by creating a wallet.
 // It returns a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
-	// check if Alice refunded
+	// check if XMRTaker refunded
 	skA, err := rs.ss.filterForRefund()
 	if !errors.Is(err, errNoRefundLogsFound) && err != nil {
 		return nil, err
 	}
 
-	// if Alice refunded, let's get our monero back
+	// if XMRTaker refunded, let's get our monero back
 	if skA != nil {
 		kpA, err := skA.AsPrivateKeyPair() //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
-		rs.ss.setAlicePublicKeys(kpA.PublicKeyPair(), nil)
+		rs.ss.setXMRTakerPublicKeys(kpA.PublicKeyPair(), nil)
 		addr, err := rs.ss.reclaimMonero(skA)
 		if err != nil {
 			return nil, err

@@ -7,15 +7,15 @@ import (
 
 // PersonalService handles private keys and wallets.
 type PersonalService struct {
-	alice Alice
-	bob   Bob
+	xmrtaker XMRTaker
+	xmrmaker XMRMaker
 }
 
 // NewPersonalService ...
-func NewPersonalService(alice Alice, bob Bob) *PersonalService {
+func NewPersonalService(xmrtaker XMRTaker, xmrmaker XMRMaker) *PersonalService {
 	return &PersonalService{
-		alice: alice,
-		bob:   bob,
+		xmrtaker: xmrtaker,
+		xmrmaker: xmrmaker,
 	}
 }
 
@@ -28,7 +28,7 @@ type SetMoneroWalletFileRequest struct {
 // SetMoneroWalletFile opens the given wallet file in monero-wallet-rpc.
 // It must exist in the monero-wallet-rpc wallet-dir that was specified on its startup.
 func (s *PersonalService) SetMoneroWalletFile(_ *http.Request, req *SetMoneroWalletFileRequest, _ *interface{}) error {
-	return s.bob.SetMoneroWalletFile(req.WalletFile, req.WalletPassword)
+	return s.xmrmaker.SetMoneroWalletFile(req.WalletFile, req.WalletPassword)
 }
 
 // SetSwapTimeoutRequest ...
@@ -39,6 +39,6 @@ type SetSwapTimeoutRequest struct {
 // SetSwapTimeout ...
 func (s *PersonalService) SetSwapTimeout(_ *http.Request, req *SetSwapTimeoutRequest, _ *interface{}) error {
 	timeout := time.Second * time.Duration(req.Timeout)
-	s.alice.SetSwapTimeout(timeout)
+	s.xmrtaker.SetSwapTimeout(timeout)
 	return nil
 }

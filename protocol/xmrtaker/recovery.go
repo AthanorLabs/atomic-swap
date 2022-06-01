@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"context"
@@ -23,7 +23,7 @@ type recoveryState struct {
 	ss *swapState
 }
 
-// NewRecoveryState returns a new *bob.recoveryState,
+// NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
@@ -49,7 +49,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 	s := &swapState{
 		ctx:            ctx,
 		cancel:         cancel,
-		alice:          a,
+		xmrtaker:       a,
 		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,
@@ -80,20 +80,20 @@ type RecoveryResult struct {
 // ClaimOrRecover either claims ether or recovers monero by creating a wallet.
 // It returns a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
-	// check if Bob claimed
+	// check if XMRMaker claimed
 	skA, err := rs.ss.filterForClaim()
 	if !errors.Is(err, errNoClaimLogsFound) && err != nil {
 		return nil, err
 	}
 
-	// if Bob claimed, let's get our monero
+	// if XMRMaker claimed, let's get our monero
 	if skA != nil {
 		vkA, err := skA.View() //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
-		rs.ss.setBobKeys(skA.Public(), vkA, nil)
+		rs.ss.setXMRMakerKeys(skA.Public(), vkA, nil)
 
 		addr, err := rs.ss.claimMonero(skA)
 		if err != nil {
@@ -121,8 +121,8 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	const claimedEvent = "Claimed"
 
-	logs, err := s.alice.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{s.alice.contractAddr},
+	logs, err := s.xmrtaker.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
+		Addresses: []ethcommon.Address{s.xmrtaker.contractAddr},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
 	})
 	if err != nil {

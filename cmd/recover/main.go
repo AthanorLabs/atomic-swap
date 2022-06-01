@@ -17,8 +17,8 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/alice"
-	"github.com/noot/atomic-swap/protocol/bob"
+	"github.com/noot/atomic-swap/protocol/xmrmaker"
+	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	recovery "github.com/noot/atomic-swap/recover"
 	"github.com/noot/atomic-swap/swapfactory"
 
@@ -40,8 +40,8 @@ const (
 
 var (
 	log = logging.Logger("cmd")
-	_   = logging.SetLogLevel("alice", "debug")
-	_   = logging.SetLogLevel("bob", "debug")
+	_   = logging.SetLogLevel("xmrtaker", "debug")
+	_   = logging.SetLogLevel("xmrmaker", "debug")
 	_   = logging.SetLogLevel("common", "debug")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
@@ -108,8 +108,8 @@ func main() {
 // Recoverer is implemented by a backend which is able to recover swap funds
 type Recoverer interface {
 	WalletFromSharedSecret(secret *mcrypto.PrivateKeyInfo) (mcrypto.Address, error)
-	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*bob.RecoveryResult, error) //nolint:lll
-	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*alice.RecoveryResult, error)       //nolint:lll
+	RecoverFromXMRMakerSecretAndContract(b *xmrmaker.Instance, xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) //nolint:lll
+	RecoverFromXMRTakerSecretAndContract(a *xmrtaker.Instance, xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error)               //nolint:lll
 }
 
 type instance struct {
@@ -168,12 +168,12 @@ func (inst *instance) recover(c *cli.Context) error {
 	contractAddr := infofile.ContractAddress
 
 	if xmrmaker {
-		b, err := createBobInstance(context.Background(), c, env, cfg)
+		b, err := createXMRMakerInstance(context.Background(), c, env, cfg)
 		if err != nil {
 			return err
 		}
 
-		res, err := r.RecoverFromBobSecretAndContract(b, infofile.PrivateKeyInfo.PrivateSpendKey,
+		res, err := r.RecoverFromXMRMakerSecretAndContract(b, infofile.PrivateKeyInfo.PrivateSpendKey,
 			contractAddr, infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
@@ -192,12 +192,12 @@ func (inst *instance) recover(c *cli.Context) error {
 
 	if xmrtaker {
 		addr := ethcommon.HexToAddress(contractAddr)
-		a, err := createAliceInstance(context.Background(), c, env, cfg, addr)
+		a, err := createXMRTakerInstance(context.Background(), c, env, cfg, addr)
 		if err != nil {
 			return err
 		}
 
-		res, err := r.RecoverFromAliceSecretAndContract(a, infofile.PrivateKeyInfo.PrivateSpendKey,
+		res, err := r.RecoverFromXMRTakerSecretAndContract(a, infofile.PrivateKeyInfo.PrivateSpendKey,
 			infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
@@ -226,7 +226,7 @@ func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
+		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -242,8 +242,8 @@ func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
 }
 
-func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environment,
-	cfg common.Config, contractAddr ethcommon.Address) (*alice.Instance, error) {
+func createXMRTakerInstance(ctx context.Context, c *cli.Context, env common.Environment,
+	cfg common.Config, contractAddr ethcommon.Address) (*xmrtaker.Instance, error) {
 	var (
 		moneroEndpoint, ethEndpoint string
 	)
@@ -256,7 +256,7 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else {
-		moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		moneroEndpoint = common.DefaultXMRTakerMoneroEndpoint
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -291,7 +291,7 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		return nil, err
 	}
 
-	aliceCfg := &alice.Config{
+	xmrtakerCfg := &xmrtaker.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
@@ -305,11 +305,11 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		SwapContractAddress:  contractAddr,
 	}
 
-	return alice.NewInstance(aliceCfg)
+	return xmrtaker.NewInstance(xmrtakerCfg)
 }
 
-func createBobInstance(ctx context.Context, c *cli.Context, env common.Environment,
-	cfg common.Config) (*bob.Instance, error) {
+func createXMRMakerInstance(ctx context.Context, c *cli.Context, env common.Environment,
+	cfg common.Config) (*xmrmaker.Instance, error) {
 	var (
 		moneroEndpoint, ethEndpoint string
 	)
@@ -322,7 +322,7 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
+		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -352,7 +352,7 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 		return nil, err
 	}
 
-	bobCfg := &bob.Config{
+	xmrmakerCfg := &xmrmaker.Config{
 		Ctx:                  ctx,
 		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
@@ -365,7 +365,7 @@ func createBobInstance(ctx context.Context, c *cli.Context, env common.Environme
 		GasLimit:             uint64(c.Uint(flagGasLimit)),
 	}
 
-	b, err := bob.NewInstance(bobCfg)
+	b, err := xmrmaker.NewInstance(xmrmakerCfg)
 	if err != nil {
 		return nil, err
 	}

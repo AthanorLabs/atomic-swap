@@ -34,8 +34,8 @@ type Config struct {
 	Port        uint16
 	WsPort      uint16
 	Net         Net
-	Alice       Alice
-	Bob         Bob
+	XMRTaker    XMRTaker
+	XMRMaker    XMRMaker
 	SwapManager SwapManager
 }
 
@@ -44,16 +44,16 @@ func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
 
-	ns := NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager)
+	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.SwapManager)
 	if err := s.RegisterService(ns, "net"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewPersonalService(cfg.Alice, cfg.Bob), "personal"); err != nil {
+	if err := s.RegisterService(NewPersonalService(cfg.XMRTaker, cfg.XMRMaker), "personal"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob, cfg.Net), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil {
 		return nil, err
 	}
 
@@ -111,16 +111,16 @@ type Protocol interface {
 	GetOngoingSwapState() common.SwapState
 }
 
-// Alice ...
-type Alice interface {
+// XMRTaker ...
+type XMRTaker interface {
 	Protocol
 	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
 	Refund() (ethcommon.Hash, error)
 	SetSwapTimeout(timeout time.Duration)
 }
 
-// Bob ...
-type Bob interface {
+// XMRMaker ...
+type XMRMaker interface {
 	Protocol
 	MakeOffer(offer *types.Offer) (*types.OfferExtra, error)
 	SetMoneroWalletFile(file, password string) error
