@@ -8,8 +8,8 @@ import (
 
 // Client represents a monero-wallet-rpc client.
 type Client interface {
-	GetAccounts() (*getAccountsResponse, error)
-	GetAddress(idx uint) (*getAddressResponse, error)
+	GetAccounts() (*GetAccountsResponse, error)
+	GetAddress(idx uint) (*GetAddressResponse, error)
 	GetBalance(idx uint) (*GetBalanceResponse, error)
 	Transfer(to mcrypto.Address, accountIdx, amount uint) (*TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint) (*SweepAllResponse, error)
@@ -33,7 +33,7 @@ func NewClient(endpoint string) *client { //nolint:revive
 	}
 }
 
-func (c *client) GetAccounts() (*getAccountsResponse, error) {
+func (c *client) GetAccounts() (*GetAccountsResponse, error) {
 	return c.callGetAccounts()
 }
 
@@ -63,7 +63,7 @@ func (c *client) GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, addr
 	return c.callGenerateFromKeys(nil, vk, address, filename, password)
 }
 
-func (c *client) GetAddress(idx uint) (*getAddressResponse, error) {
+func (c *client) GetAddress(idx uint) (*GetAddressResponse, error) {
 	return c.callGetAddress(idx)
 }
 

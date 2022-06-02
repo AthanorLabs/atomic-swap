@@ -91,3 +91,15 @@ make test-integration
 ```
 
 to run integration tests which spin up 3 local nodes and execute calls between them.
+
+## Mocks
+
+The unit tests use mocks. You need to install mockgen to generate new mocks:
+```bash
+go install github.com/golang/mock/mockgen@v1.6.0
+```
+
+Then, if you update an interface, generate new mocks using:
+```bash
+go generate -run mockgen ./...
+```

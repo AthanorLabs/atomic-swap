@@ -17,9 +17,18 @@ import (
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
+
+	logging "github.com/ipfs/go-log"
+)
+
+const (
+	// in total, we will wait up to 1 hour for a transaction to be included
+	maxRetries           = 360
+	receiptSleepDuration = time.Second * 10
 )
 
 var (
+	log                    = logging.Logger("protocol/backend")
 	defaultTimeoutDuration = time.Hour * 24
 )
 
@@ -36,6 +45,10 @@ type Backend interface {
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]types.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error)
 
+	// helpers
+	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error)
+	NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error)
+
 	// getters
 	Ctx() context.Context
 	Env() common.Environment
@@ -46,7 +59,7 @@ type Backend interface {
 	EthAddress() ethcommon.Address
 	Contract() *swapfactory.SwapFactory
 	ContractAddr() ethcommon.Address
-	EthClient() *ethclient.Client
+	//EthClient() *ethclient.Client
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
 
@@ -233,4 +246,30 @@ func (b *backend) TxOpts() (*bind.TransactOpts, error) {
 	txOpts.GasPrice = b.gasPrice
 	txOpts.GasLimit = b.gasLimit
 	return txOpts, nil
+}
+
+// WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
+func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error) {
+	for i := 0; i < maxRetries; i++ {
+		receipt, err := b.ethClient.TransactionReceipt(ctx, txHash)
+		if err != nil {
+			log.Infof("waiting for transaction to be included in chain: txHash=%s", txHash)
+			time.Sleep(receiptSleepDuration)
+			continue
+		}
+
+		log.Infof("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
+			txHash,
+			receipt.BlockHash,
+			receipt.BlockNumber,
+			receipt.CumulativeGasUsed,
+		)
+		return receipt, nil
+	}
+
+	return nil, errReceiptTimeOut
+}
+
+func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {
+	return swapfactory.NewSwapFactory(addr, b.ethClient)
 }

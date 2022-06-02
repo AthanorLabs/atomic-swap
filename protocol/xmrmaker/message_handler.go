@@ -150,7 +150,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if err := checkContractCode(s.ctx, s.backend.EthClient(), contractAddr); err != nil {
+	if err := checkContractCode(s.ctx, s.backend, contractAddr); err != nil {
 		return nil, err
 	}
 

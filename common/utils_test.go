@@ -27,37 +27,37 @@ func TestReverse(t *testing.T) {
 	require.Equal(t, expected, res)
 }
 
-func TestWaitForReceipt(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// func TestWaitForReceipt(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	ec, err := ethclient.Dial(DefaultEthEndpoint)
-	require.NoError(t, err)
+// 	ec, err := ethclient.Dial(DefaultEthEndpoint)
+// 	require.NoError(t, err)
 
-	pk, err := ethcrypto.HexToECDSA(DefaultPrivKeyXMRTaker)
-	require.NoError(t, err)
+// 	pk, err := ethcrypto.HexToECDSA(DefaultPrivKeyXMRTaker)
+// 	require.NoError(t, err)
 
-	nonce, err := ec.PendingNonceAt(ctx, ethcommon.HexToAddress(defaultXMRTakerAddress))
-	require.NoError(t, err)
+// 	nonce, err := ec.PendingNonceAt(ctx, ethcommon.HexToAddress(defaultXMRTakerAddress))
+// 	require.NoError(t, err)
 
-	to := ethcommon.Address{}
-	txInner := &ethtypes.LegacyTx{
-		Nonce: nonce,
-		To:    &to,
-		Value: big.NewInt(99),
-		Gas:   21000,
-	}
+// 	to := ethcommon.Address{}
+// 	txInner := &ethtypes.LegacyTx{
+// 		Nonce: nonce,
+// 		To:    &to,
+// 		Value: big.NewInt(99),
+// 		Gas:   21000,
+// 	}
 
-	tx, err := ethtypes.SignNewTx(pk,
-		ethtypes.LatestSignerForChainID(big.NewInt(GanacheChainID)),
-		txInner,
-	)
-	require.NoError(t, err)
+// 	tx, err := ethtypes.SignNewTx(pk,
+// 		ethtypes.LatestSignerForChainID(big.NewInt(GanacheChainID)),
+// 		txInner,
+// 	)
+// 	require.NoError(t, err)
 
-	err = ec.SendTransaction(ctx, tx)
-	require.NoError(t, err)
+// 	err = ec.SendTransaction(ctx, tx)
+// 	require.NoError(t, err)
 
-	receipt, err := WaitForReceipt(ctx, ec, tx.Hash())
-	require.NoError(t, err)
-	require.Equal(t, tx.Hash(), receipt.TxHash)
-}
+// 	receipt, err := WaitForReceipt(ctx, ec, tx.Hash())
+// 	require.NoError(t, err)
+// 	require.Equal(t, tx.Hash(), receipt.TxHash)
+// }

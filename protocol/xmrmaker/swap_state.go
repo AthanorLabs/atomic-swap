@@ -389,7 +389,7 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 	var err error
 	// TODO: this overrides the backend contract, need to be careful
 	s.contractAddr = address
-	s.contract, err = swapfactory.NewSwapFactory(address, s.backend.EthClient())
+	s.contract, err = s.backend.NewSwapFactory(address)
 	return err
 }
 
@@ -402,7 +402,7 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
-	receipt, err := common.WaitForReceipt(s.ctx, s.backend.EthClient(), txHash)
+	receipt, err := s.backend.WaitForReceipt(s.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
 	}
@@ -498,7 +498,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	addr := s.backend.EthAddress()
 
-	balance, err := s.backend.EthClient().BalanceAt(s.ctx, addr, nil)
+	balance, err := s.backend.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -514,11 +514,11 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	log.Infof("sent claim tx, tx hash=%s", tx.Hash())
 
-	if _, err = common.WaitForReceipt(s.ctx, s.backend.EthClient(), tx.Hash()); err != nil {
+	if _, err = s.backend.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to check claim transaction receipt: %w", err)
 	}
 
-	balance, err = s.backend.EthClient().BalanceAt(s.ctx, addr, nil)
+	balance, err = s.backend.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

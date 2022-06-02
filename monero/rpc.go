@@ -210,18 +210,18 @@ func (c *client) callGetBalance(idx uint) (*GetBalanceResponse, error) {
 	return res, nil
 }
 
-type getAddressRequest struct {
+type GetAddressRequest struct {
 	AccountIndex uint `json:"account_index"`
 }
 
-type getAddressResponse struct {
+type GetAddressResponse struct {
 	Address string `json:"address"`
 }
 
-func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
+func (c *client) callGetAddress(idx uint) (*GetAddressResponse, error) {
 	const method = "get_address"
 
-	req := &getAddressRequest{
+	req := &GetAddressRequest{
 		AccountIndex: idx,
 	}
 
@@ -239,7 +239,7 @@ func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
 		return nil, resp.Error
 	}
 
-	var res *getAddressResponse
+	var res *GetAddressResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return nil, err
 	}
@@ -247,11 +247,11 @@ func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
 	return res, nil
 }
 
-type getAccountsResponse struct {
+type GetAccountsResponse struct {
 	SubaddressAccounts []map[string]interface{} `json:"subaddress_accounts"`
 }
 
-func (c *client) callGetAccounts() (*getAccountsResponse, error) {
+func (c *client) callGetAccounts() (*GetAccountsResponse, error) {
 	const method = "get_accounts"
 
 	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
@@ -263,7 +263,7 @@ func (c *client) callGetAccounts() (*getAccountsResponse, error) {
 		return nil, resp.Error
 	}
 
-	var res *getAccountsResponse
+	var res *GetAccountsResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return nil, err
 	}

@@ -7,4 +7,5 @@ import (
 var (
 	errMustProvideDaemonEndpoint = errors.New("environment is development, must provide monero daemon endpoint")
 	errNilSwapContractOrAddress  = errors.New("must provide swap contract and address")
+	errReceiptTimeOut            = errors.New("failed to get receipt, timed out")
 )
