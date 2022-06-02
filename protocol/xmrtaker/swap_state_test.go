@@ -236,7 +236,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, message.NotifyRefundType, s.Net().(*mockNet).msg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.EthClient().BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }

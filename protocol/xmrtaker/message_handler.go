@@ -332,7 +332,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 // handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-	receipt, err := common.WaitForReceipt(s.ctx, s.EthClient(), ethcommon.HexToHash(txHash))
+	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
 	}

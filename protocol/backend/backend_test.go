@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/noot/atomic-swap/common"
+
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -18,10 +20,10 @@ func TestWaitForReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ec, err := ethclient.Dial(DefaultEthEndpoint)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk, err := ethcrypto.HexToECDSA(DefaultPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 
 	nonce, err := ec.PendingNonceAt(ctx, ethcommon.HexToAddress(defaultXMRTakerAddress))
@@ -36,7 +38,7 @@ func TestWaitForReceipt(t *testing.T) {
 	}
 
 	tx, err := ethtypes.SignNewTx(pk,
-		ethtypes.LatestSignerForChainID(big.NewInt(GanacheChainID)),
+		ethtypes.LatestSignerForChainID(big.NewInt(common.GanacheChainID)),
 		txInner,
 	)
 	require.NoError(t, err)
@@ -44,7 +46,11 @@ func TestWaitForReceipt(t *testing.T) {
 	err = ec.SendTransaction(ctx, tx)
 	require.NoError(t, err)
 
-	receipt, err := WaitForReceipt(ctx, ec, tx.Hash())
+	b := &backend{
+		ethClient: ec,
+	}
+
+	receipt, err := b.WaitForReceipt(ctx, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, tx.Hash(), receipt.TxHash)
 }

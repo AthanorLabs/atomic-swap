@@ -394,7 +394,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())
-	receipt, err := common.WaitForReceipt(s.ctx, s.EthClient(), tx.Hash())
+	receipt, err := s.WaitForReceipt(s.ctx, tx.Hash())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
 	}
@@ -446,7 +446,7 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	if _, err := common.WaitForReceipt(s.ctx, s.EthClient(), tx.Hash()); err != nil {
+	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
 		return fmt.Errorf("failed to call is_ready in swap contract: %w", err)
 	}
 
@@ -469,7 +469,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	if _, err := common.WaitForReceipt(s.ctx, s.EthClient(), tx.Hash()); err != nil {
+	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
 	}
 

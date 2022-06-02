@@ -5,12 +5,6 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-
-	logging "github.com/ipfs/go-log"
-)
-
-var (
-	log = logging.Logger("common")
 )
 
 // Reverse reverses the byte slice and returns it.

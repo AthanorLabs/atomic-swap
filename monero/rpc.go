@@ -210,10 +210,12 @@ func (c *client) callGetBalance(idx uint) (*GetBalanceResponse, error) {
 	return res, nil
 }
 
+// GetAddressRequest ...
 type GetAddressRequest struct {
 	AccountIndex uint `json:"account_index"`
 }
 
+// GetAddressResponse ...
 type GetAddressResponse struct {
 	Address string `json:"address"`
 }
@@ -247,6 +249,7 @@ func (c *client) callGetAddress(idx uint) (*GetAddressResponse, error) {
 	return res, nil
 }
 
+// GetAccountsResponse ...
 type GetAccountsResponse struct {
 	SubaddressAccounts []map[string]interface{} `json:"subaddress_accounts"`
 }
