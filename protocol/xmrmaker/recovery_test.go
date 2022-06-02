@@ -21,9 +21,9 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 
 	duration, err := time.ParseDuration("1440m")
 	require.NoError(t, err)
-	addr, _, _ := newSwap(t, inst, s, [32]byte{}, sr, big.NewInt(1), duration)
+	newSwap(t, s, [32]byte{}, sr, big.NewInt(1), duration)
 
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), addr,
+	rs, err := NewRecoveryState(inst.backend, "/tmp/test-infofile", s.privkeys.SpendKey(), s.backend.ContractAddr(),
 		s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 
@@ -53,7 +53,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	rs := newTestRecoveryState(t)
 
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
-	addr, err := rs.ss.xmrmaker.client.GetAddress(0)
+	addr, err := rs.ss.backend.GetAddress(0)
 	require.NoError(t, err)
 	_ = daemonClient.GenerateBlocks(addr.Address, 121)
 

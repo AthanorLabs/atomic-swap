@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/noot/atomic-swap/protocol/backend"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -19,9 +19,9 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr ethcommon.Address,
+func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.PrivateSpendKey, contractAddr ethcommon.Address,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
-	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
+	txOpts, err := b.TxOpts()
 	if err != nil {
 		return nil, err
 	}
@@ -33,24 +33,24 @@ func NewRecoveryState(b *Instance, secret *mcrypto.PrivateSpendKey, contractAddr
 
 	pubkp := kp.PublicKeyPair()
 
-	txOpts.GasPrice = b.gasPrice
-	txOpts.GasLimit = b.gasLimit
+	// txOpts.GasPrice = b.gasPrice
+	// txOpts.GasLimit = b.gasLimit
 
 	var sc [32]byte
 	copy(sc[:], secret.Bytes())
 
-	ctx, cancel := context.WithCancel(b.ctx)
+	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:            ctx,
 		cancel:         cancel,
-		xmrmaker:       b,
+		backend:        b,
 		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		contractSwap:   contractSwap,
-		infofile:       pcommon.GetSwapRecoveryFilepath(b.basepath),
+		infofile:       pcommon.GetSwapRecoveryFilepath(basepath),
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

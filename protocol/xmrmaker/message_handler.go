@@ -150,7 +150,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if err := checkContractCode(s.ctx, s.xmrmaker.ethClient, contractAddr); err != nil {
+	if err := checkContractCode(s.ctx, s.backend.EthClient(), contractAddr); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +208,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 			s.clearNextExpectedMessage(types.CompletedSuccess)
 
 			// send *message.NotifyClaimed
-			if err := s.xmrmaker.net.SendSwapMessage(&message.NotifyClaimed{
+			if err := s.backend.SendSwapMessage(&message.NotifyClaimed{
 				TxHash: txHash.String(),
 			}); err != nil {
 				log.Errorf("failed to send NotifyClaimed message: err=%s", err)
@@ -244,7 +244,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 }
 
 func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
-	receipt, err := s.xmrmaker.ethClient.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
+	receipt, err := s.backend.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err
 	}
