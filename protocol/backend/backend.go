@@ -31,6 +31,7 @@ type Backend interface {
 	net.MessageSender
 
 	// ethclient methods
+	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]types.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error)
@@ -46,6 +47,11 @@ type Backend interface {
 	ContractAddr() ethcommon.Address
 	EthClient() *ethclient.Client
 	Net() net.MessageSender
+	SwapTimeout() time.Duration
+
+	// setters
+	SetSwapTimeout(timeout time.Duration)
+	SetGasPrice(uint64)
 }
 
 type backend struct {
@@ -194,9 +200,23 @@ func (b *backend) SwapManager() *swap.Manager {
 	return b.swapManager
 }
 
+func (b *backend) SwapTimeout() time.Duration {
+	return b.swapTimeout
+}
+
 // SetGasPrice sets the ethereum gas price for the instance to use (in wei).
 func (b *backend) SetGasPrice(gasPrice uint64) {
 	b.gasPrice = big.NewInt(0).SetUint64(gasPrice)
+}
+
+// SetSwapTimeout sets the duration between the swap being initiated on-chain and the timeout t0,
+// and the duration between t0 and t1.
+func (b *backend) SetSwapTimeout(timeout time.Duration) {
+	b.swapTimeout = timeout
+}
+
+func (b *backend) BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error) {
+	return b.ethClient.BalanceAt(ctx, account, blockNumber)
 }
 
 func (b *backend) CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error) {

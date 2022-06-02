@@ -457,14 +457,20 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
+}
 
+func TestSwapState_Exit_Aborted_1(t *testing.T) {
+	_, s := newTestInstance(t)
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
-	err = s.Exit()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
+}
 
+func TestSwapState_Exit_Aborted_2(t *testing.T) {
+	_, s := newTestInstance(t)
 	s.nextExpectedMessage = nil
-	err = s.Exit()
+	err := s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }

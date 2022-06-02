@@ -11,8 +11,8 @@ import (
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
-	inst, s := newTestInstance(t)
-	inst.swapTimeout = time.Second * 10
+	_, s := newTestInstance(t)
+	s.SetSwapTimeout(time.Second * 10)
 	akp, err := generateKeys()
 	require.NoError(t, err)
 
@@ -22,12 +22,12 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	s.dleqProof = akp.DLEqProof
 
 	s.setXMRMakerKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
-	s.xmrmakerAddress = inst.callOpts.From
+	s.xmrmakerAddress = s.EthAddress()
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
+	rs, err := NewRecoveryState(s, "/tmp/test-infofile", s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 	return rs
 }
@@ -43,7 +43,7 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.xmrtaker.contract.Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
+	_, err = rs.ss.Contract().Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 
 	t.Log("XMRMaker claimed ETH...")
@@ -77,7 +77,7 @@ func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
 	err = rpcClient.Call(&result, "evm_snapshot")
 	require.NoError(t, err)
 
-	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Seconds()*2+360)
+	err = rpcClient.Call(nil, "evm_increaseTime", rs.ss.SwapTimeout().Seconds()*2+360)
 	require.NoError(t, err)
 
 	defer func() {

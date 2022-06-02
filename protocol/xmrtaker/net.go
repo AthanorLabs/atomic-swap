@@ -35,7 +35,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return errProtocolAlreadyInProgress
 	}
 
-	balance, err := a.ethClient.BalanceAt(a.ctx, a.callOpts.From, nil)
+	balance, err := a.backend.BalanceAt(a.backend.Ctx(), a.backend.EthAddress(), nil)
 	if err != nil {
 		return err
 	}
@@ -45,11 +45,16 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return errBalanceTooLow
 	}
 
-	a.swapState, err = newSwapState(a, pcommon.GetSwapInfoFilepath(a.basepath), providesAmount,
-		receivedAmount, exchangeRate)
+	a.swapState, err = newSwapState(a.backend, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack, a.walletAddress,
+		providesAmount, receivedAmount, exchangeRate)
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		<-a.swapState.done
+		a.swapState = nil
+	}()
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.info.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))

@@ -1,25 +1,15 @@
 package xmrtaker
 
 import (
-	"context"
-	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 	"sync"
-	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -29,75 +19,36 @@ const (
 )
 
 var (
-	log                    = logging.Logger("xmrtaker")
-	defaultTimeoutDuration = time.Hour * 24
+	log = logging.Logger("xmrtaker")
 )
 
 // Instance implements the functionality that will be used by a user who owns ETH
 // and wishes to swap for XMR.
 type Instance struct {
-	backend backend.Backend
-	//ctx      context.Context
-	//env      common.Environment
+	backend  backend.Backend
 	basepath string
 
-	//client                     monero.Client
 	walletFile, walletPassword string
 	walletAddress              mcrypto.Address
 	transferBack               bool // transfer xmr back to original account
 
-	// ethPrivKey  *ecdsa.PrivateKey
-	// ethClient   *ethclient.Client
-	// callOpts    *bind.CallOpts
-	// chainID     *big.Int
-	// gasPrice    *big.Int
-	// gasLimit    uint64
-	// swapTimeout time.Duration
-
-	//net net.MessageSender
-
 	// non-nil if a swap is currently happening, nil otherwise
 	swapMu    sync.Mutex
 	swapState *swapState
-
-	//swapManager  *swap.Manager
-	// contract     *swapfactory.SwapFactory
-	// contractAddr ethcommon.Address
 }
 
 // Config contains the configuration values for a new XMRTaker instance.
 type Config struct {
-	Backend backend.Backend
-	//Ctx                                    context.Context
-	Basepath string
-	//MoneroWalletEndpoint                   string
+	Backend                                backend.Backend
+	Basepath                               string
 	MoneroWalletFile, MoneroWalletPassword string
 	TransferBack                           bool
-	// EthereumClient                         *ethclient.Client
-	// EthereumPrivateKey                     *ecdsa.PrivateKey
-	// SwapContract                           *swapfactory.SwapFactory
-	// SwapContractAddress                    ethcommon.Address
-	// Environment                            common.Environment
-	// ChainID                                *big.Int
-	// GasPrice                               *big.Int
-	// GasLimit                               uint64
-	// SwapManager                            *swap.Manager
 }
 
 // NewInstance returns a new instance of XMRTaker.
 // It accepts an endpoint to a monero-wallet-rpc instance where XMRTaker will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
-	// if cfg.Environment == common.Development {
-	// 	defaultTimeoutDuration = time.Minute
-	// } else if cfg.Environment == common.Stagenet {
-	// 	defaultTimeoutDuration = time.Hour
-	// }
-
-	// pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
-
-	// walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
-
 	var (
 		address mcrypto.Address
 		err     error
@@ -110,31 +61,13 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		}
 	}
 
-	// if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
-	// 	return nil, errNilSwapContractOrAddress
-	// }
-
 	// TODO: check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured
 	return &Instance{
-		backend: cfg.Backend,
-		//ctx:            cfg.Ctx,
-		basepath: cfg.Basepath,
-		// env:            cfg.Environment,
-		// ethPrivKey:     cfg.EthereumPrivateKey,
-		// ethClient:      cfg.EthereumClient,
-		// client:         walletClient,
+		backend:        cfg.Backend,
+		basepath:       cfg.Basepath,
 		walletFile:     cfg.MoneroWalletFile,
 		walletPassword: cfg.MoneroWalletPassword,
 		walletAddress:  address,
-		// callOpts: &bind.CallOpts{
-		// 	From:    crypto.PubkeyToAddress(*pub),
-		// 	Context: cfg.Ctx,
-		// },
-		// chainID:      cfg.ChainID,
-		// swapManager:  cfg.SwapManager,
-		// contract:     cfg.SwapContract,
-		// contractAddr: cfg.SwapContractAddress,
-		// swapTimeout:  defaultTimeoutDuration,
 	}, nil
 }
 
@@ -169,16 +102,6 @@ func getAddress(walletClient monero.Client, file, password string) (mcrypto.Addr
 	return mcrypto.Address(address.Address), nil
 }
 
-// // SetMessageSender sets the Instance's net.MessageSender interface.
-// func (a *Instance) SetMessageSender(n net.MessageSender) {
-// 	a.net = n
-// }
-
-// SetGasPrice sets the ethereum gas price for the instance to use (in wei).
-func (a *Instance) SetGasPrice(gasPrice uint64) {
-	a.gasPrice = big.NewInt(0).SetUint64(gasPrice)
-}
-
 // Refund is called by the RPC function swap_refund.
 // If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
 func (a *Instance) Refund() (ethcommon.Hash, error) {
@@ -195,10 +118,4 @@ func (a *Instance) Refund() (ethcommon.Hash, error) {
 // GetOngoingSwapState ...
 func (a *Instance) GetOngoingSwapState() common.SwapState {
 	return a.swapState
-}
-
-// SetSwapTimeout sets the duration between the swap being initiated on-chain and the timeout t0,
-// and the duration between t0 and t1.
-func (a *Instance) SetSwapTimeout(timeout time.Duration) {
-	a.swapTimeout = timeout
 }

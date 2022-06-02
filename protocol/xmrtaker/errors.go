@@ -25,4 +25,5 @@ var (
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
 	errBalanceTooLow             = errors.New("eth balance lower than amount to be provided")
 	errNoSwapContractSet         = errors.New("no swap contract found")
+	errMustProvideWalletAddress  = errors.New("must provide wallet address if transfer back is set")
 )

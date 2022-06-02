@@ -175,23 +175,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
-			if s == nil {
-				log.Error("swap state is nil")
-				return
-			}
-
-			if s.xmrtaker == nil {
-				log.Error("s.xmrtaker is nil")
-				return
-			}
-
-			if s.xmrtaker.net == nil {
-				log.Error("s.xmrtaker.net is nil")
-				return
-			}
-
 			// send NotifyRefund msg
-			if err := s.xmrtaker.net.SendSwapMessage(&message.NotifyRefund{
+			if err := s.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
 			}); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
@@ -205,7 +190,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.setNextExpectedMessage(&message.NotifyXMRLock{})
 
 	out := &message.NotifyETHLocked{
-		Address:        s.xmrtaker.contractAddr.String(),
+		Address:        s.ContractAddr().String(),
 		TxHash:         txHash.String(),
 		ContractSwapID: s.contractSwapID,
 		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
@@ -224,23 +209,23 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
 	kp := mcrypto.NewPublicKeyPair(sk, vk.Public())
 
-	if msg.Address != string(kp.Address(s.xmrtaker.env)) {
+	if msg.Address != string(kp.Address(s.Env())) {
 		return nil, fmt.Errorf("address received in message does not match expected address")
 	}
 
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	if err := s.xmrtaker.client.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.xmrtaker.env), walletName, ""); err != nil {
+	if err := s.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.Env()), walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
-	if s.xmrtaker.env != common.Development {
+	if s.Env() != common.Development {
 		log.Infof("waiting for new blocks...")
 		// wait for 2 new blocks, otherwise balance might be 0
 		// TODO: check transaction hash
-		height, err := monero.WaitForBlocks(s.xmrtaker.client, 2)
+		height, err := monero.WaitForBlocks(s.Backend, 2)
 		if err != nil {
 			return nil, err
 		}
@@ -250,11 +235,11 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 
 	log.Debug("refreshing client...")
 
-	if err := s.xmrtaker.client.Refresh(); err != nil {
+	if err := s.Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh client: %w", err)
 	}
 
-	accounts, err := s.xmrtaker.client.GetAccounts()
+	accounts, err := s.GetAccounts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %w", err)
 	}
@@ -269,8 +254,8 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			panic("address is not a string!")
 		}
 
-		if mcrypto.Address(addr) == kp.Address(s.xmrtaker.env) {
-			balance, err = s.xmrtaker.client.GetBalance(uint(i))
+		if mcrypto.Address(addr) == kp.Address(s.Env()) {
+			balance, err = s.GetBalance(uint(i))
 			if err != nil {
 				return nil, fmt.Errorf("failed to get balance: %w", err)
 			}
@@ -280,10 +265,10 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	}
 
 	if balance == nil {
-		return nil, fmt.Errorf("failed to find account with address %s", kp.Address(s.xmrtaker.env))
+		return nil, fmt.Errorf("failed to find account with address %s", kp.Address(s.Env()))
 	}
 
-	log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.xmrtaker.env), balance.Balance)
+	log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.Env()), balance.Balance)
 
 	// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
 	if balance.Balance < float64(s.receivedAmountInPiconero()) {
@@ -291,7 +276,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			balance.Balance, float64(s.receivedAmountInPiconero()))
 	}
 
-	if err := s.xmrtaker.client.CloseWallet(); err != nil {
+	if err := s.CloseWallet(); err != nil {
 		return nil, fmt.Errorf("failed to close wallet: %w", err)
 	}
 
@@ -328,7 +313,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			s.clearNextExpectedMessage(types.CompletedRefund) // TODO: duplicate?
 
 			// send NotifyRefund msg
-			if err = s.xmrtaker.net.SendSwapMessage(&message.NotifyRefund{
+			if err = s.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
 			}); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
@@ -347,7 +332,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 // handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-	receipt, err := common.WaitForReceipt(s.ctx, s.xmrtaker.ethClient, ethcommon.HexToHash(txHash))
+	receipt, err := common.WaitForReceipt(s.ctx, s.EthClient(), ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
 	}
