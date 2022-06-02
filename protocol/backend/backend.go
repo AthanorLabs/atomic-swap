@@ -36,9 +36,10 @@ type Backend interface {
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]types.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error)
 
-	// additional
+	// getters
 	Ctx() context.Context
 	Env() common.Environment
+	ChainID() *big.Int
 	CallOpts() *bind.CallOpts
 	TxOpts() (*bind.TransactOpts, error)
 	SwapManager() *swap.Manager
@@ -113,20 +114,10 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	//pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
 	addr := common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
 
 	// monero-wallet-rpc client
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
-
-	// // open XMRMaker's XMR wallet
-	// if cfg.WalletFile != "" {
-	// 	if err := walletClient.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
-	// 		return nil, err
-	// 	}
-	// } else {
-	// 	log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
-	// }
 
 	// this is only used in the monero development environment to generate new blocks
 	var daemonClient monero.DaemonClient
@@ -139,15 +130,12 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}
 
 	return &backend{
-		ctx: cfg.Ctx,
-		//basepath:       cfg.Basepath,
+		ctx:          cfg.Ctx,
 		env:          cfg.Environment,
 		Client:       walletClient,
 		DaemonClient: daemonClient,
-		//walletFile:     cfg.WalletFile,
-		//walletPassword: cfg.WalletPassword,
-		ethClient:  cfg.EthereumClient,
-		ethPrivKey: cfg.EthereumPrivateKey,
+		ethClient:    cfg.EthereumClient,
+		ethPrivKey:   cfg.EthereumPrivateKey,
 		callOpts: &bind.CallOpts{
 			From:    addr,
 			Context: cfg.Ctx,
@@ -166,6 +154,10 @@ func NewBackend(cfg *Config) (Backend, error) {
 
 func (b *backend) CallOpts() *bind.CallOpts {
 	return b.callOpts
+}
+
+func (b *backend) ChainID() *big.Int {
+	return b.chainID
 }
 
 func (b *backend) Contract() *swapfactory.SwapFactory {

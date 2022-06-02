@@ -30,13 +30,13 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Ctx         context.Context
-	Port        uint16
-	WsPort      uint16
-	Net         Net
-	XMRTaker    XMRTaker
-	XMRMaker    XMRMaker
-	SwapManager SwapManager
+	Ctx             context.Context
+	Port            uint16
+	WsPort          uint16
+	Net             Net
+	XMRTaker        XMRTaker
+	XMRMaker        XMRMaker
+	ProtocolBackend ProtocolBackend
 }
 
 // NewServer ...
@@ -44,22 +44,22 @@ func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
 
-	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.SwapManager)
+	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager())
 	if err := s.RegisterService(ns, "net"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewPersonalService(cfg.XMRTaker, cfg.XMRMaker), "personal"); err != nil {
+	if err := s.RegisterService(NewPersonalService(cfg.XMRMaker, cfg.ProtocolBackend), "personal"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil {
 		return nil, err
 	}
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, ns),
+		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -107,8 +107,13 @@ func (s *Server) Start() <-chan error {
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
 	Provides() types.ProvidesCoin
-	SetGasPrice(gasPrice uint64)
 	GetOngoingSwapState() common.SwapState
+}
+
+type ProtocolBackend interface {
+	SetGasPrice(uint64)
+	SetSwapTimeout(timeout time.Duration)
+	SwapManager() *swap.Manager
 }
 
 // XMRTaker ...
@@ -116,7 +121,6 @@ type XMRTaker interface {
 	Protocol
 	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
 	Refund() (ethcommon.Hash, error)
-	SetSwapTimeout(timeout time.Duration)
 }
 
 // XMRMaker ...

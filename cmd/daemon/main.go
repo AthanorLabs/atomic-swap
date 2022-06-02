@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/noot/atomic-swap/cmd/utils"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net"
+	"github.com/noot/atomic-swap/protocol/backend"
 	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/protocol/xmrmaker"
 	"github.com/noot/atomic-swap/protocol/xmrtaker"
@@ -184,13 +186,11 @@ func main() {
 
 type xmrtakerHandler interface {
 	rpc.XMRTaker
-	SetMessageSender(net.MessageSender)
 }
 
 type xmrmakerHandler interface {
 	net.Handler
 	rpc.XMRMaker
-	SetMessageSender(net.MessageSender)
 }
 
 type daemon struct {
@@ -263,13 +263,6 @@ func (d *daemon) make(c *cli.Context) error {
 		chainID = cfg.EthereumChainID
 	}
 
-	sm := swap.NewManager()
-
-	a, b, err := getProtocolInstances(d.ctx, c, env, cfg, chainID, devXMRMaker, sm)
-	if err != nil {
-		return err
-	}
-
 	var bootnodes []string
 	if c.String(flagBootnodes) != "" {
 		bootnodes = strings.Split(c.String(flagBootnodes), ",")
@@ -312,7 +305,6 @@ func (d *daemon) make(c *cli.Context) error {
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   bootnodes,
-		Handler:     b, // handler handles initiated ("taken") swaps
 	}
 
 	host, err := net.NewHost(netCfg)
@@ -320,9 +312,20 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	// connect network to protocol handlers
-	a.SetMessageSender(host)
-	b.SetMessageSender(host)
+	sm := swap.NewManager()
+	backend, err := newBackend(d.ctx, c, env, cfg, chainID, devXMRMaker, sm, host)
+	if err != nil {
+		return err
+	}
+
+	a, b, err := getProtocolInstances(c, cfg, backend, devXMRMaker)
+	if err != nil {
+		return err
+	}
+
+	// connect network to protocol handler
+	// handler handles initiated ("taken") swap
+	host.SetHandler(b)
 
 	if err = host.Start(); err != nil {
 		return err
@@ -352,13 +355,13 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 
 	rpcCfg := &rpc.Config{
-		Ctx:         d.ctx,
-		Port:        rpcPort,
-		WsPort:      wsPort,
-		Net:         host,
-		XMRTaker:    a,
-		XMRMaker:    b,
-		SwapManager: sm,
+		Ctx:             d.ctx,
+		Port:            rpcPort,
+		WsPort:          wsPort,
+		Net:             host,
+		XMRTaker:        a,
+		XMRMaker:        b,
+		ProtocolBackend: backend,
 	}
 
 	s, err := rpc.NewServer(rpcCfg)
@@ -384,8 +387,8 @@ func (d *daemon) make(c *cli.Context) error {
 	return nil
 }
 
-func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
-	chainID int64, devXMRMaker bool, sm *swap.Manager) (a xmrtakerHandler, b xmrmakerHandler, err error) {
+func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
+	chainID int64, devXMRMaker bool, sm *swap.Manager, net net.Host) (backend.Backend, error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
@@ -406,7 +409,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 
 	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devXMRMaker)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if c.String(flagMoneroDaemonEndpoint) != "" {
@@ -431,12 +434,12 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 
 	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	ec, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var contract *swapfactory.SwapFactory
@@ -446,21 +449,14 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
 			big.NewInt(chainID), pk, ec)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	walletFile := c.String("wallet-file")
-
-	// empty password is ok
-	walletPassword := c.String("wallet-password")
-
-	xmrtakerCfg := &xmrtaker.Config{
+	bcfg := &backend.Config{
 		Ctx:                  ctx,
-		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroWalletFile:     walletFile,
-		MoneroWalletPassword: walletPassword,
+		MoneroDaemonEndpoint: daemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
@@ -470,38 +466,52 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		SwapManager:          sm,
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
+	}
+
+	b, err := backend.NewBackend(bcfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make backend: %w", err)
+	}
+
+	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
+		moneroEndpoint,
+		ethEndpoint,
+	)
+
+	return b, nil
+}
+
+func getProtocolInstances(c *cli.Context, cfg common.Config,
+	b backend.Backend, devXMRMaker bool) (xmrtakerHandler, xmrmakerHandler, error) {
+	walletFile := c.String("wallet-file")
+
+	// empty password is ok
+	walletPassword := c.String("wallet-password")
+
+	xmrtakerCfg := &xmrtaker.Config{
+		Backend:              b,
+		Basepath:             cfg.Basepath,
+		MoneroWalletFile:     walletFile,
+		MoneroWalletPassword: walletPassword,
 		TransferBack:         c.Bool(flagTransferBack),
 	}
 
-	a, err = xmrtaker.NewInstance(xmrtakerCfg)
+	xmrtaker, err := xmrtaker.NewInstance(xmrtakerCfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	xmrmakerCfg := &xmrmaker.Config{
-		Ctx:                  ctx,
-		Basepath:             cfg.Basepath,
-		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroDaemonEndpoint: daemonEndpoint,
-		WalletFile:           walletFile,
-		WalletPassword:       walletPassword,
-		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
-		Environment:          env,
-		ChainID:              big.NewInt(chainID),
-		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint(flagGasLimit)),
-		SwapManager:          sm,
+		Backend:        b,
+		Basepath:       cfg.Basepath,
+		WalletFile:     walletFile,
+		WalletPassword: walletPassword,
 	}
 
-	b, err = xmrmaker.NewInstance(xmrmakerCfg)
+	xmrmaker, err := xmrmaker.NewInstance(xmrmakerCfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	log.Infof("created swap protocol module with monero endpoint %s and ethereum endpoint %s",
-		moneroEndpoint,
-		ethEndpoint,
-	)
-	return a, b, nil
+	return xmrtaker, xmrmaker, nil
 }

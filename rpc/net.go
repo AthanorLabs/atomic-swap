@@ -235,15 +235,3 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.O
 
 	return o.GetID().String(), offerExtra, nil
 }
-
-// SetGasPriceRequest ...
-type SetGasPriceRequest struct {
-	GasPrice uint64
-}
-
-// SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
-func (s *NetService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
-	s.xmrtaker.SetGasPrice(req.GasPrice)
-	s.xmrmaker.SetGasPrice(req.GasPrice)
-	return nil
-}

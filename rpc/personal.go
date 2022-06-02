@@ -7,15 +7,15 @@ import (
 
 // PersonalService handles private keys and wallets.
 type PersonalService struct {
-	xmrtaker XMRTaker
 	xmrmaker XMRMaker
+	pb       ProtocolBackend
 }
 
 // NewPersonalService ...
-func NewPersonalService(xmrtaker XMRTaker, xmrmaker XMRMaker) *PersonalService {
+func NewPersonalService(xmrmaker XMRMaker, pb ProtocolBackend) *PersonalService {
 	return &PersonalService{
-		xmrtaker: xmrtaker,
 		xmrmaker: xmrmaker,
+		pb:       pb,
 	}
 }
 
@@ -39,6 +39,18 @@ type SetSwapTimeoutRequest struct {
 // SetSwapTimeout ...
 func (s *PersonalService) SetSwapTimeout(_ *http.Request, req *SetSwapTimeoutRequest, _ *interface{}) error {
 	timeout := time.Second * time.Duration(req.Timeout)
-	s.xmrtaker.SetSwapTimeout(timeout)
+	s.pb.SetSwapTimeout(timeout)
+	return nil
+}
+
+// SetGasPriceRequest ...
+type SetGasPriceRequest struct {
+	GasPrice uint64
+}
+
+// SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
+func (s *PersonalService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
+	s.pb.SetGasPrice(req.GasPrice)
+	s.pb.SetGasPrice(req.GasPrice)
 	return nil
 }
