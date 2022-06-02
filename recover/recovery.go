@@ -7,6 +7,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
+	"github.com/noot/atomic-swap/protocol/backend"
 	"github.com/noot/atomic-swap/protocol/xmrmaker"
 	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -88,7 +89,7 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 }
 
 // RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
-func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b *xmrmaker.Instance,
+func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, basepath string,
 	xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	bs, err := hex.DecodeString(xmrmakerSecret)
 	if err != nil {
@@ -101,7 +102,7 @@ func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b *xmrmaker.Instance,
 	}
 
 	addr := ethcommon.HexToAddress(contractAddr)
-	rs, err := xmrmaker.NewRecoveryState(b, bk, addr, swapID, swap)
+	rs, err := xmrmaker.NewRecoveryState(b, basepath, bk, addr, swapID, swap)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +111,7 @@ func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b *xmrmaker.Instance,
 }
 
 // RecoverFromXMRTakerSecretAndContract recovers funds by either claiming locked monero or refunding ether.
-func (r *recoverer) RecoverFromXMRTakerSecretAndContract(a *xmrtaker.Instance,
+func (r *recoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, basepath string,
 	xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
 	as, err := hex.DecodeString(xmrtakerSecret)
 	if err != nil {
@@ -122,7 +123,7 @@ func (r *recoverer) RecoverFromXMRTakerSecretAndContract(a *xmrtaker.Instance,
 		return nil, err
 	}
 
-	rs, err := xmrtaker.NewRecoveryState(a, ak, swapID, swap)
+	rs, err := xmrtaker.NewRecoveryState(b, basepath, ak, swapID, swap)
 	if err != nil {
 		return nil, err
 	}

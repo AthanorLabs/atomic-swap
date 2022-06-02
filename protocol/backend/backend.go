@@ -42,7 +42,7 @@ type Backend interface {
 	ChainID() *big.Int
 	CallOpts() *bind.CallOpts
 	TxOpts() (*bind.TransactOpts, error)
-	SwapManager() *swap.Manager
+	SwapManager() swap.SwapManager
 	EthAddress() ethcommon.Address
 	Contract() *swapfactory.SwapFactory
 	ContractAddr() ethcommon.Address
@@ -188,7 +188,7 @@ func (b *backend) Net() net.MessageSender {
 	return b.MessageSender
 }
 
-func (b *backend) SwapManager() *swap.Manager {
+func (b *backend) SwapManager() swap.SwapManager {
 	return b.swapManager
 }
 

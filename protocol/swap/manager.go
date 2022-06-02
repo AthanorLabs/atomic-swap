@@ -95,6 +95,15 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 	return info
 }
 
+// SwapManager ...
+type SwapManager interface {
+	AddSwap(info *Info) error
+	GetPastIDs() []uint64
+	GetPastSwap(id uint64) *Info
+	GetOngoingSwap() *Info
+	CompleteOngoingSwap()
+}
+
 // Manager tracks current and past swaps.
 type Manager struct {
 	sync.RWMutex

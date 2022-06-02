@@ -76,6 +76,10 @@ func (*mockSwapManager) GetOngoingSwap() *swap.Info {
 		statusCh,
 	)
 }
+func (*mockSwapManager) AddSwap(*swap.Info) error {
+	return nil
+}
+func (*mockSwapManager) CompleteOngoingSwap() {}
 
 type mockXMRTaker struct{}
 
@@ -112,6 +116,22 @@ func (*mockSwapState) InfoFile() string {
 	return os.TempDir() + "test.infofile"
 }
 
+type mockProtocolBackend struct {
+	sm *mockSwapManager
+}
+
+func newMockProtocolBackend() *mockProtocolBackend {
+	return &mockProtocolBackend{
+		sm: new(mockSwapManager),
+	}
+}
+
+func (*mockProtocolBackend) SetGasPrice(uint64)                   {}
+func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {}
+func (b *mockProtocolBackend) SwapManager() swap.SwapManager {
+	return b.sm
+}
+
 func newServer(t *testing.T) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
@@ -122,12 +142,12 @@ func newServer(t *testing.T) *Server {
 	defaultWSPort++
 
 	cfg := &Config{
-		Ctx:         ctx,
-		Port:        defaultRPCPort,
-		WsPort:      defaultWSPort,
-		Net:         new(mockNet),
-		SwapManager: new(mockSwapManager),
-		XMRTaker:    new(mockXMRTaker),
+		Ctx:             ctx,
+		Port:            defaultRPCPort,
+		WsPort:          defaultWSPort,
+		Net:             new(mockNet),
+		ProtocolBackend: newMockProtocolBackend(),
+		XMRTaker:        new(mockXMRTaker),
 	}
 
 	s, err := NewServer(cfg)

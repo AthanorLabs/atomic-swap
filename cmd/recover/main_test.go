@@ -12,6 +12,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/noot/atomic-swap/protocol/backend"
 	"github.com/noot/atomic-swap/protocol/xmrmaker"
 	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
@@ -77,14 +78,14 @@ func (r *mockRecoverer) WalletFromSharedSecret(_ *mcrypto.PrivateKeyInfo) (mcryp
 	return mcrypto.Address(""), nil
 }
 
-func (r *mockRecoverer) RecoverFromXMRMakerSecretAndContract(b *xmrmaker.Instance, xmrmakerSecret, contractAddr string,
+func (r *mockRecoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, _ string, xmrmakerSecret, contractAddr string,
 	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	return &xmrmaker.RecoveryResult{
 		Claimed: true,
 	}, nil
 }
 
-func (r *mockRecoverer) RecoverFromXMRTakerSecretAndContract(a *xmrtaker.Instance, xmrtakerSecret string,
+func (r *mockRecoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, _ string, xmrtakerSecret string,
 	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
 	return &xmrtaker.RecoveryResult{
 		Claimed: true,

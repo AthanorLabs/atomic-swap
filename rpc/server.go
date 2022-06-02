@@ -113,7 +113,7 @@ type Protocol interface {
 type ProtocolBackend interface {
 	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
-	SwapManager() *swap.Manager
+	SwapManager() swap.SwapManager
 }
 
 // XMRTaker ...
@@ -132,9 +132,4 @@ type XMRMaker interface {
 	ClearOffers()
 }
 
-// SwapManager ...
-type SwapManager interface {
-	GetPastIDs() []uint64
-	GetPastSwap(id uint64) *swap.Info
-	GetOngoingSwap() *swap.Info
-}
+type SwapManager = swap.SwapManager
