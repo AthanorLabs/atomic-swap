@@ -41,7 +41,6 @@ var (
 type swapState struct {
 	backend backend.Backend
 
-	//xmrmaker *Instance
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex

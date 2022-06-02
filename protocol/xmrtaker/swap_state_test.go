@@ -15,7 +15,6 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
@@ -55,7 +54,38 @@ func newBackend(t *testing.T) backend.Backend {
 	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
 		MoneroWalletEndpoint: common.DefaultXMRTakerMoneroEndpoint,
-		MoneroDaemonEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
+		Environment:          common.Development,
+		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		SwapManager:          pswap.NewManager(),
+		SwapContract:         contract,
+		SwapContractAddress:  addr,
+		Net:                  new(mockNet),
+	}
+
+	b, err := backend.NewBackend(bcfg)
+	require.NoError(t, err)
+	return b
+}
+
+func newXMRMakerBackend(t *testing.T) backend.Backend {
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	require.NoError(t, err)
+
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	require.NoError(t, err)
+	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	require.NoError(t, err)
+
+	bcfg := &backend.Config{
+		Ctx:                  context.Background(),
+		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
@@ -246,16 +276,14 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
-	// // close swap-deposit-wallet
-	// _ = s.CloseWallet()
-
-	// s.xmrtaker.client = monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
-	// err := s.OpenWallet("test-wallet", "")
-	// require.NoError(t, err)
+	// close swap-deposit-wallet
+	maker := newXMRMakerBackend(t)
+	err := maker.OpenWallet("test-wallet", "")
+	require.NoError(t, err)
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
-	_, _, err := s.HandleProtocolMessage(msg)
+	_, _, err = s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
 	err = s.generateAndSetKeys()
@@ -276,23 +304,21 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
 
 	// simulate xmrmaker locking xmr
-	xmrmakerAddr, err := s.GetAddress(0)
+	xmrmakerAddr, err := maker.GetAddress(0)
 	require.NoError(t, err)
 
 	// mine some blocks to get xmr first
-	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemonClient.GenerateBlocks(xmrmakerAddr.Address, 60)
-
+	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
 	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	_, err = s.Transfer(xmrAddr, 0, uint(amt))
+	_, err = maker.Transfer(xmrAddr, 0, uint(amt))
 	require.NoError(t, err)
 	t.Log("transferred to account", xmrAddr)
 
-	_ = daemonClient.GenerateBlocks(xmrmakerAddr.Address, 100)
+	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 100)
 
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
@@ -305,7 +331,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyReadyType, resp.Type())
 
-	err = daemonClient.GenerateBlocks(xmrmakerAddr.Address, 1)
+	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
 	require.NoError(t, err)
 
 	// simulate xmrmaker calling claim

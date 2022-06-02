@@ -59,7 +59,6 @@ type Backend interface {
 	EthAddress() ethcommon.Address
 	Contract() *swapfactory.SwapFactory
 	ContractAddr() ethcommon.Address
-	//EthClient() *ethclient.Client
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
 
