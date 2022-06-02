@@ -40,7 +40,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 	return nil
 }
 
-func newTestXMRTaker(t *testing.T) *Instance {
+func newBackend(t *testing.T) backend.Backend {
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 
@@ -68,22 +68,15 @@ func newTestXMRTaker(t *testing.T) *Instance {
 
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
-
-	cfg := &Config{
-		Backend:  b,
-		Basepath: "/tmp/xmrtaker",
-	}
-
-	xmrtaker, err := NewInstance(cfg)
-	require.NoError(t, err)
-	return xmrtaker
+	return b
 }
 
-func newTestInstance(t *testing.T) (*Instance, *swapState) {
-	xmrtaker := newTestXMRTaker(t)
-	swapState, err := newSwapState(xmrtaker.backend, infofile, false, "", common.NewEtherAmount(1), common.MoneroAmount(0), 1)
+func newTestInstance(t *testing.T) *swapState {
+	b := newBackend(t)
+	swapState, err := newSwapState(b, infofile, false, "",
+		common.NewEtherAmount(1), common.MoneroAmount(0), 1)
 	require.NoError(t, err)
-	return xmrtaker, swapState
+	return swapState
 }
 
 func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
@@ -102,7 +95,7 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}
@@ -126,7 +119,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 // test the case where XMRTaker deploys and locks her eth, but XMRMaker never locks his monero.
 // XMRTaker should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 
 	// set timeout to 2s
@@ -165,7 +158,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
@@ -198,7 +191,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 // test the case where the monero is locked, but XMRMaker never claims.
 // XMRTaker should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 	s.SetSwapTimeout(time.Second * 3)
@@ -249,7 +242,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyClaimed(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
@@ -336,7 +329,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 }
 
 func TestExit_afterSendKeysMessage(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
@@ -346,7 +339,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 }
 
 func TestExit_afterNotifyXMRLock(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
@@ -369,7 +362,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 }
 
 func TestExit_afterNotifyClaimed(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyClaimed{}
 
@@ -393,7 +386,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 
 func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
 

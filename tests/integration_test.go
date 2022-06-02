@@ -337,7 +337,8 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 	require.Equal(t, len(offersBefore), len(offersAfter))
 }
 
-// TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker both lock their funds, but XMRMaker goes offline
+// TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker
+// both lock their funds, but XMRMaker goes offline
 // until time t1 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
 // "come online" to see, and he will then refund also.
 func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
@@ -405,7 +406,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 			}
 
 			if exitStatus != expectedExitStatus {
-				errCh <- fmt.Errorf("did not get expected exit status for XMRMaker: got %s, expected %s", exitStatus, expectedExitStatus)
+				errCh <- fmt.Errorf("did not get expected exit status for XMRMaker: got %s, expected %s", exitStatus, expectedExitStatus) //nolint:lll
 				return
 			}
 
@@ -439,7 +440,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 			}
 
 			if status != expectedExitStatus {
-				errCh <- fmt.Errorf("did not get expected exit status for XMRTaker: got %s, expected %s", status, expectedExitStatus)
+				errCh <- fmt.Errorf("did not get expected exit status for XMRTaker: got %s, expected %s", status, expectedExitStatus) //nolint:lll
 				return
 			}
 
@@ -574,7 +575,8 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 	require.Equal(t, len(offersBefore), len(offersAfter))
 }
 
-// This test simulates the case where neither XMRTaker and XMRMaker have locked funds yet, and XMRMaker cancels the swap.
+// This test simulates the case where neither XMRTaker and XMRMaker have
+// locked funds yet, and XMRMaker cancels the swap.
 // The swap should abort on XMRMaker's side, but might abort *or* refund on XMRTaker's side, in case she ended up
 // locking ETH before she was notified that XMRMaker disconnected.
 func TestAbort_XMRMakerCancels(t *testing.T) {

@@ -28,9 +28,9 @@ import (
 var infofile = os.TempDir() + "/test.keys"
 
 var (
-	_            = logging.SetLogLevel("xmrmaker", "debug")
-	testWallet   = "test-wallet"
-	desiredAmout = common.EtherToWei(0.33)
+	_             = logging.SetLogLevel("xmrmaker", "debug")
+	testWallet    = "test-wallet"
+	desiredAmount = common.EtherToWei(0.33)
 )
 
 type mockNet struct {
@@ -97,7 +97,8 @@ func newTestXMRMaker(t *testing.T) *Instance {
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	xmrmaker := newTestXMRMaker(t)
-	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infofile, common.MoneroAmount(33), desiredAmout)
+	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infofile,
+		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
 	swapState.contract = xmrmaker.backend.Contract()
 	swapState.contractAddr = xmrmaker.backend.ContractAddr()
@@ -231,7 +232,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	duration, err := time.ParseDuration("2s")
 	require.NoError(t, err)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
-		desiredAmout.BigInt(), duration)
+		desiredAmount.BigInt(), duration)
 	addr := s.backend.ContractAddr()
 
 	msg = &message.NotifyETHLocked{
@@ -278,7 +279,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	duration, err := time.ParseDuration("15s")
 	require.NoError(t, err)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
-		desiredAmout.BigInt(), duration)
+		desiredAmount.BigInt(), duration)
 	addr := s.backend.ContractAddr()
 
 	msg = &message.NotifyETHLocked{
@@ -319,7 +320,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
-	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmout.BigInt(), duration)
+	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
 
 	_, err = s.contract.SetReady(s.txOpts, s.contractSwap)
 	require.NoError(t, err)
@@ -348,7 +349,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 
 	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, [32]byte{}, refundKey, desiredAmout.BigInt(), duration)
+	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
 	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
@@ -381,7 +382,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	require.NoError(t, err)
 
 	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, [32]byte{}, refundKey, desiredAmout.BigInt(), duration)
+	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
@@ -421,7 +422,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.NoError(t, err)
 
 	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, [32]byte{}, refundKey, desiredAmout.BigInt(), duration)
+	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
 	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))

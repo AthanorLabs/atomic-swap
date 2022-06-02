@@ -53,7 +53,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil { //nolint:lll
 		return nil, err
 	}
 
@@ -110,10 +110,11 @@ type Protocol interface {
 	GetOngoingSwapState() common.SwapState
 }
 
+// ProtocolBackend represents protocol/backend.Backend
 type ProtocolBackend interface {
 	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
-	SwapManager() swap.SwapManager
+	SwapManager() swap.Manager
 }
 
 // XMRTaker ...
@@ -132,4 +133,5 @@ type XMRMaker interface {
 	ClearOffers()
 }
 
-type SwapManager = swap.SwapManager
+// SwapManager ...
+type SwapManager = swap.Manager

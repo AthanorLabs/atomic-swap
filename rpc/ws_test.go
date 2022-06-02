@@ -128,7 +128,7 @@ func newMockProtocolBackend() *mockProtocolBackend {
 
 func (*mockProtocolBackend) SetGasPrice(uint64)                   {}
 func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {}
-func (b *mockProtocolBackend) SwapManager() swap.SwapManager {
+func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }
 

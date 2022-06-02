@@ -33,7 +33,8 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 		return errBalanceTooLow
 	}
 
-	b.swapState, err = newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh, offerExtra.InfoFile, providesAmount, desiredAmount)
+	b.swapState, err = newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
+		offerExtra.InfoFile, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}

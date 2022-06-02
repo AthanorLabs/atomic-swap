@@ -79,7 +79,8 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	return addr, contract, swapID, swap
 }
 
-func newBackend(t *testing.T, addr ethcommon.Address, contract *swapfactory.SwapFactory, privkey string) backend.Backend {
+func newBackend(t *testing.T, addr ethcommon.Address, contract *swapfactory.SwapFactory,
+	privkey string) backend.Backend {
 	pk, err := ethcrypto.HexToECDSA(privkey)
 	require.NoError(t, err)
 

@@ -11,7 +11,7 @@ import (
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	s.SetSwapTimeout(time.Second * 10)
 	akp, err := generateKeys()
 	require.NoError(t, err)

@@ -95,8 +95,8 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 	return info
 }
 
-// SwapManager ...
-type SwapManager interface {
+// Manager tracks current and past swaps.
+type Manager interface {
 	AddSwap(info *Info) error
 	GetPastIDs() []uint64
 	GetPastSwap(id uint64) *Info
@@ -104,8 +104,7 @@ type SwapManager interface {
 	CompleteOngoingSwap()
 }
 
-// Manager tracks current and past swaps.
-type Manager struct {
+type manager struct {
 	sync.RWMutex
 	ongoing     *Info
 	past        map[uint64]*Info
@@ -113,15 +112,15 @@ type Manager struct {
 }
 
 // NewManager ...
-func NewManager() *Manager {
-	return &Manager{
+func NewManager() Manager {
+	return &manager{
 		past:        make(map[uint64]*Info),
 		offersTaken: make(map[string]uint64),
 	}
 }
 
 // AddSwap adds the given swap *Info to the Manager.
-func (m *Manager) AddSwap(info *Info) error {
+func (m *manager) AddSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
 
@@ -140,7 +139,7 @@ func (m *Manager) AddSwap(info *Info) error {
 }
 
 // GetPastIDs returns all past swap IDs.
-func (m *Manager) GetPastIDs() []uint64 {
+func (m *manager) GetPastIDs() []uint64 {
 	m.RLock()
 	defer m.RUnlock()
 	ids := make([]uint64, len(m.past))
@@ -153,19 +152,19 @@ func (m *Manager) GetPastIDs() []uint64 {
 }
 
 // GetPastSwap returns a swap's *Info given its ID.
-func (m *Manager) GetPastSwap(id uint64) *Info {
+func (m *manager) GetPastSwap(id uint64) *Info {
 	m.RLock()
 	defer m.RUnlock()
 	return m.past[id]
 }
 
 // GetOngoingSwap returns the ongoing swap's *Info, if there is one.
-func (m *Manager) GetOngoingSwap() *Info {
+func (m *manager) GetOngoingSwap() *Info {
 	return m.ongoing
 }
 
 // CompleteOngoingSwap marks the current ongoing swap as completed.
-func (m *Manager) CompleteOngoingSwap() {
+func (m *manager) CompleteOngoingSwap() {
 	m.Lock()
 	defer m.Unlock()
 	if m.ongoing == nil {

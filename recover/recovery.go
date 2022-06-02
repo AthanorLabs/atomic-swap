@@ -90,7 +90,8 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 
 // RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
 func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, basepath string,
-	xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
+	xmrmakerSecret, contractAddr string, swapID [32]byte,
+	swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	bs, err := hex.DecodeString(xmrmakerSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode XMRMaker's secret: %w", err)

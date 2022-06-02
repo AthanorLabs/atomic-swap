@@ -157,7 +157,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	if infofile.SharedSwapPrivateKey != nil {
-		addr, err := r.WalletFromSharedSecret(infofile.SharedSwapPrivateKey)
+		addr, err := r.WalletFromSharedSecret(infofile.SharedSwapPrivateKey) //nolint:govet
 		if err != nil {
 			return err
 		}

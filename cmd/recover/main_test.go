@@ -78,8 +78,8 @@ func (r *mockRecoverer) WalletFromSharedSecret(_ *mcrypto.PrivateKeyInfo) (mcryp
 	return mcrypto.Address(""), nil
 }
 
-func (r *mockRecoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, _ string, xmrmakerSecret, contractAddr string,
-	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
+func (r *mockRecoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, _ string, xmrmakerSecret,
+	contractAddr string, swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	return &xmrmaker.RecoveryResult{
 		Claimed: true,
 	}, nil

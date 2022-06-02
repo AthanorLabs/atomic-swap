@@ -13,18 +13,18 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
-	//mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
-	//logging "github.com/ipfs/go-log"
 )
 
 var (
 	defaultTimeoutDuration = time.Hour * 24
 )
 
+// Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
+// It also interfaces with the network layer.
 type Backend interface {
 	monero.Client
 	monero.DaemonClient
@@ -42,7 +42,7 @@ type Backend interface {
 	ChainID() *big.Int
 	CallOpts() *bind.CallOpts
 	TxOpts() (*bind.TransactOpts, error)
-	SwapManager() swap.SwapManager
+	SwapManager() swap.Manager
 	EthAddress() ethcommon.Address
 	Contract() *swapfactory.SwapFactory
 	ContractAddr() ethcommon.Address
@@ -58,7 +58,7 @@ type Backend interface {
 type backend struct {
 	ctx         context.Context
 	env         common.Environment
-	swapManager *swap.Manager
+	swapManager swap.Manager
 
 	// monero endpoints
 	monero.Client
@@ -82,12 +82,12 @@ type backend struct {
 	net.MessageSender
 }
 
+// Config is the config for the Backend
 type Config struct {
 	Ctx                  context.Context
 	MoneroWalletEndpoint string
 	MoneroDaemonEndpoint string // only needed for development
 
-	//WalletFile, WalletPassword string
 	EthereumClient     *ethclient.Client
 	EthereumPrivateKey *ecdsa.PrivateKey
 	Environment        common.Environment
@@ -98,11 +98,12 @@ type Config struct {
 	SwapContract        *swapfactory.SwapFactory
 	SwapContractAddress ethcommon.Address
 
-	SwapManager *swap.Manager
+	SwapManager swap.Manager
 
 	Net net.MessageSender
 }
 
+// NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
 	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
 		return nil, errMustProvideDaemonEndpoint
@@ -188,7 +189,7 @@ func (b *backend) Net() net.MessageSender {
 	return b.MessageSender
 }
 
-func (b *backend) SwapManager() swap.SwapManager {
+func (b *backend) SwapManager() swap.Manager {
 	return b.swapManager
 }
 

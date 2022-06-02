@@ -71,8 +71,9 @@ type swapState struct {
 	done        chan struct{}
 }
 
-func newSwapState(b backend.Backend, infofile string, transferBack bool, walletAddress mcrypto.Address, providesAmount common.EtherAmount,
-	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
+func newSwapState(b backend.Backend, infofile string, transferBack bool, walletAddress mcrypto.Address,
+	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
+	exchangeRate types.ExchangeRate) (*swapState, error) {
 	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
@@ -90,7 +91,7 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
 	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
-		exhangeRate, stage, statusCh)
+		exchangeRate, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -360,7 +361,8 @@ func (s *swapState) getSecret() [32]byte {
 
 // setXMRMakerKeys sets XMRMaker's public spend key (to be stored in the contract) and XMRMaker's
 // private view key (used to check XMR balance before calling Ready())
-func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey, secp256k1Pub *secp256k1.PublicKey) {
+func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey,
+	secp256k1Pub *secp256k1.PublicKey) {
 	s.xmrmakerPublicSpendKey = sk
 	s.xmrmakerPrivateViewKey = vk
 	s.xmrmakerSecp256k1PublicKey = secp256k1Pub

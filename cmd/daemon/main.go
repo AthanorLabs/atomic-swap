@@ -318,7 +318,7 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	a, b, err := getProtocolInstances(c, cfg, backend, devXMRMaker)
+	a, b, err := getProtocolInstances(c, cfg, backend)
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func (d *daemon) make(c *cli.Context) error {
 }
 
 func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
-	chainID int64, devXMRMaker bool, sm *swap.Manager, net net.Host) (backend.Backend, error) {
+	chainID int64, devXMRMaker bool, sm swap.Manager, net net.Host) (backend.Backend, error) {
 	var (
 		moneroEndpoint, daemonEndpoint, ethEndpoint string
 	)
@@ -466,6 +466,7 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		SwapManager:          sm,
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
+		Net:                  net,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -482,7 +483,7 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 }
 
 func getProtocolInstances(c *cli.Context, cfg common.Config,
-	b backend.Backend, devXMRMaker bool) (xmrtakerHandler, xmrmakerHandler, error) {
+	b backend.Backend) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFile := c.String("wallet-file")
 
 	// empty password is ok
