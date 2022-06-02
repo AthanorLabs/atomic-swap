@@ -21,7 +21,6 @@ import (
 	"github.com/noot/atomic-swap/protocol/xmrmaker"
 	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/rpc"
-	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -442,15 +441,15 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		return nil, err
 	}
 
-	var contract *swapfactory.SwapFactory
 	deploy := c.Bool(flagDeploy)
+	if deploy {
+		contractAddr = ethcommon.Address{}
+	}
 
-	if !devXMRMaker || deploy {
-		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
-			big.NewInt(chainID), pk, ec)
-		if err != nil {
-			return nil, err
-		}
+	contract, contractAddr, err := getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
+		big.NewInt(chainID), pk, ec)
+	if err != nil {
+		return nil, err
 	}
 
 	bcfg := &backend.Config{
