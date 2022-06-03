@@ -75,6 +75,7 @@ type swapState struct {
 	// channels
 	readyCh chan struct{}
 	done    chan struct{}
+	exited  bool
 
 	// address of reclaimed monero wallet, if the swap is refunded77
 	moneroReclaimAddress mcrypto.Address
@@ -166,6 +167,12 @@ func (s *swapState) exit() error {
 	if s == nil {
 		return errNilSwapState
 	}
+
+	if s.exited {
+		return nil
+	}
+
+	s.exited = true
 
 	log.Debugf("attempting to exit swap: nextExpectedMessage=%v", s.nextExpectedMessage)
 
