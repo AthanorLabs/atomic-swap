@@ -62,10 +62,10 @@ func newTestContext(t *testing.T, description string, flags []string, values []i
 	return ctx
 }
 
-func TestDaemon_DevAlice(t *testing.T) {
+func TestDaemon_DevXMRTaker(t *testing.T) {
 	c := newTestContext(t,
-		"test --dev-alice",
-		[]string{flagDevAlice},
+		"test --dev-xmrtaker",
+		[]string{flagDevXMRTaker},
 		[]interface{}{true},
 	)
 
@@ -81,10 +81,10 @@ func TestDaemon_DevAlice(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestDaemon_DevBob(t *testing.T) {
+func TestDaemon_DevXMRMaker(t *testing.T) {
 	c := newTestContext(t,
-		"test --dev-bob",
-		[]string{flagDevBob, flagDeploy},
+		"test --dev-xmrmaker",
+		[]string{flagDevXMRMaker, flagDeploy},
 		[]interface{}{true, true},
 	)
 

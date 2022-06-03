@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"context"
@@ -15,10 +15,10 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 
@@ -28,7 +28,7 @@ import (
 
 var infofile = os.TempDir() + "/test.keys"
 
-var _ = logging.SetLogLevel("alice", "debug")
+var _ = logging.SetLogLevel("xmrtaker", "debug")
 
 type mockNet struct {
 	msg net.Message
@@ -39,8 +39,8 @@ func (n *mockNet) SendSwapMessage(msg net.Message) error {
 	return nil
 }
 
-func newTestAlice(t *testing.T) *Instance {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyAlice)
+func newBackend(t *testing.T) backend.Backend {
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
@@ -51,10 +51,10 @@ func newTestAlice(t *testing.T) *Instance {
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
-	cfg := &Config{
+	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
-		Basepath:             "/tmp/alice",
-		MoneroWalletEndpoint: common.DefaultAliceMoneroEndpoint,
+		MoneroWalletEndpoint: common.DefaultXMRTakerMoneroEndpoint,
+		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
@@ -62,21 +62,54 @@ func newTestAlice(t *testing.T) *Instance {
 		SwapManager:          pswap.NewManager(),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
+		Net:                  new(mockNet),
 	}
 
-	alice, err := NewInstance(cfg)
+	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
-	return alice
+	return b
 }
 
-func newTestInstance(t *testing.T) (*Instance, *swapState) {
-	alice := newTestAlice(t)
-	swapState, err := newSwapState(alice, infofile, common.NewEtherAmount(1), common.MoneroAmount(0), 1)
+func newXMRMakerBackend(t *testing.T) backend.Backend {
+	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
 	require.NoError(t, err)
-	return alice, swapState
+
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	require.NoError(t, err)
+	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	require.NoError(t, err)
+
+	bcfg := &backend.Config{
+		Ctx:                  context.Background(),
+		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
+		EthereumClient:       ec,
+		EthereumPrivateKey:   pk,
+		Environment:          common.Development,
+		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		SwapManager:          pswap.NewManager(),
+		SwapContract:         contract,
+		SwapContractAddress:  addr,
+		Net:                  new(mockNet),
+	}
+
+	b, err := backend.NewBackend(bcfg)
+	require.NoError(t, err)
+	return b
 }
 
-func newTestBobSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+func newTestInstance(t *testing.T) *swapState {
+	b := newBackend(t)
+	swapState, err := newSwapState(b, infofile, false, "",
+		common.NewEtherAmount(1), common.MoneroAmount(0), 1)
+	require.NoError(t, err)
+	return swapState
+}
+
+func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
@@ -92,7 +125,7 @@ func newTestBobSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.Key
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}
@@ -102,40 +135,39 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
+	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
-	require.Equal(t, defaultTimeoutDuration, s.t1.Sub(s.t0))
-	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
-	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+	require.Equal(t, s.SwapTimeout(), s.t1.Sub(s.t0))
+	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.xmrmakerPublicSpendKey.Hex())
+	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.xmrmakerPrivateViewKey.Hex())
 }
 
-// test the case where Alice deploys and locks her eth, but Bob never locks his monero.
-// Alice should call refund before the timeout t0.
+// test the case where XMRTaker deploys and locks her eth, but XMRMaker never locks his monero.
+// XMRTaker should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	inst, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
-	s.alice.net = new(mockNet)
 
 	// set timeout to 2s
-	inst.swapTimeout = time.Second * 2
+	s.SetSwapTimeout(time.Second * 2)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	msg, bobKeysAndProof := newTestBobSendKeysMessage(t)
+	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
-	require.Equal(t, inst.swapTimeout, s.t1.Sub(s.t0))
-	require.Equal(t, bobKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.bobPublicSpendKey.Hex())
-	require.Equal(t, bobKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.bobPrivateViewKey.Hex())
+	require.Equal(t, s.SwapTimeout(), s.t1.Sub(s.t0))
+	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.xmrmakerPublicSpendKey.Hex())
+	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.xmrmakerPrivateViewKey.Hex())
 
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {
@@ -146,33 +178,33 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	}
 
 	// ensure we refund before t0
-	require.NotNil(t, s.alice.net.(*mockNet).msg)
-	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
+	require.NotNil(t, s.Net().(*mockNet).msg)
+	require.Equal(t, message.NotifyRefundType, s.Net().(*mockNet).msg.Type())
 
 	// check swap is marked completed
-	stage, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
 	require.NoError(t, err)
 	require.Equal(t, swapfactory.StageCompleted, stage)
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
-		bobKeysAndProof.Secp256k1PublicKey)
+	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &message.NotifyXMRLock{
@@ -186,28 +218,27 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	require.Equal(t, message.NotifyReadyType, resp.Type())
 }
 
-// test the case where the monero is locked, but Bob never claims.
-// Alice should call refund after the timeout t1.
+// test the case where the monero is locked, but XMRMaker never claims.
+// XMRTaker should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	inst, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
-	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
-	inst.swapTimeout = time.Second * 3
+	s.SetSwapTimeout(time.Second * 3)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
-		bobKeysAndProof.Secp256k1PublicKey)
+	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	kp := mcrypto.SumSpendAndViewKeys(bobKeysAndProof.PublicKeyPair, s.pubkeys)
+	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	msg := &message.NotifyXMRLock{
@@ -231,25 +262,23 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 		}
 	}
 
-	require.NotNil(t, s.alice.net.(*mockNet).msg)
-	require.Equal(t, message.NotifyRefundType, s.alice.net.(*mockNet).msg.Type())
+	require.NotNil(t, s.Net().(*mockNet).msg)
+	require.Equal(t, message.NotifyRefundType, s.Net().(*mockNet).msg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.alice.ethClient.BalanceAt(context.Background(), s.alice.contractAddr, nil)
+	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
 
 func TestSwapState_NotifyClaimed(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
-	s.alice.swapTimeout = time.Minute * 2
+	s.SetSwapTimeout(time.Minute * 2)
 
 	// close swap-deposit-wallet
-	_ = s.alice.client.CloseWallet()
-
-	s.alice.client = monero.NewClient(common.DefaultBobMoneroEndpoint)
-	err := s.alice.client.OpenWallet("test-wallet", "")
+	maker := newXMRMakerBackend(t)
+	err := maker.OpenWallet("test-wallet", "")
 	require.NoError(t, err)
 
 	// invalid SendKeysMessage should result in an error
@@ -264,34 +293,32 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	msg, err = s.SendKeysMessage()
 	require.NoError(t, err)
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = common.EthereumPrivateKeyToAddress(s.alice.ethPrivKey).String()
+	msg.EthAddress = s.EthAddress().String()
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
-	require.Equal(t, msg.PublicSpendKey, s.bobPublicSpendKey.Hex())
-	require.Equal(t, msg.PrivateViewKey, s.bobPrivateViewKey.Hex())
+	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
+	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
 
-	// simulate bob locking xmr
-	bobAddr, err := s.alice.client.GetAddress(0)
+	// simulate xmrmaker locking xmr
+	xmrmakerAddr, err := maker.GetAddress(0)
 	require.NoError(t, err)
 
 	// mine some blocks to get xmr first
-	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemonClient.GenerateBlocks(bobAddr.Address, 60)
-
+	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
 	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	_, err = s.alice.client.Transfer(xmrAddr, 0, uint(amt))
+	_, err = maker.Transfer(xmrAddr, 0, uint(amt))
 	require.NoError(t, err)
 	t.Log("transferred to account", xmrAddr)
 
-	_ = daemonClient.GenerateBlocks(bobAddr.Address, 100)
+	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 100)
 
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
@@ -304,16 +331,16 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyReadyType, resp.Type())
 
-	err = daemonClient.GenerateBlocks(bobAddr.Address, 1)
+	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
 	require.NoError(t, err)
 
-	// simulate bob calling claim
-	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing Bob's secret spend key
+	// simulate xmrmaker calling claim
+	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	secret := s.privkeys.SpendKeyBytes()
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.alice.contract.Claim(s.txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Claim(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	// handled the claimed message should result in the monero wallet being created
@@ -328,82 +355,81 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 }
 
 func TestExit_afterSendKeysMessage(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
-	s.alice.net = new(mockNet)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
 	require.NoError(t, err)
-	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }
 
 func TestExit_afterNotifyXMRLock(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
-		bobKeysAndProof.Secp256k1PublicKey)
+	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
 	require.NoError(t, err)
-	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
 func TestExit_afterNotifyClaimed(t *testing.T) {
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyClaimed{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
-		bobKeysAndProof.Secp256k1PublicKey)
+	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
 	require.NoError(t, err)
-	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedRefund, info.Status())
 }
 
 func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
-	_, s := newTestInstance(t)
+	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
-	bobKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setBobKeys(bobKeysAndProof.PublicKeyPair.SpendKey(), bobKeysAndProof.PrivateKeyPair.ViewKey(),
-		bobKeysAndProof.Secp256k1PublicKey)
+	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
-	info := s.alice.swapManager.GetPastSwap(s.info.ID())
+	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }

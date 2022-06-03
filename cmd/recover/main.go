@@ -17,8 +17,9 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/alice"
-	"github.com/noot/atomic-swap/protocol/bob"
+	"github.com/noot/atomic-swap/protocol/backend"
+	"github.com/noot/atomic-swap/protocol/xmrmaker"
+	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	recovery "github.com/noot/atomic-swap/recover"
 	"github.com/noot/atomic-swap/swapfactory"
 
@@ -40,8 +41,8 @@ const (
 
 var (
 	log = logging.Logger("cmd")
-	_   = logging.SetLogLevel("alice", "debug")
-	_   = logging.SetLogLevel("bob", "debug")
+	_   = logging.SetLogLevel("xmrtaker", "debug")
+	_   = logging.SetLogLevel("xmrmaker", "debug")
 	_   = logging.SetLogLevel("common", "debug")
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
@@ -108,8 +109,8 @@ func main() {
 // Recoverer is implemented by a backend which is able to recover swap funds
 type Recoverer interface {
 	WalletFromSharedSecret(secret *mcrypto.PrivateKeyInfo) (mcrypto.Address, error)
-	RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*bob.RecoveryResult, error) //nolint:lll
-	RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*alice.RecoveryResult, error)       //nolint:lll
+	RecoverFromXMRMakerSecretAndContract(b backend.Backend, basepath string, xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) //nolint:lll
+	RecoverFromXMRTakerSecretAndContract(b backend.Backend, basepath string, xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error)               //nolint:lll
 }
 
 type instance struct {
@@ -156,7 +157,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	if infofile.SharedSwapPrivateKey != nil {
-		addr, err := r.WalletFromSharedSecret(infofile.SharedSwapPrivateKey)
+		addr, err := r.WalletFromSharedSecret(infofile.SharedSwapPrivateKey) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -166,14 +167,17 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	contractAddr := infofile.ContractAddress
+	addr := ethcommon.HexToAddress(contractAddr)
+
+	b, err := createBackend(context.Background(), c, env, cfg, addr)
+	if err != nil {
+		return err
+	}
+
+	basepath := filepath.Dir(filepath.Clean(infofilePath))
 
 	if xmrmaker {
-		b, err := createBobInstance(context.Background(), c, env, cfg)
-		if err != nil {
-			return err
-		}
-
-		res, err := r.RecoverFromBobSecretAndContract(b, infofile.PrivateKeyInfo.PrivateSpendKey,
+		res, err := r.RecoverFromXMRMakerSecretAndContract(b, basepath, infofile.PrivateKeyInfo.PrivateSpendKey,
 			contractAddr, infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
@@ -191,13 +195,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	if xmrtaker {
-		addr := ethcommon.HexToAddress(contractAddr)
-		a, err := createAliceInstance(context.Background(), c, env, cfg, addr)
-		if err != nil {
-			return err
-		}
-
-		res, err := r.RecoverFromAliceSecretAndContract(a, infofile.PrivateKeyInfo.PrivateSpendKey,
+		res, err := r.RecoverFromXMRTakerSecretAndContract(b, basepath, infofile.PrivateKeyInfo.PrivateSpendKey,
 			infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
@@ -226,7 +224,7 @@ func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String("monero-endpoint")
 	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
+		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -242,8 +240,8 @@ func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
 }
 
-func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environment,
-	cfg common.Config, contractAddr ethcommon.Address) (*alice.Instance, error) {
+func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
+	cfg common.Config, contractAddr ethcommon.Address) (backend.Backend, error) {
 	var (
 		moneroEndpoint, ethEndpoint string
 	)
@@ -256,7 +254,7 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 	if c.String(flagMoneroWalletEndpoint) != "" {
 		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	} else {
-		moneroEndpoint = common.DefaultAliceMoneroEndpoint
+		moneroEndpoint = common.DefaultXMRTakerMoneroEndpoint
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -291,10 +289,10 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		return nil, err
 	}
 
-	aliceCfg := &alice.Config{
+	bcfg := &backend.Config{
 		Ctx:                  ctx,
-		Basepath:             cfg.Basepath,
 		MoneroWalletEndpoint: moneroEndpoint,
+		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint, // TODO: only set if env=development
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
@@ -305,70 +303,5 @@ func createAliceInstance(ctx context.Context, c *cli.Context, env common.Environ
 		SwapContractAddress:  contractAddr,
 	}
 
-	return alice.NewInstance(aliceCfg)
-}
-
-func createBobInstance(ctx context.Context, c *cli.Context, env common.Environment,
-	cfg common.Config) (*bob.Instance, error) {
-	var (
-		moneroEndpoint, ethEndpoint string
-	)
-
-	chainID := int64(c.Uint(flagEthereumChainID))
-	if chainID == 0 {
-		chainID = cfg.EthereumChainID
-	}
-
-	if c.String(flagMoneroWalletEndpoint) != "" {
-		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
-	} else {
-		moneroEndpoint = common.DefaultBobMoneroEndpoint
-	}
-
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String(flagEthereumEndpoint)
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
-
-	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, true)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
-	var gasPrice *big.Int
-	if c.Uint(flagGasPrice) != 0 {
-		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
-	}
-
-	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
-	if err != nil {
-		return nil, err
-	}
-
-	ec, err := ethclient.Dial(ethEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	bobCfg := &bob.Config{
-		Ctx:                  ctx,
-		Basepath:             cfg.Basepath,
-		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint, // TODO: only set if env=development
-		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
-		Environment:          env,
-		ChainID:              big.NewInt(chainID),
-		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint(flagGasLimit)),
-	}
-
-	b, err := bob.NewInstance(bobCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return backend.NewBackend(bcfg)
 }

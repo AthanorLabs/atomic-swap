@@ -76,23 +76,27 @@ func (*mockSwapManager) GetOngoingSwap() *swap.Info {
 		statusCh,
 	)
 }
+func (*mockSwapManager) AddSwap(*swap.Info) error {
+	return nil
+}
+func (*mockSwapManager) CompleteOngoingSwap() {}
 
-type mockAlice struct{}
+type mockXMRTaker struct{}
 
-func (*mockAlice) Provides() types.ProvidesCoin {
+func (*mockXMRTaker) Provides() types.ProvidesCoin {
 	return types.ProvidesETH
 }
-func (*mockAlice) SetGasPrice(gasPrice uint64) {}
-func (*mockAlice) GetOngoingSwapState() common.SwapState {
+func (*mockXMRTaker) SetGasPrice(gasPrice uint64) {}
+func (*mockXMRTaker) GetOngoingSwapState() common.SwapState {
 	return new(mockSwapState)
 }
-func (*mockAlice) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
+func (*mockXMRTaker) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
-func (*mockAlice) Refund() (ethcommon.Hash, error) {
+func (*mockXMRTaker) Refund() (ethcommon.Hash, error) {
 	return ethcommon.Hash{}, nil
 }
-func (*mockAlice) SetSwapTimeout(_ time.Duration) {}
+func (*mockXMRTaker) SetSwapTimeout(_ time.Duration) {}
 
 type mockSwapState struct{}
 
@@ -112,6 +116,22 @@ func (*mockSwapState) InfoFile() string {
 	return os.TempDir() + "test.infofile"
 }
 
+type mockProtocolBackend struct {
+	sm *mockSwapManager
+}
+
+func newMockProtocolBackend() *mockProtocolBackend {
+	return &mockProtocolBackend{
+		sm: new(mockSwapManager),
+	}
+}
+
+func (*mockProtocolBackend) SetGasPrice(uint64)                   {}
+func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {}
+func (b *mockProtocolBackend) SwapManager() swap.Manager {
+	return b.sm
+}
+
 func newServer(t *testing.T) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
@@ -122,12 +142,12 @@ func newServer(t *testing.T) *Server {
 	defaultWSPort++
 
 	cfg := &Config{
-		Ctx:         ctx,
-		Port:        defaultRPCPort,
-		WsPort:      defaultWSPort,
-		Net:         new(mockNet),
-		SwapManager: new(mockSwapManager),
-		Alice:       new(mockAlice),
+		Ctx:             ctx,
+		Port:            defaultRPCPort,
+		WsPort:          defaultWSPort,
+		Net:             new(mockNet),
+		ProtocolBackend: newMockProtocolBackend(),
+		XMRTaker:        new(mockXMRTaker),
 	}
 
 	s, err := NewServer(cfg)

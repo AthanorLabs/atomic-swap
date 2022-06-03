@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"context"
@@ -19,6 +19,7 @@ import (
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 
@@ -32,11 +33,13 @@ const revertSwapCompleted = "swap is already completed"
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
 type swapState struct {
-	alice  *Instance
+	backend.Backend
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
-	infofile string
+	infofile      string
+	transferBack  bool
+	walletAddress mcrypto.Address
 
 	info     *pswap.Info
 	statusCh chan types.Status
@@ -47,11 +50,11 @@ type swapState struct {
 	privkeys     *mcrypto.PrivateKeyPair
 	pubkeys      *mcrypto.PublicKeyPair
 
-	// Bob's keys for this session
-	bobPublicSpendKey     *mcrypto.PublicKey
-	bobPrivateViewKey     *mcrypto.PrivateViewKey
-	bobSecp256k1PublicKey *secp256k1.PublicKey
-	bobAddress            ethcommon.Address
+	// XMRMaker's keys for this session
+	xmrmakerPublicSpendKey     *mcrypto.PublicKey
+	xmrmakerPrivateViewKey     *mcrypto.PrivateViewKey
+	xmrmakerSecp256k1PublicKey *secp256k1.PublicKey
+	xmrmakerAddress            ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
@@ -65,46 +68,53 @@ type swapState struct {
 	// channels
 	xmrLockedCh chan struct{}
 	claimedCh   chan struct{}
+	done        chan struct{}
+	exited      bool
 }
 
-func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount,
-	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
-	if a.contract == nil {
+func newSwapState(b backend.Backend, infofile string, transferBack bool, walletAddress mcrypto.Address,
+	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
+	exchangeRate types.ExchangeRate) (*swapState, error) {
+	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
+	if transferBack && walletAddress == "" {
+		return nil, errMustProvideWalletAddress
+	}
+
+	txOpts, err := b.TxOpts()
 	if err != nil {
 		return nil, err
 	}
-
-	txOpts.GasPrice = a.gasPrice
-	txOpts.GasLimit = a.gasLimit
 
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
 	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
-		exhangeRate, stage, statusCh)
-	if err := a.swapManager.AddSwap(info); err != nil {
+		exchangeRate, stage, statusCh)
+	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(a.ctx)
+	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
 		cancel:              cancel,
-		alice:               a,
+		Backend:             b,
 		infofile:            infofile,
+		transferBack:        transferBack,
+		walletAddress:       walletAddress,
 		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
+		done:                make(chan struct{}),
 		info:                info,
 		statusCh:            statusCh,
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.infofile, a.contractAddr.String()); err != nil {
+	if err := pcommon.WriteContractAddressToFile(s.infofile, b.ContractAddr().String()); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
@@ -174,11 +184,17 @@ func (s *swapState) Exit() error {
 	s.Lock()
 	defer s.Unlock()
 
+	if s.exited {
+		return nil
+	}
+
+	s.exited = true
+
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.alice.swapState = nil
-		s.alice.swapManager.CompleteOngoingSwap()
+		s.SwapManager().CompleteOngoingSwap()
+		close(s.done)
 
 		if s.info.Status() == types.CompletedSuccess {
 			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
@@ -220,7 +236,7 @@ func (s *swapState) Exit() error {
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
-			// seems like Bob claimed already - try to claim monero
+			// seems like XMRMaker claimed already - try to claim monero
 			if strings.Contains(err.Error(), revertSwapCompleted) {
 				return s.tryClaim()
 			}
@@ -281,7 +297,7 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 
 		// send NotifyRefund msg
-		if err = s.alice.net.SendSwapMessage(&message.NotifyRefund{
+		if err = s.SendSwapMessage(&message.NotifyRefund{
 			TxHash: txHash.String(),
 		}); err != nil {
 			return ethcommon.Hash{}, fmt.Errorf("failed to send refund message: err=%w", err)
@@ -297,7 +313,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
 
-	isReady, err := s.alice.contract.IsReady(s.alice.callOpts, s.contractSwapID)
+	isReady, err := s.Contract().IsReady(s.CallOpts(), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -333,10 +349,10 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.alice.env)
+	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.Env())
 }
 
-// generateKeys generates Alice's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
 // and a DLEq proof proving that the two keys correspond.
 func generateKeys() (*pcommon.KeysAndProof, error) {
 	return pcommon.GenerateKeysAndProof()
@@ -350,12 +366,13 @@ func (s *swapState) getSecret() [32]byte {
 	return sc
 }
 
-// setBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
+// setXMRMakerKeys sets XMRMaker's public spend key (to be stored in the contract) and XMRMaker's
 // private view key (used to check XMR balance before calling Ready())
-func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey, secp256k1Pub *secp256k1.PublicKey) {
-	s.bobPublicSpendKey = sk
-	s.bobPrivateViewKey = vk
-	s.bobSecp256k1PublicKey = secp256k1Pub
+func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey,
+	secp256k1Pub *secp256k1.PublicKey) {
+	s.xmrmakerPublicSpendKey = sk
+	s.xmrmakerPrivateViewKey = vk
+	s.xmrmakerSecp256k1PublicKey = secp256k1Pub
 }
 
 // lockETH the Swap contract function new_swap and locks `amount` ether in it.
@@ -364,12 +381,12 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, errNoPublicKeysSet
 	}
 
-	if s.bobPublicSpendKey == nil || s.bobPrivateViewKey == nil {
+	if s.xmrmakerPublicSpendKey == nil || s.xmrmakerPrivateViewKey == nil {
 		return ethcommon.Hash{}, errCounterpartyKeysNotSet
 	}
 
-	cmtAlice := s.secp256k1Pub.Keccak256()
-	cmtBob := s.bobSecp256k1PublicKey.Keccak256()
+	cmtXMRTaker := s.secp256k1Pub.Keccak256()
+	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
 	s.txOpts.Value = amount.BigInt()
 	defer func() {
@@ -377,14 +394,14 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}()
 
 	nonce := generateNonce()
-	tx, err := s.alice.contract.NewSwap(s.txOpts, cmtBob, cmtAlice,
-		s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())), nonce)
+	tx, err := s.Contract().NewSwap(s.txOpts, cmtXMRMaker, cmtXMRTaker,
+		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
 	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())
-	receipt, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash())
+	receipt, err := s.WaitForReceipt(s.ctx, tx.Hash())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
 	}
@@ -406,10 +423,10 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	s.setTimeouts(t0, t1)
 
 	s.contractSwap = swapfactory.SwapFactorySwap{
-		Owner:        s.alice.callOpts.From,
-		Claimer:      s.bobAddress,
-		PubKeyClaim:  cmtBob,
-		PubKeyRefund: cmtAlice,
+		Owner:        s.EthAddress(),
+		Claimer:      s.xmrmakerAddress,
+		PubKeyClaim:  cmtXMRMaker,
+		PubKeyRefund: cmtXMRTaker,
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Value:        amount.BigInt(),
@@ -423,11 +440,11 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	return tx.Hash(), nil
 }
 
-// ready calls the Ready() method on the Swap contract, indicating to Bob he has until time t_1 to
-// call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
+// ready calls the Ready() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
+// call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwap)
+	tx, err := s.Contract().SetReady(s.txOpts, s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -436,30 +453,30 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	if _, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); err != nil {
+	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
 		return fmt.Errorf("failed to call is_ready in swap contract: %w", err)
 	}
 
 	return nil
 }
 
-// refund calls the Refund() method in the Swap contract, revealing Alice's secret
+// refund calls the Refund() method in the Swap contract, revealing XMRTaker's secret
 // and returns to her the ether in the contract.
-// If time t_1 passes and Claim() has not been called, Alice should call Refund().
+// If time t_1 passes and Claim() has not been called, XMRTaker should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
-	if s.alice.contract == nil {
+	if s.Contract() == nil {
 		return ethcommon.Hash{}, errNoSwapContractSet
 	}
 
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	if _, err := common.WaitForReceipt(s.ctx, s.alice.ethClient, tx.Hash()); err != nil {
+	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
 	}
 
@@ -473,33 +490,33 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	}
 
 	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-	vkAB := mcrypto.SumPrivateViewKeys(s.bobPrivateViewKey, s.privkeys.ViewKey())
+	vkAB := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.alice.env); err != nil {
+	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.Env()); err != nil {
 		return "", err
 	}
 
-	addr, err := monero.CreateMoneroWallet("alice-swap-wallet", s.alice.env, s.alice.client, kpAB)
+	addr, err := monero.CreateMoneroWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB)
 	if err != nil {
 		return "", err
 	}
 
-	if !s.alice.transferBack {
+	if !s.transferBack {
 		log.Infof("monero claimed in account %s", addr)
 		return addr, nil
 	}
 
 	log.Infof("monero claimed in account %s; transferring to original account %s",
-		addr, s.alice.walletAddress)
+		addr, s.walletAddress)
 
 	err = s.waitUntilBalanceUnlocks()
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.alice.client.SweepAll(s.alice.walletAddress, 0)
+	res, err := s.SweepAll(s.walletAddress, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -511,7 +528,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	amount := res.AmountList[0]
 	log.Infof("transferred %v XMR to %s",
 		common.MoneroAmount(amount).AsMonero(),
-		s.alice.walletAddress,
+		s.walletAddress,
 	)
 
 	close(s.claimedCh)
@@ -526,13 +543,12 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 
 		log.Infof("checking if balance unlocked...")
 
-		if s.alice.env == common.Development {
-			daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
-			_ = daemonClient.GenerateBlocks(string(s.alice.walletAddress), 64)
-			_ = s.alice.client.Refresh()
+		if s.Env() == common.Development {
+			_ = s.GenerateBlocks(string(s.walletAddress), 64)
+			_ = s.Refresh()
 		}
 
-		balance, err := s.alice.client.GetBalance(0)
+		balance, err := s.GetBalance(0)
 		if err != nil {
 			return fmt.Errorf("failed to get balance: %w", err)
 		}

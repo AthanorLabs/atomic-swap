@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	eth "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/dleq"
 	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/noot/atomic-swap/protocol/backend"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -23,11 +23,11 @@ type recoveryState struct {
 	ss *swapState
 }
 
-// NewRecoveryState returns a new *bob.recoveryState,
+// NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
+func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.PrivateSpendKey,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
-	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
+	txOpts, err := b.TxOpts()
 	if err != nil {
 		return nil, err
 	}
@@ -39,24 +39,21 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 
 	pubkp := kp.PublicKeyPair()
 
-	txOpts.GasPrice = a.gasPrice
-	txOpts.GasLimit = a.gasLimit
-
 	var sc [32]byte
 	copy(sc[:], secret.Bytes())
 
-	ctx, cancel := context.WithCancel(a.ctx)
+	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:            ctx,
 		cancel:         cancel,
-		alice:          a,
+		Backend:        b,
 		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		contractSwap:   contractSwap,
-		infofile:       pcommon.GetSwapRecoveryFilepath(a.basepath),
+		infofile:       pcommon.GetSwapRecoveryFilepath(basepath),
 		claimedCh:      make(chan struct{}),
 	}
 
@@ -80,20 +77,20 @@ type RecoveryResult struct {
 // ClaimOrRecover either claims ether or recovers monero by creating a wallet.
 // It returns a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
-	// check if Bob claimed
+	// check if XMRMaker claimed
 	skA, err := rs.ss.filterForClaim()
 	if !errors.Is(err, errNoClaimLogsFound) && err != nil {
 		return nil, err
 	}
 
-	// if Bob claimed, let's get our monero
+	// if XMRMaker claimed, let's get our monero
 	if skA != nil {
 		vkA, err := skA.View() //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
-		rs.ss.setBobKeys(skA.Public(), vkA, nil)
+		rs.ss.setXMRMakerKeys(skA.Public(), vkA, nil)
 
 		addr, err := rs.ss.claimMonero(skA)
 		if err != nil {
@@ -121,8 +118,8 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	const claimedEvent = "Claimed"
 
-	logs, err := s.alice.ethClient.FilterLogs(s.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{s.alice.contractAddr},
+	logs, err := s.FilterLogs(s.ctx, eth.FilterQuery{
+		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
 	})
 	if err != nil {

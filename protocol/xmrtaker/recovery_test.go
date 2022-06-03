@@ -1,4 +1,4 @@
-package alice
+package xmrtaker
 
 import (
 	"testing"
@@ -11,8 +11,8 @@ import (
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
-	inst, s := newTestInstance(t)
-	inst.swapTimeout = time.Second * 10
+	s := newTestInstance(t)
+	s.SetSwapTimeout(time.Second * 10)
 	akp, err := generateKeys()
 	require.NoError(t, err)
 
@@ -21,19 +21,19 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	s.secp256k1Pub = akp.Secp256k1PublicKey
 	s.dleqProof = akp.DLEqProof
 
-	s.setBobKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
-	s.bobAddress = inst.callOpts.From
+	s.setXMRMakerKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
+	s.xmrmakerAddress = s.EthAddress()
 
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
+	rs, err := NewRecoveryState(s, "/tmp/test-infofile", s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 	return rs
 }
 
 func TestClaimOrRefund_Claim(t *testing.T) {
-	// test case where Bob has claimed the ether, so Alice should be able to
+	// test case where XMRMaker has claimed the ether, so XMRTaker should be able to
 	// claim the monero.
 	rs := newTestRecoveryState(t)
 
@@ -43,10 +43,10 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.alice.contract.Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
+	_, err = rs.ss.Contract().Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 
-	t.Log("Bob claimed ETH...")
+	t.Log("XMRMaker claimed ETH...")
 
 	// assert we can claim the monero
 	res, err := rs.ClaimOrRefund()
@@ -55,8 +55,8 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 }
 
 func TestClaimOrRefund_Refund_beforeT0(t *testing.T) {
-	// test case where Bob hasn't claimed the ether, and it's before
-	// t0/IsReady, so Alice should be able to refund.
+	// test case where XMRMaker hasn't claimed the ether, and it's before
+	// t0/IsReady, so XMRTaker should be able to refund.
 	rs := newTestRecoveryState(t)
 
 	// assert we can refund the ether
@@ -66,8 +66,8 @@ func TestClaimOrRefund_Refund_beforeT0(t *testing.T) {
 }
 
 func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
-	// test case where Bob hasn't claimed the ether, and it's after
-	// t1, so Alice should be able to refund.
+	// test case where XMRMaker hasn't claimed the ether, and it's after
+	// t1, so XMRTaker should be able to refund.
 	rs := newTestRecoveryState(t)
 
 	rpcClient, err := rpc.Dial(common.DefaultEthEndpoint)
@@ -77,7 +77,7 @@ func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
 	err = rpcClient.Call(&result, "evm_snapshot")
 	require.NoError(t, err)
 
-	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Seconds()*2+360)
+	err = rpcClient.Call(nil, "evm_increaseTime", rs.ss.SwapTimeout().Seconds()*2+360)
 	require.NoError(t, err)
 
 	defer func() {

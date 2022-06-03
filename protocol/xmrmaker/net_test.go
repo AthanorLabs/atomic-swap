@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"testing"
@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBob_HandleInitiateMessage(t *testing.T) {
-	b := newTestBob(t)
+func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
+	b := newTestXMRMaker(t)
 
 	offer := &types.Offer{
 		Provides:      types.ProvidesXMR,
@@ -24,7 +24,7 @@ func TestBob_HandleInitiateMessage(t *testing.T) {
 		<-extra.IDCh
 	}()
 
-	msg, _ := newTestAliceSendKeysMessage(t)
+	msg, _ := newTestXMRTakerSendKeysMessage(t)
 	msg.OfferID = offer.GetID().String()
 	msg.ProvidedAmount = offer.MinimumAmount * float64(offer.ExchangeRate)
 

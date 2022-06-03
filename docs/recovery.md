@@ -23,19 +23,11 @@ This file contains all the information you need to recover your funds.
 
 If you were in the role of maker during the swap, ie. you had XMR and were swapping for ETH, the following will allow you to either recover your XMR or claim the ETH.
 
-### Check if XMR account key was obtained
-
-If the `SharedSwapPrivateKey` field in the info file is non-empty, you can simply claim the XMR by importing the `PrivateSpendKey`, `PrivateViewKey`, and `Address` in that file into your Monero wallet. 
-
-With monero-wallet-cli, you can follow the instructions [here](https://www.getmonero.org/resources/user-guides/restore_from_keys.html).
-
-### Otherwise, recover from contract address and swap secret
-
-Using the `PrivateSpendKey`, `ContractAddress`, and `SwapID` fields within the info file, you can recover your funds using the `swaprecover` binary.
+Using the info file, you can recover your funds using the `swaprecover` binary.
 
 For example, on the stagenet-Goerli networks:
 ```bash
-./swaprecover --env stagenet --ethereum-endpoint=<your-goerli-endpoint> --ethereum-privkey=goerli.key --ethereum-chain-id=5 --contract-swap-id=<SwapID> --bob-secret=<PrivateSpendKey> --contract-addr=<ContractAddress>
+./swaprecover --env stagenet --ethereum-endpoint=<your-goerli-endpoint> --ethereum-privkey=goerli.key --ethereum-chain-id=5 --infofile=/path/to/infofile --xmrmaker
 ```
 
 The Ethereum private key must be the same one used when you ran `swapd`.
@@ -46,19 +38,11 @@ The recovery program will firstly try to claim ETH from the contract if possible
 
 If you were in the role of taker during the swap, ie. you had ETH and were swapping for XMR, the following will allow you to either recover your ETH or claim the XMR.
 
-### Check if XMR account key was obtained
-
-If the `SharedSwapPrivateKey` field in the info file is non-empty, you can simply claim the XMR by importing the `PrivateSpendKey`, `PrivateViewKey`, and `Address` in that file into your Monero wallet. 
-
-With monero-wallet-cli, you can follow the instructions [here](https://www.getmonero.org/resources/user-guides/restore_from_keys.html).
-
-### Otherwise, recover from contract address and swap secret
-
-Using the `PrivateSpendKey`, `ContractAddress`, and `SwapID` fields within the info file, you can recover your funds using the `swaprecover` binary.
+Using the info file, you can recover your funds using the `swaprecover` binary.
 
 For example, on the stagenet-Goerli networks:
 ```bash
-./swaprecover --env stagenet --ethereum-endpoint=<your-goerli-endpoint> --ethereum-privkey=goerli.key --ethereum-chain-id=5 --contract-swap-id=<SwapID> --alice-secret=<PrivateSpendKey> --contract-addr=<ContractAddress>
+./swaprecover --env stagenet --ethereum-endpoint=<your-goerli-endpoint> --ethereum-privkey=goerli.key --ethereum-chain-id=5 --infofile=/path/to/infofile --xmrtaker
 ```
 
 The Ethereum private key must be the same one used when you ran `swapd`.

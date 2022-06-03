@@ -19,20 +19,20 @@ func TestClient_Transfer(t *testing.T) {
 	}
 
 	const amount = 2800000000
-	cBob := NewClient(common.DefaultBobMoneroEndpoint)
+	cXMRMaker := NewClient(common.DefaultXMRMakerMoneroEndpoint)
 
-	err := cBob.OpenWallet("test-wallet", "")
+	err := cXMRMaker.OpenWallet("test-wallet", "")
 	require.NoError(t, err)
 
-	bobAddr, err := cBob.callGetAddress(0)
+	xmrmakerAddr, err := cXMRMaker.callGetAddress(0)
 	require.NoError(t, err)
 
 	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemon.callGenerateBlocks(bobAddr.Address, 181)
+	_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 181)
 
 	time.Sleep(time.Second * 10)
 
-	balance, err := cBob.GetBalance(0)
+	balance, err := cXMRMaker.GetBalance(0)
 	require.NoError(t, err)
 	t.Log("balance: ", balance.Balance)
 	t.Log("unlocked balance: ", balance.UnlockedBalance)
@@ -54,24 +54,24 @@ func TestClient_Transfer(t *testing.T) {
 	r, err := rand.Int(rand.Reader, big.NewInt(10000))
 	require.NoError(t, err)
 
-	cAlice := NewClient(common.DefaultAliceMoneroEndpoint)
+	cXMRTaker := NewClient(common.DefaultXMRTakerMoneroEndpoint)
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%d", r)
-	err = cAlice.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
+	err = cXMRTaker.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
-	err = cAlice.OpenWallet(walletFP, "")
+	err = cXMRTaker.OpenWallet(walletFP, "")
 	require.NoError(t, err)
 
 	// transfer to account A+B
-	_, err = cBob.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
+	_, err = cXMRMaker.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
 	require.NoError(t, err)
-	err = daemon.callGenerateBlocks(bobAddr.Address, 1)
+	err = daemon.callGenerateBlocks(xmrmakerAddr.Address, 1)
 	require.NoError(t, err)
 
 	for {
 		t.Log("checking balance...")
-		balance, err = cAlice.GetBalance(0)
+		balance, err = cXMRTaker.GetBalance(0)
 		require.NoError(t, err)
 
 		if balance.Balance > 0 {
@@ -80,32 +80,32 @@ func TestClient_Transfer(t *testing.T) {
 			break
 		}
 
-		_ = daemon.callGenerateBlocks(bobAddr.Address, 1)
+		_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 1)
 		time.Sleep(time.Second)
 	}
 
-	_ = daemon.callGenerateBlocks(bobAddr.Address, 16)
+	_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 16)
 
 	// generate spend account for A+B
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
 	// ignore the error for now, as it can error with "Wallet already exists."
-	_ = cAlice.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
+	_ = cXMRTaker.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
 		fmt.Sprintf("test-wallet-%d", r), "")
 
-	err = cAlice.refresh()
+	err = cXMRTaker.refresh()
 	require.NoError(t, err)
 
-	balance, err = cAlice.GetBalance(0)
+	balance, err = cXMRTaker.GetBalance(0)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, balance.Balance)
 
-	// transfer from account A+B back to Bob's address
-	_, err = cAlice.Transfer(mcrypto.Address(bobAddr.Address), 0, 1)
+	// transfer from account A+B back to XMRMaker's address
+	_, err = cXMRTaker.Transfer(mcrypto.Address(xmrmakerAddr.Address), 0, 1)
 	require.NoError(t, err)
 }
 
 func TestClient_CloseWallet(t *testing.T) {
-	c := NewClient(common.DefaultBobMoneroEndpoint)
+	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	err := c.OpenWallet("test-wallet", "")
 	require.NoError(t, err)
 
@@ -117,14 +117,14 @@ func TestClient_CloseWallet(t *testing.T) {
 }
 
 func TestClient_GetAccounts(t *testing.T) {
-	c := NewClient(common.DefaultBobMoneroEndpoint)
+	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	resp, err := c.GetAccounts()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(resp.SubaddressAccounts))
 }
 
 func TestClient_GetHeight(t *testing.T) {
-	c := NewClient(common.DefaultBobMoneroEndpoint)
+	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	resp, err := c.GetHeight()
 	require.NoError(t, err)
 	require.NotEqual(t, 0, resp)

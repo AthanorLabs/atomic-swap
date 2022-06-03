@@ -25,16 +25,16 @@ const (
 	generateBlocksEnv = "GENERATEBLOCKS"
 	falseStr          = "false"
 
-	defaultAliceDaemonEndpoint     = "http://localhost:5001"
-	defaultAliceDaemonWSEndpoint   = "ws://localhost:8081"
-	defaultBobDaemonEndpoint       = "http://localhost:5002"
-	defaultBobDaemonWSEndpoint     = "ws://localhost:8082"
-	defaultCharlieDaemonWSEndpoint = "ws://localhost:8083"
+	defaultXMRTakerDaemonEndpoint   = "http://localhost:5001"
+	defaultXMRTakerDaemonWSEndpoint = "ws://localhost:8081"
+	defaultXMRMakerDaemonEndpoint   = "http://localhost:5002"
+	defaultXMRMakerDaemonWSEndpoint = "ws://localhost:8082"
+	defaultCharlieDaemonWSEndpoint  = "ws://localhost:8083"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
 
-	bobProvideAmount = float64(1.0)
-	exchangeRate     = float64(0.05)
+	xmrmakerProvideAmount = float64(1.0)
+	exchangeRate          = float64(0.05)
 )
 
 func TestMain(m *testing.M) {
@@ -57,15 +57,15 @@ func TestMain(m *testing.M) {
 }
 
 func generateBlocks(num uint) {
-	c := monero.NewClient(common.DefaultBobMoneroEndpoint)
+	c := monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-	bobAddr, err := c.GetAddress(0)
+	xmrmakerAddr, err := c.GetAddress(0)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("> Generating blocks for test setup...")
-	_ = d.GenerateBlocks(bobAddr.Address, num)
+	_ = d.GenerateBlocks(xmrmakerAddr.Address, num)
 	err = c.Refresh()
 	if err != nil {
 		panic(err)
@@ -75,9 +75,9 @@ func generateBlocks(num uint) {
 }
 
 func generateBlocksAsync() {
-	c := monero.NewClient(common.DefaultBobMoneroEndpoint)
+	c := monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-	bobAddr, err := c.GetAddress(0)
+	xmrmakerAddr, err := c.GetAddress(0)
 	if err != nil {
 		panic(err)
 	}
@@ -85,7 +85,7 @@ func generateBlocksAsync() {
 	// generate 1 block per second
 	for {
 		time.Sleep(time.Second)
-		_ = d.GenerateBlocks(bobAddr.Address, 1)
+		_ = d.GenerateBlocks(xmrmakerAddr.Address, 1)
 		err = c.Refresh()
 		if err != nil {
 			panic(err)
@@ -93,31 +93,31 @@ func generateBlocksAsync() {
 	}
 }
 
-func TestAlice_Discover(t *testing.T) {
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
-	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
+func TestXMRTaker_Discover(t *testing.T) {
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 }
 
-func TestBob_Discover(t *testing.T) {
-	c := rpcclient.NewClient(defaultBobDaemonEndpoint)
+func TestXMRMaker_Discover(t *testing.T) {
+	c := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	providers, err := c.Discover(types.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(providers))
 }
 
-func TestAlice_Query(t *testing.T) {
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
-	_, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
+func TestXMRTaker_Query(t *testing.T) {
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -127,8 +127,8 @@ func TestAlice_Query(t *testing.T) {
 	resp, err := c.Query(providers[0][0])
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(resp.Offers), 1)
-	require.Equal(t, bobProvideAmount, resp.Offers[0].MinimumAmount)
-	require.Equal(t, bobProvideAmount, resp.Offers[0].MaximumAmount)
+	require.Equal(t, xmrmakerProvideAmount, resp.Offers[0].MinimumAmount)
+	require.Equal(t, xmrmakerProvideAmount, resp.Offers[0].MaximumAmount)
 	require.Equal(t, exchangeRate, float64(resp.Offers[0].ExchangeRate))
 }
 
@@ -138,18 +138,18 @@ func TestSuccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
-	bobIDCh := make(chan uint64, 1)
+	xmrmakerIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
 
 	var wg sync.WaitGroup
@@ -162,13 +162,13 @@ func TestSuccess(t *testing.T) {
 		case taken := <-takenCh:
 			require.NotNil(t, taken)
 			t.Log("swap ID:", taken.ID)
-			bobIDCh <- taken.ID
+			xmrmakerIDCh <- taken.ID
 		case <-time.After(testTimeout):
 			errCh <- errors.New("make offer subscription timed out")
 		}
 
 		for status := range statusCh {
-			fmt.Println("> Bob got status:", status)
+			fmt.Println("> XMRMaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -181,8 +181,8 @@ func TestSuccess(t *testing.T) {
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	// TODO: implement discovery over websockets
@@ -197,7 +197,7 @@ func TestSuccess(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -218,15 +218,15 @@ func TestSuccess(t *testing.T) {
 	default:
 	}
 
-	bobSwapID := <-bobIDCh
-	require.Equal(t, id, bobSwapID)
+	xmrmakerSwapID := <-xmrmakerIDCh
+	require.Equal(t, id, xmrmakerSwapID)
 
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(offersBefore)-len(offersAfter))
 }
 
-func TestRefund_AliceCancels(t *testing.T) {
+func TestRefund_XMRTakerCancels(t *testing.T) {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
@@ -239,18 +239,18 @@ func TestRefund_AliceCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
-	bobIDCh := make(chan uint64, 1)
+	xmrmakerIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
 
 	var wg sync.WaitGroup
@@ -263,27 +263,27 @@ func TestRefund_AliceCancels(t *testing.T) {
 		case taken := <-takenCh:
 			require.NotNil(t, taken)
 			t.Log("swap ID:", taken.ID)
-			bobIDCh <- taken.ID
+			xmrmakerIDCh <- taken.ID
 		case <-time.After(testTimeout):
 			errCh <- errors.New("make offer subscription timed out")
 		}
 
 		for status := range statusCh {
-			fmt.Println("> Bob got status:", status)
+			fmt.Println("> XMRMaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedRefund {
-				errCh <- fmt.Errorf("swap did not refund successfully for Bob: exit status was %s", status)
+				errCh <- fmt.Errorf("swap did not refund successfully for XMRMaker: exit status was %s", status)
 			}
 
 			return
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	err = c.SetSwapTimeout(swapTimeout)
@@ -300,21 +300,21 @@ func TestRefund_AliceCancels(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status != types.ETHLocked {
 				continue
 			}
 
-			fmt.Println("> Alice cancelled swap!")
+			fmt.Println("> XMRTaker cancelled swap!")
 			exitStatus, err := c.Cancel() //nolint:govet
 			if err != nil {
-				t.Log("Alice got error", err)
+				t.Log("XMRTaker got error", err)
 				errCh <- err
 				return
 			}
 
 			if exitStatus != types.CompletedRefund {
-				errCh <- fmt.Errorf("did not refund successfully for Alice: exit status was %s", exitStatus)
+				errCh <- fmt.Errorf("did not refund successfully for XMRTaker: exit status was %s", exitStatus)
 			}
 
 			return
@@ -329,30 +329,31 @@ func TestRefund_AliceCancels(t *testing.T) {
 	default:
 	}
 
-	bobSwapID := <-bobIDCh
-	require.Equal(t, id, bobSwapID)
+	xmrmakerSwapID := <-xmrmakerIDCh
+	require.Equal(t, id, xmrmakerSwapID)
 
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, len(offersBefore), len(offersAfter))
 }
 
-// TestRefund_BobCancels_untilAfterT1 tests the case where Alice and Bob both lock their funds, but Bob goes offline
-// until time t1 in the swap contract passes. This triggers Alice to refund, which Bob will then
+// TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker
+// both lock their funds, but XMRMaker goes offline
+// until time t1 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
 // "come online" to see, and he will then refund also.
-func TestRefund_BobCancels_untilAfterT1(t *testing.T) {
-	testRefundBobCancels(t, 5, types.CompletedRefund)
+func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
+	testRefundXMRMakerCancels(t, 5, types.CompletedRefund)
 	time.Sleep(time.Second * 5)
 }
 
-// TestRefund_BobCancels_afterIsReady tests the case where Alice and Bob both lock their funds,
-// but Bob goes offline until past isReady==true and t0, but comes online before t1.
-//  When Bob comes back online, he should claim the ETH, causing Alice to also claim the XMR.
-func TestRefund_BobCancels_afterIsReady(t *testing.T) {
-	testRefundBobCancels(t, 30, types.CompletedSuccess)
+// TestRefund_XMRMakerCancels_afterIsReady tests the case where XMRTaker and XMRMaker both lock their funds,
+// but XMRMaker goes offline until past isReady==true and t0, but comes online before t1.
+//  When XMRMaker comes back online, he should claim the ETH, causing XMRTaker to also claim the XMR.
+func TestRefund_XMRMakerCancels_afterIsReady(t *testing.T) {
+	testRefundXMRMakerCancels(t, 30, types.CompletedSuccess)
 }
 
-func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) {
+func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
@@ -362,18 +363,18 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bcli := rpcclient.NewClient(defaultBobDaemonEndpoint)
-	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bcli := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
 	offersBefore, err := bcli.GetOffers()
 	require.NoError(t, err)
 
-	bobIDCh := make(chan uint64, 1)
+	xmrmakerIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
 
 	var wg sync.WaitGroup
@@ -386,18 +387,18 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 		case taken := <-takenCh:
 			require.NotNil(t, taken)
 			t.Log("swap ID:", taken.ID)
-			bobIDCh <- taken.ID
+			xmrmakerIDCh <- taken.ID
 		case <-time.After(testTimeout):
 			errCh <- errors.New("make offer subscription timed out")
 		}
 
 		for status := range statusCh {
-			fmt.Println("> Bob got status:", status)
+			fmt.Println("> XMRMaker got status:", status)
 			if status != types.XMRLocked {
 				continue
 			}
 
-			fmt.Println("> Bob cancelled swap!")
+			fmt.Println("> XMRMaker cancelled swap!")
 			exitStatus, err := bcli.Cancel() //nolint:govet
 			if err != nil {
 				errCh <- err
@@ -405,17 +406,17 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 			}
 
 			if exitStatus != expectedExitStatus {
-				errCh <- fmt.Errorf("did not get expected exit status for Bob: got %s, expected %s", exitStatus, expectedExitStatus)
+				errCh <- fmt.Errorf("did not get expected exit status for XMRMaker: got %s, expected %s", exitStatus, expectedExitStatus) //nolint:lll
 				return
 			}
 
-			fmt.Println("> Bob refunded successfully")
+			fmt.Println("> XMRMaker refunded successfully")
 			return
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	err = c.SetSwapTimeout(swapTimeout)
@@ -433,17 +434,17 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 		defer wg.Done()
 
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != expectedExitStatus {
-				errCh <- fmt.Errorf("did not get expected exit status for Alice: got %s, expected %s", status, expectedExitStatus)
+				errCh <- fmt.Errorf("did not get expected exit status for XMRTaker: got %s, expected %s", status, expectedExitStatus) //nolint:lll
 				return
 			}
 
-			fmt.Println("> Alice refunded successfully")
+			fmt.Println("> XMRTaker refunded successfully")
 			return
 		}
 	}()
@@ -456,8 +457,8 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 	default:
 	}
 
-	bobSwapID := <-bobIDCh
-	require.Equal(t, id, bobSwapID)
+	xmrmakerSwapID := <-xmrmakerIDCh
+	require.Equal(t, id, xmrmakerSwapID)
 
 	offersAfter, err := bcli.GetOffers()
 	require.NoError(t, err)
@@ -468,9 +469,9 @@ func testRefundBobCancels(t *testing.T, swapTimeout uint64, expectedExitStatus t
 	}
 }
 
-// TestAbort_AliceCancels tests the case where Alice cancels the swap before any funds are locked.
+// TestAbort_XMRTakerCancels tests the case where XMRTaker cancels the swap before any funds are locked.
 // Both parties should abort the swap successfully.
-func TestAbort_AliceCancels(t *testing.T) {
+func TestAbort_XMRTakerCancels(t *testing.T) {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
@@ -480,18 +481,18 @@ func TestAbort_AliceCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
-	bobIDCh := make(chan uint64, 1)
+	xmrmakerIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
 
 	var wg sync.WaitGroup
@@ -504,13 +505,13 @@ func TestAbort_AliceCancels(t *testing.T) {
 		case taken := <-takenCh:
 			require.NotNil(t, taken)
 			t.Log("swap ID:", taken.ID)
-			bobIDCh <- taken.ID
+			xmrmakerIDCh <- taken.ID
 		case <-time.After(testTimeout):
 			errCh <- errors.New("make offer subscription timed out")
 		}
 
 		for status := range statusCh {
-			fmt.Println("> Bob got status:", status)
+			fmt.Println("> XMRMaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -523,8 +524,8 @@ func TestAbort_AliceCancels(t *testing.T) {
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
@@ -538,12 +539,12 @@ func TestAbort_AliceCancels(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status != types.ExpectingKeys {
 				continue
 			}
 
-			fmt.Println("> Alice cancelled swap!")
+			fmt.Println("> XMRTaker cancelled swap!")
 			exitStatus, err := c.Cancel() //nolint:govet
 			if err != nil {
 				errCh <- err
@@ -566,18 +567,19 @@ func TestAbort_AliceCancels(t *testing.T) {
 	default:
 	}
 
-	bobSwapID := <-bobIDCh
-	require.Equal(t, id, bobSwapID)
+	xmrmakerSwapID := <-xmrmakerIDCh
+	require.Equal(t, id, xmrmakerSwapID)
 
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, len(offersBefore), len(offersAfter))
 }
 
-// This test simulates the case where neither Alice and Bob have locked funds yet, and Bob cancels the swap.
-// The swap should abort on Bob's side, but might abort *or* refund on Alice's side, in case she ended up
-// locking ETH before she was notified that Bob disconnected.
-func TestAbort_BobCancels(t *testing.T) {
+// This test simulates the case where neither XMRTaker and XMRMaker have
+// locked funds yet, and XMRMaker cancels the swap.
+// The swap should abort on XMRMaker's side, but might abort *or* refund on XMRTaker's side, in case she ended up
+// locking ETH before she was notified that XMRMaker disconnected.
+func TestAbort_XMRMakerCancels(t *testing.T) {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
@@ -587,19 +589,19 @@ func TestAbort_BobCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bcli := rpcclient.NewClient(defaultBobDaemonEndpoint)
-	bwsc, err := wsclient.NewWsClient(ctx, defaultBobDaemonWSEndpoint)
+	bcli := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, bobProvideAmount,
+	offerID, takenCh, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
-	bobIDCh := make(chan uint64, 1)
+	xmrmakerIDCh := make(chan uint64, 1)
 	errCh := make(chan error, 2)
 
 	var wg sync.WaitGroup
@@ -612,18 +614,18 @@ func TestAbort_BobCancels(t *testing.T) {
 		case taken := <-takenCh:
 			require.NotNil(t, taken)
 			t.Log("swap ID:", taken.ID)
-			bobIDCh <- taken.ID
+			xmrmakerIDCh <- taken.ID
 		case <-time.After(testTimeout):
 			errCh <- errors.New("make offer subscription timed out")
 		}
 
 		for status := range statusCh {
-			fmt.Println("> Bob got status:", status)
+			fmt.Println("> XMRMaker got status:", status)
 			if status != types.KeysExchanged {
 				continue
 			}
 
-			fmt.Println("> Bob cancelled swap!")
+			fmt.Println("> XMRMaker cancelled swap!")
 			exitStatus, err := bcli.Cancel() //nolint:govet
 			if err != nil {
 				errCh <- err
@@ -635,13 +637,13 @@ func TestAbort_BobCancels(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> Bob exited successfully")
+			fmt.Println("> XMRMaker exited successfully")
 			return
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultAliceDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
@@ -656,7 +658,7 @@ func TestAbort_BobCancels(t *testing.T) {
 		defer wg.Done()
 
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -666,7 +668,7 @@ func TestAbort_BobCancels(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> Alice exited successfully")
+			fmt.Println("> XMRTaker exited successfully")
 			return
 		}
 	}()
@@ -679,8 +681,8 @@ func TestAbort_BobCancels(t *testing.T) {
 	default:
 	}
 
-	bobSwapID := <-bobIDCh
-	require.Equal(t, id, bobSwapID)
+	xmrmakerSwapID := <-xmrmakerIDCh
+	require.Equal(t, id, xmrmakerSwapID)
 
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
@@ -695,11 +697,11 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bc := rpcclient.NewClient(defaultBobDaemonEndpoint)
-	offerID, err := bc.MakeOffer(bobProvideAmount, bobProvideAmount, exchangeRate)
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	ac := rpcclient.NewClient(defaultAliceDaemonEndpoint)
+	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
 
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
@@ -709,7 +711,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	errCh := make(chan error)
 
 	go func() {
-		wsc, err := wsclient.NewWsClient(ctx, defaultAliceDaemonWSEndpoint)
+		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 		require.NoError(t, err)
 
 		_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
@@ -719,7 +721,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -729,7 +731,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> Alice exited successfully")
+			fmt.Println("> XMRTaker exited successfully")
 			return
 		}
 	}()
@@ -745,7 +747,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			fmt.Println("> Alice got status:", status)
+			fmt.Println("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -755,7 +757,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> Alice exited successfully")
+			fmt.Println("> XMRTaker exited successfully")
 			return
 		}
 	}()
@@ -765,7 +767,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		require.NotNil(t, err)
 		t.Log("got expected error:", err)
 	case <-time.After(testTimeout):
-		t.Fatalf("did not get error from Alice or Charlie")
+		t.Fatalf("did not get error from XMRTaker or Charlie")
 	}
 
 	select {

@@ -12,8 +12,9 @@ import (
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/alice"
-	"github.com/noot/atomic-swap/protocol/bob"
+	"github.com/noot/atomic-swap/protocol/backend"
+	"github.com/noot/atomic-swap/protocol/xmrmaker"
+	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/stretchr/testify/require"
@@ -77,16 +78,16 @@ func (r *mockRecoverer) WalletFromSharedSecret(_ *mcrypto.PrivateKeyInfo) (mcryp
 	return mcrypto.Address(""), nil
 }
 
-func (r *mockRecoverer) RecoverFromBobSecretAndContract(b *bob.Instance, bobSecret, contractAddr string,
-	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*bob.RecoveryResult, error) {
-	return &bob.RecoveryResult{
+func (r *mockRecoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, _ string, xmrmakerSecret,
+	contractAddr string, swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
+	return &xmrmaker.RecoveryResult{
 		Claimed: true,
 	}, nil
 }
 
-func (r *mockRecoverer) RecoverFromAliceSecretAndContract(a *alice.Instance, aliceSecret string,
-	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*alice.RecoveryResult, error) {
-	return &alice.RecoveryResult{
+func (r *mockRecoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, _ string, xmrtakerSecret string,
+	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
+	return &xmrtaker.RecoveryResult{
 		Claimed: true,
 	}, nil
 }
@@ -146,7 +147,7 @@ func TestRecover_sharedSwapSecret(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRecover_withBobSecretAndContract(t *testing.T) {
+func TestRecover_withXMRMakerSecretAndContract(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
@@ -168,7 +169,7 @@ func TestRecover_withBobSecretAndContract(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRecover_withAliceSecretAndContract(t *testing.T) {
+func TestRecover_withXMRTakerSecretAndContract(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 

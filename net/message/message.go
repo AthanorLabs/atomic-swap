@@ -190,7 +190,7 @@ type ContractSwap struct {
 	Nonce        *big.Int
 }
 
-// NotifyETHLocked is sent by Alice to Bob after deploying the swap contract
+// NotifyETHLocked is sent by XMRTaker to XMRMaker after deploying the swap contract
 // and locking her ether in it
 type NotifyETHLocked struct {
 	Address        string
@@ -224,7 +224,7 @@ func (m *NotifyETHLocked) Type() Type {
 	return NotifyETHLockedType
 }
 
-// NotifyXMRLock is sent by Bob to Alice after locking his XMR.
+// NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
 type NotifyXMRLock struct {
 	Address string
 }
@@ -249,7 +249,7 @@ func (m *NotifyXMRLock) Type() Type {
 	return NotifyXMRLockType
 }
 
-// NotifyReady is sent by Alice to Bob after calling Ready() on the contract.
+// NotifyReady is sent by XMRTaker to XMRMaker after calling Ready() on the contract.
 type NotifyReady struct{}
 
 // String ...
@@ -272,7 +272,7 @@ func (m *NotifyReady) Type() Type {
 	return NotifyReadyType
 }
 
-// NotifyClaimed is sent by Bob to Alice after claiming his ETH.
+// NotifyClaimed is sent by XMRMaker to XMRTaker after claiming his ETH.
 type NotifyClaimed struct {
 	TxHash string
 }
@@ -297,7 +297,7 @@ func (m *NotifyClaimed) Type() Type {
 	return NotifyClaimedType
 }
 
-// NotifyRefund is sent by Alice to Bob after calling Refund() on the contract.
+// NotifyRefund is sent by XMRTaker to XMRMaker after calling Refund() on the contract.
 type NotifyRefund struct {
 	TxHash string
 }
