@@ -1,9 +1,9 @@
-package client
+package rpcclient
 
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/rpc"
 )
@@ -14,7 +14,7 @@ func (c *Client) Cancel() (types.Status, error) {
 		method = "swap_cancel"
 	)
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return 0, err
 	}

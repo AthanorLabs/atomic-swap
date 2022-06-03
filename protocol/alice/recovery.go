@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -17,17 +16,17 @@ import (
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
-var claimedTopic = ethcommon.HexToHash("0xd5a2476fc450083bbb092dd3f4be92698ffdc2d213e6f1e730c7f44a52f1ccfc")
+// TODO: don't hard-code this
+var claimedTopic = ethcommon.HexToHash("0x38d6042dbdae8e73a7f6afbabd3fbe0873f9f5ed3cd71294591c3908c2e65fee")
 
 type recoveryState struct {
-	ss           *swapState
-	contractAddr ethcommon.Address
+	ss *swapState
 }
 
 // NewRecoveryState returns a new *bob.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address, contractSwapID *big.Int) (*recoveryState, error) { //nolint:revive
+	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -56,6 +55,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
+		contractSwap:   contractSwap,
 		infofile:       pcommon.GetSwapRecoveryFilepath(a.basepath),
 		claimedCh:      make(chan struct{}),
 	}
@@ -64,14 +64,7 @@ func NewRecoveryState(a *Instance, secret *mcrypto.PrivateSpendKey,
 		ss: s,
 	}
 
-	if err := rs.setContract(contractAddr); err != nil {
-		return nil, err
-	}
-
-	if err := rs.ss.setTimeouts(); err != nil {
-		return nil, err
-	}
-
+	rs.ss.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
 	return rs, nil
 }
 
@@ -102,8 +95,6 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 
 		rs.ss.setBobKeys(skA.Public(), vkA, nil)
 
-		fmt.Println(skA.Hex())
-
 		addr, err := rs.ss.claimMonero(skA)
 		if err != nil {
 			return nil, err
@@ -125,14 +116,6 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 		Refunded: true,
 		TxHash:   txHash,
 	}, nil
-}
-
-// setContract sets the contract in which Alice has locked her ETH.
-func (rs *recoveryState) setContract(address ethcommon.Address) error {
-	var err error
-	rs.contractAddr = address
-	rs.ss.alice.contract, err = swapfactory.NewSwapFactory(address, rs.ss.alice.ethClient)
-	return err
 }
 
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {

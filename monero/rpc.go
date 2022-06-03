@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/noot/atomic-swap/common/rpcclient"
+	"github.com/noot/atomic-swap/common/rpctypes"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 )
 
@@ -46,7 +46,7 @@ func (c *client) callGenerateFromKeys(sk *mcrypto.PrivateSpendKey, vk *mcrypto.P
 		return err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (c *client) callSweepAll(to string, accountIdx uint) (*SweepAllResponse, er
 		return nil, err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (c *client) callTransfer(destinations []Destination, accountIdx uint) (*Tra
 		return nil, err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (c *client) callGetBalance(idx uint) (*GetBalanceResponse, error) {
 		return nil, err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (c *client) callGetAddress(idx uint) (*getAddressResponse, error) {
 		return nil, err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ type getAccountsResponse struct {
 func (c *client) callGetAccounts() (*getAccountsResponse, error) {
 	const method = "get_accounts"
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (c *client) callOpenWallet(filename, password string) error {
 		return err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (c *client) callCreateWallet(filename, password string) error {
 		return err
 	}
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, string(params))
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ type getHeightResponse struct {
 func (c *client) callGetHeight() (uint, error) {
 	const method = "get_height"
 
-	resp, err := rpcclient.PostRPC(c.endpoint, method, "{}")
+	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
 	if err != nil {
 		return 0, err
 	}

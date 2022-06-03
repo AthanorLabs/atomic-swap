@@ -40,7 +40,7 @@ const (
 	defaultAliceRPCPort = 5001
 	defaultBobRPCPort   = 5002
 
-	defaultWSPort      = 8080
+	defaultWSPort      = 6005
 	defaultAliceWSPort = 8081
 	defaultBobWSPort   = 8082
 )
@@ -69,8 +69,10 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 
-	flagDevAlice = "dev-alice"
-	flagDevBob   = "dev-bob"
+	flagDevAlice     = "dev-alice"
+	flagDevBob       = "dev-bob"
+	flagDeploy       = "deploy"
+	flagTransferBack = "transfer-back"
 
 	flagLog = "log"
 )
@@ -156,6 +158,14 @@ var (
 			&cli.BoolFlag{
 				Name:  flagDevBob,
 				Usage: "run in development mode and use XMR provider default values",
+			},
+			&cli.BoolFlag{
+				Name:  flagDeploy,
+				Usage: "deploy an instance of the swap contract; defaults to false",
+			},
+			&cli.BoolFlag{
+				Name:  flagTransferBack,
+				Usage: "when receiving XMR in a swap, transfer it back to the original wallet.",
 			},
 			&cli.StringFlag{
 				Name:  flagLog,
@@ -430,7 +440,9 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 	}
 
 	var contract *swapfactory.SwapFactory
-	if !devBob {
+	deploy := c.Bool(flagDeploy)
+
+	if !devBob || deploy {
 		contract, contractAddr, err = getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
 			big.NewInt(chainID), pk, ec)
 		if err != nil {
@@ -458,6 +470,7 @@ func getProtocolInstances(ctx context.Context, c *cli.Context, env common.Enviro
 		SwapManager:          sm,
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
+		TransferBack:         c.Bool(flagTransferBack),
 	}
 
 	a, err = alice.NewInstance(aliceCfg)

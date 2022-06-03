@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"encoding/hex"
-	"errors"
 
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
@@ -21,7 +20,7 @@ type KeysAndProof struct {
 // GenerateKeysAndProof generates keys on the secp256k1 and ed25519 curves as well as
 // a DLEq proof between the two.
 func GenerateKeysAndProof() (*KeysAndProof, error) {
-	d := &dleq.FarcasterDLEq{}
+	d := &dleq.CGODLEq{}
 	proof, err := d.Prove()
 	if err != nil {
 		return nil, err
@@ -59,7 +58,7 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicK
 		return nil, err
 	}
 
-	d := &dleq.FarcasterDLEq{}
+	d := &dleq.CGODLEq{}
 	proof := dleq.NewProofWithoutSecret(pb)
 	res, err := d.Verify(proof)
 	if err != nil {
@@ -67,7 +66,7 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicK
 	}
 
 	if res.Secp256k1PublicKey().String() != secp256k1PubString {
-		return nil, errors.New("secp256k1 public key resulting from proof verification does not match key sent")
+		return nil, errInvalidSecp256k1Key
 	}
 
 	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(secp256k1PubString)

@@ -2,8 +2,8 @@ package alice
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -54,7 +54,8 @@ type swapState struct {
 	bobAddress            ethcommon.Address
 
 	// swap contract and timeouts in it; set once contract is deployed
-	contractSwapID *big.Int
+	contractSwapID [32]byte
+	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
 	txOpts         *bind.TransactOpts
 
@@ -68,6 +69,10 @@ type swapState struct {
 
 func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmount,
 	receivedAmount common.MoneroAmount, exhangeRate types.ExchangeRate) (*swapState, error) {
+	if a.contract == nil {
+		return nil, errNoSwapContractSet
+	}
+
 	txOpts, err := bind.NewKeyedTransactorWithChainID(a.ethPrivKey, a.chainID)
 	if err != nil {
 		return nil, err
@@ -99,15 +104,30 @@ func newSwapState(a *Instance, infofile string, providesAmount common.EtherAmoun
 		statusCh:            statusCh,
 	}
 
-	if err := pcommon.WriteSwapIDToFile(infofile, info.ID()); err != nil {
-		return nil, err
-	}
-
 	if err := pcommon.WriteContractAddressToFile(s.infofile, a.contractAddr.String()); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
+	go s.waitForSendKeysMessage()
 	return s, nil
+}
+
+func (s *swapState) waitForSendKeysMessage() {
+	waitDuration := time.Minute
+	timer := time.After(waitDuration)
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-timer:
+	}
+
+	// check if we've received a response from the counterparty yet
+	if s.nextExpectedMessage != (&net.SendKeysMessage{}) {
+		return
+	}
+
+	// if not, just exit the swap
+	_ = s.Exit()
 }
 
 // SendKeysMessage ...
@@ -293,31 +313,9 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	return s.refund()
 }
 
-func (s *swapState) setTimeouts() error {
-	if s.alice.contract == nil {
-		return errors.New("contract is nil")
-	}
-
-	if (s.t0 != time.Time{}) && (s.t1 != time.Time{}) {
-		return nil
-	}
-
-	// TODO: add maxRetries
-	for {
-		log.Debug("attempting to fetch timestamps from contract")
-
-		info, err := s.alice.contract.Swaps(s.alice.callOpts, s.contractSwapID)
-		if err != nil {
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		s.t0 = time.Unix(info.Timeout0.Int64(), 0)
-		s.t1 = time.Unix(info.Timeout1.Int64(), 0)
-		break
-	}
-
-	return nil
+func (s *swapState) setTimeouts(t0, t1 *big.Int) {
+	s.t0 = time.Unix(t0.Int64(), 0)
+	s.t1 = time.Unix(t1.Int64(), 0)
 }
 
 func (s *swapState) generateAndSetKeys() error {
@@ -363,11 +361,11 @@ func (s *swapState) setBobKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey
 // lockETH the Swap contract function new_swap and locks `amount` ether in it.
 func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
-		return ethcommon.Hash{}, errors.New("public keys aren't set")
+		return ethcommon.Hash{}, errNoPublicKeysSet
 	}
 
 	if s.bobPublicSpendKey == nil || s.bobPrivateViewKey == nil {
-		return ethcommon.Hash{}, errors.New("bob's keys aren't set")
+		return ethcommon.Hash{}, errCounterpartyKeysNotSet
 	}
 
 	cmtAlice := s.secp256k1Pub.Keccak256()
@@ -378,8 +376,9 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		s.txOpts.Value = nil
 	}()
 
-	tx, err := s.alice.contract.NewSwap(s.txOpts,
-		cmtBob, cmtAlice, s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())))
+	nonce := generateNonce()
+	tx, err := s.alice.contract.NewSwap(s.txOpts, cmtBob, cmtAlice,
+		s.bobAddress, big.NewInt(int64(s.alice.swapTimeout.Seconds())), nonce)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
@@ -391,11 +390,33 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	if len(receipt.Logs) == 0 {
-		return ethcommon.Hash{}, errors.New("expected 1 log, got 0")
+		return ethcommon.Hash{}, errSwapInstantiationNoLogs
 	}
 
 	s.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	t0, t1, err := swapfactory.GetTimeoutsFromLog(receipt.Logs[0])
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	s.setTimeouts(t0, t1)
+
+	s.contractSwap = swapfactory.SwapFactorySwap{
+		Owner:        s.alice.callOpts.From,
+		Claimer:      s.bobAddress,
+		PubKeyClaim:  cmtBob,
+		PubKeyRefund: cmtAlice,
+		Timeout0:     t0,
+		Timeout1:     t1,
+		Value:        amount.BigInt(),
+		Nonce:        nonce,
+	}
+
+	if err := pcommon.WriteContractSwapToFile(s.infofile, s.contractSwapID, s.contractSwap); err != nil {
 		return ethcommon.Hash{}, err
 	}
 
@@ -406,7 +427,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 // call Claim(). Ready() should only be called once Alice sees Bob lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwapID)
+	tx, err := s.alice.contract.SetReady(s.txOpts, s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -427,13 +448,13 @@ func (s *swapState) ready() error {
 // If time t_1 passes and Claim() has not been called, Alice should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
 	if s.alice.contract == nil {
-		return ethcommon.Hash{}, errors.New("contract is nil")
+		return ethcommon.Hash{}, errNoSwapContractSet
 	}
 
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwapID, sc)
+	tx, err := s.alice.contract.Refund(s.txOpts, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -448,7 +469,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
 	if !s.info.Status().IsOngoing() {
-		return "", errors.New("swap has already completed")
+		return "", errSwapCompleted
 	}
 
 	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
@@ -522,4 +543,11 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 
 		time.Sleep(time.Second * 30)
 	}
+}
+
+func generateNonce() *big.Int {
+	u256PlusOne := big.NewInt(0).Lsh(big.NewInt(1), 256)
+	maxU256 := big.NewInt(0).Sub(u256PlusOne, big.NewInt(1))
+	n, _ := rand.Int(rand.Reader, maxU256)
+	return n
 }

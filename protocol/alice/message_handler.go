@@ -1,7 +1,6 @@
 package alice
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -54,7 +53,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		s.clearNextExpectedMessage(types.CompletedSuccess)
 		return nil, true, nil
 	default:
-		return nil, false, errors.New("unexpected message type")
+		return nil, false, errUnexpectedMessageType
 	}
 }
 
@@ -86,7 +85,7 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 
 func (s *swapState) checkMessageType(msg net.Message) error {
 	if msg == nil {
-		return errors.New("message is nil")
+		return errNilMessage
 	}
 
 	if s.nextExpectedMessage == nil {
@@ -94,7 +93,7 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	}
 
 	if msg.Type() != s.nextExpectedMessage.Type() {
-		return errors.New("received unexpected message")
+		return errIncorrectMessageType
 	}
 
 	return nil
@@ -145,12 +144,6 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	log.Info("locked ether in swap contract, waiting for XMR to be locked")
-
-	// set t0 and t1
-	// TODO: these sometimes fail with "attempting to unmarshall an empty string while arguments are expected"
-	if err := s.setTimeouts(); err != nil {
-		return nil, err
-	}
 
 	// start goroutine to check that Bob locks before t_0
 	go func() {
@@ -215,6 +208,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		Address:        s.alice.contractAddr.String(),
 		TxHash:         txHash.String(),
 		ContractSwapID: s.contractSwapID,
+		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
 	return out, nil
@@ -222,7 +216,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message, error) {
 	if msg.Address == "" {
-		return nil, errors.New("got empty address for locked XMR")
+		return nil, errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
@@ -243,16 +237,18 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
 	if s.alice.env != common.Development {
+		log.Infof("waiting for new blocks...")
 		// wait for 2 new blocks, otherwise balance might be 0
 		// TODO: check transaction hash
-		if err := monero.WaitForBlocks(s.alice.client); err != nil {
+		height, err := monero.WaitForBlocks(s.alice.client, 2)
+		if err != nil {
 			return nil, err
 		}
 
-		if err := monero.WaitForBlocks(s.alice.client); err != nil {
-			return nil, err
-		}
+		log.Infof("monero block height: %d", height)
 	}
+
+	log.Debug("refreshing client...")
 
 	if err := s.alice.client.Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh client: %w", err)
@@ -307,10 +303,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 
 	log.Info("XMR was locked successfully, setting contract to ready...")
 
-	if err := s.setTimeouts(); err != nil {
-		return nil, fmt.Errorf("failed to set timeouts: %w", err)
-	}
-
 	go func() {
 		until := time.Until(s.t1)
 
@@ -361,7 +353,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) 
 	}
 
 	if len(receipt.Logs) == 0 {
-		return "", errors.New("claim transaction has no logs")
+		return "", errClaimTxHasNoLogs
 	}
 
 	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)

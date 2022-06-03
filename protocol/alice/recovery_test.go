@@ -24,19 +24,10 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 	s.setBobKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
 	s.bobAddress = inst.callOpts.From
 
-	// skAB := mcrypto.SumPrivateSpendKeys(s.privkeys.SpendKey(), s.privkeys.SpendKey())
-	// vkAB := mcrypto.SumPrivateViewKeys(s.privkeys.ViewKey(), s.privkeys.ViewKey())
-	// kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-	// require.NoError(t, err)
-	// xmrAddr := kpAB.Address(common.Development)
-
-	// _, err = inst.client.Transfer(xmrAddr, 0, 1000000000)
-	// require.NoError(t, err)
-
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), inst.contractAddr, s.contractSwapID)
+	rs, err := NewRecoveryState(inst, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 	return rs
 }
@@ -52,8 +43,10 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.alice.contract.Claim(rs.ss.txOpts, rs.ss.contractSwapID, sc)
+	_, err = rs.ss.alice.contract.Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
+
+	t.Log("Bob claimed ETH...")
 
 	// assert we can claim the monero
 	res, err := rs.ClaimOrRefund()

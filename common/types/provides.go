@@ -8,6 +8,8 @@ type ProvidesCoin string
 var (
 	ProvidesXMR ProvidesCoin = "XMR" //nolint
 	ProvidesETH ProvidesCoin = "ETH" //nolint
+
+	errInvalidCoin = errors.New("invalid ProvidesCoin")
 )
 
 // NewProvidesCoin converts a string to a ProvidesCoin.
@@ -18,6 +20,6 @@ func NewProvidesCoin(s string) (ProvidesCoin, error) {
 	case "ETH", "eth":
 		return ProvidesETH, nil
 	default:
-		return "", errors.New("invalid ProvidesCoin")
+		return "", errInvalidCoin
 	}
 }

@@ -8,11 +8,15 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/noot/atomic-swap/swapfactory"
 )
 
-type infoFileContents struct {
+// InfoFileContents represents the contents of the swap info file used in case
+// of recovery.
+type InfoFileContents struct {
 	ContractAddress      string
-	SwapID               uint64
+	ContractSwapID       [32]byte
+	ContractSwap         swapfactory.SwapFactorySwap
 	PrivateKeyInfo       *mcrypto.PrivateKeyInfo
 	SharedSwapPrivateKey *mcrypto.PrivateKeyInfo
 }
@@ -26,7 +30,7 @@ func WriteContractAddressToFile(infofile, addr string) error {
 
 	contents.ContractAddress = addr
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -35,16 +39,17 @@ func WriteContractAddressToFile(infofile, addr string) error {
 	return err
 }
 
-// WriteSwapIDToFile writes the swap ID to the given file
-func WriteSwapIDToFile(infofile string, id uint64) error {
+// WriteContractSwapToFile writes the given Swap contract struct to the given file
+func WriteContractSwapToFile(infofile string, swapID [32]byte, swap swapfactory.SwapFactorySwap) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
 		return err
 	}
 
-	contents.SwapID = id
+	contents.ContractSwapID = swapID
+	contents.ContractSwap = swap
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -62,7 +67,7 @@ func WriteKeysToFile(infofile string, keys *mcrypto.PrivateKeyPair, env common.E
 
 	contents.PrivateKeyInfo = keys.Info(env)
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -80,7 +85,7 @@ func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair,
 
 	contents.SharedSwapPrivateKey = keys.Info(env)
 
-	bz, err := json.Marshal(contents)
+	bz, err := json.MarshalIndent(contents, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -89,7 +94,7 @@ func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair,
 	return err
 }
 
-func setupFile(infofile string) (*os.File, *infoFileContents, error) {
+func setupFile(infofile string) (*os.File, *InfoFileContents, error) {
 	exists, err := exists(infofile)
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +102,7 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 
 	var (
 		file     *os.File
-		contents *infoFileContents
+		contents *InfoFileContents
 	)
 	if !exists {
 		err = makeDir(filepath.Dir(infofile))
@@ -135,7 +140,7 @@ func setupFile(infofile string) (*os.File, *infoFileContents, error) {
 	}
 
 	if contents == nil {
-		contents = &infoFileContents{}
+		contents = &InfoFileContents{}
 	}
 
 	return file, contents, nil

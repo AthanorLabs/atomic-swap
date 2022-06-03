@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -56,7 +55,7 @@ type GetPastResponse struct {
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
 	info := s.sm.GetPastSwap(req.ID)
 	if info == nil {
-		return errors.New("unable to find swap with given ID")
+		return errNoSwapWithID
 	}
 
 	resp.Provided = info.Provides()
@@ -81,7 +80,7 @@ type GetOngoingResponse struct {
 func (s *SwapService) GetOngoing(_ *http.Request, _ *interface{}, resp *GetOngoingResponse) error {
 	info := s.sm.GetOngoingSwap()
 	if info == nil {
-		return errors.New("no current ongoing swap")
+		return errNoOngoingSwap
 	}
 
 	resp.ID = info.ID()
@@ -103,11 +102,11 @@ type RefundResponse struct {
 func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundResponse) error {
 	info := s.sm.GetOngoingSwap()
 	if info == nil {
-		return errors.New("no current ongoing swap")
+		return errNoOngoingSwap
 	}
 
 	if info.Provides() != types.ProvidesETH {
-		return errors.New("cannot refund if not the ETH provider")
+		return errCannotRefund
 	}
 
 	txHash, err := s.alice.Refund()
@@ -129,7 +128,7 @@ type GetStageResponse struct {
 func (s *SwapService) GetStage(_ *http.Request, _ *interface{}, resp *GetStageResponse) error {
 	info := s.sm.GetOngoingSwap()
 	if info == nil {
-		return errors.New("no current ongoing swap")
+		return errNoOngoingSwap
 	}
 
 	resp.Stage = info.Status().String()
@@ -157,7 +156,7 @@ type CancelResponse struct {
 func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelResponse) error {
 	info := s.sm.GetOngoingSwap()
 	if info == nil {
-		return errors.New("no current ongoing swap")
+		return errNoOngoingSwap
 	}
 
 	var ss common.SwapState

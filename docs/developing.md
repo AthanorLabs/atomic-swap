@@ -1,5 +1,15 @@
 # Developing 
 
+## Building the project
+
+Follow the [build instructions](./build.md) to ensure you have Go installed and can build the project.
+
+## Setting up your local environment
+
+Follow the instructions [here](local.md) to set up your local Alice (ETH-holder, XMR-wanter) and Bob (XMR-holder, ETH-wanter) nodes. 
+
+You can also run `bash scripts/setup-env.sh` to quickly set up the local Monero and ganache-cli environment.
+
 ## Deploying or using deployed SwapFactory.sol
 
 The swap program uses a "factory" contract for the Ethereum side to reduce gas costs from deploying a new contract for each swap. The contract can be found in [here](../ethereum/contracts/SwapFactory.sol). For each new swap, the eth-holding party will call `NewSwap` on the factory contract, initiating a swap instance inside the contract.
@@ -74,3 +84,10 @@ This include tests for main protocol functionality, such as:
 1. Success case, where both parties obey the protocol
 2. Case where Bob never locks monero on his side. Alice can Refund
 3. Case where Bob locks monero, but never claims his ether from the contract
+
+You can also run 
+```
+make test-integration
+```
+
+to run integration tests which spin up 3 local nodes and execute calls between them.

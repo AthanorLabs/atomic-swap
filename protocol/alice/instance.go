@@ -42,7 +42,7 @@ type Instance struct {
 	client                     monero.Client
 	walletFile, walletPassword string
 	walletAddress              mcrypto.Address
-	transferBack               bool // transfer back to original account
+	transferBack               bool // transfer xmr back to original account
 
 	ethPrivKey  *ecdsa.PrivateKey
 	ethClient   *ethclient.Client
@@ -87,6 +87,8 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	if cfg.Environment == common.Development {
 		defaultTimeoutDuration = time.Minute
+	} else if cfg.Environment == common.Stagenet {
+		defaultTimeoutDuration = time.Hour
 	}
 
 	pub := cfg.EthereumPrivateKey.Public().(*ecdsa.PublicKey)
@@ -103,6 +105,10 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
+		return nil, errNilSwapContractOrAddress
 	}
 
 	// TODO: check that Alice's monero-wallet-cli endpoint has wallet-dir configured

@@ -22,6 +22,8 @@ const (
 
 var (
 	log = logging.Logger("common")
+
+	errReceiptTimeOut = errors.New("failed to get receipt, timed out")
 )
 
 // Reverse reverses the byte slice and returns it.
@@ -51,7 +53,7 @@ func WaitForReceipt(ctx context.Context, ethclient *ethclient.Client, txHash eth
 		return receipt, nil
 	}
 
-	return nil, errors.New("failed to get receipt, timed out")
+	return nil, errReceiptTimeOut
 }
 
 // EthereumPrivateKeyToAddress returns the address associated with a private key

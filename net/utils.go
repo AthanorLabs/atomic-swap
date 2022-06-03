@@ -3,7 +3,6 @@ package net
 import (
 	crand "crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -114,7 +113,7 @@ func uint64ToLEB128(in uint64) []byte {
 
 func readLEB128ToUint64(r io.Reader, buf []byte) (uint64, int, error) {
 	if len(buf) == 0 {
-		return 0, 0, errors.New("buffer has length 0")
+		return 0, 0, errInvalidBufferLength
 	}
 
 	var out uint64

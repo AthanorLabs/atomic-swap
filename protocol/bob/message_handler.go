@@ -1,7 +1,6 @@
 package bob
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
 	if s == nil {
-		return nil, true, errors.New("swap state is nil")
+		return nil, true, errNilSwapState
 	}
 
 	s.Lock()
@@ -77,7 +76,7 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		log.Infof("regained control over monero account %s", addr)
 		return nil, true, nil
 	default:
-		return nil, true, errors.New("unexpected message type")
+		return nil, true, errUnexpectedMessageType
 	}
 }
 
@@ -108,7 +107,7 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 
 func (s *swapState) checkMessageType(msg net.Message) error {
 	if msg == nil {
-		return errors.New("message is nil")
+		return errNilMessage
 	}
 
 	if s == nil || s.nextExpectedMessage == nil {
@@ -121,7 +120,7 @@ func (s *swapState) checkMessageType(msg net.Message) error {
 	}
 
 	if msg.Type() != s.nextExpectedMessage.Type() {
-		return errors.New("received unexpected message")
+		return errIncorrectMessageType
 	}
 
 	return nil
@@ -132,48 +131,52 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, errMissingAddress
 	}
 
-	if msg.ContractSwapID == nil {
-		return nil, errors.New("expected swapID in NotifyETHLocked message")
+	if msg.ContractSwapID == [32]byte{} {
+		return nil, errNilContractSwapID
 	}
 
-	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%d", msg.Address, msg.ContractSwapID)
-	s.contractSwapID = msg.ContractSwapID
+	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%x", msg.Address, msg.ContractSwapID)
 
-	if err := s.setContract(ethcommon.HexToAddress(msg.Address)); err != nil {
+	// validate that swap ID == keccak256(swap struct)
+	if err := checkContractSwapID(msg); err != nil {
+		return nil, err
+	}
+
+	s.contractSwapID = msg.ContractSwapID
+	s.contractSwap = convertContractSwap(msg.ContractSwap)
+
+	if err := pcommon.WriteContractSwapToFile(s.infofile, s.contractSwapID, s.contractSwap); err != nil {
+		return nil, err
+	}
+
+	contractAddr := ethcommon.HexToAddress(msg.Address)
+	if err := checkContractCode(s.ctx, s.bob.ethClient, contractAddr); err != nil {
+		return nil, err
+	}
+
+	if err := s.setContract(contractAddr); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
-
-	log.Infof("contract set")
 
 	if err := pcommon.WriteContractAddressToFile(s.infofile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	log.Infof("wrote to file")
-
 	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
 
-	log.Infof("checked contract")
+	// TODO: check these (in checkContract)
+	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 
 	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
 
-	log.Infof("locked funds")
-
 	out := &message.NotifyXMRLock{
 		Address: string(addrAB),
 	}
-
-	// set t0 and t1
-	if err := s.setTimeouts(); err != nil {
-		return nil, err
-	}
-
-	log.Infof("timeouts set")
 
 	go func() {
 		until := time.Until(s.t0)
@@ -247,7 +250,7 @@ func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
 	}
 
 	if len(receipt.Logs) == 0 {
-		return "", errors.New("claim transaction has no logs")
+		return "", errClaimTxHasNoLogs
 	}
 
 	sa, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Refunded")

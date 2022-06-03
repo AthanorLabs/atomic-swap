@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -142,7 +141,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 	}
 
 	if !found {
-		return 0, nil, "", errors.New("peer does not have offer with given ID")
+		return 0, nil, "", errNoOfferWithID
 	}
 
 	swapState, err := s.alice.InitiateProtocol(providesAmount, offer)
@@ -165,7 +164,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 
 	info := s.sm.GetOngoingSwap()
 	if info == nil {
-		return 0, nil, "", errors.New("failed to get swap info after initiating")
+		return 0, nil, "", errFailedToGetSwapInfo
 	}
 
 	return swapState.ID(), info.StatusCh(), swapState.InfoFile(), nil

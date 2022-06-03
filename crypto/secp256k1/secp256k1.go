@@ -3,8 +3,15 @@ package secp256k1
 import (
 	"encoding/hex"
 	"errors"
+	"math/big"
 
 	"github.com/noot/atomic-swap/crypto"
+
+	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
+)
+
+var (
+	errInvalidPubkeyLength = errors.New("encoded public key is not 64 bytes")
 )
 
 // PublicKey represents a secp256k1 public key
@@ -20,6 +27,14 @@ func NewPublicKey(x, y [32]byte) *PublicKey {
 	}
 }
 
+// NewPublicKeyFromBigInt returns a new public key from the given (x, y) coordinates
+func NewPublicKeyFromBigInt(x, y *big.Int) *PublicKey {
+	var xb, yb [32]byte
+	copy(xb[:], x.Bytes())
+	copy(yb[:], y.Bytes())
+	return NewPublicKey(xb, yb)
+}
+
 // NewPublicKeyFromHex returns a public key from a 64-byte hex encoded string
 func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 	k, err := hex.DecodeString(s)
@@ -28,7 +43,7 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 	}
 
 	if len(k) != 64 {
-		return nil, errors.New("encoded public key is not 64 bytes")
+		return nil, errInvalidPubkeyLength
 	}
 
 	pk := &PublicKey{}
@@ -55,4 +70,14 @@ func (k *PublicKey) Y() [32]byte {
 // String returns the key as a 64-byte hex encoded string
 func (k *PublicKey) String() string {
 	return hex.EncodeToString(append(k.x[:], k.y[:]...))
+}
+
+// Compress returns the 33-byte compressed public key
+func (k *PublicKey) Compress() [33]byte {
+	x := big.NewInt(0).SetBytes(k.x[:])
+	y := big.NewInt(0).SetBytes(k.y[:])
+	cpk := ethsecp256k1.CompressPubkey(x, y)
+	var pk [33]byte
+	copy(pk[:], cpk)
+	return pk
 }
