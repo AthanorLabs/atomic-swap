@@ -69,6 +69,7 @@ type swapState struct {
 	xmrLockedCh chan struct{}
 	claimedCh   chan struct{}
 	done        chan struct{}
+	exited      bool
 }
 
 func newSwapState(b backend.Backend, infofile string, transferBack bool, walletAddress mcrypto.Address,
@@ -182,6 +183,12 @@ func (s *swapState) ID() uint64 {
 func (s *swapState) Exit() error {
 	s.Lock()
 	defer s.Unlock()
+
+	if s.exited {
+		return nil
+	}
+
+	s.exited = true
 
 	defer func() {
 		// stop all running goroutines
