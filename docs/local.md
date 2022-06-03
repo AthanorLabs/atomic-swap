@@ -12,7 +12,7 @@ Note: this program has only been tested on Ubuntu 20.04.
 Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you. You can also check out the `scripts/run-unit-tests.sh` script for the commands needed to setup the environment.
 
 Start ganache-cli with determinstic keys:
-```
+```bash
 ganache-cli -d
 ```
 
@@ -23,13 +23,14 @@ cd ./monero-x86_64-linux-gnu
 ```
 
 Create a wallet for "Bob", who will own XMR later on:
-```
+```bash
 ./monero-wallet-cli // you will be prompted to create a wallet. In the next steps, we will go with "Bob", without password. Remember the name and optionally the password for the upcoming steps
 ```
+
 You do not need to mine blocks, and you can exit the the wallet-cli once Bob's account has been created by typing "exit".
 
 Start monero-wallet-rpc for Bob on port 18083. Make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
-```
+```bash
 ./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
 ```
 
@@ -46,12 +47,12 @@ curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"ope
 ```
 
 Determine the address of `Bob` by looking at `monero-wallet-rpc` logs, in our case 45GcPCB ... uLkV5bTrZRe
-```
+```bash
 # 2022-01-20 21:40:06.460	W Loaded wallet keys file, with public address: 45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe
 ```
 
 Then, mine some blocks on the monero test chain by running the following RPC command, replacing the address with the one from Bob's wallet:
-```
+```bash
 curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe","amount_of_blocks":100}' -H 'Content-Type: application/json'
 ```
 
@@ -59,32 +60,32 @@ This will deposit some XMR in Bob's account.
 
 
 Start monero-wallet-rpc for Alice on port 18084 (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
-```
+```bash
 ./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
 ```
 #### Build and run
 
 Build binary:
-```
+```bash
 make build
 ```
 
 This creates `swapd` and `swapcli` binaries in the root directory.
 
 To run as Alice, execute in terminal 1:
-```
-./swapd --dev-alice
+```bash
+./swapd --dev-xmrtaker
 ```
 
 Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWFUEQpGHQ3PtypLvgnWc5XjrqM2zyvdrZXin4vTpQ6QE5`. This will be used for Bob to connect.
 
 To run as Bob and connect to Alice, replace the bootnode in the following line with what Alice logged, and execute in terminal 2:
 
-```
-./swapd --dev-bob --wallet-file Bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWFUEQpGHQ3PtypLvgnWc5XjrqM2zyvdrZXin4vTpQ6QE5
+```bash
+./swapd --dev-xmrmaker --wallet-file Bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWFUEQpGHQ3PtypLvgnWc5XjrqM2zyvdrZXin4vTpQ6QE5
 ```
 
-Note: when using the `--dev-alice` and `--dev-bob` flags, Alice's RPC server runs on http://localhost:5001, Bob's runs on http://localhost:5002 by default.
+Note: when using the `--dev-xmrtaker` and `--dev-xmrmaker` flags, Alice's RPC server runs on http://localhost:5001, Bob's runs on http://localhost:5002 by default.
 
 In terminal 3, we will interact with the swap daemon using `swapcli`.
 

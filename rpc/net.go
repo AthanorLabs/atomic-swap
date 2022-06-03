@@ -27,19 +27,19 @@ type Net interface {
 
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
-	net   Net
-	alice Alice
-	bob   Bob
-	sm    SwapManager
+	net      Net
+	xmrtaker XMRTaker
+	xmrmaker XMRMaker
+	sm       SwapManager
 }
 
 // NewNetService ...
-func NewNetService(net Net, alice Alice, bob Bob, sm SwapManager) *NetService {
+func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager) *NetService {
 	return &NetService{
-		net:   net,
-		alice: alice,
-		bob:   bob,
-		sm:    sm,
+		net:      net,
+		xmrtaker: xmrtaker,
+		xmrmaker: xmrmaker,
+		sm:       sm,
 	}
 }
 
@@ -144,7 +144,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return 0, nil, "", errNoOfferWithID
 	}
 
-	swapState, err := s.alice.InitiateProtocol(providesAmount, offer)
+	swapState, err := s.xmrtaker.InitiateProtocol(providesAmount, offer)
 	if err != nil {
 		return 0, nil, "", err
 	}
@@ -228,22 +228,10 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.O
 		ExchangeRate:  req.ExchangeRate,
 	}
 
-	offerExtra, err := s.bob.MakeOffer(o)
+	offerExtra, err := s.xmrmaker.MakeOffer(o)
 	if err != nil {
 		return "", nil, err
 	}
 
 	return o.GetID().String(), offerExtra, nil
-}
-
-// SetGasPriceRequest ...
-type SetGasPriceRequest struct {
-	GasPrice uint64
-}
-
-// SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
-func (s *NetService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
-	s.alice.SetGasPrice(req.GasPrice)
-	s.bob.SetGasPrice(req.GasPrice)
-	return nil
 }

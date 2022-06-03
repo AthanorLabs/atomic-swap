@@ -1,4 +1,4 @@
-package bob
+package xmrmaker
 
 import (
 	"github.com/noot/atomic-swap/common"
@@ -23,7 +23,7 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 		return errProtocolAlreadyInProgress
 	}
 
-	balance, err := b.client.GetBalance(0)
+	balance, err := b.backend.GetBalance(0)
 	if err != nil {
 		return err
 	}
@@ -33,10 +33,16 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 		return errBalanceTooLow
 	}
 
-	b.swapState, err = newSwapState(b, offer, offerExtra.StatusCh, offerExtra.InfoFile, providesAmount, desiredAmount)
+	b.swapState, err = newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
+		offerExtra.InfoFile, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		<-b.swapState.done
+		b.swapState = nil
+	}()
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))

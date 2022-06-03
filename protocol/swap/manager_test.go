@@ -9,7 +9,7 @@ import (
 )
 
 func TestManager_AddSwap_Ongoing(t *testing.T) {
-	m := NewManager()
+	m := NewManager().(*manager)
 	info := NewInfo(types.ProvidesXMR, 1, 1, 0.1, types.ExpectingKeys, nil)
 
 	err := m.AddSwap(info)
@@ -28,7 +28,7 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 }
 
 func TestManager_AddSwap_Past(t *testing.T) {
-	m := NewManager()
+	m := NewManager().(*manager)
 
 	info := &Info{
 		id:     1,

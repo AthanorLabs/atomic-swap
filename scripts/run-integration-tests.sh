@@ -34,11 +34,11 @@ sleep 10
 # start alice and bob swapd instances
 echo "starting alice, logs in ./tests/alice.log"
 bash scripts/build.sh
-./swapd --dev-alice --libp2p-key=./tests/alice.key &> ./tests/alice.log &
+./swapd --dev-xmrtaker --libp2p-key=./tests/alice.key &> ./tests/alice.log &
 ALICE_PID=$!
 sleep 3
 echo "starting bob, logs in ./tests/bob.log"
-./swapd --dev-bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 --wallet-file test-wallet --deploy &> ./tests/bob.log &
+./swapd --dev-xmrmaker --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 --wallet-file test-wallet --deploy &> ./tests/bob.log &
 BOB_PID=$!
 sleep 3 
 echo "starting charlie, logs in ./tests/charlie.log"

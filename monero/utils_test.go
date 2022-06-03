@@ -10,7 +10,7 @@ import (
 )
 
 func TestWaitForBlocks(t *testing.T) {
-	c := NewClient(common.DefaultBobMoneroEndpoint)
+	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
 
 	addr, err := c.callGetAddress(0)
@@ -28,7 +28,7 @@ func TestCreateMoneroWallet(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	c := NewClient(common.DefaultBobMoneroEndpoint)
+	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	addr, err := CreateMoneroWallet("create-wallet-test", common.Development, c, kp)
 	require.NoError(t, err)
 	require.Equal(t, kp.Address(common.Development), addr)

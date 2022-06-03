@@ -27,7 +27,7 @@ var (
 )
 
 // GetEthereumPrivateKey returns an ethereum private key hex string given the CLI options.
-func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) (ethPrivKey string, err error) {
+func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker bool) (ethPrivKey string, err error) {
 	if c.String(flagEthereumPrivKey) != "" {
 		ethPrivKeyFile := c.String(flagEthereumPrivKey)
 		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
@@ -47,10 +47,10 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devBob bool) 
 		}
 
 		log.Warn("no ethereum private key file provided, using ganache deterministic key")
-		if devBob {
-			ethPrivKey = common.DefaultPrivKeyBob
+		if devXMRMaker {
+			ethPrivKey = common.DefaultPrivKeyXMRMaker
 		} else {
-			ethPrivKey = common.DefaultPrivKeyAlice
+			ethPrivKey = common.DefaultPrivKeyXMRTaker
 		}
 	}
 

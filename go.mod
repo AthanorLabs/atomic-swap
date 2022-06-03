@@ -8,6 +8,7 @@ require (
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/fatih/color v1.13.0
+	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0

@@ -10,19 +10,19 @@ import (
 
 // SwapService handles information about ongoing or past swaps.
 type SwapService struct {
-	sm    SwapManager
-	alice Alice
-	bob   Bob
-	net   Net
+	sm       SwapManager
+	xmrtaker XMRTaker
+	xmrmaker XMRMaker
+	net      Net
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, alice Alice, bob Bob, net Net) *SwapService {
+func NewSwapService(sm SwapManager, xmrtaker XMRTaker, xmrmaker XMRMaker, net Net) *SwapService {
 	return &SwapService{
-		sm:    sm,
-		alice: alice,
-		bob:   bob,
-		net:   net,
+		sm:       sm,
+		xmrtaker: xmrtaker,
+		xmrmaker: xmrmaker,
+		net:      net,
 	}
 }
 
@@ -109,7 +109,7 @@ func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundRespon
 		return errCannotRefund
 	}
 
-	txHash, err := s.alice.Refund()
+	txHash, err := s.xmrtaker.Refund()
 	if err != nil {
 		return fmt.Errorf("failed to refund: %w", err)
 	}
@@ -143,7 +143,7 @@ type GetOffersResponse struct {
 
 // GetOffers returns the currently available offers.
 func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
-	resp.Offers = s.bob.GetOffers()
+	resp.Offers = s.xmrmaker.GetOffers()
 	return nil
 }
 
@@ -162,9 +162,9 @@ func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelRespon
 	var ss common.SwapState
 	switch info.Provides() {
 	case types.ProvidesETH:
-		ss = s.alice.GetOngoingSwapState()
+		ss = s.xmrtaker.GetOngoingSwapState()
 	case types.ProvidesXMR:
-		ss = s.bob.GetOngoingSwapState()
+		ss = s.xmrmaker.GetOngoingSwapState()
 	}
 
 	if err := ss.Exit(); err != nil {

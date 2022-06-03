@@ -94,8 +94,8 @@ func setLogLevels(c *cli.Context) error {
 		return fmt.Errorf("invalid log level")
 	}
 
-	_ = logging.SetLogLevel("alice", level)
-	_ = logging.SetLogLevel("bob", level)
+	_ = logging.SetLogLevel("xmrtaker", level)
+	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("common", level)
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("rpc", level)
@@ -113,7 +113,7 @@ func runTester(c *cli.Context) error {
 	isDev = c.Bool(flagDev)
 	if !isDev {
 		// TODO: add a flag to specify local endpoint
-		defaultMoneroClient = monero.NewClient(common.DefaultBobMoneroEndpoint)
+		defaultMoneroClient = monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
 	}
 
 	var timeout time.Duration
@@ -189,9 +189,9 @@ func getRandomExchangeRate() types.ExchangeRate {
 }
 
 func generateBlocks() {
-	cBob := monero.NewClient(common.DefaultAliceMoneroEndpoint)
+	cXMRMaker := monero.NewClient(common.DefaultXMRTakerMoneroEndpoint)
 
-	bobAddr, err := cBob.GetAddress(0)
+	xmrmakerAddr, err := cXMRMaker.GetAddress(0)
 	if err != nil {
 		log.Errorf("failed to get default monero address: %s", err)
 		return
@@ -199,7 +199,7 @@ func generateBlocks() {
 
 	log.Infof("development: generating blocks...")
 	dclient := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-	_ = dclient.GenerateBlocks(bobAddr.Address, 128)
+	_ = dclient.GenerateBlocks(xmrmakerAddr.Address, 128)
 }
 
 type daemon struct {

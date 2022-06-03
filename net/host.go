@@ -160,7 +160,15 @@ func NewHost(cfg *Config) (*host, error) { //nolint:revive
 	return hst, nil
 }
 
+func (h *host) SetHandler(handler Handler) {
+	h.handler = handler
+}
+
 func (h *host) Start() error {
+	if h.handler == nil {
+		return errNilHandler
+	}
+
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+queryID), h.handleQueryStream)
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+swapID), h.handleProtocolStream)
 

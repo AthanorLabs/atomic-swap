@@ -22,7 +22,7 @@ type MessageSender interface {
 }
 
 // Handler handles swap initiation messages.
-// It is implemented by *bob.bob
+// It is implemented by *xmrmaker.xmrmaker
 type Handler interface {
 	GetOffers() []*types.Offer
 	HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error)

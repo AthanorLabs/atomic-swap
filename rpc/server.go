@@ -30,13 +30,13 @@ type Server struct {
 
 // Config ...
 type Config struct {
-	Ctx         context.Context
-	Port        uint16
-	WsPort      uint16
-	Net         Net
-	Alice       Alice
-	Bob         Bob
-	SwapManager SwapManager
+	Ctx             context.Context
+	Port            uint16
+	WsPort          uint16
+	Net             Net
+	XMRTaker        XMRTaker
+	XMRMaker        XMRMaker
+	ProtocolBackend ProtocolBackend
 }
 
 // NewServer ...
@@ -44,22 +44,22 @@ func NewServer(cfg *Config) (*Server, error) {
 	s := rpc.NewServer()
 	s.RegisterCodec(NewCodec(), "application/json")
 
-	ns := NewNetService(cfg.Net, cfg.Alice, cfg.Bob, cfg.SwapManager)
+	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager())
 	if err := s.RegisterService(ns, "net"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewPersonalService(cfg.Alice, cfg.Bob), "personal"); err != nil {
+	if err := s.RegisterService(NewPersonalService(cfg.XMRMaker, cfg.ProtocolBackend), "personal"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.SwapManager, cfg.Alice, cfg.Bob, cfg.Net), "swap"); err != nil {
+	if err := s.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil { //nolint:lll
 		return nil, err
 	}
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.SwapManager, ns),
+		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -107,20 +107,25 @@ func (s *Server) Start() <-chan error {
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
 	Provides() types.ProvidesCoin
-	SetGasPrice(gasPrice uint64)
 	GetOngoingSwapState() common.SwapState
 }
 
-// Alice ...
-type Alice interface {
+// ProtocolBackend represents protocol/backend.Backend
+type ProtocolBackend interface {
+	SetGasPrice(uint64)
+	SetSwapTimeout(timeout time.Duration)
+	SwapManager() swap.Manager
+}
+
+// XMRTaker ...
+type XMRTaker interface {
 	Protocol
 	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
 	Refund() (ethcommon.Hash, error)
-	SetSwapTimeout(timeout time.Duration)
 }
 
-// Bob ...
-type Bob interface {
+// XMRMaker ...
+type XMRMaker interface {
 	Protocol
 	MakeOffer(offer *types.Offer) (*types.OfferExtra, error)
 	SetMoneroWalletFile(file, password string) error
@@ -129,8 +134,4 @@ type Bob interface {
 }
 
 // SwapManager ...
-type SwapManager interface {
-	GetPastIDs() []uint64
-	GetPastSwap(id uint64) *swap.Info
-	GetOngoingSwap() *swap.Info
-}
+type SwapManager = swap.Manager

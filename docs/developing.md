@@ -14,14 +14,14 @@ You can also run `bash scripts/setup-env.sh` to quickly set up the local Monero 
 
 The swap program uses a "factory" contract for the Ethereum side to reduce gas costs from deploying a new contract for each swap. The contract can be found in [here](../ethereum/contracts/SwapFactory.sol). For each new swap, the eth-holding party will call `NewSwap` on the factory contract, initiating a swap instance inside the contract.
 
-If you're developing on a local network, running a `swapd` instance with the `--dev-alice` flag will automatically deploy an instance of `SwapFactory.sol` for you. You should see the following log shortly after starting `./swapd --dev-alice`:
+If you're developing on a local network, running a `swapd` instance with the `--dev-xmrtaker` flag will automatically deploy an instance of `SwapFactory.sol` for you. You should see the following log shortly after starting `./swapd --dev-xmrtaker`:
 ```bash
 # 2022-01-26T18:39:04.600-0500	INFO	cmd	daemon/contract.go:35	deployed SwapFactory.sol: address=0x3F2aF34E4250de94242Ac2B8A38550fd4503696d tx hash=0x638caf280178b3cfe06854b8a76a4ce355d38c5d81187836f0733cad1287b657
 ```
 
 If you wish to use an instance of `SwapFactory.sol` that's already deployed on-chain, you can use the `--contract-address` flag to specify the address. For example:
 ```bash
-$ ./swapd --dev-alice --contract-address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
+$ ./swapd --dev-xmrtaker --contract-address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
 # 2022-01-26T18:56:31.627-0500	INFO	cmd	daemon/contract.go:42	loaded SwapFactory.sol from address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
 ```
 
@@ -91,3 +91,15 @@ make test-integration
 ```
 
 to run integration tests which spin up 3 local nodes and execute calls between them.
+
+## Mocks
+
+The unit tests use mocks. You need to install mockgen to generate new mocks:
+```bash
+go install github.com/golang/mock/mockgen@v1.6.0
+```
+
+Then, if you update an interface, generate new mocks using:
+```bash
+go generate -run mockgen ./...
+```
