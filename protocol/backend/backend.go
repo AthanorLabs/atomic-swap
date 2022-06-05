@@ -127,7 +127,12 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	addr := common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
+	var addr ethcommon.Address
+	if cfg.EthereumPrivateKey != nil {
+		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
+	} else {
+		log.Warn("must set ethereum address and signer before swapping")
+	}
 
 	// monero-wallet-rpc client
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
