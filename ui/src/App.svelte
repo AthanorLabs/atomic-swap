@@ -4,12 +4,20 @@
   import Button from '@smui/button'
   import { peers, getPeers } from './stores/peerStore'
   import { offers, refreshOffers } from './stores/offerStore'
+  import { connectAccount, currentAccount } from './stores/metamask'
   import OffersTable from './components/OffersTable.svelte'
   import StatCard from './components/StatCard.svelte'
   import TakeDealDrawer from './components/TakeDealDialog.svelte'
 
   const handleRefreshClick = () => {
     getPeers()
+  }
+
+  let account = null;
+
+  const connectMetamask = () => {
+    connectAccount()
+    account = $currentAccount
   }
 </script>
 
@@ -26,6 +34,9 @@
         </Cell>
         <Cell class="refreshButton">
           <Button on:click={handleRefreshClick}>Refresh</Button>
+        </Cell>
+        <Cell class="metamask">
+          <Button on:click={connectMetamask}>{account === null ? 'Connect Metamask' : `Metamask connected: ${account}`}</Button>
         </Cell>
       </InnerGrid>
       <br />

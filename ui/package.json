@@ -12,6 +12,7 @@
   "devDependencies": {
     "@mdi/js": "^6.5.95",
     "@rollup/plugin-commonjs": "^17.0.0",
+    "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^11.0.0",
     "@rollup/plugin-typescript": "^8.0.0",
     "@smui/button": "^6.0.0-beta.13",
@@ -42,7 +43,9 @@
     "typescript": "^4.0.0"
   },
   "dependencies": {
+    "@metamask/detect-provider": "^1.2.0",
     "axios": "0.21.1",
+    "ethers": "^5.6.8",
     "sirv-cli": "^2.0.0",
     "svelte-material-ui": "^6.0.0-beta.13"
   }
