@@ -39,7 +39,7 @@ var (
 )
 
 type swapState struct {
-	backend backend.Backend
+	backend.Backend
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -104,7 +104,7 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 	s := &swapState{
 		ctx:                 ctx,
 		cancel:              cancel,
-		backend:             b,
+		Backend:             b,
 		offer:               offer,
 		offerManager:        om,
 		infofile:            infofile,
@@ -131,7 +131,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
-		EthAddress:         s.backend.EthAddress().String(),
+		EthAddress:         s.EthAddress().String(),
 	}, nil
 }
 
@@ -179,7 +179,7 @@ func (s *swapState) exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.backend.SwapManager().CompleteOngoingSwap()
+		s.SwapManager().CompleteOngoingSwap()
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
@@ -271,19 +271,19 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.backend.Env()); err != nil {
+	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.Env()); err != nil {
 		return "", err
 	}
 
 	// TODO: check balance
-	return monero.CreateMoneroWallet("xmrmaker-swap-wallet", s.backend.Env(), s.backend, kpAB)
+	return monero.CreateMoneroWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	const refundedEvent = "Refunded"
 
-	logs, err := s.backend.FilterLogs(s.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{s.backend.ContractAddr()},
+	logs, err := s.FilterLogs(s.ctx, eth.FilterQuery{
+		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
 	})
 	if err != nil {
@@ -327,7 +327,7 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	untilT0 := time.Until(s.t0)
 	untilT1 := time.Until(s.t1)
-	stage, err := s.backend.Contract().Swaps(s.backend.CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -369,7 +369,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.backend.Env())
+	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.Env())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {
@@ -395,7 +395,7 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 	var err error
 	// TODO: this overrides the backend contract, need to be careful
 	s.contractAddr = address
-	s.contract, err = s.backend.NewSwapFactory(address)
+	s.contract, err = s.NewSwapFactory(address)
 	return err
 }
 
@@ -408,7 +408,7 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
-	receipt, err := s.backend.WaitForReceipt(s.ctx, txHash)
+	receipt, err := s.WaitForReceipt(s.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
 	}
@@ -458,7 +458,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 	kp := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys)
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
-	balance, err := s.backend.GetBalance(0)
+	balance, err := s.GetBalance(0)
 	if err != nil {
 		return "", err
 	}
@@ -466,25 +466,25 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 	log.Debug("total XMR balance: ", balance.Balance)
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
-	address := kp.Address(s.backend.Env())
-	txResp, err := s.backend.Transfer(address, 0, uint(amount))
+	address := kp.Address(s.Env())
+	txResp, err := s.Transfer(address, 0, uint(amount))
 	if err != nil {
 		return "", err
 	}
 
 	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
 
-	xmrmakerAddr, err := s.backend.GetAddress(0)
+	xmrmakerAddr, err := s.GetAddress(0)
 	if err != nil {
 		return "", err
 	}
 
 	// if we're on a development --regtest node, generate some blocks
-	if s.backend.Env() == common.Development {
-		_ = s.backend.GenerateBlocks(xmrmakerAddr.Address, 2)
+	if s.Env() == common.Development {
+		_ = s.GenerateBlocks(xmrmakerAddr.Address, 2)
 	} else {
 		// otherwise, wait for new blocks
-		height, err := monero.WaitForBlocks(s.backend, 1)
+		height, err := monero.WaitForBlocks(s, 1)
 		if err != nil {
 			return "", err
 		}
@@ -492,7 +492,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 		log.Infof("monero block height: %d", height)
 	}
 
-	if err := s.backend.Refresh(); err != nil {
+	if err := s.Refresh(); err != nil {
 		return "", err
 	}
 
@@ -502,9 +502,9 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
-	addr := s.backend.EthAddress()
+	addr := s.EthAddress()
 
-	balance, err := s.backend.BalanceAt(s.ctx, addr, nil)
+	balance, err := s.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -513,22 +513,18 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
-	tx, err := s.contract.Claim(s.txOpts, s.contractSwap, sc)
+	txHash, _, err := s.Claim(s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Infof("sent claim tx, tx hash=%s", tx.Hash())
+	log.Infof("sent claim tx, tx hash=%s", txHash)
 
-	if _, err = s.backend.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to check claim transaction receipt: %w", err)
-	}
-
-	balance, err = s.backend.BalanceAt(s.ctx, addr, nil)
+	balance, err = s.BalanceAt(s.ctx, addr, nil)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
 	log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
-	return tx.Hash(), nil
+	return txHash, nil
 }

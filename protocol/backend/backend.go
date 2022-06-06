@@ -16,6 +16,7 @@ import (
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/protocol/txsender"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
@@ -38,6 +39,7 @@ type Backend interface {
 	monero.Client
 	monero.DaemonClient
 	net.MessageSender
+	txsender.Sender
 
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
@@ -61,6 +63,7 @@ type Backend interface {
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
+	ExternalSender() *txsender.ExternalSender
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
@@ -84,6 +87,7 @@ type backend struct {
 	chainID    *big.Int
 	gasPrice   *big.Int
 	gasLimit   uint64
+	txsender.Sender
 
 	// swap contract
 	contract     *swapfactory.SwapFactory
@@ -127,11 +131,23 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	var addr ethcommon.Address
+	txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		addr   ethcommon.Address
+		sender txsender.Sender
+	)
 	if cfg.EthereumPrivateKey != nil {
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
+		sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
 	} else {
-		log.Warn("must set ethereum address and signer before swapping")
+		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.EthereumClient)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// monero-wallet-rpc client
@@ -158,6 +174,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 			From:    addr,
 			Context: cfg.Ctx,
 		},
+		Sender:        sender,
 		ethAddress:    addr,
 		chainID:       cfg.ChainID,
 		gasPrice:      cfg.GasPrice,
@@ -200,6 +217,15 @@ func (b *backend) EthAddress() ethcommon.Address {
 
 func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
+}
+
+func (b *backend) ExternalSender() *txsender.ExternalSender {
+	s, ok := b.Sender.(*txsender.ExternalSender)
+	if !ok {
+		return nil
+	}
+
+	return s
 }
 
 func (b *backend) Net() net.MessageSender {

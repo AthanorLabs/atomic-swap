@@ -394,17 +394,17 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}()
 
 	nonce := generateNonce()
-	tx, err := s.Contract().NewSwap(s.txOpts, cmtXMRMaker, cmtXMRTaker,
+	txHash, receipt, err := s.NewSwap(cmtXMRMaker, cmtXMRTaker,
 		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
-	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())
-	receipt, err := s.WaitForReceipt(s.ctx, tx.Hash())
-	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
-	}
+	log.Debugf("instantiated swap on-chain: amount=%s txHash=%s", amount, txHash)
+	// receipt, err := s.WaitForReceipt(s.ctx, tx.Hash())
+	// if err != nil {
+	// 	return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
+	// }
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
@@ -437,24 +437,20 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	return tx.Hash(), nil
+	return txHash, nil
 }
 
 // ready calls the Ready() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.Contract().SetReady(s.txOpts, s.contractSwap)
+	_, _, err := s.SetReady(s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
 		}
 
 		return err
-	}
-
-	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
-		return fmt.Errorf("failed to call is_ready in swap contract: %w", err)
 	}
 
 	return nil
@@ -471,17 +467,13 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
+	txHash, _, err := s.Refund(s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
-	}
-
 	s.clearNextExpectedMessage(types.CompletedRefund)
-	return tx.Hash(), nil
+	return txHash, nil
 }
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {

@@ -8,7 +8,9 @@ import (
 
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/protocol/txsender"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,17 +24,26 @@ const (
 var upgrader = websocket.Upgrader{}
 
 type wsServer struct {
-	ctx context.Context
-	sm  SwapManager
-	ns  *NetService
+	ctx      context.Context
+	sm       SwapManager
+	ns       *NetService
+	txsOutCh <-chan []byte
+	txsInCh  chan<- ethcommon.Hash
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, ns *NetService) *wsServer {
-	return &wsServer{
+func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, signer *txsender.ExternalSender) *wsServer {
+	s := &wsServer{
 		ctx: ctx,
 		sm:  sm,
 		ns:  ns,
 	}
+
+	if signer != nil {
+		s.txsOutCh = signer.OngoingCh()
+		s.txsInCh = signer.IncomingCh()
+	}
+
+	return s
 }
 
 // ServeHTTP ...
@@ -69,6 +80,8 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
+	case "signer":
+		return s.handleSigner(s.ctx, conn)
 	case subscribeNewPeer:
 		return errUnimplemented
 	case "net_discover":
@@ -131,6 +144,33 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
 	default:
 		return errInvalidMethod
+	}
+}
+
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn) error {
+	if s.txsOutCh == nil {
+		return errSignerNotRequired
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case tx := <-s.txsOutCh:
+			// TODO: messageType?
+			err := conn.WriteMessage(0, tx)
+			if err != nil {
+				return err
+			}
+
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				return err
+			}
+
+			log.Infof("got incoming: %s", string(message))
+			s.txsInCh <- ethcommon.HexToHash(string(message))
+		}
 	}
 }
 
