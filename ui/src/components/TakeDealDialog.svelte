@@ -11,6 +11,7 @@
   import { Svg } from '@smui/common/elements'
   import CircularProgress from '@smui/circular-progress'
   import HelperText from '@smui/textfield/helper-text'
+  import { newSwap } from "../stores/metamask"
 
   let amountProvided: number | null = null
   let isSuccess = false
@@ -45,6 +46,8 @@
 
   const handleSendTakeOffer = () => {
     isLoadingSwap = true
+    newSwap()
+    
     rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {
       multiaddr: $selectedOffer?.peer,
       offerID: $selectedOffer?.id,
