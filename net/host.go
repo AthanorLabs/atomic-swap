@@ -192,8 +192,8 @@ func (h *host) logPeers() {
 			return
 		}
 
-		log.Infof("peer count: %d", len(h.h.Network().Peers()))
-		time.Sleep(time.Second * 30)
+		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
+		time.Sleep(time.Minute)
 	}
 }
 

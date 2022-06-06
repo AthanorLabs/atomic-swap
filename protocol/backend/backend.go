@@ -131,19 +131,20 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
-	if err != nil {
-		return nil, err
-	}
-
 	var (
 		addr   ethcommon.Address
 		sender txsender.Sender
 	)
 	if cfg.EthereumPrivateKey != nil {
+		txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
+		if err != nil {
+			return nil, err
+		}
+
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
 		sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
 	} else {
+		var err error
 		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.EthereumClient)
 		if err != nil {
 			return nil, err

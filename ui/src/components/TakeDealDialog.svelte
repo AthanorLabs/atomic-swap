@@ -11,13 +11,36 @@
   import { Svg } from '@smui/common/elements'
   import CircularProgress from '@smui/circular-progress'
   import HelperText from '@smui/textfield/helper-text'
+<<<<<<< HEAD
   import { newSwap } from "../stores/metamask"
+=======
+  import { onMount } from 'svelte'
+
+  const WS_ADDRESS = 'ws://127.0.0.1:8081'
+>>>>>>> 3be10ac229e5259a4c90ce7398ac11dcf02fc0b0
 
   let amountProvided: number | null = null
   let isSuccess = false
   let isLoadingSwap = false
   let error = ''
   let swapError = ''
+
+  onMount(() => {
+    const webSocket = new WebSocket(WS_ADDRESS)
+
+    webSocket.onopen = () => {
+      console.log('opened')
+    }
+    webSocket.onmessage = (e) => {
+      console.log('message:', e)
+    }
+    webSocket.onclose = (e) => {
+      console.log('closed:', e)
+    }
+    webSocket.onerror = (e) => {
+      console.log('errror', e)
+    }
+  })
 
   $: willReceive =
     amountProvided && amountProvided > 0 && $selectedOffer?.exchangeRate
@@ -92,6 +115,7 @@
       <Title class="title" id="mandatory-title">
         Swap offer {$selectedOffer.id}
       </Title>
+      <span>{$selectedOffer.peer}</span>
     </div>
     <Content id="mandatory-content">
       <section class="container">
