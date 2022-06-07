@@ -21,12 +21,14 @@ var (
 	transactionTimeout = time.Minute * 2 // arbitrary, TODO vary this based on env
 )
 
+// Transaction represents a transaction to be signed by the front-end
 type Transaction struct {
 	To    ethcommon.Address
 	Data  string
 	Value string
 }
 
+// ExternalSender represents a transaction signer and sender that is external to the daemon (ie. a front-end)
 type ExternalSender struct {
 	ctx          context.Context
 	ec           *ethclient.Client
@@ -40,7 +42,9 @@ type ExternalSender struct {
 	in chan ethcommon.Hash
 }
 
-func NewExternalSender(ctx context.Context, ec *ethclient.Client, contractAddr ethcommon.Address) (*ExternalSender, error) {
+// NewExternalSender returns a new ExternalSender
+func NewExternalSender(ctx context.Context, ec *ethclient.Client,
+	contractAddr ethcommon.Address) (*ExternalSender, error) {
 	abi, err := swapfactory.SwapFactoryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -56,15 +60,19 @@ func NewExternalSender(ctx context.Context, ec *ethclient.Client, contractAddr e
 	}, nil
 }
 
+// OngoingCh returns the channel of outgoing transactions to be signed and submitted
 func (s *ExternalSender) OngoingCh() <-chan *Transaction {
 	return s.out
 }
 
+// IncomingCh returns the channel of incoming transaction hashes that have been signed and submitted
 func (s *ExternalSender) IncomingCh() chan<- ethcommon.Hash {
 	return s.in
 }
 
-func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+// NewSwap prompts the external sender to sign a new_swap transaction
+func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
+	_timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("new_swap", _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
@@ -73,6 +81,7 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, 
 	return s.sendAndReceive(input)
 }
 
+// SetReady prompts the external sender to sign a set_ready transaction
 func (s *ExternalSender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("set_ready", _swap)
 	if err != nil {
@@ -82,7 +91,9 @@ func (s *ExternalSender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.
 	return s.sendAndReceive(input)
 }
 
-func (s *ExternalSender) Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+// Claim prompts the external sender to sign a claim transaction
+func (s *ExternalSender) Claim(_swap swapfactory.SwapFactorySwap,
+	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("claim", _swap, _s)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
@@ -91,7 +102,9 @@ func (s *ExternalSender) Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (
 	return s.sendAndReceive(input)
 }
 
-func (s *ExternalSender) Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+// Refund prompts the external sender to sign a refund transaction
+func (s *ExternalSender) Refund(_swap swapfactory.SwapFactorySwap,
+	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("refund", _swap, _s)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err

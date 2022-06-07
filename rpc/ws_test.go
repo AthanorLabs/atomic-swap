@@ -9,9 +9,11 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/protocol/txsender"
 	"github.com/noot/atomic-swap/rpcclient/wsclient"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -131,6 +133,11 @@ func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {}
 func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }
+func (*mockProtocolBackend) ExternalSender() *txsender.ExternalSender {
+	return nil
+}
+func (*mockProtocolBackend) SetEthAddress(ethcommon.Address)      {}
+func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address) {}
 
 func newServer(t *testing.T) *Server {
 	ctx, cancel := context.WithCancel(context.Background())

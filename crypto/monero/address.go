@@ -11,12 +11,15 @@ const (
 	addressPrefixMainnet  byte = 18
 	addressPrefixStagenet byte = 24
 
+	// AddressLength is the length of a Monero address
 	AddressLength = 1 + 32 + 32 + 4
 )
 
 // Address represents a base58-encoded string
 type Address string
 
+// ValidateAddress checks if the given address is valid
+// TODO: also check chain prefix
 func ValidateAddress(addr string) error {
 	b := DecodeMoneroBase58(addr)
 	if len(b) != AddressLength {

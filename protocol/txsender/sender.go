@@ -23,8 +23,10 @@ var (
 	errReceiptTimeOut = errors.New("failed to get receipt, timed out")
 )
 
+// Sender signs and submits transactions to the chain
 type Sender interface {
-	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
+	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int,
+		_nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
 	SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
 	Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
 	Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
@@ -37,7 +39,9 @@ type privateKeySender struct {
 	txOpts   *bind.TransactOpts
 }
 
-func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *swapfactory.SwapFactory, txOpts *bind.TransactOpts) Sender {
+// NewSenderWithPrivateKey returns a new *privateKeySender
+func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *swapfactory.SwapFactory,
+	txOpts *bind.TransactOpts) Sender {
 	return &privateKeySender{
 		ctx:      ctx,
 		ec:       ec,
@@ -46,7 +50,8 @@ func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract
 	}
 }
 
-func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
+	_timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txOpts.Value = value
 	defer func() {
 		s.txOpts.Value = nil
@@ -79,7 +84,8 @@ func (s *privateKeySender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommo
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap,
+	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx, err := s.contract.Claim(s.txOpts, _swap, _s)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
@@ -93,7 +99,8 @@ func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte)
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) Refund(_swap swapfactory.SwapFactorySwap,
+	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx, err := s.contract.Refund(s.txOpts, _swap, _s)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err

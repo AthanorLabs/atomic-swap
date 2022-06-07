@@ -40,7 +40,8 @@ type wsServer struct {
 	txsInCh  chan<- ethcommon.Hash
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend, signer *txsender.ExternalSender) *wsServer {
+func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend,
+	signer *txsender.ExternalSender) *wsServer {
 	s := &wsServer{
 		ctx:     ctx,
 		sm:      sm,
@@ -167,6 +168,10 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 		return errSignerNotRequired
 	}
 
+	if err := mcrypto.ValidateAddress(xmrAddr); err != nil {
+		return err
+	}
+
 	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr))
 
@@ -205,18 +210,6 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 			if params.OfferID != offerID {
 				return fmt.Errorf("got unexpected offerID %s, expected %s", params.OfferID, offerID)
 			}
-
-			// log.Infof("got incoming: %s", string(message))
-			// if string(message) == "signer" {
-			// 	_, message, err := conn.ReadMessage()
-			// 	if err != nil {
-			// 		return err
-			// 	}
-
-			// 	log.Infof("got incoming address: %s", string(message))
-			// 	s.backend.SetEthAddress(ethcommon.HexToAddress(string(message)))
-			// 	continue
-			// }
 
 			s.txsInCh <- ethcommon.HexToHash(params.TxHash)
 		}

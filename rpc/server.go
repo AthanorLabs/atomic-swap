@@ -61,7 +61,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.ProtocolBackend.ExternalSender()),
+		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.ProtocolBackend.ExternalSender()), //nolint:lll
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil

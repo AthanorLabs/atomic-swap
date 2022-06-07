@@ -27,7 +27,8 @@ var (
 )
 
 // GetEthereumPrivateKey returns an ethereum private key hex string given the CLI options.
-func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker, useExternal bool) (ethPrivKey string, err error) {
+func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker,
+	useExternal bool) (ethPrivKey string, err error) {
 	if c.String(flagEthereumPrivKey) != "" {
 		ethPrivKeyFile := c.String(flagEthereumPrivKey)
 		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
