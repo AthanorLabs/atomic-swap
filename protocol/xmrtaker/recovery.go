@@ -27,11 +27,6 @@ type recoveryState struct {
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.PrivateSpendKey,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
-	txOpts, err := b.TxOpts()
-	if err != nil {
-		return nil, err
-	}
-
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
 		return nil, err
@@ -47,7 +42,6 @@ func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.Privat
 		ctx:            ctx,
 		cancel:         cancel,
 		Backend:        b,
-		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),

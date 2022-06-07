@@ -13,9 +13,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/protocol/txsender"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
@@ -38,6 +40,7 @@ type Backend interface {
 	monero.Client
 	monero.DaemonClient
 	net.MessageSender
+	txsender.Sender
 
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
@@ -61,10 +64,16 @@ type Backend interface {
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
+	ExternalSender() *txsender.ExternalSender
+	XMRDepositAddress() mcrypto.Address
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
 	SetGasPrice(uint64)
+	SetEthAddress(ethcommon.Address)
+	SetXMRDepositAddress(mcrypto.Address)
+	SetContract(*swapfactory.SwapFactory)
+	SetContractAddress(ethcommon.Address)
 }
 
 type backend struct {
@@ -76,6 +85,9 @@ type backend struct {
 	monero.Client
 	monero.DaemonClient
 
+	// monero deposit address (used if xmrtaker has transferBack set to true)
+	xmrDepositAddr mcrypto.Address
+
 	// ethereum endpoint and variables
 	ethClient  *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
@@ -84,6 +96,7 @@ type backend struct {
 	chainID    *big.Int
 	gasPrice   *big.Int
 	gasLimit   uint64
+	txsender.Sender
 
 	// swap contract
 	contract     *swapfactory.SwapFactory
@@ -127,7 +140,26 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	addr := common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
+	var (
+		addr   ethcommon.Address
+		sender txsender.Sender
+	)
+	if cfg.EthereumPrivateKey != nil {
+		txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
+		if err != nil {
+			return nil, err
+		}
+
+		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
+		sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
+	} else {
+		log.Debugf("instantiated backend with external sender")
+		var err error
+		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.EthereumClient, cfg.SwapContractAddress)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// monero-wallet-rpc client
 	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
@@ -153,6 +185,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 			From:    addr,
 			Context: cfg.Ctx,
 		},
+		Sender:        sender,
 		ethAddress:    addr,
 		chainID:       cfg.ChainID,
 		gasPrice:      cfg.GasPrice,
@@ -195,6 +228,15 @@ func (b *backend) EthAddress() ethcommon.Address {
 
 func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
+}
+
+func (b *backend) ExternalSender() *txsender.ExternalSender {
+	s, ok := b.Sender.(*txsender.ExternalSender)
+	if !ok {
+		return nil
+	}
+
+	return s
 }
 
 func (b *backend) Net() net.MessageSender {
@@ -247,6 +289,10 @@ func (b *backend) TxOpts() (*bind.TransactOpts, error) {
 	return txOpts, nil
 }
 
+func (b *backend) XMRDepositAddress() mcrypto.Address {
+	return b.xmrDepositAddr
+}
+
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
 func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error) {
 	for i := 0; i < maxRetries; i++ {
@@ -271,4 +317,25 @@ func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*t
 
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {
 	return swapfactory.NewSwapFactory(addr, b.ethClient)
+}
+
+func (b *backend) SetEthAddress(addr ethcommon.Address) {
+	if b.ExternalSender() == nil {
+		return
+	}
+
+	b.ethAddress = addr
+}
+
+func (b *backend) SetXMRDepositAddress(addr mcrypto.Address) {
+	b.xmrDepositAddr = addr
+}
+
+func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
+	b.contract = contract
+	b.Sender.SetContract(contract)
+}
+
+func (b *backend) SetContractAddress(addr ethcommon.Address) {
+	b.contractAddr = addr
 }

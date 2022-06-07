@@ -263,7 +263,8 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, false)
+	// TODO: add --external-signer option to allow front-end integration
+	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, false, false)
 	if err != nil {
 		return nil, err
 	}

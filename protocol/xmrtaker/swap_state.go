@@ -23,7 +23,6 @@ import (
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
 )
@@ -37,9 +36,8 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
-	infofile      string
-	transferBack  bool
-	walletAddress mcrypto.Address
+	infofile     string
+	transferBack bool
 
 	info     *pswap.Info
 	statusCh chan types.Status
@@ -60,7 +58,6 @@ type swapState struct {
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
-	txOpts         *bind.TransactOpts
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -72,20 +69,15 @@ type swapState struct {
 	exited      bool
 }
 
-func newSwapState(b backend.Backend, infofile string, transferBack bool, walletAddress mcrypto.Address,
+func newSwapState(b backend.Backend, infofile string, transferBack bool,
 	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
 	exchangeRate types.ExchangeRate) (*swapState, error) {
 	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
 
-	if transferBack && walletAddress == "" {
+	if transferBack && b.XMRDepositAddress() == "" {
 		return nil, errMustProvideWalletAddress
-	}
-
-	txOpts, err := b.TxOpts()
-	if err != nil {
-		return nil, err
 	}
 
 	stage := types.ExpectingKeys
@@ -97,6 +89,10 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 		return nil, err
 	}
 
+	if b.ExternalSender() != nil {
+		transferBack = true // front-end must set final deposit address
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
@@ -104,8 +100,6 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 		Backend:             b,
 		infofile:            infofile,
 		transferBack:        transferBack,
-		walletAddress:       walletAddress,
-		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
@@ -388,23 +382,14 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
-	s.txOpts.Value = amount.BigInt()
-	defer func() {
-		s.txOpts.Value = nil
-	}()
-
 	nonce := generateNonce()
-	tx, err := s.Contract().NewSwap(s.txOpts, cmtXMRMaker, cmtXMRTaker,
-		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce)
+	txHash, receipt, err := s.NewSwap(cmtXMRMaker, cmtXMRTaker,
+		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, amount.BigInt())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
-	log.Debugf("instantiating swap on-chain: amount=%s txHash=%s", amount, tx.Hash())
-	receipt, err := s.WaitForReceipt(s.ctx, tx.Hash())
-	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
-	}
+	log.Debugf("instantiated swap on-chain: amount=%s txHash=%s", amount, txHash)
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
@@ -437,24 +422,20 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	return tx.Hash(), nil
+	return txHash, nil
 }
 
 // ready calls the Ready() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	tx, err := s.Contract().SetReady(s.txOpts, s.contractSwap)
+	_, _, err := s.SetReady(s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
 		}
 
 		return err
-	}
-
-	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
-		return fmt.Errorf("failed to call is_ready in swap contract: %w", err)
 	}
 
 	return nil
@@ -471,17 +452,13 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
+	txHash, _, err := s.Refund(s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	if _, err := s.WaitForReceipt(s.ctx, tx.Hash()); err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to call Refund function in contract: %w", err)
-	}
-
 	s.clearNextExpectedMessage(types.CompletedRefund)
-	return tx.Hash(), nil
+	return txHash, nil
 }
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
@@ -509,14 +486,20 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	}
 
 	log.Infof("monero claimed in account %s; transferring to original account %s",
-		addr, s.walletAddress)
+		addr, s.XMRDepositAddress())
+
+	err = mcrypto.ValidateAddress(string(s.XMRDepositAddress()))
+	if err != nil {
+		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
+		return addr, nil
+	}
 
 	err = s.waitUntilBalanceUnlocks()
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.SweepAll(s.walletAddress, 0)
+	res, err := s.SweepAll(s.XMRDepositAddress(), 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -528,7 +511,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	amount := res.AmountList[0]
 	log.Infof("transferred %v XMR to %s",
 		common.MoneroAmount(amount).AsMonero(),
-		s.walletAddress,
+		s.XMRDepositAddress(),
 	)
 
 	close(s.claimedCh)
@@ -544,7 +527,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		log.Infof("checking if balance unlocked...")
 
 		if s.Env() == common.Development {
-			_ = s.GenerateBlocks(string(s.walletAddress), 64)
+			_ = s.GenerateBlocks(string(s.XMRDepositAddress()), 64)
 			_ = s.Refresh()
 		}
 

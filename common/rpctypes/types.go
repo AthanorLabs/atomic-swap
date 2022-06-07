@@ -61,3 +61,24 @@ type MakeOfferResponse struct {
 	ID       string `json:"offerID"`
 	InfoFile string `json:"infoFile"`
 }
+
+// SignerRequest initiates the signer_subscribe handler from the front-end
+type SignerRequest struct {
+	OfferID    string `json:"offerID"`
+	EthAddress string `json:"ethAddress"`
+	XMRAddress string `json:"xmrAddress"`
+}
+
+// SignerResponse sends a tx to be signed to the front-end
+type SignerResponse struct {
+	OfferID string `json:"offerID"`
+	To      string `json:"to"`
+	Data    string `json:"data"`
+	Value   string `json:"value"`
+}
+
+// SignerTxSigned is a response from the front-end saying the given tx has been submitted successfully
+type SignerTxSigned struct {
+	OfferID string `json:"offerID"`
+	TxHash  string `json:"txHash"`
+}

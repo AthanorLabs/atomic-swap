@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -15,6 +16,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+var (
+	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
+)
+
 func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, basepath string, chainID *big.Int,
 	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
 	var (
@@ -22,6 +27,10 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, b
 	)
 
 	if env != common.Mainnet && (address == ethcommon.Address{}) {
+		if privkey == nil {
+			return nil, ethcommon.Address{}, errNoEthereumPrivateKey
+		}
+
 		txOpts, err := bind.NewKeyedTransactorWithChainID(privkey, chainID)
 		if err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to make transactor: %w", err)
