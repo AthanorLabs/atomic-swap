@@ -77,6 +77,7 @@ export const sign = async(msg) => {
 	    from: signer.getAddress(),
 	    to: tx.to,
 	    gasPrice: window.ethersProvider.getGasPrice(), 
+	    gasLimit: "200000",
 	    value: value,
 	    data: tx.data,
 	  }

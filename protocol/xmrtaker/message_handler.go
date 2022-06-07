@@ -140,7 +140,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
 	txHash, err := s.lockETH(s.providedAmountInWei())
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy contract: %w", err)
+		return nil, fmt.Errorf("failed to lock ETH in contract: %w", err)
 	}
 
 	log.Info("locked ether in swap contract, waiting for XMR to be locked")
