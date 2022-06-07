@@ -23,27 +23,6 @@
   let error = ''
   let swapError = ''
 
-  //let webSocket;
-  // onMount(() => {
-  //   webSocket = new WebSocket(WS_ADDRESS)
-
-  //   webSocket.onopen = () => {
-  //     console.log('opened')
-  //   }
-  //   webSocket.onmessage = async (msg) => {
-  //     console.log('message to sign:', msg.data)
-  //     let txHash = await sign(msg.data)
-  //     webSocket.send(txHash)
-  //   }
-
-  //   webSocket.onclose = (e) => {
-  //     console.log('closed:', e)
-  //   }
-  //   webSocket.onerror = (e) => {
-  //     console.log('error', e)
-  //   }
-  // })
-
   $: willReceive =
     amountProvided && amountProvided > 0 && $selectedOffer?.exchangeRate
       ? amountProvided / $selectedOffer.exchangeRate
@@ -69,32 +48,8 @@
     error = ''
   }
 
-  const startWsSigner = (offerID) => {
-    // webSocket = new WebSocket(WS_ADDRESS)
-
-    // webSocket.onopen = () => {
-    //   console.log('opened')
-    // }
-    // webSocket.onmessage = async (msg) => {
-    //   console.log('message to sign:', msg.data)
-    //   let txHash = await sign(msg.data)
-    //   let out = {
-    //     offerID: offerID,
-    //     txHash: txHash,
-    //   }
-    //   webSocket.send(JSON.stringify(out))
-    // }
-    // webSocket.onclose = (e) => {
-    //   console.log('closed:', e)
-    // }
-    // webSocket.onerror = (e) => {
-    //   console.log('error', e)
-    // }
-  }
-
   const handleSendTakeOffer = () => {
     let offerID = $selectedOffer?.id
-    //startWsSigner(offerID)
     let webSocket = new WebSocket(WS_ADDRESS)
 
     webSocket.onopen = () => {

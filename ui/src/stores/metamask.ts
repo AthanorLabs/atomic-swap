@@ -52,11 +52,6 @@ function handleAccountsChanged(accounts) {
   }
 }
 
-const swapContractAddrs = {
-	goerli: "0xe532f0C720dCD102854281aeF1a8Be01f464C8fE",
-	dev: "0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab",
-}
-
 let ethersProvider
 let chainId
 let contract
@@ -68,19 +63,12 @@ const initialize = async () => {
 	window.ethersProvider = ethersProvider
 	signer = ethersProvider.getSigner()
 	console.log("signer:", await signer.getAddress())
-	chainId = await ethereum.request({ method: 'eth_chainId' });
-	if (chainId == 5) {
-		contract = new Contract(swapContractAddrs.goerli, SwapFactory.abi).connect(signer)
-		console.log("instantiated contract on Goerli at", swapContractAddrs.goerli)
-	} else if (chainId == 1337) {
-		contract = new Contract(swapContractAddrs.dev, SwapFactory.abi).connect(signer)
-	}
 }
 
 export const sign = async(msg) => {
 	let tx = JSON.parse(msg)
 	let value
-	if tx.value != "" {
+	if (tx.value != "") {
 		value = utils.parseEther(tx.value)
 	}
 
@@ -88,15 +76,12 @@ export const sign = async(msg) => {
 	  {
 	    from: signer.getAddress(),
 	    to: tx.to,
-	    gasPrice: window.ethersProvider.getGasPrice(), // 10000000000000
+	    gasPrice: window.ethersProvider.getGasPrice(), 
 	    value: value,
 	    data: tx.data,
 	  }
-	console.log("sending tx request...")
-	// let res = await window.ethereum.request({
-	// 	method: "eth_sendTransaction",
-	// 	params,
-	// })
+
+	console.log("sending transaction:", params)
 	let res
 	try {
 	 	res = await signer.sendTransaction(params)		

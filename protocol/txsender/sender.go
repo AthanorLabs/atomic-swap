@@ -122,12 +122,6 @@ func waitForReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.
 			continue
 		}
 
-		// log.Infof("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
-		// 	txHash,
-		// 	receipt.BlockHash,
-		// 	receipt.BlockNumber,
-		// 	receipt.CumulativeGasUsed,
-		// )
 		return receipt, nil
 	}
 
