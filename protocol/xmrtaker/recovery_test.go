@@ -43,7 +43,10 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.Contract().Claim(rs.ss.txOpts, rs.ss.contractSwap, sc)
+	txOpts, err := rs.ss.TxOpts()
+	require.NoError(t, err)
+
+	_, err = rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 
 	t.Log("XMRMaker claimed ETH...")

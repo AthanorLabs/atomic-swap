@@ -8,7 +8,10 @@ import (
 
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/noot/atomic-swap/protocol/txsender"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 )
 
@@ -17,22 +20,41 @@ const (
 	subscribeMakeOffer  = "net_makeOfferAndSubscribe"
 	subscribeTakeOffer  = "net_takeOfferAndSubscribe"
 	subscribeSwapStatus = "swap_subscribeStatus"
+	subscribeSigner     = "signer_subscribe"
 )
 
-var upgrader = websocket.Upgrader{}
-
-type wsServer struct {
-	ctx context.Context
-	sm  SwapManager
-	ns  *NetService
+var upgrader = websocket.Upgrader{
+	CheckOrigin: checkOriginFunc,
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, ns *NetService) *wsServer {
-	return &wsServer{
-		ctx: ctx,
-		sm:  sm,
-		ns:  ns,
+func checkOriginFunc(r *http.Request) bool {
+	return true
+}
+
+type wsServer struct {
+	ctx      context.Context
+	sm       SwapManager
+	ns       *NetService
+	backend  ProtocolBackend
+	txsOutCh <-chan *txsender.Transaction
+	txsInCh  chan<- ethcommon.Hash
+}
+
+func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend,
+	signer *txsender.ExternalSender) *wsServer {
+	s := &wsServer{
+		ctx:     ctx,
+		sm:      sm,
+		ns:      ns,
+		backend: backend,
 	}
+
+	if signer != nil {
+		s.txsOutCh = signer.OngoingCh()
+		s.txsInCh = signer.IncomingCh()
+	}
+
+	return s
 }
 
 // ServeHTTP ...
@@ -69,6 +91,13 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
+	case subscribeSigner:
+		var params *rpctypes.SignerRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
+		}
+
+		return s.handleSigner(s.ctx, conn, params.OfferID, params.EthAddress, params.XMRAddress)
 	case subscribeNewPeer:
 		return errUnimplemented
 	case "net_discover":
@@ -131,6 +160,55 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
 	default:
 		return errInvalidMethod
+	}
+}
+
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID, ethAddress, xmrAddr string) error {
+	if s.txsOutCh == nil {
+		return errSignerNotRequired
+	}
+
+	if err := mcrypto.ValidateAddress(xmrAddr); err != nil {
+		return err
+	}
+
+	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
+	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr))
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case tx := <-s.txsOutCh:
+			log.Debugf("outbound tx: %v", tx)
+			resp := &rpctypes.SignerResponse{
+				OfferID: offerID,
+				To:      tx.To.String(),
+				Data:    tx.Data,
+				Value:   tx.Value,
+			}
+
+			err := conn.WriteJSON(resp)
+			if err != nil {
+				return err
+			}
+
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				return err
+			}
+
+			var params *rpctypes.SignerTxSigned
+			if err := json.Unmarshal(message, &params); err != nil {
+				return fmt.Errorf("failed to unmarshal parameters: %w", err)
+			}
+
+			if params.OfferID != offerID {
+				return fmt.Errorf("got unexpected offerID %s, expected %s", params.OfferID, offerID)
+			}
+
+			s.txsInCh <- ethcommon.HexToHash(params.TxHash)
+		}
 	}
 }
 

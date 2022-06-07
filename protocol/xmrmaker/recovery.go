@@ -44,7 +44,7 @@ func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.Privat
 	s := &swapState{
 		ctx:            ctx,
 		cancel:         cancel,
-		backend:        b,
+		Backend:        b,
 		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,

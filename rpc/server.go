@@ -8,7 +8,9 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
@@ -59,7 +61,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns),
+		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.ProtocolBackend.ExternalSender()), //nolint:lll
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -115,6 +117,9 @@ type ProtocolBackend interface {
 	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
+	ExternalSender() *txsender.ExternalSender
+	SetEthAddress(ethcommon.Address)
+	SetXMRDepositAddress(mcrypto.Address)
 }
 
 // XMRTaker ...

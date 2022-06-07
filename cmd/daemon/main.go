@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -69,6 +70,7 @@ const (
 	flagContractAddress      = "contract-address"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
+	flagUseExternalSigner    = "external-signer"
 
 	flagDevXMRTaker  = "dev-xmrtaker"
 	flagDevXMRMaker  = "dev-xmrmaker"
@@ -171,6 +173,10 @@ var (
 			&cli.StringFlag{
 				Name:  flagLog,
 				Usage: "set log level: one of [error|warn|info|debug]",
+			},
+			&cli.BoolFlag{
+				Name:  flagUseExternalSigner,
+				Usage: "use external signer, for usage with the swap UI",
 			},
 		},
 	}
@@ -406,9 +412,17 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devXMRMaker)
+	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devXMRMaker, c.Bool(flagUseExternalSigner))
 	if err != nil {
 		return nil, err
+	}
+
+	var pk *ecdsa.PrivateKey
+	if ethPrivKey != "" {
+		pk, err = ethcrypto.HexToECDSA(ethPrivKey)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.String(flagMoneroDaemonEndpoint) != "" {
@@ -429,11 +443,6 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		contractAddr = ethcommon.Address{}
 	} else {
 		contractAddr = ethcommon.HexToAddress(contractAddrStr)
-	}
-
-	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
-	if err != nil {
-		return nil, err
 	}
 
 	ec, err := ethclient.Dial(ethEndpoint)

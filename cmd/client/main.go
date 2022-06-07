@@ -288,6 +288,11 @@ func runMake(ctx *cli.Context) error {
 		fmt.Printf("Made offer with ID=%s\n", id)
 
 		taken := <-takenCh
+		if taken == nil {
+			fmt.Printf("connection closed\n")
+			return nil
+		}
+
 		fmt.Printf("Offer taken! Swap ID=%d\n", taken.ID)
 
 		for stage := range statusCh {

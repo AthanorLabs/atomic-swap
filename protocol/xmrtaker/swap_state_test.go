@@ -103,7 +103,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, infofile, false, "",
+	swapState, err := newSwapState(b, infofile, false,
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1)
 	require.NoError(t, err)
 	return swapState
@@ -340,7 +340,9 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.Contract().Claim(s.txOpts, s.contractSwap, sc)
+	txOpts, err := s.TxOpts()
+	require.NoError(t, err)
+	tx, err := s.Contract().Claim(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	// handled the claimed message should result in the monero wallet being created

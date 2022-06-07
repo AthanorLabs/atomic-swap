@@ -29,7 +29,6 @@ type Instance struct {
 	basepath string
 
 	walletFile, walletPassword string
-	walletAddress              mcrypto.Address
 	transferBack               bool // transfer xmr back to original account
 
 	// non-nil if a swap is currently happening, nil otherwise
@@ -59,6 +58,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		if err != nil {
 			return nil, err
 		}
+		cfg.Backend.SetXMRDepositAddress(address)
 	}
 
 	// TODO: check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured
@@ -67,7 +67,6 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		basepath:       cfg.Basepath,
 		walletFile:     cfg.MoneroWalletFile,
 		walletPassword: cfg.MoneroWalletPassword,
-		walletAddress:  address,
 	}, nil
 }
 
