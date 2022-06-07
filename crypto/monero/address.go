@@ -1,6 +1,8 @@
 package mcrypto
 
 import (
+	"fmt"
+
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/crypto"
 )
@@ -8,10 +10,21 @@ import (
 const (
 	addressPrefixMainnet  byte = 18
 	addressPrefixStagenet byte = 24
+
+	AddressLength = 1 + 32 + 32 + 4
 )
 
 // Address represents a base58-encoded string
 type Address string
+
+func ValidateAddress(addr string) error {
+	b := DecodeMoneroBase58(addr)
+	if len(b) != AddressLength {
+		return fmt.Errorf("invalid monero address length: got %d, expected %d", len(b), AddressLength)
+	}
+
+	return nil
+}
 
 func getChecksum(data ...[]byte) (result [4]byte) {
 	keccak256 := crypto.Keccak256(data...)

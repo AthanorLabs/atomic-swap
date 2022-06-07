@@ -130,21 +130,6 @@
       console.log('error', e)
     }
 
-    // console.log("sending ws signer msg")
-    // let req = {
-    //   method: "subscribe_signer",
-    //   params: {
-    //     jsonRPC: "2.0",
-    //     id: "0",
-    //     offerID: offerID,
-    //     ethAddress: $currentAccount,
-    //   }
-    // }
-    // webSocket.send(JSON.stringify(req))
-    // // webSocket.send("signer")
-    // // webSocket.send(`${$currentAccount}`)
-    // console.log("sent ws signer msg", req)
-
     isLoadingSwap = true
     
     rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {

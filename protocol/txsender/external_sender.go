@@ -2,16 +2,23 @@ package txsender
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+)
+
+var (
+	errTransactionTimeout = errors.New("timed out waiting for transaction to be signed")
+
+	transactionTimeout = time.Minute * 2 // arbitrary, TODO vary this based on env
 )
 
 type Transaction struct {
@@ -63,22 +70,7 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, 
 		return ethcommon.Hash{}, nil, err
 	}
 
-	tx := &Transaction{
-		To:    s.contractAddr,
-		Data:  fmt.Sprintf("0x%x", input),
-		Value: fmt.Sprintf("%v", common.EtherAmount(*value).AsEther()),
-	}
-
-	// TODO: how to make this synchronous?
-	s.out <- tx
-	txHash := <-s.in
-
-	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
-	if err != nil {
-		return ethcommon.Hash{}, nil, err
-	}
-
-	return txHash, receipt, nil
+	return s.sendAndReceive(input)
 }
 
 func (s *ExternalSender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
@@ -87,20 +79,7 @@ func (s *ExternalSender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.
 		return ethcommon.Hash{}, nil, err
 	}
 
-	tx := &Transaction{
-		To:   s.contractAddr,
-		Data: fmt.Sprintf("0x%x", input),
-	}
-
-	s.out <- tx
-	txHash := <-s.in
-
-	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
-	if err != nil {
-		return ethcommon.Hash{}, nil, err
-	}
-
-	return txHash, receipt, nil
+	return s.sendAndReceive(input)
 }
 
 func (s *ExternalSender) Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
@@ -109,20 +88,7 @@ func (s *ExternalSender) Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (
 		return ethcommon.Hash{}, nil, err
 	}
 
-	tx := &Transaction{
-		To:   s.contractAddr,
-		Data: fmt.Sprintf("0x%x", input),
-	}
-
-	s.out <- tx
-	txHash := <-s.in
-
-	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
-	if err != nil {
-		return ethcommon.Hash{}, nil, err
-	}
-
-	return txHash, receipt, nil
+	return s.sendAndReceive(input)
 }
 
 func (s *ExternalSender) Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
@@ -131,13 +97,22 @@ func (s *ExternalSender) Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) 
 		return ethcommon.Hash{}, nil, err
 	}
 
+	return s.sendAndReceive(input)
+}
+
+func (s *ExternalSender) sendAndReceive(input []byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx := &Transaction{
 		To:   s.contractAddr,
 		Data: fmt.Sprintf("0x%x", input),
 	}
 
 	s.out <- tx
-	txHash := <-s.in
+	var txHash ethcommon.Hash
+	select {
+	case <-time.After(transactionTimeout):
+		return ethcommon.Hash{}, nil, errTransactionTimeout
+	case txHash = <-s.in:
+	}
 
 	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
 	if err != nil {

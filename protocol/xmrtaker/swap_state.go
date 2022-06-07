@@ -36,9 +36,8 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
-	infofile      string
-	transferBack  bool
-	walletAddress mcrypto.Address
+	infofile     string
+	transferBack bool
 
 	info     *pswap.Info
 	statusCh chan types.Status
@@ -70,14 +69,14 @@ type swapState struct {
 	exited      bool
 }
 
-func newSwapState(b backend.Backend, infofile string, transferBack bool, walletAddress mcrypto.Address,
+func newSwapState(b backend.Backend, infofile string, transferBack bool,
 	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
 	exchangeRate types.ExchangeRate) (*swapState, error) {
 	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
 
-	if transferBack && walletAddress == "" {
+	if transferBack && b.XMRDepositAddress() == "" {
 		return nil, errMustProvideWalletAddress
 	}
 
@@ -101,7 +100,6 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 		Backend:             b,
 		infofile:            infofile,
 		transferBack:        transferBack,
-		walletAddress:       walletAddress,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
@@ -488,14 +486,20 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	}
 
 	log.Infof("monero claimed in account %s; transferring to original account %s",
-		addr, s.walletAddress)
+		addr, s.XMRDepositAddress())
+
+	err = mcrypto.ValidateAddress(string(s.XMRDepositAddress()))
+	if err != nil {
+		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
+		return addr, nil
+	}
 
 	err = s.waitUntilBalanceUnlocks()
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.SweepAll(s.walletAddress, 0)
+	res, err := s.SweepAll(s.XMRDepositAddress(), 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -507,7 +511,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	amount := res.AmountList[0]
 	log.Infof("transferred %v XMR to %s",
 		common.MoneroAmount(amount).AsMonero(),
-		s.walletAddress,
+		s.XMRDepositAddress(),
 	)
 
 	close(s.claimedCh)
@@ -523,7 +527,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		log.Infof("checking if balance unlocked...")
 
 		if s.Env() == common.Development {
-			_ = s.GenerateBlocks(string(s.walletAddress), 64)
+			_ = s.GenerateBlocks(string(s.XMRDepositAddress()), 64)
 			_ = s.Refresh()
 		}
 

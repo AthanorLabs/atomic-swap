@@ -8,6 +8,7 @@ import (
 
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -72,16 +73,6 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		log.Infof("got ws message", string(message))
-		// if string(message) == "signer" {
-		// 	err := s.handleSigner(s.ctx, conn)
-		// 	if err != nil {
-		// 		log.Errorf("ws signed conn err: %s", err)
-		// 	}
-
-		// 	continue
-		// }
-
 		var req *rpctypes.Request
 		err = json.Unmarshal(message, &req)
 		if err != nil {
@@ -105,7 +96,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		return s.handleSigner(s.ctx, conn, params.OfferID, params.EthAddress)
+		return s.handleSigner(s.ctx, conn, params.OfferID, params.EthAddress, params.XMRAddress)
 	case subscribeNewPeer:
 		return errUnimplemented
 	case "net_discover":
@@ -171,14 +162,13 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	}
 }
 
-func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID, ethAddress string) error {
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID, ethAddress, xmrAddr string) error {
 	if s.txsOutCh == nil {
 		return errSignerNotRequired
 	}
 
-	log.Infof("got incoming address: %s", ethAddress)
 	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
-	log.Infof("handling msgs to be signed...")
+	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr))
 
 	for {
 		select {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/protocol/txsender"
 
@@ -118,6 +119,7 @@ type ProtocolBackend interface {
 	SwapManager() swap.Manager
 	ExternalSender() *txsender.ExternalSender
 	SetEthAddress(ethcommon.Address)
+	SetXMRDepositAddress(mcrypto.Address)
 }
 
 // XMRTaker ...

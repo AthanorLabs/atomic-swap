@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
+	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
@@ -64,11 +65,13 @@ type Backend interface {
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
 	ExternalSender() *txsender.ExternalSender
+	XMRDepositAddress() mcrypto.Address
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
 	SetGasPrice(uint64)
 	SetEthAddress(ethcommon.Address)
+	SetXMRDepositAddress(mcrypto.Address)
 }
 
 type backend struct {
@@ -79,6 +82,9 @@ type backend struct {
 	// monero endpoints
 	monero.Client
 	monero.DaemonClient
+
+	// monero deposit address (used if xmrtaker has transferBack set to true)
+	xmrDepositAddr mcrypto.Address
 
 	// ethereum endpoint and variables
 	ethClient  *ethclient.Client
@@ -281,6 +287,10 @@ func (b *backend) TxOpts() (*bind.TransactOpts, error) {
 	return txOpts, nil
 }
 
+func (b *backend) XMRDepositAddress() mcrypto.Address {
+	return b.xmrDepositAddr
+}
+
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
 func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error) {
 	for i := 0; i < maxRetries; i++ {
@@ -313,4 +323,8 @@ func (b *backend) SetEthAddress(addr ethcommon.Address) {
 	}
 
 	b.ethAddress = addr
+}
+
+func (b *backend) SetXMRDepositAddress(addr mcrypto.Address) {
+	b.xmrDepositAddr = addr
 }

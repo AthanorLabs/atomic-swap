@@ -45,7 +45,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return errBalanceTooLow
 	}
 
-	a.swapState, err = newSwapState(a.backend, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack, a.walletAddress,
+	a.swapState, err = newSwapState(a.backend, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
 		providesAmount, receivedAmount, exchangeRate)
 	if err != nil {
 		return err
