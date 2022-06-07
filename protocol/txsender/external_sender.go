@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -78,7 +79,26 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, 
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(input)
+	tx := &Transaction{
+		To:    s.contractAddr,
+		Data:  fmt.Sprintf("0x%x", input),
+		Value: fmt.Sprintf("%v", common.EtherAmount(*value).AsEther()),
+	}
+
+	s.out <- tx
+	var txHash ethcommon.Hash
+	select {
+	case <-time.After(transactionTimeout):
+		return ethcommon.Hash{}, nil, errTransactionTimeout
+	case txHash = <-s.in:
+	}
+
+	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
+	if err != nil {
+		return ethcommon.Hash{}, nil, err
+	}
+
+	return txHash, receipt, nil
 }
 
 // SetReady prompts the external sender to sign a set_ready transaction

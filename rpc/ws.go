@@ -178,10 +178,9 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("returning from handleSigner")
 			return nil
 		case tx := <-s.txsOutCh:
-			log.Infof("writing tx to be signed", tx)
+			log.Debugf("outbound tx: %v", tx)
 			resp := &rpctypes.SignerResponse{
 				OfferID: offerID,
 				To:      tx.To.String(),
@@ -189,13 +188,10 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 				Value:   tx.Value,
 			}
 
-			// TODO: messageType?
 			err := conn.WriteJSON(resp)
 			if err != nil {
 				return err
 			}
-
-			log.Infof("reading msg")
 
 			_, message, err := conn.ReadMessage()
 			if err != nil {
