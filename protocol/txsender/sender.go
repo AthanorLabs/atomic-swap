@@ -25,6 +25,8 @@ var (
 
 // Sender signs and submits transactions to the chain
 type Sender interface {
+	SetContract(*swapfactory.SwapFactory)
+	SetContractAddress(ethcommon.Address)
 	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int,
 		_nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
 	SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
@@ -49,6 +51,12 @@ func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract
 		txOpts:   txOpts,
 	}
 }
+
+func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
+	s.contract = contract
+}
+
+func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 
 func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
 	_timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {

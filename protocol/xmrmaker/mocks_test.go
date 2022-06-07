@@ -454,6 +454,30 @@ func (mr *MockBackendMockRecorder) SendSwapMessage(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSwapMessage", reflect.TypeOf((*MockBackend)(nil).SendSwapMessage), arg0)
 }
 
+// SetContract mocks base method.
+func (m *MockBackend) SetContract(arg0 *swapfactory.SwapFactory) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetContract", arg0)
+}
+
+// SetContract indicates an expected call of SetContract.
+func (mr *MockBackendMockRecorder) SetContract(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetContract", reflect.TypeOf((*MockBackend)(nil).SetContract), arg0)
+}
+
+// SetContractAddress mocks base method.
+func (m *MockBackend) SetContractAddress(arg0 common.Address) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetContractAddress", arg0)
+}
+
+// SetContractAddress indicates an expected call of SetContractAddress.
+func (mr *MockBackendMockRecorder) SetContractAddress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetContractAddress", reflect.TypeOf((*MockBackend)(nil).SetContractAddress), arg0)
+}
+
 // SetEthAddress mocks base method.
 func (m *MockBackend) SetEthAddress(arg0 common.Address) {
 	m.ctrl.T.Helper()

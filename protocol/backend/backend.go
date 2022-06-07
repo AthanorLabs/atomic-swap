@@ -72,6 +72,8 @@ type Backend interface {
 	SetGasPrice(uint64)
 	SetEthAddress(ethcommon.Address)
 	SetXMRDepositAddress(mcrypto.Address)
+	SetContract(*swapfactory.SwapFactory)
+	SetContractAddress(ethcommon.Address)
 }
 
 type backend struct {
@@ -327,4 +329,13 @@ func (b *backend) SetEthAddress(addr ethcommon.Address) {
 
 func (b *backend) SetXMRDepositAddress(addr mcrypto.Address) {
 	b.xmrDepositAddr = addr
+}
+
+func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
+	b.contract = contract
+	b.Sender.SetContract(contract)
+}
+
+func (b *backend) SetContractAddress(addr ethcommon.Address) {
+	b.contractAddr = addr
 }

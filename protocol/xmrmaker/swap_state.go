@@ -58,10 +58,8 @@ type swapState struct {
 	pubkeys      *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it; set once contract is deployed
-	contract       *swapfactory.SwapFactory
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
-	contractAddr   ethcommon.Address
 	t0, t1         time.Time
 	txOpts         *bind.TransactOpts
 
@@ -393,10 +391,15 @@ func (s *swapState) setXMRTakerPublicKeys(sk *mcrypto.PublicKeyPair, secp256k1Pu
 // setContract sets the contract in which XMRTaker has locked her ETH.
 func (s *swapState) setContract(address ethcommon.Address) error {
 	var err error
-	// TODO: this overrides the backend contract, need to be careful
-	s.contractAddr = address
-	s.contract, err = s.NewSwapFactory(address)
-	return err
+	// note: this overrides the backend contract
+	s.SetContractAddress(address)
+	contract, err := s.NewSwapFactory(address)
+	if err != nil {
+		return err
+	}
+
+	s.SetContract(contract)
+	return nil
 }
 
 func (s *swapState) setTimeouts(t0, t1 *big.Int) {
@@ -418,7 +421,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return errCannotFindNewLog
 	}
 
-	event, err := s.contract.ParseNew(*receipt.Logs[0])
+	event, err := s.Contract().ParseNew(*receipt.Logs[0])
 	if err != nil {
 		return err
 	}

@@ -100,8 +100,8 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infofile,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
-	swapState.contract = xmrmaker.backend.Contract()
-	swapState.contractAddr = xmrmaker.backend.ContractAddr()
+	swapState.SetContract(xmrmaker.backend.Contract())
+	swapState.SetContractAddress(xmrmaker.backend.ContractAddr())
 	return xmrmaker, swapState
 }
 
@@ -182,10 +182,8 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
-	swapState.contract = swapState.Contract()
-	swapState.contractAddr = swapState.ContractAddr()
 
-	_, err = swapState.contract.SetReady(swapState.txOpts, swapState.contractSwap)
+	_, err = swapState.Contract().SetReady(swapState.txOpts, swapState.contractSwap)
 	require.NoError(t, err)
 
 	txHash, err := swapState.claimFunds()
@@ -247,8 +245,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.False(t, done)
-	require.NotNil(t, s.contract)
-	require.Equal(t, addr, s.contractAddr)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 	require.True(t, s.info.Status().IsOngoing())
@@ -294,8 +290,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.False(t, done)
-	require.NotNil(t, s.contract)
-	require.Equal(t, addr, s.contractAddr)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 
@@ -322,7 +316,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
 
-	_, err = s.contract.SetReady(s.txOpts, s.contractSwap)
+	_, err = s.Contract().SetReady(s.txOpts, s.contractSwap)
 	require.NoError(t, err)
 
 	msg := &message.NotifyReady{}
@@ -360,7 +354,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	addr, err := s.handleRefund(tx.Hash().String())
@@ -393,7 +387,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	msg := &message.NotifyRefund{
@@ -433,7 +427,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	receipt, err := s.TransactionReceipt(s.ctx, tx.Hash())
