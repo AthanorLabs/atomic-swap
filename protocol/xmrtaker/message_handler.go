@@ -281,12 +281,11 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	}
 
 	close(s.xmrLockedCh)
+	log.Info("XMR was locked successfully, setting contract to ready...")
 
 	if err := s.ready(); err != nil {
 		return nil, fmt.Errorf("failed to call Ready: %w", err)
 	}
-
-	log.Info("XMR was locked successfully, setting contract to ready...")
 
 	go func() {
 		until := time.Until(s.t1)
@@ -332,6 +331,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 // handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
 // it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
+	log.Debugf("got NotifyClaimed, txHash=%s", txHash)
 	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)

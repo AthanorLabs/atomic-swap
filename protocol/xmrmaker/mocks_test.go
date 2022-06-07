@@ -21,6 +21,7 @@ import (
 	net "github.com/noot/atomic-swap/net"
 	message "github.com/noot/atomic-swap/net/message"
 	swap "github.com/noot/atomic-swap/protocol/swap"
+	txsender "github.com/noot/atomic-swap/protocol/txsender"
 	swapfactory "github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -88,6 +89,22 @@ func (m *MockBackend) ChainID() *big.Int {
 func (mr *MockBackendMockRecorder) ChainID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainID", reflect.TypeOf((*MockBackend)(nil).ChainID))
+}
+
+// Claim mocks base method.
+func (m *MockBackend) Claim(arg0 swapfactory.SwapFactorySwap, arg1 [32]byte) (common.Hash, *types.Receipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Claim", arg0, arg1)
+	ret0, _ := ret[0].(common.Hash)
+	ret1, _ := ret[1].(*types.Receipt)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Claim indicates an expected call of Claim.
+func (mr *MockBackendMockRecorder) Claim(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Claim", reflect.TypeOf((*MockBackend)(nil).Claim), arg0, arg1)
 }
 
 // CloseWallet mocks base method.
@@ -201,6 +218,20 @@ func (m *MockBackend) EthAddress() common.Address {
 func (mr *MockBackendMockRecorder) EthAddress() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddress", reflect.TypeOf((*MockBackend)(nil).EthAddress))
+}
+
+// ExternalSender mocks base method.
+func (m *MockBackend) ExternalSender() *txsender.ExternalSender {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExternalSender")
+	ret0, _ := ret[0].(*txsender.ExternalSender)
+	return ret0
+}
+
+// ExternalSender indicates an expected call of ExternalSender.
+func (mr *MockBackendMockRecorder) ExternalSender() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExternalSender", reflect.TypeOf((*MockBackend)(nil).ExternalSender))
 }
 
 // FilterLogs mocks base method.
@@ -334,6 +365,22 @@ func (mr *MockBackendMockRecorder) Net() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Net", reflect.TypeOf((*MockBackend)(nil).Net))
 }
 
+// NewSwap mocks base method.
+func (m *MockBackend) NewSwap(arg0, arg1 [32]byte, arg2 common.Address, arg3, arg4, arg5 *big.Int) (common.Hash, *types.Receipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret0, _ := ret[0].(common.Hash)
+	ret1, _ := ret[1].(*types.Receipt)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// NewSwap indicates an expected call of NewSwap.
+func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwap", reflect.TypeOf((*MockBackend)(nil).NewSwap), arg0, arg1, arg2, arg3, arg4, arg5)
+}
+
 // NewSwapFactory mocks base method.
 func (m *MockBackend) NewSwapFactory(arg0 common.Address) (*swapfactory.SwapFactory, error) {
 	m.ctrl.T.Helper()
@@ -377,6 +424,22 @@ func (mr *MockBackendMockRecorder) Refresh() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockBackend)(nil).Refresh))
 }
 
+// Refund mocks base method.
+func (m *MockBackend) Refund(arg0 swapfactory.SwapFactorySwap, arg1 [32]byte) (common.Hash, *types.Receipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Refund", arg0, arg1)
+	ret0, _ := ret[0].(common.Hash)
+	ret1, _ := ret[1].(*types.Receipt)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Refund indicates an expected call of Refund.
+func (mr *MockBackendMockRecorder) Refund(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refund", reflect.TypeOf((*MockBackend)(nil).Refund), arg0, arg1)
+}
+
 // SendSwapMessage mocks base method.
 func (m *MockBackend) SendSwapMessage(arg0 message.Message) error {
 	m.ctrl.T.Helper()
@@ -391,6 +454,18 @@ func (mr *MockBackendMockRecorder) SendSwapMessage(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSwapMessage", reflect.TypeOf((*MockBackend)(nil).SendSwapMessage), arg0)
 }
 
+// SetEthAddress mocks base method.
+func (m *MockBackend) SetEthAddress(arg0 common.Address) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetEthAddress", arg0)
+}
+
+// SetEthAddress indicates an expected call of SetEthAddress.
+func (mr *MockBackendMockRecorder) SetEthAddress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEthAddress", reflect.TypeOf((*MockBackend)(nil).SetEthAddress), arg0)
+}
+
 // SetGasPrice mocks base method.
 func (m *MockBackend) SetGasPrice(arg0 uint64) {
 	m.ctrl.T.Helper()
@@ -401,6 +476,22 @@ func (m *MockBackend) SetGasPrice(arg0 uint64) {
 func (mr *MockBackendMockRecorder) SetGasPrice(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGasPrice", reflect.TypeOf((*MockBackend)(nil).SetGasPrice), arg0)
+}
+
+// SetReady mocks base method.
+func (m *MockBackend) SetReady(arg0 swapfactory.SwapFactorySwap) (common.Hash, *types.Receipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetReady", arg0)
+	ret0, _ := ret[0].(common.Hash)
+	ret1, _ := ret[1].(*types.Receipt)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// SetReady indicates an expected call of SetReady.
+func (mr *MockBackendMockRecorder) SetReady(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockBackend)(nil).SetReady), arg0)
 }
 
 // SetSwapTimeout mocks base method.

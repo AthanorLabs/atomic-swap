@@ -68,6 +68,7 @@ type Backend interface {
 	// setters
 	SetSwapTimeout(timeout time.Duration)
 	SetGasPrice(uint64)
+	SetEthAddress(ethcommon.Address)
 }
 
 type backend struct {
@@ -144,8 +145,9 @@ func NewBackend(cfg *Config) (Backend, error) {
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
 		sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
 	} else {
+		log.Debugf("instantiated backend with external sender")
 		var err error
-		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.EthereumClient)
+		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.EthereumClient, cfg.SwapContractAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -303,4 +305,12 @@ func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*t
 
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {
 	return swapfactory.NewSwapFactory(addr, b.ethClient)
+}
+
+func (b *backend) SetEthAddress(addr ethcommon.Address) {
+	if b.ExternalSender() == nil {
+		return
+	}
+
+	b.ethAddress = addr
 }

@@ -23,7 +23,6 @@ import (
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
 )
@@ -60,7 +59,6 @@ type swapState struct {
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
-	txOpts         *bind.TransactOpts
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -83,11 +81,6 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 		return nil, errMustProvideWalletAddress
 	}
 
-	txOpts, err := b.TxOpts()
-	if err != nil {
-		return nil, err
-	}
-
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
@@ -95,6 +88,10 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 		exchangeRate, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
+	}
+
+	if b.ExternalSender() != nil {
+		transferBack = true // front-end must set final deposit address
 	}
 
 	ctx, cancel := context.WithCancel(b.Ctx())
@@ -105,7 +102,6 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool, walletA
 		infofile:            infofile,
 		transferBack:        transferBack,
 		walletAddress:       walletAddress,
-		txOpts:              txOpts,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
@@ -388,23 +384,14 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
-	s.txOpts.Value = amount.BigInt()
-	defer func() {
-		s.txOpts.Value = nil
-	}()
-
 	nonce := generateNonce()
 	txHash, receipt, err := s.NewSwap(cmtXMRMaker, cmtXMRTaker,
-		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce)
+		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, amount.BigInt())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
 	log.Debugf("instantiated swap on-chain: amount=%s txHash=%s", amount, txHash)
-	// receipt, err := s.WaitForReceipt(s.ctx, tx.Hash())
-	// if err != nil {
-	// 	return ethcommon.Hash{}, fmt.Errorf("failed to call new_swap in contract: %w", err)
-	// }
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs

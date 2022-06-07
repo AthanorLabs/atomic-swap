@@ -70,7 +70,7 @@ const (
 	flagContractAddress      = "contract-address"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
-	flagUseExternalSigner = "external-signer"
+	flagUseExternalSigner    = "external-signer"
 
 	flagDevXMRTaker  = "dev-xmrtaker"
 	flagDevXMRMaker  = "dev-xmrmaker"
@@ -175,7 +175,7 @@ var (
 				Usage: "set log level: one of [error|warn|info|debug]",
 			},
 			&cli.BoolFlag{
-				Name: flagUseExternalSigner,
+				Name:  flagUseExternalSigner,
 				Usage: "use external signer, for usage with the swap UI",
 			},
 		},
@@ -418,7 +418,7 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 	}
 
 	var pk *ecdsa.PrivateKey
-	if ethPrivKey != "" {	
+	if ethPrivKey != "" {
 		pk, err = ethcrypto.HexToECDSA(ethPrivKey)
 		if err != nil {
 			return nil, err

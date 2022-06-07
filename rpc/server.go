@@ -60,7 +60,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend.ExternalSender()),
+		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.ProtocolBackend.ExternalSender()),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -117,6 +117,7 @@ type ProtocolBackend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
 	ExternalSender() *txsender.ExternalSender
+	SetEthAddress(ethcommon.Address)
 }
 
 // XMRTaker ...

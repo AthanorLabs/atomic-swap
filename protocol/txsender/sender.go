@@ -24,7 +24,7 @@ var (
 )
 
 type Sender interface {
-	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
+	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
 	SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
 	Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
 	Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
@@ -46,7 +46,12 @@ func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract
 	}
 }
 
-func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	s.txOpts.Value = value
+	defer func() {
+		s.txOpts.Value = nil
+	}()
+
 	tx, err := s.contract.NewSwap(s.txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err

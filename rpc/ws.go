@@ -19,6 +19,7 @@ const (
 	subscribeMakeOffer  = "net_makeOfferAndSubscribe"
 	subscribeTakeOffer  = "net_takeOfferAndSubscribe"
 	subscribeSwapStatus = "swap_subscribeStatus"
+	subscribeSigner     = "signer_subscribe"
 )
 
 var upgrader = websocket.Upgrader{
@@ -33,15 +34,17 @@ type wsServer struct {
 	ctx      context.Context
 	sm       SwapManager
 	ns       *NetService
-	txsOutCh <-chan []byte
+	backend  ProtocolBackend
+	txsOutCh <-chan *txsender.Transaction
 	txsInCh  chan<- ethcommon.Hash
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, signer *txsender.ExternalSender) *wsServer {
+func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend, signer *txsender.ExternalSender) *wsServer {
 	s := &wsServer{
-		ctx: ctx,
-		sm:  sm,
-		ns:  ns,
+		ctx:     ctx,
+		sm:      sm,
+		ns:      ns,
+		backend: backend,
 	}
 
 	if signer != nil {
@@ -69,6 +72,16 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		log.Infof("got ws message", string(message))
+		// if string(message) == "signer" {
+		// 	err := s.handleSigner(s.ctx, conn)
+		// 	if err != nil {
+		// 		log.Errorf("ws signed conn err: %s", err)
+		// 	}
+
+		// 	continue
+		// }
+
 		var req *rpctypes.Request
 		err = json.Unmarshal(message, &req)
 		if err != nil {
@@ -86,8 +99,13 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
-	case "signer":
-		return s.handleSigner(s.ctx, conn)
+	case subscribeSigner:
+		var params *rpctypes.SignerRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal parameters: %w", err)
+		}
+
+		return s.handleSigner(s.ctx, conn, params.OfferID, params.EthAddress)
 	case subscribeNewPeer:
 		return errUnimplemented
 	case "net_discover":
@@ -153,29 +171,64 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	}
 }
 
-func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn) error {
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID, ethAddress string) error {
 	if s.txsOutCh == nil {
 		return errSignerNotRequired
 	}
 
+	log.Infof("got incoming address: %s", ethAddress)
+	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
+	log.Infof("handling msgs to be signed...")
+
 	for {
 		select {
 		case <-ctx.Done():
+			log.Infof("returning from handleSigner")
 			return nil
 		case tx := <-s.txsOutCh:
+			log.Infof("writing tx to be signed", tx)
+			resp := &rpctypes.SignerResponse{
+				OfferID: offerID,
+				To:      tx.To.String(),
+				Data:    tx.Data,
+				Value:   tx.Value,
+			}
+
 			// TODO: messageType?
-			err := conn.WriteMessage(0, tx)
+			err := conn.WriteJSON(resp)
 			if err != nil {
 				return err
 			}
+
+			log.Infof("reading msg")
 
 			_, message, err := conn.ReadMessage()
 			if err != nil {
 				return err
 			}
 
-			log.Infof("got incoming: %s", string(message))
-			s.txsInCh <- ethcommon.HexToHash(string(message))
+			var params *rpctypes.SignerTxSigned
+			if err := json.Unmarshal(message, &params); err != nil {
+				return fmt.Errorf("failed to unmarshal parameters: %w", err)
+			}
+
+			if params.OfferID != offerID {
+				return fmt.Errorf("got unexpected offerID %s, expected %s", params.OfferID, offerID)
+			}
+
+			// log.Infof("got incoming: %s", string(message))
+			// if string(message) == "signer" {
+			// 	_, message, err := conn.ReadMessage()
+			// 	if err != nil {
+			// 		return err
+			// 	}
+
+			// 	log.Infof("got incoming address: %s", string(message))
+			// 	s.backend.SetEthAddress(ethcommon.HexToAddress(string(message)))
+			// 	continue
+			// }
+
+			s.txsInCh <- ethcommon.HexToHash(params.TxHash)
 		}
 	}
 }

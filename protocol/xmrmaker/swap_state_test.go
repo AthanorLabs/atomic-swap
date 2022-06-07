@@ -126,7 +126,7 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
-	txOpts, err := ss.backend.TxOpts()
+	txOpts, err := ss.TxOpts()
 	require.NoError(t, err)
 
 	// TODO: this is sus, update this when signing interfaces are updated
@@ -135,12 +135,12 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *
 		txOpts.Value = nil
 	}()
 
-	ethAddr := ss.backend.EthAddress()
+	ethAddr := ss.EthAddress()
 	nonce := big.NewInt(0)
-	tx, err := ss.backend.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm, nonce)
+	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm, nonce)
 	require.NoError(t, err)
 
-	receipt, err := ss.backend.TransactionReceipt(context.Background(), tx.Hash())
+	receipt, err := ss.TransactionReceipt(context.Background(), tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
@@ -182,8 +182,8 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
-	swapState.contract = swapState.backend.Contract()
-	swapState.contractAddr = swapState.backend.ContractAddr()
+	swapState.contract = swapState.Contract()
+	swapState.contractAddr = swapState.ContractAddr()
 
 	_, err = swapState.contract.SetReady(swapState.txOpts, swapState.contractSwap)
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	require.NoError(t, err)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
-	addr := s.backend.ContractAddr()
+	addr := s.ContractAddr()
 
 	msg = &message.NotifyETHLocked{
 		Address:        addr.String(),
@@ -280,7 +280,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	require.NoError(t, err)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
-	addr := s.backend.ContractAddr()
+	addr := s.ContractAddr()
 
 	msg = &message.NotifyETHLocked{
 		Address:        addr.String(),
@@ -307,7 +307,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		}
 	}
 
-	require.NotNil(t, s.backend.Net().(*mockNet).msg)
+	require.NotNil(t, s.Net().(*mockNet).msg)
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }
 
@@ -436,7 +436,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	tx, err := s.contract.Refund(s.txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
-	receipt, err := s.backend.TransactionReceipt(s.ctx, tx.Hash())
+	receipt, err := s.TransactionReceipt(s.ctx, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
@@ -446,7 +446,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	balance, err := s.backend.GetBalance(0)
+	balance, err := s.GetBalance(0)
 	require.NoError(t, err)
 	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount()).Uint64(), uint64(balance.Balance))
 	require.Equal(t, types.CompletedRefund, s.info.Status())

@@ -61,3 +61,21 @@ type MakeOfferResponse struct {
 	ID       string `json:"offerID"`
 	InfoFile string `json:"infoFile"`
 }
+
+type SignerRequest struct {
+	OfferID    string `json:"offerID"`
+	EthAddress string `json:"ethAddress"`
+	XMRAddress string `json:"xmrAddress"`
+}
+
+type SignerResponse struct {
+	OfferID string `json:"offerID"`
+	To      string `json:"to"`
+	Data    string `json:"data"`
+	Value   string `json:"value"`
+}
+
+type SignerTxSigned struct {
+	OfferID string `json:"offerID"`
+	TxHash  string `json:"txHash"`
+}

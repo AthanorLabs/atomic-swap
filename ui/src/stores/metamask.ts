@@ -1,4 +1,4 @@
-import {providers, Contract} from "ethers"
+import {providers, Contract, utils} from "ethers"
 import detectEthereumProvider from "@metamask/detect-provider"
 import { writable } from 'svelte/store';
 import SwapFactory from "../../../ethereum/artifacts/contracts/SwapFactory.sol/SwapFactory.json"
@@ -54,25 +54,57 @@ function handleAccountsChanged(accounts) {
 
 const swapContractAddrs = {
 	goerli: "0xe532f0C720dCD102854281aeF1a8Be01f464C8fE",
+	dev: "0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab",
 }
 
 let ethersProvider
 let chainId
 let contract
 let signer
+let from
 
 const initialize = async () => {
 	ethersProvider = new providers.Web3Provider(window.ethereum, 'any');
+	window.ethersProvider = ethersProvider
 	signer = ethersProvider.getSigner()
 	console.log("signer:", await signer.getAddress())
 	chainId = await ethereum.request({ method: 'eth_chainId' });
 	if (chainId == 5) {
 		contract = new Contract(swapContractAddrs.goerli, SwapFactory.abi).connect(signer)
 		console.log("instantiated contract on Goerli at", swapContractAddrs.goerli)
+	} else if (chainId == 1337) {
+		contract = new Contract(swapContractAddrs.dev, SwapFactory.abi).connect(signer)
 	}
 }
 
-export const newSwap = async() => {
-	let tx = await contract.new_swap();
-	console.log(tx)
+export const sign = async(msg) => {
+	let tx = JSON.parse(msg)
+	let value
+	if tx.value != "" {
+		value = utils.parseEther(tx.value)
+	}
+
+	let params = 
+	  {
+	    from: signer.getAddress(),
+	    to: tx.to,
+	    gasPrice: window.ethersProvider.getGasPrice(), // 10000000000000
+	    value: value,
+	    data: tx.data,
+	  }
+	console.log("sending tx request...")
+	// let res = await window.ethereum.request({
+	// 	method: "eth_sendTransaction",
+	// 	params,
+	// })
+	let res
+	try {
+	 	res = await signer.sendTransaction(params)		
+		console.log(res)
+	} catch (e) {
+		console.error("tx failed", e)
+		return ""
+	}
+
+	return res.hash
 }
