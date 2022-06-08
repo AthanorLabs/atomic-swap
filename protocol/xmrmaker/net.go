@@ -44,7 +44,7 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 		delete(b.swapStates, offer.GetID())
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", s.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v ETH for %v XMR",
 		s.info.ReceivedAmount(),

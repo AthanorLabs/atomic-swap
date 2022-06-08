@@ -304,20 +304,12 @@ func runMake(ctx *cli.Context) error {
 			return err
 		}
 
-		id, takenCh, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
+		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Made offer with ID=%s\n", id)
-
-		taken := <-takenCh
-		if taken == nil {
-			fmt.Printf("connection closed\n")
-			return nil
-		}
-
-		fmt.Printf("Offer taken! Swap ID=%d\n", taken.ID)
+		fmt.Printf("Made offer with ID %s\n", id)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -371,7 +363,7 @@ func runTake(ctx *cli.Context) error {
 			return err
 		}
 
-		fmt.Printf("Initiated swap with ID=%d\n", offerID)
+		fmt.Printf("Initiated swap with ID %s\n", offerID)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -389,7 +381,7 @@ func runTake(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Initiated swap with ID=%d\n", offerID)
+	fmt.Printf("Initiated swap with ID %s\n", offerID)
 	return nil
 }
 

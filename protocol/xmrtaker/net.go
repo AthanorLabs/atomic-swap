@@ -45,7 +45,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return errBalanceTooLow
 	}
 
-	s, err := newSwapState(a.backend, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
+	s, err := newSwapState(a.backend, offerID, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
 		providesAmount, receivedAmount, exchangeRate)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		delete(a.swapStates, offerID)
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", s.info.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	a.swapStates[offerID] = s
 	return nil

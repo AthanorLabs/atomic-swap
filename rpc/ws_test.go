@@ -65,11 +65,12 @@ func (*mockSwapManager) GetPastIDs() []types.Hash {
 func (*mockSwapManager) GetPastSwap(id types.Hash) *swap.Info {
 	return &swap.Info{}
 }
-func (*mockSwapManager) GetOngoingSwap(types.Hash) *swap.Info {
+func (*mockSwapManager) GetOngoingSwap(id types.Hash) *swap.Info {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
 	return swap.NewInfo(
+		id,
 		types.ProvidesETH,
 		1,
 		1,

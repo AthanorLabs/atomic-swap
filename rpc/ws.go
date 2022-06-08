@@ -257,29 +257,6 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 		return err
 	}
 
-	// // then check for swap ID to be sent when swap is initiated
-	// var taken bool
-	// for {
-	// 	if taken {
-	// 		break
-	// 	}
-
-	// 	select {
-	// 	case id := <-offerExtra.IDCh:
-	// 		idMsg := map[string]uint64{
-	// 			"id": id,
-	// 		}
-
-	// 		if err := writeResponse(conn, idMsg); err != nil {
-	// 			return err
-	// 		}
-
-	// 		taken = true
-	// 	case <-ctx.Done():
-	// 		return nil
-	// 	}
-	// }
-
 	// finally, read the swap's status
 	for {
 		select {

@@ -103,7 +103,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, infofile, false,
+	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1)
 	require.NoError(t, err)
 	return swapState

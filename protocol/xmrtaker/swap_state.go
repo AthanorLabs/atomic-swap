@@ -69,7 +69,7 @@ type swapState struct {
 	exited      bool
 }
 
-func newSwapState(b backend.Backend, infofile string, transferBack bool,
+func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
 	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
 	exchangeRate types.ExchangeRate) (*swapState, error) {
 	if b.Contract() == nil {
@@ -83,7 +83,7 @@ func newSwapState(b backend.Backend, infofile string, transferBack bool,
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
-	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
+	info := pswap.NewInfo(offerID, types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
 		exchangeRate, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
@@ -191,13 +191,13 @@ func (s *swapState) Exit() error {
 		close(s.done)
 
 		if s.info.Status() == types.CompletedSuccess {
-			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
+			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID())
 			log.Info(str)
 			return
 		}
 
 		if s.info.Status() == types.CompletedRefund {
-			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
+			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%s**", s.info.ID())
 			log.Info(str)
 			return
 		}

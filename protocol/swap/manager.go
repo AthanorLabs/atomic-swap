@@ -6,8 +6,6 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 )
 
-// var nextID uint64
-
 type (
 	Status = types.Status //nolint:revive
 )
@@ -80,10 +78,10 @@ func (i *Info) SetStatus(s Status) {
 }
 
 // NewInfo ...
-func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64,
+func NewInfo(id types.Hash, provides types.ProvidesCoin, providedAmount, receivedAmount float64,
 	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
 	info := &Info{
-		//id:             nextID,
+		id:             id,
 		provides:       provides,
 		providedAmount: providedAmount,
 		receivedAmount: receivedAmount,
@@ -91,7 +89,6 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 		status:         status,
 		statusCh:       statusCh,
 	}
-	//nextID++
 	return info
 }
 

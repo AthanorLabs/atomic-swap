@@ -92,7 +92,7 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 		statusCh = make(chan types.Status, 7)
 	}
 	statusCh <- stage
-	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
+	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
 		exchangeRate, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
@@ -188,13 +188,13 @@ func (s *swapState) exit() error {
 	}()
 
 	if s.info.Status() == types.CompletedSuccess {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
+		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
 		log.Info(str)
 		return nil
 	}
 
 	if s.info.Status() == types.CompletedRefund {
-		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%d**", s.ID())
+		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
 		log.Info(str)
 		return nil
 	}
