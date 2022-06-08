@@ -482,8 +482,13 @@ func runCancel(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errNoOfferID
+	}
+
 	c := rpcclient.NewClient(endpoint)
-	resp, err := c.Cancel()
+	resp, err := c.Cancel(offerID)
 	if err != nil {
 		return err
 	}

@@ -293,7 +293,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 			}
 
 			fmt.Println("> XMRTaker cancelled swap!")
-			exitStatus, err := c.Cancel() //nolint:govet
+			exitStatus, err := c.Cancel(offerID) //nolint:govet
 			if err != nil {
 				t.Log("XMRTaker got error", err)
 				errCh <- err
@@ -375,7 +375,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 				}
 
 				fmt.Println("> XMRMaker cancelled swap!")
-				exitStatus, err := bcli.Cancel() //nolint:govet
+				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
 				if err != nil {
 					errCh <- err
 					return
@@ -516,7 +516,7 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 			}
 
 			fmt.Println("> XMRTaker cancelled swap!")
-			exitStatus, err := c.Cancel() //nolint:govet
+			exitStatus, err := c.Cancel(offerID) //nolint:govet
 			if err != nil {
 				errCh <- err
 				return
@@ -586,7 +586,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 				}
 
 				fmt.Println("> XMRMaker cancelled swap!")
-				exitStatus, err := bcli.Cancel() //nolint:govet
+				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
 				if err != nil {
 					errCh <- err
 					return
