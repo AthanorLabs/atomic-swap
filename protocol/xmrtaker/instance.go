@@ -7,6 +7,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/protocol/backend"
@@ -32,8 +33,10 @@ type Instance struct {
 	transferBack               bool // transfer xmr back to original account
 
 	// non-nil if a swap is currently happening, nil otherwise
-	swapMu    sync.Mutex
-	swapState *swapState
+	// map of offer IDs -> ongoing swaps
+	swapStates map[types.Hash]*swapState
+	swapMu     sync.Mutex // lock for above map
+	//swapState *swapState
 }
 
 // Config contains the configuration values for a new XMRTaker instance.
@@ -67,6 +70,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		basepath:       cfg.Basepath,
 		walletFile:     cfg.MoneroWalletFile,
 		walletPassword: cfg.MoneroWalletPassword,
+		swapStates:     make(map[types.Hash]*swapState),
 	}, nil
 }
 
@@ -103,18 +107,19 @@ func getAddress(walletClient monero.Client, file, password string) (mcrypto.Addr
 
 // Refund is called by the RPC function swap_refund.
 // If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
-func (a *Instance) Refund() (ethcommon.Hash, error) {
+func (a *Instance) Refund(offerID types.Hash) (ethcommon.Hash, error) {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
-	if a.swapState == nil {
+	s, has := a.swapStates[offerID]
+	if !has {
 		return ethcommon.Hash{}, errNoOngoingSwap
 	}
 
-	return a.swapState.doRefund()
+	return s.doRefund()
 }
 
 // GetOngoingSwapState ...
-func (a *Instance) GetOngoingSwapState() common.SwapState {
-	return a.swapState
+func (a *Instance) GetOngoingSwapState(offerID types.Hash) common.SwapState {
+	return a.swapStates[offerID]
 }

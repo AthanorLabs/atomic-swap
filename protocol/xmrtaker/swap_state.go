@@ -167,7 +167,7 @@ func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
 }
 
 // ID returns the ID of the swap
-func (s *swapState) ID() uint64 {
+func (s *swapState) ID() types.Hash {
 	return s.info.ID()
 }
 
@@ -187,7 +187,7 @@ func (s *swapState) Exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap()
+		s.SwapManager().CompleteOngoingSwap(s.info.ID())
 		close(s.done)
 
 		if s.info.Status() == types.CompletedSuccess {

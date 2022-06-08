@@ -19,7 +19,7 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
-	if b.swapState != nil {
+	if b.swapStates[offer.GetID()] != nil {
 		return errProtocolAlreadyInProgress
 	}
 
@@ -33,23 +33,24 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 		return errBalanceTooLow
 	}
 
-	b.swapState, err = newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
+	s, err := newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
 		offerExtra.InfoFile, providesAmount, desiredAmount)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		<-b.swapState.done
-		b.swapState = nil
+		<-s.done
+		delete(b.swapStates, offer.GetID())
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", b.swapState.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", s.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v ETH for %v XMR",
-		b.swapState.info.ReceivedAmount(),
-		b.swapState.info.ProvidedAmount()),
+		s.info.ReceivedAmount(),
+		s.info.ProvidedAmount()),
 	)
+	b.swapStates[offer.GetID()] = s
 	return nil
 }
 
@@ -86,18 +87,25 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	offerExtra.IDCh <- b.swapState.info.ID()
-	close(offerExtra.IDCh)
-
-	if err = b.swapState.handleSendKeysMessage(msg); err != nil {
-		return nil, nil, err
-	}
-
-	resp, err := b.swapState.SendKeysMessage()
+	offerID, err := types.HexToHash(msg.OfferID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	defer b.swapState.setNextExpectedMessage(&message.NotifyETHLocked{})
-	return b.swapState, resp, nil
+	s, has := b.swapStates[offerID]
+	if !has {
+		panic("did not store swap state in Instance map")
+	}
+
+	if err = s.handleSendKeysMessage(msg); err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.SendKeysMessage()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	defer s.setNextExpectedMessage(&message.NotifyETHLocked{})
+	return s, resp, nil
 }

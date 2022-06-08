@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net/message"
 )
 
@@ -20,7 +21,7 @@ type SwapStateNet interface {
 // SwapStateRPC contains the methods used by the RPC server into the SwapState.
 type SwapStateRPC interface {
 	SendKeysMessage() (*message.SendKeysMessage, error)
-	ID() uint64
+	ID() types.Hash
 	InfoFile() string
 	Exit() error
 }

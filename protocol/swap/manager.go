@@ -6,7 +6,7 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 )
 
-var nextID uint64
+// var nextID uint64
 
 type (
 	Status = types.Status //nolint:revive
@@ -14,7 +14,7 @@ type (
 
 // Info contains the details of the swap as well as its status.
 type Info struct {
-	id             uint64 // ID number of the swap (not the swap offer ID!)
+	id             types.Hash // swap offer ID
 	provides       types.ProvidesCoin
 	providedAmount float64
 	receivedAmount float64
@@ -24,9 +24,9 @@ type Info struct {
 }
 
 // ID returns the swap ID.
-func (i *Info) ID() uint64 {
+func (i *Info) ID() types.Hash {
 	if i == nil {
-		return 0
+		return types.Hash{} // TODO: does this ever happen??
 	}
 
 	return i.id
@@ -83,7 +83,7 @@ func (i *Info) SetStatus(s Status) {
 func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64,
 	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
 	info := &Info{
-		id:             nextID,
+		//id:             nextID,
 		provides:       provides,
 		providedAmount: providedAmount,
 		receivedAmount: receivedAmount,
@@ -91,31 +91,30 @@ func NewInfo(provides types.ProvidesCoin, providedAmount, receivedAmount float64
 		status:         status,
 		statusCh:       statusCh,
 	}
-	nextID++
+	//nextID++
 	return info
 }
 
 // Manager tracks current and past swaps.
 type Manager interface {
 	AddSwap(info *Info) error
-	GetPastIDs() []uint64
-	GetPastSwap(id uint64) *Info
-	GetOngoingSwap() *Info
-	CompleteOngoingSwap()
+	GetPastIDs() []types.Hash
+	GetPastSwap(types.Hash) *Info
+	GetOngoingSwap(types.Hash) *Info
+	CompleteOngoingSwap(types.Hash)
 }
 
 type manager struct {
 	sync.RWMutex
-	ongoing     *Info
-	past        map[uint64]*Info
-	offersTaken map[string]uint64 // map of offerID -> swapID
+	ongoing map[types.Hash]*Info
+	past    map[types.Hash]*Info
 }
 
 // NewManager ...
 func NewManager() Manager {
 	return &manager{
-		past:        make(map[uint64]*Info),
-		offersTaken: make(map[string]uint64),
+		ongoing: make(map[types.Hash]*Info),
+		past:    make(map[types.Hash]*Info),
 	}
 }
 
@@ -126,11 +125,7 @@ func (m *manager) AddSwap(info *Info) error {
 
 	switch info.status.IsOngoing() {
 	case true:
-		if m.ongoing != nil {
-			return errHaveOngoingSwap
-		}
-
-		m.ongoing = info
+		m.ongoing[info.id] = info
 	default:
 		m.past[info.id] = info
 	}
@@ -139,10 +134,10 @@ func (m *manager) AddSwap(info *Info) error {
 }
 
 // GetPastIDs returns all past swap IDs.
-func (m *manager) GetPastIDs() []uint64 {
+func (m *manager) GetPastIDs() []types.Hash {
 	m.RLock()
 	defer m.RUnlock()
-	ids := make([]uint64, len(m.past))
+	ids := make([]types.Hash, len(m.past))
 	i := 0
 	for id := range m.past {
 		ids[i] = id
@@ -152,25 +147,28 @@ func (m *manager) GetPastIDs() []uint64 {
 }
 
 // GetPastSwap returns a swap's *Info given its ID.
-func (m *manager) GetPastSwap(id uint64) *Info {
+func (m *manager) GetPastSwap(id types.Hash) *Info {
 	m.RLock()
 	defer m.RUnlock()
 	return m.past[id]
 }
 
 // GetOngoingSwap returns the ongoing swap's *Info, if there is one.
-func (m *manager) GetOngoingSwap() *Info {
-	return m.ongoing
+func (m *manager) GetOngoingSwap(id types.Hash) *Info {
+	m.RLock()
+	defer m.RUnlock()
+	return m.ongoing[id]
 }
 
 // CompleteOngoingSwap marks the current ongoing swap as completed.
-func (m *manager) CompleteOngoingSwap() {
+func (m *manager) CompleteOngoingSwap(id types.Hash) {
 	m.Lock()
 	defer m.Unlock()
-	if m.ongoing == nil {
+	s, has := m.ongoing[id]
+	if !has {
 		return
 	}
 
-	m.past[m.ongoing.id] = m.ongoing
-	m.ongoing = nil
+	m.past[id] = s
+	delete(m.ongoing, id)
 }

@@ -18,20 +18,20 @@ func (a *Instance) Provides() types.ProvidesCoin {
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
 	err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
-		offer.ExchangeRate)
+		offer.ExchangeRate, offer.GetID())
 	if err != nil {
 		return nil, err
 	}
 
-	return a.swapState, nil
+	return a.swapStates[offer.GetID()], nil
 }
 
 func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
-	exchangeRate types.ExchangeRate) error {
+	exchangeRate types.ExchangeRate, offerID types.Hash) error {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
-	if a.swapState != nil {
+	if a.swapStates[offerID] != nil {
 		return errProtocolAlreadyInProgress
 	}
 
@@ -45,18 +45,19 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return errBalanceTooLow
 	}
 
-	a.swapState, err = newSwapState(a.backend, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
+	s, err := newSwapState(a.backend, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
 		providesAmount, receivedAmount, exchangeRate)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		<-a.swapState.done
-		a.swapState = nil
+		<-s.done
+		delete(a.swapStates, offerID)
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", a.swapState.info.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%d**", s.info.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
+	a.swapStates[offerID] = s
 	return nil
 }

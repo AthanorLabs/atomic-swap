@@ -139,12 +139,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		id, ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
+		ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, id, ch, infofile)
+		return s.subscribeTakeOffer(s.ctx, conn, ch, infofile)
 	case subscribeMakeOffer:
 		var params *rpctypes.MakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -213,9 +213,8 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 }
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	id uint64, statusCh <-chan types.Status, infofile string) error {
+	statusCh <-chan types.Status, infofile string) error {
 	resp := &rpctypes.TakeOfferResponse{
-		ID:       id,
 		InfoFile: infofile,
 	}
 
@@ -258,28 +257,28 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 		return err
 	}
 
-	// then check for swap ID to be sent when swap is initiated
-	var taken bool
-	for {
-		if taken {
-			break
-		}
+	// // then check for swap ID to be sent when swap is initiated
+	// var taken bool
+	// for {
+	// 	if taken {
+	// 		break
+	// 	}
 
-		select {
-		case id := <-offerExtra.IDCh:
-			idMsg := map[string]uint64{
-				"id": id,
-			}
+	// 	select {
+	// 	case id := <-offerExtra.IDCh:
+	// 		idMsg := map[string]uint64{
+	// 			"id": id,
+	// 		}
 
-			if err := writeResponse(conn, idMsg); err != nil {
-				return err
-			}
+	// 		if err := writeResponse(conn, idMsg); err != nil {
+	// 			return err
+	// 		}
 
-			taken = true
-		case <-ctx.Done():
-			return nil
-		}
-	}
+	// 		taken = true
+	// 	case <-ctx.Done():
+	// 		return nil
+	// 	}
+	// }
 
 	// finally, read the swap's status
 	for {
@@ -309,8 +308,8 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 // subscribeSwapStatus writes the swap's stage to the connection every time it updates.
 // when the swap completes, it writes the final status then closes the connection.
 // example: `{"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}`
-func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id uint64) error {
-	info := s.sm.GetOngoingSwap()
+func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id types.Hash) error {
+	info := s.sm.GetOngoingSwap(id)
 	if info == nil {
 		return s.writeSwapExitStatus(conn, id)
 	}
@@ -340,7 +339,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 	}
 }
 
-func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id uint64) error {
+func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) error {
 	info := s.sm.GetPastSwap(id)
 	if info == nil {
 		return errNoSwapWithID

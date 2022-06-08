@@ -144,7 +144,7 @@ func (s *swapState) ReceivedAmount() float64 {
 }
 
 // ID returns the ID of the swap
-func (s *swapState) ID() uint64 {
+func (s *swapState) ID() types.Hash {
 	return s.info.ID()
 }
 
@@ -177,7 +177,7 @@ func (s *swapState) exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap()
+		s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully

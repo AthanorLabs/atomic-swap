@@ -164,7 +164,7 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 
 // SubscribeSwapStatus returns a channel that is written to each time the swap's status updates.
 // If there is no swap with the given ID, it returns an error.
-func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
+func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error) {
 	params := &rpctypes.SubscribeSwapStatusRequest{
 		ID: id,
 	}
@@ -228,7 +228,7 @@ func (c *wsClient) SubscribeSwapStatus(id uint64) (<-chan types.Status, error) {
 }
 
 func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
-	providesAmount float64) (id uint64, ch <-chan types.Status, err error) {
+	providesAmount float64) (ch <-chan types.Status, err error) {
 	params := &rpctypes.TakeOfferRequest{
 		Multiaddr:      multiaddr,
 		OfferID:        offerID,
@@ -237,7 +237,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 
 	bz, err := json.Marshal(params)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	req := &rpctypes.Request{
@@ -248,29 +248,29 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	}
 
 	if err = c.writeJSON(req); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	// read ID from connection
 	message, err := c.read()
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to read websockets message: %s", err)
+		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
 	var resp *rpctypes.Response
 	err = json.Unmarshal(message, &resp)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Error != nil {
-		return 0, nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
 	}
 
 	log.Debugf("received message over websockets: %s", message)
 	var idResp *rpctypes.TakeOfferResponse
 	if err := json.Unmarshal(resp.Result, &idResp); err != nil {
-		return 0, nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
 	}
 
 	respCh := make(chan types.Status)
@@ -312,7 +312,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		}
 	}()
 
-	return idResp.ID, respCh, nil
+	return respCh, nil
 }
 
 // MakeOfferTakenResponse contains the swap ID

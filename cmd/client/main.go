@@ -123,15 +123,21 @@ var (
 				Name:   "get-ongoing-swap",
 				Usage:  "get information about ongoing swap, if there is one",
 				Action: runGetOngoingSwap,
-				Flags:  []cli.Flag{daemonAddrFlag},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "offer-id",
+						Usage: "ID of swap to retrieve info for",
+					},
+					daemonAddrFlag,
+				},
 			},
 			{
 				Name:   "get-past-swap",
 				Usage:  "get information about a past swap with the given ID",
 				Action: runGetPastSwap,
 				Flags: []cli.Flag{
-					&cli.UintFlag{
-						Name:  "id",
+					&cli.StringFlag{
+						Name:  "offer-id",
 						Usage: "ID of swap to retrieve info for",
 					},
 					daemonAddrFlag,
@@ -141,19 +147,37 @@ var (
 				Name:   "refund",
 				Usage:  "if we are the ETH provider for an ongoing swap, refund it if possible.",
 				Action: runRefund,
-				Flags:  []cli.Flag{daemonAddrFlag},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "offer-id",
+						Usage: "ID of swap to retrieve info for",
+					},
+					daemonAddrFlag,
+				},
 			},
 			{
 				Name:   "cancel",
-				Usage:  "cancel the ongoing swap if possible.",
+				Usage:  "cancel a ongoing swap if possible.",
 				Action: runCancel,
-				Flags:  []cli.Flag{daemonAddrFlag},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "offer-id",
+						Usage: "ID of swap to retrieve info for",
+					},
+					daemonAddrFlag,
+				},
 			},
 			{
 				Name:   "get-stage",
-				Usage:  "get the stage of the current swap.",
+				Usage:  "get the stage of a current swap.",
 				Action: runGetStage,
-				Flags:  []cli.Flag{daemonAddrFlag},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "offer-id",
+						Usage: "ID of swap to retrieve info for",
+					},
+					daemonAddrFlag,
+				},
 			},
 			{
 				Name:   "set-swap-timeout",
@@ -342,12 +366,12 @@ func runTake(ctx *cli.Context) error {
 			return err
 		}
 
-		id, statusCh, err := c.TakeOfferAndSubscribe(maddr, offerID, providesAmount)
+		statusCh, err := c.TakeOfferAndSubscribe(maddr, offerID, providesAmount)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Initiated swap with ID=%d\n", id)
+		fmt.Printf("Initiated swap with ID=%d\n", offerID)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -360,12 +384,12 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	c := rpcclient.NewClient(endpoint)
-	id, err := c.TakeOffer(maddr, offerID, providesAmount)
+	err := c.TakeOffer(maddr, offerID, providesAmount)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Initiated swap with ID=%d\n", id)
+	fmt.Printf("Initiated swap with ID=%d\n", offerID)
 	return nil
 }
 
@@ -391,14 +415,18 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errNoOfferID
+	}
+
 	c := rpcclient.NewClient(endpoint)
-	info, err := c.GetOngoingSwap()
+	info, err := c.GetOngoingSwap(offerID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
-		info.ID,
+	fmt.Printf("Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
 		info.Provided,
 		info.ProvidedAmount,
 		info.ReceivedAmount,
@@ -409,21 +437,23 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 }
 
 func runGetPastSwap(ctx *cli.Context) error {
-	id := ctx.Uint("id")
-
 	endpoint := ctx.String("daemon-addr")
 	if endpoint == "" {
 		endpoint = defaultSwapdAddress
 	}
 
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errNoOfferID
+	}
+
 	c := rpcclient.NewClient(endpoint)
-	info, err := c.GetPastSwap(uint64(id))
+	info, err := c.GetPastSwap(offerID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
-		id,
+	fmt.Printf("Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
 		info.Provided,
 		info.ProvidedAmount,
 		info.ReceivedAmount,
@@ -439,8 +469,13 @@ func runRefund(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errNoOfferID
+	}
+
 	c := rpcclient.NewClient(endpoint)
-	resp, err := c.Refund()
+	resp, err := c.Refund(offerID)
 	if err != nil {
 		return err
 	}
@@ -471,8 +506,13 @@ func runGetStage(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
+	offerID := ctx.String("offer-id")
+	if offerID == "" {
+		return errNoOfferID
+	}
+
 	c := rpcclient.NewClient(endpoint)
-	resp, err := c.GetStage()
+	resp, err := c.GetStage(offerID)
 	if err != nil {
 		return err
 	}

@@ -30,7 +30,7 @@ func (om *offerManager) putOffer(o *types.Offer) *types.OfferExtra {
 	}
 
 	extra := &types.OfferExtra{
-		IDCh:     make(chan uint64, 1),
+		//IDCh:     make(chan uint64, 1),
 		StatusCh: make(chan types.Status, 7),
 		InfoFile: pcommon.GetSwapInfoFilepath(om.basepath),
 	}

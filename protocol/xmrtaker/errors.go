@@ -6,7 +6,7 @@ import (
 
 var (
 	// various instance and swap errors
-	errNoOngoingSwap           = errors.New("no ongoing swap")
+	errNoOngoingSwap           = errors.New("no ongoing swap with given offer ID")
 	errUnexpectedMessageType   = errors.New("unexpected message type")
 	errMissingKeys             = errors.New("did not receive XMRMaker's public spend or private view key")
 	errMissingAddress          = errors.New("did not receive XMRMaker's address")
