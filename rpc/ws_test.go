@@ -52,10 +52,10 @@ func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
 		},
 	}, nil
 }
-func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error {
+func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error {
 	return nil
 }
-func (*mockNet) CloseProtocolStream() {}
+func (*mockNet) CloseProtocolStream(types.Hash) {}
 
 type mockSwapManager struct{}
 

@@ -293,7 +293,7 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 		// send NotifyRefund msg
 		if err = s.SendSwapMessage(&message.NotifyRefund{
 			TxHash: txHash.String(),
-		}); err != nil {
+		}, s.ID()); err != nil {
 			return ethcommon.Hash{}, fmt.Errorf("failed to send refund message: err=%w", err)
 		}
 

@@ -23,11 +23,9 @@ func TestHost_Initiate(t *testing.T) {
 	err = ha.h.Connect(ha.ctx, hb.addrInfo())
 	require.NoError(t, err)
 
-	err = ha.Initiate(hb.addrInfo(), &SendKeysMessage{}, nil)
+	err = ha.Initiate(hb.addrInfo(), &SendKeysMessage{}, new(mockSwapState))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 500)
-	require.NotNil(t, ha.swapStream)
-	require.NotNil(t, hb.swapStream)
-	require.NotNil(t, ha.swapState)
-	require.NotNil(t, hb.swapState)
+	require.NotNil(t, ha.swaps[testID])
+	require.NotNil(t, hb.swaps[testID])
 }

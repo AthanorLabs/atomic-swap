@@ -178,7 +178,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			// send NotifyRefund msg
 			if err := s.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
-			}); err != nil {
+			}, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
 		case <-s.xmrLockedCh:
@@ -314,7 +314,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			// send NotifyRefund msg
 			if err = s.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
-			}); err != nil {
+			}, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
 

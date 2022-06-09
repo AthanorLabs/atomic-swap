@@ -12,6 +12,7 @@ import (
 )
 
 var defaultPort uint16 = 5001
+var testID = types.Hash{99}
 
 type mockHandler struct{}
 
@@ -24,6 +25,10 @@ func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, 
 }
 
 type mockSwapState struct{}
+
+func (s *mockSwapState) ID() types.Hash {
+	return testID
+}
 
 func (s *mockSwapState) HandleProtocolMessage(msg Message) (resp Message, done bool, err error) {
 	return nil, false, nil

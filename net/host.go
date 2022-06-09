@@ -36,8 +36,13 @@ type Host interface {
 
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapState) error
+	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
 	MessageSender
+}
+
+type swap struct {
+	swapState SwapState
+	stream    libp2pnetwork.Stream
 }
 
 type host struct {
@@ -51,9 +56,8 @@ type host struct {
 	handler   Handler
 
 	// swap instance info
-	swapMu     sync.Mutex
-	swapState  SwapState
-	swapStream libp2pnetwork.Stream
+	swapMu sync.Mutex
+	swaps  map[types.Hash]*swap
 
 	queryMu  sync.Mutex
 	queryBuf []byte
@@ -150,6 +154,7 @@ func NewHost(cfg *Config) (*host, error) { //nolint:revive
 		handler:    cfg.Handler,
 		bootnodes:  bns,
 		queryBuf:   make([]byte, 2048),
+		swaps:      make(map[types.Hash]*swap),
 	}
 
 	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes)
@@ -233,15 +238,16 @@ func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) (
 }
 
 // SendSwapMessage sends a message to the peer who we're currently doing a swap with.
-func (h *host) SendSwapMessage(msg Message) error {
+func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
-	if h.swapStream == nil {
+	swap, has := h.swaps[id]
+	if !has {
 		return errNoOngoingSwap
 	}
 
-	return h.writeToStream(h.swapStream, msg)
+	return h.writeToStream(swap.stream, msg)
 }
 
 func (h *host) getBootnodes() []peer.AddrInfo {

@@ -210,7 +210,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 			// send *message.NotifyClaimed
 			if err := s.SendSwapMessage(&message.NotifyClaimed{
 				TxHash: txHash.String(),
-			}); err != nil {
+			}, s.ID()); err != nil {
 				log.Errorf("failed to send NotifyClaimed message: err=%s", err)
 			}
 		case <-s.readyCh:

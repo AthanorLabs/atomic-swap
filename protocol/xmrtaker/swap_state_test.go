@@ -34,7 +34,7 @@ type mockNet struct {
 	msg net.Message
 }
 
-func (n *mockNet) SendSwapMessage(msg net.Message) error {
+func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 	n.msg = msg
 	return nil
 }

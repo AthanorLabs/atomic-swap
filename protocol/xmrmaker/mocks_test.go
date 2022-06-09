@@ -16,6 +16,7 @@ import (
 	types "github.com/ethereum/go-ethereum/core/types"
 	gomock "github.com/golang/mock/gomock"
 	common0 "github.com/noot/atomic-swap/common"
+	types0 "github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	monero "github.com/noot/atomic-swap/monero"
 	net "github.com/noot/atomic-swap/net"
@@ -441,17 +442,17 @@ func (mr *MockBackendMockRecorder) Refund(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // SendSwapMessage mocks base method.
-func (m *MockBackend) SendSwapMessage(arg0 message.Message) error {
+func (m *MockBackend) SendSwapMessage(arg0 message.Message, arg1 types0.Hash) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendSwapMessage", arg0)
+	ret := m.ctrl.Call(m, "SendSwapMessage", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendSwapMessage indicates an expected call of SendSwapMessage.
-func (mr *MockBackendMockRecorder) SendSwapMessage(arg0 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) SendSwapMessage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSwapMessage", reflect.TypeOf((*MockBackend)(nil).SendSwapMessage), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSwapMessage", reflect.TypeOf((*MockBackend)(nil).SendSwapMessage), arg0, arg1)
 }
 
 // SetContract mocks base method.

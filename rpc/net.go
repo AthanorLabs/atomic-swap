@@ -21,8 +21,8 @@ type Net interface {
 	Advertise()
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*net.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapState) error
-	CloseProtocolStream()
+	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error
+	CloseProtocolStream(types.Hash)
 }
 
 // NetService is the RPC service prefixed by net_.

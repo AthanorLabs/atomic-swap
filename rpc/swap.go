@@ -218,7 +218,7 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 	if err := ss.Exit(); err != nil {
 		return err
 	}
-	s.net.CloseProtocolStream()
+	s.net.CloseProtocolStream(offerID)
 
 	info = s.sm.GetPastSwap(info.ID())
 	resp.Status = info.Status()
