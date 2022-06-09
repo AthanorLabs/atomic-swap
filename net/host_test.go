@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -15,6 +16,7 @@ import (
 func TestMain(m *testing.M) {
 	logging.SetLogLevel("net", "debug")
 	m.Run()
+	os.Exit(0)
 }
 
 var defaultPort uint16 = 5001
