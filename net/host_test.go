@@ -8,25 +8,42 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	logging.SetLogLevel("net", "debug")
+	m.Run()
+}
 
 var defaultPort uint16 = 5001
 var testID = types.Hash{99}
 
-type mockHandler struct{}
+type mockHandler struct {
+	id types.Hash
+}
 
 func (h *mockHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
 func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error) {
+	if (h.id != types.Hash{}) {
+		return &mockSwapState{h.id}, &SendKeysMessage{}, nil
+	}
 	return &mockSwapState{}, &SendKeysMessage{}, nil
 }
 
-type mockSwapState struct{}
+type mockSwapState struct {
+	id types.Hash
+}
 
 func (s *mockSwapState) ID() types.Hash {
+	if (s.id != types.Hash{}) {
+		return s.id
+	}
+
 	return testID
 }
 

@@ -110,10 +110,12 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
+	h.swapMu.Lock()
 	h.swaps[s.ID()] = &swap{
 		swapState: s,
 		stream:    stream,
 	}
+	h.swapMu.Unlock()
 
 	h.handleProtocolStreamInner(stream, s)
 }
@@ -128,7 +130,9 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 		if err := s.Exit(); err != nil {
 			log.Errorf("failed to exit protocol: err=%s", err)
 		}
+		h.swapMu.Lock()
 		delete(h.swaps, s.ID())
+		h.swapMu.Unlock()
 	}()
 
 	msgBytes := make([]byte, 1<<17)
