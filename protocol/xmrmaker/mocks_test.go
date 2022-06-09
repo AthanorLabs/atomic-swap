@@ -93,9 +93,9 @@ func (mr *MockBackendMockRecorder) ChainID() *gomock.Call {
 }
 
 // Claim mocks base method.
-func (m *MockBackend) Claim(arg0 swapfactory.SwapFactorySwap, arg1 [32]byte) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) Claim(arg0 types0.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common.Hash, *types.Receipt, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Claim", arg0, arg1)
+	ret := m.ctrl.Call(m, "Claim", arg0, arg1, arg2)
 	ret0, _ := ret[0].(common.Hash)
 	ret1, _ := ret[1].(*types.Receipt)
 	ret2, _ := ret[2].(error)
@@ -103,9 +103,9 @@ func (m *MockBackend) Claim(arg0 swapfactory.SwapFactorySwap, arg1 [32]byte) (co
 }
 
 // Claim indicates an expected call of Claim.
-func (mr *MockBackendMockRecorder) Claim(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) Claim(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Claim", reflect.TypeOf((*MockBackend)(nil).Claim), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Claim", reflect.TypeOf((*MockBackend)(nil).Claim), arg0, arg1, arg2)
 }
 
 // CloseWallet mocks base method.
@@ -367,9 +367,9 @@ func (mr *MockBackendMockRecorder) Net() *gomock.Call {
 }
 
 // NewSwap mocks base method.
-func (m *MockBackend) NewSwap(arg0, arg1 [32]byte, arg2 common.Address, arg3, arg4, arg5 *big.Int) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) NewSwap(arg0 types0.Hash, arg1, arg2 [32]byte, arg3 common.Address, arg4, arg5, arg6 *big.Int) (common.Hash, *types.Receipt, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].(common.Hash)
 	ret1, _ := ret[1].(*types.Receipt)
 	ret2, _ := ret[2].(error)
@@ -377,9 +377,9 @@ func (m *MockBackend) NewSwap(arg0, arg1 [32]byte, arg2 common.Address, arg3, ar
 }
 
 // NewSwap indicates an expected call of NewSwap.
-func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwap", reflect.TypeOf((*MockBackend)(nil).NewSwap), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwap", reflect.TypeOf((*MockBackend)(nil).NewSwap), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
 // NewSwapFactory mocks base method.
@@ -426,9 +426,9 @@ func (mr *MockBackendMockRecorder) Refresh() *gomock.Call {
 }
 
 // Refund mocks base method.
-func (m *MockBackend) Refund(arg0 swapfactory.SwapFactorySwap, arg1 [32]byte) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) Refund(arg0 types0.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common.Hash, *types.Receipt, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Refund", arg0, arg1)
+	ret := m.ctrl.Call(m, "Refund", arg0, arg1, arg2)
 	ret0, _ := ret[0].(common.Hash)
 	ret1, _ := ret[1].(*types.Receipt)
 	ret2, _ := ret[2].(error)
@@ -436,9 +436,9 @@ func (m *MockBackend) Refund(arg0 swapfactory.SwapFactorySwap, arg1 [32]byte) (c
 }
 
 // Refund indicates an expected call of Refund.
-func (mr *MockBackendMockRecorder) Refund(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) Refund(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refund", reflect.TypeOf((*MockBackend)(nil).Refund), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refund", reflect.TypeOf((*MockBackend)(nil).Refund), arg0, arg1, arg2)
 }
 
 // SendSwapMessage mocks base method.
@@ -504,9 +504,9 @@ func (mr *MockBackendMockRecorder) SetGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // SetReady mocks base method.
-func (m *MockBackend) SetReady(arg0 swapfactory.SwapFactorySwap) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) SetReady(arg0 types0.Hash, arg1 swapfactory.SwapFactorySwap) (common.Hash, *types.Receipt, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetReady", arg0)
+	ret := m.ctrl.Call(m, "SetReady", arg0, arg1)
 	ret0, _ := ret[0].(common.Hash)
 	ret1, _ := ret[1].(*types.Receipt)
 	ret2, _ := ret[2].(error)
@@ -514,9 +514,9 @@ func (m *MockBackend) SetReady(arg0 swapfactory.SwapFactorySwap) (common.Hash, *
 }
 
 // SetReady indicates an expected call of SetReady.
-func (mr *MockBackendMockRecorder) SetReady(arg0 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) SetReady(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockBackend)(nil).SetReady), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockBackend)(nil).SetReady), arg0, arg1)
 }
 
 // SetSwapTimeout mocks base method.

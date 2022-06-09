@@ -32,12 +32,11 @@ func checkOriginFunc(r *http.Request) bool {
 }
 
 type wsServer struct {
-	ctx      context.Context
-	sm       SwapManager
-	ns       *NetService
-	backend  ProtocolBackend
-	txsOutCh <-chan *txsender.Transaction
-	txsInCh  chan<- ethcommon.Hash
+	ctx     context.Context
+	sm      SwapManager
+	ns      *NetService
+	backend ProtocolBackend
+	signer  *txsender.ExternalSender
 }
 
 func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend,
@@ -47,11 +46,7 @@ func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend Pr
 		sm:      sm,
 		ns:      ns,
 		backend: backend,
-	}
-
-	if signer != nil {
-		s.txsOutCh = signer.OngoingCh()
-		s.txsInCh = signer.IncomingCh()
+		signer:  signer,
 	}
 
 	return s
@@ -163,8 +158,9 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	}
 }
 
-func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID, ethAddress, xmrAddr string) error {
-	if s.txsOutCh == nil {
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerIDStr, ethAddress,
+	xmrAddr string) error {
+	if s.signer == nil {
 		return errSignerNotRequired
 	}
 
@@ -175,14 +171,32 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr))
 
+	offerID, err := offerIDStringToHash(offerIDStr)
+	if err != nil {
+		return err
+	}
+
+	s.signer.AddID(offerID)
+	defer s.signer.DeleteID(offerID)
+
+	txsOutCh, err := s.signer.OngoingCh(offerID)
+	if err != nil {
+		return err
+	}
+
+	txsInCh, err := s.signer.IncomingCh(offerID)
+	if err != nil {
+		return err
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case tx := <-s.txsOutCh:
+		case tx := <-txsOutCh:
 			log.Debugf("outbound tx: %v", tx)
 			resp := &rpctypes.SignerResponse{
-				OfferID: offerID,
+				OfferID: offerIDStr,
 				To:      tx.To.String(),
 				Data:    tx.Data,
 				Value:   tx.Value,
@@ -203,11 +217,11 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 				return fmt.Errorf("failed to unmarshal parameters: %w", err)
 			}
 
-			if params.OfferID != offerID {
+			if params.OfferID != offerIDStr {
 				return fmt.Errorf("got unexpected offerID %s, expected %s", params.OfferID, offerID)
 			}
 
-			s.txsInCh <- ethcommon.HexToHash(params.TxHash)
+			txsInCh <- ethcommon.HexToHash(params.TxHash)
 		}
 	}
 }

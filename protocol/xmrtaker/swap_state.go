@@ -383,7 +383,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
 	nonce := generateNonce()
-	txHash, receipt, err := s.NewSwap(cmtXMRMaker, cmtXMRTaker,
+	txHash, receipt, err := s.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
 		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, amount.BigInt())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
@@ -429,7 +429,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	_, _, err := s.SetReady(s.contractSwap)
+	_, _, err := s.SetReady(s.ID(), s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -452,7 +452,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	txHash, _, err := s.Refund(s.contractSwap, sc)
+	txHash, _, err := s.Refund(s.ID(), s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

@@ -331,6 +331,8 @@ func (b *backend) SetXMRDepositAddress(addr mcrypto.Address) {
 	b.xmrDepositAddr = addr
 }
 
+// TODO: these are kinda sus, maybe remove them? forces everyone to use
+// the same contract though
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
 	b.Sender.SetContract(contract)
