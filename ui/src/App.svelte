@@ -33,11 +33,11 @@
           <Button on:click={handleRefreshClick}>Refresh</Button>
         </Cell>
         <Cell class="metamask">
-        {#if $currentAccount}
-          Account: {$currentAccount}
-        {:else}
-          <Button on:click={connectMetamask}>Connect Metamask</Button>
-        {/if}
+          {#if $currentAccount}
+            Account: {$currentAccount}
+          {:else}
+            <Button on:click={connectMetamask}>Connect Metamask</Button>
+          {/if}
         </Cell>
       </InnerGrid>
       <br />

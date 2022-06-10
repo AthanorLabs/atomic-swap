@@ -11,12 +11,12 @@
   import { Svg } from '@smui/common/elements'
   import CircularProgress from '@smui/circular-progress'
   import HelperText from '@smui/textfield/helper-text'
-  import { currentAccount, sign } from "../stores/metamask"
- 
+  import { currentAccount, sign } from '../stores/metamask'
+
   const WS_ADDRESS = 'ws://127.0.0.1:8081'
 
   let amountProvided: number | null = null
-  let xmrAddress = ""
+  let xmrAddress = ''
   let isSuccess = false
   let isLoadingSwap = false
   let error = ''
@@ -53,20 +53,19 @@
 
     webSocket.onopen = () => {
       console.log('opened')
-      console.log("sending ws signer msg")
+      console.log('sending ws signer msg')
       let req = {
-        method: "signer_subscribe",
+        method: 'signer_subscribe',
         params: {
-          jsonRPC: "2.0",
-          id: "0",
+          jsonRPC: '2.0',
+          id: '0',
           offerID: offerID,
           ethAddress: $currentAccount,
           xmrAddress: xmrAddress,
-        }
+        },
       }
       webSocket.send(JSON.stringify(req))
-      console.log("sent ws signer msg", req)
-
+      console.log('sent ws signer msg', req)
     }
     webSocket.onmessage = async (msg) => {
       console.log('message to sign:', msg.data)
@@ -85,7 +84,7 @@
     }
 
     isLoadingSwap = true
-    
+
     rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {
       multiaddr: $selectedOffer?.peer,
       offerID: offerID,
@@ -171,7 +170,7 @@
           <Textfield
             bind:value={xmrAddress}
             variant="outlined"
-            label={"XMR address"}
+            label={'XMR address'}
             invalid={!!error}
           >
             <HelperText slot="helper">{error}</HelperText>

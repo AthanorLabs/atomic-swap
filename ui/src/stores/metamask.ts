@@ -9,13 +9,11 @@ detectEthereumProvider()
 .then((provider) => {
     if (!provider) {
 		console.log('Please install MetaMask!');
-return
+		return
 	}
         provider.on('accountsChanged', handleAccountsChanged);
 		provider.on('chainChanged', () => window.location.reload());
 
-        //connect btn is initially disabled
-        // $('#connect-btn').addEventListener('click', connectAccount);
         checkConnection();
 })
 
