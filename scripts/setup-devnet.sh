@@ -4,7 +4,7 @@
 MONERO_DIR="../monero-x86_64-linux-gnu-v0.17.3.0"
 # either a TMPDIR is set, or use /tmp
 LOG_DIR=${TMPDIR:-"/tmp"}
-ALICE_P2P_ADDRESS="12D3KooWF5dTdfrVv6oFwGGGyobfxtZBVhVR654wt5ED6PU1SBqd"
+ALICE_P2P_ADDRESS="12D3KooWBD82zGTFqk6Qmu5zeS6dQfiaAcn8go2QWE29HPmRX3yB"
 
 echo "cleanup"
 pkill -e -f monero;
@@ -25,7 +25,7 @@ echo "Zzz... 10s"
 sleep 10
 
 echo "mine blocks for XMRMaker"
-curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe","amount_of_blocks":100}' -H 'Content-Type: application/json' &> $LOG_DIR/block-mining-bob.log &
+curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"43wote1FPHrQQL35p3LMbNGi4J6zLcwUF9EZiw2xKfyzbQVhFXQ3VcmFuM4RDK7gxh8FGgN2C3ssXcSeJR2wY2Gx92b5gxn","amount_of_blocks":100}' -H 'Content-Type: application/json' &> $LOG_DIR/block-mining-bob.log &
 
 echo "Zzz... 15s"
 sleep 15

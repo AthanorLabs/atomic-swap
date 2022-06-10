@@ -12,8 +12,7 @@
   import CircularProgress from '@smui/circular-progress'
   import HelperText from '@smui/textfield/helper-text'
   import { currentAccount, sign } from "../stores/metamask"
-  import { onMount } from 'svelte'
-
+ 
   const WS_ADDRESS = 'ws://127.0.0.1:8081'
 
   let amountProvided: number | null = null
