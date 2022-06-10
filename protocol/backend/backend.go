@@ -299,6 +299,12 @@ func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
 	b.RLock()
 	defer b.RUnlock()
 
+	if id == nil && b.baseXMRDepositAddr == nil {
+		return "", errNoXMRDepositAddress
+	} else if id == nil {
+		return *b.baseXMRDepositAddr, nil
+	}
+
 	addr, has := b.xmrDepositAddrs[*id]
 	if !has && b.baseXMRDepositAddr == nil {
 		return "", errNoXMRDepositAddress
