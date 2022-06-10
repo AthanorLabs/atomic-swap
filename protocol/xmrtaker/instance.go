@@ -61,7 +61,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		if err != nil {
 			return nil, err
 		}
-		cfg.Backend.SetXMRDepositAddress(address)
+		cfg.Backend.SetBaseXMRDepositAddress(address)
 	}
 
 	// TODO: check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured

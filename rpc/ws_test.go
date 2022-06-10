@@ -137,8 +137,8 @@ func (b *mockProtocolBackend) SwapManager() swap.Manager {
 func (*mockProtocolBackend) ExternalSender() *txsender.ExternalSender {
 	return nil
 }
-func (*mockProtocolBackend) SetEthAddress(ethcommon.Address)      {}
-func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address) {}
+func (*mockProtocolBackend) SetEthAddress(ethcommon.Address)                  {}
+func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {}
 
 func newServer(t *testing.T) *Server {
 	ctx, cancel := context.WithCancel(context.Background())

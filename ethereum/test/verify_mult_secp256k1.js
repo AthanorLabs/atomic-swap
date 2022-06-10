@@ -1,5 +1,4 @@
 const { expect } = require("chai");
-const secp = require('noble-secp256k1');
 
 const arrayify = ethers.utils.arrayify;
 

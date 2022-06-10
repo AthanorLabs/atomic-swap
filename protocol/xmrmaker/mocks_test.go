@@ -455,6 +455,18 @@ func (mr *MockBackendMockRecorder) SendSwapMessage(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSwapMessage", reflect.TypeOf((*MockBackend)(nil).SendSwapMessage), arg0, arg1)
 }
 
+// SetBaseXMRDepositAddress mocks base method.
+func (m *MockBackend) SetBaseXMRDepositAddress(arg0 mcrypto.Address) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetBaseXMRDepositAddress", arg0)
+}
+
+// SetBaseXMRDepositAddress indicates an expected call of SetBaseXMRDepositAddress.
+func (mr *MockBackendMockRecorder) SetBaseXMRDepositAddress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBaseXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).SetBaseXMRDepositAddress), arg0)
+}
+
 // SetContract mocks base method.
 func (m *MockBackend) SetContract(arg0 *swapfactory.SwapFactory) {
 	m.ctrl.T.Helper()
@@ -532,15 +544,15 @@ func (mr *MockBackendMockRecorder) SetSwapTimeout(arg0 interface{}) *gomock.Call
 }
 
 // SetXMRDepositAddress mocks base method.
-func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address) {
+func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 types0.Hash) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetXMRDepositAddress", arg0)
+	m.ctrl.Call(m, "SetXMRDepositAddress", arg0, arg1)
 }
 
 // SetXMRDepositAddress indicates an expected call of SetXMRDepositAddress.
-func (mr *MockBackendMockRecorder) SetXMRDepositAddress(arg0 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) SetXMRDepositAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).SetXMRDepositAddress), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).SetXMRDepositAddress), arg0, arg1)
 }
 
 // SwapManager mocks base method.
@@ -647,15 +659,16 @@ func (mr *MockBackendMockRecorder) WaitForReceipt(arg0, arg1 interface{}) *gomoc
 }
 
 // XMRDepositAddress mocks base method.
-func (m *MockBackend) XMRDepositAddress() mcrypto.Address {
+func (m *MockBackend) XMRDepositAddress(arg0 *types0.Hash) (mcrypto.Address, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "XMRDepositAddress")
+	ret := m.ctrl.Call(m, "XMRDepositAddress", arg0)
 	ret0, _ := ret[0].(mcrypto.Address)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // XMRDepositAddress indicates an expected call of XMRDepositAddress.
-func (mr *MockBackendMockRecorder) XMRDepositAddress() *gomock.Call {
+func (mr *MockBackendMockRecorder) XMRDepositAddress(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "XMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).XMRDepositAddress))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "XMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).XMRDepositAddress), arg0)
 }

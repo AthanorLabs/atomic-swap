@@ -183,7 +183,9 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
-	_, err = swapState.Contract().SetReady(swapState.txOpts, swapState.contractSwap)
+	txOpts, err := swapState.TxOpts()
+	require.NoError(t, err)
+	_, err = swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
 
 	txHash, err := swapState.claimFunds()
@@ -316,7 +318,9 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
 
-	_, err = s.Contract().SetReady(s.txOpts, s.contractSwap)
+	txOpts, err := s.TxOpts()
+	require.NoError(t, err)
+	_, err = s.Contract().SetReady(txOpts, s.contractSwap)
 	require.NoError(t, err)
 
 	msg := &message.NotifyReady{}
@@ -354,7 +358,9 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
+	txOpts, err := s.TxOpts()
+	require.NoError(t, err)
+	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	addr, err := s.handleRefund(tx.Hash().String())
@@ -387,7 +393,9 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
+	txOpts, err := s.TxOpts()
+	require.NoError(t, err)
+	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	msg := &message.NotifyRefund{
@@ -427,7 +435,9 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	tx, err := s.Contract().Refund(s.txOpts, s.contractSwap, sc)
+	txOpts, err := s.TxOpts()
+	require.NoError(t, err)
+	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
 
 	receipt, err := s.TransactionReceipt(s.ctx, tx.Hash())

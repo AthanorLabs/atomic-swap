@@ -169,12 +169,13 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	}
 
 	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
-	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr))
 
 	offerID, err := offerIDStringToHash(offerIDStr)
 	if err != nil {
 		return err
 	}
+
+	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
 
 	s.signer.AddID(offerID)
 	defer s.signer.DeleteID(offerID)

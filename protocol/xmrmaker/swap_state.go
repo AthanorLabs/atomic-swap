@@ -11,7 +11,6 @@ import (
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
@@ -61,7 +60,7 @@ type swapState struct {
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
-	txOpts         *bind.TransactOpts
+	//txOpts         *bind.TransactOpts
 
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
@@ -81,10 +80,10 @@ type swapState struct {
 
 func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statusCh chan types.Status, infofile string,
 	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
-	txOpts, err := b.TxOpts()
-	if err != nil {
-		return nil, err
-	}
+	// txOpts, err := b.TxOpts()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
@@ -108,10 +107,10 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 		infofile:            infofile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
-		txOpts:              txOpts,
-		info:                info,
-		statusCh:            statusCh,
-		done:                make(chan struct{}),
+		//txOpts:              txOpts,
+		info:     info,
+		statusCh: statusCh,
+		done:     make(chan struct{}),
 	}
 
 	return s, nil

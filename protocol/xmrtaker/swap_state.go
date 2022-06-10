@@ -76,7 +76,8 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		return nil, errNoSwapContractSet
 	}
 
-	if transferBack && b.XMRDepositAddress() == "" {
+	_, err := b.XMRDepositAddress(nil)
+	if transferBack && err != nil {
 		return nil, errMustProvideWalletAddress
 	}
 
@@ -485,21 +486,27 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return addr, nil
 	}
 
-	log.Infof("monero claimed in account %s; transferring to original account %s",
-		addr, s.XMRDepositAddress())
+	id := s.ID()
+	depositAddr, err := s.XMRDepositAddress(&id)
+	if err != nil {
+		return "", err
+	}
 
-	err = mcrypto.ValidateAddress(string(s.XMRDepositAddress()))
+	log.Infof("monero claimed in account %s; transferring to original account %s",
+		addr, depositAddr)
+
+	err = mcrypto.ValidateAddress(string(depositAddr))
 	if err != nil {
 		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
 		return addr, nil
 	}
 
-	err = s.waitUntilBalanceUnlocks()
+	err = s.waitUntilBalanceUnlocks(depositAddr)
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.SweepAll(s.XMRDepositAddress(), 0)
+	res, err := s.SweepAll(depositAddr, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -511,14 +518,14 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	amount := res.AmountList[0]
 	log.Infof("transferred %v XMR to %s",
 		common.MoneroAmount(amount).AsMonero(),
-		s.XMRDepositAddress(),
+		depositAddr,
 	)
 
 	close(s.claimedCh)
 	return addr, nil
 }
 
-func (s *swapState) waitUntilBalanceUnlocks() error {
+func (s *swapState) waitUntilBalanceUnlocks(depositAddr mcrypto.Address) error {
 	for {
 		if s.ctx.Err() != nil {
 			return s.ctx.Err()
@@ -527,7 +534,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		log.Infof("checking if balance unlocked...")
 
 		if s.Env() == common.Development {
-			_ = s.GenerateBlocks(string(s.XMRDepositAddress()), 64)
+			_ = s.GenerateBlocks(string(depositAddr), 64)
 			_ = s.Refresh()
 		}
 

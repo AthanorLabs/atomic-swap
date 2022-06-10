@@ -119,7 +119,7 @@ type ProtocolBackend interface {
 	SwapManager() swap.Manager
 	ExternalSender() *txsender.ExternalSender
 	SetEthAddress(ethcommon.Address)
-	SetXMRDepositAddress(mcrypto.Address)
+	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 }
 
 // XMRTaker ...
