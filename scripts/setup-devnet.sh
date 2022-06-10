@@ -37,7 +37,7 @@ echo "start monero-wallet-rpc for XMRMaker on port 18083"
 ./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir . &> $LOG_DIR/bob-wallet-rpc.log &
 
 echo "launch XMRTaker swapd"
-../swapd --dev-xmrtaker  &> $LOG_DIR/alice-swapd.log &
+../swapd --dev-xmrtaker --external-signer --contract-address 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab &> $LOG_DIR/alice-swapd.log &
 
 echo "Zzz... 10s"
 sleep 10

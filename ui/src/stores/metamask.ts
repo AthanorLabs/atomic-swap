@@ -23,7 +23,6 @@ export function connectAccount() {
     window.ethereum
         .request({ method: 'eth_requestAccounts'})
         .then(handleAccountsChanged)
-		.then(initialize)
         .catch((err: any) => {
             if (err.code === 4001) {
                 console.log('Please connect to MetaMask.');
@@ -53,16 +52,16 @@ const handleAccountsChanged = (accounts: string[]) => {
   currentAccount.set(accounts[0]);
 }
 
-const initialize = async () => {
-	if (!window.ethersProvider) return
+export const sign = async (msg: string) => {
+	if(!window.ethereum){
+		console.error('no window.ethereum')
+		return
+	}
 
 	const ethersProvider = new providers.Web3Provider(window.ethereum, 'any');
-	window.ethersProvider = ethersProvider
-}
-
-export const sign = async (msg: string) => {
 	const tx = JSON.parse(msg)
-	const signer = window.ethersProvider.getSigner()
+	const signer = ethersProvider.getSigner()
+	console.log('signer...', signer)
 	let value
 
 	if (tx.value != "") {
@@ -73,9 +72,9 @@ export const sign = async (msg: string) => {
 	  {
 	    from: signer.getAddress(),
 	    to: tx.to,
-	    gasPrice: window.ethersProvider.getGasPrice(), 
+	    gasPrice: ethersProvider.getGasPrice(), 
 	    gasLimit: "200000",
-	    value: value,
+	    value,
 	    data: tx.data,
 	  }
 
