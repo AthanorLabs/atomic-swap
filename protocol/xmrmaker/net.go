@@ -106,6 +106,10 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	defer s.setNextExpectedMessage(&message.NotifyETHLocked{})
+	defer func() {
+		s.Lock()
+		s.setNextExpectedMessage(&message.NotifyETHLocked{})
+		s.Unlock()
+	}()
 	return s, resp, nil
 }
