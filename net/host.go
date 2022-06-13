@@ -153,7 +153,7 @@ func NewHost(cfg *Config) (*host, error) { //nolint:revive
 		h:          h,
 		handler:    cfg.Handler,
 		bootnodes:  bns,
-		queryBuf:   make([]byte, 2048),
+		queryBuf:   make([]byte, 1024*5),
 		swaps:      make(map[types.Hash]*swap),
 	}
 
