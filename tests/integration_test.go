@@ -133,7 +133,7 @@ func TestXMRTaker_Query(t *testing.T) {
 }
 
 func TestSuccess(t *testing.T) {
-	const testTimeout = time.Second * 30
+	const testTimeout = time.Second * 60
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -224,7 +224,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 	}
 
 	const (
-		testTimeout = time.Second * 30
+		testTimeout = time.Second * 60
 		swapTimeout = 5 // 5s
 	)
 
@@ -342,7 +342,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 		generateBlocks(64)
 	}
 
-	const testTimeout = time.Second * 30
+	const testTimeout = time.Second * 60
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -452,7 +452,7 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 		generateBlocks(64)
 	}
 
-	const testTimeout = time.Second * 30
+	const testTimeout = time.Second * 60
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -552,7 +552,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 		generateBlocks(64)
 	}
 
-	const testTimeout = time.Second * 30
+	const testTimeout = time.Second * 60
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -652,7 +652,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 // TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.
 // Only one should succeed, the other should return an error or Abort status.
 func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
-	const testTimeout = time.Second * 30
+	const testTimeout = time.Second * 60
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
