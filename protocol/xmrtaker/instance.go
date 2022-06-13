@@ -36,7 +36,6 @@ type Instance struct {
 	// map of offer IDs -> ongoing swaps
 	swapStates map[types.Hash]*swapState
 	swapMu     sync.Mutex // lock for above map
-	//swapState *swapState
 }
 
 // Config contains the configuration values for a new XMRTaker instance.

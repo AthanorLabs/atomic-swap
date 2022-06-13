@@ -72,7 +72,6 @@ func (o *Offer) String() string {
 
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
-	//IDCh     chan uint64
 	StatusCh chan Status
 	InfoFile string
 }
