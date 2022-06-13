@@ -476,6 +476,9 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
+	s.LockClient()
+	defer s.UnlockClient()
+
 	addr, err := monero.CreateMoneroWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB)
 	if err != nil {
 		return "", err

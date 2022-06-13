@@ -56,6 +56,9 @@ func (om *offerManager) getAndDeleteOffer(id types.Hash) (*types.Offer, *types.O
 
 // MakeOffer makes a new swap offer.
 func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
+	b.backend.LockClient()
+	defer b.backend.UnlockClient()
+
 	balance, err := b.backend.GetBalance(0)
 	if err != nil {
 		return nil, err

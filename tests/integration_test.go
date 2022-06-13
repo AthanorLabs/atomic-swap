@@ -736,3 +736,137 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	default:
 	}
 }
+
+func TestSuccess_ConcurrentSwaps(t *testing.T) {
+	const testTimeout = time.Second * 180
+	const numConcurrentSwaps = 10
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	type makerTest struct {
+		offerID  string
+		statusCh <-chan types.Status
+		errCh    chan error
+	}
+
+	makerTests := make([]*makerTest, numConcurrentSwaps)
+
+	for i := 0; i < numConcurrentSwaps; i++ {
+		bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
+		require.NoError(t, err)
+
+		offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
+			types.ExchangeRate(exchangeRate))
+		require.NoError(t, err)
+
+		fmt.Println("maker made offer ", offerID)
+
+		makerTests[i] = &makerTest{
+			offerID:  offerID,
+			statusCh: statusCh,
+			errCh:    make(chan error, 2),
+		}
+	}
+
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	offersBefore, err := bc.GetOffers()
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(2 * numConcurrentSwaps)
+
+	for _, tc := range makerTests {
+		go func(tc *makerTest) {
+			defer wg.Done()
+
+			for {
+				select {
+				case status := <-tc.statusCh:
+					fmt.Println("> XMRMaker got status:", status)
+					if status.IsOngoing() {
+						continue
+					}
+
+					if status != types.CompletedSuccess {
+						tc.errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
+					}
+
+					return
+				case <-time.After(testTimeout):
+					tc.errCh <- errors.New("make offer subscription timed out")
+				}
+			}
+		}(tc)
+	}
+
+	type takerTest struct {
+		statusCh <-chan types.Status
+		errCh    chan error
+	}
+
+	takerTests := make([]*takerTest, numConcurrentSwaps)
+
+	for i := 0; i < numConcurrentSwaps; i++ {
+		c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+		require.NoError(t, err)
+
+		// TODO: implement discovery over websockets
+		providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(providers))
+		require.GreaterOrEqual(t, len(providers[0]), 2)
+
+		offerID := makerTests[i].offerID
+		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+		require.NoError(t, err)
+
+		fmt.Println("taker took offer ", offerID)
+
+		takerTests[i] = &takerTest{
+			statusCh: takerStatusCh,
+			errCh:    make(chan error, 2),
+		}
+	}
+
+	for _, tc := range takerTests {
+		go func(tc *takerTest) {
+			defer wg.Done()
+			for status := range tc.statusCh {
+				fmt.Println("> XMRTaker got status:", status)
+				if status.IsOngoing() {
+					continue
+				}
+
+				if status != types.CompletedSuccess {
+					tc.errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
+				}
+
+				return
+			}
+		}(tc)
+	}
+
+	wg.Wait()
+
+	for _, tc := range makerTests {
+		select {
+		case err = <-tc.errCh:
+			require.NoError(t, err)
+		default:
+		}
+	}
+
+	for _, tc := range takerTests {
+		select {
+		case err = <-tc.errCh:
+			require.NoError(t, err)
+		default:
+		}
+	}
+
+	offersAfter, err := bc.GetOffers()
+	require.NoError(t, err)
+	require.Equal(t, numConcurrentSwaps, len(offersBefore)-len(offersAfter))
+}

@@ -272,7 +272,6 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 		return err
 	}
 
-	// finally, read the swap's status
 	for {
 		select {
 		case status, ok := <-offerExtra.StatusCh:

@@ -60,7 +60,6 @@ type swapState struct {
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
-	//txOpts         *bind.TransactOpts
 
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
@@ -80,11 +79,6 @@ type swapState struct {
 
 func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statusCh chan types.Status, infofile string,
 	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
-	// txOpts, err := b.TxOpts()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
 	if statusCh == nil {
@@ -107,10 +101,9 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 		infofile:            infofile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
-		//txOpts:              txOpts,
-		info:     info,
-		statusCh: statusCh,
-		done:     make(chan struct{}),
+		info:                info,
+		statusCh:            statusCh,
+		done:                make(chan struct{}),
 	}
 
 	return s, nil
@@ -273,6 +266,8 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	}
 
 	// TODO: check balance
+	s.LockClient()
+	defer s.UnlockClient()
 	return monero.CreateMoneroWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
 }
 
@@ -459,6 +454,9 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
 	kp := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys)
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
+
+	s.LockClient()
+	defer s.UnlockClient()
 
 	balance, err := s.GetBalance(0)
 	if err != nil {

@@ -213,6 +213,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("address received in message does not match expected address")
 	}
 
+	s.LockClient()
+	defer s.UnlockClient()
+
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
 	if err := s.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.Env()), walletName, ""); err != nil {
