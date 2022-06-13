@@ -352,6 +352,18 @@ func (mr *MockBackendMockRecorder) GetHeight() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHeight", reflect.TypeOf((*MockBackend)(nil).GetHeight))
 }
 
+// LockClient mocks base method.
+func (m *MockBackend) LockClient() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "LockClient")
+}
+
+// LockClient indicates an expected call of LockClient.
+func (mr *MockBackendMockRecorder) LockClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockClient", reflect.TypeOf((*MockBackend)(nil).LockClient))
+}
+
 // Net mocks base method.
 func (m *MockBackend) Net() net.MessageSender {
 	m.ctrl.T.Helper()
@@ -641,6 +653,18 @@ func (m *MockBackend) TxOpts() (*bind.TransactOpts, error) {
 func (mr *MockBackendMockRecorder) TxOpts() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxOpts", reflect.TypeOf((*MockBackend)(nil).TxOpts))
+}
+
+// UnlockClient mocks base method.
+func (m *MockBackend) UnlockClient() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "UnlockClient")
+}
+
+// UnlockClient indicates an expected call of UnlockClient.
+func (mr *MockBackendMockRecorder) UnlockClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockClient", reflect.TypeOf((*MockBackend)(nil).UnlockClient))
 }
 
 // WaitForReceipt mocks base method.

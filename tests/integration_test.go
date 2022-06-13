@@ -809,7 +809,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for i := 0; i < numConcurrentSwaps; i++ {
 		c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
 		require.NoError(t, err)
 
 		// TODO: implement discovery over websockets
