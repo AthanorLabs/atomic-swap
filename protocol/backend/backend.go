@@ -4,15 +4,17 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
+	"sync"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
@@ -45,11 +47,11 @@ type Backend interface {
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
-	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]types.Log, error)
-	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error)
+	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
+	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 
 	// helpers
-	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error)
+	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error)
 
 	// getters
@@ -65,13 +67,14 @@ type Backend interface {
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
 	ExternalSender() *txsender.ExternalSender
-	XMRDepositAddress() mcrypto.Address
+	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
 	SetGasPrice(uint64)
 	SetEthAddress(ethcommon.Address)
-	SetXMRDepositAddress(mcrypto.Address)
+	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	SetBaseXMRDepositAddress(mcrypto.Address)
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
 }
@@ -86,7 +89,9 @@ type backend struct {
 	monero.DaemonClient
 
 	// monero deposit address (used if xmrtaker has transferBack set to true)
-	xmrDepositAddr mcrypto.Address
+	sync.RWMutex
+	baseXMRDepositAddr *mcrypto.Address
+	xmrDepositAddrs    map[types.Hash]mcrypto.Address
 
 	// ethereum endpoint and variables
 	ethClient  *ethclient.Client
@@ -185,16 +190,17 @@ func NewBackend(cfg *Config) (Backend, error) {
 			From:    addr,
 			Context: cfg.Ctx,
 		},
-		Sender:        sender,
-		ethAddress:    addr,
-		chainID:       cfg.ChainID,
-		gasPrice:      cfg.GasPrice,
-		gasLimit:      cfg.GasLimit,
-		contract:      cfg.SwapContract,
-		contractAddr:  cfg.SwapContractAddress,
-		swapManager:   cfg.SwapManager,
-		swapTimeout:   defaultTimeoutDuration,
-		MessageSender: cfg.Net,
+		Sender:          sender,
+		ethAddress:      addr,
+		chainID:         cfg.ChainID,
+		gasPrice:        cfg.GasPrice,
+		gasLimit:        cfg.GasLimit,
+		contract:        cfg.SwapContract,
+		contractAddr:    cfg.SwapContractAddress,
+		swapManager:     cfg.SwapManager,
+		swapTimeout:     defaultTimeoutDuration,
+		MessageSender:   cfg.Net,
+		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 	}, nil
 }
 
@@ -270,11 +276,11 @@ func (b *backend) CodeAt(ctx context.Context, account ethcommon.Address, blockNu
 	return b.ethClient.CodeAt(ctx, account, blockNumber)
 }
 
-func (b *backend) FilterLogs(ctx context.Context, q eth.FilterQuery) ([]types.Log, error) {
+func (b *backend) FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error) {
 	return b.ethClient.FilterLogs(ctx, q)
 }
 
-func (b *backend) TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error) {
+func (b *backend) TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
 	return b.ethClient.TransactionReceipt(ctx, txHash)
 }
 
@@ -289,12 +295,28 @@ func (b *backend) TxOpts() (*bind.TransactOpts, error) {
 	return txOpts, nil
 }
 
-func (b *backend) XMRDepositAddress() mcrypto.Address {
-	return b.xmrDepositAddr
+func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
+	b.RLock()
+	defer b.RUnlock()
+
+	if id == nil && b.baseXMRDepositAddr == nil {
+		return "", errNoXMRDepositAddress
+	} else if id == nil {
+		return *b.baseXMRDepositAddr, nil
+	}
+
+	addr, has := b.xmrDepositAddrs[*id]
+	if !has && b.baseXMRDepositAddr == nil {
+		return "", errNoXMRDepositAddress
+	} else if !has {
+		return *b.baseXMRDepositAddr, nil
+	}
+
+	return addr, nil
 }
 
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
-func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*types.Receipt, error) {
+func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
 	for i := 0; i < maxRetries; i++ {
 		receipt, err := b.ethClient.TransactionReceipt(ctx, txHash)
 		if err != nil {
@@ -327,10 +349,19 @@ func (b *backend) SetEthAddress(addr ethcommon.Address) {
 	b.ethAddress = addr
 }
 
-func (b *backend) SetXMRDepositAddress(addr mcrypto.Address) {
-	b.xmrDepositAddr = addr
+func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {
+	b.baseXMRDepositAddr = &addr
 }
 
+func (b *backend) SetXMRDepositAddress(addr mcrypto.Address, id types.Hash) {
+	b.Lock()
+	defer b.Unlock()
+	// TODO: clear this out when swap is done, memory leak!!!
+	b.xmrDepositAddrs[id] = addr
+}
+
+// TODO: these are kinda sus, maybe remove them? forces everyone to use
+// the same contract though
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
 	b.Sender.SetContract(contract)

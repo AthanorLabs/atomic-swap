@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -27,11 +28,13 @@ var (
 type Sender interface {
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
-	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address, _timeoutDuration *big.Int,
-		_nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
-	SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Claim(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Refund(_swap swapfactory.SwapFactorySwap, _s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
+	NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
+		_timeoutDuration *big.Int, _nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
+	SetReady(id types.Hash, _swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
+	Claim(id types.Hash, _swap swapfactory.SwapFactorySwap,
+		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
+	Refund(id types.Hash, _swap swapfactory.SwapFactorySwap,
+		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
 }
 
 type privateKeySender struct {
@@ -58,8 +61,9 @@ func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
 
 func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 
-func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
-	_timeoutDuration *big.Int, _nonce *big.Int, value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
+	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int,
+	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txOpts.Value = value
 	defer func() {
 		s.txOpts.Value = nil
@@ -78,7 +82,8 @@ func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) SetReady(_ types.Hash,
+	_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx, err := s.contract.SetReady(s.txOpts, _swap)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
@@ -92,7 +97,7 @@ func (s *privateKeySender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommo
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap,
+func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx, err := s.contract.Claim(s.txOpts, _swap, _s)
 	if err != nil {
@@ -107,7 +112,7 @@ func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap,
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Refund(_swap swapfactory.SwapFactorySwap,
+func (s *privateKeySender) Refund(_ types.Hash, _swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx, err := s.contract.Refund(s.txOpts, _swap, _s)
 	if err != nil {

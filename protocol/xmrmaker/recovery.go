@@ -22,20 +22,12 @@ type recoveryState struct {
 func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.PrivateSpendKey,
 	contractAddr ethcommon.Address,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
-	txOpts, err := b.TxOpts()
-	if err != nil {
-		return nil, err
-	}
-
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
 		return nil, err
 	}
 
 	pubkp := kp.PublicKeyPair()
-
-	// txOpts.GasPrice = b.gasPrice
-	// txOpts.GasLimit = b.gasLimit
 
 	var sc [32]byte
 	copy(sc[:], secret.Bytes())
@@ -45,7 +37,6 @@ func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.Privat
 		ctx:            ctx,
 		cancel:         cancel,
 		Backend:        b,
-		txOpts:         txOpts,
 		privkeys:       kp,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),

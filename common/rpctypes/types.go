@@ -6,7 +6,7 @@ import (
 
 // SubscribeSwapStatusRequest ...
 type SubscribeSwapStatusRequest struct {
-	ID uint64 `json:"id"`
+	ID types.Hash `json:"id"`
 }
 
 // SubscribeSwapStatusResponse ...
@@ -45,7 +45,6 @@ type TakeOfferRequest struct {
 
 // TakeOfferResponse ...
 type TakeOfferResponse struct {
-	ID       uint64 `json:"id"`
 	InfoFile string `json:"infoFile"`
 }
 

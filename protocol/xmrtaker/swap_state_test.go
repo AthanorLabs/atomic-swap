@@ -34,7 +34,7 @@ type mockNet struct {
 	msg net.Message
 }
 
-func (n *mockNet) SendSwapMessage(msg net.Message) error {
+func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 	n.msg = msg
 	return nil
 }
@@ -103,7 +103,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, infofile, false,
+	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1)
 	require.NoError(t, err)
 	return swapState

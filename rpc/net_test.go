@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common/rpctypes"
-	"github.com/noot/atomic-swap/common/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -40,11 +39,9 @@ func TestNet_Query(t *testing.T) {
 func TestNet_TakeOffer(t *testing.T) {
 	ns := NewNetService(new(mockNet), new(mockXMRTaker), nil, new(mockSwapManager))
 
-	offer := &types.Offer{}
-
 	req := &rpctypes.TakeOfferRequest{
 		Multiaddr:      "/ip4/127.0.0.1/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
-		OfferID:        offer.GetID().String(),
+		OfferID:        testSwapID.String(),
 		ProvidesAmount: 1,
 	}
 
@@ -52,17 +49,14 @@ func TestNet_TakeOffer(t *testing.T) {
 
 	err := ns.TakeOffer(nil, req, resp)
 	require.NoError(t, err)
-	require.Equal(t, testSwapID, resp.ID)
 }
 
 func TestNet_TakeOfferSync(t *testing.T) {
 	ns := NewNetService(new(mockNet), new(mockXMRTaker), nil, new(mockSwapManager))
 
-	offer := &types.Offer{}
-
 	req := &rpctypes.TakeOfferRequest{
 		Multiaddr:      "/ip4/127.0.0.1/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
-		OfferID:        offer.GetID().String(),
+		OfferID:        testSwapID.String(),
 		ProvidesAmount: 1,
 	}
 
@@ -70,5 +64,4 @@ func TestNet_TakeOfferSync(t *testing.T) {
 
 	err := ns.TakeOfferSync(nil, req, resp)
 	require.NoError(t, err)
-	require.Equal(t, testSwapID, resp.ID)
 }

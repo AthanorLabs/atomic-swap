@@ -30,7 +30,7 @@ func (om *offerManager) putOffer(o *types.Offer) *types.OfferExtra {
 	}
 
 	extra := &types.OfferExtra{
-		IDCh:     make(chan uint64, 1),
+		//IDCh:     make(chan uint64, 1),
 		StatusCh: make(chan types.Status, 7),
 		InfoFile: pcommon.GetSwapInfoFilepath(om.basepath),
 	}
@@ -56,6 +56,9 @@ func (om *offerManager) getAndDeleteOffer(id types.Hash) (*types.Offer, *types.O
 
 // MakeOffer makes a new swap offer.
 func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
+	b.backend.LockClient()
+	defer b.backend.UnlockClient()
+
 	balance, err := b.backend.GetBalance(0)
 	if err != nil {
 		return nil, err

@@ -33,9 +33,11 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 func TestClaimOrRecover_Claim(t *testing.T) {
 	// test case where XMRMaker is able to claim ether from the contract
 	rs := newTestRecoveryState(t)
+	txOpts, err := rs.ss.TxOpts()
+	require.NoError(t, err)
 
 	// set contract to Ready
-	_, err := rs.ss.Contract().SetReady(rs.ss.txOpts, rs.ss.contractSwap)
+	_, err = rs.ss.Contract().SetReady(txOpts, rs.ss.contractSwap)
 	require.NoError(t, err)
 
 	// assert we can claim ether
@@ -51,6 +53,8 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 
 	// test case where XMRMaker is able to reclaim his monero, after XMRTaker refunds
 	rs := newTestRecoveryState(t)
+	txOpts, err := rs.ss.TxOpts()
+	require.NoError(t, err)
 
 	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
 	addr, err := rs.ss.GetAddress(0)
@@ -64,7 +68,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 
 	// call refund w/ XMRTaker's spend key
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.Contract().Refund(rs.ss.txOpts, rs.ss.contractSwap, sc)
+	_, err = rs.ss.Contract().Refund(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 
 	// assert XMRMaker can reclaim his monero

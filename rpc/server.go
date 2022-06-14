@@ -109,7 +109,7 @@ func (s *Server) Start() <-chan error {
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
 	Provides() types.ProvidesCoin
-	GetOngoingSwapState() common.SwapState
+	GetOngoingSwapState(types.Hash) common.SwapState
 }
 
 // ProtocolBackend represents protocol/backend.Backend
@@ -119,14 +119,14 @@ type ProtocolBackend interface {
 	SwapManager() swap.Manager
 	ExternalSender() *txsender.ExternalSender
 	SetEthAddress(ethcommon.Address)
-	SetXMRDepositAddress(mcrypto.Address)
+	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 }
 
 // XMRTaker ...
 type XMRTaker interface {
 	Protocol
 	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
-	Refund() (ethcommon.Hash, error)
+	Refund(types.Hash) (ethcommon.Hash, error)
 }
 
 // XMRMaker ...

@@ -3,27 +3,51 @@ package net
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
 
-var defaultPort uint16 = 5001
+func TestMain(m *testing.M) {
+	logging.SetLogLevel("net", "debug")
+	m.Run()
+	os.Exit(0)
+}
 
-type mockHandler struct{}
+var defaultPort uint16 = 5001
+var testID = types.Hash{99}
+
+type mockHandler struct {
+	id types.Hash
+}
 
 func (h *mockHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
 func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error) {
+	if (h.id != types.Hash{}) {
+		return &mockSwapState{h.id}, &SendKeysMessage{}, nil
+	}
 	return &mockSwapState{}, &SendKeysMessage{}, nil
 }
 
-type mockSwapState struct{}
+type mockSwapState struct {
+	id types.Hash
+}
+
+func (s *mockSwapState) ID() types.Hash {
+	if (s.id != types.Hash{}) {
+		return s.id
+	}
+
+	return testID
+}
 
 func (s *mockSwapState) HandleProtocolMessage(msg Message) (resp Message, done bool, err error) {
 	return nil, false, nil
