@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net/message"
 
 	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
@@ -18,17 +19,20 @@ const (
 	protocolTimeout = time.Second * 5
 )
 
-func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapState) error {
+func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
-	if h.swapState != nil {
+	id := s.ID()
+
+	if h.swaps[id] != nil {
 		return errSwapAlreadyInProgress
 	}
 
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
 	defer cancel()
 
+	// TODO: check if already connected
 	if err := h.h.Connect(ctx, who); err != nil {
 		return err
 	}
@@ -47,41 +51,88 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		return err
 	}
 
-	h.swapState = s
-	h.swapStream = stream
-	go h.handleProtocolStreamInner(stream)
+	h.swaps[id] = &swap{
+		swapState: s,
+		stream:    stream,
+	}
+
+	go h.handleProtocolStreamInner(stream, s)
 	return nil
 }
 
 // handleProtocolStream is called when there is an incoming protocol stream.
 func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	if h.handler == nil {
+		_ = stream.Close()
+		return
+	}
+
+	// TODO: don't allocate this twice
+	msgBytes := make([]byte, 1<<17)
+	tot, err := readStream(stream, msgBytes[:])
+	if err != nil {
+		log.Debug("peer closed stream with us, protocol exited")
+		_ = stream.Close()
+		return
+	}
+
+	// decode message based on message type
+	msg, err := message.DecodeMessage(msgBytes[:tot])
+	if err != nil {
+		log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
+		_ = stream.Close()
+		return
+	}
+
+	log.Debug(
+		"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
+	)
+
+	im, ok := msg.(*SendKeysMessage)
+	if !ok {
+		log.Warnf("failed to handle protocol message: message was not SendKeysMessage")
+		_ = stream.Close()
+		return
+	}
+
+	var s SwapState
+	s, resp, err := h.handler.HandleInitiateMessage(im)
+	if err != nil {
+		log.Warnf("failed to handle protocol message: err=%s", err)
+		_ = stream.Close()
+		return
+	}
+
+	if err := h.writeToStream(stream, resp); err != nil {
+		log.Warnf("failed to send response to peer: err=%s", err)
+		_ = s.Exit()
+		_ = stream.Close()
 		return
 	}
 
 	h.swapMu.Lock()
-	defer h.swapMu.Unlock()
-
-	if h.swapState != nil {
-		log.Debug("failed to handling incoming swap stream, already have ongoing swap")
+	h.swaps[s.ID()] = &swap{
+		swapState: s,
+		stream:    stream,
 	}
+	h.swapMu.Unlock()
 
-	h.swapStream = stream
-	h.handleProtocolStreamInner(stream)
+	h.handleProtocolStreamInner(stream, s)
 }
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
-func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
+func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
-		if h.swapState != nil {
-			log.Debugf("exiting swap...")
-			if err := h.swapState.Exit(); err != nil {
-				log.Errorf("failed to exit protocol: err=%s", err)
-			}
-			h.swapState = nil
+
+		log.Debugf("exiting swap...")
+		if err := s.Exit(); err != nil {
+			log.Errorf("failed to exit protocol: err=%s", err)
 		}
+		h.swapMu.Lock()
+		delete(h.swaps, s.ID())
+		h.swapMu.Unlock()
 	}()
 
 	msgBytes := make([]byte, 1<<17)
@@ -104,32 +155,10 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 			"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
 		)
 
-		var (
-			resp Message
-			done bool
-		)
-
-		if h.swapState == nil {
-			im, ok := msg.(*SendKeysMessage)
-			if !ok {
-				log.Warnf("failed to handle protocol message: message was not SendKeysMessage")
-				return
-			}
-
-			var s SwapState
-			s, resp, err = h.handler.HandleInitiateMessage(im)
-			if err != nil {
-				log.Warnf("failed to handle protocol message: err=%s", err)
-				return
-			}
-
-			h.swapState = s
-		} else {
-			resp, done, err = h.swapState.HandleProtocolMessage(msg)
-			if err != nil {
-				log.Warnf("failed to handle protocol message: err=%s", err)
-				return
-			}
+		resp, done, err := s.HandleProtocolMessage(msg)
+		if err != nil {
+			log.Warnf("failed to handle protocol message: err=%s", err)
+			return
 		}
 
 		if resp == nil {
@@ -149,8 +178,14 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream) {
 }
 
 // CloseProtocolStream closes the current swap protocol stream.
-func (h *host) CloseProtocolStream() {
-	stream := h.swapStream
-	log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
-	_ = stream.Close()
+func (h *host) CloseProtocolStream(id types.Hash) {
+	swap, has := h.swaps[id]
+	if !has {
+		return
+	}
+
+	log.Debugf("closing stream: peer=%s protocol=%s",
+		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
+	)
+	_ = swap.stream.Close()
 }

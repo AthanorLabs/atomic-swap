@@ -1,6 +1,8 @@
 package monero
 
 import (
+	"sync"
+
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpctypes"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
@@ -8,6 +10,8 @@ import (
 
 // Client represents a monero-wallet-rpc client.
 type Client interface {
+	LockClient() // can't use Lock/Unlock due to name conflict
+	UnlockClient()
 	GetAccounts() (*GetAccountsResponse, error)
 	GetAddress(idx uint) (*GetAddressResponse, error)
 	GetBalance(idx uint) (*GetBalanceResponse, error)
@@ -23,6 +27,7 @@ type Client interface {
 }
 
 type client struct {
+	sync.Mutex
 	endpoint string
 }
 
@@ -31,6 +36,14 @@ func NewClient(endpoint string) *client { //nolint:revive
 	return &client{
 		endpoint: endpoint,
 	}
+}
+
+func (c *client) LockClient() {
+	c.Lock()
+}
+
+func (c *client) UnlockClient() {
+	c.Unlock()
 }
 
 func (c *client) GetAccounts() (*GetAccountsResponse, error) {

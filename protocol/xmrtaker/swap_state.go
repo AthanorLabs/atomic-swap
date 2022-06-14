@@ -69,21 +69,22 @@ type swapState struct {
 	exited      bool
 }
 
-func newSwapState(b backend.Backend, infofile string, transferBack bool,
+func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
 	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
 	exchangeRate types.ExchangeRate) (*swapState, error) {
 	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
 
-	if transferBack && b.XMRDepositAddress() == "" {
+	_, err := b.XMRDepositAddress(nil)
+	if transferBack && err != nil {
 		return nil, errMustProvideWalletAddress
 	}
 
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
-	info := pswap.NewInfo(types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
+	info := pswap.NewInfo(offerID, types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
 		exchangeRate, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
@@ -167,7 +168,7 @@ func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
 }
 
 // ID returns the ID of the swap
-func (s *swapState) ID() uint64 {
+func (s *swapState) ID() types.Hash {
 	return s.info.ID()
 }
 
@@ -187,17 +188,17 @@ func (s *swapState) Exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap()
+		s.SwapManager().CompleteOngoingSwap(s.info.ID())
 		close(s.done)
 
 		if s.info.Status() == types.CompletedSuccess {
-			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.info.ID())
+			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID())
 			log.Info(str)
 			return
 		}
 
 		if s.info.Status() == types.CompletedRefund {
-			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%d**", s.info.ID())
+			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%s**", s.info.ID())
 			log.Info(str)
 			return
 		}
@@ -293,7 +294,7 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 		// send NotifyRefund msg
 		if err = s.SendSwapMessage(&message.NotifyRefund{
 			TxHash: txHash.String(),
-		}); err != nil {
+		}, s.ID()); err != nil {
 			return ethcommon.Hash{}, fmt.Errorf("failed to send refund message: err=%w", err)
 		}
 
@@ -383,7 +384,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
 	nonce := generateNonce()
-	txHash, receipt, err := s.NewSwap(cmtXMRMaker, cmtXMRTaker,
+	txHash, receipt, err := s.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
 		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, amount.BigInt())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
@@ -429,7 +430,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	_, _, err := s.SetReady(s.contractSwap)
+	_, _, err := s.SetReady(s.ID(), s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -452,7 +453,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	txHash, _, err := s.Refund(s.contractSwap, sc)
+	txHash, _, err := s.Refund(s.ID(), s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -475,6 +476,9 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
+	s.LockClient()
+	defer s.UnlockClient()
+
 	addr, err := monero.CreateMoneroWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB)
 	if err != nil {
 		return "", err
@@ -485,21 +489,27 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return addr, nil
 	}
 
-	log.Infof("monero claimed in account %s; transferring to original account %s",
-		addr, s.XMRDepositAddress())
+	id := s.ID()
+	depositAddr, err := s.XMRDepositAddress(&id)
+	if err != nil {
+		return "", err
+	}
 
-	err = mcrypto.ValidateAddress(string(s.XMRDepositAddress()))
+	log.Infof("monero claimed in account %s; transferring to original account %s",
+		addr, depositAddr)
+
+	err = mcrypto.ValidateAddress(string(depositAddr))
 	if err != nil {
 		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
 		return addr, nil
 	}
 
-	err = s.waitUntilBalanceUnlocks()
+	err = s.waitUntilBalanceUnlocks(depositAddr)
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.SweepAll(s.XMRDepositAddress(), 0)
+	res, err := s.SweepAll(depositAddr, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -511,14 +521,14 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	amount := res.AmountList[0]
 	log.Infof("transferred %v XMR to %s",
 		common.MoneroAmount(amount).AsMonero(),
-		s.XMRDepositAddress(),
+		depositAddr,
 	)
 
 	close(s.claimedCh)
 	return addr, nil
 }
 
-func (s *swapState) waitUntilBalanceUnlocks() error {
+func (s *swapState) waitUntilBalanceUnlocks(depositAddr mcrypto.Address) error {
 	for {
 		if s.ctx.Err() != nil {
 			return s.ctx.Err()
@@ -527,7 +537,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		log.Infof("checking if balance unlocked...")
 
 		if s.Env() == common.Development {
-			_ = s.GenerateBlocks(string(s.XMRDepositAddress()), 64)
+			_ = s.GenerateBlocks(string(depositAddr), 64)
 			_ = s.Refresh()
 		}
 

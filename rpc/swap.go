@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 
@@ -28,18 +29,22 @@ func NewSwapService(sm SwapManager, xmrtaker XMRTaker, xmrmaker XMRMaker, net Ne
 
 // GetPastIDsResponse ...
 type GetPastIDsResponse struct {
-	IDs []uint64 `json:"ids"`
+	IDs []string `json:"ids"`
 }
 
 // GetPastIDs returns all past swap IDs
 func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastIDsResponse) error {
-	resp.IDs = s.sm.GetPastIDs()
+	ids := s.sm.GetPastIDs()
+	resp.IDs = make([]string, len(ids))
+	for i := range resp.IDs {
+		resp.IDs[i] = ids[i].String()
+	}
 	return nil
 }
 
 // GetPastRequest ...
 type GetPastRequest struct {
-	ID uint64 `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // GetPastResponse ...
@@ -53,7 +58,12 @@ type GetPastResponse struct {
 
 // GetPast returns information about a past swap, given its ID.
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
-	info := s.sm.GetPastSwap(req.ID)
+	offerID, err := offerIDStringToHash(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	info := s.sm.GetPastSwap(offerID)
 	if info == nil {
 		return errNoSwapWithID
 	}
@@ -68,7 +78,6 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // GetOngoingResponse ...
 type GetOngoingResponse struct {
-	ID             uint64             `json:"id"`
 	Provided       types.ProvidesCoin `json:"provided"`
 	ProvidedAmount float64            `json:"providedAmount"`
 	ReceivedAmount float64            `json:"receivedAmount"`
@@ -76,20 +85,34 @@ type GetOngoingResponse struct {
 	Status         string             `json:"status"`
 }
 
+// GetOngoingRequest ...
+type GetOngoingRequest struct {
+	OfferID string `json:"id"`
+}
+
 // GetOngoing returns information about the ongoing swap, if there is one.
-func (s *SwapService) GetOngoing(_ *http.Request, _ *interface{}, resp *GetOngoingResponse) error {
-	info := s.sm.GetOngoingSwap()
+func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
+	offerID, err := offerIDStringToHash(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	info := s.sm.GetOngoingSwap(offerID)
 	if info == nil {
 		return errNoOngoingSwap
 	}
 
-	resp.ID = info.ID()
 	resp.Provided = info.Provides()
 	resp.ProvidedAmount = info.ProvidedAmount()
 	resp.ReceivedAmount = info.ReceivedAmount()
 	resp.ExchangeRate = info.ExchangeRate()
 	resp.Status = info.Status().String()
 	return nil
+}
+
+// RefundRequest ...
+type RefundRequest struct {
+	OfferID string `json:"id"`
 }
 
 // RefundResponse ...
@@ -99,8 +122,13 @@ type RefundResponse struct {
 
 // Refund refunds the ongoing swap if we are the ETH provider.
 // TODO: remove in favour of swap_cancel?
-func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundResponse) error {
-	info := s.sm.GetOngoingSwap()
+func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundResponse) error {
+	offerID, err := offerIDStringToHash(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	info := s.sm.GetOngoingSwap(offerID)
 	if info == nil {
 		return errNoOngoingSwap
 	}
@@ -109,13 +137,18 @@ func (s *SwapService) Refund(_ *http.Request, _ *interface{}, resp *RefundRespon
 		return errCannotRefund
 	}
 
-	txHash, err := s.xmrtaker.Refund()
+	txHash, err := s.xmrtaker.Refund(offerID)
 	if err != nil {
 		return fmt.Errorf("failed to refund: %w", err)
 	}
 
 	resp.TxHash = txHash.String()
 	return nil
+}
+
+// GetStageRequest ...
+type GetStageRequest struct {
+	OfferID string `json:"id"`
 }
 
 // GetStageResponse ...
@@ -125,8 +158,13 @@ type GetStageResponse struct {
 }
 
 // GetStage returns the stage of the ongoing swap, if there is one.
-func (s *SwapService) GetStage(_ *http.Request, _ *interface{}, resp *GetStageResponse) error {
-	info := s.sm.GetOngoingSwap()
+func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetStageResponse) error {
+	offerID, err := offerIDStringToHash(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	info := s.sm.GetOngoingSwap(offerID)
 	if info == nil {
 		return errNoOngoingSwap
 	}
@@ -147,14 +185,24 @@ func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffers
 	return nil
 }
 
+// CancelRequest ...
+type CancelRequest struct {
+	OfferID string `json:"id"`
+}
+
 // CancelResponse ...
 type CancelResponse struct {
 	Status types.Status `json:"status"`
 }
 
 // Cancel attempts to cancel the currently ongoing swap, if there is one.
-func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelResponse) error {
-	info := s.sm.GetOngoingSwap()
+func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelResponse) error {
+	offerID, err := offerIDStringToHash(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	info := s.sm.GetOngoingSwap(offerID)
 	if info == nil {
 		return errNoOngoingSwap
 	}
@@ -162,17 +210,27 @@ func (s *SwapService) Cancel(_ *http.Request, _ *interface{}, resp *CancelRespon
 	var ss common.SwapState
 	switch info.Provides() {
 	case types.ProvidesETH:
-		ss = s.xmrtaker.GetOngoingSwapState()
+		ss = s.xmrtaker.GetOngoingSwapState(offerID)
 	case types.ProvidesXMR:
-		ss = s.xmrmaker.GetOngoingSwapState()
+		ss = s.xmrmaker.GetOngoingSwapState(offerID)
 	}
 
 	if err := ss.Exit(); err != nil {
 		return err
 	}
-	s.net.CloseProtocolStream()
+	s.net.CloseProtocolStream(offerID)
 
 	info = s.sm.GetPastSwap(info.ID())
 	resp.Status = info.Status()
 	return nil
+}
+
+func offerIDStringToHash(s string) (types.Hash, error) {
+	offerIDBytes, err := hex.DecodeString(s)
+	if err != nil {
+		return types.Hash{}, err
+	}
+	var offerID types.Hash
+	copy(offerID[:], offerIDBytes)
+	return offerID, nil
 }

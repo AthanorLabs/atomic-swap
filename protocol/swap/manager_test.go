@@ -10,43 +10,42 @@ import (
 
 func TestManager_AddSwap_Ongoing(t *testing.T) {
 	m := NewManager().(*manager)
-	info := NewInfo(types.ProvidesXMR, 1, 1, 0.1, types.ExpectingKeys, nil)
+	info := NewInfo(types.Hash{}, types.ProvidesXMR, 1, 1, 0.1, types.ExpectingKeys, nil)
 
 	err := m.AddSwap(info)
 	require.NoError(t, err)
 	err = m.AddSwap(info)
-	require.Equal(t, errHaveOngoingSwap, err)
-	require.Equal(t, info, m.GetOngoingSwap())
+	require.NoError(t, err)
+	require.Equal(t, info, m.GetOngoingSwap(types.Hash{}))
 	require.NotNil(t, m.ongoing)
 
-	m.CompleteOngoingSwap()
-	require.Nil(t, m.ongoing)
-	require.Equal(t, []uint64{0}, m.GetPastIDs())
-	require.Equal(t, uint64(1), nextID)
+	m.CompleteOngoingSwap(types.Hash{})
+	require.Equal(t, 0, len(m.ongoing))
+	require.Equal(t, []types.Hash{{}}, m.GetPastIDs())
 
-	m.CompleteOngoingSwap()
+	m.CompleteOngoingSwap(types.Hash{})
 }
 
 func TestManager_AddSwap_Past(t *testing.T) {
 	m := NewManager().(*manager)
 
 	info := &Info{
-		id:     1,
+		id:     types.Hash{1},
 		status: types.CompletedSuccess,
 	}
 
 	err := m.AddSwap(info)
 	require.NoError(t, err)
-	require.NotNil(t, m.GetPastSwap(1))
+	require.NotNil(t, m.GetPastSwap(types.Hash{1}))
 
 	info = &Info{
-		id:     2,
+		id:     types.Hash{2},
 		status: types.CompletedSuccess,
 	}
 
 	err = m.AddSwap(info)
 	require.NoError(t, err)
-	require.NotNil(t, m.GetPastSwap(2))
+	require.NotNil(t, m.GetPastSwap(types.Hash{2}))
 
 	ids := m.GetPastIDs()
 	require.Equal(t, 2, len(ids))

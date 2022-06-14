@@ -320,7 +320,7 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	start := time.Now()
 	log.Infof("node %d taking offer %s", d.idx, offer.GetID().String())
 
-	_, takerStatusCh, err := wsc.TakeOfferAndSubscribe(peer,
+	takerStatusCh, err := wsc.TakeOfferAndSubscribe(peer,
 		offer.GetID().String(), providesAmount)
 	if err != nil {
 		d.errCh <- err
@@ -370,7 +370,7 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 
 	defer wsc.Close()
 
-	offerID, takenCh, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmount,
+	offerID, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmount,
 		maxProvidesAmount,
 		getRandomExchangeRate(),
 	)
@@ -393,16 +393,6 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 	}
 
 	log.Infof("node %d made offer %s", d.idx, offerID)
-
-	select {
-	case <-done:
-		return
-	case taken := <-takenCh:
-		if taken == nil {
-			log.Warn("got nil from takenCh")
-			return
-		}
-	}
 
 	d.swapMu.Lock()
 	defer d.swapMu.Unlock()

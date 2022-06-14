@@ -11,7 +11,6 @@ import (
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
@@ -61,7 +60,6 @@ type swapState struct {
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
 	t0, t1         time.Time
-	txOpts         *bind.TransactOpts
 
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
@@ -81,18 +79,13 @@ type swapState struct {
 
 func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statusCh chan types.Status, infofile string,
 	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
-	txOpts, err := b.TxOpts()
-	if err != nil {
-		return nil, err
-	}
-
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
 	if statusCh == nil {
 		statusCh = make(chan types.Status, 7)
 	}
 	statusCh <- stage
-	info := pswap.NewInfo(types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
+	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
 		exchangeRate, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
@@ -108,7 +101,6 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 		infofile:            infofile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
-		txOpts:              txOpts,
 		info:                info,
 		statusCh:            statusCh,
 		done:                make(chan struct{}),
@@ -144,7 +136,7 @@ func (s *swapState) ReceivedAmount() float64 {
 }
 
 // ID returns the ID of the swap
-func (s *swapState) ID() uint64 {
+func (s *swapState) ID() types.Hash {
 	return s.info.ID()
 }
 
@@ -177,7 +169,7 @@ func (s *swapState) exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap()
+		s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
@@ -188,13 +180,13 @@ func (s *swapState) exit() error {
 	}()
 
 	if s.info.Status() == types.CompletedSuccess {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%d**", s.ID())
+		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
 		log.Info(str)
 		return nil
 	}
 
 	if s.info.Status() == types.CompletedRefund {
-		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%d**", s.ID())
+		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
 		log.Info(str)
 		return nil
 	}
@@ -274,6 +266,8 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	}
 
 	// TODO: check balance
+	s.LockClient()
+	defer s.UnlockClient()
 	return monero.CreateMoneroWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
 }
 
@@ -461,6 +455,9 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 	kp := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys)
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
+	s.LockClient()
+	defer s.UnlockClient()
+
 	balance, err := s.GetBalance(0)
 	if err != nil {
 		return "", err
@@ -516,7 +513,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
-	txHash, _, err := s.Claim(s.contractSwap, sc)
+	txHash, _, err := s.Claim(s.ID(), s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

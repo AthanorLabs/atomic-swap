@@ -9,12 +9,21 @@ import (
 )
 
 // Cancel calls swap_cancel.
-func (c *Client) Cancel() (types.Status, error) {
+func (c *Client) Cancel(id string) (types.Status, error) {
 	const (
 		method = "swap_cancel"
 	)
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
+	req := &rpc.CancelRequest{
+		OfferID: id,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return 0, err
+	}
+
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
 	if err != nil {
 		return 0, err
 	}
