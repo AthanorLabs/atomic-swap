@@ -112,7 +112,7 @@
         swapError = e.message
       })
       .finally(() => {
-        webSocket.close()
+       // webSocket.close()
         isLoadingSwap = false
       })
   }

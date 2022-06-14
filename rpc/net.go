@@ -122,10 +122,14 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return nil, "", err
 	}
 
+	log.Infof("takeOffer")
+
 	queryResp, err := s.net.Query(who)
 	if err != nil {
 		return nil, "", err
 	}
+
+	log.Infof("queryResp %s", queryResp)
 
 	var (
 		found bool
@@ -143,6 +147,8 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return nil, "", errNoOfferWithID
 	}
 
+	log.Infof("initiating protocol")
+
 	swapState, err := s.xmrtaker.InitiateProtocol(providesAmount, offer)
 	if err != nil {
 		return nil, "", err
@@ -155,6 +161,8 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
+
+	log.Infof("sending init message")
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
 		_ = swapState.Exit()
