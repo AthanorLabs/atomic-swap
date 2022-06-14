@@ -1,4 +1,4 @@
-.PHONY: lint test install build build-dleq
+.PHONY: lint test install build build-dleq mock
 all: build-dleq install
 
 lint: 
@@ -22,3 +22,6 @@ build-all:
 	
 build-dleq:
 	./scripts/install-rust.sh && cd farcaster-dleq && cargo build --release && cd ..
+
+mock:
+	go generate -run mockgen ./...

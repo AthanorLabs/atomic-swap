@@ -32,12 +32,11 @@ func checkOriginFunc(r *http.Request) bool {
 }
 
 type wsServer struct {
-	ctx      context.Context
-	sm       SwapManager
-	ns       *NetService
-	backend  ProtocolBackend
-	txsOutCh <-chan *txsender.Transaction
-	txsInCh  chan<- ethcommon.Hash
+	ctx     context.Context
+	sm      SwapManager
+	ns      *NetService
+	backend ProtocolBackend
+	signer  *txsender.ExternalSender
 }
 
 func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend,
@@ -47,11 +46,7 @@ func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend Pr
 		sm:      sm,
 		ns:      ns,
 		backend: backend,
-	}
-
-	if signer != nil {
-		s.txsOutCh = signer.OngoingCh()
-		s.txsInCh = signer.IncomingCh()
+		signer:  signer,
 	}
 
 	return s
@@ -139,12 +134,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		id, ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
+		ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, id, ch, infofile)
+		return s.subscribeTakeOffer(s.ctx, conn, ch, infofile)
 	case subscribeMakeOffer:
 		var params *rpctypes.MakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -163,8 +158,9 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	}
 }
 
-func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID, ethAddress, xmrAddr string) error {
-	if s.txsOutCh == nil {
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerIDStr, ethAddress,
+	xmrAddr string) error {
+	if s.signer == nil {
 		return errSignerNotRequired
 	}
 
@@ -173,16 +169,35 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	}
 
 	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
-	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr))
+
+	offerID, err := offerIDStringToHash(offerIDStr)
+	if err != nil {
+		return err
+	}
+
+	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
+
+	s.signer.AddID(offerID)
+	defer s.signer.DeleteID(offerID)
+
+	txsOutCh, err := s.signer.OngoingCh(offerID)
+	if err != nil {
+		return err
+	}
+
+	txsInCh, err := s.signer.IncomingCh(offerID)
+	if err != nil {
+		return err
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case tx := <-s.txsOutCh:
+		case tx := <-txsOutCh:
 			log.Debugf("outbound tx: %v", tx)
 			resp := &rpctypes.SignerResponse{
-				OfferID: offerID,
+				OfferID: offerIDStr,
 				To:      tx.To.String(),
 				Data:    tx.Data,
 				Value:   tx.Value,
@@ -203,19 +218,18 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 				return fmt.Errorf("failed to unmarshal parameters: %w", err)
 			}
 
-			if params.OfferID != offerID {
+			if params.OfferID != offerIDStr {
 				return fmt.Errorf("got unexpected offerID %s, expected %s", params.OfferID, offerID)
 			}
 
-			s.txsInCh <- ethcommon.HexToHash(params.TxHash)
+			txsInCh <- ethcommon.HexToHash(params.TxHash)
 		}
 	}
 }
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	id uint64, statusCh <-chan types.Status, infofile string) error {
+	statusCh <-chan types.Status, infofile string) error {
 	resp := &rpctypes.TakeOfferResponse{
-		ID:       id,
 		InfoFile: infofile,
 	}
 
@@ -258,30 +272,6 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 		return err
 	}
 
-	// then check for swap ID to be sent when swap is initiated
-	var taken bool
-	for {
-		if taken {
-			break
-		}
-
-		select {
-		case id := <-offerExtra.IDCh:
-			idMsg := map[string]uint64{
-				"id": id,
-			}
-
-			if err := writeResponse(conn, idMsg); err != nil {
-				return err
-			}
-
-			taken = true
-		case <-ctx.Done():
-			return nil
-		}
-	}
-
-	// finally, read the swap's status
 	for {
 		select {
 		case status, ok := <-offerExtra.StatusCh:
@@ -309,8 +299,8 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 // subscribeSwapStatus writes the swap's stage to the connection every time it updates.
 // when the swap completes, it writes the final status then closes the connection.
 // example: `{"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}`
-func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id uint64) error {
-	info := s.sm.GetOngoingSwap()
+func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id types.Hash) error {
+	info := s.sm.GetOngoingSwap(id)
 	if info == nil {
 		return s.writeSwapExitStatus(conn, id)
 	}
@@ -340,7 +330,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 	}
 }
 
-func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id uint64) error {
+func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) error {
 	info := s.sm.GetPastSwap(id)
 	if info == nil {
 		return errNoSwapWithID

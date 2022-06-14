@@ -178,7 +178,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			// send NotifyRefund msg
 			if err := s.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
-			}); err != nil {
+			}, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
 		case <-s.xmrLockedCh:
@@ -212,6 +212,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	if msg.Address != string(kp.Address(s.Env())) {
 		return nil, fmt.Errorf("address received in message does not match expected address")
 	}
+
+	s.LockClient()
+	defer s.UnlockClient()
 
 	t := time.Now().Format("2006-Jan-2-15:04:05")
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
@@ -314,7 +317,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			// send NotifyRefund msg
 			if err = s.SendSwapMessage(&message.NotifyRefund{
 				TxHash: txhash.String(),
-			}); err != nil {
+			}, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
 

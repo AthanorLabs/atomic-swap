@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -48,8 +49,13 @@ func (o *Offer) GetID() Hash {
 		panic(err)
 	}
 
-	o.ID = sha3.Sum256(b)
-	// TODO: add some randomness in here
+	var buf [8]byte
+	_, err = rand.Read(buf[:])
+	if err != nil {
+		panic(err)
+	}
+
+	o.ID = sha3.Sum256(append(b, buf[:]...))
 	return o.ID
 }
 
@@ -66,7 +72,6 @@ func (o *Offer) String() string {
 
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
-	IDCh     chan uint64
 	StatusCh chan Status
 	InfoFile string
 }
