@@ -22,6 +22,10 @@
   <LayoutGrid>
     <Spacer />
     <Cell spanDevices={{ desktop: 8, tablet: 6, phone: 12 }}>
+        <Cell spanDevices={{ desktop: 8, tablet: 6, phone: 12 }}>
+          <StatCard title="ETH-XMR Atomic Swap" content="This is currently a testnet swap between Goerli and Stagenet. Please ensure your Metamask is unlocked and set to the Goerli network before using." />
+        </Cell>
+        <br />
       <InnerGrid>
         <Cell spanDevices={{ desktop: 2, tablet: 4, phone: 12 }}>
           <StatCard title="Peers" content={$peers.length.toString()} />
@@ -34,7 +38,7 @@
         </Cell>
         <Cell class="metamask">
           {#if $currentAccount}
-            Account: {$currentAccount}
+            <StatCard title="Account" content={$currentAccount} />
           {:else}
             <Button on:click={connectMetamask}>Connect Metamask</Button>
           {/if}
