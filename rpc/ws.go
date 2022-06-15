@@ -193,7 +193,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 
 	for {
 		select {
-		// TODO: check if conn closes
+		// TODO: check if conn closes or swap exited
 		case <-time.After(time.Minute): // TODO: vary timeout based on env
 			_ = conn.Close()
 			return fmt.Errorf("signer timed out")

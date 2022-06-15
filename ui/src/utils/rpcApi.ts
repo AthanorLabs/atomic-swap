@@ -22,6 +22,7 @@ export const rpcRequest = <TypeResult = any>(method: string, params: Record<stri
         { headers }
     )
         .then(res => {
+            // TODO: check res.data.error and propagate
             console.log(res.data);
             return Promise.resolve(res.data);
         })
