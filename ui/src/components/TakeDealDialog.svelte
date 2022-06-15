@@ -1,6 +1,7 @@
 <script lang="ts">
   import Dialog, { Title, Content, Actions } from '@smui/dialog'
   import Button, { Label } from '@smui/button'
+  import type { CancelResult } from 'src/types/Cancel'
   import type { NetTakeOfferSyncResult } from 'src/types/NetTakeOfferSync'
   import { getCorrespondingToken, rpcRequest } from 'src/utils'
   import { selectedOffer } from '../stores/offerStore'
@@ -55,10 +56,10 @@
       console.log('opened')
       console.log('sending ws signer msg')
       const req = {
+        jsonRPC: '2.0',
+        id: 0,
         method: 'signer_subscribe',
         params: {
-          jsonRPC: '2.0',
-          id: '0',
           offerID,
           ethAddress: $currentAccount,
           xmrAddress,
@@ -72,6 +73,15 @@
       console.log('message to sign:', msg.data)
       const txHash = await sign(msg.data)
       console.log('signed txHash', txHash)
+      if (txHash == "") {
+        // tx failed, cancel swap
+        rpcRequest<CancelResult | undefined>('swap_cancel', {
+          offerID,
+        }).then( ({result}) => {
+          console.log("cancelled swap")
+        })
+      }
+
       const out = {
         offerID,
         txHash,

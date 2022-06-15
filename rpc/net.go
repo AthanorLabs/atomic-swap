@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
@@ -122,21 +123,17 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return nil, "", err
 	}
 
-	log.Infof("takeOffer")
-
 	queryResp, err := s.net.Query(who)
 	if err != nil {
 		return nil, "", err
 	}
-
-	log.Infof("queryResp %s", queryResp)
 
 	var (
 		found bool
 		offer *types.Offer
 	)
 	for _, maybeOffer := range queryResp.Offers {
-		if maybeOffer.GetID().String() == offerID {
+		if strings.Compare(maybeOffer.GetID().String(), offerID) == 0 {
 			found = true
 			offer = maybeOffer
 			break
@@ -147,11 +144,9 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return nil, "", errNoOfferWithID
 	}
 
-	log.Infof("initiating protocol")
-
 	swapState, err := s.xmrtaker.InitiateProtocol(providesAmount, offer)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("failed to initiate protocol: %w", err)
 	}
 
 	skm, err := swapState.SendKeysMessage()
@@ -161,8 +156,6 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
-
-	log.Infof("sending init message")
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
 		_ = swapState.Exit()
