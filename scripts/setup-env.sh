@@ -3,12 +3,12 @@
 # install monero and run daemon and wallet RPC servers for alice and bob
 bash ./scripts/install-monero-linux.sh
 echo "starting monerod..."
-./monero-x86_64-linux-gnu-v0.17.3.2/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-port 18081 &
+./monero-x86_64-linux-gnu-v0.17.3.0/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-port 18081 --keep-fakechain &
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
 mkdir bob-test-keys
-./monero-x86_64-linux-gnu-v0.17.3.2/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys &> monero-wallet-cli-bob.log &
+./monero-x86_64-linux-gnu-v0.17.3.0/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys &> monero-wallet-cli-bob.log &
 MONERO_WALLET_CLI_BOB_PID=$!
 
 sleep 5
@@ -16,7 +16,7 @@ curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"cre
 
 echo "starting monero-wallet-rpc on port 18084..."
 mkdir alice-test-keys
-./monero-x86_64-linux-gnu-v0.17.3.2/monero-wallet-rpc --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys &> monero-wallet-cli-alice.log &
+./monero-x86_64-linux-gnu-v0.17.3.0/monero-wallet-rpc --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys &> monero-wallet-cli-alice.log &
 MONERO_WALLET_CLI_ALICE_PID=$!
 
 # install ganache and run 

@@ -1,73 +1,69 @@
-import {providers, Contract, utils} from "ethers"
+import {providers, utils} from "ethers"
 import detectEthereumProvider from "@metamask/detect-provider"
 import { writable } from 'svelte/store';
-import SwapFactory from "../../../ethereum/artifacts/contracts/SwapFactory.sol/SwapFactory.json"
 
-ethereum.on('chainChanged', (_chainId) => window.location.reload());
-ethereum.on('accountsChanged', handleAccountsChanged);
+export const currentAccount = writable("");
 
-export const currentAccount = writable(null);
-
-export const connectAccount = async () => {
-	const provider = (await detectEthereumProvider()) as any
-	if (provider) {
-		startApp(provider);
-		await provider.request({ method: "eth_accounts" }).then(handleAccountsChanged)
-		  .catch((err) => {
-		    // Some unexpected error.
-		    // For backwards compatibility reasons, if no accounts are available,
-		    // eth_accounts will return an empty array.
-		    console.error(err);
-		  });
-		  await initialize()
-	} else {
-		console.error("Metamask is not installed")
+// detect provider using @metamask/detect-provider
+detectEthereumProvider()
+.then((provider) => {
+    if (!provider) {
+		console.log('Please install MetaMask!');
+		return
 	}
+        provider.on('accountsChanged', handleAccountsChanged);
+		provider.on('chainChanged', () => window.location.reload());
+
+        checkConnection();
+})
+
+export function connectAccount() {
+	if (!window.ethereum) return
+
+    window.ethereum
+        .request({ method: 'eth_requestAccounts'})
+        .then(handleAccountsChanged)
+        .catch((err: any) => {
+            if (err.code === 4001) {
+                console.log('Please connect to MetaMask.');
+            } else {
+                console.error(err);
+            }
+        });
 }
 
-function startApp(provider) {
-  // If the provider returned by detectEthereumProvider is not the same as
-  // window.ethereum, something is overwriting it, perhaps another wallet.
-  if (provider !== window.ethereum) {
-    console.error('Do you have multiple wallets installed?');
-  }
-  // Access the decentralized web!
+function checkConnection() {
+	if (!window.ethereum) return
+
+    window.ethereum
+        .request({ method: 'eth_accounts' })
+        .then(handleAccountsChanged)
+        .catch(console.error);
 }
 
-// Note that this event is emitted on page load.
-// If the array of accounts is non-empty, you're already
-// connected.
-ethereum.on('accountsChanged', handleAccountsChanged);
 
-// For now, 'eth_accounts' will continue to always return an array
-function handleAccountsChanged(accounts) {
+const handleAccountsChanged = (accounts: string[]) => {
   if (accounts.length === 0) {
     // MetaMask is locked or the user has not connected any accounts
     console.log('Please connect to MetaMask.');
-  } else if (accounts[0] !== currentAccount) {
-    currentAccount.set(accounts[0]);
-   	console.log(currentAccount)
-   	console.log(accounts[0])
-    // Do any other work!
+	return 
   }
+
+  currentAccount.set(accounts[0]);
 }
 
-let ethersProvider
-let chainId
-let contract
-let signer
-let from
+export const sign = async (msg: string) => {
+	if(!window.ethereum){
+		console.error('no window.ethereum')
+		return
+	}
 
-const initialize = async () => {
-	ethersProvider = new providers.Web3Provider(window.ethereum, 'any');
-	window.ethersProvider = ethersProvider
-	signer = ethersProvider.getSigner()
-	console.log("signer:", await signer.getAddress())
-}
-
-export const sign = async(msg) => {
-	let tx = JSON.parse(msg)
+	const ethersProvider = new providers.Web3Provider(window.ethereum, 'any');
+	const tx = JSON.parse(msg)
+	const signer = ethersProvider.getSigner()
+	console.log('signer...', signer)
 	let value
+
 	if (tx.value != "") {
 		value = utils.parseEther(tx.value)
 	}
@@ -76,9 +72,9 @@ export const sign = async(msg) => {
 	  {
 	    from: signer.getAddress(),
 	    to: tx.to,
-	    gasPrice: window.ethersProvider.getGasPrice(), 
+	    gasPrice: ethersProvider.getGasPrice(), 
 	    gasLimit: "200000",
-	    value: value,
+	    value,
 	    data: tx.data,
 	  }
 
