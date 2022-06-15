@@ -13,11 +13,8 @@
     getPeers()
   }
 
-  let account = null;
-
   const connectMetamask = () => {
     connectAccount()
-    account = $currentAccount
   }
 </script>
 
@@ -36,7 +33,11 @@
           <Button on:click={handleRefreshClick}>Refresh</Button>
         </Cell>
         <Cell class="metamask">
-          <Button on:click={connectMetamask}>{account === null ? 'Connect Metamask' : `Metamask connected: ${account}`}</Button>
+          {#if $currentAccount}
+            Account: {$currentAccount}
+          {:else}
+            <Button on:click={connectMetamask}>Connect Metamask</Button>
+          {/if}
         </Cell>
       </InnerGrid>
       <br />

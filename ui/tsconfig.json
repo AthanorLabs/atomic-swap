@@ -2,7 +2,8 @@
   "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
     "strict": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "esModuleInterop": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules/*", "__sapper__/*", "public/*"]

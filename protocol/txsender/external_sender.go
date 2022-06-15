@@ -104,7 +104,7 @@ func (s *ExternalSender) AddID(id types.Hash) {
 	s.Lock()
 	defer s.Unlock()
 	_, has := s.swaps[id]
-	if !has {
+	if has {
 		return
 	}
 
