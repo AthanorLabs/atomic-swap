@@ -30,7 +30,7 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	setReady bool) (ethcommon.Address, *swapfactory.SwapFactory, [32]byte, swapfactory.SwapFactorySwap) {
 	tm := big.NewInt(defaultTimeout)
 
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRTaker)
 	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
@@ -42,7 +42,7 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
-	pkXMRMaker, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pkXMRMaker, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	nonce := big.NewInt(0)
@@ -126,7 +126,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
-	b := newBackend(t, addr, contract, common.DefaultPrivKeyXMRMaker)
+	b := newBackend(t, addr, contract, common.TestPrivKeyXMRMaker)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromXMRMakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
@@ -145,7 +145,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
-	b := newBackend(t, addr, contract, common.DefaultPrivKeyXMRMaker)
+	b := newBackend(t, addr, contract, common.TestPrivKeyXMRMaker)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromXMRMakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
@@ -164,7 +164,7 @@ func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
 
 	refundKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, [32]byte{}, refundKey, false)
-	b := newBackend(t, addr, contract, common.DefaultPrivKeyXMRTaker)
+	b := newBackend(t, addr, contract, common.TestPrivKeyXMRTaker)
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromXMRTakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),

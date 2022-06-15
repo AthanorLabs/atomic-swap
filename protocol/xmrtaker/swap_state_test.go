@@ -40,7 +40,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 }
 
 func newBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRTaker)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
@@ -71,7 +71,7 @@ func newBackend(t *testing.T) backend.Backend {
 }
 
 func newXMRMakerBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)

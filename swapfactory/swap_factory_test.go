@@ -24,7 +24,7 @@ var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
-	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pkA, err := crypto.HexToECDSA(common.TestPrivKeyXMRTaker)
 	require.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)

@@ -24,7 +24,7 @@ func TestCheckContractCode(t *testing.T) {
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))

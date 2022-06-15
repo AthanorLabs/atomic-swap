@@ -47,7 +47,7 @@ var (
 )
 
 func newTestXMRMaker(t *testing.T) *Instance {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRMaker)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)

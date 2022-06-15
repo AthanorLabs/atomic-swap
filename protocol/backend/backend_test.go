@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"testing"
 
@@ -14,8 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const defaultXMRTakerAddress = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
-
 func TestWaitForReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -23,10 +22,12 @@ func TestWaitForReceipt(t *testing.T) {
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	privKey, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRTaker)
 	require.NoError(t, err)
 
-	nonce, err := ec.PendingNonceAt(ctx, ethcommon.HexToAddress(defaultXMRTakerAddress))
+	publicKey := privKey.Public().(*ecdsa.PublicKey)
+
+	nonce, err := ec.PendingNonceAt(ctx, ethcrypto.PubkeyToAddress(*publicKey))
 	require.NoError(t, err)
 
 	to := ethcommon.Address{}
@@ -37,7 +38,7 @@ func TestWaitForReceipt(t *testing.T) {
 		Gas:   21000,
 	}
 
-	tx, err := ethtypes.SignNewTx(pk,
+	tx, err := ethtypes.SignNewTx(privKey,
 		ethtypes.LatestSignerForChainID(big.NewInt(common.GanacheChainID)),
 		txInner,
 	)

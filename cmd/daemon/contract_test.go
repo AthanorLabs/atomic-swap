@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetOrDeploySwapFactory(t *testing.T) {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeySwapFactory)
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
