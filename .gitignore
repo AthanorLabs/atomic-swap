@@ -13,6 +13,7 @@
 # Monero dir
 monero.tar.bz2
 /monero-x86*
+/monero-bin
 
 # bin
 swapcli

@@ -13,7 +13,7 @@ killall -v swapd;
 pkill -e -f swapcli;
 
 echo "start ganache-cli"
-ganache-cli -d &> $LOG_DIR/ganache-cli.log &
+ganache-cli --deterministic &> $LOG_DIR/ganache-cli.log &
 
 echo "move to $MONERO_DIR"
 cd $MONERO_DIR 

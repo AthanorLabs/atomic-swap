@@ -13,7 +13,7 @@ Note: the `scripts/install-monero-linux.sh` script will download the monero bina
 
 Start ganache-cli with determinstic keys:
 ```bash
-ganache-cli -d
+ganache-cli --deterministic
 ```
 
 Start monerod for regtest, this binary is in the monero bin directory:

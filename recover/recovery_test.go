@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var defaulTimeout int64 = 5 // 5 seconds
+var defaultTimeout int64 = 5 // 5 seconds
 
 func newRecoverer(t *testing.T) *recoverer {
 	r, err := NewRecoverer(common.Development, common.DefaultXMRMakerMoneroEndpoint, common.DefaultEthEndpoint)
@@ -28,7 +28,7 @@ func newRecoverer(t *testing.T) *recoverer {
 
 func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	setReady bool) (ethcommon.Address, *swapfactory.SwapFactory, [32]byte, swapfactory.SwapFactorySwap) {
-	tm := big.NewInt(defaulTimeout)
+	tm := big.NewInt(defaultTimeout)
 
 	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
