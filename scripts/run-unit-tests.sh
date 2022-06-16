@@ -6,7 +6,7 @@ echo "starting monerod..."
 ./monero-bin/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081
 sleep 5
 
-echo -e "starting monero-wallet-rpc on port 18083..."
+echo "starting monero-wallet-rpc on port 18083..."
 mkdir bob-test-keys
 ./monero-bin/monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys &> monero-wallet-cli-bob.log &
 MONERO_WALLET_CLI_BOB_PID=$!
