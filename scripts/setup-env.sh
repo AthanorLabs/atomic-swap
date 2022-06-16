@@ -3,7 +3,7 @@
 # install monero and run daemon and wallet RPC servers for alice and bob
 ./scripts/install-monero-linux.sh
 echo "starting monerod..."
-./monero-bin/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081 &
+./monero-bin/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081 --keep-fakechain
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
@@ -21,8 +21,8 @@ MONERO_WALLET_CLI_ALICE_PID=$!
 
 # install ganache and run 
 echo "installing and starting ganache-cli..."
-if ! command -v golangci-lint &> /dev/null; then
-	npm i -g ganache-cli
+if ! command -v ganache-cli &> /dev/null; then
+	echo "Please install ganache-cli and place it in your path"
 fi
 export NODE_OPTIONS=--max_old_space_size=8192
 ganache-cli --deterministic &> ganache-cli.log &
