@@ -46,9 +46,9 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker,
 
 		log.Warn("no ethereum private key file provided, using ganache deterministic key")
 		if devXMRMaker {
-			ethPrivKeyHex = common.TestPrivKeyXMRMaker
+			ethPrivKeyHex = common.DefaultPrivKeyXMRMaker
 		} else {
-			ethPrivKeyHex = common.TestPrivKeyXMRTaker
+			ethPrivKeyHex = common.DefaultPrivKeyXMRTaker
 		}
 	}
 

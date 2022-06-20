@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestGetOrDeploySwapFactory(t *testing.T) {
-	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeySwapFactory)
+	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)

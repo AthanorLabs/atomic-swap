@@ -16,6 +16,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -47,7 +48,7 @@ var (
 )
 
 func newTestXMRMaker(t *testing.T) *Instance {
-	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
@@ -66,7 +67,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
 		SwapManager:          pswap.NewManager(),

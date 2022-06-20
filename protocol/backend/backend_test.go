@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -22,7 +23,7 @@ func TestWaitForReceipt(t *testing.T) {
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	privKey, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRTaker)
+	privKey, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
 	publicKey := privKey.Public().(*ecdsa.PublicKey)
@@ -32,10 +33,11 @@ func TestWaitForReceipt(t *testing.T) {
 
 	to := ethcommon.Address{}
 	txInner := &ethtypes.LegacyTx{
-		Nonce: nonce,
-		To:    &to,
-		Value: big.NewInt(99),
-		Gas:   21000,
+		Nonce:    nonce,
+		To:       &to,
+		Value:    big.NewInt(99),
+		Gas:      21000,
+		GasPrice: big.NewInt(2000000000),
 	}
 
 	tx, err := ethtypes.SignNewTx(privKey,

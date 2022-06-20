@@ -7,7 +7,7 @@ echo "starting monerod..."
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
-mkdir bob-test-keys
+mkdir -p bob-test-keys
 ./monero-bin/monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys &> monero-wallet-cli-bob.log &
 MONERO_WALLET_CLI_BOB_PID=$!
 
@@ -16,17 +16,19 @@ curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"cre
 echo
 
 echo "starting monero-wallet-rpc on port 18084..."
-mkdir alice-test-keys
+mkdir -p alice-test-keys
 ./monero-bin/monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys &> monero-wallet-cli-alice.log &
 MONERO_WALLET_CLI_ALICE_PID=$!
 
-# install ganache and run 
-echo "installing and starting ganache-cli..."
-if ! command -v ganache-cli &> /dev/null; then
-	echo "Please install ganache-cli and place it in your path"
+# install ganache-cli and run
+GANACHE_EXEC="$(npm config get prefix)/bin/ganache-cli"
+if [[ ! -x "${GANACHE_EXEC}" ]]; then
+	echo "installing ganache-cli"
+	npm install --location=global ganache-cli
 fi
+echo "starting ganache-cli"
 export NODE_OPTIONS=--max_old_space_size=8192
-ganache-cli --deterministic &> ganache-cli.log &
+"${GANACHE_EXEC}" --deterministic --accounts=20 &> ganache-cli.log &
 GANACHE_CLI_PID=$!
 
 # wait for servers to start

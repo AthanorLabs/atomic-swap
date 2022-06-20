@@ -134,7 +134,7 @@ func (m *QueryResponse) Type() Type {
 	return QueryResponseType
 }
 
-// The below messages are sawp protocol messages, exchanged after the swap has been agreed
+// The below messages are swap protocol messages, exchanged after the swap has been agreed
 // upon by both sides.
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol

@@ -17,6 +17,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
+	"github.com/noot/atomic-swap/tests"
 )
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
@@ -24,7 +25,7 @@ var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
-	pkA, err := crypto.HexToECDSA(common.TestPrivKeyXMRTaker)
+	pkA, err := crypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)

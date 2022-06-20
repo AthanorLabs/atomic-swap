@@ -3,23 +3,29 @@
 ### Requirements
 
 - go 1.17+ (see [build instructions](./build.md) to download Go.)
-- ganache-cli (can be installed with `npm i -g ganache-cli`) I suggest using nvm to install npm: https://github.com/nvm-sh/nvm#installing-and-updating
+- ganache (can be installed with `npm install --location=global ganache-cli`)
 
-Note: this program has only been tested on Ubuntu 20.04.
+These programs and scripts have only been tested on X86-64 Ubuntu 20.04 and 22.04.
+Using nvm is [the suggested way](https://github.com/nvm-sh/nvm#installing-and-updating)
+to install npm. If you install npm using a package manager like snap, ensure the install
+prefix (`npm config get prefix`) is a directory that you have write access to without sudo.
+You can change the directory with the command `npm config set prefix ~/.npm-packages`. See
+[this document](https://github.com/sindresorhus/guides/blob/main/npm-global-without-sudo.md)
+if you want a more sophisticated setup.
 
 #### Set up development environment
 
 Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you. You can also check out the `scripts/run-unit-tests.sh` script for the commands needed to setup the environment.
 
-Start ganache-cli with determinstic keys:
+Start ganache-cli with deterministic keys:
 ```bash
-ganache-cli --deterministic
+ganache-cli --deterministic --accounts=20
 ```
 
 Start monerod for regtest, this binary is in the monero bin directory:
 ```bash
-cd ./monero-x86_64-linux-gnu
-./monerod --regtest --fixed-difficulty=1 --rpc-bind-port 18081 --offline
+cd ./monero-bin
+./monerod --regtest --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081 --offline
 ```
 
 Create a wallet for "Bob", who will own XMR later on:
@@ -31,7 +37,7 @@ You do not need to mine blocks, and you can exit the the wallet-cli once Bob's a
 
 Start monero-wallet-rpc for Bob on port 18083. Make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
 ```bash
-./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
+./monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
 ```
 
 Open the wallet:
@@ -61,7 +67,7 @@ This will deposit some XMR in Bob's account.
 
 Start monero-wallet-rpc for Alice on port 18084 (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
 ```bash
-./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
+./monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
 ```
 #### Build and run
 

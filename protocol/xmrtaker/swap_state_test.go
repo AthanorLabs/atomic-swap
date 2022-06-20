@@ -21,6 +21,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -40,13 +41,13 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 }
 
 func newBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.DevelopmentConfig.EthereumChainID))
 	require.NoError(t, err)
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
@@ -58,7 +59,7 @@ func newBackend(t *testing.T) backend.Backend {
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
 		SwapManager:          pswap.NewManager(),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
@@ -71,13 +72,13 @@ func newBackend(t *testing.T) backend.Backend {
 }
 
 func newXMRMakerBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(common.TestPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.DevelopmentConfig.EthereumChainID))
 	require.NoError(t, err)
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
@@ -89,7 +90,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
 		SwapManager:          pswap.NewManager(),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
