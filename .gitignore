@@ -11,9 +11,8 @@
 *.dylib
 
 # Monero dir
-monero.tar.bz2
-/monero-x86*
-/monero-bin
+/monero.tar.bz2
+/monero-*
 
 # bin
 swapcli

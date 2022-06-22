@@ -3,13 +3,15 @@ package xmrtaker
 import (
 	"testing"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestXMRTaker(t *testing.T) *Instance {
-	b := newBackend(t)
+func newTestXMRTaker(t *testing.T, ec *ethclient.Client) *Instance {
+	b := newBackend(t, ec)
 	cfg := &Config{
 		Backend:  b,
 		Basepath: "/tmp/xmrtaker",
@@ -21,7 +23,11 @@ func newTestXMRTaker(t *testing.T) *Instance {
 }
 
 func TestXMRTaker_InitiateProtocol(t *testing.T) {
-	a := newTestXMRTaker(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	a := newTestXMRTaker(t, ec)
 	offer := &types.Offer{
 		ExchangeRate: 1,
 	}

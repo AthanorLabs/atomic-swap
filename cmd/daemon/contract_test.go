@@ -19,6 +19,7 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
 
 	_, addr, err := getOrDeploySwapFactory(ethcommon.Address{},
 		common.Development,

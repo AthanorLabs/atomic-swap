@@ -22,6 +22,7 @@ func TestWaitForReceipt(t *testing.T) {
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
 
 	privKey, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)

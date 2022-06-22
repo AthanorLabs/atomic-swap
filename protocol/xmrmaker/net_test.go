@@ -3,14 +3,20 @@ package xmrmaker
 import (
 	"testing"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/net/message"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
 
 func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
-	b := newTestXMRMaker(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	b := newTestXMRMaker(t, ec)
 
 	offer := &types.Offer{
 		Provides:      types.ProvidesXMR,
@@ -18,7 +24,7 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 		MaximumAmount: 0.002,
 		ExchangeRate:  0.1,
 	}
-	_, err := b.MakeOffer(offer)
+	_, err = b.MakeOffer(offer)
 	require.NoError(t, err)
 
 	msg, _ := newTestXMRTakerSendKeysMessage(t)

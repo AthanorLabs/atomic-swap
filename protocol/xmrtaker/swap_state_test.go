@@ -40,11 +40,8 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 	return nil
 }
 
-func newBackend(t *testing.T) backend.Backend {
+func newBackend(t *testing.T, ec *ethclient.Client) backend.Backend {
 	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
-	require.NoError(t, err)
-
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.DevelopmentConfig.EthereumChainID))
@@ -77,6 +74,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.DevelopmentConfig.EthereumChainID))
 	require.NoError(t, err)
@@ -102,8 +100,8 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 	return b
 }
 
-func newTestInstance(t *testing.T) *swapState {
-	b := newBackend(t)
+func newTestInstance(t *testing.T, ec *ethclient.Client) *swapState {
+	b := newBackend(t, ec)
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1)
 	require.NoError(t, err)
@@ -126,11 +124,15 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}
-	_, _, err := s.HandleProtocolMessage(msg)
+	_, _, err = s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
 	err = s.generateAndSetKeys()
@@ -150,13 +152,17 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 // test the case where XMRTaker deploys and locks her eth, but XMRMaker never locks his monero.
 // XMRTaker should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 
 	// set timeout to 2s
 	s.SetSwapTimeout(time.Second * 2)
 
-	err := s.generateAndSetKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
@@ -189,11 +195,15 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
-	err := s.generateAndSetKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
@@ -222,12 +232,16 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 // test the case where the monero is locked, but XMRMaker never claims.
 // XMRTaker should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 	s.SetSwapTimeout(time.Second * 3)
 
-	err := s.generateAndSetKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
@@ -273,13 +287,17 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyClaimed(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
 	// close swap-deposit-wallet
 	maker := newXMRMakerBackend(t)
-	err := maker.OpenWallet("test-wallet", "")
+	err = maker.OpenWallet("test-wallet", "")
 	require.NoError(t, err)
 
 	// invalid SendKeysMessage should result in an error
@@ -358,21 +376,29 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 }
 
 func TestExit_afterSendKeysMessage(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.SendKeysMessage{}
-	err := s.Exit()
+	err = s.Exit()
 	require.NoError(t, err)
 	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }
 
 func TestExit_afterNotifyXMRLock(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyXMRLock{}
 
-	err := s.generateAndSetKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
@@ -391,11 +417,15 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 }
 
 func TestExit_afterNotifyClaimed(t *testing.T) {
-	s := newTestInstance(t)
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyClaimed{}
 
-	err := s.generateAndSetKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
@@ -414,12 +444,16 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 }
 
 func TestExit_invalidNextMessageType(t *testing.T) {
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
 	// this case shouldn't ever really happen
-	s := newTestInstance(t)
+	s := newTestInstance(t, ec)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
 
-	err := s.generateAndSetKeys()
+	err = s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()

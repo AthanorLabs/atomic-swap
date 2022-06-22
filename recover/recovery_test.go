@@ -39,6 +39,7 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
 
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
@@ -80,12 +81,9 @@ func newSwap(t *testing.T, claimKey, refundKey [32]byte,
 	return addr, contract, swapID, swap
 }
 
-func newBackend(t *testing.T, addr ethcommon.Address, contract *swapfactory.SwapFactory,
+func newBackend(t *testing.T, ec *ethclient.Client, addr ethcommon.Address, contract *swapfactory.SwapFactory,
 	privkey string) backend.Backend {
 	pk, err := ethcrypto.HexToECDSA(privkey)
-	require.NoError(t, err)
-
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
 
 	cfg := &backend.Config{
@@ -125,9 +123,13 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
-	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
+	b := newBackend(t, ec, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromXMRMakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
@@ -144,9 +146,13 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
-	b := newBackend(t, addr, contract, tests.GetTakerTestKey(t))
+	b := newBackend(t, ec, addr, contract, tests.GetTakerTestKey(t))
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromXMRMakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
@@ -163,9 +169,13 @@ func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
 	refundKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, [32]byte{}, refundKey, false)
-	b := newBackend(t, addr, contract, tests.GetTakerTestKey(t))
+	b := newBackend(t, ec, addr, contract, tests.GetTakerTestKey(t))
 
 	r := newRecoverer(t)
 	res, err := r.RecoverFromXMRTakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
