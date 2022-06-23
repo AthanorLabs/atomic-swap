@@ -23,7 +23,7 @@
     <Spacer />
     <Cell spanDevices={{ desktop: 8, tablet: 6, phone: 12 }}>
         <Cell spanDevices={{ desktop: 8, tablet: 6, phone: 12 }}>
-          <StatCard title="ETH-XMR Atomic Swap" content="This is currently a testnet swap between Goerli and Stagenet. Please ensure your Metamask is unlocked and set to the Goerli network before swapping. DO NOT REFRESH THE PAGE WHILE A SWAP IS HAPPENING!" />
+          <StatCard title="ETH-XMR Atomic Swap" content="Please ensure your Metamask is unlocked and set to the correct network before swapping. DO NOT REFRESH THE PAGE WHILE A SWAP IS HAPPENING!" />
         </Cell>
         <br />
       <InnerGrid>
