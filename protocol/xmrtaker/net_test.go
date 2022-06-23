@@ -1,6 +1,7 @@
 package xmrtaker
 
 import (
+	"path"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -14,7 +15,7 @@ func newTestXMRTaker(t *testing.T, ec *ethclient.Client) *Instance {
 	b := newBackend(t, ec)
 	cfg := &Config{
 		Backend:  b,
-		Basepath: "/tmp/xmrtaker",
+		Basepath: path.Join(t.TempDir(), "xmrtaker"),
 	}
 
 	xmrtaker, err := NewInstance(cfg)

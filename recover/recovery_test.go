@@ -3,6 +3,7 @@ package recovery
 import (
 	"context"
 	"math/big"
+	"path"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -132,7 +133,8 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 	b := newBackend(t, ec, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromXMRMakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
+	basePath := path.Join(t.TempDir(), "test-infofile")
+	res, err := r.RecoverFromXMRMakerSecretAndContract(b, basePath, keys.PrivateKeyPair.SpendKey().Hex(),
 		addr.String(), swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Claimed)
@@ -155,7 +157,8 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 	b := newBackend(t, ec, addr, contract, tests.GetTakerTestKey(t))
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromXMRMakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
+	basePath := path.Join(t.TempDir(), "test-infofile")
+	res, err := r.RecoverFromXMRMakerSecretAndContract(b, basePath, keys.PrivateKeyPair.SpendKey().Hex(),
 		addr.String(), swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Claimed)
@@ -178,7 +181,8 @@ func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
 	b := newBackend(t, ec, addr, contract, tests.GetTakerTestKey(t))
 
 	r := newRecoverer(t)
-	res, err := r.RecoverFromXMRTakerSecretAndContract(b, "/tmp/test-infofile", keys.PrivateKeyPair.SpendKey().Hex(),
+	basePath := path.Join(t.TempDir(), "test-infofile")
+	res, err := r.RecoverFromXMRTakerSecretAndContract(b, basePath, keys.PrivateKeyPair.SpendKey().Hex(),
 		swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Refunded)

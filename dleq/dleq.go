@@ -90,7 +90,7 @@ type FarcasterDLEq struct{}
 
 // Prove generates a new DLEq proof
 func (d *FarcasterDLEq) Prove() (*Proof, error) {
-	t := time.Now().Format("2006-Jan-2-15:04:05")
+	t := time.Now().Format("2006-01-02-15:04:05.999999999")
 	path := fmt.Sprintf("%s-%s", defaultProofPath, t)
 
 	cmd := exec.Command(dleqGenBinPath, path)
@@ -119,7 +119,7 @@ func (d *FarcasterDLEq) Prove() (*Proof, error) {
 
 // Verify verifies a DLEq proof
 func (d *FarcasterDLEq) Verify(p *Proof) (*VerifyResult, error) {
-	t := time.Now().Format("2006-Jan-2-15:04:05")
+	t := time.Now().Format("2006-01-02-15:04:05.999999999")
 	path := fmt.Sprintf("%s-verify-%s", defaultProofPath, t)
 
 	if err := ioutil.WriteFile(path, p.proof, os.ModePerm); err != nil {

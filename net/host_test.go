@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
@@ -63,7 +64,7 @@ func newHost(t *testing.T, port uint16) *host {
 		Environment: common.Development,
 		ChainID:     common.GanacheChainID,
 		Port:        port,
-		KeyFile:     fmt.Sprintf("/tmp/node-%d.key", port),
+		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
 		Bootnodes:   []string{},
 		Handler:     &mockHandler{},
 	}

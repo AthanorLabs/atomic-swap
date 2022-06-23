@@ -216,7 +216,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	s.LockClient()
 	defer s.UnlockClient()
 
-	t := time.Now().Format("2006-Jan-2-15:04:05")
+	t := time.Now().Format("2006-01-02-15:04:05.999999999")
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
 	if err := s.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.Env()), walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)

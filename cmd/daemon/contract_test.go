@@ -21,9 +21,11 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 	require.NoError(t, err)
 	defer ec.Close()
 
+	tmpDir := t.TempDir()
+
 	_, addr, err := getOrDeploySwapFactory(ethcommon.Address{},
 		common.Development,
-		"/tmp",
+		tmpDir,
 		big.NewInt(common.GanacheChainID),
 		pk,
 		ec,
@@ -33,7 +35,7 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 
 	_, addr2, err := getOrDeploySwapFactory(addr,
 		common.Development,
-		"/tmp",
+		tmpDir,
 		big.NewInt(common.GanacheChainID),
 		pk,
 		ec,

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
-	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -25,8 +25,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
-
-var infofile = os.TempDir() + "/test.keys"
 
 var (
 	_             = logging.SetLogLevel("xmrmaker", "debug")
@@ -76,7 +74,7 @@ func newTestXMRMaker(t *testing.T, ec *ethclient.Client) *Instance {
 
 	cfg := &Config{
 		Backend:        b,
-		Basepath:       "/tmp/xmrmaker",
+		Basepath:       path.Join(t.TempDir(), "xmrmaker"),
 		WalletFile:     testWallet,
 		WalletPassword: "",
 	}
@@ -95,7 +93,8 @@ func newTestXMRMaker(t *testing.T, ec *ethclient.Client) *Instance {
 
 func newTestInstance(t *testing.T, ec *ethclient.Client) (*Instance, *swapState) {
 	xmrmaker := newTestXMRMaker(t, ec)
-	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infofile,
+	infoFile := path.Join(t.TempDir(), "test.keys")
+	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infoFile,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
 	swapState.SetContract(xmrmaker.backend.Contract())
