@@ -22,7 +22,7 @@ var (
 	errTransactionTimeout = errors.New("timed out waiting for transaction to be signed")
 	errNoSwapWithID       = errors.New("no swap with given id")
 
-	transactionTimeout = time.Minute * 2 // arbitrary, TODO vary this based on env
+	transactionTimeout = time.Hour // arbitrary, TODO vary this based on env
 )
 
 // Transaction represents a transaction to be signed by the front-end
