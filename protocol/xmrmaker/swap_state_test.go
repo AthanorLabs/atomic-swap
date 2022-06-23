@@ -85,7 +85,7 @@ func newTestXMRMaker(t *testing.T, ec *ethclient.Client) *Instance {
 	xmrmakerAddr, err := b.GetAddress(0)
 	require.NoError(t, err)
 
-	_ = b.GenerateBlocks(xmrmakerAddr.Address, 512*10)
+	_ = b.GenerateBlocks(xmrmakerAddr.Address, 512)
 	err = b.Refresh()
 	require.NoError(t, err)
 	return xmrmaker
