@@ -2,14 +2,15 @@
 
 bash ./scripts/install-monero-linux.sh
 echo "starting monerod..."
+
 ./monero-bin/monerod --detach --stagenet --rpc-bind-port 18081 &
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
-./monero-bin/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys --stagenet --trusted-daemon
+nohup ./monero-bin/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./bob-test-keys --stagenet --trusted-daemon
 
 echo "starting monero-wallet-rpc on port 18084..."
-./monero-bin/monero-wallet-rpc --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys --stagenet --trusted-daemon
+nohup ./monero-bin/monero-wallet-rpc --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys --stagenet --trusted-daemon
 
 # open Bob's wallet (must have funds)
 sleep 5

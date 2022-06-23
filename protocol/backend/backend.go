@@ -160,7 +160,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	} else {
 		log.Debugf("instantiated backend with external sender")
 		var err error
-		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.EthereumClient, cfg.SwapContractAddress)
+		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.Environment, cfg.EthereumClient, cfg.SwapContractAddress)
 		if err != nil {
 			return nil, err
 		}
