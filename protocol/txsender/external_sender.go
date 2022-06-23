@@ -22,7 +22,7 @@ var (
 	errTransactionTimeout = errors.New("timed out waiting for transaction to be signed")
 	errNoSwapWithID       = errors.New("no swap with given id")
 
-	transactionTimeout = time.Minute * 2 // arbitrary, TODO vary this based on env
+	transactionTimeout = time.Minute * 2 // amount of time user has to sign message
 )
 
 // Transaction represents a transaction to be signed by the front-end
@@ -52,11 +52,16 @@ type ExternalSender struct {
 }
 
 // NewExternalSender returns a new ExternalSender
-func NewExternalSender(ctx context.Context, ec *ethclient.Client,
+func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclient.Client,
 	contractAddr ethcommon.Address) (*ExternalSender, error) {
 	abi, err := swapfactory.SwapFactoryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
+	}
+
+	switch env {
+	case common.Mainnet, common.Stagenet:
+		transactionTimeout = time.Hour
 	}
 
 	return &ExternalSender{

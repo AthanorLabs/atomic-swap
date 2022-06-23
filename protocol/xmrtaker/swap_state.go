@@ -315,7 +315,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs", isReady, untilT0.Seconds(), untilT1.Seconds())
 
-	if (untilT0 > 0 || isReady) && untilT1 > 0 {
+	if (untilT0 > 0 && isReady) && untilT1 > 0 {
 		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
 		log.Infof("waiting until time %s to refund", s.t1)
 		<-time.After(untilT1)
