@@ -165,7 +165,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
 	addr, contract, swapID, swap := newSwap(t, ec, claimKey, [32]byte{}, false)
-	b := newBackend(t, ec, addr, contract, tests.GetTakerTestKey(t))
+	b := newBackend(t, ec, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
 	basePath := path.Join(t.TempDir(), "test-infofile")
