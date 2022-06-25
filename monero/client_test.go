@@ -1,9 +1,7 @@
 package monero
 
 import (
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"testing"
 	"time"
 
@@ -51,13 +49,10 @@ func TestClient_Transfer(t *testing.T) {
 	kpABPub := mcrypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
-	r, err := rand.Int(rand.Reader, big.NewInt(10000))
-	require.NoError(t, err)
-
 	cXMRTaker := NewClient(common.DefaultXMRTakerMoneroEndpoint)
 
 	// generate view-only account for A+B
-	walletFP := fmt.Sprintf("test-wallet-%d", r)
+	walletFP := fmt.Sprintf("test-wallet-%s", time.Now().Format("2006-01-02-15:04:05.999999999"))
 	err = cXMRTaker.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
 	err = cXMRTaker.OpenWallet(walletFP, "")
@@ -84,20 +79,20 @@ func TestClient_Transfer(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 
-	_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 16)
+	err = daemon.callGenerateBlocks(xmrmakerAddr.Address, 16)
+	require.NoError(t, err)
 
 	// generate spend account for A+B
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
 	// ignore the error for now, as it can error with "Wallet already exists."
-	_ = cXMRTaker.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet),
-		fmt.Sprintf("test-wallet-%d", r), "")
+	_ = cXMRTaker.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 
 	err = cXMRTaker.refresh()
 	require.NoError(t, err)
 
 	balance, err = cXMRTaker.GetBalance(0)
 	require.NoError(t, err)
-	require.NotEqual(t, 0, balance.Balance)
+	require.Greater(t, balance.Balance, float64(0))
 
 	// transfer from account A+B back to XMRMaker's address
 	_, err = cXMRTaker.Transfer(mcrypto.Address(xmrmakerAddr.Address), 0, 1)
