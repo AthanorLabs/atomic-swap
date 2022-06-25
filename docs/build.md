@@ -7,7 +7,14 @@ Go is with snap:
 ```bash
 sudo snap install go --classic
 ```
-On other systems or in docker, see https://go.dev/doc/install
+On other systems or in docker, use the directions here: https://go.dev/doc/install.
+Summary for X86-64 Linux:
+```bash
+wget https://go.dev/dl/go1.18.3.linux-amd64.tar.gz
+rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.3.linux-amd64.tar.gz
+echo "export PATH=$PATH:/usr/local/go/bin" >> .profile
+source .profile
+```
 
 2. Clone the repo:
 ```bash
