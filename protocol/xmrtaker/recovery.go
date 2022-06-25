@@ -68,9 +68,7 @@ type RecoveryResult struct {
 	MoneroAddress     mcrypto.Address
 }
 
-// ClaimOrRecover either claims ether or recovers monero by creating a wallet.
-// It returns a *RecoveryResult.
-// TODO: Function name in comment does not match function (why didn't our linter catch this?)
+// ClaimOrRefund either claims the monero or recovers the ether returning a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 	// check if XMRMaker claimed
 	skA, err := rs.ss.filterForClaim()
