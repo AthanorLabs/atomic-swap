@@ -27,8 +27,8 @@ var testPackageNames = []string{
 }
 
 const (
-	keysPerPackage = 2
-	repoName       = "github.com/noot/atomic-swap/"
+	ethKeysPerPackage = 2
+	repoName          = "github.com/noot/atomic-swap/"
 )
 
 // `ganache-cli --deterministic --accounts=20` provides the following keys with
@@ -56,7 +56,7 @@ var ganacheTestKeys = []string{
 }
 
 func init() {
-	if len(testPackageNames)*keysPerPackage > len(ganacheTestKeys) {
+	if len(testPackageNames)*ethKeysPerPackage > len(ganacheTestKeys) {
 		panic("Insufficient ganache test keys")
 	}
 }
@@ -73,7 +73,7 @@ func minPackageName(t *testing.T, pkgAndFunc string) string {
 	return strings.Split(minPkgAndFunc, ".")[0]
 }
 
-func getBaseIndex(t *testing.T) int {
+func getPackageIndex(t *testing.T) uint {
 	// Determine the test package that requested the key from the call stack
 	pc, _, _, ok := runtime.Caller(2) // skipping this function and GetMakerTestKey/GetTakerTestKey
 	if !ok {
@@ -85,19 +85,19 @@ func getBaseIndex(t *testing.T) int {
 
 	for i, name := range testPackageNames {
 		if name == packageName {
-			return i * keysPerPackage
+			return uint(i)
 		}
 	}
-	t.Fatalf("Package %q does not have preallocated ganache keys", packageName)
+	t.Fatalf("Package %q does not have reserved test keys", packageName)
 	panic("unreachable code")
 }
 
 // GetMakerTestKey returns a unique Ethereum/ganache maker key per test package
 func GetMakerTestKey(t *testing.T) string {
-	return ganacheTestKeys[getBaseIndex(t)]
+	return ganacheTestKeys[getPackageIndex(t)*ethKeysPerPackage]
 }
 
 // GetTakerTestKey returns a unique Ethereum/ganache taker key per test package
 func GetTakerTestKey(t *testing.T) string {
-	return ganacheTestKeys[getBaseIndex(t)+1]
+	return ganacheTestKeys[getPackageIndex(t)*ethKeysPerPackage+1]
 }
