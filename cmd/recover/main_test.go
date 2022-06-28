@@ -17,6 +17,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/xmrmaker"
 	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -137,10 +138,11 @@ func TestRecover_sharedSwapSecret(t *testing.T) {
 
 	c := newTestContext(t,
 		"test --xmrtaker with shared swap secret",
-		[]string{flagXMRTaker, flagInfoFile},
+		[]string{flagXMRTaker, flagInfoFile, flagMoneroWalletEndpoint},
 		[]interface{}{
 			true,
 			infoFilePath,
+			tests.CreateWalletRPCService(t),
 		},
 	)
 

@@ -283,7 +283,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// close swap-deposit-wallet
 	maker := newXMRMakerBackend(t)
-	err := maker.OpenWallet("test-wallet", "")
+	err := maker.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
 	// invalid SendKeysMessage should result in an error
