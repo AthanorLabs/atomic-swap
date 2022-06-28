@@ -7,6 +7,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/noot/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,16 +18,16 @@ func TestClient_Transfer(t *testing.T) {
 	}
 
 	const amount = 2800000000
-	cXMRMaker := NewClient(common.DefaultXMRMakerMoneroEndpoint)
+	cXMRMaker := NewClient(tests.CreateWalletRPCService(t))
 
-	err := cXMRMaker.OpenWallet("test-wallet", "")
+	err := cXMRMaker.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
 	xmrmakerAddr, err := cXMRMaker.callGetAddress(0)
 	require.NoError(t, err)
 
 	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 181)
+	_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 512)
 
 	time.Sleep(time.Second * 10)
 
@@ -49,7 +50,7 @@ func TestClient_Transfer(t *testing.T) {
 	kpABPub := mcrypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
-	cXMRTaker := NewClient(common.DefaultXMRTakerMoneroEndpoint)
+	cXMRTaker := NewClient(tests.CreateWalletRPCService(t))
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%s", time.Now().Format("2006-01-02-15:04:05.999999999"))
