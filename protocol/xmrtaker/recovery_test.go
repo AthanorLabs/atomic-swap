@@ -7,13 +7,12 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestRecoveryState(t *testing.T, ec *ethclient.Client) *recoveryState {
-	s := newTestInstance(t, ec)
+func newTestRecoveryState(t *testing.T) *recoveryState {
+	s := newTestInstance(t)
 	s.SetSwapTimeout(time.Second * 10)
 	akp, err := generateKeys()
 	require.NoError(t, err)
@@ -36,16 +35,12 @@ func newTestRecoveryState(t *testing.T, ec *ethclient.Client) *recoveryState {
 }
 
 func TestClaimOrRefund_Claim(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
 	// test case where XMRMaker has claimed the ether, so XMRTaker should be able to
 	// claim the monero.
-	rs := newTestRecoveryState(t, ec)
+	rs := newTestRecoveryState(t)
 
 	// call swap.Ready()
-	err = rs.ss.ready()
+	err := rs.ss.ready()
 	require.NoError(t, err)
 
 	// call swap.Claim()
@@ -65,13 +60,9 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 }
 
 func TestClaimOrRefund_Refund_beforeT0(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
 	// test case where XMRMaker hasn't claimed the ether, and it's before
 	// t0/IsReady, so XMRTaker should be able to refund.
-	rs := newTestRecoveryState(t, ec)
+	rs := newTestRecoveryState(t)
 
 	// assert we can refund the ether
 	res, err := rs.ClaimOrRefund()
@@ -80,13 +71,9 @@ func TestClaimOrRefund_Refund_beforeT0(t *testing.T) {
 }
 
 func TestClaimOrRefund_Refund_afterT1(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
 	// test case where XMRMaker hasn't claimed the ether, and it's after
 	// t1, so XMRTaker should be able to refund.
-	rs := newTestRecoveryState(t, ec)
+	rs := newTestRecoveryState(t)
 
 	rpcClient, err := rpc.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)

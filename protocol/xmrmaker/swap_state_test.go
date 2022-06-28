@@ -45,9 +45,15 @@ var (
 	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
 )
 
-func newTestXMRMaker(t *testing.T, ec *ethclient.Client) *Instance {
+func newTestXMRMaker(t *testing.T) *Instance {
 	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
+
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
@@ -91,8 +97,8 @@ func newTestXMRMaker(t *testing.T, ec *ethclient.Client) *Instance {
 	return xmrmaker
 }
 
-func newTestInstance(t *testing.T, ec *ethclient.Client) (*Instance, *swapState) {
-	xmrmaker := newTestXMRMaker(t, ec)
+func newTestInstance(t *testing.T) (*Instance, *swapState) {
+	xmrmaker := newTestXMRMaker(t)
 	infoFile := path.Join(t.TempDir(), "test.keys")
 	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infoFile,
 		common.MoneroAmount(33), desiredAmount)
@@ -162,13 +168,9 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *
 }
 
 func TestSwapState_GenerateAndSetKeys(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
+	_, swapState := newTestInstance(t)
 
-	_, swapState := newTestInstance(t, ec)
-
-	err = swapState.generateAndSetKeys()
+	err := swapState.generateAndSetKeys()
 	require.NoError(t, err)
 	require.NotNil(t, swapState.privkeys)
 	require.NotNil(t, swapState.pubkeys)
@@ -179,12 +181,9 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	if testing.Short() {
 		t.Skip() // TODO: randomly fails on CI with "no contract code at given address"
 	}
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
 
-	_, swapState := newTestInstance(t, ec)
-	err = swapState.generateAndSetKeys()
+	_, swapState := newTestInstance(t)
+	err := swapState.generateAndSetKeys()
 	require.NoError(t, err)
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
@@ -203,14 +202,10 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 }
 
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 
 	msg := &net.SendKeysMessage{}
-	err = s.handleSendKeysMessage(msg)
+	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
 	msg, xmrtakerKeysAndProof := newTestXMRTakerSendKeysMessage(t)
@@ -225,14 +220,10 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
-	err = s.generateAndSetKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
@@ -273,14 +264,11 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		t.Skip() // TODO: times out on CI with error
 		// "xmrmaker/swap_state.go:227	failed to claim funds: err=no contract code at given address"
 	}
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
 
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
-	err = s.generateAndSetKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
@@ -327,14 +315,10 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 
 	s.nextExpectedMessage = &message.NotifyReady{}
-	err = s.generateAndSetKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
@@ -357,13 +341,9 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
+	_, s := newTestInstance(t)
 
-	_, s := newTestInstance(t, ec)
-
-	err = s.generateAndSetKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
@@ -396,13 +376,9 @@ func TestSwapState_handleRefund(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
+	_, s := newTestInstance(t)
 
-	_, s := newTestInstance(t, ec)
-
-	err = s.generateAndSetKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
@@ -442,13 +418,9 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 
 // test that if the protocol exits early, and XMRTaker refunds, XMRMaker can reclaim his monero
 func TestSwapState_Exit_Reclaim(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
+	_, s := newTestInstance(t)
 
-	_, s := newTestInstance(t, ec)
-
-	err = s.generateAndSetKeys()
+	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
@@ -492,47 +464,31 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 }
 
 func TestSwapState_Exit_Aborted(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 	s.nextExpectedMessage = &message.SendKeysMessage{}
-	err = s.Exit()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }
 
 func TestSwapState_Exit_Aborted_1(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
-	err = s.Exit()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }
 
 func TestSwapState_Exit_Aborted_2(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	_, s := newTestInstance(t, ec)
+	_, s := newTestInstance(t)
 	s.nextExpectedMessage = nil
-	err = s.Exit()
+	err := s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }
 
 func TestSwapState_Exit_Success(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	b, s := newTestInstance(t, ec)
+	b, s := newTestInstance(t)
 	s.offer = &types.Offer{
 		Provides:      types.ProvidesXMR,
 		MinimumAmount: 0.1,
@@ -541,17 +497,13 @@ func TestSwapState_Exit_Success(t *testing.T) {
 	}
 
 	s.info.SetStatus(types.CompletedSuccess)
-	err = s.Exit()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.Nil(t, b.offerManager.offers[s.offer.GetID()])
 }
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
-
-	b, s := newTestInstance(t, ec)
+	b, s := newTestInstance(t)
 	s.offer = &types.Offer{
 		Provides:      types.ProvidesXMR,
 		MinimumAmount: 0.1,
@@ -561,7 +513,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedRefund)
-	err = s.Exit()
+	err := s.Exit()
 	require.NoError(t, err)
 	require.NotNil(t, b.offerManager.offers[s.offer.GetID()])
 }

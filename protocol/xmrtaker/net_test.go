@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestXMRTaker(t *testing.T, ec *ethclient.Client) *Instance {
-	b := newBackend(t, ec)
+func newTestXMRTaker(t *testing.T) *Instance {
+	b := newBackend(t)
 	cfg := &Config{
 		Backend:  b,
 		Basepath: path.Join(t.TempDir(), "xmrtaker"),
@@ -28,7 +28,7 @@ func TestXMRTaker_InitiateProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer ec.Close()
 
-	a := newTestXMRTaker(t, ec)
+	a := newTestXMRTaker(t)
 	offer := &types.Offer{
 		ExchangeRate: 1,
 	}
