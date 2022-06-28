@@ -10,6 +10,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
@@ -63,7 +64,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 
 	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
@@ -84,6 +85,10 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		WalletFile:     testWallet,
 		WalletPassword: "",
 	}
+
+	// NewInstance(..) below expects a pre-existing wallet, so create it
+	err = monero.NewClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
+	require.NoError(t, err)
 
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)

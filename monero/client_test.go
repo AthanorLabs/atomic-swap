@@ -101,8 +101,8 @@ func TestClient_Transfer(t *testing.T) {
 }
 
 func TestClient_CloseWallet(t *testing.T) {
-	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
-	err := c.OpenWallet("test-wallet", "")
+	c := NewClient(tests.CreateWalletRPCService(t))
+	err := c.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
 	err = c.CloseWallet()
@@ -113,14 +113,18 @@ func TestClient_CloseWallet(t *testing.T) {
 }
 
 func TestClient_GetAccounts(t *testing.T) {
-	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
+	c := NewClient(tests.CreateWalletRPCService(t))
+	err := c.CreateWallet("test-wallet", "")
+	require.NoError(t, err)
 	resp, err := c.GetAccounts()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(resp.SubaddressAccounts))
 }
 
 func TestClient_GetHeight(t *testing.T) {
-	c := NewClient(common.DefaultXMRMakerMoneroEndpoint)
+	c := NewClient(tests.CreateWalletRPCService(t))
+	err := c.CreateWallet("test-wallet", "")
+	require.NoError(t, err)
 	resp, err := c.GetHeight()
 	require.NoError(t, err)
 	require.NotEqual(t, 0, resp)

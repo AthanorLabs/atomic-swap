@@ -23,7 +23,7 @@ import (
 var defaultTimeout int64 = 5 // 5 seconds
 
 func newRecoverer(t *testing.T) *recoverer {
-	r, err := NewRecoverer(common.Development, common.DefaultXMRMakerMoneroEndpoint, common.DefaultEthEndpoint)
+	r, err := NewRecoverer(common.Development, tests.CreateWalletRPCService(t), common.DefaultEthEndpoint)
 	require.NoError(t, err)
 	return r
 }
@@ -114,7 +114,7 @@ func newBackend(
 		EthereumPrivateKey:   pk,
 		EthereumClient:       ec,
 		ChainID:              big.NewInt(common.GanacheChainID),
-		MoneroWalletEndpoint: common.DefaultXMRTakerMoneroEndpoint,
+		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		SwapContract:         contract,
 		SwapContractAddress:  addr,

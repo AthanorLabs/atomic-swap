@@ -89,7 +89,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 
 	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
