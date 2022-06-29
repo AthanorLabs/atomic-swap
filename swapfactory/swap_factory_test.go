@@ -17,6 +17,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
+	"github.com/noot/atomic-swap/tests"
 )
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
@@ -24,7 +25,7 @@ var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
 	conn, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
-	pkA, err := crypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pkA, err := crypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(pkA, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
@@ -33,6 +34,7 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 
 func TestSwapFactory_NewSwap(t *testing.T) {
 	auth, conn, _ := setupXMRTakerAuth(t)
+	defer conn.Close()
 	address, tx, contract, err := DeploySwapFactory(auth, conn)
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
@@ -65,6 +67,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 	// deploy swap contract with claim key hash
 	auth, conn, pkA := setupXMRTakerAuth(t)
+	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -200,6 +203,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 
 	// deploy swap contract with refund key hash
 	auth, conn, pkA := setupXMRTakerAuth(t)
+	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -264,6 +268,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 
 	// deploy swap contract with refund key hash
 	auth, conn, pkA := setupXMRTakerAuth(t)
+	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -335,6 +340,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 func TestSwap_MultipleSwaps(t *testing.T) {
 	// test case where contract has multiple swaps happening at once
 	auth, conn, pkA := setupXMRTakerAuth(t)
+	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 

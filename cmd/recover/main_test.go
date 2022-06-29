@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"strconv"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/xmrmaker"
 	"github.com/noot/atomic-swap/protocol/xmrtaker"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -120,7 +122,7 @@ func createInfoFile(t *testing.T, kpA, kpB *mcrypto.PrivateKeyPair, contractAddr
 
 	bz, err := json.MarshalIndent(infofile, "", "\t")
 	require.NoError(t, err)
-	filepath := os.TempDir() + "/test-infofile.txt"
+	filepath := path.Join(t.TempDir(), "test-infofile.txt")
 	err = ioutil.WriteFile(filepath, bz, os.ModePerm)
 	require.NoError(t, err)
 	return filepath
@@ -136,10 +138,11 @@ func TestRecover_sharedSwapSecret(t *testing.T) {
 
 	c := newTestContext(t,
 		"test --xmrtaker with shared swap secret",
-		[]string{flagXMRTaker, flagInfoFile},
+		[]string{flagXMRTaker, flagInfoFile, flagMoneroWalletEndpoint},
 		[]interface{}{
 			true,
 			infoFilePath,
+			tests.CreateWalletRPCService(t),
 		},
 	)
 

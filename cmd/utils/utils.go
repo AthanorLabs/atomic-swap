@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli"
@@ -28,19 +29,14 @@ var (
 
 // GetEthereumPrivateKey returns an ethereum private key hex string given the CLI options.
 func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker,
-	useExternal bool) (ethPrivKey string, err error) {
+	useExternal bool) (ethPrivKeyHex string, err error) {
 	if c.String(flagEthereumPrivKey) != "" {
 		ethPrivKeyFile := c.String(flagEthereumPrivKey)
 		key, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
 		if err != nil {
 			return "", fmt.Errorf("failed to read ethereum-privkey file: %w", err)
 		}
-
-		if key[len(key)-1] == '\n' {
-			key = key[:len(key)-1]
-		}
-
-		ethPrivKey = string(key)
+		ethPrivKeyHex = strings.TrimSpace(string(key))
 	} else {
 		if env != common.Development || useExternal {
 			// TODO: allow this to be set via RPC
@@ -50,13 +46,13 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker,
 
 		log.Warn("no ethereum private key file provided, using ganache deterministic key")
 		if devXMRMaker {
-			ethPrivKey = common.DefaultPrivKeyXMRMaker
+			ethPrivKeyHex = common.DefaultPrivKeyXMRMaker
 		} else {
-			ethPrivKey = common.DefaultPrivKeyXMRTaker
+			ethPrivKeyHex = common.DefaultPrivKeyXMRTaker
 		}
 	}
 
-	return ethPrivKey, nil
+	return ethPrivKeyHex, nil
 }
 
 // GetEnvironment returns a common.Environment from the CLI options.

@@ -36,7 +36,7 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
-	infofile     string
+	infoFile     string
 	transferBack bool
 
 	info     *pswap.Info
@@ -99,7 +99,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		ctx:                 ctx,
 		cancel:              cancel,
 		Backend:             b,
-		infofile:            infofile,
+		infoFile:            infofile,
 		transferBack:        transferBack,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
@@ -109,7 +109,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		statusCh:            statusCh,
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.infofile, b.ContractAddr().String()); err != nil {
+	if err := pcommon.WriteContractAddressToFile(s.infoFile, b.ContractAddr().String()); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
@@ -149,9 +149,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-// InfoFile returns the swap's infofile path
+// InfoFile returns the swap's infoFile path
 func (s *swapState) InfoFile() string {
-	return s.infofile
+	return s.infoFile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -344,7 +344,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.Env())
+	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
 }
 
 // generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
@@ -419,7 +419,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		Nonce:        nonce,
 	}
 
-	if err := pcommon.WriteContractSwapToFile(s.infofile, s.contractSwapID, s.contractSwap); err != nil {
+	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
 		return ethcommon.Hash{}, err
 	}
 
@@ -472,7 +472,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.Env()); err != nil {
+	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infoFile, kpAB, s.Env()); err != nil {
 		return "", err
 	}
 

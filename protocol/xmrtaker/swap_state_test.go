@@ -21,6 +21,7 @@ import (
 	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -40,25 +41,28 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 }
 
 func newBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.DevelopmentConfig.EthereumChainID))
 	require.NoError(t, err)
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: common.DefaultXMRTakerMoneroEndpoint,
+		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
 		SwapManager:          pswap.NewManager(),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
@@ -71,25 +75,26 @@ func newBackend(t *testing.T) backend.Backend {
 }
 
 func newXMRMakerBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.MainnetConfig.EthereumChainID))
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.DevelopmentConfig.EthereumChainID))
 	require.NoError(t, err)
 	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
 		SwapManager:          pswap.NewManager(),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
@@ -278,7 +283,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// close swap-deposit-wallet
 	maker := newXMRMakerBackend(t)
-	err := maker.OpenWallet("test-wallet", "")
+	err := maker.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
 	// invalid SendKeysMessage should result in an error
@@ -308,7 +313,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 
 	// mine some blocks to get xmr first
-	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
+	err = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
+	require.NoError(t, err)
+	err = maker.Refresh()
+	require.NoError(t, err)
 	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
@@ -331,7 +339,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyReadyType, resp.Type())
 
-	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
+	err = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
 	require.NoError(t, err)
 
 	// simulate xmrmaker calling claim

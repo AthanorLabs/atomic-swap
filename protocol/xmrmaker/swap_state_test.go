@@ -4,18 +4,20 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
-	"os"
+	"path"
 	"testing"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/net/message"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -24,8 +26,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
-
-var infofile = os.TempDir() + "/test.keys"
 
 var (
 	_             = logging.SetLogLevel("xmrmaker", "debug")
@@ -47,11 +47,14 @@ var (
 )
 
 func newTestXMRMaker(t *testing.T) *Instance {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
@@ -61,12 +64,12 @@ func newTestXMRMaker(t *testing.T) *Instance {
 
 	bcfg := &backend.Config{
 		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: common.DefaultXMRMakerMoneroEndpoint,
+		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.MainnetConfig.EthereumChainID),
+		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
 		SwapManager:          pswap.NewManager(),
@@ -78,10 +81,14 @@ func newTestXMRMaker(t *testing.T) *Instance {
 
 	cfg := &Config{
 		Backend:        b,
-		Basepath:       "/tmp/xmrmaker",
+		Basepath:       path.Join(t.TempDir(), "xmrmaker"),
 		WalletFile:     testWallet,
 		WalletPassword: "",
 	}
+
+	// NewInstance(..) below expects a pre-existing wallet, so create it
+	err = monero.NewClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
+	require.NoError(t, err)
 
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
@@ -97,7 +104,8 @@ func newTestXMRMaker(t *testing.T) *Instance {
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	xmrmaker := newTestXMRMaker(t)
-	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infofile,
+	infoFile := path.Join(t.TempDir(), "test.keys")
+	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infoFile,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
 	swapState.SetContract(xmrmaker.backend.Contract())

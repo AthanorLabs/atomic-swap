@@ -149,7 +149,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
-	if err := pcommon.WriteContractSwapToFile(s.infofile, s.contractSwapID, s.contractSwap); err != nil {
+	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
 		return nil, err
 	}
 
@@ -162,7 +162,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.infofile, msg.Address); err != nil {
+	if err := pcommon.WriteContractAddressToFile(s.infoFile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 

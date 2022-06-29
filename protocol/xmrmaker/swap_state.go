@@ -43,7 +43,7 @@ type swapState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	sync.Mutex
-	infofile string
+	infoFile string
 
 	info         *pswap.Info
 	offer        *types.Offer
@@ -77,7 +77,7 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statusCh chan types.Status, infofile string,
+func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statusCh chan types.Status, infoFile string,
 	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
@@ -98,7 +98,7 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 		Backend:             b,
 		offer:               offer,
 		offerManager:        om,
-		infofile:            infofile,
+		infoFile:            infoFile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		info:                info,
@@ -125,9 +125,9 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-// InfoFile returns the swap's infofile path
+// InfoFile returns the swap's infoFile path
 func (s *swapState) InfoFile() string {
-	return s.infofile
+	return s.infoFile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -261,7 +261,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infofile, kpAB, s.Env()); err != nil {
+	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infoFile, kpAB, s.Env()); err != nil {
 		return "", err
 	}
 
@@ -361,7 +361,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infofile, s.privkeys, s.Env())
+	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {
