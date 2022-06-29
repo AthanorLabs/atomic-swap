@@ -313,7 +313,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 
 	// mine some blocks to get xmr first
-	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
+	err = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
+	require.NoError(t, err)
+	err = maker.Refresh()
+	require.NoError(t, err)
 	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
@@ -336,7 +339,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyReadyType, resp.Type())
 
-	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
+	err = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
 	require.NoError(t, err)
 
 	// simulate xmrmaker calling claim
