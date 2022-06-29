@@ -31,7 +31,7 @@ const (
 	repoName          = "github.com/noot/atomic-swap/"
 )
 
-// `ganache-cli --deterministic --accounts=20` provides the following keys with
+// `ganache --deterministic --accounts=20` provides the following keys with
 // 100 ETH on startup. The first 2 keys can be found in const.go and reserved
 // for use in non-test files (files without the _test.go suffix).
 var ganacheTestKeys = []string{

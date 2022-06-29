@@ -6,16 +6,16 @@ echo "starting monerod..."
 ./monero-bin/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081
 sleep 5
 
-# install ganache-cli and run
-GANACHE_EXEC="$(npm config get prefix)/bin/ganache-cli"
+# install ganache and run
+GANACHE_EXEC="$(npm config get prefix)/bin/ganache"
 if [[ ! -x "${GANACHE_EXEC}" ]]; then
-	echo "installing ganache-cli"
-	npm install --location=global ganache-cli
+	echo "installing ganache"
+	npm install --location=global ganache
 fi
-echo "starting ganache-cli"
+echo "starting ganache"
 export NODE_OPTIONS=--max_old_space_size=8192
-"${GANACHE_EXEC}" --deterministic --accounts=20 &> ganache-cli.log &
-GANACHE_CLI_PID=$!
+"${GANACHE_EXEC}" --deterministic --accounts=20 &> ganache.log &
+GANACHE_PID=$!
 
 # wait for servers to start
 sleep 10
@@ -26,5 +26,5 @@ go test ./... -v -short -timeout=30m -covermode=atomic -coverprofile=coverage.ou
 OK=$?
 
 # kill processes
-kill "${GANACHE_CLI_PID}" || echo "ganache-cli was not running at end of test"
+kill "${GANACHE_PID}" || echo "ganache was not running at end of test"
 exit $OK
