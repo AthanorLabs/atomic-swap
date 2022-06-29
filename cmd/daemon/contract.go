@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"path"
 
 	"github.com/noot/atomic-swap/common"
 	pcommon "github.com/noot/atomic-swap/protocol"
@@ -20,7 +21,7 @@ var (
 	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
 )
 
-func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, basepath string, chainID *big.Int,
+func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, basePath string, chainID *big.Int,
 	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf *swapfactory.SwapFactory
@@ -46,7 +47,7 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, b
 		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
 
 		// store the contract address on disk
-		fp := fmt.Sprintf("%s/contractaddress", basepath)
+		fp := path.Join(basePath, "contractaddress")
 		if err = pcommon.WriteContractAddressToFile(fp, address.String()); err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
 		}

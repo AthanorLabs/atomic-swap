@@ -7,6 +7,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/noot/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -23,8 +24,9 @@ func TestCheckContractCode(t *testing.T) {
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
 
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRMaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))

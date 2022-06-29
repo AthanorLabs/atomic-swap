@@ -1,8 +1,10 @@
 .PHONY: lint test install build build-dleq mock
 all: build-dleq install
 
+GOPATH ?= $(shell go env GOPATH)
+
 lint: 
-	./scripts/install_lint.sh
+	./scripts/install-lint.sh
 	${GOPATH}/bin/golangci-lint run
 
 test:

@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/noot/atomic-swap/net/message"
@@ -9,17 +10,15 @@ import (
 )
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
-func GetSwapInfoFilepath(basepath string) string {
-	t := time.Now().Format("2006-Jan-2-15:04:05")
-	path := fmt.Sprintf("%s/info-%s.txt", basepath, t)
-	return path
+func GetSwapInfoFilepath(basePath string) string {
+	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	return path.Join(basePath, t)
 }
 
 // GetSwapRecoveryFilepath returns an info file path with the current timestamp.
-func GetSwapRecoveryFilepath(basepath string) string {
-	t := time.Now().Format("2006-Jan-2-15:04:05")
-	path := fmt.Sprintf("%s/recovery-%s.txt", basepath, t)
-	return path
+func GetSwapRecoveryFilepath(basePath string) string {
+	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	return path.Join(basePath, fmt.Sprintf("recovery-%s.txt", t))
 }
 
 // ConvertContractSwapToMsg converts a swapfactory.SwapFactorySwap to a *message.ContractSwap

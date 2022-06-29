@@ -1,25 +1,25 @@
 #!/bin/bash
 
 # useful dir relative to this script
-MONERO_DIR="../monero-x86_64-linux-gnu-v0.17.3.0"
+MONERO_DIR="../monero-bin"
 # either a TMPDIR is set, or use /tmp
 LOG_DIR=${TMPDIR:-"/tmp"}
 ALICE_P2P_ADDRESS="12D3KooWBD82zGTFqk6Qmu5zeS6dQfiaAcn8go2QWE29HPmRX3yB"
 
 echo "cleanup"
-pkill -e -f monero;
-pkill -e -f ganache-cli;
-killall -v swapd;
-pkill -e -f swapcli;
+pkill -e -f monero
+pkill -e -f ganache-cli
+killall -v swapd
+pkill -e -f swapcli
 
 echo "start ganache-cli"
-ganache-cli -d &> $LOG_DIR/ganache-cli.log &
+"$(npm config get prefix)/bin/ganache-cli" --deterministic --accounts=20 &> "${LOG_DIR}/ganache-cli.log" &
 
 echo "move to $MONERO_DIR"
-cd $MONERO_DIR 
+cd "${MONERO_DIR}"
 
 echo "starting monerod..."
-./monerod --regtest --detach --fixed-difficulty=1 --rpc-bind-port 18081 --offline &> $LOG_DIR/monerod.log &
+./monerod --regtest --detach --fixed-difficulty=1 --rpc-bind-port 18081 --offline &> "${LOG_DIR}/monerod.log" &
 
 echo "Zzz... 10s"
 sleep 10
@@ -31,19 +31,19 @@ echo "Zzz... 15s"
 sleep 15
 
 echo "start monero-wallet-rpc for XMRTaker on port 18084"
-./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir . &> $LOG_DIR/alice-wallet-rpc.log &
+./monero-wallet-rpc  --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir . &> "${LOG_DIR}/alice-wallet-rpc.log" &
 
 echo "start monero-wallet-rpc for XMRMaker on port 18083"
-./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir . &> $LOG_DIR/bob-wallet-rpc.log &
+./monero-wallet-rpc --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir . &> "${LOG_DIR}/bob-wallet-rpc.log" &
 
 echo "launch XMRTaker swapd"
-../swapd --dev-xmrtaker --external-signer --contract-address 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab &> $LOG_DIR/alice-swapd.log &
+../swapd --dev-xmrtaker --external-signer --contract-address 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab &> "${LOG_DIR}/alice-swapd.log" &
 
 echo "Zzz... 10s"
 sleep 10
 
 echo "launch XMRMaker swapd"
-../swapd --dev-xmrmaker --wallet-file XMRMaker --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/$ALICE_P2P_ADDRESS &> $LOG_DIR/bob-swapd.log &
+../swapd --dev-xmrmaker --wallet-file XMRMaker --bootnodes "/ip4/127.0.0.1/tcp/9933/p2p/${ALICE_P2P_ADDRESS}" &> "${LOG_DIR}/bob-swapd.log" &
 
 echo "Zzz... 10s"
 sleep 10

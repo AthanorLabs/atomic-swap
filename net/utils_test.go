@@ -1,17 +1,17 @@
 package net
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateAndSaveKey(t *testing.T) {
-	_, err := generateKey(1234, os.TempDir())
+	tempDir := t.TempDir()
+	_, err := generateKey(1234, tempDir)
 	require.NoError(t, err)
 
-	_, err = generateKey(1234, os.TempDir())
+	_, err = generateKey(1234, tempDir)
 	require.NoError(t, err)
 }
 

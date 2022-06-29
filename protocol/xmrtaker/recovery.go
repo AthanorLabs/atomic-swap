@@ -25,7 +25,7 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.PrivateSpendKey,
+func NewRecoveryState(b backend.Backend, basePath string, secret *mcrypto.PrivateSpendKey,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) { //nolint:revive
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
@@ -47,7 +47,7 @@ func NewRecoveryState(b backend.Backend, basepath string, secret *mcrypto.Privat
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		contractSwap:   contractSwap,
-		infofile:       pcommon.GetSwapRecoveryFilepath(basepath),
+		infoFile:       pcommon.GetSwapRecoveryFilepath(basePath),
 		claimedCh:      make(chan struct{}),
 	}
 
@@ -68,8 +68,7 @@ type RecoveryResult struct {
 	MoneroAddress     mcrypto.Address
 }
 
-// ClaimOrRecover either claims ether or recovers monero by creating a wallet.
-// It returns a *RecoveryResult.
+// ClaimOrRefund either claims the monero or recovers the ether returning a *RecoveryResult.
 func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 	// check if XMRMaker claimed
 	skA, err := rs.ss.filterForClaim()

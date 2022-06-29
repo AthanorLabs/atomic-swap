@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -13,15 +14,18 @@ import (
 )
 
 func TestGetOrDeploySwapFactory(t *testing.T) {
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
 	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
 	require.NoError(t, err)
+	defer ec.Close()
+
+	tmpDir := t.TempDir()
 
 	_, addr, err := getOrDeploySwapFactory(ethcommon.Address{},
 		common.Development,
-		"/tmp",
+		tmpDir,
 		big.NewInt(common.GanacheChainID),
 		pk,
 		ec,
@@ -31,7 +35,7 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 
 	_, addr2, err := getOrDeploySwapFactory(addr,
 		common.Development,
-		"/tmp",
+		tmpDir,
 		big.NewInt(common.GanacheChainID),
 		pk,
 		ec,
