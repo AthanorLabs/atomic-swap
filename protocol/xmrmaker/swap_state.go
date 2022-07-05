@@ -40,9 +40,9 @@ var (
 type swapState struct {
 	backend.Backend
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	sync.Mutex
+	ctx      context.Context
+	cancel   context.CancelFunc
+	stateMu  sync.Mutex
 	infoFile string
 
 	info         *pswap.Info
@@ -109,6 +109,14 @@ func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statu
 	return s, nil
 }
 
+func (s *swapState) lockState() {
+	s.stateMu.Lock()
+}
+
+func (s *swapState) unlockState() {
+	s.stateMu.Unlock()
+}
+
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	if err := s.generateAndSetKeys(); err != nil {
@@ -148,8 +156,8 @@ func (s *swapState) Exit() error {
 		return errNilSwapState
 	}
 
-	s.Lock()
-	defer s.Unlock()
+	s.lockState()
+	defer s.unlockState()
 	return s.exit()
 }
 

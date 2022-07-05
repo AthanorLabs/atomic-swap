@@ -21,8 +21,8 @@ import (
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.lockState()
+	defer s.unlockState()
 
 	if err := s.checkMessageType(msg); err != nil {
 		return nil, true, err
@@ -159,8 +159,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		case <-s.ctx.Done():
 			return
 		case <-time.After(until - timeoutBuffer):
-			s.Lock()
-			defer s.Unlock()
+			s.lockState()
+			defer s.unlockState()
 
 			if !s.info.Status().IsOngoing() {
 				return
@@ -296,31 +296,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-time.After(until + time.Second):
-			s.Lock()
-			defer s.Unlock()
-
-			if !s.info.Status().IsOngoing() {
-				return
-			}
-
-			// XMRMaker hasn't claimed, and we're after t_1. let's call Refund
-			txhash, err := s.refund()
-			if err != nil {
-				log.Errorf("failed to refund: err=%s", err)
-				return
-			}
-
-			log.Infof("got our ETH back: tx hash=%s", txhash)
-			s.clearNextExpectedMessage(types.CompletedRefund) // TODO: duplicate?
-
-			// send NotifyRefund msg
-			if err = s.SendSwapMessage(&message.NotifyRefund{
-				TxHash: txhash.String(),
-			}, s.ID()); err != nil {
-				log.Errorf("failed to send refund message: err=%s", err)
-			}
-
+		// TODO: document why we add one second
+		case <-time.After(until + 5*time.Second):
+			s.handleT1Expired()
 			_ = s.Exit()
 		case <-s.claimedCh:
 			return
@@ -329,6 +307,32 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 
 	s.setNextExpectedMessage(&message.NotifyClaimed{})
 	return &message.NotifyReady{}, nil
+}
+
+func (s *swapState) handleT1Expired() {
+	s.lockState()
+	defer s.unlockState()
+
+	if !s.info.Status().IsOngoing() {
+		return
+	}
+
+	// XMRMaker hasn't claimed, and we're after t_1. let's call Refund
+	txhash, err := s.refund()
+	if err != nil {
+		log.Errorf("failed to refund: err=%s", err)
+		return
+	}
+
+	log.Infof("got our ETH back: tx hash=%s", txhash)
+	s.clearNextExpectedMessage(types.CompletedRefund) // TODO: duplicate?
+
+	// send NotifyRefund msg
+	if err = s.SendSwapMessage(&message.NotifyRefund{
+		TxHash: txhash.String(),
+	}, s.ID()); err != nil {
+		log.Errorf("failed to send refund message: err=%s", err)
+	}
 }
 
 // handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
