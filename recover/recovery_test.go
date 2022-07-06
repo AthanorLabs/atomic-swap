@@ -158,15 +158,11 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 }
 
 func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *testing.T) {
-	// if testing.Short() {
-	// 	t.Skip() // TODO: fails on CI with "no contract code at address"
-	// }
-
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
+	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)

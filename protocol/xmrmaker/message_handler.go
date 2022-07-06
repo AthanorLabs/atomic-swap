@@ -23,8 +23,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 		return nil, true, errNilSwapState
 	}
 
-	s.Lock()
-	defer s.Unlock()
+	s.lockState()
+	defer s.unlockState()
 
 	if s.ctx.Err() != nil {
 		return nil, true, fmt.Errorf("protocol exited: %w", s.ctx.Err())
@@ -184,39 +184,14 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 
 	go func() {
 		until := time.Until(s.t0)
-
 		log.Debugf("time until t0: %vs", until.Seconds())
 
 		select {
 		case <-s.ctx.Done():
 			return
+		// TODO: Document why we add one second
 		case <-time.After(until + time.Second):
-			s.Lock()
-			defer s.Unlock()
-
-			if !s.info.Status().IsOngoing() {
-				// swap was already completed, just return
-				return
-			}
-
-			// we can now call Claim()
-			txHash, err := s.claimFunds()
-			if err != nil {
-				log.Errorf("failed to claim: err=%s", err)
-				// TODO: retry claim, depending on error
-				_ = s.exit()
-				return
-			}
-
-			log.Debug("funds claimed!")
-			s.clearNextExpectedMessage(types.CompletedSuccess)
-
-			// send *message.NotifyClaimed
-			if err := s.SendSwapMessage(&message.NotifyClaimed{
-				TxHash: txHash.String(),
-			}, s.ID()); err != nil {
-				log.Errorf("failed to send NotifyClaimed message: err=%s", err)
-			}
+			s.handleT0Expired()
 		case <-s.readyCh:
 			return
 		}
@@ -224,6 +199,36 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 
 	s.setNextExpectedMessage(&message.NotifyReady{})
 	return out, nil
+}
+
+func (s *swapState) handleT0Expired() {
+	s.lockState()
+	defer s.unlockState()
+
+	if !s.info.Status().IsOngoing() {
+		// swap was already completed, just return
+		return
+	}
+
+	// we can now call Claim()
+	txHash, err := s.claimFunds()
+	if err != nil {
+		log.Errorf("failed to claim: err=%s", err)
+		// TODO: retry claim, depending on error
+		if err = s.exit(); err != nil {
+			log.Errorf("exit failed: err=%s", err)
+		}
+		return
+	}
+
+	log.Debug("funds claimed!")
+	s.clearNextExpectedMessage(types.CompletedSuccess)
+
+	// send *message.NotifyClaimed
+	notifyClaimed := &message.NotifyClaimed{TxHash: txHash.String()}
+	if err := s.SendSwapMessage(notifyClaimed, s.ID()); err != nil {
+		log.Errorf("failed to send NotifyClaimed message: err=%s", err)
+	}
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
