@@ -150,7 +150,7 @@ func (s *swapState) ID() types.Hash {
 
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
-// If the swap already completed successfully, this function does not doing anything in regards to the protoco.
+// If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
 	if s == nil {
 		return errNilSwapState
@@ -161,6 +161,7 @@ func (s *swapState) Exit() error {
 	return s.exit()
 }
 
+// exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
 	if s == nil {
 		return errNilSwapState

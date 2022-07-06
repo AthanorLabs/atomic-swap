@@ -202,14 +202,8 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 }
 
 func (s *swapState) handleT0Expired() {
-	doExit := false
 	s.lockState()
-	defer func() {
-		s.unlockState()
-		if doExit {
-			_ = s.Exit()
-		}
-	}()
+	defer s.unlockState()
 
 	if !s.info.Status().IsOngoing() {
 		// swap was already completed, just return
@@ -221,7 +215,9 @@ func (s *swapState) handleT0Expired() {
 	if err != nil {
 		log.Errorf("failed to claim: err=%s", err)
 		// TODO: retry claim, depending on error
-		doExit = true
+		if err = s.exit(); err != nil {
+			log.Errorf("exit failed: err=%s", err)
+		}
 		return
 	}
 

@@ -187,11 +187,14 @@ func (s *swapState) ID() types.Hash {
 func (s *swapState) Exit() error {
 	s.lockState()
 	defer s.unlockState()
+	return s.exit()
+}
 
+// exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
+func (s *swapState) exit() error {
 	if s.exited {
 		return nil
 	}
-
 	s.exited = true
 
 	defer func() {

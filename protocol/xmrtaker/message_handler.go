@@ -297,9 +297,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		case <-s.ctx.Done():
 			return
 		// TODO: document why we add one second
-		case <-time.After(until + 5*time.Second):
+		case <-time.After(until + time.Second):
 			s.handleT1Expired()
-			_ = s.Exit()
+			return
 		case <-s.claimedCh:
 			return
 		}
@@ -332,6 +332,10 @@ func (s *swapState) handleT1Expired() {
 		TxHash: txhash.String(),
 	}, s.ID()); err != nil {
 		log.Errorf("failed to send refund message: err=%s", err)
+	}
+
+	if err = s.exit(); err != nil {
+		log.Errorf("exit failed: err=%s", err)
 	}
 }
 
