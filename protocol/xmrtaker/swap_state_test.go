@@ -313,7 +313,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 
 	// mine some blocks to get xmr first
-	err = maker.GenerateBlocks(xmrmakerAddr.Address, 60)
+	err = maker.GenerateBlocks(xmrmakerAddr.Address, 121)
 	require.NoError(t, err)
 	err = maker.Refresh()
 	require.NoError(t, err)

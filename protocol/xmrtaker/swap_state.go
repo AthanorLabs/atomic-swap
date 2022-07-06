@@ -33,9 +33,10 @@ const revertSwapCompleted = "swap is already completed"
 // and its current state.
 type swapState struct {
 	backend.Backend
-	ctx    context.Context
-	cancel context.CancelFunc
-	sync.Mutex
+
+	ctx          context.Context
+	cancel       context.CancelFunc
+	stateMu      sync.Mutex
 	infoFile     string
 	transferBack bool
 
@@ -117,6 +118,14 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	return s, nil
 }
 
+func (s *swapState) lockState() {
+	s.stateMu.Lock()
+}
+
+func (s *swapState) unlockState() {
+	s.stateMu.Unlock()
+}
+
 func (s *swapState) waitForSendKeysMessage() {
 	waitDuration := time.Minute
 	timer := time.After(waitDuration)
@@ -174,15 +183,18 @@ func (s *swapState) ID() types.Hash {
 
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
-// If the swap already completed successfully, this function does not doing anything in regards to the protoco.
+// If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
-	s.Lock()
-	defer s.Unlock()
+	s.lockState()
+	defer s.unlockState()
+	return s.exit()
+}
 
+// exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
+func (s *swapState) exit() error {
 	if s.exited {
 		return nil
 	}
-
 	s.exited = true
 
 	defer func() {

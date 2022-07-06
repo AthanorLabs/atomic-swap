@@ -28,6 +28,7 @@ func CreateWalletRPCService(t *testing.T) string {
 	t.Cleanup(func() {
 		_ = outPipe.Close()
 		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	})
 	scanner := bufio.NewScanner(outPipe)
 	started := false
