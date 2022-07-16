@@ -26,13 +26,13 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 		return nil, errors.New("invalid event name, must be one of Claimed or Refunded")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	abiSF, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return nil, err
 	}
 
 	data := log.Data
-	res, err := abi.Unpack(event, data)
+	res, err := abiSF.Unpack(event, data)
 	if err != nil {
 		return nil, err
 	}
