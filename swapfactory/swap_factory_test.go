@@ -123,7 +123,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 func TestSwap_Claim_random(t *testing.T) {
 	// generate claim secret and public key
-	dleq := &dleq.FarcasterDLEq{}
+	dleq := &dleq.CGODLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -192,7 +192,7 @@ func TestSwap_Claim_random(t *testing.T) {
 
 func TestSwap_Refund_beforeT0(t *testing.T) {
 	// generate refund secret and public key
-	dleq := &dleq.FarcasterDLEq{}
+	dleq := &dleq.CGODLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -257,7 +257,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 
 func TestSwap_Refund_afterT1(t *testing.T) {
 	// generate refund secret and public key
-	dleq := &dleq.FarcasterDLEq{}
+	dleq := &dleq.CGODLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -361,7 +361,7 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 		sc := &swapCase{}
 
 		// generate claim secret and public key
-		dleq := &dleq.FarcasterDLEq{}
+		dleq := &dleq.CGODLEq{}
 		proof, err := dleq.Prove() //nolint:govet
 		require.NoError(t, err)
 		res, err := dleq.Verify(proof)
