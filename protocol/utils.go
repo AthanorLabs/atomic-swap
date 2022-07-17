@@ -5,19 +5,20 @@ import (
 	"path"
 	"time"
 
+	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/net/message"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
 func GetSwapInfoFilepath(basePath string) string {
-	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	t := time.Now().Format(common.TimeFmtNSecs)
 	return path.Join(basePath, t)
 }
 
 // GetSwapRecoveryFilepath returns an info file path with the current timestamp.
 func GetSwapRecoveryFilepath(basePath string) string {
-	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	t := time.Now().Format(common.TimeFmtNSecs)
 	return path.Join(basePath, fmt.Sprintf("recovery-%s.txt", t))
 }
 

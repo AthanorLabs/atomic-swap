@@ -53,7 +53,7 @@ func WaitForBlocks(client Client, count int) (uint, error) {
 // CreateMoneroWallet creates a monero wallet from a private keypair.
 func CreateMoneroWallet(name string, env common.Environment, client Client,
 	kpAB *mcrypto.PrivateKeyPair) (mcrypto.Address, error) {
-	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("%s-%s", name, t)
 	if err := client.GenerateFromKeys(kpAB, walletName, "", env); err != nil {
 		return "", err

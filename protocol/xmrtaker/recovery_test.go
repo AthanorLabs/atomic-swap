@@ -1,19 +1,21 @@
 package xmrtaker
 
 import (
+	"context"
 	"path"
 	"testing"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
+
+	"github.com/noot/atomic-swap/common"
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
 	s := newTestInstance(t)
-	s.SetSwapTimeout(time.Second * 10)
+	s.SetSwapTimeout(time.Second * 12)
 	akp, err := generateKeys()
 	require.NoError(t, err)
 
@@ -48,8 +50,11 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
-	_, err = rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
+	tx, err := rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
+	receipt, err := bind.WaitMined(context.Background(), rs.ss, tx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), receipt.Status)
 
 	t.Log("XMRMaker claimed ETH...")
 

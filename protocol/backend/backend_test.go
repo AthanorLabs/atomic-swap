@@ -2,17 +2,14 @@ package backend
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,21 +17,13 @@ func TestWaitForReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	defer ec.Close()
+	ec, chainID := tests.NewEthClient(t)
 
 	privKey, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
-	publicKey := privKey.Public().(*ecdsa.PublicKey)
-
-	nonce, err := ec.PendingNonceAt(ctx, ethcrypto.PubkeyToAddress(*publicKey))
-	require.NoError(t, err)
-
 	to := ethcommon.Address{}
 	txInner := &ethtypes.LegacyTx{
-		Nonce:    nonce,
 		To:       &to,
 		Value:    big.NewInt(99),
 		Gas:      21000,
@@ -42,7 +31,7 @@ func TestWaitForReceipt(t *testing.T) {
 	}
 
 	tx, err := ethtypes.SignNewTx(privKey,
-		ethtypes.LatestSignerForChainID(big.NewInt(common.GanacheChainID)),
+		ethtypes.LatestSignerForChainID(chainID),
 		txInner,
 	)
 	require.NoError(t, err)

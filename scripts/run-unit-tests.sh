@@ -14,7 +14,7 @@ if [[ ! -x "${GANACHE_EXEC}" ]]; then
 fi
 echo "starting ganache"
 export NODE_OPTIONS=--max_old_space_size=8192
-"${GANACHE_EXEC}" --deterministic --accounts=20 &> ganache.log &
+"${GANACHE_EXEC}" --deterministic --accounts=20 --miner.blockTime=1 &> ganache.log &
 GANACHE_PID=$!
 
 # wait for servers to start
@@ -24,6 +24,10 @@ sleep 10
 echo "running unit tests..."
 go test ./... -v -short -timeout=30m -covermode=atomic -coverprofile=coverage.out
 OK=$?
+
+if [[ "${OK}" -eq 0 ]]; then
+	go tool cover -html=coverage.out -o coverage.html
+fi
 
 # kill processes
 kill "${GANACHE_PID}" || echo "ganache was not running at end of test"

@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,16 +43,15 @@ func newSwap(
 	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
 	require.NoError(t, err)
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
+	ec, chainID := tests.NewEthClient(t)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
 
-	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
 	pkXMRMaker, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
@@ -61,11 +59,10 @@ func newSwap(
 
 	nonce := big.NewInt(0)
 	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
-	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress,
-		tm, nonce)
+	tx, err = contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress, tm, nonce)
 	require.NoError(t, err)
 
-	receipt, err := ec.TransactionReceipt(context.Background(), tx.Hash())
+	receipt, err := bind.WaitMined(context.Background(), ec, tx)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	swapID, err := swapfactory.GetIDFromLog(receipt.Logs[0])
@@ -102,18 +99,14 @@ func newBackend(
 	pk, err := ethcrypto.HexToECDSA(privkey)
 	require.NoError(t, err)
 
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
+	ec, chainID := tests.NewEthClient(t)
 
 	cfg := &backend.Config{
 		Ctx:                  context.Background(),
 		Environment:          common.Development,
 		EthereumPrivateKey:   pk,
 		EthereumClient:       ec,
-		ChainID:              big.NewInt(common.GanacheChainID),
+		ChainID:              chainID,
 		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		SwapContract:         contract,
@@ -146,7 +139,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
+	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)

@@ -1,6 +1,7 @@
 package xmrtaker
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -216,7 +217,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	s.LockClient()
 	defer s.UnlockClient()
 
-	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
 	if err := s.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.Env()), walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
@@ -290,23 +291,40 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("failed to call Ready: %w", err)
 	}
 
-	go func() {
-		until := time.Until(s.t1)
-
-		select {
-		case <-s.ctx.Done():
-			return
-		// TODO: document why we add one second
-		case <-time.After(until + time.Second):
-			s.handleT1Expired()
-			return
-		case <-s.claimedCh:
-			return
-		}
-	}()
+	go s.runT1ExpirationHandler()
 
 	s.setNextExpectedMessage(&message.NotifyClaimed{})
 	return &message.NotifyReady{}, nil
+}
+
+func (s *swapState) runT1ExpirationHandler() {
+	log.Debugf("time until t1 (%s): %vs",
+		s.t0.Format(common.TimeFmtSecs),
+		time.Until(s.t1).Seconds(),
+	)
+
+	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
+	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+
+	waitCh := make(chan error)
+	go func() {
+		waitCh <- s.WaitForTimestamp(waitCtx, s.t1)
+		close(waitCh)
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-s.claimedCh:
+		return
+	case err := <-waitCh:
+		if err != nil {
+			// TODO: Do we propagate this error? If we retry, the logic should probably be inside WaitForTimestamp.
+			log.Errorf("Failure waiting for T1 timeout: err=%s", err)
+			return
+		}
+		s.handleT1Expired()
+	}
 }
 
 func (s *swapState) handleT1Expired() {

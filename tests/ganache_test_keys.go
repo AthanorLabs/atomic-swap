@@ -1,9 +1,16 @@
 package tests
 
 import (
+	"context"
+	"math/big"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/require"
+
+	"github.com/noot/atomic-swap/common"
 )
 
 /*
@@ -100,4 +107,17 @@ func GetMakerTestKey(t *testing.T) string {
 // GetTakerTestKey returns a unique Ethereum/ganache taker key per test package
 func GetTakerTestKey(t *testing.T) string {
 	return ganacheTestKeys[getPackageIndex(t)*ethKeysPerPackage+1]
+}
+
+// NewEthClient returns a connection to the local ganache instance for unit tests along
+// with its chain ID. The connection is automatically closed when the test completes.
+func NewEthClient(t *testing.T) (*ethclient.Client, *big.Int) {
+	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
+	chainID, err := ec.ChainID(context.Background())
+	require.NoError(t, err)
+	return ec, chainID
 }

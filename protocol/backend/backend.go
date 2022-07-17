@@ -49,6 +49,7 @@ type Backend interface {
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
+	WaitForTimestamp(ctx context.Context, ts time.Time) error
 
 	// helpers
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -335,6 +336,18 @@ func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*e
 	}
 
 	return nil, errReceiptTimeOut
+}
+
+func (b *backend) WaitForTimestamp(ctx context.Context, ts time.Time) error {
+	hdr, err := WaitForEthBlockAfterTimestamp(ctx, b.ethClient, ts.Unix())
+	if err == nil {
+		log.Debug("Wait complete for block %d with ts=%s >= %s",
+			hdr.Number.Uint64(),
+			time.Unix(int64(hdr.Time), 0).Format(common.TimeFmtSecs),
+			ts.Format(common.TimeFmtSecs),
+		)
+	}
+	return err
 }
 
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {

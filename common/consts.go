@@ -15,4 +15,7 @@ const (
 
 	// DefaultPrivKeyXMRMaker is the private key at index 1 from `ganache --deterministic`
 	DefaultPrivKeyXMRMaker = "6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1"
+
+	TimeFmtSecs  = "2006-01-02-15:04:05"
+	TimeFmtNSecs = "2006-01-02-15:04:05.999999999"
 )

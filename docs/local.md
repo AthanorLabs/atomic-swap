@@ -17,9 +17,10 @@ if you want a more sophisticated setup.
 
 Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you. You can also check out the `scripts/run-unit-tests.sh` script for the commands needed to setup the environment.
 
-Start ganache with deterministic keys:
+Start ganache with deterministic keys. We disable instamine, for a more realistic
+simulation, by setting the miner.blockTime.
 ```bash
-ganache --deterministic --accounts=20
+ganache --deterministic --accounts=20 --miner.blockTime=1
 ```
 
 Start monerod for regtest, this binary is in the monero bin directory:

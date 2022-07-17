@@ -13,7 +13,7 @@ killall -v swapd
 pkill -e -f swapcli
 
 echo "start ganache"
-"$(npm config get prefix)/bin/ganache" --deterministic --accounts=20 &> "${LOG_DIR}/ganache.log" &
+"$(npm config get prefix)/bin/ganache" --deterministic --accounts=20 --miner.blockTime=1 &> "${LOG_DIR}/ganache.log" &
 
 echo "move to $MONERO_DIR"
 cd "${MONERO_DIR}"

@@ -1,6 +1,7 @@
 package xmrmaker
 
 import (
+	"context"
 	"math/big"
 	"path"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/monero"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,8 +41,12 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	// set contract to Ready
-	_, err = rs.ss.Contract().SetReady(txOpts, rs.ss.contractSwap)
+	tx, err := rs.ss.Contract().SetReady(txOpts, rs.ss.contractSwap)
 	require.NoError(t, err)
+
+	receipt, err := bind.WaitMined(context.Background(), rs.ss, tx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), receipt.Status)
 
 	// assert we can claim ether
 	res, err := rs.ClaimOrRecover()
@@ -70,8 +76,12 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 
 	// call refund w/ XMRTaker's spend key
 	sc := rs.ss.getSecret()
-	_, err = rs.ss.Contract().Refund(txOpts, rs.ss.contractSwap, sc)
+	tx, err := rs.ss.Contract().Refund(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
+
+	receipt, err := bind.WaitMined(context.Background(), rs.ss, tx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), receipt.Status)
 
 	// assert XMRMaker can reclaim his monero
 	res, err := rs.ClaimOrRecover()

@@ -334,6 +334,7 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	}
 
 	if untilT0 > 0 && stage != swapfactory.StageReady {
+		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically?
 		// we need to wait until t0 to claim
 		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
 		<-time.After(untilT0 + time.Second)
@@ -522,7 +523,8 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
-	txHash, _, err := s.Claim(s.ID(), s.contractSwap, sc)
+	unused := types.Hash{}
+	txHash, _, err := s.Claim(unused, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

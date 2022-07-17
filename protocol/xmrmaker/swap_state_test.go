@@ -22,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
@@ -50,16 +49,15 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
 	require.NoError(t, err)
 
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
+	ec, chainID := tests.NewEthClient(t)
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	require.NoError(t, err)
+
+	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
@@ -69,7 +67,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
+		ChainID:              chainID,
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
 		SwapManager:          pswap.NewManager(),
@@ -139,17 +137,16 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *
 
 	// TODO: this is sus, update this when signing interfaces are updated
 	txOpts.Value = amount
-	defer func() {
-		txOpts.Value = nil
-	}()
 
 	ethAddr := ss.EthAddress()
 	nonce := big.NewInt(0)
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm, nonce)
 	require.NoError(t, err)
 
-	receipt, err := ss.TransactionReceipt(context.Background(), tx.Hash())
+	receipt, err := bind.WaitMined(context.Background(), ss, tx)
 	require.NoError(t, err)
+	require.Equal(t, uint64(1), receipt.Status)
+
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
@@ -183,10 +180,6 @@ func TestSwapState_GenerateAndSetKeys(t *testing.T) {
 }
 
 func TestSwapState_ClaimFunds(t *testing.T) {
-	if testing.Short() {
-		t.Skip() // TODO: randomly fails on CI with "no contract code at given address"
-	}
-
 	_, swapState := newTestInstance(t)
 	err := swapState.generateAndSetKeys()
 	require.NoError(t, err)
@@ -197,8 +190,11 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 
 	txOpts, err := swapState.TxOpts()
 	require.NoError(t, err)
-	_, err = swapState.Contract().SetReady(txOpts, swapState.contractSwap)
+	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
+	receipt, err := bind.WaitMined(context.Background(), swapState, tx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), receipt.Status)
 
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)

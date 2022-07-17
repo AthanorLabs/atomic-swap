@@ -28,7 +28,7 @@ if [[ ! -x "${GANACHE_EXEC}" ]]; then
 fi
 echo "starting ganache"
 export NODE_OPTIONS=--max_old_space_size=8192
-"${GANACHE_EXEC}" --deterministic --accounts=20 &> ganache.log &
+"${GANACHE_EXEC}" --deterministic --accounts=20 --miner.blockTime=1 &> ganache.log &
 GANACHE_PID=$!
 
 # wait for servers to start
