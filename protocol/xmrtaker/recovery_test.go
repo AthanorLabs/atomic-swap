@@ -1,16 +1,15 @@
 package xmrtaker
 
 import (
-	"context"
 	"path"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/tests"
 )
 
 func newTestRecoveryState(t *testing.T) *recoveryState {
@@ -52,10 +51,7 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	tx, err := rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
-	receipt, err := bind.WaitMined(context.Background(), rs.ss, tx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status)
-
+	tests.MineTransaction(t, rs.ss, tx)
 	t.Log("XMRMaker claimed ETH...")
 
 	// assert we can claim the monero

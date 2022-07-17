@@ -22,10 +22,11 @@ sleep 10
 
 # run unit tests
 echo "running unit tests..."
+rm -f coverage.out
 go test ./... -v -short -timeout=30m -covermode=atomic -coverprofile=coverage.out
 OK=$?
 
-if [[ "${OK}" -eq 0 ]]; then
+if [[ -e coverage.out ]]; then
 	go tool cover -html=coverage.out -o coverage.html
 fi
 

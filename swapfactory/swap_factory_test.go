@@ -47,6 +47,8 @@ func TestSwapFactory_NewSwap(t *testing.T) {
 	tx, err = contract.NewSwap(auth, [32]byte{}, [32]byte{},
 		ethcommon.Address{}, defaultTimeoutDuration, nonce)
 	require.NoError(t, err)
+	tests.MineTransaction(t, conn, tx)
+
 	t.Logf("gas cost to call new_swap: %d", tx.Gas())
 }
 
@@ -83,8 +85,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 		defaultTimeoutDuration, nonce)
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", tx.Gas())
-	receipt, err := bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, conn, tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[0])
@@ -108,17 +109,13 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	tx, err = contract.SetReady(auth, swap)
 	require.NoError(t, err)
 	t.Logf("gas cost to call set_ready: %d", tx.Gas())
-	receipt, err = bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status)
+	tests.MineTransaction(t, conn, tx)
 
 	// now let's try to claim
 	tx, err = contract.Claim(auth, swap, s)
 	require.NoError(t, err)
 	t.Logf("gas cost to call claim: %d", tx.Gas())
-	receipt, err = bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status)
+	tests.MineTransaction(t, conn, tx)
 
 	callOpts := &bind.CallOpts{
 		From:    crypto.PubkeyToAddress(*pub),
@@ -156,10 +153,9 @@ func TestSwap_Claim_random(t *testing.T) {
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
 		defaultTimeoutDuration, nonce)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, conn, tx)
 	t.Logf("gas cost to call new_swap: %d", tx.Gas())
 
-	receipt, err := bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
@@ -182,9 +178,7 @@ func TestSwap_Claim_random(t *testing.T) {
 	tx, err = contract.SetReady(auth, swap)
 	require.NoError(t, err)
 	t.Logf("gas cost to call SetReady: %d", tx.Gas())
-	receipt, err = bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status)
+	tests.MineTransaction(t, conn, tx)
 
 	// now let's try to claim
 	var s [32]byte
@@ -192,10 +186,8 @@ func TestSwap_Claim_random(t *testing.T) {
 	copy(s[:], common.Reverse(secret[:]))
 	tx, err = contract.Claim(auth, swap, s)
 	require.NoError(t, err)
+	tests.MineTransaction(t, conn, tx)
 	t.Logf("gas cost to call Claim: %d", tx.Gas())
-	receipt, err = bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status)
 
 	callOpts := &bind.CallOpts{
 		From:    crypto.PubkeyToAddress(*pub),
@@ -234,10 +226,9 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr,
 		defaultTimeoutDuration, nonce)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, conn, tx)
 	t.Logf("gas cost to call new_swap: %d", tx.Gas())
 
-	receipt, err := bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
@@ -262,9 +253,8 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	copy(s[:], common.Reverse(secret[:]))
 	tx, err = contract.Refund(auth, swap, s)
 	require.NoError(t, err)
+	tests.MineTransaction(t, conn, tx)
 	t.Logf("gas cost to call Refund: %d", tx.Gas())
-	_, err = bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
 
 	callOpts := &bind.CallOpts{
 		From:    crypto.PubkeyToAddress(*pub),
@@ -300,13 +290,11 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	require.NoError(t, err)
 
 	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr,
-		defaultTimeoutDuration, nonce)
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, nonce)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, conn, tx)
 	t.Logf("gas cost to call new_swap: %d", tx.Gas())
 
-	receipt, err := bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
@@ -348,10 +336,8 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	copy(s[:], common.Reverse(secret[:]))
 	tx, err = contract.Refund(auth, swap, s)
 	require.NoError(t, err)
+	tests.MineTransaction(t, conn, tx)
 	t.Logf("gas cost to call Refund: %d", tx.Gas())
-	receipt, err = bind.WaitMined(context.Background(), conn, tx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status)
 
 	callOpts := &bind.CallOpts{
 		From:    crypto.PubkeyToAddress(*pub),
@@ -401,13 +387,11 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 		copy(sc.secret[:], common.Reverse(secret[:]))
 
 		nonce := big.NewInt(int64(i))
-		tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-			defaultTimeoutDuration, nonce)
+		tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr, defaultTimeoutDuration, nonce)
 		require.NoError(t, err)
+		receipt := tests.MineTransaction(t, conn, tx)
 		t.Logf("gas cost to call new_swap: %d", tx.Gas())
 
-		receipt, err := bind.WaitMined(context.Background(), conn, tx)
-		require.NoError(t, err)
 		require.Equal(t, 1, len(receipt.Logs))
 		sc.id, err = GetIDFromLog(receipt.Logs[0])
 		require.NoError(t, err)
@@ -433,18 +417,14 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 		// set contract to Ready
 		tx, err = contract.SetReady(auth, sc.swap)
 		require.NoError(t, err)
+		tests.MineTransaction(t, conn, tx)
 		t.Logf("gas cost to call SetReady: %d", tx.Gas())
-		receipt, err := bind.WaitMined(context.Background(), conn, tx)
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), receipt.Status)
 
 		// now let's try to claim
 		tx, err = contract.Claim(auth, sc.swap, sc.secret)
 		require.NoError(t, err)
+		tests.MineTransaction(t, conn, tx)
 		t.Logf("gas cost to call Claim: %d", tx.Gas())
-		receipt, err = bind.WaitMined(context.Background(), conn, tx)
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), receipt.Status)
 
 		callOpts := &bind.CallOpts{
 			From:    crypto.PubkeyToAddress(*pub),

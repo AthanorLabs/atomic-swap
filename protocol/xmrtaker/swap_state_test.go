@@ -349,6 +349,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Claim(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
+	tests.MineTransaction(t, s, tx)
 
 	// handled the claimed message should result in the monero wallet being created
 	cmsg := &message.NotifyClaimed{

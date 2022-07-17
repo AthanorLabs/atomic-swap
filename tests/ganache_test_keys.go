@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
@@ -120,4 +122,14 @@ func NewEthClient(t *testing.T) (*ethclient.Client, *big.Int) {
 	chainID, err := ec.ChainID(context.Background())
 	require.NoError(t, err)
 	return ec, chainID
+}
+
+// MineTransaction is a test helper that blocks until the transaction is included in a block
+// and returns the receipt. Errors are checked including the status.
+func MineTransaction(t *testing.T, ec bind.DeployBackend, tx *ethtypes.Transaction) *ethtypes.Receipt {
+	ctx := context.Background() // Create a MineTransactionWithCtx if a future test needs a custom context
+	receipt, err := bind.WaitMined(ctx, ec, tx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), receipt.Status) // Make sure the transaction was not reverted
+	return receipt
 }

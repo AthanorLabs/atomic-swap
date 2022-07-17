@@ -61,9 +61,8 @@ func newSwap(
 	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
 	tx, err = contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress, tm, nonce)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, ec, tx)
 
-	receipt, err := bind.WaitMined(context.Background(), ec, tx)
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	swapID, err := swapfactory.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
