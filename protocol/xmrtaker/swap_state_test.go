@@ -310,7 +310,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 
 	// mine some blocks to get xmr first
-	err = maker.GenerateBlocks(xmrmakerAddr.Address, 121)
+	err = maker.GenerateBlocks(xmrmakerAddr.Address, 256)
 	require.NoError(t, err)
 	err = maker.Refresh()
 	require.NoError(t, err)
@@ -319,9 +319,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	_, err = maker.Transfer(xmrAddr, 0, uint(amt))
+	tResp, err := maker.Transfer(xmrAddr, 0, uint(amt))
 	require.NoError(t, err)
-	t.Log("transferred to account", xmrAddr)
+	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
+	require.Equal(t, uint(amt), tResp.Amount)
 
 	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 100)
 
