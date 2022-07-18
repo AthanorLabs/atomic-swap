@@ -138,7 +138,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 	require.NoError(t, err)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
+	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
@@ -154,7 +154,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 	require.NoError(t, err)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
+	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
