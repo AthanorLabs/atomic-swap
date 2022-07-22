@@ -33,7 +33,6 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 
 func TestSwapFactory_NewSwap(t *testing.T) {
 	auth, conn, _ := setupXMRTakerAuth(t)
-	defer conn.Close()
 	address, tx, contract, err := DeploySwapFactory(auth, conn)
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
@@ -70,7 +69,6 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 	// deploy swap contract with claim key hash
 	auth, conn, pkA := setupXMRTakerAuth(t)
-	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -212,7 +210,6 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 
 	// deploy swap contract with refund key hash
 	auth, conn, pkA := setupXMRTakerAuth(t)
-	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -279,7 +276,6 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 
 	// deploy swap contract with refund key hash
 	auth, conn, pkA := setupXMRTakerAuth(t)
-	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
@@ -352,7 +348,6 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 func TestSwap_MultipleSwaps(t *testing.T) {
 	// test case where contract has multiple swaps happening at once
 	auth, conn, pkA := setupXMRTakerAuth(t)
-	defer conn.Close()
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
