@@ -352,6 +352,21 @@ func (mr *MockBackendMockRecorder) GetHeight() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHeight", reflect.TypeOf((*MockBackend)(nil).GetHeight))
 }
 
+// LatestBlockTimestamp mocks base method.
+func (m *MockBackend) LatestBlockTimestamp(arg0 context.Context) (time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LatestBlockTimestamp", arg0)
+	ret0, _ := ret[0].(time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LatestBlockTimestamp indicates an expected call of LatestBlockTimestamp.
+func (mr *MockBackendMockRecorder) LatestBlockTimestamp(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LatestBlockTimestamp", reflect.TypeOf((*MockBackend)(nil).LatestBlockTimestamp), arg0)
+}
+
 // LockClient mocks base method.
 func (m *MockBackend) LockClient() {
 	m.ctrl.T.Helper()

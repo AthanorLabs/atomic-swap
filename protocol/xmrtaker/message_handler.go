@@ -3,6 +3,7 @@ package xmrtaker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
@@ -149,17 +150,26 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	// start goroutine to check that XMRMaker locks before t_0
 	go func() {
 		// TODO: this variable is so that we definitely refund before t0.
-		// this will vary based on environment (eg. development should be very small,
-		// a network with slower block times should be longer)
-		const timeoutBuffer = time.Second * 5
-		until := time.Until(s.t0)
-
-		log.Debugf("time until refund: %vs", until.Seconds())
+		// Current algorithm is to trigger the timeout when only 15% of the allotted
+		// time is remaining. If the block interval is 1 second on a test network and
+		// and T0 is 7 seconds after swap creation, we need the refund to trigger more
+		// than one second before the block with a timestamp exactly equal to T0 to
+		// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
+		// may be reasonable even with large timeouts on production networks, but more
+		// research is needed.
+		t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
+		deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
+		deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
+		giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
+		defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
+		log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
 
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-time.After(until - timeoutBuffer):
+		case <-s.xmrLockedCh:
+			return
+		case <-giveUpAndRefundTimer.C:
 			s.lockState()
 			defer s.unlockState()
 
@@ -170,7 +180,11 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			// XMRMaker hasn't locked yet, let's call refund
 			txhash, err := s.refund()
 			if err != nil {
-				log.Errorf("failed to refund: err=%s", err)
+				if !strings.Contains(err.Error(), revertSwapCompleted) {
+					log.Errorf("failed to refund: err=%s", err)
+				} else {
+					log.Debugf("failed to refund (okay): err=%s", err)
+				}
 				return
 			}
 
@@ -182,10 +196,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			}, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
-		case <-s.xmrLockedCh:
-			return
 		}
-
 	}()
 
 	s.setNextExpectedMessage(&message.NotifyXMRLock{})

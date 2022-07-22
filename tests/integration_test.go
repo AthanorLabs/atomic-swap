@@ -11,13 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/rpcclient"
 	"github.com/noot/atomic-swap/rpcclient/wsclient"
-
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -230,7 +231,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 
 	const (
 		testTimeout = time.Second * 60
-		swapTimeout = 7 // 7s
+		swapTimeout = 10 // 10s (7s is the minimum, but an underpowered host can require more)
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -353,7 +354,7 @@ func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
 	// TODO: This test is broken. It is supposed to have types.CompletedRefund below, but I don't see
 	//       an easy way to make the documented above behaviour happen (i.e. take the XMRMaker offline
 	//       until after T1.
-	testRefundXMRMakerCancels(t, 7, types.CompletedSuccess)
+	testRefundXMRMakerCancels(t, 12, types.CompletedSuccess /*types.CompletedRefund */)
 	time.Sleep(time.Second * 5)
 }
 
@@ -765,7 +766,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 }
 
 func TestSuccess_ConcurrentSwaps(t *testing.T) {
-	const testTimeout = time.Second * 180
+	const testTimeout = time.Minute * 4
 	const numConcurrentSwaps = 10
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -880,7 +881,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	for _, tc := range makerTests {
 		select {
 		case err = <-tc.errCh:
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		default:
 		}
 	}
@@ -888,7 +889,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	for _, tc := range takerTests {
 		select {
 		case err = <-tc.errCh:
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		default:
 		}
 	}

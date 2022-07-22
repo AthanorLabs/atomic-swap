@@ -19,15 +19,19 @@ func TestWaitForBlocks(t *testing.T) {
 	addr, err := c.callGetAddress(0)
 	require.NoError(t, err)
 
+	heightBefore, err := c.GetHeight()
+	require.NoError(t, err)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		_ = daemon.callGenerateBlocks(addr.Address, 181)
+		errGen := daemon.callGenerateBlocks(addr.Address, 181)
+		require.NoError(t, errGen)
 		wg.Done()
 	}()
-
-	_, err = WaitForBlocks(c, 1)
+	heightAfter, err := WaitForBlocks(c, 1)
 	require.NoError(t, err)
+	require.GreaterOrEqual(t, heightAfter-heightBefore, uint(1))
 	wg.Wait()
 }
 

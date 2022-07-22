@@ -3,6 +3,7 @@ package swapfactory
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -19,6 +20,22 @@ const (
 	StageReady
 	StageCompleted
 )
+
+// StageToString converts a contract Stage enum value to a string
+func StageToString(stage byte) string {
+	switch stage {
+	case StageInvalid:
+		return "Invalid"
+	case StagePending:
+		return "Pending"
+	case StageReady:
+		return "Ready"
+	case StageCompleted:
+		return "Completed"
+	default:
+		return fmt.Sprintf("UnknownStageValue(%d)", stage)
+	}
+}
 
 // GetSecretFromLog returns the secret from a Claimed or Refunded log
 func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey, error) {
@@ -60,7 +77,7 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, err
 		return false, errors.New("invalid event name, must be one of Claimed or Refunded")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return false, err
 	}
@@ -85,7 +102,7 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, err
 
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return [32]byte{}, err
 	}
@@ -108,7 +125,7 @@ func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
 
 // GetTimeoutsFromLog returns the timeouts from a New event.
 func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryABI))
+	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return nil, nil, err
 	}

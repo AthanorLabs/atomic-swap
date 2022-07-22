@@ -2,6 +2,7 @@ package xmrtaker
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -12,6 +13,8 @@ var (
 	errMissingAddress          = errors.New("did not receive XMRMaker's address")
 	errNoClaimLogsFound        = errors.New("no Claimed logs found")
 	errCannotRefund            = errors.New("swap is not at a stage where it can refund")
+	errRefundInvalid           = errors.New("can not refund, swap does not exist")
+	errRefundSwapCompleted     = fmt.Errorf("can not refund, %w", errSwapCompleted)
 	errNilMessage              = errors.New("message is nil")
 	errIncorrectMessageType    = errors.New("received unexpected message")
 	errNoLockedXMRAddress      = errors.New("got empty address for locked XMR")
@@ -19,7 +22,7 @@ var (
 	errNoPublicKeysSet         = errors.New("our public keys aren't set")
 	errCounterpartyKeysNotSet  = errors.New("counterparty's keys aren't set")
 	errSwapInstantiationNoLogs = errors.New("expected 1 log, got 0")
-	errSwapCompleted           = errors.New("swap has already completed")
+	errSwapCompleted           = errors.New("swap is already completed")
 
 	// inititation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

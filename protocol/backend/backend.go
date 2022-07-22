@@ -50,6 +50,7 @@ type Backend interface {
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
+	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
 
 	// helpers
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -348,6 +349,14 @@ func (b *backend) WaitForTimestamp(ctx context.Context, ts time.Time) error {
 		)
 	}
 	return err
+}
+
+func (b *backend) LatestBlockTimestamp(ctx context.Context) (time.Time, error) {
+	hdr, err := b.EthClient().HeaderByNumber(ctx, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(int64(hdr.Time), 0), nil
 }
 
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {
