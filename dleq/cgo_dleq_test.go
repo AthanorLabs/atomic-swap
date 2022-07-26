@@ -25,3 +25,12 @@ func TestCGODLEq(t *testing.T) {
 	ed25519Pub := sk.Public().Bytes()
 	require.Equal(t, res.ed25519Pub[:], ed25519Pub)
 }
+
+func TestCGODLEq_Invalid(t *testing.T) {
+	proof, err := (&CGODLEq{}).Prove()
+	require.NoError(t, err)
+	proof.proof[0] = 0
+
+	_, err = (&CGODLEq{}).Verify(proof)
+	require.Error(t, err)
+}
