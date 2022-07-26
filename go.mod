@@ -19,7 +19,7 @@ require (
 	github.com/libp2p/go-libp2p-discovery v0.5.1
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
 	github.com/multiformats/go-multiaddr v0.4.1
-	github.com/noot/cgo-dleq v0.0.0-20220726050632-d40ed96d987a
+	github.com/noot/cgo-dleq v0.0.0-20220726051627-d0716fb55684
 	github.com/stretchr/testify v1.7.1
 	github.com/urfave/cli v1.22.5
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
