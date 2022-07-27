@@ -16,6 +16,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/noot/atomic-swap/ethereum/block"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
@@ -23,12 +24,6 @@ import (
 	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
-)
-
-const (
-	// in total, we will wait up to 1 hour for a transaction to be included
-	maxRetries           = 360
-	receiptSleepDuration = time.Second * 10
 )
 
 var (
@@ -319,28 +314,11 @@ func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
 
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
 func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
-	for i := 0; i < maxRetries; i++ {
-		receipt, err := b.ethClient.TransactionReceipt(ctx, txHash)
-		if err != nil {
-			log.Infof("waiting for transaction to be included in chain: txHash=%s", txHash)
-			time.Sleep(receiptSleepDuration)
-			continue
-		}
-
-		log.Infof("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
-			txHash,
-			receipt.BlockHash,
-			receipt.BlockNumber,
-			receipt.CumulativeGasUsed,
-		)
-		return receipt, nil
-	}
-
-	return nil, errReceiptTimeOut
+	return block.WaitForReceipt(ctx, b.ethClient, txHash)
 }
 
 func (b *backend) WaitForTimestamp(ctx context.Context, ts time.Time) error {
-	hdr, err := WaitForEthBlockAfterTimestamp(ctx, b.ethClient, ts.Unix())
+	hdr, err := block.WaitForEthBlockAfterTimestamp(ctx, b.ethClient, ts.Unix())
 	if err == nil {
 		log.Debug("Wait complete for block %d with ts=%s >= %s",
 			hdr.Number.Uint64(),

@@ -10,6 +10,7 @@ import (
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/ethereum/block"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -156,7 +157,7 @@ func (s *ExternalSender) NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRe
 	case txHash = <-chs.in:
 	}
 
-	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
@@ -219,7 +220,7 @@ func (s *ExternalSender) sendAndReceive(id types.Hash,
 	case txHash = <-chs.in:
 	}
 
-	receipt, err := waitForReceipt(s.ctx, s.ec, txHash)
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}

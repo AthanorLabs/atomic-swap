@@ -28,6 +28,7 @@ import (
 // one or more prefunded ganache wallets.
 var testPackageNames = []string{
 	"cmd/daemon",
+	"ethereum/block",
 	"protocol/backend",
 	"protocol/xmrmaker",
 	"protocol/xmrtaker",
@@ -130,6 +131,6 @@ func MineTransaction(t *testing.T, ec bind.DeployBackend, tx *ethtypes.Transacti
 	ctx := context.Background() // Create a MineTransactionWithCtx if a future test needs a custom context
 	receipt, err := bind.WaitMined(ctx, ec, tx)
 	require.NoError(t, err)
-	require.Equal(t, uint64(1), receipt.Status) // Make sure the transaction was not reverted
+	require.Equal(t, ethtypes.ReceiptStatusSuccessful, receipt.Status) // Make sure the transaction was not reverted
 	return receipt
 }

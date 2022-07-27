@@ -345,7 +345,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	if ts.Before(s.t0) && !isReady {
 		// using errT0 to avoid shadow warnings
 		txHash, errT0 := s.refund()
-		// TODO: Have refund() return error constants that we can check against
+		// TODO: Have refund() return errors that we can use errors.Is to check against
 		if errT0 == nil || !strings.Contains(errT0.Error(), revertUnableToRefund) {
 			return txHash, errT0
 		}
