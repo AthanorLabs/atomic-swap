@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +21,7 @@ func TestCheckContractCode(t *testing.T) {
 
 	ec, chainID := tests.NewEthClient(t)
 	ctx := context.Background()
-
-	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
-	require.NoError(t, err)
+	pk := tests.GetMakerTestKey(t)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)

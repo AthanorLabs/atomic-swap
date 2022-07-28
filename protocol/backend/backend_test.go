@@ -9,18 +9,14 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWaitForReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	ec, chainID := tests.NewEthClient(t)
-
-	privKey, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
-	require.NoError(t, err)
+	privKey := tests.GetTakerTestKey(t)
 
 	to := ethcommon.Address{}
 	txInner := &ethtypes.LegacyTx{

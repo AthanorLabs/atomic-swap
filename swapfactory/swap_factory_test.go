@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"math/big"
+	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,12 +22,11 @@ import (
 	"github.com/noot/atomic-swap/tests"
 )
 
-var defaultTimeoutDuration = big.NewInt(90) // 90 seconds
+var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
 	conn, chainID := tests.NewEthClient(t)
-	pkA, err := crypto.HexToECDSA(tests.GetTakerTestKey(t))
-	require.NoError(t, err)
+	pkA := tests.GetTakerTestKey(t)
 	auth, err := bind.NewKeyedTransactorWithChainID(pkA, chainID)
 	require.NoError(t, err)
 	return auth, conn, pkA
@@ -120,12 +120,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call claim: %d", receipt.GasUsed)
 
-	callOpts := &bind.CallOpts{
-		From:    crypto.PubkeyToAddress(*pub),
-		Context: context.Background(),
-	}
-
-	stage, err := contract.Swaps(callOpts, id)
+	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, StageCompleted, stage)
 }
@@ -195,12 +190,7 @@ func TestSwap_Claim_random(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call Claim: %d", receipt.GasUsed)
 
-	callOpts := &bind.CallOpts{
-		From:    crypto.PubkeyToAddress(*pub),
-		Context: context.Background(),
-	}
-
-	stage, err := contract.Swaps(callOpts, id)
+	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, StageCompleted, stage)
 }
@@ -228,8 +218,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr,
-		defaultTimeoutDuration, nonce)
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -263,12 +252,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call Refund: %d", receipt.GasUsed)
 
-	callOpts := &bind.CallOpts{
-		From:    crypto.PubkeyToAddress(*pub),
-		Context: context.Background(),
-	}
-
-	stage, err := contract.Swaps(callOpts, id)
+	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, StageCompleted, stage)
 }
@@ -359,9 +343,11 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 
 func TestSwap_MultipleSwaps(t *testing.T) {
 	// test case where contract has multiple swaps happening at once
-	auth, conn, pkA := setupXMRTakerAuth(t)
-	pub := pkA.Public().(*ecdsa.PublicKey)
-	addr := crypto.PubkeyToAddress(*pub)
+	conn, chainID := tests.NewEthClient(t)
+
+	pkContractCreator := tests.GetTestKeyByIndex(t, 0)
+	auth, err := bind.NewKeyedTransactorWithChainID(pkContractCreator, chainID)
+	require.NoError(t, err)
 
 	_, tx, contract, err := DeploySwapFactory(auth, conn)
 	require.NoError(t, err)
@@ -369,80 +355,122 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
-	numSwaps := 16
+	const numSwaps = 16
 	type swapCase struct {
-		id     [32]byte
-		secret [32]byte
-		swap   SwapFactorySwap
+		index     int // index in the swap array
+		walletKey *ecdsa.PrivateKey
+		id        [32]byte
+		secret    [32]byte
+		swap      SwapFactorySwap
 	}
 
-	// setup all swap instances in contract
-	swapCases := []*swapCase{}
+	getAuth := func(sc *swapCase) *bind.TransactOpts {
+		auth, err := bind.NewKeyedTransactorWithChainID(sc.walletKey, chainID)
+		require.NoError(t, err)
+		return auth
+	}
+
+	swapCases := [numSwaps]swapCase{}
+
+	// setup all swap instances
 	for i := 0; i < numSwaps; i++ {
-		sc := &swapCase{}
+		sc := &swapCases[i]
+		sc.index = i
 
 		// generate claim secret and public key
 		dleq := &dleq.CGODLEq{}
-		proof, err := dleq.Prove() //nolint:govet
+		proof, err := dleq.Prove()
 		require.NoError(t, err)
 		res, err := dleq.Verify(proof)
 		require.NoError(t, err)
 
-		// hash public key
-		cmt := res.Secp256k1PublicKey().Keccak256()
 		secret := proof.Secret()
 		copy(sc.secret[:], common.Reverse(secret[:]))
 
-		nonce := big.NewInt(int64(i))
-		tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr, defaultTimeoutDuration, nonce)
-		require.NoError(t, err)
-		receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-		require.NoError(t, err)
-		t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
-
-		require.Equal(t, 1, len(receipt.Logs))
-		sc.id, err = GetIDFromLog(receipt.Logs[0])
-		require.NoError(t, err)
-
-		t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
-		require.NoError(t, err)
+		sc.walletKey = tests.GetTestKeyByIndex(t, i)
+		addrSwap := crypto.PubkeyToAddress(*sc.walletKey.Public().(*ecdsa.PublicKey))
 
 		sc.swap = SwapFactorySwap{
-			Owner:        addr,
-			Claimer:      addr,
-			PubKeyClaim:  cmt,
-			PubKeyRefund: [32]byte{},
-			Timeout0:     t0,
-			Timeout1:     t1,
+			Owner:        addrSwap,
+			Claimer:      addrSwap,
+			PubKeyClaim:  res.Secp256k1PublicKey().Keccak256(),
+			PubKeyRefund: [32]byte{}, // no one calls refund in this test
+			Timeout0:     nil,        // timeouts initialised when swap is created
+			Timeout1:     nil,
 			Value:        big.NewInt(0),
-			Nonce:        nonce,
+			Nonce:        big.NewInt(int64(i)),
 		}
-
-		swapCases = append(swapCases, sc)
 	}
 
-	for _, sc := range swapCases {
-		// set contract to Ready
-		tx, err = contract.SetReady(auth, sc.swap)
-		require.NoError(t, err)
-		receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-		require.NoError(t, err)
-		t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
+	// We create all transactions in parallel, so the transactions of each swap stage can get bundled up
+	// into one or two blocks and greatly speed up the test.
+	var wg sync.WaitGroup
 
-		// now let's try to claim
-		tx, err = contract.Claim(auth, sc.swap, sc.secret)
-		require.NoError(t, err)
-		receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-		require.NoError(t, err)
-		t.Logf("gas cost to call Claim: %d", receipt.GasUsed)
+	// create swap instances
+	wg.Add(numSwaps)
+	for i := 0; i < numSwaps; i++ {
+		go func(sc *swapCase) {
+			defer wg.Done()
+			tx, err := contract.NewSwap(
+				getAuth(sc),
+				sc.swap.PubKeyClaim,
+				sc.swap.PubKeyRefund,
+				sc.swap.Claimer,
+				defaultTimeoutDuration,
+				sc.swap.Nonce,
+			)
+			require.NoError(t, err)
+			receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
+			require.NoError(t, err)
+			t.Logf("gas cost to call new_swap[%d]: %d", sc.index, receipt.GasUsed)
 
-		callOpts := &bind.CallOpts{
-			From:    crypto.PubkeyToAddress(*pub),
-			Context: context.Background(),
-		}
+			require.Equal(t, 1, len(receipt.Logs))
+			sc.id, err = GetIDFromLog(receipt.Logs[0])
+			require.NoError(t, err)
 
-		stage, err := contract.Swaps(callOpts, sc.id)
-		require.NoError(t, err)
-		require.Equal(t, StageCompleted, stage)
+			sc.swap.Timeout0, sc.swap.Timeout1, err = GetTimeoutsFromLog(receipt.Logs[0])
+			require.NoError(t, err)
+		}(&swapCases[i])
 	}
+	wg.Wait() // all swaps created
+
+	// set all swaps to Ready
+	wg.Add(numSwaps)
+	for i := 0; i < numSwaps; i++ {
+		go func(sc *swapCase) {
+			defer wg.Done()
+			tx, err := contract.SetReady(getAuth(sc), sc.swap)
+			require.NoError(t, err)
+			receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
+			require.NoError(t, err)
+			t.Logf("gas cost to call SetReady[%d]: %d", sc.index, receipt.GasUsed)
+		}(&swapCases[i])
+	}
+	wg.Wait() // set_ready called on all swaps
+
+	// call claim on all the swaps
+	wg.Add(numSwaps)
+	for i := 0; i < numSwaps; i++ {
+		go func(sc *swapCase) {
+			defer wg.Done()
+			tx, err := contract.Claim(getAuth(sc), sc.swap, sc.secret)
+			require.NoError(t, err)
+			receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
+			require.NoError(t, err)
+			t.Logf("gas cost to call Claim[%d]: %d", sc.index, receipt.GasUsed)
+		}(&swapCases[i])
+	}
+	wg.Wait() // claim called on all swaps
+
+	// ensure all swaps are completed
+	wg.Add(numSwaps)
+	for i := 0; i < numSwaps; i++ {
+		go func(sc *swapCase) {
+			defer wg.Done()
+			stage, err := contract.Swaps(nil, sc.id)
+			require.NoError(t, err)
+			require.Equal(t, StageToString(StageCompleted), StageToString(stage))
+		}(&swapCases[i])
+	}
+	wg.Wait() // status of all swaps checked
 }

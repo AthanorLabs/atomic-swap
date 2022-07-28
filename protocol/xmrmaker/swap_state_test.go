@@ -21,7 +21,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
@@ -46,9 +45,7 @@ var (
 )
 
 func newTestXMRMaker(t *testing.T) *Instance {
-	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
-	require.NoError(t, err)
-
+	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)

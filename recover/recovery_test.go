@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"path"
 	"testing"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,9 +40,7 @@ func newSwap(
 ) {
 	tm := big.NewInt(defaultTimeout)
 
-	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
-	require.NoError(t, err)
-
+	pk := tests.GetTakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
@@ -54,8 +52,7 @@ func newSwap(
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
-	pkXMRMaker, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
-	require.NoError(t, err)
+	pkXMRMaker := tests.GetMakerTestKey(t)
 
 	nonce := big.NewInt(0)
 	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
@@ -93,11 +90,9 @@ func newBackend(
 	t *testing.T,
 	addr ethcommon.Address,
 	contract *swapfactory.SwapFactory,
-	privkey string,
+	privkey *ecdsa.PrivateKey,
 ) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(privkey)
-	require.NoError(t, err)
-
+	pk := privkey
 	ec, chainID := tests.NewEthClient(t)
 
 	cfg := &backend.Config{

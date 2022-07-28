@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
@@ -39,9 +38,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 }
 
 func newBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
-	require.NoError(t, err)
-
+	pk := tests.GetTakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 	ctx := context.Background()
 
@@ -74,9 +71,7 @@ func newBackend(t *testing.T) backend.Backend {
 }
 
 func newXMRMakerBackend(t *testing.T) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
-	require.NoError(t, err)
-
+	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)

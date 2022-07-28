@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
@@ -49,8 +48,7 @@ func createStampChecker(t *testing.T) *stampChecker {
 	ec, chainID := tests.NewEthClient(t)
 	ctx := context.Background()
 
-	fromKey, err := crypto.HexToECDSA(tests.GetMakerTestKey(t))
-	require.NoError(t, err)
+	fromKey := tests.GetTestKeyByIndex(t, 0)
 
 	auth, err := bind.NewKeyedTransactorWithChainID(fromKey, chainID)
 	require.NoError(t, err)

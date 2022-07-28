@@ -20,7 +20,7 @@ Note: the `scripts/install-monero-linux.sh` script will download the monero bina
 Start ganache with deterministic keys. We disable instamine, for a more realistic
 simulation, by setting the miner.blockTime.
 ```bash
-ganache --deterministic --accounts=20 --miner.blockTime=1
+ganache --deterministic --accounts=50 --miner.blockTime=1
 ```
 
 Start monerod for regtest, this binary is in the monero bin directory:
