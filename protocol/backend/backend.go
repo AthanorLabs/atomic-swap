@@ -319,14 +319,15 @@ func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*e
 
 func (b *backend) WaitForTimestamp(ctx context.Context, ts time.Time) error {
 	hdr, err := block.WaitForEthBlockAfterTimestamp(ctx, b.ethClient, ts.Unix())
-	if err == nil {
-		log.Debug("Wait complete for block %d with ts=%s >= %s",
-			hdr.Number.Uint64(),
-			time.Unix(int64(hdr.Time), 0).Format(common.TimeFmtSecs),
-			ts.Format(common.TimeFmtSecs),
-		)
+	if err != nil {
+		return err
 	}
-	return err
+	log.Debug("Wait complete for block %d with ts=%s >= %s",
+		hdr.Number.Uint64(),
+		time.Unix(int64(hdr.Time), 0).Format(common.TimeFmtSecs),
+		ts.Format(common.TimeFmtSecs),
+	)
+	return nil
 }
 
 func (b *backend) LatestBlockTimestamp(ctx context.Context) (time.Time, error) {
