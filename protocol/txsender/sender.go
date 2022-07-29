@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/ethereum/block"
@@ -33,6 +34,7 @@ type privateKeySender struct {
 	ec       *ethclient.Client
 	contract *swapfactory.SwapFactory
 	txOpts   *bind.TransactOpts
+	txLock   sync.Mutex // locks from TX start until receipt so we don't reuse ETH nonce values
 }
 
 // NewSenderWithPrivateKey returns a new *privateKeySender
@@ -55,6 +57,8 @@ func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int,
 	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 	txOpts.Value = value
 	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
@@ -74,6 +78,8 @@ func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyR
 
 func (s *privateKeySender) SetReady(_ types.Hash,
 	_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 	tx, err := s.contract.SetReady(&txOpts, _swap)
 	if err != nil {
@@ -92,6 +98,8 @@ func (s *privateKeySender) SetReady(_ types.Hash,
 
 func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 	tx, err := s.contract.Claim(&txOpts, _swap, _s)
 	if err != nil {
@@ -110,6 +118,8 @@ func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap
 
 func (s *privateKeySender) Refund(_ types.Hash, _swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 	tx, err := s.contract.Refund(&txOpts, _swap, _s)
 	if err != nil {

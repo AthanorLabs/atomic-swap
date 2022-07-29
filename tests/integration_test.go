@@ -764,7 +764,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 }
 
 func TestSuccess_ConcurrentSwaps(t *testing.T) {
-	const testTimeout = time.Minute * 4
+	const testTimeout = time.Minute * 6
 	const numConcurrentSwaps = 10
 
 	ctx, cancel := context.WithCancel(context.Background())
