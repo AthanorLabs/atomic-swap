@@ -340,7 +340,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	}
 
 	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs",
-		isReady, ts.Sub(s.t0).Seconds(), ts.Sub(s.t1).Seconds())
+		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
 	if ts.Before(s.t0) && !isReady {
 		// using errT0 to avoid shadow warnings

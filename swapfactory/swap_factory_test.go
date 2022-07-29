@@ -12,7 +12,6 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
@@ -280,7 +279,8 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, nonce)
+	timeout := big.NewInt(1) // T1 expires before we get the receipt for new_swap TX
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -303,23 +303,6 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
-
-	// fast forward past t1
-	rpcClient, err := rpc.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-
-	var result string
-	err = rpcClient.Call(&result, "evm_snapshot")
-	require.NoError(t, err)
-
-	err = rpcClient.Call(nil, "evm_increaseTime", defaultTimeoutDuration.Int64()*2+60)
-	require.NoError(t, err)
-
-	defer func() {
-		var ok bool
-		err = rpcClient.Call(&ok, "evm_revert", result)
-		require.NoError(t, err)
-	}()
 
 	// now let's try to refund
 	var s [32]byte

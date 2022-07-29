@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestRecoveryState(t *testing.T) *recoveryState {
+func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	inst, s := newTestInstance(t)
 
 	err := s.generateAndSetKeys()
@@ -21,9 +21,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 
 	sr := s.secp256k1Pub.Keccak256()
 
-	duration, err := time.ParseDuration("1440m")
-	require.NoError(t, err)
-	newSwap(t, s, [32]byte{}, sr, big.NewInt(1), duration)
+	newSwap(t, s, [32]byte{}, sr, big.NewInt(1), timeout)
 
 	basePath := path.Join(t.TempDir(), "test-infofile")
 	rs, err := NewRecoveryState(inst.backend, basePath, s.privkeys.SpendKey(), s.ContractAddr(),
@@ -35,7 +33,7 @@ func newTestRecoveryState(t *testing.T) *recoveryState {
 
 func TestClaimOrRecover_Claim(t *testing.T) {
 	// test case where XMRMaker is able to claim ether from the contract
-	rs := newTestRecoveryState(t)
+	rs := newTestRecoveryState(t, 24*time.Hour)
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
@@ -56,7 +54,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	}
 
 	// test case where XMRMaker is able to reclaim his monero, after XMRTaker refunds
-	rs := newTestRecoveryState(t)
+	rs := newTestRecoveryState(t, 24*time.Hour)
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
