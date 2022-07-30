@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
@@ -420,5 +421,41 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 		stage, err := contract.Swaps(callOpts, sc.id)
 		require.NoError(t, err)
 		require.Equal(t, StageCompleted, stage)
+	}
+}
+
+func TestSwapFactory_MultVerifyForClaim(t *testing.T) {
+	auth, conn, _ := setupXMRTakerAuth(t)
+	defer conn.Close() // remove when merging into update-ganache branch
+
+	_, _, contract, err := DeploySwapFactory(auth, conn)
+	require.NoError(t, err)
+	// WaitForReceipt goes here when merging into update-ganache branch
+
+	dleq := &dleq.CGODLEq{}
+
+	passedCount := 0
+	const iterations = 500
+
+	for i := 0; i < iterations; i++ {
+		proof, err := dleq.Prove()
+		require.NoError(t, err)
+		res, err := dleq.Verify(proof)
+		require.NoError(t, err)
+
+		// hash public key
+		claimPubKey := res.Secp256k1PublicKey().Keccak256()
+		claimPubKeyBI := new(big.Int).SetBytes(claimPubKey[:])
+
+		claimSecret := proof.Secret()
+		claimSecretBI := new(big.Int).SetBytes(common.Reverse(claimSecret[:]))
+
+		ok, err := contract.MulVerify(nil, claimSecretBI, claimPubKeyBI)
+		require.NoError(t, err)
+		assert.Truef(t, ok, "claimPubKey=0x%X\nclaimSecret=0x%X", claimPubKey, claimSecret)
+		if ok {
+			passedCount++
+		}
+		t.Logf("%d/%d (%.2f%%) passed", passedCount, i+1, float64(passedCount)/float64(i+1)*100)
 	}
 }
