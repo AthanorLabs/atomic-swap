@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
@@ -424,6 +425,26 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 	}
 }
 
+func createEthPubKeyFromSecret(key *big.Int) *ecdsa.PublicKey {
+	curve := ethsecp256k1.S256()
+	x, y := curve.ScalarBaseMult(key.Bytes())
+	return &ecdsa.PublicKey{
+		Curve: curve,
+		X:     x,
+		Y:     y,
+	}
+}
+
+func convertToEthPubKeyType(ourPubKeyType *secp256k1.PublicKey) *ecdsa.PublicKey {
+	x := ourPubKeyType.X()
+	y := ourPubKeyType.Y()
+	return &ecdsa.PublicKey{
+		Curve: ethsecp256k1.S256(),
+		X:     new(big.Int).SetBytes(x[:]),
+		Y:     new(big.Int).SetBytes(y[:]),
+	}
+}
+
 func TestSwapFactory_MultVerifyForClaim(t *testing.T) {
 	auth, conn, _ := setupXMRTakerAuth(t)
 	defer conn.Close() // remove when merging into update-ganache branch
@@ -456,6 +477,16 @@ func TestSwapFactory_MultVerifyForClaim(t *testing.T) {
 		if ok {
 			passedCount++
 		}
+		// This next check shows what the problem is. It looks like the X/Y coordinates of our claim's
+		// public key are getting padded on the wrong side of the number. The issue isn't seen frequently,
+		// as most X/Y coordinates occupy the full 32 bytes.
+		expectedPubKey := convertToEthPubKeyType(res.Secp256k1PublicKey())
+		calculatedPubKey := createEthPubKeyFromSecret(claimSecretBI)
+		assert.Truef(t, expectedPubKey.Equal(calculatedPubKey),
+			"claim X: 0x%X\ncalc  X: 0x%X\nclaim Y: 0x%X\ncalc  Y: 0x%X",
+			expectedPubKey.X.Bytes(), calculatedPubKey.X.Bytes(),
+			expectedPubKey.Y.Bytes(), calculatedPubKey.Y.Bytes())
+
 		t.Logf("%d/%d (%.2f%%) passed", passedCount, i+1, float64(passedCount)/float64(i+1)*100)
 	}
 }
