@@ -10,10 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
@@ -422,71 +420,5 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 		stage, err := contract.Swaps(callOpts, sc.id)
 		require.NoError(t, err)
 		require.Equal(t, StageCompleted, stage)
-	}
-}
-
-func createEthPubKeyFromSecret(key *big.Int) *ecdsa.PublicKey {
-	curve := ethsecp256k1.S256()
-	x, y := curve.ScalarBaseMult(key.Bytes())
-	return &ecdsa.PublicKey{
-		Curve: curve,
-		X:     x,
-		Y:     y,
-	}
-}
-
-func convertToEthPubKeyType(ourPubKeyType *secp256k1.PublicKey) *ecdsa.PublicKey {
-	x := ourPubKeyType.X()
-	y := ourPubKeyType.Y()
-	return &ecdsa.PublicKey{
-		Curve: ethsecp256k1.S256(),
-		X:     new(big.Int).SetBytes(x[:]),
-		Y:     new(big.Int).SetBytes(y[:]),
-	}
-}
-
-func TestSwapFactory_MultVerifyForClaim(t *testing.T) {
-	auth, conn, _ := setupXMRTakerAuth(t)
-	defer conn.Close() // remove when merging into update-ganache branch
-
-	_, _, contract, err := DeploySwapFactory(auth, conn)
-	require.NoError(t, err)
-	// WaitForReceipt goes here when merging into update-ganache branch
-
-	dleq := &dleq.CGODLEq{}
-
-	passedCount := 0
-	const iterations = 500
-
-	for i := 0; i < iterations; i++ {
-		proof, err := dleq.Prove()
-		require.NoError(t, err)
-		res, err := dleq.Verify(proof)
-		require.NoError(t, err)
-
-		// hash public key
-		claimPubKey := res.Secp256k1PublicKey().Keccak256()
-		claimPubKeyBI := new(big.Int).SetBytes(claimPubKey[:])
-
-		claimSecret := proof.Secret()
-		claimSecretBI := new(big.Int).SetBytes(common.Reverse(claimSecret[:]))
-
-		ok, err := contract.MulVerify(nil, claimSecretBI, claimPubKeyBI)
-		require.NoError(t, err)
-		assert.Truef(t, ok, "claimPubKey=0x%X\nclaimSecret=0x%X", claimPubKey, claimSecret)
-		if ok {
-			passedCount++
-		}
-		// This next check shows what the problem is. It looks like the X/Y coordinates of our claim's
-		// public key are getting padded on the wrong side of the number. The issue isn't seen frequently,
-		// as most X/Y coordinates occupy the full 32 bytes.
-		expectedPubKey := convertToEthPubKeyType(res.Secp256k1PublicKey())
-		calculatedPubKey := createEthPubKeyFromSecret(claimSecretBI)
-		assert.Truef(t, expectedPubKey.Equal(calculatedPubKey),
-			"claim X: 0x%X\ncalc  X: 0x%X\nclaim Y: 0x%X\ncalc  Y: 0x%X",
-			expectedPubKey.X.Bytes(), calculatedPubKey.X.Bytes(),
-			expectedPubKey.Y.Bytes(), calculatedPubKey.Y.Bytes())
-
-		t.Logf("%d/%d (%.2f%%) passed", passedCount, i+1, float64(passedCount)/float64(i+1)*100)
 	}
 }
