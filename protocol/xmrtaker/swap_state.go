@@ -343,11 +343,10 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
 	if ts.Before(s.t0) && !isReady {
-		// using errT0 to avoid shadow warnings
-		txHash, errT0 := s.refund()
+		txHash, err := s.refund() //nolint:govet
 		// TODO: Have refund() return errors that we can use errors.Is to check against
-		if errT0 == nil || !strings.Contains(errT0.Error(), revertUnableToRefund) {
-			return txHash, errT0
+		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
+			return txHash, err
 		}
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
 		// even though the current block is before T0. In this case, the transaction will be reverted, the
