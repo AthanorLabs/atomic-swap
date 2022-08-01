@@ -55,11 +55,11 @@ func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 		// Secp256k1 check
 		ethCurve := ethsecp256k1.S256()
 		xPub, yPub := ethCurve.ScalarBaseMult(secretBE)
-		pubFromSecret := &ecdsa.PublicKey{Curve: ethCurve, X: xPub, Y: yPub}
-		pubFromVerify := &ecdsa.PublicKey{Curve: ethCurve,
+		ethPubFromSecret := &ecdsa.PublicKey{Curve: ethCurve, X: xPub, Y: yPub}
+		ethPubFromVerify := &ecdsa.PublicKey{Curve: ethCurve,
 			X: toBigInt(res.Secp256k1PublicKey().X()), Y: toBigInt(res.Secp256k1PublicKey().Y()),
 		}
-		require.True(t, pubFromSecret.Equal(pubFromVerify))
+		require.True(t, ethPubFromSecret.Equal(ethPubFromVerify))
 
 		// ED25519 Check
 		sk, err := mcrypto.NewPrivateSpendKey(secretLE)
