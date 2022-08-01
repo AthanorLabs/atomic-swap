@@ -1,6 +1,7 @@
 package dleq
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"math/big"
 	"testing"
@@ -37,6 +38,9 @@ func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 	// of that happening is around (1/256+1/256)=1/128, so this loop will see values like that
 	// frequently, even if it doesn't happen on every run.
 	const iterations = 128
+
+	toBigInt := func(point [32]byte) *big.Int { return new(big.Int).SetBytes(point[:]) }
+
 	for i := 0; i < iterations; i++ {
 		proof, err := (&CGODLEq{}).Prove()
 		require.NoError(t, err)
@@ -50,19 +54,18 @@ func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 
 		// Secp256k1 check
 		ethCurve := ethsecp256k1.S256()
-		xSecret, ySecret := ethCurve.ScalarBaseMult(secretBE)
-		pubFromSecret := &ecdsa.PublicKey{Curve: ethCurve, X: xSecret, Y: ySecret}
-		xVerify := res.Secp256k1PublicKey().X()
-		yVerify := res.Secp256k1PublicKey().Y()
+		xPub, yPub := ethCurve.ScalarBaseMult(secretBE)
+		pubFromSecret := &ecdsa.PublicKey{Curve: ethCurve, X: xPub, Y: yPub}
 		pubFromVerify := &ecdsa.PublicKey{Curve: ethCurve,
-			X: new(big.Int).SetBytes(xVerify[:]), Y: new(big.Int).SetBytes(yVerify[:]),
+			X: toBigInt(res.Secp256k1PublicKey().X()), Y: toBigInt(res.Secp256k1PublicKey().Y()),
 		}
 		require.True(t, pubFromSecret.Equal(pubFromVerify))
 
 		// ED25519 Check
 		sk, err := mcrypto.NewPrivateSpendKey(secretLE)
 		require.NoError(t, err)
-		ed25519Pub := sk.Public().Bytes()
-		require.Equal(t, res.ed25519Pub[:], ed25519Pub)
+		xmrPubFromSecret := sk.Public().Bytes()
+		xmrPubFromVerify := res.ed25519Pub[:]
+		require.True(t, bytes.Equal(xmrPubFromSecret, xmrPubFromVerify))
 	}
 }
