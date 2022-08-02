@@ -7,12 +7,14 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
-// Reverse reverses the byte slice and returns it.
+// Reverse returns a copy of the slice with the bytes in reverse order
 func Reverse(s []byte) []byte {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
+	l := len(s)
+	rs := make([]byte, l)
+	for i := 0; i < l; i++ {
+		rs[i] = s[l-i-1]
 	}
-	return s
+	return rs
 }
 
 // EthereumPrivateKeyToAddress returns the address associated with a private key
