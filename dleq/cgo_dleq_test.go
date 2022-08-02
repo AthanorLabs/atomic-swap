@@ -32,6 +32,15 @@ func TestCGODLEq(t *testing.T) {
 	require.Equal(t, res.ed25519Pub[:], ed25519Pub)
 }
 
+func TestCGODLEq_Invalid(t *testing.T) {
+	proof, err := (&CGODLEq{}).Prove()
+	require.NoError(t, err)
+	proof.proof[0] = 0
+
+	_, err = (&CGODLEq{}).Verify(proof)
+	require.Error(t, err)
+}
+
 func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 	// It would be nice to increase the number of iterations, but it's pretty slow even at 128. We
 	// previously had an issue when X or Y needed at least one high order padding byte. The chance
