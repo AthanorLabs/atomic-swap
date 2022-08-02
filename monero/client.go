@@ -32,7 +32,7 @@ type client struct {
 }
 
 // NewClient returns a new monero-wallet-rpc client.
-func NewClient(endpoint string) *client { //nolint:revive
+func NewClient(endpoint string) *client {
 	return &client{
 		endpoint: endpoint,
 	}

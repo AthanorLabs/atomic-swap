@@ -23,7 +23,7 @@ type recoverer struct {
 }
 
 // NewRecoverer ...
-func NewRecoverer(env common.Environment, moneroEndpoint, ethEndpoint string) (*recoverer, error) { //nolint:revive
+func NewRecoverer(env common.Environment, moneroEndpoint, ethEndpoint string) (*recoverer, error) {
 	ec, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
 		return nil, err
