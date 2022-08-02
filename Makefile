@@ -1,7 +1,12 @@
-.PHONY: lint test install build build-dleq mock
+.PHONY: init lint test install build build-dleq mock
 all: install
 
 GOPATH ?= $(shell go env GOPATH)
+
+init:
+	./scripts/install-rust.sh
+	git submodule update --init --recursive
+	cd dleq/cgo-dleq && make build
 
 lint: 
 	./scripts/install-lint.sh
@@ -13,13 +18,13 @@ test:
 test-integration:
 	./scripts/run-integration-tests.sh
 
-install:
+install: init 
 	cd cmd/ && go install && cd ..
 
-build:
+build: init
 	./scripts/build.sh
 
-build-all:
+build-all: init
 	ALL=true ./scripts/build.sh
 
 mock:
