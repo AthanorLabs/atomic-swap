@@ -8,7 +8,7 @@ init:
 	git submodule update --init --recursive
 	cd dleq/cgo-dleq && make build
 
-lint: 
+lint: init
 	./scripts/install-lint.sh
 	${GOPATH}/bin/golangci-lint run
 
