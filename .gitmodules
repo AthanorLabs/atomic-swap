@@ -1,0 +1,4 @@
+[submodule "dleq/cgo-dleq"]
+	path = dleq/cgo-dleq
+	url = https://github.com/noot/cgo-dleq.git
+	branch = main
