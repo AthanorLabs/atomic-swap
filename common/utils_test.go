@@ -9,12 +9,11 @@ import (
 func TestReverse(t *testing.T) {
 	in := []byte{0xa, 0xb, 0xc}
 	expected := []byte{0xc, 0xb, 0xa}
-	res := Reverse(in)
-	require.Equal(t, expected, in)
-	require.Equal(t, expected, res)
+	require.Equal(t, expected, Reverse(in))
+	require.Equal(t, []byte{0xa, 0xb, 0xc}, in) // backing array of original slice is unmodified
 
 	in2 := [3]byte{0xa, 0xb, 0xc}
-	res = Reverse(in2[:])
-	require.Equal(t, expected, in2[:])
-	require.Equal(t, expected, res)
+	require.Equal(t, expected, Reverse(in2[:]))
+	require.Equal(t, in2, [3]byte{0xa, 0xb, 0xc}) // input array is unmodified
+
 }
