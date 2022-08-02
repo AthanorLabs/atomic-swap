@@ -75,7 +75,7 @@ type Config struct {
 }
 
 // NewHost returns a new host
-func NewHost(cfg *Config) (*host, error) { //nolint:revive
+func NewHost(cfg *Config) (*host, error) {
 	if cfg.KeyFile == "" {
 		cfg.KeyFile = defaultKeyFile
 	}

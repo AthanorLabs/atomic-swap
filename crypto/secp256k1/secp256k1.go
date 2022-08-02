@@ -16,7 +16,7 @@ var (
 
 // PublicKey represents a secp256k1 public key
 type PublicKey struct {
-	x, y [32]byte
+	x, y [32]byte // points stored in big-endian format
 }
 
 // NewPublicKey returns a new public key from the given (x, y) coordinates
@@ -29,10 +29,15 @@ func NewPublicKey(x, y [32]byte) *PublicKey {
 
 // NewPublicKeyFromBigInt returns a new public key from the given (x, y) coordinates
 func NewPublicKeyFromBigInt(x, y *big.Int) *PublicKey {
-	var xb, yb [32]byte
-	copy(xb[:], x.Bytes())
-	copy(yb[:], y.Bytes())
-	return NewPublicKey(xb, yb)
+	const ptSize = 32
+	var xArray, yArray [ptSize]byte
+	xSlice := x.Bytes()
+	ySlice := y.Bytes()
+	// Copying from a big-endian slice into a big-endian array, so we want padding bytes
+	// on the left if the slice is shorter than the array.
+	copy(xArray[ptSize-len(xSlice):], xSlice)
+	copy(yArray[ptSize-len(ySlice):], ySlice)
+	return NewPublicKey(xArray, yArray)
 }
 
 // NewPublicKeyFromHex returns a public key from a 64-byte hex encoded string
