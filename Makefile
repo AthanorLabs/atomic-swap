@@ -23,15 +23,15 @@ test-integration:
 	./scripts/run-integration-tests.sh 2>&1 | tee test-integration.log
 
 .PHONY: install
-install:
+install: init
 	cd cmd/ && go install && cd ..
 
 .PHONY: build
-build:
+build: init
 	./scripts/build.sh
 
 .PHONY: build-all
-build-all:
+build-all: init
 	ALL=true ./scripts/build.sh
 
 .PHONY: mock
