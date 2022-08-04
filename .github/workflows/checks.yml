@@ -18,10 +18,7 @@ jobs:
         run: diff -u <(echo -n) <(gofmt -d -s .)
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:          
-          version: 'latest'
-          args: -v
+        run: make lint
 
   vet-check:
     runs-on: ubuntu-latest
@@ -32,4 +29,6 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run go vet
-        run: go vet ./...
+        run: |
+          make init
+          go vet ./...

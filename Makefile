@@ -1,10 +1,16 @@
 GOPATH ?= $(shell go env GOPATH)
 
 .PHONY: all
-all: build-dleq install
+all: install
+
+.PHONY: init
+init:
+	./scripts/install-rust.sh
+	git submodule update --init --recursive
+	cd dleq/cgo-dleq && make build
 
 .PHONY: lint
-lint: 
+lint: init
 	./scripts/install-lint.sh
 	${GOPATH}/bin/golangci-lint run
 
@@ -27,10 +33,6 @@ build:
 .PHONY: build-all
 build-all:
 	ALL=true ./scripts/build.sh
-
-.PHONY: build-dleq
-build-dleq:
-	./scripts/install-rust.sh && cd farcaster-dleq && cargo build --release && cd ..
 
 .PHONY: mock
 mock:
