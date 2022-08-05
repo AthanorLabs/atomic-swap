@@ -149,8 +149,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
 
-	// set timeout to 2s
-	s.SetSwapTimeout(time.Second * 2)
+	s.SetSwapTimeout(time.Second * 15)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
