@@ -231,7 +231,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 
 	const (
 		testTimeout = time.Second * 60
-		swapTimeout = 10 // 10s (7s is the minimum, but an underpowered host can require more)
+		swapTimeout = 30
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -248,7 +248,6 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
-	swapSucceeded := false
 	errCh := make(chan error, 2)
 
 	var wg sync.WaitGroup
@@ -269,7 +268,6 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 					// Do nothing, desired outcome
 				case types.CompletedSuccess:
 					t.Log("XMRMaker completed swap before XMRTaker's cancel took affect")
-					swapSucceeded = true
 				default:
 					errCh <- fmt.Errorf("swap did not succeed or refund for XMRMaker: status=%s", status)
 				}
@@ -337,13 +335,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
-	if swapSucceeded {
-		// XMRMaker's offer was removed
-		require.Equal(t, 1, len(offersBefore)-len(offersAfter))
-	} else {
-		// XMRMaker's offer is still available
-		require.Equal(t, len(offersBefore), len(offersAfter))
-	}
+	require.Equal(t, len(offersBefore), len(offersAfter))
 }
 
 // TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker
@@ -351,7 +343,9 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 // until time t1 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
 // "come online" to see, and he will then refund also.
 func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
-	t.Skip() // @noot, this test is a giant race condition, and I need your help on how to fix it.
+	// Skipping test as it can't guarantee that the refund will happen before the swap completes
+	// successfully:  // https://github.com/noot/atomic-swap/issues/144
+	//t.Skip()
 	testRefundXMRMakerCancels(t, 7, types.CompletedRefund)
 	time.Sleep(time.Second * 5)
 }
