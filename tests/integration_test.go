@@ -345,7 +345,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
 	// Skipping test as it can't guarantee that the refund will happen before the swap completes
 	// successfully:  // https://github.com/noot/atomic-swap/issues/144
-	//t.Skip()
+	t.Skip()
 	testRefundXMRMakerCancels(t, 7, types.CompletedRefund)
 	time.Sleep(time.Second * 5)
 }
