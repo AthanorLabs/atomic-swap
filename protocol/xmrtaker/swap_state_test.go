@@ -276,6 +276,11 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	maker := newXMRMakerBackend(t)
 	err := maker.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
+	// mine some blocks to get xmr
+	xmrmakerAddr, err := maker.GetAddress(0)
+	require.NoError(t, err)
+	require.NoError(t, maker.GenerateBlocks(xmrmakerAddr.Address, 512))
+	require.NoError(t, maker.Refresh())
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
@@ -300,14 +305,6 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
 
 	// simulate xmrmaker locking xmr
-	xmrmakerAddr, err := maker.GetAddress(0)
-	require.NoError(t, err)
-
-	// mine some blocks to get xmr first
-	err = maker.GenerateBlocks(xmrmakerAddr.Address, 512)
-	require.NoError(t, err)
-	err = maker.Refresh()
-	require.NoError(t, err)
 	amt := common.MoneroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
