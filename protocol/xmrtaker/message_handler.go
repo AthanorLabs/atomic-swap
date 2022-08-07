@@ -1,7 +1,9 @@
 package xmrtaker
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
@@ -148,17 +150,26 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	// start goroutine to check that XMRMaker locks before t_0
 	go func() {
 		// TODO: this variable is so that we definitely refund before t0.
-		// this will vary based on environment (eg. development should be very small,
-		// a network with slower block times should be longer)
-		const timeoutBuffer = time.Second * 5
-		until := time.Until(s.t0)
-
-		log.Debugf("time until refund: %vs", until.Seconds())
+		// Current algorithm is to trigger the timeout when only 15% of the allotted
+		// time is remaining. If the block interval is 1 second on a test network and
+		// and T0 is 7 seconds after swap creation, we need the refund to trigger more
+		// than one second before the block with a timestamp exactly equal to T0 to
+		// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
+		// may be reasonable even with large timeouts on production networks, but more
+		// research is needed.
+		t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
+		deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
+		deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
+		giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
+		defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
+		log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
 
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-time.After(until - timeoutBuffer):
+		case <-s.xmrLockedCh:
+			return
+		case <-giveUpAndRefundTimer.C:
 			s.lockState()
 			defer s.unlockState()
 
@@ -169,7 +180,11 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			// XMRMaker hasn't locked yet, let's call refund
 			txhash, err := s.refund()
 			if err != nil {
-				log.Errorf("failed to refund: err=%s", err)
+				if !strings.Contains(err.Error(), revertSwapCompleted) {
+					log.Errorf("failed to refund: err=%s", err)
+				} else {
+					log.Debugf("failed to refund (okay): err=%s", err)
+				}
 				return
 			}
 
@@ -181,10 +196,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			}, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
-		case <-s.xmrLockedCh:
-			return
 		}
-
 	}()
 
 	s.setNextExpectedMessage(&message.NotifyXMRLock{})
@@ -216,7 +228,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	s.LockClient()
 	defer s.UnlockClient()
 
-	t := time.Now().Format("2006-01-02-15:04:05.999999999")
+	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
 	if err := s.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.Env()), walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
@@ -290,23 +302,40 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("failed to call Ready: %w", err)
 	}
 
-	go func() {
-		until := time.Until(s.t1)
-
-		select {
-		case <-s.ctx.Done():
-			return
-		// TODO: document why we add one second
-		case <-time.After(until + time.Second):
-			s.handleT1Expired()
-			return
-		case <-s.claimedCh:
-			return
-		}
-	}()
+	go s.runT1ExpirationHandler()
 
 	s.setNextExpectedMessage(&message.NotifyClaimed{})
 	return &message.NotifyReady{}, nil
+}
+
+func (s *swapState) runT1ExpirationHandler() {
+	log.Debugf("time until t1 (%s): %vs",
+		s.t0.Format(common.TimeFmtSecs),
+		time.Until(s.t1).Seconds(),
+	)
+
+	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
+	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+
+	waitCh := make(chan error)
+	go func() {
+		waitCh <- s.WaitForTimestamp(waitCtx, s.t1)
+		close(waitCh)
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-s.claimedCh:
+		return
+	case err := <-waitCh:
+		if err != nil {
+			// TODO: Do we propagate this error? If we retry, the logic should probably be inside WaitForTimestamp.
+			log.Errorf("Failure waiting for T1 timeout: err=%s", err)
+			return
+		}
+		s.handleT1Expired()
+	}
 }
 
 func (s *swapState) handleT1Expired() {

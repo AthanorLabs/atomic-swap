@@ -28,6 +28,7 @@ import (
 )
 
 const revertSwapCompleted = "swap is already completed"
+const revertUnableToRefund = "it's the counterparty's turn, unable to refund, try again later"
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
@@ -317,22 +318,50 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) tryRefund() (ethcommon.Hash, error) {
-	untilT0 := time.Until(s.t0)
-	untilT1 := time.Until(s.t1)
+	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+	switch stage {
+	case swapfactory.StageInvalid:
+		return ethcommon.Hash{}, errRefundInvalid
+	case swapfactory.StageCompleted:
+		return ethcommon.Hash{}, errRefundSwapCompleted
+	case swapfactory.StagePending, swapfactory.StageReady:
+		// do nothing
+	default:
+		panic("Unhandled stage value")
+	}
+	isReady := stage == swapfactory.StageReady
 
-	isReady, err := s.Contract().IsReady(s.CallOpts(), s.contractSwapID)
+	ts, err := s.LatestBlockTimestamp(s.ctx)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs", isReady, untilT0.Seconds(), untilT1.Seconds())
+	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs",
+		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
-	if (untilT0 > 0 && isReady) && untilT1 > 0 {
-		// we've passed t0 but aren't past t1 yet, so we need to wait until t1
-		log.Infof("waiting until time %s to refund", s.t1)
-		<-time.After(untilT1)
+	if ts.Before(s.t0) && !isReady {
+		txHash, err := s.refund() //nolint:govet
+		// TODO: Have refund() return errors that we can use errors.Is to check against
+		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
+			return txHash, err
+		}
+		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
+		// even though the current block is before T0. In this case, the transaction will be reverted, the
+		// gas fee is lost, but we can wait until T1 and try again.
+		log.Warnf("First refund attempt failed: err=%s", err)
 	}
 
+	if ts.Before(s.t1) {
+		// we've passed t0 but aren't past t1 yet, so wait until t1
+		log.Infof("Waiting until time %s to refund", s.t1)
+		err = s.WaitForTimestamp(s.ctx, s.t1)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+	}
 	return s.refund()
 }
 
@@ -442,12 +471,18 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	_, _, err := s.SetReady(s.ID(), s.contractSwap)
+	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
+	if err != nil {
+		return err
+	}
+	if stage != swapfactory.StagePending {
+		return fmt.Errorf("can not set contract to ready when swap stage is %s", swapfactory.StageToString(stage))
+	}
+	_, _, err = s.SetReady(s.ID(), s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
 		}
-
 		return err
 	}
 

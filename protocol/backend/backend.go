@@ -16,6 +16,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/noot/atomic-swap/ethereum/block"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/net"
 	"github.com/noot/atomic-swap/protocol/swap"
@@ -23,12 +24,6 @@ import (
 	"github.com/noot/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
-)
-
-const (
-	// in total, we will wait up to 1 hour for a transaction to be included
-	maxRetries           = 360
-	receiptSleepDuration = time.Second * 10
 )
 
 var (
@@ -49,6 +44,8 @@ type Backend interface {
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
+	WaitForTimestamp(ctx context.Context, ts time.Time) error
+	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
 
 	// helpers
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -317,24 +314,28 @@ func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
 
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
 func (b *backend) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
-	for i := 0; i < maxRetries; i++ {
-		receipt, err := b.ethClient.TransactionReceipt(ctx, txHash)
-		if err != nil {
-			log.Infof("waiting for transaction to be included in chain: txHash=%s", txHash)
-			time.Sleep(receiptSleepDuration)
-			continue
-		}
+	return block.WaitForReceipt(ctx, b.ethClient, txHash)
+}
 
-		log.Infof("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
-			txHash,
-			receipt.BlockHash,
-			receipt.BlockNumber,
-			receipt.CumulativeGasUsed,
-		)
-		return receipt, nil
+func (b *backend) WaitForTimestamp(ctx context.Context, ts time.Time) error {
+	hdr, err := block.WaitForEthBlockAfterTimestamp(ctx, b.ethClient, ts.Unix())
+	if err != nil {
+		return err
 	}
+	log.Debug("Wait complete for block %d with ts=%s >= %s",
+		hdr.Number.Uint64(),
+		time.Unix(int64(hdr.Time), 0).Format(common.TimeFmtSecs),
+		ts.Format(common.TimeFmtSecs),
+	)
+	return nil
+}
 
-	return nil, errReceiptTimeOut
+func (b *backend) LatestBlockTimestamp(ctx context.Context) (time.Time, error) {
+	hdr, err := b.EthClient().HeaderByNumber(ctx, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(int64(hdr.Time), 0), nil
 }
 
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {

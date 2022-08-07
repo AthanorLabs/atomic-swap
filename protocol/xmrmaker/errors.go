@@ -2,6 +2,7 @@ package xmrmaker
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -10,7 +11,9 @@ var (
 	errMissingKeys           = errors.New("did not receive XMRTaker's public spend or view key")
 	errMissingAddress        = errors.New("got empty contract address")
 	errNoRefundLogsFound     = errors.New("no refund logs found")
-	errPastClaimTime         = errors.New("past t1, can no longer claim")
+	errClaimPastTime         = errors.New("past t1, can no longer claim")
+	errClaimInvalid          = errors.New("can not claim, swap does not exist")
+	errClaimSwapComplete     = fmt.Errorf("can not claim, %w", errSwapCompleted)
 	errNilSwapState          = errors.New("swap state is nil")
 	errNilMessage            = errors.New("message is nil")
 	errIncorrectMessageType  = errors.New("received unexpected message")
@@ -28,4 +31,5 @@ var (
 	errAmountProvidedTooLow      = errors.New("amount provided by taker is too low for offer")
 	errAmountProvidedTooHigh     = errors.New("amount provided by taker is too high for offer")
 	errUnlockedBalanceTooLow     = errors.New("unlocked balance is less than maximum offer amount")
+	errSwapCompleted             = errors.New("swap is already completed")
 )

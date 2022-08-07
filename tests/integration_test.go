@@ -6,17 +6,19 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/monero"
 	"github.com/noot/atomic-swap/rpcclient"
 	"github.com/noot/atomic-swap/rpcclient/wsclient"
-
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -98,8 +100,8 @@ func TestXMRTaker_Discover(t *testing.T) {
 	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
-	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
@@ -114,7 +116,7 @@ func TestXMRMaker_Discover(t *testing.T) {
 
 func TestXMRTaker_Query(t *testing.T) {
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
 	require.NoError(t, err)
 
 	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
@@ -127,9 +129,16 @@ func TestXMRTaker_Query(t *testing.T) {
 	resp, err := c.Query(providers[0][0])
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(resp.Offers), 1)
-	require.Equal(t, xmrmakerProvideAmount, resp.Offers[0].MinimumAmount)
-	require.Equal(t, xmrmakerProvideAmount, resp.Offers[0].MaximumAmount)
-	require.Equal(t, exchangeRate, float64(resp.Offers[0].ExchangeRate))
+	var respOffer *types.Offer
+	for _, offer := range resp.Offers {
+		if offerID == offer.ID.String() {
+			respOffer = offer
+		}
+	}
+	require.NotNil(t, respOffer)
+	require.Equal(t, xmrmakerProvideAmount, respOffer.MinimumAmount)
+	require.Equal(t, xmrmakerProvideAmount, respOffer.MaximumAmount)
+	require.Equal(t, exchangeRate, float64(respOffer.ExchangeRate))
 }
 
 func TestSuccess(t *testing.T) {
@@ -156,11 +165,10 @@ func TestSuccess(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-
 		for {
 			select {
 			case status := <-statusCh:
-				fmt.Println("> XMRMaker got status:", status)
+				t.Log("> XMRMaker got status:", status)
 				if status.IsOngoing() {
 					continue
 				}
@@ -168,39 +176,37 @@ func TestSuccess(t *testing.T) {
 				if status != types.CompletedSuccess {
 					errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 				}
-
 				return
 			case <-time.After(testTimeout):
 				errCh <- errors.New("make offer subscription timed out")
+				return
 			}
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
 	// TODO: implement discovery over websockets
-	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
-
 			if status != types.CompletedSuccess {
 				errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 			}
-
 			return
 		}
 	}()
@@ -225,7 +231,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 
 	const (
 		testTimeout = time.Second * 60
-		swapTimeout = 5 // 5s
+		swapTimeout = 30
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -253,54 +259,65 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 		for {
 			select {
 			case status := <-statusCh:
-				fmt.Println("> XMRMaker got status:", status)
+				t.Log("> XMRMaker got status:", status)
 				if status.IsOngoing() {
 					continue
 				}
-
-				if status != types.CompletedRefund {
-					errCh <- fmt.Errorf("swap did not refund successfully for XMRMaker: got %s", status)
+				switch status {
+				case types.CompletedRefund:
+					// Do nothing, desired outcome
+				case types.CompletedSuccess:
+					t.Log("XMRMaker completed swap before XMRTaker's cancel took affect")
+				default:
+					errCh <- fmt.Errorf("swap did not succeed or refund for XMRMaker: status=%s", status)
 				}
-
 				return
 			case <-time.After(testTimeout):
 				errCh <- errors.New("make offer subscription timed out")
+				return
 			}
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	err = c.SetSwapTimeout(swapTimeout)
+	err = ac.SetSwapTimeout(swapTimeout)
 	require.NoError(t, err)
 
-	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status != types.ETHLocked {
 				continue
 			}
 
-			fmt.Println("> XMRTaker cancelled swap!")
-			exitStatus, err := c.Cancel(offerID) //nolint:govet
+			t.Log("> XMRTaker cancelling swap!")
+			exitStatus, err := ac.Cancel(offerID) //nolint:govet
 			if err != nil {
 				t.Log("XMRTaker got error", err)
-				errCh <- err
+				if !strings.Contains(err.Error(), "revert it's the counterparty's turn, unable to refund") {
+					errCh <- err
+				}
 				return
 			}
 
-			if exitStatus != types.CompletedRefund {
+			switch exitStatus {
+			case types.CompletedRefund:
+				// desired outcome, do nothing
+			case types.CompletedSuccess:
+				t.Log("XMRTaker's cancel was beaten out by XMRMaker completing the swap")
+			default:
 				errCh <- fmt.Errorf("did not refund successfully for XMRTaker: exit status was %s", exitStatus)
 			}
 
@@ -326,7 +343,10 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 // until time t1 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
 // "come online" to see, and he will then refund also.
 func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
-	testRefundXMRMakerCancels(t, 5, types.CompletedRefund)
+	// Skipping test as it can't guarantee that the refund will happen before the swap completes
+	// successfully:  // https://github.com/noot/atomic-swap/issues/144
+	t.Skip()
+	testRefundXMRMakerCancels(t, 7, types.CompletedRefund)
 	time.Sleep(time.Second * 5)
 }
 
@@ -347,7 +367,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	bcli := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
@@ -355,7 +375,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 		types.ExchangeRate(exchangeRate))
 	require.NoError(t, err)
 
-	offersBefore, err := bcli.GetOffers()
+	offersBefore, err := bc.GetOffers()
 	require.NoError(t, err)
 
 	errCh := make(chan error, 2)
@@ -369,13 +389,13 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 		for {
 			select {
 			case status := <-statusCh:
-				fmt.Println("> XMRMaker got status:", status)
+				t.Log("> XMRMaker got status:", status)
 				if status != types.XMRLocked {
 					continue
 				}
 
-				fmt.Println("> XMRMaker cancelled swap!")
-				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
+				t.Log("> XMRMaker cancelled swap!")
+				exitStatus, err := bc.Cancel(offerID) //nolint:govet
 				if err != nil {
 					errCh <- err
 					return
@@ -386,7 +406,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 					return
 				}
 
-				fmt.Println("> XMRMaker refunded successfully")
+				t.Log("> XMRMaker refunded successfully")
 				return
 			case <-time.After(testTimeout):
 				errCh <- errors.New("make offer subscription timed out")
@@ -394,26 +414,26 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	err = c.SetSwapTimeout(swapTimeout)
+	err = ac.SetSwapTimeout(swapTimeout)
 	require.NoError(t, err)
 
-	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
 
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -423,7 +443,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 				return
 			}
 
-			fmt.Println("> XMRTaker refunded successfully")
+			t.Log("> XMRTaker refunded successfully")
 			return
 		}
 	}()
@@ -436,7 +456,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 	default:
 	}
 
-	offersAfter, err := bcli.GetOffers()
+	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
 	if expectedExitStatus != types.CompletedSuccess {
 		require.Equal(t, len(offersBefore), len(offersAfter))
@@ -479,7 +499,7 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 		for {
 			select {
 			case status := <-statusCh:
-				fmt.Println("> XMRMaker got status:", status)
+				t.Log("> XMRMaker got status:", status)
 				if status.IsOngoing() {
 					continue
 				}
@@ -495,28 +515,28 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 		}
 	}()
 
-	c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-	wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status != types.ExpectingKeys {
 				continue
 			}
 
-			fmt.Println("> XMRTaker cancelled swap!")
-			exitStatus, err := c.Cancel(offerID) //nolint:govet
+			t.Log("> XMRTaker cancelled swap!")
+			exitStatus, err := ac.Cancel(offerID) //nolint:govet
 			if err != nil {
 				errCh <- err
 				return
@@ -580,12 +600,12 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 		for {
 			select {
 			case status := <-statusCh:
-				fmt.Println("> XMRMaker got status:", status)
+				t.Log("> XMRMaker got status:", status)
 				if status != types.KeysExchanged {
 					continue
 				}
 
-				fmt.Println("> XMRMaker cancelled swap!")
+				t.Log("> XMRMaker cancelled swap!")
 				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
 				if err != nil {
 					errCh <- err
@@ -597,7 +617,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 					return
 				}
 
-				fmt.Println("> XMRMaker exited successfully")
+				t.Log("> XMRMaker exited successfully")
 				return
 			case <-time.After(testTimeout):
 				errCh <- errors.New("make offer subscription timed out")
@@ -621,7 +641,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 		defer wg.Done()
 
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -631,7 +651,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> XMRTaker exited successfully")
+			t.Log("> XMRTaker exited successfully")
 			return
 		}
 	}()
@@ -681,7 +701,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -691,7 +711,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> XMRTaker exited successfully")
+			t.Log("> XMRTaker exited successfully")
 			return
 		}
 	}()
@@ -707,7 +727,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			fmt.Println("> XMRTaker got status:", status)
+			t.Log("> XMRTaker got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
@@ -717,7 +737,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 				return
 			}
 
-			fmt.Println("> XMRTaker exited successfully")
+			t.Log("> XMRTaker exited successfully")
 			return
 		}
 	}()
@@ -738,7 +758,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 }
 
 func TestSuccess_ConcurrentSwaps(t *testing.T) {
-	const testTimeout = time.Second * 180
+	const testTimeout = time.Minute * 6
 	const numConcurrentSwaps = 10
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -760,7 +780,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 			types.ExchangeRate(exchangeRate))
 		require.NoError(t, err)
 
-		fmt.Println("maker made offer ", offerID)
+		t.Log("maker made offer ", offerID)
 
 		makerTests[i] = &makerTest{
 			offerID:  offerID,
@@ -783,7 +803,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 			for {
 				select {
 				case status := <-tc.statusCh:
-					fmt.Println("> XMRMaker got status:", status)
+					t.Log("> XMRMaker got status:", status)
 					if status.IsOngoing() {
 						continue
 					}
@@ -808,21 +828,21 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	takerTests := make([]*takerTest, numConcurrentSwaps)
 
 	for i := 0; i < numConcurrentSwaps; i++ {
-		c := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
+		ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
+		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
 		require.NoError(t, err)
 
 		// TODO: implement discovery over websockets
-		providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+		providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(providers))
 		require.GreaterOrEqual(t, len(providers[0]), 2)
 
 		offerID := makerTests[i].offerID
-		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+		takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 		require.NoError(t, err)
 
-		fmt.Println("taker took offer ", offerID)
+		t.Log("taker took offer ", offerID)
 
 		takerTests[i] = &takerTest{
 			statusCh: takerStatusCh,
@@ -834,7 +854,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 		go func(tc *takerTest) {
 			defer wg.Done()
 			for status := range tc.statusCh {
-				fmt.Println("> XMRTaker got status:", status)
+				t.Log("> XMRTaker got status:", status)
 				if status.IsOngoing() {
 					continue
 				}
@@ -853,7 +873,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	for _, tc := range makerTests {
 		select {
 		case err = <-tc.errCh:
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		default:
 		}
 	}
@@ -861,7 +881,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	for _, tc := range takerTests {
 		select {
 		case err = <-tc.errCh:
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		default:
 		}
 	}

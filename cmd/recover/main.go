@@ -184,7 +184,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		}
 
 		if res.Claimed {
-			log.Info("claimed ether from contract! transaction hash=%s", res.TxHash)
+			log.Infof("claimed ether from contract! transaction hash=%s", res.TxHash)
 			return nil
 		}
 
@@ -202,7 +202,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		}
 
 		if res.Claimed {
-			log.Info("claimed monero! wallet address=%s", res.MoneroAddress)
+			log.Infof("claimed monero! wallet address=%s", res.MoneroAddress)
 			return nil
 		}
 

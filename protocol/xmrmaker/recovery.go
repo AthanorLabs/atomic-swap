@@ -95,7 +95,7 @@ func (rs *recoveryState) ClaimOrRecover() (*RecoveryResult, error) {
 	// otherwise, let's try to claim
 	txHash, err := rs.ss.tryClaim()
 	if err != nil {
-		if errors.Is(err, errPastClaimTime) {
+		if errors.Is(err, errClaimPastTime) {
 			log.Infof(
 				"Past the time where we can claim the ether, and the counterparty " +
 					"has not yet refunded. Please try running the recovery module again later " +

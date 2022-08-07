@@ -53,7 +53,7 @@ func TestClient_Transfer(t *testing.T) {
 	cXMRTaker := NewClient(tests.CreateWalletRPCService(t))
 
 	// generate view-only account for A+B
-	walletFP := fmt.Sprintf("test-wallet-%s", time.Now().Format("2006-01-02-15:04:05.999999999"))
+	walletFP := fmt.Sprintf("test-wallet-%s", time.Now().Format(common.TimeFmtNSecs))
 	err = cXMRTaker.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
 	err = cXMRTaker.OpenWallet(walletFP, "")
