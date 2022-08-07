@@ -122,10 +122,10 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 	return msg, keysAndProof
 }
 
-func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *big.Int,
+func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount *big.Int,
 	timeout time.Duration) ethcommon.Hash {
 	tm := big.NewInt(int64(timeout.Seconds()))
-	if claimKey == [32]byte{} {
+	if claimKey.IsZero() {
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 

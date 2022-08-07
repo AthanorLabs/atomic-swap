@@ -18,6 +18,11 @@ func (h Hash) String() string {
 	return hex.EncodeToString(h[:])
 }
 
+// IsZero returns true if the hash is all zeros, otherwise false
+func (h Hash) IsZero() bool {
+	return h == [32]byte{}
+}
+
 // HexToHash decodes a hex-encoded string into a hash
 func HexToHash(s string) (Hash, error) {
 	h, err := hex.DecodeString(s)

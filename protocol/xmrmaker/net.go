@@ -69,7 +69,9 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	if err != nil {
 		return nil, nil, err
 	}
-	// TODO: Ensure that id is initialised?
+	if id.IsZero() {
+		return nil, nil, errOfferIDNotSet
+	}
 
 	offer, offerExtra := b.offerManager.TakeOffer(id)
 	if offer == nil {
@@ -111,9 +113,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	// TODO: Why are we using defer here?
-	defer func() {
-		s.setNextExpectedMessage(&message.NotifyETHLocked{})
-	}()
+	s.setNextExpectedMessage(&message.NotifyETHLocked{})
+
 	return s, resp, nil
 }
