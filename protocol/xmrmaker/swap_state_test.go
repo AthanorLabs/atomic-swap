@@ -21,8 +21,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
@@ -47,19 +45,16 @@ var (
 )
 
 func newTestXMRMaker(t *testing.T) *Instance {
-	pk, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
+	pk := tests.GetMakerTestKey(t)
+	ec, chainID := tests.NewEthClient(t)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
-
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
+	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
-	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
@@ -69,7 +64,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          common.Development,
-		ChainID:              big.NewInt(common.DevelopmentConfig.EthereumChainID),
+		ChainID:              chainID,
 		SwapContract:         contract,
 		SwapContractAddress:  addr,
 		SwapManager:          pswap.NewManager(),
@@ -139,17 +134,13 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *
 
 	// TODO: this is sus, update this when signing interfaces are updated
 	txOpts.Value = amount
-	defer func() {
-		txOpts.Value = nil
-	}()
 
 	ethAddr := ss.EthAddress()
 	nonce := big.NewInt(0)
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm, nonce)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, ss, tx)
 
-	receipt, err := ss.TransactionReceipt(context.Background(), tx.Hash())
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
@@ -183,10 +174,6 @@ func TestSwapState_GenerateAndSetKeys(t *testing.T) {
 }
 
 func TestSwapState_ClaimFunds(t *testing.T) {
-	if testing.Short() {
-		t.Skip() // TODO: randomly fails on CI with "no contract code at given address"
-	}
-
 	_, swapState := newTestInstance(t)
 	err := swapState.generateAndSetKeys()
 	require.NoError(t, err)
@@ -197,8 +184,9 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 
 	txOpts, err := swapState.TxOpts()
 	require.NoError(t, err)
-	_, err = swapState.Contract().SetReady(txOpts, swapState.contractSwap)
+	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
+	tests.MineTransaction(t, swapState, tx)
 
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
@@ -332,8 +320,9 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 
 	txOpts, err := s.TxOpts()
 	require.NoError(t, err)
-	_, err = s.Contract().SetReady(txOpts, s.contractSwap)
+	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
 	require.NoError(t, err)
+	tests.MineTransaction(t, s, tx)
 
 	msg := &message.NotifyReady{}
 
@@ -374,6 +363,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
+	tests.MineTransaction(t, s, tx)
 
 	addr, err := s.handleRefund(tx.Hash().String())
 	require.NoError(t, err)
@@ -409,6 +399,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
+	tests.MineTransaction(t, s, tx)
 
 	msg := &message.NotifyRefund{
 		TxHash: tx.Hash().String(),
@@ -451,9 +442,8 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, s, tx)
 
-	receipt, err := s.TransactionReceipt(s.ctx, tx.Hash())
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])

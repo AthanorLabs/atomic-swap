@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"path"
 	"testing"
@@ -15,8 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,32 +40,26 @@ func newSwap(
 ) {
 	tm := big.NewInt(defaultTimeout)
 
-	pk, err := ethcrypto.HexToECDSA(tests.GetTakerTestKey(t))
+	pk := tests.GetTakerTestKey(t)
+	ec, chainID := tests.NewEthClient(t)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
+	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
-
-	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
-	pkXMRMaker, err := ethcrypto.HexToECDSA(tests.GetMakerTestKey(t))
-	require.NoError(t, err)
+	pkXMRMaker := tests.GetMakerTestKey(t)
 
 	nonce := big.NewInt(0)
 	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
-	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress,
-		tm, nonce)
+	tx, err = contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress, tm, nonce)
 	require.NoError(t, err)
+	receipt := tests.MineTransaction(t, ec, tx)
 
-	receipt, err := ec.TransactionReceipt(context.Background(), tx.Hash())
-	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 	swapID, err := swapfactory.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
@@ -97,23 +90,17 @@ func newBackend(
 	t *testing.T,
 	addr ethcommon.Address,
 	contract *swapfactory.SwapFactory,
-	privkey string,
+	privkey *ecdsa.PrivateKey,
 ) backend.Backend {
-	pk, err := ethcrypto.HexToECDSA(privkey)
-	require.NoError(t, err)
-
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
+	pk := privkey
+	ec, chainID := tests.NewEthClient(t)
 
 	cfg := &backend.Config{
 		Ctx:                  context.Background(),
 		Environment:          common.Development,
 		EthereumPrivateKey:   pk,
 		EthereumClient:       ec,
-		ChainID:              big.NewInt(common.GanacheChainID),
+		ChainID:              chainID,
 		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
 		SwapContract:         contract,
@@ -162,7 +149,7 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 	require.NoError(t, err)
 
 	claimKey := keys.Secp256k1PublicKey.Keccak256()
-	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, true)
+	addr, contract, swapID, swap := newSwap(t, claimKey, [32]byte{}, false)
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)

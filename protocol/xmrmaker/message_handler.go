@@ -1,6 +1,7 @@
 package xmrmaker
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -182,23 +183,40 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		Address: string(addrAB),
 	}
 
-	go func() {
-		until := time.Until(s.t0)
-		log.Debugf("time until t0: %vs", until.Seconds())
-
-		select {
-		case <-s.ctx.Done():
-			return
-		// TODO: Document why we add one second
-		case <-time.After(until + time.Second):
-			s.handleT0Expired()
-		case <-s.readyCh:
-			return
-		}
-	}()
+	go s.runT0ExpirationHandler()
 
 	s.setNextExpectedMessage(&message.NotifyReady{})
 	return out, nil
+}
+
+func (s *swapState) runT0ExpirationHandler() {
+	log.Debugf("time until t0 (%s): %vs",
+		s.t0.Format(common.TimeFmtSecs),
+		time.Until(s.t0).Seconds(),
+	)
+
+	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
+	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+
+	waitCh := make(chan error)
+	go func() {
+		waitCh <- s.WaitForTimestamp(waitCtx, s.t0)
+		close(waitCh)
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-s.readyCh:
+		return
+	case err := <-waitCh:
+		if err != nil {
+			// TODO: Do we propagate this error? If we retry, the logic should probably be inside WaitForTimestamp.
+			log.Errorf("Failure waiting for T0 timeout: err=%s", err)
+			return
+		}
+		s.handleT0Expired()
+	}
 }
 
 func (s *swapState) handleT0Expired() {

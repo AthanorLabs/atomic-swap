@@ -326,23 +326,44 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 }
 
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	untilT0 := time.Until(s.t0)
-	untilT1 := time.Until(s.t1)
 	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
-
-	if untilT0 > 0 && stage != swapfactory.StageReady {
-		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
-		<-time.After(untilT0 + time.Second)
+	switch stage {
+	case swapfactory.StageInvalid:
+		return ethcommon.Hash{}, errClaimInvalid
+	case swapfactory.StageCompleted:
+		return ethcommon.Hash{}, errClaimSwapComplete
+	case swapfactory.StagePending, swapfactory.StageReady:
+		// do nothing
+	default:
+		panic("Unhandled stage value")
 	}
 
-	if untilT1 < 0 {
-		// we've passed t1, our only option now is for XMRTaker to refund
-		// and we can regain control of the locked XMR.
-		return ethcommon.Hash{}, errPastClaimTime
+	ts, err := s.LatestBlockTimestamp(s.ctx)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	// The block that our claim transaction goes into needs a timestamp that is strictly less
+	// than T1. Since the minimum interval between blocks is 1 second, the current block must
+	// be at least 2 seconds before T1 for a non-zero chance of the next block having a
+	// timestamp that is strictly less than T1.
+	if ts.After(s.t1.Add(-2 * time.Second)) {
+		// We've passed t1, so the only way we can regain control of the locked XMR is for
+		// XMRTaker to call refund on the contract.
+		return ethcommon.Hash{}, errClaimPastTime
+	}
+
+	if ts.Before(s.t0) && stage != swapfactory.StageReady {
+		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically?
+		// we need to wait until t0 to claim
+		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
+		err = s.WaitForTimestamp(s.ctx, s.t0)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
 	}
 
 	return s.claimFunds()
@@ -522,7 +543,8 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
-	txHash, _, err := s.Claim(s.ID(), s.contractSwap, sc)
+	unused := types.Hash{}
+	txHash, _, err := s.Claim(unused, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

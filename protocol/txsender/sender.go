@@ -2,26 +2,18 @@ package txsender
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"math/big"
-	"time"
+	"sync"
 
 	"github.com/noot/atomic-swap/common/types"
+	"github.com/noot/atomic-swap/ethereum/block"
 	"github.com/noot/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-)
-
-const (
-	maxRetries           = 360
-	receiptSleepDuration = time.Second * 10
-)
-
-var (
-	errReceiptTimeOut = errors.New("failed to get receipt, timed out")
 )
 
 // Sender signs and submits transactions to the chain
@@ -42,6 +34,7 @@ type privateKeySender struct {
 	ec       *ethclient.Client
 	contract *swapfactory.SwapFactory
 	txOpts   *bind.TransactOpts
+	txLock   sync.Mutex // locks from TX start until receipt so we don't reuse ETH nonce values
 }
 
 // NewSenderWithPrivateKey returns a new *privateKeySender
@@ -64,18 +57,19 @@ func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int,
 	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	s.txOpts.Value = value
-	defer func() {
-		s.txOpts.Value = nil
-	}()
-
-	tx, err := s.contract.NewSwap(s.txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
+	txOpts := *s.txOpts // make a copy, so we don't modify the original
+	txOpts.Value = value
+	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
 	if err != nil {
+		err = fmt.Errorf("new_swap tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
-	receipt, err := waitForReceipt(s.ctx, s.ec, tx.Hash())
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, tx.Hash())
 	if err != nil {
+		err = fmt.Errorf("new_swap failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
@@ -84,13 +78,18 @@ func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyR
 
 func (s *privateKeySender) SetReady(_ types.Hash,
 	_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	tx, err := s.contract.SetReady(s.txOpts, _swap)
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
+	txOpts := *s.txOpts // make a copy, so we don't modify the original
+	tx, err := s.contract.SetReady(&txOpts, _swap)
 	if err != nil {
+		err = fmt.Errorf("set_ready tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
-	receipt, err := waitForReceipt(s.ctx, s.ec, tx.Hash())
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, tx.Hash())
 	if err != nil {
+		err = fmt.Errorf("set_ready failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
@@ -99,13 +98,18 @@ func (s *privateKeySender) SetReady(_ types.Hash,
 
 func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	tx, err := s.contract.Claim(s.txOpts, _swap, _s)
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
+	txOpts := *s.txOpts // make a copy, so we don't modify the original
+	tx, err := s.contract.Claim(&txOpts, _swap, _s)
 	if err != nil {
+		err = fmt.Errorf("claim tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
-	receipt, err := waitForReceipt(s.ctx, s.ec, tx.Hash())
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, tx.Hash())
 	if err != nil {
+		err = fmt.Errorf("claim failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
@@ -114,29 +118,20 @@ func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap
 
 func (s *privateKeySender) Refund(_ types.Hash, _swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	tx, err := s.contract.Refund(s.txOpts, _swap, _s)
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
+	txOpts := *s.txOpts // make a copy, so we don't modify the original
+	tx, err := s.contract.Refund(&txOpts, _swap, _s)
 	if err != nil {
+		err = fmt.Errorf("refund tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
-	receipt, err := waitForReceipt(s.ctx, s.ec, tx.Hash())
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, tx.Hash())
 	if err != nil {
+		err = fmt.Errorf("refund failed, %w", err)
 		return ethcommon.Hash{}, nil, err
 	}
 
 	return tx.Hash(), receipt, nil
-}
-
-func waitForReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
-	for i := 0; i < maxRetries; i++ {
-		receipt, err := ec.TransactionReceipt(ctx, txHash)
-		if err != nil {
-			time.Sleep(receiptSleepDuration)
-			continue
-		}
-
-		return receipt, nil
-	}
-
-	return nil, errReceiptTimeOut
 }

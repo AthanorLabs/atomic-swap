@@ -6,7 +6,7 @@ type Status byte
 const (
 	ExpectingKeys Status = iota //nolint:revive
 	KeysExchanged
-	ETHLocked // TODO: rename to ETHLocked
+	ETHLocked
 	XMRLocked
 	ContractReady
 	// CompletedSuccess represents a successful swap.

@@ -8,7 +8,7 @@ Follow the [build instructions](./build.md) to ensure you have Go installed and 
 
 Follow the instructions [here](local.md) to set up your local Alice (ETH-holder, XMR-wanter) and Bob (XMR-holder, ETH-wanter) nodes. 
 
-You can also run `bash scripts/setup-env.sh` to quickly set up the local Monero and ganache-cli environment.
+You can also run `bash scripts/setup-env.sh` to quickly set up the local Monero and ganache environment.
 
 ## Deploying or using deployed SwapFactory.sol
 

@@ -352,6 +352,21 @@ func (mr *MockBackendMockRecorder) GetHeight() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHeight", reflect.TypeOf((*MockBackend)(nil).GetHeight))
 }
 
+// LatestBlockTimestamp mocks base method.
+func (m *MockBackend) LatestBlockTimestamp(arg0 context.Context) (time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LatestBlockTimestamp", arg0)
+	ret0, _ := ret[0].(time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LatestBlockTimestamp indicates an expected call of LatestBlockTimestamp.
+func (mr *MockBackendMockRecorder) LatestBlockTimestamp(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LatestBlockTimestamp", reflect.TypeOf((*MockBackend)(nil).LatestBlockTimestamp), arg0)
+}
+
 // LockClient mocks base method.
 func (m *MockBackend) LockClient() {
 	m.ctrl.T.Helper()
@@ -680,6 +695,20 @@ func (m *MockBackend) WaitForReceipt(arg0 context.Context, arg1 common.Hash) (*t
 func (mr *MockBackendMockRecorder) WaitForReceipt(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForReceipt", reflect.TypeOf((*MockBackend)(nil).WaitForReceipt), arg0, arg1)
+}
+
+// WaitForTimestamp mocks base method.
+func (m *MockBackend) WaitForTimestamp(arg0 context.Context, arg1 time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitForTimestamp", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WaitForTimestamp indicates an expected call of WaitForTimestamp.
+func (mr *MockBackendMockRecorder) WaitForTimestamp(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForTimestamp", reflect.TypeOf((*MockBackend)(nil).WaitForTimestamp), arg0, arg1)
 }
 
 // XMRDepositAddress mocks base method.

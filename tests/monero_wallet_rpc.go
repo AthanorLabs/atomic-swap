@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -39,6 +40,7 @@ func CreateWalletRPCService(t *testing.T) string {
 			started = true
 			break
 		}
+		time.Sleep(200 * time.Millisecond) // additional start time
 	}
 	if !started {
 		t.Fatal("failed to start monero-wallet-rpc")

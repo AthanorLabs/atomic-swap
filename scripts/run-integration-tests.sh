@@ -20,16 +20,16 @@ mkdir -p alice-test-keys
 ./monero-bin/monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18084 --disable-rpc-login --wallet-dir ./alice-test-keys &> monero-wallet-cli-alice.log &
 MONERO_WALLET_CLI_ALICE_PID=$!
 
-# install ganache-cli and run
-GANACHE_EXEC="$(npm config get prefix)/bin/ganache-cli"
+# install ganache and run
+GANACHE_EXEC="$(npm config get prefix)/bin/ganache"
 if [[ ! -x "${GANACHE_EXEC}" ]]; then
-	echo "installing ganache-cli"
-	npm install --location=global ganache-cli
+	echo "installing ganache"
+	npm install --location=global ganache
 fi
-echo "starting ganache-cli"
+echo "starting ganache"
 export NODE_OPTIONS=--max_old_space_size=8192
-"${GANACHE_EXEC}" --deterministic --accounts=20 &> ganache-cli.log &
-GANACHE_CLI_PID=$!
+"${GANACHE_EXEC}" --deterministic --accounts=50 --miner.blockTime=1 &> ganache.log &
+GANACHE_PID=$!
 
 # wait for servers to start
 sleep 10
@@ -57,7 +57,7 @@ OK=$?
 # kill processes
 kill "${MONERO_WALLET_CLI_BOB_PID}" || echo "Bob's wallet CLI was not running at end of test"
 kill "${MONERO_WALLET_CLI_ALICE_PID}" || echo "Alice's wallet CLI was not running at end of test"
-kill "${GANACHE_CLI_PID}" || echo "ganache-cli was not running at end of test"
+kill "${GANACHE_PID}" || echo "ganache was not running at end of test"
 kill "${ALICE_SWAPD_PID}" || echo "Alice's swapd was not running at end of test"
 kill "${BOB_SWAPD_PID}" || echo "Bob's swapd was not running at end of test"
 kill "${CHARLIE_SWAPD_PID}" || echo "Charlie's swapd was not running at end of test"

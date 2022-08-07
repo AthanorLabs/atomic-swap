@@ -8,12 +8,12 @@ ALICE_P2P_ADDRESS="12D3KooWBD82zGTFqk6Qmu5zeS6dQfiaAcn8go2QWE29HPmRX3yB"
 
 echo "cleanup"
 pkill -e -f monero
-pkill -e -f ganache-cli
+pkill -e -f ganache
 killall -v swapd
 pkill -e -f swapcli
 
-echo "start ganache-cli"
-"$(npm config get prefix)/bin/ganache-cli" --deterministic --accounts=20 &> "${LOG_DIR}/ganache-cli.log" &
+echo "start ganache"
+"$(npm config get prefix)/bin/ganache" --deterministic --accounts=50 --miner.blockTime=1 &> "${LOG_DIR}/ganache.log" &
 
 echo "move to $MONERO_DIR"
 cd "${MONERO_DIR}"
