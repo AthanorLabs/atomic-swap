@@ -494,7 +494,9 @@ func TestSwapState_Exit_Success(t *testing.T) {
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
-	require.Nil(t, b.offerManager.offers[s.offer.GetID()])
+	o, oe := b.offerManager.GetOffer(s.offer.GetID())
+	require.Nil(t, o) // TODO: Document why it should be nil
+	require.Nil(t, oe)
 }
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
@@ -510,5 +512,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()
 	require.NoError(t, err)
-	require.NotNil(t, b.offerManager.offers[s.offer.GetID()])
+	o, oe := b.offerManager.GetOffer(s.offer.GetID())
+	require.NotNil(t, o) // TODO: Document why it should not be nil
+	require.NotNil(t, oe)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"golang.org/x/crypto/sha3"
 )
@@ -32,6 +33,7 @@ func HexToHash(s string) (Hash, error) {
 // Offer represents a swap offer
 type Offer struct {
 	ID            Hash
+	idMu          sync.Mutex `json:"-"` // prevents race conditions on the first call to GetID
 	Provides      ProvidesCoin
 	MinimumAmount float64
 	MaximumAmount float64
@@ -40,6 +42,9 @@ type Offer struct {
 
 // GetID returns the ID of the offer
 func (o *Offer) GetID() Hash {
+	o.idMu.Lock()
+	defer o.idMu.Unlock()
+
 	if o.ID != [32]byte{} {
 		return o.ID
 	}

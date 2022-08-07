@@ -41,6 +41,8 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 
 	go func() {
 		<-s.done
+		b.swapMu.Lock()
+		defer b.swapMu.Unlock()
 		delete(b.swapStates, offer.GetID())
 	}()
 
@@ -67,8 +69,9 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	if err != nil {
 		return nil, nil, err
 	}
+	// TODO: Ensure that id is initialised?
 
-	offer, offerExtra := b.offerManager.getAndDeleteOffer(id)
+	offer, offerExtra := b.offerManager.TakeOffer(id)
 	if offer == nil {
 		return nil, nil, errNoOfferWithID
 	}
@@ -92,7 +95,9 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
+	b.swapMu.Lock() // b.initiate above grabs the lock, so don't move this to the top of function
 	s, has := b.swapStates[offerID]
+	b.swapMu.Unlock()
 	if !has {
 		panic("did not store swap state in Instance map")
 	}
@@ -106,6 +111,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
+	// TODO: Why are we using defer here?
 	defer func() {
 		s.setNextExpectedMessage(&message.NotifyETHLocked{})
 	}()

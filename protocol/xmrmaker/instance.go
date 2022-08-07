@@ -6,6 +6,7 @@ import (
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/protocol/backend"
+	"github.com/noot/atomic-swap/protocol/xmrmaker/offers"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -22,9 +23,9 @@ type Instance struct {
 
 	walletFile, walletPassword string
 
-	offerManager *offerManager
+	offerManager *offers.Manager
 
-	swapMu     sync.Mutex
+	swapMu     sync.Mutex // synchronises access to swapStates
 	swapStates map[types.Hash]*swapState
 }
 
@@ -51,7 +52,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		basepath:       cfg.Basepath,
 		walletFile:     cfg.WalletFile,
 		walletPassword: cfg.WalletPassword,
-		offerManager:   newOfferManager(cfg.Basepath),
+		offerManager:   offers.NewManager(cfg.Basepath),
 		swapStates:     make(map[types.Hash]*swapState),
 	}, nil
 }
@@ -68,5 +69,8 @@ func (b *Instance) openWallet() error { //nolint
 
 // GetOngoingSwapState ...
 func (b *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+
 	return b.swapStates[id]
 }
