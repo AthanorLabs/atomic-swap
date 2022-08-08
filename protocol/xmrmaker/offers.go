@@ -1,6 +1,8 @@
 package xmrmaker
 
 import (
+	"fmt"
+
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	pcommon "github.com/noot/atomic-swap/protocol"
@@ -88,9 +90,24 @@ func (b *Instance) GetOffers() []*types.Offer {
 	return offers
 }
 
-// ClearOffers clears all offers.
-func (b *Instance) ClearOffers() {
+// ClearOffers clears the given offers.
+// If the offer list is empty, it clears all offers.
+func (b *Instance) ClearOffers(ids []string) error {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
-	b.offerManager.offers = make(map[types.Hash]*offerWithExtra)
+	if len(ids) == 0 {
+		b.offerManager.offers = make(map[types.Hash]*offerWithExtra)
+		return nil
+	}
+
+	for _, id := range ids {
+		hash, err := types.HexToHash(id)
+		if err != nil {
+			return fmt.Errorf("invalid id %s: %w", id, err)
+		}
+
+		delete(b.offerManager.offers, hash)
+	}
+
+	return nil
 }
