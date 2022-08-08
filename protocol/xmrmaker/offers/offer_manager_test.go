@@ -17,12 +17,7 @@ func Test_Manager_simple(t *testing.T) {
 	mgr := NewManager(infoDir)
 
 	for i := 0; i < NumAdd; i++ {
-		offer := &types.Offer{
-			Provides:      types.ProvidesXMR,
-			MinimumAmount: float64(i),
-			MaximumAmount: float64(i),
-			ExchangeRate:  types.ExchangeRate(i),
-		}
+		offer := types.NewOffer(types.ProvidesXMR, float64(i), float64(i), types.ExchangeRate(i))
 		offerExtra := mgr.AddOffer(offer)
 		require.NotNil(t, offerExtra)
 	}

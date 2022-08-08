@@ -229,12 +229,12 @@ func (s *NetService) MakeOffer(_ *http.Request, req *rpctypes.MakeOfferRequest,
 }
 
 func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.OfferExtra, error) {
-	o := &types.Offer{
-		Provides:      types.ProvidesXMR,
-		MinimumAmount: req.MinimumAmount,
-		MaximumAmount: req.MaximumAmount,
-		ExchangeRate:  req.ExchangeRate,
-	}
+	o := types.NewOffer(
+		types.ProvidesXMR,
+		req.MinimumAmount,
+		req.MaximumAmount,
+		req.ExchangeRate,
+	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(o)
 	if err != nil {

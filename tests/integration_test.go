@@ -131,7 +131,7 @@ func TestXMRTaker_Query(t *testing.T) {
 	require.GreaterOrEqual(t, len(resp.Offers), 1)
 	var respOffer *types.Offer
 	for _, offer := range resp.Offers {
-		if offerID == offer.ID.String() {
+		if offerID == offer.GetID().String() {
 			respOffer = offer
 		}
 	}
@@ -830,7 +830,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for i := 0; i < numConcurrentSwaps; i++ {
 		ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
+		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 		require.NoError(t, err)
 
 		// TODO: implement discovery over websockets
@@ -887,7 +887,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 		}
 	}
 
-	idMap := make(map[string]bool) // IDs created this test
+	idMap := make(map[string]bool) // IDs created by this test
 	for _, mt := range makerTests {
 		idMap[mt.offerID] = true
 	}

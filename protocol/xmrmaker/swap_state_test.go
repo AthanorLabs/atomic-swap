@@ -100,7 +100,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	xmrmaker := newTestXMRMaker(t)
 	infoFile := path.Join(t.TempDir(), "test.keys")
-	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infoFile,
+	swapState, err := newSwapState(xmrmaker.backend, types.NewOffer("", 0, 0, 0), xmrmaker.offerManager, nil, infoFile,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
 	swapState.SetContract(xmrmaker.backend.Contract())
@@ -484,13 +484,7 @@ func TestSwapState_Exit_Aborted_2(t *testing.T) {
 
 func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestInstance(t)
-	s.offer = &types.Offer{
-		Provides:      types.ProvidesXMR,
-		MinimumAmount: 0.1,
-		MaximumAmount: 0.2,
-		ExchangeRate:  0.1,
-	}
-
+	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
@@ -501,12 +495,7 @@ func TestSwapState_Exit_Success(t *testing.T) {
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
 	b, s := newTestInstance(t)
-	s.offer = &types.Offer{
-		Provides:      types.ProvidesXMR,
-		MinimumAmount: 0.1,
-		MaximumAmount: 0.2,
-		ExchangeRate:  0.1,
-	}
+	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1)
 	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedRefund)
