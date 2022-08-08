@@ -51,7 +51,7 @@ sleep 3
 
 # run tests
 echo "running integration tests..."
-TESTS=integration go test ./tests -v
+TESTS=integration go test ./tests -v -count=1
 OK=$?
 
 # kill processes
