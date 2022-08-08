@@ -174,10 +174,12 @@ func TestSuccess(t *testing.T) {
 				}
 
 				if status != types.CompletedSuccess {
+					cancel()
 					errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 				}
 				return
 			case <-time.After(testTimeout):
+				cancel()
 				errCh <- errors.New("make offer subscription timed out")
 				return
 			}
@@ -205,6 +207,7 @@ func TestSuccess(t *testing.T) {
 				continue
 			}
 			if status != types.CompletedSuccess {
+				cancel()
 				errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 			}
 			return
@@ -790,8 +793,6 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	}
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	offersBefore, err := bc.GetOffers()
-	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	wg.Add(2 * numConcurrentSwaps)
@@ -872,7 +873,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for _, tc := range makerTests {
 		select {
-		case err = <-tc.errCh:
+		case err := <-tc.errCh:
 			assert.NoError(t, err)
 		default:
 		}
@@ -880,13 +881,20 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for _, tc := range takerTests {
 		select {
-		case err = <-tc.errCh:
+		case err := <-tc.errCh:
 			assert.NoError(t, err)
 		default:
 		}
 	}
 
+	idMap := make(map[string]bool) // IDs created this test
+	for _, mt := range makerTests {
+		idMap[mt.offerID] = true
+	}
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
-	require.Equal(t, numConcurrentSwaps, len(offersBefore)-len(offersAfter))
+	for _, o := range offersAfter {
+		id := o.GetID().String()
+		require.Falsef(t, idMap[id], "offer id %s was not removed", id)
+	}
 }
