@@ -68,7 +68,10 @@ func generateBlocks(num uint) {
 
 	fmt.Println("> Generating blocks for test setup...")
 	_ = d.GenerateBlocks(xmrmakerAddr.Address, num)
-	_ = c.Refresh() // TODO: this errors w monerod v18
+	err = c.Refresh()
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("> Completed generating blocks.")
 }
@@ -85,10 +88,10 @@ func generateBlocksAsync() {
 	for {
 		time.Sleep(time.Second)
 		_ = d.GenerateBlocks(xmrmakerAddr.Address, 1)
-		// err = c.Refresh()
-		// if err != nil {
-		// 	panic(err)
-		// }
+		err = c.Refresh()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
