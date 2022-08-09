@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/rpcclient"
@@ -163,6 +164,18 @@ var (
 					&cli.StringFlag{
 						Name:  "offer-id",
 						Usage: "ID of swap to retrieve info for",
+					},
+					daemonAddrFlag,
+				},
+			},
+			{
+				Name:   "clear-offers",
+				Usage:  "clear current offers. if no offer IDs are provided, clears all current offers.",
+				Action: runClearOffers,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "offer-ids",
+						Usage: "a comma-separated list of offer IDs to delete",
 					},
 					daemonAddrFlag,
 				},
@@ -494,6 +507,34 @@ func runCancel(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Cancelled successfully, exit status: %s\n", resp)
+	return nil
+}
+
+func runClearOffers(ctx *cli.Context) error {
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	c := rpcclient.NewClient(endpoint)
+
+	ids := ctx.String("offer-ids")
+	if ids == "" {
+		err := c.ClearOffers(nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Cleared all offers successfully.\n")
+		return nil
+	}
+
+	err := c.ClearOffers(strings.Split(ids, ","))
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Cleared offers successfully: %s\n", ids)
 	return nil
 }
 
