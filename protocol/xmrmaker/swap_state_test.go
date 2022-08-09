@@ -253,11 +253,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
-	if testing.Short() {
-		t.Skip() // TODO: times out on CI with error
-		// "xmrmaker/swap_state.go:227	failed to claim funds: err=no contract code at given address"
-	}
-
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}

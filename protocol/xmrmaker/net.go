@@ -14,29 +14,33 @@ func (b *Instance) Provides() types.ProvidesCoin {
 	return types.ProvidesXMR
 }
 
-func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount) error {
+func (b *Instance) initiate(
+	offer *types.Offer,
+	offerExtra *types.OfferExtra,
+	providesAmount common.MoneroAmount,
+	desiredAmount common.EtherAmount,
+) (*swapState, error) {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
 	if b.swapStates[offer.GetID()] != nil {
-		return errProtocolAlreadyInProgress
+		return nil, errProtocolAlreadyInProgress
 	}
 
 	balance, err := b.backend.GetBalance(0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// check user's balance and that they actually have what they will provide
 	if balance.UnlockedBalance <= float64(providesAmount) {
-		return errBalanceTooLow
+		return nil, errBalanceTooLow
 	}
 
 	s, err := newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
 		offerExtra.InfoFile, providesAmount, desiredAmount)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	go func() {
@@ -53,7 +57,7 @@ func (b *Instance) initiate(offer *types.Offer, offerExtra *types.OfferExtra, pr
 		s.info.ProvidedAmount()),
 	)
 	b.swapStates[offer.GetID()] = s
-	return nil
+	return s, nil
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
@@ -88,32 +92,23 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, errAmountProvidedTooHigh
 	}
 
-	if err = b.initiate(offer, offerExtra, common.MoneroToPiconero(providedAmount), common.EtherToWei(msg.ProvidedAmount)); err != nil { //nolint:lll
-		return nil, nil, err
-	}
-
-	offerID, err := types.HexToHash(msg.OfferID)
+	providedPicoXMR := common.MoneroToPiconero(providedAmount)
+	providedWei := common.EtherToWei(msg.ProvidedAmount)
+	state, err := b.initiate(offer, offerExtra, providedPicoXMR, providedWei)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	b.swapMu.Lock() // b.initiate above grabs the lock, so don't move this to the top of function
-	s, has := b.swapStates[offerID]
-	b.swapMu.Unlock()
-	if !has {
-		panic("did not store swap state in Instance map")
-	}
-
-	if err = s.handleSendKeysMessage(msg); err != nil {
+	if err = state.handleSendKeysMessage(msg); err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := s.SendKeysMessage()
+	resp, err := state.SendKeysMessage()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	s.setNextExpectedMessage(&message.NotifyETHLocked{})
+	state.setNextExpectedMessage(&message.NotifyETHLocked{})
 
-	return s, resp, nil
+	return state, resp, nil
 }
