@@ -174,12 +174,10 @@ func TestSuccess(t *testing.T) {
 				}
 
 				if status != types.CompletedSuccess {
-					cancel()
 					errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 				}
 				return
 			case <-time.After(testTimeout):
-				cancel()
 				errCh <- errors.New("make offer subscription timed out")
 				return
 			}
@@ -207,7 +205,6 @@ func TestSuccess(t *testing.T) {
 				continue
 			}
 			if status != types.CompletedSuccess {
-				cancel()
 				errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 			}
 			return
@@ -691,9 +688,13 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	errCh := make(chan error)
+	errCh := make(chan error, 2)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
 		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 		require.NoError(t, err)
 
@@ -704,22 +705,24 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			t.Log("> XMRTaker got status:", status)
+			t.Log("> XMRTaker[1] got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				errCh <- fmt.Errorf("1st swap did not exit successfully: got %s", status)
+				cancel()
 				return
 			}
 
-			t.Log("> XMRTaker exited successfully")
+			t.Log("> XMRTaker[1] exited successfully")
 			return
 		}
 	}()
 
 	go func() {
+		defer wg.Done()
 		wsc, err := wsclient.NewWsClient(ctx, defaultCharlieDaemonWSEndpoint)
 		require.NoError(t, err)
 
@@ -730,20 +733,22 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			t.Log("> XMRTaker got status:", status)
+			t.Log("> XMRTaker[2] got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				errCh <- fmt.Errorf("2nd swap did not exit successfully: got %s", status)
 				return
 			}
 
-			t.Log("> XMRTaker exited successfully")
+			t.Log("> XMRTaker[1] exited successfully")
 			return
 		}
 	}()
+
+	wg.Wait()
 
 	select {
 	case err := <-errCh:
@@ -793,6 +798,8 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 	}
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
+	offersBefore, err := bc.GetOffers()
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	wg.Add(2 * numConcurrentSwaps)
@@ -830,7 +837,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for i := 0; i < numConcurrentSwaps; i++ {
 		ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
+		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
 		require.NoError(t, err)
 
 		// TODO: implement discovery over websockets
@@ -873,7 +880,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for _, tc := range makerTests {
 		select {
-		case err := <-tc.errCh:
+		case err = <-tc.errCh:
 			assert.NoError(t, err)
 		default:
 		}
@@ -881,20 +888,13 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 
 	for _, tc := range takerTests {
 		select {
-		case err := <-tc.errCh:
+		case err = <-tc.errCh:
 			assert.NoError(t, err)
 		default:
 		}
 	}
 
-	idMap := make(map[string]bool) // IDs created by this test
-	for _, mt := range makerTests {
-		idMap[mt.offerID] = true
-	}
 	offersAfter, err := bc.GetOffers()
 	require.NoError(t, err)
-	for _, o := range offersAfter {
-		id := o.GetID().String()
-		require.Falsef(t, idMap[id], "offer id %s was not removed", id)
-	}
+	require.Equal(t, numConcurrentSwaps, len(offersBefore)-len(offersAfter))
 }
