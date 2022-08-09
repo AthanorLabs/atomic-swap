@@ -26,7 +26,12 @@ import (
 
 var infofile = os.TempDir() + "/test.keys"
 
-var _ = logging.SetLogLevel("xmrtaker", "debug")
+func init() {
+	// Temporarily setting the log level to debug on more packages until we understand why some conditions
+	// at the end of TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund are not always met in CI.
+	// logging.SetLogLevel("xmrtaker", "debug")
+	logging.SetDebugLogging()
+}
 
 type mockNet struct {
 	msg net.Message
