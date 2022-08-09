@@ -13,6 +13,7 @@ MONERO_WALLET_CLI_BOB_PID=$!
 
 sleep 5
 curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"create_wallet","params":{"filename":"test-wallet","password":"","language":"English"}}' -H 'Content-Type: application/json'
+curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"test-wallet","password":""}}' -H 'Content-Type: application/json'
 echo
 
 echo "starting monero-wallet-rpc on port 18084..."

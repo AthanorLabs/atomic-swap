@@ -185,6 +185,16 @@ func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffers
 	return nil
 }
 
+// ClearOffersRequest ...
+type ClearOffersRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// ClearOffers clears the provided offers. If there are no offers provided, it clears all offers.
+func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *interface{}) error {
+	return s.xmrmaker.ClearOffers(req.IDs)
+}
+
 // CancelRequest ...
 type CancelRequest struct {
 	OfferID string `json:"id"`

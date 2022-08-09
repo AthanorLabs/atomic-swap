@@ -158,3 +158,30 @@ func (c *Client) GetStage(id string) (*rpc.GetStageResponse, error) {
 
 	return res, nil
 }
+
+// ClearOffers calls swap_clearOffers
+func (c *Client) ClearOffers(ids []string) error {
+	const (
+		method = "swap_clearOffers"
+	)
+
+	req := &rpc.ClearOffersRequest{
+		IDs: ids,
+	}
+
+	params, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return fmt.Errorf("failed to call %s: %w", method, resp.Error)
+	}
+
+	return nil
+}
