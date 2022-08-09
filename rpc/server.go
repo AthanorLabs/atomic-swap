@@ -135,7 +135,7 @@ type XMRMaker interface {
 	MakeOffer(offer *types.Offer) (*types.OfferExtra, error)
 	SetMoneroWalletFile(file, password string) error
 	GetOffers() []*types.Offer
-	ClearOffers()
+	ClearOffers([]string) error
 }
 
 // SwapManager ...

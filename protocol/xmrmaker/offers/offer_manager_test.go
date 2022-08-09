@@ -9,7 +9,7 @@ import (
 	"github.com/noot/atomic-swap/common/types"
 )
 
-func Test_Manager_simple(t *testing.T) {
+func Test_Manager(t *testing.T) {
 	const NumAdd = 10
 	const NumTake = 5
 
@@ -30,7 +30,16 @@ func Test_Manager_simple(t *testing.T) {
 		require.NotNil(t, offerExtra)
 		require.True(t, strings.HasPrefix(offerExtra.InfoFile, infoDir))
 	}
-	require.Len(t, mgr.GetOffers(), NumAdd-NumTake)
-	mgr.ClearOffers()
-	require.Len(t, mgr.GetOffers(), 0)
+
+	offers = mgr.GetOffers()
+	require.Len(t, offers, NumAdd-NumTake)
+
+	removeIDs := []types.Hash{offers[0].GetID(), offers[2].GetID()}
+	mgr.ClearOfferIDs(removeIDs)
+	offers = mgr.GetOffers()
+	require.Len(t, offers, NumAdd-NumTake-2)
+
+	mgr.ClearAllOffers()
+	offers = mgr.GetOffers()
+	require.Len(t, offers, 0)
 }

@@ -92,9 +92,18 @@ func (m *Manager) GetOffers() []*types.Offer {
 	return offers
 }
 
-// ClearOffers clears all offers.
-func (m *Manager) ClearOffers() {
+// ClearAllOffers clears all offers.
+func (m *Manager) ClearAllOffers() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.offers = make(map[types.Hash]*offerWithExtra)
+}
+
+// ClearOfferIDs clears the passed in offer IDs if they exist.
+func (m *Manager) ClearOfferIDs(ids []types.Hash) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, hash := range ids {
+		delete(m.offers, hash)
+	}
 }
