@@ -45,14 +45,17 @@ type Offer struct {
 
 // NewOffer creates and returns an Offer with an initialised id field
 func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate ExchangeRate) *Offer {
-	offer := &Offer{
+	var buf [16]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		panic(err)
+	}
+	return &Offer{
+		id:            sha3.Sum256(buf[:]),
 		Provides:      coin,
 		MinimumAmount: minAmount,
 		MaximumAmount: maxAmount,
 		ExchangeRate:  exRate,
 	}
-	offer.setID()
-	return offer
 }
 
 // GetID returns the ID of the offer
@@ -61,28 +64,6 @@ func (o *Offer) GetID() Hash {
 		panic("offer was improperly initialised")
 	}
 	return o.id
-}
-
-// setID returns the ID of the offer
-func (o *Offer) setID() {
-	if !o.id.IsZero() {
-		panic("attempt to set offer ID more than once")
-	}
-
-	// TODO: If we are not saving the random nonce below, so we can't recreate the ID, why do we want to
-	//       include the serialised data when generating the ID?
-	b, err := json.Marshal(o)
-	if err != nil {
-		panic(err)
-	}
-
-	var buf [8]byte
-	_, err = rand.Read(buf[:])
-	if err != nil {
-		panic(err)
-	}
-
-	o.id = sha3.Sum256(append(b, buf[:]...))
 }
 
 // String ...
