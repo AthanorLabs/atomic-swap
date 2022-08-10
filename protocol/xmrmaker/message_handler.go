@@ -136,7 +136,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, errMissingAddress
 	}
 
-	if msg.ContractSwapID == [32]byte{} {
+	if msg.ContractSwapID.IsZero() {
 		return nil, errNilContractSwapID
 	}
 

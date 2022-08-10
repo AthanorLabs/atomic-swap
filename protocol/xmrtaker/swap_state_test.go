@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,10 +30,19 @@ var infofile = os.TempDir() + "/test.keys"
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
 type mockNet struct {
-	msg net.Message
+	msgMu sync.Mutex  // lock needed, as SendSwapMessage is called async from timeout handlers
+	msg   net.Message // last value passed to SendSwapMessage
+}
+
+func (n *mockNet) LastSentMessage() net.Message {
+	n.msgMu.Lock()
+	defer n.msgMu.Unlock()
+	return n.msg
 }
 
 func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
+	n.msgMu.Lock()
+	defer n.msgMu.Unlock()
 	n.msg = msg
 	return nil
 }
@@ -174,11 +184,12 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	}
 
 	// ensure we refund before t0
-	require.NotNil(t, s.Net().(*mockNet).msg)
-	require.Equal(t, message.NotifyRefundType, s.Net().(*mockNet).msg.Type())
+	lastMesg := s.Net().(*mockNet).LastSentMessage()
+	require.NotNil(t, lastMesg)
+	require.Equal(t, message.NotifyRefundType, lastMesg.Type())
 
 	// check swap is marked completed
-	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(nil, s.contractSwapID)
 	require.NoError(t, err)
 	require.Equal(t, swapfactory.StageCompleted, stage)
 }
@@ -258,8 +269,9 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 		}
 	}
 
-	require.NotNil(t, s.Net().(*mockNet).msg)
-	require.Equal(t, message.NotifyRefundType, s.Net().(*mockNet).msg.Type())
+	sentMsg := s.Net().(*mockNet).LastSentMessage()
+	require.NotNil(t, sentMsg)
+	require.Equal(t, message.NotifyRefundType, sentMsg.Type())
 
 	// check balance of contract is 0
 	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)

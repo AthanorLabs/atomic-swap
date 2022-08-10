@@ -195,7 +195,7 @@ type ContractSwap struct {
 type NotifyETHLocked struct {
 	Address        string
 	TxHash         string
-	ContractSwapID [32]byte
+	ContractSwapID types.Hash
 	ContractSwap   *ContractSwap
 }
 
