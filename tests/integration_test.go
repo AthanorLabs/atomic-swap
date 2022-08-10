@@ -150,7 +150,7 @@ func TestXMRTaker_Query(t *testing.T) {
 }
 
 func TestSuccess_OneSwap(t *testing.T) {
-	const testTimeout = time.Second * 60
+	const testTimeout = time.Second * 75
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
