@@ -139,7 +139,7 @@ func TestXMRTaker_Query(t *testing.T) {
 	require.GreaterOrEqual(t, len(resp.Offers), 1)
 	var respOffer *types.Offer
 	for _, offer := range resp.Offers {
-		if offerID == offer.ID.String() {
+		if offerID == offer.GetID().String() {
 			respOffer = offer
 		}
 	}
@@ -150,7 +150,7 @@ func TestXMRTaker_Query(t *testing.T) {
 }
 
 func TestSuccess_OneSwap(t *testing.T) {
-	const testTimeout = time.Second * 60
+	const testTimeout = time.Second * 75
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -721,9 +721,13 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
 
-	errCh := make(chan error)
+	errCh := make(chan error, 2)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
 		wsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 		require.NoError(t, err)
 
@@ -734,22 +738,24 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			t.Log("> XMRTaker got status:", status)
+			t.Log("> XMRTaker[0] got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				errCh <- fmt.Errorf("0th swap did not exit successfully: got %s", status)
+				cancel()
 				return
 			}
 
-			t.Log("> XMRTaker exited successfully")
+			t.Log("> XMRTaker[0] exited successfully")
 			return
 		}
 	}()
 
 	go func() {
+		defer wg.Done()
 		wsc, err := wsclient.NewWsClient(ctx, defaultCharlieDaemonWSEndpoint)
 		require.NoError(t, err)
 
@@ -760,20 +766,22 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			t.Log("> XMRTaker got status:", status)
+			t.Log("> XMRTaker[1] got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("swap did not exit successfully: got %s", status)
+				errCh <- fmt.Errorf("1st swap did not exit successfully: got %s", status)
 				return
 			}
 
-			t.Log("> XMRTaker exited successfully")
+			t.Log("> XMRTaker[1] exited successfully")
 			return
 		}
 	}()
+
+	wg.Wait()
 
 	select {
 	case err := <-errCh:

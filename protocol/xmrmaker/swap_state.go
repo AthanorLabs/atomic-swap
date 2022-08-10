@@ -26,6 +26,7 @@ import (
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/protocol/backend"
 	pswap "github.com/noot/atomic-swap/protocol/swap"
+	"github.com/noot/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/noot/atomic-swap/swapfactory"
 )
 
@@ -47,7 +48,7 @@ type swapState struct {
 
 	info         *pswap.Info
 	offer        *types.Offer
-	offerManager *offerManager
+	offerManager *offers.Manager
 	statusCh     chan types.Status
 
 	// our keys for this session
@@ -77,8 +78,15 @@ type swapState struct {
 	moneroReclaimAddress mcrypto.Address
 }
 
-func newSwapState(b backend.Backend, offer *types.Offer, om *offerManager, statusCh chan types.Status, infoFile string,
-	providesAmount common.MoneroAmount, desiredAmount common.EtherAmount) (*swapState, error) {
+func newSwapState(
+	b backend.Backend,
+	offer *types.Offer,
+	om *offers.Manager,
+	statusCh chan types.Status,
+	infoFile string,
+	providesAmount common.MoneroAmount,
+	desiredAmount common.EtherAmount,
+) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
 	if statusCh == nil {
@@ -182,7 +190,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
-			s.offerManager.putOffer(s.offer)
+			s.offerManager.AddOffer(s.offer)
 		}
 
 		close(s.done)

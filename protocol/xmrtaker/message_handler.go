@@ -191,9 +191,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
 			// send NotifyRefund msg
-			if err := s.SendSwapMessage(&message.NotifyRefund{
-				TxHash: txhash.String(),
-			}, s.ID()); err != nil {
+			msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
+			if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
 				log.Errorf("failed to send refund message: err=%s", err)
 			}
 		}

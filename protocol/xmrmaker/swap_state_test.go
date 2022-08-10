@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,10 +33,19 @@ var (
 )
 
 type mockNet struct {
-	msg net.Message
+	msgMu sync.Mutex  // lock needed, as SendSwapMessage is called async from timeout handlers
+	msg   net.Message // last value passed to SendSwapMessage
+}
+
+func (n *mockNet) LastSentMessage() net.Message {
+	n.msgMu.Lock()
+	defer n.msgMu.Unlock()
+	return n.msg
 }
 
 func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
+	n.msgMu.Lock()
+	defer n.msgMu.Unlock()
 	n.msg = msg
 	return nil
 }
@@ -100,7 +110,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	xmrmaker := newTestXMRMaker(t)
 	infoFile := path.Join(t.TempDir(), "test.keys")
-	swapState, err := newSwapState(xmrmaker.backend, &types.Offer{}, xmrmaker.offerManager, nil, infoFile,
+	swapState, err := newSwapState(xmrmaker.backend, types.NewOffer("", 0, 0, 0), xmrmaker.offerManager, nil, infoFile,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
 	swapState.SetContract(xmrmaker.backend.Contract())
@@ -122,10 +132,10 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 	return msg, keysAndProof
 }
 
-func newSwap(t *testing.T, ss *swapState, claimKey, refundKey [32]byte, amount *big.Int,
+func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount *big.Int,
 	timeout time.Duration) ethcommon.Hash {
 	tm := big.NewInt(int64(timeout.Seconds()))
-	if claimKey == [32]byte{} {
+	if claimKey.IsZero() {
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
@@ -253,11 +263,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
-	if testing.Short() {
-		t.Skip() // TODO: times out on CI with error
-		// "xmrmaker/swap_state.go:227	failed to claim funds: err=no contract code at given address"
-	}
-
 	_, s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
@@ -303,7 +308,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		}
 	}
 
-	require.NotNil(t, s.Net().(*mockNet).msg)
+	require.NotNil(t, s.Net().(*mockNet).LastSentMessage())
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }
 
@@ -484,31 +489,24 @@ func TestSwapState_Exit_Aborted_2(t *testing.T) {
 
 func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestInstance(t)
-	s.offer = &types.Offer{
-		Provides:      types.ProvidesXMR,
-		MinimumAmount: 0.1,
-		MaximumAmount: 0.2,
-		ExchangeRate:  0.1,
-	}
-
+	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
-	require.Nil(t, b.offerManager.offers[s.offer.GetID()])
+	o, oe := b.offerManager.GetOffer(s.offer.GetID())
+	require.Nil(t, o) // TODO: Document why it should be nil
+	require.Nil(t, oe)
 }
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
 	b, s := newTestInstance(t)
-	s.offer = &types.Offer{
-		Provides:      types.ProvidesXMR,
-		MinimumAmount: 0.1,
-		MaximumAmount: 0.2,
-		ExchangeRate:  0.1,
-	}
+	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1)
 	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()
 	require.NoError(t, err)
-	require.NotNil(t, b.offerManager.offers[s.offer.GetID()])
+	o, oe := b.offerManager.GetOffer(s.offer.GetID())
+	require.NotNil(t, o) // TODO: Document why it should not be nil
+	require.NotNil(t, oe)
 }

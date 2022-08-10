@@ -3,7 +3,6 @@ package rpc
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/noot/atomic-swap/common"
@@ -116,8 +115,7 @@ func (s *NetService) TakeOffer(_ *http.Request, req *rpctypes.TakeOfferRequest,
 	return nil
 }
 
-func (s *NetService) takeOffer(multiaddr, offerID string,
-	providesAmount float64) (<-chan types.Status, string, error) {
+func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64) (<-chan types.Status, string, error) {
 	who, err := net.StringToAddrInfo(multiaddr)
 	if err != nil {
 		return nil, "", err
@@ -128,19 +126,14 @@ func (s *NetService) takeOffer(multiaddr, offerID string,
 		return nil, "", err
 	}
 
-	var (
-		found bool
-		offer *types.Offer
-	)
+	var offer *types.Offer
 	for _, maybeOffer := range queryResp.Offers {
-		if strings.Compare(maybeOffer.GetID().String(), offerID) == 0 {
-			found = true
+		if offerID == maybeOffer.GetID().String() {
 			offer = maybeOffer
 			break
 		}
 	}
-
-	if !found {
+	if offer == nil {
 		return nil, "", errNoOfferWithID
 	}
 
@@ -229,12 +222,12 @@ func (s *NetService) MakeOffer(_ *http.Request, req *rpctypes.MakeOfferRequest,
 }
 
 func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.OfferExtra, error) {
-	o := &types.Offer{
-		Provides:      types.ProvidesXMR,
-		MinimumAmount: req.MinimumAmount,
-		MaximumAmount: req.MaximumAmount,
-		ExchangeRate:  req.ExchangeRate,
-	}
+	o := types.NewOffer(
+		types.ProvidesXMR,
+		req.MinimumAmount,
+		req.MaximumAmount,
+		req.ExchangeRate,
+	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(o)
 	if err != nil {

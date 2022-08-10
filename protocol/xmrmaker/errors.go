@@ -28,6 +28,7 @@ var (
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
 	errBalanceTooLow             = errors.New("balance lower than amount to be provided")
 	errNoOfferWithID             = errors.New("failed to find offer with given ID")
+	errOfferIDNotSet             = errors.New("offer ID was not set")
 	errAmountProvidedTooLow      = errors.New("amount provided by taker is too low for offer")
 	errAmountProvidedTooHigh     = errors.New("amount provided by taker is too high for offer")
 	errUnlockedBalanceTooLow     = errors.New("unlocked balance is less than maximum offer amount")

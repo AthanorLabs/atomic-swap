@@ -17,47 +17,49 @@ func (a *Instance) Provides() types.ProvidesCoin {
 // The input units are ether that we will provide.
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
-	err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
+	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
 		offer.ExchangeRate, offer.GetID())
 	if err != nil {
 		return nil, err
 	}
 
-	return a.swapStates[offer.GetID()], nil
+	return state, nil
 }
 
 func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
-	exchangeRate types.ExchangeRate, offerID types.Hash) error {
+	exchangeRate types.ExchangeRate, offerID types.Hash) (*swapState, error) {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
 	if a.swapStates[offerID] != nil {
-		return errProtocolAlreadyInProgress
+		return nil, errProtocolAlreadyInProgress
 	}
 
 	balance, err := a.backend.BalanceAt(a.backend.Ctx(), a.backend.EthAddress(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// check user's balance and that they actually have what they will provide
 	if balance.Cmp(providesAmount.BigInt()) <= 0 {
-		return errBalanceTooLow
+		return nil, errBalanceTooLow
 	}
 
 	s, err := newSwapState(a.backend, offerID, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
 		providesAmount, receivedAmount, exchangeRate)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	go func() {
 		<-s.done
+		a.swapMu.Lock()
+		defer a.swapMu.Unlock()
 		delete(a.swapStates, offerID)
 	}()
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	a.swapStates[offerID] = s
-	return nil
+	return s, nil
 }
