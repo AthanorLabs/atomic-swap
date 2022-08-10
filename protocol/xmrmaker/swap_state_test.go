@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,10 +33,19 @@ var (
 )
 
 type mockNet struct {
-	msg net.Message
+	msgMu sync.Mutex  // lock needed, as SendSwapMessage is called async from timeout handlers
+	msg   net.Message // last value passed to SendSwapMessage
+}
+
+func (n *mockNet) LastSentMessage() net.Message {
+	n.msgMu.Lock()
+	defer n.msgMu.Unlock()
+	return n.msg
 }
 
 func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
+	n.msgMu.Lock()
+	defer n.msgMu.Unlock()
 	n.msg = msg
 	return nil
 }
@@ -298,7 +308,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		}
 	}
 
-	require.NotNil(t, s.Net().(*mockNet).msg)
+	require.NotNil(t, s.Net().(*mockNet).LastSentMessage())
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }
 
