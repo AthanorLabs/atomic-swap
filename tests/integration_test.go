@@ -738,18 +738,18 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			t.Log("> XMRTaker[1] got status:", status)
+			t.Log("> XMRTaker[0] got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("1st swap did not exit successfully: got %s", status)
+				errCh <- fmt.Errorf("0th swap did not exit successfully: got %s", status)
 				cancel()
 				return
 			}
 
-			t.Log("> XMRTaker[1] exited successfully")
+			t.Log("> XMRTaker[0] exited successfully")
 			return
 		}
 	}()
@@ -766,13 +766,13 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 		}
 
 		for status := range takerStatusCh {
-			t.Log("> XMRTaker[2] got status:", status)
+			t.Log("> XMRTaker[1] got status:", status)
 			if status.IsOngoing() {
 				continue
 			}
 
 			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("2nd swap did not exit successfully: got %s", status)
+				errCh <- fmt.Errorf("1st swap did not exit successfully: got %s", status)
 				return
 			}
 
