@@ -366,9 +366,9 @@ func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
 	time.Sleep(time.Second * 5)
 }
 
-// TestRefund_XMRMakerCancels_afterIsReady tests the case where XMRTaker and XMRMaker both lock their funds,
-// but XMRMaker goes offline until past isReady==true and t0, but comes online before t1.
-//  When XMRMaker comes back online, he should claim the ETH, causing XMRTaker to also claim the XMR.
+// TestRefund_XMRMakerCancels_afterIsReady tests the case where XMRTaker and XMRMaker both lock their
+// funds, but XMRMaker goes offline until past isReady==true and t0, but comes online before t1. When
+// XMRMaker comes back online, he should claim the ETH, causing XMRTaker to also claim the XMR.
 func TestRefund_XMRMakerCancels_afterIsReady(t *testing.T) {
 	testRefundXMRMakerCancels(t, 30, types.CompletedSuccess)
 }

@@ -10,7 +10,7 @@ init:
 	cd dleq/cgo-dleq && make build
 
 .PHONY: lint
-lint: init
+lint:
 	./scripts/install-lint.sh
 	${GOPATH}/bin/golangci-lint run
 
@@ -33,6 +33,13 @@ build: init
 .PHONY: build-all
 build-all: init
 	ALL=true ./scripts/build.sh
+
+# Go bindings for solidity contracts
+.PHONY: bindings
+bindings:
+	./scripts/install-abigen.sh
+	./scripts/generate-bindings.sh
+	./ethereum/block/testdata/generate-bindings.sh
 
 .PHONY: mock
 mock:

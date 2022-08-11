@@ -53,26 +53,26 @@ This will install Rust (if it isn't already installed) and build the binaries. T
 
 ## Compiling contract bindings
 
-If you update the `Swap.sol` contract for some reason, you will need to re-generate the Go bindings for the contract. **Note:** you do *not* need to do this to try out the swap; only if you want to edit the contract for development purposes.
+If you update the `Swap.sol` contract for some reason, you will need to re-generate the Go bindings
+for the contract. **Note:** you do *not* need to do this to try out the swap; only if you want to
+edit the contract for development purposes.
 
-Download solc v0.8.9: https://github.com/ethereum/solidity/releases/tag/v0.8.9
+Download solc v0.8.16: https://github.com/ethereum/solidity/releases/tag/v0.8.16
 
-Set `SOLC_BIN` to the downloaded binary
+If `solc` with the needed version is not in your path (or not first in your path), set the
+`SOLC_BIN` environment variable to the correct version:
 ```
 export SOLC_BIN=solc
 ```
 
-Install `abigen`
-```
-git clone https://github.com/ethereum/go-ethereum.git && cd go-ethereum/cmd/abigen
-go install
-```
+We install the `abigen` into the `bin` directory of your GOPATH (`$HOME/go/bin` for most users).
+The version installed is matched to the go-ethereum version that the project currently links with.
+See `scripts/install-abigen.sh` for details.
 
 Generate the bindings
 ```
-./scripts/generate-bindings.sh
+make bindings
 ```
-Note: you may need to add `$GOPATH` and `$GOPATH/bin` to your path.
 
 ## Testing
 To setup the test environment and run all unit tests, execute:
