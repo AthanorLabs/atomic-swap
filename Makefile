@@ -1,16 +1,19 @@
 GOPATH ?= $(shell go env GOPATH)
+DLEQ_LIB=dleq/cgo-dleq/lib/libdleq.so
 
 .PHONY: all
 all: install
 
-.PHONY: init
-init:
+$(DLEQ_LIB):
 	./scripts/install-rust.sh
 	git submodule update --init --recursive
 	cd dleq/cgo-dleq && make build
 
+.PHONY: init
+init: $(DLEQ_LIB)
+
 .PHONY: lint
-lint:
+lint: init
 	./scripts/install-lint.sh
 	${GOPATH}/bin/golangci-lint run
 
@@ -24,7 +27,7 @@ test-integration:
 
 .PHONY: install
 install: init
-	cd cmd/ && go install && cd ..
+	cd cmd/ && go install
 
 .PHONY: build
 build: init
@@ -44,3 +47,7 @@ bindings:
 .PHONY: mock
 mock:
 	go generate -run mockgen ./...
+
+.PHONY: clean
+clean:
+	rm -f $(DLEQ_LIB)
