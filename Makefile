@@ -1,13 +1,16 @@
 GOPATH ?= $(shell go env GOPATH)
+DLEQ_LIB=dleq/cgo-dleq/lib/libdleq.so
 
 .PHONY: all
 all: install
 
-.PHONY: init
-init:
+$(DLEQ_LIB):
 	./scripts/install-rust.sh
 	git submodule update --init --recursive
 	cd dleq/cgo-dleq && make build
+
+.PHONY: init
+init: $(DLEQ_LIB)
 
 .PHONY: lint
 lint: init
@@ -24,7 +27,7 @@ test-integration:
 
 .PHONY: install
 install: init
-	cd cmd/ && go install && cd ..
+	cd cmd/ && go install
 
 .PHONY: build
 build: init
@@ -34,6 +37,17 @@ build: init
 build-all: init
 	ALL=true ./scripts/build.sh
 
+# Go bindings for solidity contracts
+.PHONY: bindings
+bindings:
+	./scripts/install-abigen.sh
+	./scripts/generate-bindings.sh
+	./ethereum/block/testdata/generate-bindings.sh
+
 .PHONY: mock
 mock:
 	go generate -run mockgen ./...
+
+.PHONY: clean
+clean:
+	rm -f $(DLEQ_LIB)
