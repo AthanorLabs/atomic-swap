@@ -3,7 +3,7 @@ module github.com/noot/atomic-swap
 go 1.18
 
 require (
-	filippo.io/edwards25519 v1.0.0-rc.1
+	filippo.io/edwards25519 v1.0.0
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/ethereum/go-ethereum v1.10.21
@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.5.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.15.1
 	github.com/libp2p/go-libp2p-core v0.9.0
@@ -20,8 +20,8 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
 	github.com/multiformats/go-multiaddr v0.4.1
 	github.com/noot/cgo-dleq v0.0.0-20220726051627-d0716fb55684
-	github.com/stretchr/testify v1.7.2
-	github.com/urfave/cli v1.22.5
+	github.com/stretchr/testify v1.8.0
+	github.com/urfave/cli v1.22.9
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 
