@@ -82,7 +82,7 @@ contract SwapFactory is Secp256k1 {
         return swapID;
     }
 
-    // Alice must call set_ready() within t_0 once she verifies the XMR has been locked
+    // Alice should call set_ready() within t_0 once she verifies the XMR has been locked
     function set_ready(Swap memory _swap) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         require(swaps[swapID] == Stage.PENDING, "swap is not in PENDING state");
@@ -92,8 +92,7 @@ contract SwapFactory is Secp256k1 {
     }
 
     // Bob can claim if:
-    // - Alice doesn't call set_ready or refund within t_0, or
-    // - Alice calls ready within t_0, in which case Bob can call claim until t_1
+    // - Alice has set the swap to `ready` or it's past t_0 but before t_1
     function claim(Swap memory _swap, bytes32 _s) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
@@ -106,13 +105,13 @@ contract SwapFactory is Secp256k1 {
         emit Claimed(swapID, _s);
 
         // send eth to caller (Bob)
-        _swap.claimer.transfer(_swap.value);
         swaps[swapID] = Stage.COMPLETED;
+        _swap.claimer.transfer(_swap.value);
     }
 
     // Alice can claim a refund:
     // - Until t_0 unless she calls set_ready
-    // - After t_1, if she called set_ready
+    // - After t_1
     function refund(Swap memory _swap, bytes32 _s) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
@@ -128,8 +127,8 @@ contract SwapFactory is Secp256k1 {
         emit Refunded(swapID, _s);
 
         // send eth back to owner==caller (Alice)
-        _swap.owner.transfer(_swap.value);
         swaps[swapID] = Stage.COMPLETED;
+        _swap.owner.transfer(_swap.value);
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal pure {
