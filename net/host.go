@@ -140,7 +140,7 @@ func NewHost(cfg *Config) (*host, error) {
 	}
 
 	// create libp2p host instance
-	h, err := libp2p.New(context.Background(), opts...)
+	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,6 @@ func (h *host) Start() error {
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+queryID), h.handleQueryStream)
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+swapID), h.handleProtocolStream)
 
-	h.h.Network().SetConnHandler(h.handleConn)
 	for _, addr := range h.multiaddrs() {
 		log.Info("Started listening: address=", addr)
 	}
@@ -298,10 +297,6 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 	)
 
 	return nil
-}
-
-func (h *host) handleConn(conn libp2pnetwork.Conn) {
-	log.Debug("incoming connection, peer=", conn.RemotePeer())
 }
 
 // readStream reads from the stream into the given buffer, returning the number of bytes read
