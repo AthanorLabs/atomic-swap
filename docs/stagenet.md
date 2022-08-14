@@ -14,13 +14,13 @@ The atomic swap daemon requires a connection to a monero-wallet-rpc process conn
 
 For Linux 64-bit, you can do:
 ```bash
-curl -L https://downloads.getmonero.org/cli/linux64 > monero.tar.bz2
-tar xjvf monero.tar.bz2
+bash scripts/install-monero-linux.sh
 ```
 
-2. Begin the stagenet daemon and wait for it to sync. This may take a day or so. Alternatively, you can use an existing stagenet endpoint if you know of one.
+2. Begin the stagenet daemon and wait for it to sync. This may take a day or so. Alternatively, you can use an existing stagenet endpoint if you know of one. **You can find remote Monero nodes here: https://monero.fail/?nettype=stagenet**
+
 ```bash
-./monero-x86_64-linux-gnu-v0.17.3.2/monerod --detach --stagenet
+./monero-bin/monerod --detach --stagenet
 ```
 
 3. Create a wallet directory and start the monero-wallet-rpc process. The directory `node-keys` will store your monero wallet keys.
@@ -42,7 +42,7 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 7. Obtain a Goerli JSON-RPC endpoint. You can get one from infura.io, or you can sync your own node, or ask a friend for their endpoint. 
 
-8. Install go 1.18 from [here](https://go.dev/doc/install).
+8. Install go 1.18+ from [here](https://go.dev/doc/install).
 
 For Linux 64-bit, you can do:
 ```bash
@@ -175,7 +175,7 @@ You can also try the swap on another Ethereum or EVM-compatible testnet. However
 
 To connect to a different Ethereum network, follow [Setup](#setup) steps 4-7 but with your desired network. Then, start `swapd` with your specified private key file, endpoint, and chain ID. Common chain IDs can be found [here](https://besu.hyperledger.org/en/stable/Concepts/NetworkID-And-ChainID/).
 
-> Note: this command will deploy a new instance of `Swap.sol` to the network, as it has not been deployed onto any other networks currently. If you want to use an already-deployed swap contract, remove the `--deploy` flag and pass in the address using `--contract-addr=<addr>`. You need to have funds in your account to deploy the contract.
+> Note: this command will deploy a new instance of `SwapFactory.sol` to the network, as it has not been deployed onto any other networks currently. If you want to use an already-deployed swap contract, remove the `--deploy` flag and pass in the address using `--contract-addr=<addr>`. You need to have funds in your account to deploy the contract.
 
 ```bash
 ./swapd --env stagenet --ethereum-privkey=<network>.key --monero-endpoint=http://localhost:18083/json_rpc --wallet-file=stagenet-wallet --ethereum-endpoint=https://<network>.infura.io/v3/<your-api-key> --ethereum-chain-id=<network-chain-id> --deploy
