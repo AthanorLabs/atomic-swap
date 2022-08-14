@@ -14,7 +14,7 @@ The atomic swap daemon requires a connection to a monero-wallet-rpc process conn
 
 For Linux 64-bit, you can do:
 ```bash
-bash scripts/install-monero-linux.sh
+./scripts/install-monero-linux.sh
 ```
 
 2. Begin the stagenet daemon and wait for it to sync. This may take a day or so. Alternatively, you can use an existing stagenet endpoint if you know of one. **You can find remote Monero nodes here: https://monero.fail/?nettype=stagenet**
