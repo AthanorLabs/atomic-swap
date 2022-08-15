@@ -31,7 +31,7 @@ func TestWaitForBlocks(t *testing.T) {
 	}()
 	heightAfter, err := WaitForBlocks(c, 1)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, heightAfter-heightBefore, uint(1))
+	require.GreaterOrEqual(t, heightAfter-heightBefore, uint64(1))
 	wg.Wait()
 }
 

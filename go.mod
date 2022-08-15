@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	filippo.io/edwards25519 v1.0.0
+	github.com/MarinX/monerorpc v0.0.0-20210623073114-2691133659fa
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/ethereum/go-ethereum v1.10.21
@@ -43,6 +44,7 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/gabstv/httpdigest v0.0.0-20200601123255-912d52c2d608 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect

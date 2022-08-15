@@ -505,7 +505,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
 	address := kp.Address(s.Env())
-	txResp, err := s.Transfer(address, 0, uint(amount))
+	txResp, err := s.Transfer(address, 0, uint64(amount))
 	if err != nil {
 		return "", err
 	}

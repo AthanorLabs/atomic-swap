@@ -21,7 +21,7 @@ var (
 
 // WaitForBlocks waits for `count` new blocks to arrive.
 // It returns the height of the chain.
-func WaitForBlocks(client Client, count int) (uint, error) {
+func WaitForBlocks(client Client, count int) (uint64, error) {
 	prevHeight, err := client.GetHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get height: %w", err)

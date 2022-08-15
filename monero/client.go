@@ -3,8 +3,10 @@ package monero
 import (
 	"sync"
 
+	"github.com/MarinX/monerorpc"
+	"github.com/MarinX/monerorpc/wallet"
+
 	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/rpctypes"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 )
 
@@ -12,14 +14,14 @@ import (
 type Client interface {
 	LockClient() // can't use Lock/Unlock due to name conflict
 	UnlockClient()
-	GetAccounts() (*GetAccountsResponse, error)
-	GetAddress(idx uint) (*GetAddressResponse, error)
-	GetBalance(idx uint) (*GetBalanceResponse, error)
-	Transfer(to mcrypto.Address, accountIdx, amount uint) (*TransferResponse, error)
-	SweepAll(to mcrypto.Address, accountIdx uint) (*SweepAllResponse, error)
+	GetAccounts() (*wallet.GetAccountsResponse, error)
+	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
+	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
+	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
+	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	GenerateFromKeys(kp *mcrypto.PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, address mcrypto.Address, filename, password string) error
-	GetHeight() (uint, error)
+	GetHeight() (uint64, error)
 	Refresh() error
 	CreateWallet(filename, password string) error
 	OpenWallet(filename, password string) error
@@ -28,13 +30,13 @@ type Client interface {
 
 type client struct {
 	sync.Mutex
-	endpoint string
+	rpc *monerorpc.MoneroRPC
 }
 
 // NewClient returns a new monero-wallet-rpc client.
 func NewClient(endpoint string) *client {
 	return &client{
-		endpoint: endpoint,
+		rpc: monerorpc.New(endpoint, nil),
 	}
 }
 
@@ -46,24 +48,24 @@ func (c *client) UnlockClient() {
 	c.Unlock()
 }
 
-func (c *client) GetAccounts() (*GetAccountsResponse, error) {
+func (c *client) GetAccounts() (*wallet.GetAccountsResponse, error) {
 	return c.callGetAccounts()
 }
 
-func (c *client) GetBalance(idx uint) (*GetBalanceResponse, error) {
+func (c *client) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error) {
 	return c.callGetBalance(idx)
 }
 
-func (c *client) Transfer(to mcrypto.Address, accountIdx, amount uint) (*TransferResponse, error) {
-	destination := Destination{
+func (c *client) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
+	destination := wallet.Destination{
 		Amount:  amount,
 		Address: string(to),
 	}
 
-	return c.callTransfer([]Destination{destination}, accountIdx)
+	return c.callTransfer([]wallet.Destination{destination}, accountIdx)
 }
 
-func (c *client) SweepAll(to mcrypto.Address, accountIdx uint) (*SweepAllResponse, error) {
+func (c *client) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error) {
 	return c.callSweepAll(string(to), accountIdx)
 }
 
@@ -76,7 +78,7 @@ func (c *client) GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, addr
 	return c.callGenerateFromKeys(nil, vk, address, filename, password)
 }
 
-func (c *client) GetAddress(idx uint) (*GetAddressResponse, error) {
+func (c *client) GetAddress(idx uint64) (*wallet.GetAddressResponse, error) {
 	return c.callGetAddress(idx)
 }
 
@@ -85,18 +87,8 @@ func (c *client) Refresh() error {
 }
 
 func (c *client) refresh() error {
-	const method = "refresh"
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return resp.Error
-	}
-
-	return nil
+	_, err := c.rpc.Wallet.Refresh(&wallet.RefreshRequest{})
+	return err
 }
 
 func (c *client) CreateWallet(filename, password string) error {
@@ -108,20 +100,9 @@ func (c *client) OpenWallet(filename, password string) error {
 }
 
 func (c *client) CloseWallet() error {
-	const method = "close_wallet"
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return resp.Error
-	}
-
-	return nil
+	return c.rpc.Wallet.CloseWallet()
 }
 
-func (c *client) GetHeight() (uint, error) {
+func (c *client) GetHeight() (uint64, error) {
 	return c.callGetHeight()
 }

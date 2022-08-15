@@ -18,7 +18,7 @@ import (
 	common0 "github.com/noot/atomic-swap/common"
 	types0 "github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	monero "github.com/noot/atomic-swap/monero"
+	"github.com/MarinX/monerorpc/wallet"
 	net "github.com/noot/atomic-swap/net"
 	message "github.com/noot/atomic-swap/net/message"
 	swap "github.com/noot/atomic-swap/protocol/swap"
@@ -293,10 +293,10 @@ func (mr *MockBackendMockRecorder) GenerateViewOnlyWalletFromKeys(arg0, arg1, ar
 }
 
 // GetAccounts mocks base method.
-func (m *MockBackend) GetAccounts() (*monero.GetAccountsResponse, error) {
+func (m *MockBackend) GetAccounts() (*wallet.GetAccountsResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAccounts")
-	ret0, _ := ret[0].(*monero.GetAccountsResponse)
+	ret0, _ := ret[0].(*wallet.GetAccountsResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -308,10 +308,10 @@ func (mr *MockBackendMockRecorder) GetAccounts() *gomock.Call {
 }
 
 // GetAddress mocks base method.
-func (m *MockBackend) GetAddress(arg0 uint) (*monero.GetAddressResponse, error) {
+func (m *MockBackend) GetAddress(arg0 uint64) (*wallet.GetAddressResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAddress", arg0)
-	ret0, _ := ret[0].(*monero.GetAddressResponse)
+	ret0, _ := ret[0].(*wallet.GetAddressResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -323,10 +323,10 @@ func (mr *MockBackendMockRecorder) GetAddress(arg0 interface{}) *gomock.Call {
 }
 
 // GetBalance mocks base method.
-func (m *MockBackend) GetBalance(arg0 uint) (*monero.GetBalanceResponse, error) {
+func (m *MockBackend) GetBalance(arg0 uint64) (*wallet.GetBalanceResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalance", arg0)
-	ret0, _ := ret[0].(*monero.GetBalanceResponse)
+	ret0, _ := ret[0].(*wallet.GetBalanceResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -338,10 +338,10 @@ func (mr *MockBackendMockRecorder) GetBalance(arg0 interface{}) *gomock.Call {
 }
 
 // GetHeight mocks base method.
-func (m *MockBackend) GetHeight() (uint, error) {
+func (m *MockBackend) GetHeight() (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHeight")
-	ret0, _ := ret[0].(uint)
+	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -611,10 +611,10 @@ func (mr *MockBackendMockRecorder) SwapTimeout() *gomock.Call {
 }
 
 // SweepAll mocks base method.
-func (m *MockBackend) SweepAll(arg0 mcrypto.Address, arg1 uint) (*monero.SweepAllResponse, error) {
+func (m *MockBackend) SweepAll(arg0 mcrypto.Address, arg1 uint64) (*wallet.SweepAllResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SweepAll", arg0, arg1)
-	ret0, _ := ret[0].(*monero.SweepAllResponse)
+	ret0, _ := ret[0].(*wallet.SweepAllResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -641,10 +641,10 @@ func (mr *MockBackendMockRecorder) TransactionReceipt(arg0, arg1 interface{}) *g
 }
 
 // Transfer mocks base method.
-func (m *MockBackend) Transfer(arg0 mcrypto.Address, arg1, arg2 uint) (*monero.TransferResponse, error) {
+func (m *MockBackend) Transfer(arg0 mcrypto.Address, arg1, arg2 uint64) (*wallet.TransferResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Transfer", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*monero.TransferResponse)
+	ret0, _ := ret[0].(*wallet.TransferResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -35,7 +35,7 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("balance: ", balance.Balance)
 	t.Log("unlocked balance: ", balance.UnlockedBalance)
-	t.Log("blocks to unlock: ", balance.BlocksToUnlock)
+	//t.Log("blocks to unlock: ", balance.BlocksToUnlock)
 
 	if balance.UnlockedBalance < amount {
 		t.Fatal("need to wait for balance to unlock")
