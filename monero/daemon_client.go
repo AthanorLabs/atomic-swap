@@ -1,8 +1,6 @@
 package monero
 
 import (
-	"sync"
-
 	"github.com/MarinX/monerorpc"
 	"github.com/MarinX/monerorpc/daemon"
 )
@@ -13,14 +11,13 @@ type DaemonClient interface {
 }
 
 type daemonClient struct {
-	sync.Mutex
-	rpc *monerorpc.MoneroRPC
+	rpc daemon.Daemon // full API with slightly different method signature(s)
 }
 
 // NewDaemonClient returns a new monerod daemonClient.
 func NewDaemonClient(endpoint string) *daemonClient {
 	return &daemonClient{
-		rpc: monerorpc.New(endpoint, nil),
+		rpc: monerorpc.New(endpoint, nil).Daemon,
 	}
 }
 
@@ -30,7 +27,7 @@ func (c *daemonClient) GenerateBlocks(address string, amount uint64) error {
 }
 
 func (c *daemonClient) generateBlocks(address string, amount uint64) (*daemon.GenerateBlocksResponse, error) {
-	return c.rpc.Daemon.GenerateBlocks(&daemon.GenerateBlocksRequest{
+	return c.rpc.GenerateBlocks(&daemon.GenerateBlocksRequest{
 		AmountOfBlocks: amount,
 		WalletAddress:  address,
 	})

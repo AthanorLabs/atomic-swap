@@ -30,37 +30,37 @@ type WalletClient interface {
 }
 
 type walletClient struct {
-	sync.Mutex
-	rpc *monerorpc.MoneroRPC
+	mu  sync.Mutex
+	rpc wallet.Wallet // full API with slightly different method signatures
 }
 
 // NewWalletClient returns a new monero-wallet-rpc walletClient.
 func NewWalletClient(endpoint string) *walletClient {
 	return &walletClient{
-		rpc: monerorpc.New(endpoint, nil),
+		rpc: monerorpc.New(endpoint, nil).Wallet,
 	}
 }
 
 func (c *walletClient) LockClient() {
-	c.Lock()
+	c.mu.Lock()
 }
 
 func (c *walletClient) UnlockClient() {
-	c.Unlock()
+	c.mu.Unlock()
 }
 
 func (c *walletClient) GetAccounts() (*wallet.GetAccountsResponse, error) {
-	return c.rpc.Wallet.GetAccounts(&wallet.GetAccountsRequest{})
+	return c.rpc.GetAccounts(&wallet.GetAccountsRequest{})
 }
 
 func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error) {
-	return c.rpc.Wallet.GetBalance(&wallet.GetBalanceRequest{
+	return c.rpc.GetBalance(&wallet.GetBalanceRequest{
 		AccountIndex: idx,
 	})
 }
 
 func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
-	return c.rpc.Wallet.Transfer(&wallet.TransferRequest{
+	return c.rpc.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
 			Amount:  amount,
 			Address: string(to),
@@ -71,7 +71,7 @@ func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (
 }
 
 func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error) {
-	return c.rpc.Wallet.SweepAll(&wallet.SweepAllRequest{
+	return c.rpc.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
 	})
@@ -113,7 +113,7 @@ func (c *walletClient) generateFromKeys(
 		spendKey = sk.Hex()
 	}
 
-	res, err := c.rpc.Wallet.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
+	res, err := c.rpc.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
 		Filename: filename,
 		Address:  string(address),
 		Viewkey:  vk.Hex(),
@@ -136,18 +136,18 @@ func (c *walletClient) generateFromKeys(
 }
 
 func (c *walletClient) GetAddress(idx uint64) (*wallet.GetAddressResponse, error) {
-	return c.rpc.Wallet.GetAddress(&wallet.GetAddressRequest{
+	return c.rpc.GetAddress(&wallet.GetAddressRequest{
 		AccountIndex: idx,
 	})
 }
 
 func (c *walletClient) Refresh() error {
-	_, err := c.rpc.Wallet.Refresh(&wallet.RefreshRequest{})
+	_, err := c.rpc.Refresh(&wallet.RefreshRequest{})
 	return err
 }
 
 func (c *walletClient) CreateWallet(filename, password string) error {
-	return c.rpc.Wallet.CreateWallet(&wallet.CreateWalletRequest{
+	return c.rpc.CreateWallet(&wallet.CreateWalletRequest{
 		Filename: filename,
 		Password: password,
 		Language: "English",
@@ -155,18 +155,18 @@ func (c *walletClient) CreateWallet(filename, password string) error {
 }
 
 func (c *walletClient) OpenWallet(filename, password string) error {
-	return c.rpc.Wallet.OpenWallet(&wallet.OpenWalletRequest{
+	return c.rpc.OpenWallet(&wallet.OpenWalletRequest{
 		Filename: filename,
 		Password: password,
 	})
 }
 
 func (c *walletClient) CloseWallet() error {
-	return c.rpc.Wallet.CloseWallet()
+	return c.rpc.CloseWallet()
 }
 
 func (c *walletClient) GetHeight() (uint64, error) {
-	res, err := c.rpc.Wallet.GetHeight()
+	res, err := c.rpc.GetHeight()
 	if err != nil {
 		return 0, err
 	}
