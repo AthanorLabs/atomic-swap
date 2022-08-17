@@ -92,7 +92,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	}
 
 	// NewInstance(..) below expects a pre-existing wallet, so create it
-	err = monero.NewClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
+	err = monero.NewWalletClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
 	require.NoError(t, err)
 
 	xmrmaker, err := NewInstance(cfg)

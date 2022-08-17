@@ -251,7 +251,7 @@ func (mr *MockBackendMockRecorder) FilterLogs(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // GenerateBlocks mocks base method.
-func (m *MockBackend) GenerateBlocks(arg0 string, arg1 uint) error {
+func (m *MockBackend) GenerateBlocks(arg0 string, arg1 uint64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GenerateBlocks", arg0, arg1)
 	ret0, _ := ret[0].(error)

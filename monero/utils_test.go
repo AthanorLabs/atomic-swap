@@ -12,11 +12,11 @@ import (
 )
 
 func TestWaitForBlocks(t *testing.T) {
-	c := NewClient(tests.CreateWalletRPCService(t))
+	c := NewWalletClient(tests.CreateWalletRPCService(t))
 	require.NoError(t, c.CreateWallet("wallet", ""))
-	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
+	daemon := NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
 
-	addr, err := c.callGetAddress(0)
+	addr, err := c.GetAddress(0)
 	require.NoError(t, err)
 
 	heightBefore, err := c.GetHeight()
@@ -25,7 +25,7 @@ func TestWaitForBlocks(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		errGen := daemon.callGenerateBlocks(addr.Address, 181)
+		errGen := daemon.GenerateBlocks(addr.Address, 181)
 		require.NoError(t, errGen)
 		wg.Done()
 	}()
@@ -39,8 +39,8 @@ func TestCreateMoneroWallet(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	c := NewClient(tests.CreateWalletRPCService(t))
-	addr, err := CreateMoneroWallet("create-wallet-test", common.Development, c, kp)
+	c := NewWalletClient(tests.CreateWalletRPCService(t))
+	addr, err := CreateWallet("create-wallet-test", common.Development, c, kp)
 	require.NoError(t, err)
 	require.Equal(t, kp.Address(common.Development), addr)
 }

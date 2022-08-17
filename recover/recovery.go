@@ -18,7 +18,7 @@ import (
 
 type recoverer struct {
 	env       common.Environment
-	client    monero.Client
+	xmrClient monero.WalletClient
 	ethClient *ethclient.Client
 }
 
@@ -32,7 +32,7 @@ func NewRecoverer(env common.Environment, moneroEndpoint, ethEndpoint string) (*
 	return &recoverer{
 		env:       env,
 		ethClient: ec,
-		client:    monero.NewClient(moneroEndpoint),
+		xmrClient: monero.NewWalletClient(moneroEndpoint),
 	}, nil
 }
 
@@ -64,7 +64,7 @@ func (r *recoverer) WalletFromSecrets(xmrtakerSecret, xmrmakerSecret string) (mc
 		return "", err
 	}
 
-	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)
+	return monero.CreateWallet("recovered-wallet", r.env, r.xmrClient, kp)
 }
 
 // WalletFromSharedSecret generates a monero wallet from the given shared secret.
@@ -85,7 +85,7 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 	}
 
 	kp := mcrypto.NewPrivateKeyPair(sk, vk)
-	return monero.CreateMoneroWallet("recovered-wallet", r.env, r.client, kp)
+	return monero.CreateWallet("recovered-wallet", r.env, r.xmrClient, kp)
 }
 
 // RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.

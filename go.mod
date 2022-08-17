@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	filippo.io/edwards25519 v1.0.0
-	github.com/MarinX/monerorpc v0.0.0-20210623073114-2691133659fa
+	github.com/MarinX/monerorpc v1.0.0
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/ethereum/go-ethereum v1.10.21

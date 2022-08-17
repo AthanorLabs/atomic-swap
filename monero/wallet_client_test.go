@@ -1,7 +1,9 @@
 package monero
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
@@ -13,21 +15,17 @@ import (
 )
 
 func TestClient_Transfer(t *testing.T) {
-	if testing.Short() {
-		t.Skip() // TODO: this fails on CI with a "No wallet file" error at line 76
-	}
-
 	const amount = 2800000000
-	cXMRMaker := NewClient(tests.CreateWalletRPCService(t))
+	cXMRMaker := NewWalletClient(tests.CreateWalletRPCService(t))
 
 	err := cXMRMaker.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
-	xmrmakerAddr, err := cXMRMaker.callGetAddress(0)
+	xmrmakerAddr, err := cXMRMaker.GetAddress(0)
 	require.NoError(t, err)
 
-	daemon := NewClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 512)
+	daemon := NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
+	_ = daemon.GenerateBlocks(xmrmakerAddr.Address, 512)
 
 	time.Sleep(time.Second * 10)
 
@@ -35,7 +33,7 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("balance: ", balance.Balance)
 	t.Log("unlocked balance: ", balance.UnlockedBalance)
-	//t.Log("blocks to unlock: ", balance.BlocksToUnlock)
+	t.Log("blocks to unlock: ", balance.BlocksToUnlock)
 
 	if balance.UnlockedBalance < amount {
 		t.Fatal("need to wait for balance to unlock")
@@ -50,23 +48,25 @@ func TestClient_Transfer(t *testing.T) {
 	kpABPub := mcrypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
-	cXMRTaker := NewClient(tests.CreateWalletRPCService(t))
+	cXMRTaker := NewWalletClient(tests.CreateWalletRPCService(t))
 
 	// generate view-only account for A+B
 	walletFP := fmt.Sprintf("test-wallet-%s", time.Now().Format(common.TimeFmtNSecs))
-	err = cXMRTaker.callGenerateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
+	err = cXMRTaker.generateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 	require.NoError(t, err)
 	err = cXMRTaker.OpenWallet(walletFP, "")
 	require.NoError(t, err)
 
 	// transfer to account A+B
-	_, err = cXMRMaker.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
+	resp, err := cXMRMaker.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
 	require.NoError(t, err)
-	err = daemon.callGenerateBlocks(xmrmakerAddr.Address, 1)
+	t.Logf("Transfer resp: %#v", resp)
+	err = daemon.GenerateBlocks(xmrmakerAddr.Address, 1)
 	require.NoError(t, err)
 
 	for {
 		t.Log("checking balance...")
+		require.NoError(t, cXMRTaker.Refresh())
 		balance, err = cXMRTaker.GetBalance(0)
 		require.NoError(t, err)
 
@@ -76,24 +76,23 @@ func TestClient_Transfer(t *testing.T) {
 			break
 		}
 
-		_ = daemon.callGenerateBlocks(xmrmakerAddr.Address, 1)
+		_ = daemon.GenerateBlocks(xmrmakerAddr.Address, 1)
 		time.Sleep(time.Second)
 	}
 
-	err = daemon.callGenerateBlocks(xmrmakerAddr.Address, 16)
+	err = daemon.GenerateBlocks(xmrmakerAddr.Address, 16)
 	require.NoError(t, err)
 
 	// generate spend account for A+B
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
 	// ignore the error for now, as it can error with "Wallet already exists."
-	_ = cXMRTaker.callGenerateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
+	_ = cXMRTaker.generateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), walletFP, "")
 
-	err = cXMRTaker.refresh()
-	require.NoError(t, err)
+	require.NoError(t, cXMRTaker.Refresh())
 
 	balance, err = cXMRTaker.GetBalance(0)
 	require.NoError(t, err)
-	require.Greater(t, balance.Balance, float64(0))
+	require.Greater(t, balance.Balance, uint64(0))
 
 	// transfer from account A+B back to XMRMaker's address
 	_, err = cXMRTaker.Transfer(mcrypto.Address(xmrmakerAddr.Address), 0, 1)
@@ -101,7 +100,7 @@ func TestClient_Transfer(t *testing.T) {
 }
 
 func TestClient_CloseWallet(t *testing.T) {
-	c := NewClient(tests.CreateWalletRPCService(t))
+	c := NewWalletClient(tests.CreateWalletRPCService(t))
 	err := c.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
@@ -113,7 +112,7 @@ func TestClient_CloseWallet(t *testing.T) {
 }
 
 func TestClient_GetAccounts(t *testing.T) {
-	c := NewClient(tests.CreateWalletRPCService(t))
+	c := NewWalletClient(tests.CreateWalletRPCService(t))
 	err := c.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 	resp, err := c.GetAccounts()
@@ -122,10 +121,23 @@ func TestClient_GetAccounts(t *testing.T) {
 }
 
 func TestClient_GetHeight(t *testing.T) {
-	c := NewClient(tests.CreateWalletRPCService(t))
+	c := NewWalletClient(tests.CreateWalletRPCService(t))
 	err := c.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 	resp, err := c.GetHeight()
 	require.NoError(t, err)
 	require.NotEqual(t, 0, resp)
+}
+
+func TestCallGenerateFromKeys(t *testing.T) {
+	kp, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	r, err := rand.Int(rand.Reader, big.NewInt(999))
+	require.NoError(t, err)
+
+	c := NewWalletClient(tests.CreateWalletRPCService(t))
+	err = c.generateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(common.Mainnet),
+		fmt.Sprintf("test-wallet-%d", r), "")
+	require.NoError(t, err)
 }
