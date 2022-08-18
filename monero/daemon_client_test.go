@@ -14,10 +14,10 @@ func Test_GenerateBlocks(t *testing.T) {
 	hdr, err := cli.rpc.GetLastBlockHeader()
 	require.NoError(t, err)
 	prevHeight := hdr.BlockHeader.Height
-	for i := 0; i < 100; i++ {
-		resp, err := cli.generateBlocks(addr, 1)
+	for count := uint64(1); count <= 10; count++ {
+		resp, err := cli.generateBlocks(addr, count)
 		require.NoError(t, err)
-		require.Greater(t, resp.Height, prevHeight)
+		require.GreaterOrEqual(t, resp.Height, prevHeight+count)
 		prevHeight = resp.Height
 	}
 }
