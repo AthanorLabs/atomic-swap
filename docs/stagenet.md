@@ -26,7 +26,7 @@ For Linux 64-bit, you can do:
 3. Create a wallet directory and start the monero-wallet-rpc process. The directory `node-keys` will store your monero wallet keys.
 ```bash
 mkdir node-keys
-./monero-x86_64-linux-gnu-v0.17.3.2/monero-wallet-rpc --stagenet --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./node-keys &> monero-wallet-cli.log &
+./monero-bin/monero-wallet-rpc --stagenet --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./node-keys &> monero-wallet-cli.log &
 ```
 
 4. Create a Goerli wallet. You can do this using Metamask by selecting "Goerli Test Network" from the networks, then creating a new account with "Create account". I'd recommend naming this new account something explicit like `goerli-swap-account`.
