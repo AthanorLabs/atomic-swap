@@ -10,6 +10,7 @@ import (
 	reflect "reflect"
 	time "time"
 
+	"github.com/MarinX/monerorpc/wallet"
 	ethereum "github.com/ethereum/go-ethereum"
 	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	common "github.com/ethereum/go-ethereum/common"
@@ -18,7 +19,6 @@ import (
 	common0 "github.com/noot/atomic-swap/common"
 	types0 "github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/MarinX/monerorpc/wallet"
 	net "github.com/noot/atomic-swap/net"
 	message "github.com/noot/atomic-swap/net/message"
 	swap "github.com/noot/atomic-swap/protocol/swap"

@@ -325,7 +325,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	tResp, err := maker.Transfer(xmrAddr, 0, uint64(amt))
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, uint(amt), tResp.Amount)
+	require.Equal(t, uint64(amt), tResp.Amount)
 
 	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 100)
 
