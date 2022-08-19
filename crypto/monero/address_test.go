@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 
 	"github.com/stretchr/testify/require"
 )
