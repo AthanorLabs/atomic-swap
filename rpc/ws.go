@@ -165,7 +165,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 		return errSignerNotRequired
 	}
 
-	if err := mcrypto.ValidateAddress(xmrAddr); err != nil {
+	if err := mcrypto.ValidateAddress(xmrAddr, s.backend.Env()); err != nil {
 		return err
 	}
 
