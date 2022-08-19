@@ -21,39 +21,39 @@ func NewDaemonClient(endpoint string) *daemonClient {
 	}
 }
 
+// GenerateBlocks quickly mines the requested number of blocks. This version slightly
+// compensates for the non-deterministic behaviour of the raw API call when 2 (or more)
+// simultaneous invocations occur. When this happens, the calls generate multiple blocks
+// on separate chains, meaning that the call with more blocks usually wins, while the
+// call with fewer blocks has their blocks discarded. If 2 calls have a large number
+// of blocks, say 512, the result can be worse. The calls fight each other, causing block
+// reorganisations in both directions preventing either side from succeeding. As a
+// mitigation, this method breaks large amount values up into separate API calls of 32
+// blocks.
 func (c *daemonClient) GenerateBlocks(address string, amount uint64) error {
-	// https://github.com/monero-project/monero/blob/v0.18.1.0/src/rpc/core_rpc_server_error_codes.h#L65
-	const failedToMineBlock = "Block not accepted"
+	const maxBlocksPerCall = 32
+	const maxErrorRetries = 10
+	totalErrors := 0
+	totalGenerated := uint64(0)
 
-	prevHeight, err := c.rpc.GetBlockCount()
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < maxRetries; i++ {
-		resp, err := c.generateBlocks(address, amount)
-		if err == nil { // no issues, we are done
-			break
+	for totalGenerated < amount {
+		reqstAmount := uint64(maxBlocksPerCall)
+		if amount-totalGenerated < maxBlocksPerCall {
+			reqstAmount = amount - totalGenerated
 		}
-		if err.Error() != failedToMineBlock {
-			return err
-		}
-		newHeight, err := c.rpc.GetBlockCount()
+		resp, err := c.generateBlocks(address, reqstAmount)
 		if err != nil {
-			return err
+			totalErrors++
+			log.Warnf("GenerateBlocks(%.10s..., %d) failed, total=%d/%d errCount=%d/%d err=%q",
+				address, reqstAmount, totalGenerated, amount, totalErrors, maxErrorRetries, err)
+			if totalErrors >= maxErrorRetries {
+				return err
+			}
+			continue
 		}
-		if newHeight.Count >= prevHeight.Count+amount {
-			break
-		}
-		oldAmount := amount
-		amount -= newHeight.Count - prevHeight.Count
-		prevHeight.Count = newHeight.Count
-		// TODO: It is possible that resp is non-nil when we get a "Block not accepted" error. If we
-		//       succeed in capturing one of these errors and the response is present, we can delete
-		//       half the code above and use "amount -= len(resp.Blocks)". If it is not present, we
-		//       can remove resp from the log below.
-		log.Warnf("GenerateBlocks failure requested=%d, generated=%d, resp=%#v",
-			oldAmount, oldAmount-amount, resp)
+		// GenerateBlocks is only used for testing, and we trust the daemon to not put us in an
+		// infinite loop with non-error, empty-block responses.
+		totalGenerated += uint64(len(resp.Blocks))
 	}
 	return nil
 }
