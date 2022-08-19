@@ -5,7 +5,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/noot/atomic-swap/crypto"
+	"github.com/athanorlabs/atomic-swap/crypto"
 
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 )

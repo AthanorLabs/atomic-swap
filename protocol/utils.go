@@ -5,9 +5,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/net/message"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.

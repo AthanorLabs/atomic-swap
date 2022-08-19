@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 func Test_GenerateBlocks(t *testing.T) {

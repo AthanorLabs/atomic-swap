@@ -3,7 +3,7 @@ package swap
 import (
 	"sync"
 
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 type (

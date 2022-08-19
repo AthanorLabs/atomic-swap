@@ -3,8 +3,8 @@ package rpcclient
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // Discover calls net_discover.

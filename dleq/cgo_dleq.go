@@ -3,7 +3,7 @@ package dleq
 import (
 	"errors"
 
-	"github.com/noot/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	dleq "github.com/noot/cgo-dleq"
 
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
