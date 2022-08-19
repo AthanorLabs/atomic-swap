@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MarinX/monerorpc/wallet"
+
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
@@ -259,17 +261,14 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	}
 
 	var (
-		balance *monero.GetBalanceResponse
+		balance *wallet.GetBalanceResponse
 	)
 
 	for i, acc := range accounts.SubaddressAccounts {
-		addr, ok := acc["base_address"].(string)
-		if !ok {
-			panic("address is not a string!")
-		}
+		addr := acc.BaseAddress
 
 		if mcrypto.Address(addr) == kp.Address(s.Env()) {
-			balance, err = s.GetBalance(uint(i))
+			balance, err = s.GetBalance(uint64(i))
 			if err != nil {
 				return nil, fmt.Errorf("failed to get balance: %w", err)
 			}
@@ -285,7 +284,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.Env()), balance.Balance)
 
 	// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
-	if balance.Balance < float64(s.receivedAmountInPiconero()) {
+	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
 		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
 			balance.Balance, float64(s.receivedAmountInPiconero()))
 	}

@@ -34,7 +34,7 @@ var (
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
 // It also interfaces with the network layer.
 type Backend interface {
-	monero.Client
+	monero.WalletClient
 	monero.DaemonClient
 	net.MessageSender
 	txsender.Sender
@@ -82,7 +82,7 @@ type backend struct {
 	swapManager swap.Manager
 
 	// monero endpoints
-	monero.Client
+	monero.WalletClient
 	monero.DaemonClient
 
 	// monero deposit address (used if xmrtaker has transferBack set to true)
@@ -164,12 +164,12 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}
 
 	// monero-wallet-rpc client
-	walletClient := monero.NewClient(cfg.MoneroWalletEndpoint)
+	walletClient := monero.NewWalletClient(cfg.MoneroWalletEndpoint)
 
 	// this is only used in the monero development environment to generate new blocks
 	var daemonClient monero.DaemonClient
 	if cfg.Environment == common.Development {
-		daemonClient = monero.NewClient(cfg.MoneroDaemonEndpoint)
+		daemonClient = monero.NewDaemonClient(cfg.MoneroDaemonEndpoint)
 	}
 
 	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
@@ -179,7 +179,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	return &backend{
 		ctx:          cfg.Ctx,
 		env:          cfg.Environment,
-		Client:       walletClient,
+		WalletClient: walletClient,
 		DaemonClient: daemonClient,
 		ethClient:    cfg.EthereumClient,
 		ethPrivKey:   cfg.EthereumPrivateKey,

@@ -92,7 +92,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	}
 
 	// NewInstance(..) below expects a pre-existing wallet, so create it
-	err = monero.NewClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
+	err = monero.NewWalletClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
 	require.NoError(t, err)
 
 	xmrmaker, err := NewInstance(cfg)
@@ -459,7 +459,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	balance, err := s.GetBalance(0)
 	require.NoError(t, err)
-	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount()).Uint64(), uint64(balance.Balance))
+	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount()).Uint64(), balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status())
 }
 

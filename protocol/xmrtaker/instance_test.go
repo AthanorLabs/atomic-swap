@@ -10,7 +10,7 @@ import (
 )
 
 func TestGetAddress(t *testing.T) {
-	c := monero.NewClient(tests.CreateWalletRPCService(t))
+	c := monero.NewWalletClient(tests.CreateWalletRPCService(t))
 	addr, err := getAddress(c, "", "")
 	require.NoError(t, err)
 

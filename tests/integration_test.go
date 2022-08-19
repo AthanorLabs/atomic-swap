@@ -58,8 +58,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func generateBlocks(num uint) {
-	c := monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
+func generateBlocks(num uint64) {
+	c := monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
 	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
 	xmrmakerAddr, err := c.GetAddress(0)
 	if err != nil {
@@ -77,7 +77,7 @@ func generateBlocks(num uint) {
 }
 
 func generateBlocksAsync() {
-	c := monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
+	c := monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
 	d := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
 	xmrmakerAddr, err := c.GetAddress(0)
 	if err != nil {
