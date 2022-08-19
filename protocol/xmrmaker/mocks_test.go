@@ -10,20 +10,20 @@ import (
 	reflect "reflect"
 	time "time"
 
-	"github.com/MarinX/monerorpc/wallet"
-	ethereum "github.com/ethereum/go-ethereum"
-	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
-	common "github.com/ethereum/go-ethereum/common"
-	types "github.com/ethereum/go-ethereum/core/types"
-	gomock "github.com/golang/mock/gomock"
-	common0 "github.com/athanorlabs/atomic-swap/common"
-	types0 "github.com/athanorlabs/atomic-swap/common/types"
+	wallet "github.com/MarinX/monerorpc/wallet"
+	common "github.com/athanorlabs/atomic-swap/common"
+	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	net "github.com/athanorlabs/atomic-swap/net"
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	txsender "github.com/athanorlabs/atomic-swap/protocol/txsender"
 	swapfactory "github.com/athanorlabs/atomic-swap/swapfactory"
+	ethereum "github.com/ethereum/go-ethereum"
+	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
+	common0 "github.com/ethereum/go-ethereum/common"
+	types0 "github.com/ethereum/go-ethereum/core/types"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockBackend is a mock of Backend interface.
@@ -50,7 +50,7 @@ func (m *MockBackend) EXPECT() *MockBackendMockRecorder {
 }
 
 // BalanceAt mocks base method.
-func (m *MockBackend) BalanceAt(arg0 context.Context, arg1 common.Address, arg2 *big.Int) (*big.Int, error) {
+func (m *MockBackend) BalanceAt(arg0 context.Context, arg1 common0.Address, arg2 *big.Int) (*big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BalanceAt", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*big.Int)
@@ -93,11 +93,11 @@ func (mr *MockBackendMockRecorder) ChainID() *gomock.Call {
 }
 
 // Claim mocks base method.
-func (m *MockBackend) Claim(arg0 types0.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) Claim(arg0 types.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common0.Hash, *types0.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Claim", arg0, arg1, arg2)
-	ret0, _ := ret[0].(common.Hash)
-	ret1, _ := ret[1].(*types.Receipt)
+	ret0, _ := ret[0].(common0.Hash)
+	ret1, _ := ret[1].(*types0.Receipt)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -123,7 +123,7 @@ func (mr *MockBackendMockRecorder) CloseWallet() *gomock.Call {
 }
 
 // CodeAt mocks base method.
-func (m *MockBackend) CodeAt(arg0 context.Context, arg1 common.Address, arg2 *big.Int) ([]byte, error) {
+func (m *MockBackend) CodeAt(arg0 context.Context, arg1 common0.Address, arg2 *big.Int) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CodeAt", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]byte)
@@ -152,10 +152,10 @@ func (mr *MockBackendMockRecorder) Contract() *gomock.Call {
 }
 
 // ContractAddr mocks base method.
-func (m *MockBackend) ContractAddr() common.Address {
+func (m *MockBackend) ContractAddr() common0.Address {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContractAddr")
-	ret0, _ := ret[0].(common.Address)
+	ret0, _ := ret[0].(common0.Address)
 	return ret0
 }
 
@@ -194,10 +194,10 @@ func (mr *MockBackendMockRecorder) Ctx() *gomock.Call {
 }
 
 // Env mocks base method.
-func (m *MockBackend) Env() common0.Environment {
+func (m *MockBackend) Env() common.Environment {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Env")
-	ret0, _ := ret[0].(common0.Environment)
+	ret0, _ := ret[0].(common.Environment)
 	return ret0
 }
 
@@ -208,10 +208,10 @@ func (mr *MockBackendMockRecorder) Env() *gomock.Call {
 }
 
 // EthAddress mocks base method.
-func (m *MockBackend) EthAddress() common.Address {
+func (m *MockBackend) EthAddress() common0.Address {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthAddress")
-	ret0, _ := ret[0].(common.Address)
+	ret0, _ := ret[0].(common0.Address)
 	return ret0
 }
 
@@ -236,10 +236,10 @@ func (mr *MockBackendMockRecorder) ExternalSender() *gomock.Call {
 }
 
 // FilterLogs mocks base method.
-func (m *MockBackend) FilterLogs(arg0 context.Context, arg1 ethereum.FilterQuery) ([]types.Log, error) {
+func (m *MockBackend) FilterLogs(arg0 context.Context, arg1 ethereum.FilterQuery) ([]types0.Log, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FilterLogs", arg0, arg1)
-	ret0, _ := ret[0].([]types.Log)
+	ret0, _ := ret[0].([]types0.Log)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -265,7 +265,7 @@ func (mr *MockBackendMockRecorder) GenerateBlocks(arg0, arg1 interface{}) *gomoc
 }
 
 // GenerateFromKeys mocks base method.
-func (m *MockBackend) GenerateFromKeys(arg0 *mcrypto.PrivateKeyPair, arg1, arg2 string, arg3 common0.Environment) error {
+func (m *MockBackend) GenerateFromKeys(arg0 *mcrypto.PrivateKeyPair, arg1, arg2 string, arg3 common.Environment) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GenerateFromKeys", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -394,11 +394,11 @@ func (mr *MockBackendMockRecorder) Net() *gomock.Call {
 }
 
 // NewSwap mocks base method.
-func (m *MockBackend) NewSwap(arg0 types0.Hash, arg1, arg2 [32]byte, arg3 common.Address, arg4, arg5, arg6 *big.Int) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) NewSwap(arg0 types.Hash, arg1, arg2 [32]byte, arg3 common0.Address, arg4, arg5, arg6 *big.Int) (common0.Hash, *types0.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(common.Hash)
-	ret1, _ := ret[1].(*types.Receipt)
+	ret0, _ := ret[0].(common0.Hash)
+	ret1, _ := ret[1].(*types0.Receipt)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -410,7 +410,7 @@ func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5, a
 }
 
 // NewSwapFactory mocks base method.
-func (m *MockBackend) NewSwapFactory(arg0 common.Address) (*swapfactory.SwapFactory, error) {
+func (m *MockBackend) NewSwapFactory(arg0 common0.Address) (*swapfactory.SwapFactory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewSwapFactory", arg0)
 	ret0, _ := ret[0].(*swapfactory.SwapFactory)
@@ -453,11 +453,11 @@ func (mr *MockBackendMockRecorder) Refresh() *gomock.Call {
 }
 
 // Refund mocks base method.
-func (m *MockBackend) Refund(arg0 types0.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) Refund(arg0 types.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common0.Hash, *types0.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Refund", arg0, arg1, arg2)
-	ret0, _ := ret[0].(common.Hash)
-	ret1, _ := ret[1].(*types.Receipt)
+	ret0, _ := ret[0].(common0.Hash)
+	ret1, _ := ret[1].(*types0.Receipt)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -469,7 +469,7 @@ func (mr *MockBackendMockRecorder) Refund(arg0, arg1, arg2 interface{}) *gomock.
 }
 
 // SendSwapMessage mocks base method.
-func (m *MockBackend) SendSwapMessage(arg0 message.Message, arg1 types0.Hash) error {
+func (m *MockBackend) SendSwapMessage(arg0 message.Message, arg1 types.Hash) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendSwapMessage", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -507,7 +507,7 @@ func (mr *MockBackendMockRecorder) SetContract(arg0 interface{}) *gomock.Call {
 }
 
 // SetContractAddress mocks base method.
-func (m *MockBackend) SetContractAddress(arg0 common.Address) {
+func (m *MockBackend) SetContractAddress(arg0 common0.Address) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetContractAddress", arg0)
 }
@@ -519,7 +519,7 @@ func (mr *MockBackendMockRecorder) SetContractAddress(arg0 interface{}) *gomock.
 }
 
 // SetEthAddress mocks base method.
-func (m *MockBackend) SetEthAddress(arg0 common.Address) {
+func (m *MockBackend) SetEthAddress(arg0 common0.Address) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetEthAddress", arg0)
 }
@@ -543,11 +543,11 @@ func (mr *MockBackendMockRecorder) SetGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // SetReady mocks base method.
-func (m *MockBackend) SetReady(arg0 types0.Hash, arg1 swapfactory.SwapFactorySwap) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) SetReady(arg0 types.Hash, arg1 swapfactory.SwapFactorySwap) (common0.Hash, *types0.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetReady", arg0, arg1)
-	ret0, _ := ret[0].(common.Hash)
-	ret1, _ := ret[1].(*types.Receipt)
+	ret0, _ := ret[0].(common0.Hash)
+	ret1, _ := ret[1].(*types0.Receipt)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -571,7 +571,7 @@ func (mr *MockBackendMockRecorder) SetSwapTimeout(arg0 interface{}) *gomock.Call
 }
 
 // SetXMRDepositAddress mocks base method.
-func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 types0.Hash) {
+func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 types.Hash) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetXMRDepositAddress", arg0, arg1)
 }
@@ -626,10 +626,10 @@ func (mr *MockBackendMockRecorder) SweepAll(arg0, arg1 interface{}) *gomock.Call
 }
 
 // TransactionReceipt mocks base method.
-func (m *MockBackend) TransactionReceipt(arg0 context.Context, arg1 common.Hash) (*types.Receipt, error) {
+func (m *MockBackend) TransactionReceipt(arg0 context.Context, arg1 common0.Hash) (*types0.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TransactionReceipt", arg0, arg1)
-	ret0, _ := ret[0].(*types.Receipt)
+	ret0, _ := ret[0].(*types0.Receipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -683,10 +683,10 @@ func (mr *MockBackendMockRecorder) UnlockClient() *gomock.Call {
 }
 
 // WaitForReceipt mocks base method.
-func (m *MockBackend) WaitForReceipt(arg0 context.Context, arg1 common.Hash) (*types.Receipt, error) {
+func (m *MockBackend) WaitForReceipt(arg0 context.Context, arg1 common0.Hash) (*types0.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WaitForReceipt", arg0, arg1)
-	ret0, _ := ret[0].(*types.Receipt)
+	ret0, _ := ret[0].(*types0.Receipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -712,7 +712,7 @@ func (mr *MockBackendMockRecorder) WaitForTimestamp(arg0, arg1 interface{}) *gom
 }
 
 // XMRDepositAddress mocks base method.
-func (m *MockBackend) XMRDepositAddress(arg0 *types0.Hash) (mcrypto.Address, error) {
+func (m *MockBackend) XMRDepositAddress(arg0 *types.Hash) (mcrypto.Address, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "XMRDepositAddress", arg0)
 	ret0, _ := ret[0].(mcrypto.Address)
