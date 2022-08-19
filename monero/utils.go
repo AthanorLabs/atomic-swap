@@ -21,7 +21,7 @@ var (
 
 // WaitForBlocks waits for `count` new blocks to arrive.
 // It returns the height of the chain.
-func WaitForBlocks(client Client, count int) (uint, error) {
+func WaitForBlocks(client WalletClient, count int) (uint64, error) {
 	prevHeight, err := client.GetHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get height: %w", err)
@@ -50,9 +50,13 @@ func WaitForBlocks(client Client, count int) (uint, error) {
 	return 0, fmt.Errorf("timed out waiting for blocks")
 }
 
-// CreateMoneroWallet creates a monero wallet from a private keypair.
-func CreateMoneroWallet(name string, env common.Environment, client Client,
-	kpAB *mcrypto.PrivateKeyPair) (mcrypto.Address, error) {
+// CreateWallet creates a monero wallet from a private keypair.
+func CreateWallet(
+	name string,
+	env common.Environment,
+	client WalletClient,
+	kpAB *mcrypto.PrivateKeyPair,
+) (mcrypto.Address, error) {
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("%s-%s", name, t)
 	if err := client.GenerateFromKeys(kpAB, walletName, "", env); err != nil {

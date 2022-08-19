@@ -37,7 +37,7 @@ var (
 	defaultTimeout      = time.Minute * 15
 	log                 = logging.Logger("cmd")
 	isDev               = false
-	defaultMoneroClient monero.Client
+	defaultMoneroClient monero.WalletClient
 )
 
 var (
@@ -113,7 +113,7 @@ func runTester(c *cli.Context) error {
 	isDev = c.Bool(flagDev)
 	if !isDev {
 		// TODO: add a flag to specify local endpoint
-		defaultMoneroClient = monero.NewClient(common.DefaultXMRMakerMoneroEndpoint)
+		defaultMoneroClient = monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
 	}
 
 	var timeout time.Duration
@@ -189,7 +189,7 @@ func getRandomExchangeRate() types.ExchangeRate {
 }
 
 func generateBlocks() {
-	cXMRMaker := monero.NewClient(common.DefaultXMRTakerMoneroEndpoint)
+	cXMRMaker := monero.NewWalletClient(common.DefaultXMRTakerMoneroEndpoint)
 
 	xmrmakerAddr, err := cXMRMaker.GetAddress(0)
 	if err != nil {

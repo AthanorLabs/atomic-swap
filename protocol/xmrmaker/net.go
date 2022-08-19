@@ -33,7 +33,7 @@ func (b *Instance) initiate(
 	}
 
 	// check user's balance and that they actually have what they will provide
-	if balance.UnlockedBalance <= float64(providesAmount) {
+	if balance.UnlockedBalance <= uint64(providesAmount) {
 		return nil, errBalanceTooLow
 	}
 
