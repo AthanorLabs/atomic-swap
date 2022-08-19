@@ -114,6 +114,7 @@ type Protocol interface {
 
 // ProtocolBackend represents protocol/backend.Backend
 type ProtocolBackend interface {
+	Env() common.Environment
 	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager

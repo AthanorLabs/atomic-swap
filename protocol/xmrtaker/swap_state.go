@@ -545,7 +545,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	log.Infof("monero claimed in account %s; transferring to original account %s",
 		addr, depositAddr)
 
-	err = mcrypto.ValidateAddress(string(depositAddr))
+	err = mcrypto.ValidateAddress(string(depositAddr), s.Env())
 	if err != nil {
 		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
 		return addr, nil
