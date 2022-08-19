@@ -1,6 +1,7 @@
 package mcrypto
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/noot/atomic-swap/common"
@@ -16,6 +17,7 @@ const (
 )
 
 var (
+	errChecksumMismatch         = fmt.Errorf("invalid address checksum")
 	errInvalidAddressLength     = fmt.Errorf("invalid monero address length")
 	errInvalidPrefixGotMainnet  = fmt.Errorf("invalid monero address: expected stagenet, got mainnet")
 	errInvalidPrefixGotStagenet = fmt.Errorf("invalid monero address: expected mainnet, got stagenet")
@@ -40,6 +42,11 @@ func ValidateAddress(addr string, env common.Environment) error {
 		if b[0] != addressPrefixStagenet {
 			return errInvalidPrefixGotMainnet
 		}
+	}
+
+	checksum := getChecksum(b[:65])
+	if !bytes.Equal(checksum[:], b[65:69]) {
+		return errChecksumMismatch
 	}
 
 	return nil
