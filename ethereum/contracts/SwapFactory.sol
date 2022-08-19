@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.5;
 
+import "./IERC20.sol";
 import "./Secp256k1.sol";
 
 contract SwapFactory is Secp256k1 {
@@ -41,6 +42,9 @@ contract SwapFactory is Secp256k1 {
 
         // the value of this swap.
         uint256 value;
+        
+        // the asset being swapped: equal to address(0) for ETH, or an ERC-20 token address
+        address asset;
 
         // choose random
         uint256 nonce;
@@ -48,7 +52,7 @@ contract SwapFactory is Secp256k1 {
 
     mapping(bytes32 => Stage) public swaps;
 
-    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey, uint256 timeout_0, uint256 timeout_1);
+    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey, uint256 timeout_0, uint256 timeout_1, address asset);
     event Ready(bytes32 swapID);
     event Claimed(bytes32 swapID, bytes32 s);
     event Refunded(bytes32 swapID, bytes32 s);
@@ -59,6 +63,8 @@ contract SwapFactory is Secp256k1 {
         bytes32 _pubKeyRefund, 
         address payable _claimer, 
         uint256 _timeoutDuration,
+        address _asset,
+        uint256 _value,
         uint256 _nonce
     ) public payable returns (bytes32) {
 
@@ -69,7 +75,17 @@ contract SwapFactory is Secp256k1 {
         swap.pubKeyRefund = _pubKeyRefund;
         swap.timeout_0 = block.timestamp + _timeoutDuration;
         swap.timeout_1 = block.timestamp + (_timeoutDuration * 2);
-        swap.value = msg.value;
+        swap.asset = _asset;
+        swap.value = _value;
+        if (swap.asset == address(0)) {
+            require(swap.value == msg.value, "value not same as ETH amount sent");
+        } else {
+            // transfer ERC-20 token into this contract
+            // TODO: potentially check token balance before/after this step
+            // and ensure the balance was increased by swap.value since fee-on-transfer
+            // tokens are not supported
+            IERC20(swap.asset).transferFrom(msg.sender, address(this), swap.value);
+        }
         swap.nonce = _nonce;
 
         bytes32 swapID = keccak256(abi.encode(swap));
@@ -77,7 +93,7 @@ contract SwapFactory is Secp256k1 {
         // make sure this isn't overriding an existing swap
         require(swaps[swapID] == Stage.INVALID);
 
-        emit New(swapID, _pubKeyClaim, _pubKeyRefund, swap.timeout_0, swap.timeout_1);
+        emit New(swapID, _pubKeyClaim, _pubKeyRefund, swap.timeout_0, swap.timeout_1, swap.asset);
         swaps[swapID] = Stage.PENDING;
         return swapID;
     }
@@ -106,7 +122,17 @@ contract SwapFactory is Secp256k1 {
 
         // send eth to caller (Bob)
         swaps[swapID] = Stage.COMPLETED;
-        _swap.claimer.transfer(_swap.value);
+        if (_swap.asset == address(0)) {
+            _swap.claimer.transfer(_swap.value);
+        } else {
+            // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
+            // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
+            // exposing Bob's secret while giving him nothing
+            
+            // potential solution: wrap tokens into shares instead of absolute values
+            // swap.value would then contain the share of the token
+            IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
+        }
     }
 
     // Alice can claim a refund:
@@ -126,9 +152,13 @@ contract SwapFactory is Secp256k1 {
         verifySecret(_s, _swap.pubKeyRefund);
         emit Refunded(swapID, _s);
 
-        // send eth back to owner==caller (Alice)
+        // send asset back to owner==caller (Alice)
         swaps[swapID] = Stage.COMPLETED;
-        _swap.owner.transfer(_swap.value);
+        if (_swap.asset == address(0)) {
+            _swap.owner.transfer(_swap.value);
+        } else {
+            IERC20(_swap.asset).transfer(_swap.owner, _swap.value);
+        }
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal pure {
