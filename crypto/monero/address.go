@@ -20,10 +20,21 @@ type Address string
 
 // ValidateAddress checks if the given address is valid
 // TODO: also check chain prefix
-func ValidateAddress(addr string) error {
+func ValidateAddress(addr string, env common.Environment) error {
 	b := DecodeMoneroBase58(addr)
 	if len(b) != AddressLength {
 		return fmt.Errorf("invalid monero address length: got %d, expected %d", len(b), AddressLength)
+	}
+
+	switch env {
+	case common.Mainnet, common.Development:
+		if b[0] != addressPrefixMainnet {
+			return fmt.Errorf("invalid monero address: expected mainnet, got stagenet")
+		}
+	case common.Stagenet:
+		if b[0] != addressPrefixStagenet {
+			return fmt.Errorf("invalid monero address: expected stagenet, got mainnet")
+		}
 	}
 
 	return nil
