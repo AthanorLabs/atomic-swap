@@ -285,7 +285,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	// TODO: check balance
 	s.LockClient()
 	defer s.UnlockClient()
-	return monero.CreateMoneroWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
+	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
@@ -505,7 +505,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
 	address := kp.Address(s.Env())
-	txResp, err := s.Transfer(address, 0, uint(amount))
+	txResp, err := s.Transfer(address, 0, uint64(amount))
 	if err != nil {
 		return "", err
 	}

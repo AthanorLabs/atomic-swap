@@ -58,7 +58,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
-	daemonClient := monero.NewClient(common.DefaultMoneroDaemonEndpoint)
+	daemonClient := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
 	addr, err := rs.ss.GetAddress(0)
 	require.NoError(t, err)
 	_ = daemonClient.GenerateBlocks(addr.Address, 121)

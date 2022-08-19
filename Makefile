@@ -18,11 +18,11 @@ lint: init
 	${GOPATH}/bin/golangci-lint run
 
 .PHONY: test
-test:
+test: init
 	./scripts/run-unit-tests.sh 2>&1 | tee test.log
 
 .PHONY: test-integration
-test-integration:
+test-integration: init
 	./scripts/run-integration-tests.sh 2>&1 | tee test-integration.log
 
 .PHONY: install

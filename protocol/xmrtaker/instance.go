@@ -73,7 +73,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 	}, nil
 }
 
-func getAddress(walletClient monero.Client, file, password string) (mcrypto.Address, error) {
+func getAddress(walletClient monero.WalletClient, file, password string) (mcrypto.Address, error) {
 	// open XMR wallet, if it exists
 	if file != "" {
 		if err := walletClient.OpenWallet(file, password); err != nil {
