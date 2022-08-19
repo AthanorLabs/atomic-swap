@@ -15,25 +15,30 @@ const (
 	AddressLength = 1 + 32 + 32 + 4
 )
 
+var (
+	errInvalidAddressLength     = fmt.Errorf("invalid monero address length")
+	errInvalidPrefixGotMainnet  = fmt.Errorf("invalid monero address: expected stagenet, got mainnet")
+	errInvalidPrefixGotStagenet = fmt.Errorf("invalid monero address: expected mainnet, got stagenet")
+)
+
 // Address represents a base58-encoded string
 type Address string
 
 // ValidateAddress checks if the given address is valid
-// TODO: also check chain prefix
 func ValidateAddress(addr string, env common.Environment) error {
 	b := DecodeMoneroBase58(addr)
 	if len(b) != AddressLength {
-		return fmt.Errorf("invalid monero address length: got %d, expected %d", len(b), AddressLength)
+		return fmt.Errorf("%w: got %d, expected %d", errInvalidAddressLength, len(b), AddressLength)
 	}
 
 	switch env {
 	case common.Mainnet, common.Development:
 		if b[0] != addressPrefixMainnet {
-			return fmt.Errorf("invalid monero address: expected mainnet, got stagenet")
+			return errInvalidPrefixGotStagenet
 		}
 	case common.Stagenet:
 		if b[0] != addressPrefixStagenet {
-			return fmt.Errorf("invalid monero address: expected stagenet, got mainnet")
+			return errInvalidPrefixGotMainnet
 		}
 	}
 
