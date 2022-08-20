@@ -14,11 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/crypto/secp256k1"
-	"github.com/noot/atomic-swap/dleq"
-	"github.com/noot/atomic-swap/ethereum/block"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/dleq"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 var defaultTimeoutDuration = big.NewInt(60) // 60 seconds

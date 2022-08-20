@@ -1,7 +1,7 @@
 package dleq
 
 import (
-	"github.com/noot/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
 
 // Interface ...

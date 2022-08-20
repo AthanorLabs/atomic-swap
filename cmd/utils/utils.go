@@ -10,7 +10,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 const (

@@ -3,8 +3,8 @@ package xmrtaker
 import (
 	"testing"
 
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 )

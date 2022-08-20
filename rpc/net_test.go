@@ -3,7 +3,7 @@ package rpc
 import (
 	"testing"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 
 	"github.com/stretchr/testify/require"
 )

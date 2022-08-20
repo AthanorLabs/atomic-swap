@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // InfoFileContents represents the contents of the swap info file used in case

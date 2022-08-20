@@ -1,7 +1,7 @@
 package rpctypes
 
 import (
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // SubscribeSwapStatusRequest ...

@@ -7,8 +7,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"

@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/protocol/txsender"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"

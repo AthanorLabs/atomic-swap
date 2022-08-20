@@ -3,10 +3,10 @@ package xmrmaker
 import (
 	"sync"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/protocol/xmrmaker/offers"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 
 	logging "github.com/ipfs/go-log"
 )

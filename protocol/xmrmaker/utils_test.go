@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/noot/atomic-swap/swapfactory"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"

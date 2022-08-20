@@ -18,7 +18,7 @@ source .profile
 
 2. Clone the repo:
 ```bash
-git clone https://github.com/noot/atomic-swap.git
+git clone https://github.com/athanorlabs/atomic-swap.git
 cd atomic-swap
 ```
 

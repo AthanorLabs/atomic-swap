@@ -1,4 +1,4 @@
-module github.com/noot/atomic-swap
+module github.com/athanorlabs/atomic-swap
 
 go 1.18
 

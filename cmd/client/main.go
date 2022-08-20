@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/rpcclient"
-	"github.com/noot/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
+	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli"
