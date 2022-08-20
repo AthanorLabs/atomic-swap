@@ -177,6 +177,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	}
 
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
+	defer s.backend.ClearXMRDepositAddress(offerID)
 
 	s.signer.AddID(offerID)
 	defer s.signer.DeleteID(offerID)

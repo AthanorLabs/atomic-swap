@@ -39,7 +39,6 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker,
 		ethPrivKeyHex = strings.TrimSpace(string(key))
 	} else {
 		if env != common.Development || useExternal {
-			// TODO: allow this to be set via RPC
 			log.Warnf("%s", errNoEthereumPrivateKey)
 			return "", nil
 		}

@@ -71,6 +71,7 @@ type Backend interface {
 	SetGasPrice(uint64)
 	SetEthAddress(ethcommon.Address)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	ClearXMRDepositAddress(types.Hash)
 	SetBaseXMRDepositAddress(mcrypto.Address)
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
@@ -357,12 +358,19 @@ func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {
 func (b *backend) SetXMRDepositAddress(addr mcrypto.Address, id types.Hash) {
 	b.Lock()
 	defer b.Unlock()
-	// TODO: clear this out when swap is done, memory leak!!!
 	b.xmrDepositAddrs[id] = addr
 }
 
-// TODO: these are kinda sus, maybe remove them? forces everyone to use
-// the same contract though
+func (b *backend) ClearXMRDepositAddress(id types.Hash) {
+	b.Lock()
+	defer b.Unlock()
+	delete(b.xmrDepositAddrs, id)
+}
+
+// NOTE: this is called when a swap is initiated and the XMR-taker specifies the contract
+// address they will be using.
+// the contract bytecode is validated in the calling code, but this should never be called
+// for unvalidated contracts.
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
 	b.Sender.SetContract(contract)

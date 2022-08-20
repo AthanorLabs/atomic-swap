@@ -103,9 +103,8 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 	}
 
 	s.nextExpectedMessage = msg
-	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
-	if s.statusCh != nil {
+	if s.statusCh != nil && stage != types.UnknownStatus {
 		s.statusCh <- stage
 	}
 }
@@ -171,7 +170,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, err
 	}
 
-	// TODO: check these (in checkContract)
+	// TODO: check these (in checkContract) (#161)
 	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 
 	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))

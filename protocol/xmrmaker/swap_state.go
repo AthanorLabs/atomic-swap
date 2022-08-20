@@ -473,7 +473,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("contract refund key is not expected: got 0x%x, expected 0x%x", event.RefundKey, skTheirs)
 	}
 
-	// TODO: check timeouts
+	// TODO: check timeouts (#161)
 
 	// check value of created swap
 	value := s.contractSwap.Value

@@ -23,19 +23,11 @@ type Info struct {
 
 // ID returns the swap ID.
 func (i *Info) ID() types.Hash {
-	if i == nil {
-		return types.Hash{} // TODO: does this ever happen??
-	}
-
 	return i.id
 }
 
 // Provides returns the coin that was provided for this swap.
 func (i *Info) Provides() types.ProvidesCoin {
-	if i == nil {
-		return ""
-	}
-
 	return i.provides
 }
 
@@ -56,10 +48,6 @@ func (i *Info) ExchangeRate() types.ExchangeRate {
 
 // Status returns the swap's status.
 func (i *Info) Status() Status {
-	if i == nil {
-		return 0
-	}
-
 	return i.status
 }
 
@@ -70,10 +58,6 @@ func (i *Info) StatusCh() <-chan types.Status {
 
 // SetStatus ...
 func (i *Info) SetStatus(s Status) {
-	if i == nil {
-		return
-	}
-
 	i.status = s
 }
 

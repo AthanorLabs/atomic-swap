@@ -431,7 +431,7 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		daemonEndpoint = cfg.MoneroDaemonEndpoint
 	}
 
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
 	var gasPrice *big.Int
 	if c.Uint(flagGasPrice) != 0 {
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
