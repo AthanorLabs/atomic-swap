@@ -348,6 +348,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
 			return txHash, err
 		}
+
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
 		// even though the current block is before T0. In this case, the transaction will be reverted, the
 		// gas fee is lost, but we can wait until T1 and try again.

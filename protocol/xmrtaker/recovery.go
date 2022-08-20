@@ -9,6 +9,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -16,8 +17,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
-// TODO: don't hard-code this
-var claimedTopic = ethcommon.HexToHash("0x38d6042dbdae8e73a7f6afbabd3fbe0873f9f5ed3cd71294591c3908c2e65fee")
+var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
 
 type recoveryState struct {
 	ss *swapState

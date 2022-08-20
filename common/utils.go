@@ -22,3 +22,11 @@ func EthereumPrivateKeyToAddress(privkey *ecdsa.PrivateKey) ethcommon.Address {
 	pub := privkey.Public().(*ecdsa.PublicKey)
 	return ethcrypto.PubkeyToAddress(*pub)
 }
+
+// GetTopic returns the Ethereum topic (ie. keccak256 hash) of the given event or function signature string.
+func GetTopic(sig string) ethcommon.Hash {
+	h := ethcrypto.Keccak256([]byte(sig))
+	var b [32]byte
+	copy(b[:], h)
+	return b
+}

@@ -200,7 +200,7 @@ func TestSuccess_OneSwap(t *testing.T) {
 	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	// TODO: implement discovery over websockets
+	// TODO: implement discovery over websockets (#97)
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
@@ -877,7 +877,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
 		require.NoError(t, err)
 
-		// TODO: implement discovery over websockets
+		// TODO: implement discovery over websockets (#97)
 		providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(providers))
