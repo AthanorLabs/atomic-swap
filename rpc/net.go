@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/rpctypes"
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )

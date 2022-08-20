@@ -6,11 +6,11 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
 
 	logging "github.com/ipfs/go-log"
 )

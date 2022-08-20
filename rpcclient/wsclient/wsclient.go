@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/types"
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"

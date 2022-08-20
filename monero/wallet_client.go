@@ -7,8 +7,8 @@ import (
 	"github.com/MarinX/monerorpc"
 	"github.com/MarinX/monerorpc/wallet"
 
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
 // WalletClient represents a monero-wallet-rpc client.

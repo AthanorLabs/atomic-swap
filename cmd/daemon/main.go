@@ -14,14 +14,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/cmd/utils"
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/protocol/xmrmaker"
-	"github.com/noot/atomic-swap/protocol/xmrtaker"
-	"github.com/noot/atomic-swap/rpc"
+	"github.com/athanorlabs/atomic-swap/cmd/utils"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
+	"github.com/athanorlabs/atomic-swap/rpc"
 
 	logging "github.com/ipfs/go-log"
 )

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 )

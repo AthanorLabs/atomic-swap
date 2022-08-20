@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
 // TakeOffer calls net_takeOffer.

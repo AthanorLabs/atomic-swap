@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 /*
@@ -42,7 +42,7 @@ var testPackages = []struct {
 }
 
 const (
-	repoName = "github.com/noot/atomic-swap/"
+	repoName = "github.com/athanorlabs/atomic-swap/"
 )
 
 // `ganache --deterministic --accounts=50` provides the following keys with
@@ -110,7 +110,7 @@ func init() {
 }
 
 // minPackageName takes a long-form package+function name (example:
-// "github.com/noot/atomic-swap/protocol/xmrtaker.newBackend") and returns
+// "github.com/athanorlabs/atomic-swap/protocol/xmrtaker.newBackend") and returns
 // just the package name without the repository prefix ("protocol/xmrtaker").
 func minPackageName(t *testing.T, pkgAndFunc string) string {
 	minPkgAndFunc := strings.TrimPrefix(pkgAndFunc, repoName)

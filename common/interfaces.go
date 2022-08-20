@@ -1,8 +1,8 @@
 package common
 
 import (
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 // SwapState is the interface used by other packages in *xmrtaker.swapState or *xmrmaker.swapState.

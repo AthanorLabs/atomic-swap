@@ -7,13 +7,13 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/net/message"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.

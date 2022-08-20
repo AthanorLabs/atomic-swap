@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/crypto"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/crypto"
 
 	ed25519 "filippo.io/edwards25519"
 )

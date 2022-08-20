@@ -3,8 +3,8 @@ package offers
 import (
 	"sync"
 
-	"github.com/noot/atomic-swap/common/types"
-	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
 // Manager synchronises access to the offers map.
