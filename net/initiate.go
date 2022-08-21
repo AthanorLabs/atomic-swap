@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	swapID          = "/swap/0"
-	protocolTimeout = time.Second * 5
+	swapID            = "/swap/0"
+	protocolTimeout   = time.Second * 5
+	messageBufferSize = 1 << 17
 )
 
 func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
@@ -32,9 +33,11 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
 	defer cancel()
 
-	// TODO: check if already connected
-	if err := h.h.Connect(ctx, who); err != nil {
-		return err
+	if h.h.Network().Connectedness(who.ID) != libp2pnetwork.Connected {
+		err := h.h.Connect(ctx, who)
+		if err != nil {
+			return err
+		}
 	}
 
 	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+swapID))
@@ -56,7 +59,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		stream:    stream,
 	}
 
-	go h.handleProtocolStreamInner(stream, s)
+	go h.handleProtocolStreamInner(stream, s, make([]byte, messageBufferSize))
 	return nil
 }
 
@@ -67,9 +70,8 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	// TODO: don't allocate this twice
-	msgBytes := make([]byte, 1<<17)
-	tot, err := readStream(stream, msgBytes[:])
+	buf := make([]byte, messageBufferSize)
+	tot, err := readStream(stream, buf[:])
 	if err != nil {
 		log.Debug("peer closed stream with us, protocol exited")
 		_ = stream.Close()
@@ -77,7 +79,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	// decode message based on message type
-	msg, err := message.DecodeMessage(msgBytes[:tot])
+	msg, err := message.DecodeMessage(buf[:tot])
 	if err != nil {
 		log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
 		_ = stream.Close()
@@ -117,11 +119,11 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 	h.swapMu.Unlock()
 
-	h.handleProtocolStreamInner(stream, s)
+	h.handleProtocolStreamInner(stream, s, buf)
 }
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
-func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
+func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState, buf []byte) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
@@ -135,17 +137,15 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 		h.swapMu.Unlock()
 	}()
 
-	msgBytes := make([]byte, 1<<17)
-
 	for {
-		tot, err := readStream(stream, msgBytes[:])
+		tot, err := readStream(stream, buf[:])
 		if err != nil {
 			log.Debug("peer closed stream with us, protocol exited")
 			return
 		}
 
 		// decode message based on message type
-		msg, err := message.DecodeMessage(msgBytes[:tot])
+		msg, err := message.DecodeMessage(buf[:tot])
 		if err != nil {
 			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
 			continue

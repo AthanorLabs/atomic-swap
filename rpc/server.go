@@ -121,6 +121,7 @@ type ProtocolBackend interface {
 	ExternalSender() *txsender.ExternalSender
 	SetEthAddress(ethcommon.Address)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	ClearXMRDepositAddress(types.Hash)
 }
 
 // XMRTaker ...

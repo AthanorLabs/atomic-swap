@@ -12,7 +12,7 @@ type Config struct {
 	Basepath             string
 	MoneroDaemonEndpoint string
 	EthereumChainID      int64
-	Bootnodes            []string // TODO: when it's ready for users to test, add some bootnodes
+	Bootnodes            []string // TODO: when it's ready for users to test, add some bootnodes (#153)
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration

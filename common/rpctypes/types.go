@@ -4,6 +4,16 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
+const (
+	NetDiscover         = "net_discover" //nolint:revive
+	NetQueryPeer        = "net_queryPeer"
+	SubscribeNewPeer    = "net_subscribeNewPeer"
+	SubscribeMakeOffer  = "net_makeOfferAndSubscribe"
+	SubscribeTakeOffer  = "net_takeOfferAndSubscribe"
+	SubscribeSwapStatus = "swap_subscribeStatus"
+	SubscribeSigner     = "signer_subscribe"
+)
+
 // SubscribeSwapStatusRequest ...
 type SubscribeSwapStatusRequest struct {
 	ID types.Hash `json:"id"`
