@@ -348,6 +348,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
 			return txHash, err
 		}
+
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
 		// even though the current block is before T0. In this case, the transaction will be reverted, the
 		// gas fee is lost, but we can wait until T1 and try again.
@@ -478,7 +479,7 @@ func (s *swapState) ready() error {
 	if stage != swapfactory.StagePending {
 		return fmt.Errorf("can not set contract to ready when swap stage is %s", swapfactory.StageToString(stage))
 	}
-	_, _, err = s.SetReady(s.ID(), s.contractSwap)
+	_, _, err = s.SetReady(types.EmptyHash, s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil

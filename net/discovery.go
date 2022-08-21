@@ -104,7 +104,7 @@ func (d *discovery) advertise() {
 	for {
 		select {
 		case <-d.advertiseCh:
-			// TODO: check current offers, as this may change
+			// TODO: check current offers, as this may change (#160)
 			d.provides = []types.ProvidesCoin{types.ProvidesXMR}
 			doAdvertise()
 		case <-time.After(ttl):

@@ -83,7 +83,7 @@ func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][
 
 	req := &rpctypes.Request{
 		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  "net_discover",
+		Method:  rpctypes.NetDiscover,
 		Params:  bz,
 		ID:      0,
 	}
@@ -128,7 +128,7 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 
 	req := &rpctypes.Request{
 		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  "net_queryPeer",
+		Method:  rpctypes.NetQueryPeer,
 		Params:  bz,
 		ID:      0,
 	}
@@ -176,7 +176,7 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 
 	req := &rpctypes.Request{
 		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  "swap_subscribeStatus",
+		Method:  rpctypes.SubscribeSwapStatus,
 		Params:  bz,
 		ID:      0,
 	}
@@ -242,7 +242,7 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 
 	req := &rpctypes.Request{
 		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  "net_takeOfferAndSubscribe",
+		Method:  rpctypes.SubscribeTakeOffer,
 		Params:  bz,
 		ID:      0,
 	}
@@ -330,7 +330,7 @@ func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
 
 	req := &rpctypes.Request{
 		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  "net_makeOfferAndSubscribe", // TODO: use const
+		Method:  rpctypes.SubscribeMakeOffer,
 		Params:  bz,
 		ID:      0,
 	}

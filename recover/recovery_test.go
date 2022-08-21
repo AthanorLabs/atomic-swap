@@ -161,10 +161,6 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 }
 
 func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
-	// if testing.Short() {
-	// 	t.Skip() // TODO: fails on CI with "no contract code at address"
-	// }
-
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -14,14 +15,6 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
-)
-
-const (
-	subscribeNewPeer    = "net_subscribeNewPeer"
-	subscribeMakeOffer  = "net_makeOfferAndSubscribe"
-	subscribeTakeOffer  = "net_takeOfferAndSubscribe"
-	subscribeSwapStatus = "swap_subscribeStatus"
-	subscribeSigner     = "signer_subscribe"
 )
 
 var upgrader = websocket.Upgrader{
@@ -87,16 +80,16 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
-	case subscribeSigner:
+	case rpctypes.SubscribeSigner:
 		var params *rpctypes.SignerRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
 		return s.handleSigner(s.ctx, conn, params.OfferID, params.EthAddress, params.XMRAddress)
-	case subscribeNewPeer:
+	case rpctypes.SubscribeNewPeer:
 		return errUnimplemented
-	case "net_discover":
+	case rpctypes.NetDiscover:
 		var params *rpctypes.DiscoverRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -109,7 +102,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		}
 
 		return writeResponse(conn, resp)
-	case "net_queryPeer":
+	case rpctypes.NetQueryPeer:
 		var params *rpctypes.QueryPeerRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -122,14 +115,14 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		}
 
 		return writeResponse(conn, resp)
-	case subscribeSwapStatus:
+	case rpctypes.SubscribeSwapStatus:
 		var params *rpctypes.SubscribeSwapStatusRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
 		return s.subscribeSwapStatus(s.ctx, conn, params.ID)
-	case subscribeTakeOffer:
+	case rpctypes.SubscribeTakeOffer:
 		var params *rpctypes.TakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -141,7 +134,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		}
 
 		return s.subscribeTakeOffer(s.ctx, conn, ch, infofile)
-	case subscribeMakeOffer:
+	case rpctypes.SubscribeMakeOffer:
 		var params *rpctypes.MakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -177,6 +170,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	}
 
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
+	defer s.backend.ClearXMRDepositAddress(offerID)
 
 	s.signer.AddID(offerID)
 	defer s.signer.DeleteID(offerID)
@@ -191,10 +185,18 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 		return err
 	}
 
+	var timeout time.Duration
+	switch s.backend.Env() {
+	case common.Mainnet, common.Stagenet:
+		timeout = time.Hour
+	case common.Development:
+		timeout = time.Minute * 5
+	}
+
 	for {
 		select {
-		// TODO: check if conn closes or swap exited
-		case <-time.After(time.Hour): // TODO: vary timeout based on env
+		// TODO: check if conn closes or swap exited (#165)
+		case <-time.After(timeout):
 			return fmt.Errorf("signer timed out")
 		case <-ctx.Done():
 			return nil

@@ -9,15 +9,16 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
-// TODO: don't hard-code this
-var claimedTopic = ethcommon.HexToHash("0x38d6042dbdae8e73a7f6afbabd3fbe0873f9f5ed3cd71294591c3908c2e65fee")
+var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
 
 type recoveryState struct {
 	ss *swapState
@@ -49,6 +50,7 @@ func NewRecoveryState(b backend.Backend, basePath string, secret *mcrypto.Privat
 		contractSwap:   contractSwap,
 		infoFile:       pcommon.GetSwapRecoveryFilepath(basePath),
 		claimedCh:      make(chan struct{}),
+		info:           pswap.NewEmptyInfo(),
 	}
 
 	rs := &recoveryState{

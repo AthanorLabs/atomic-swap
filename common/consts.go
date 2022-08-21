@@ -18,4 +18,9 @@ const (
 
 	TimeFmtSecs  = "2006-01-02-15:04:05"
 	TimeFmtNSecs = "2006-01-02-15:04:05.999999999"
+
+	// SwapFactory.sol function and event signatures
+
+	ClaimedEventSignature  = "Claimed(bytes32,bytes32)"
+	RefundedEventSignature = "Refunded(bytes32,bytes32)"
 )

@@ -112,7 +112,6 @@ func runTester(c *cli.Context) error {
 
 	isDev = c.Bool(flagDev)
 	if !isDev {
-		// TODO: add a flag to specify local endpoint
 		defaultMoneroClient = monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
 	}
 

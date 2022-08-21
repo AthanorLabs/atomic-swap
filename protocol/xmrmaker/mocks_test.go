@@ -108,6 +108,18 @@ func (mr *MockBackendMockRecorder) Claim(arg0, arg1, arg2 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Claim", reflect.TypeOf((*MockBackend)(nil).Claim), arg0, arg1, arg2)
 }
 
+// ClearXMRDepositAddress mocks base method.
+func (m *MockBackend) ClearXMRDepositAddress(arg0 types.Hash) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ClearXMRDepositAddress", arg0)
+}
+
+// ClearXMRDepositAddress indicates an expected call of ClearXMRDepositAddress.
+func (mr *MockBackendMockRecorder) ClearXMRDepositAddress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).ClearXMRDepositAddress), arg0)
+}
+
 // CloseWallet mocks base method.
 func (m *MockBackend) CloseWallet() error {
 	m.ctrl.T.Helper()

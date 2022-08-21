@@ -192,7 +192,13 @@ type ClearOffersRequest struct {
 
 // ClearOffers clears the provided offers. If there are no offers provided, it clears all offers.
 func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *interface{}) error {
-	return s.xmrmaker.ClearOffers(req.IDs)
+	err := s.xmrmaker.ClearOffers(req.IDs)
+	if err != nil {
+		return err
+	}
+
+	s.net.Advertise()
+	return nil
 }
 
 // CancelRequest ...

@@ -35,6 +35,4 @@ describe("Secp256k1", function () {
       expect(ok).to.equal(true);
     });
   });
-
-  // TODO: write test with randomly generated secrets
 });

@@ -263,13 +263,13 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	// TODO: add --external-signer option to allow front-end integration
+	// TODO: add --external-signer option to allow front-end integration (#124)
 	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, false, false)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
 	var gasPrice *big.Int
 	if c.Uint(flagGasPrice) != 0 {
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
@@ -293,7 +293,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	bcfg := &backend.Config{
 		Ctx:                  ctx,
 		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint, // TODO: only set if env=development
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
@@ -302,6 +301,10 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
+	}
+
+	if env == common.Development {
+		bcfg.MoneroDaemonEndpoint = common.DefaultMoneroDaemonEndpoint
 	}
 
 	return backend.NewBackend(bcfg)

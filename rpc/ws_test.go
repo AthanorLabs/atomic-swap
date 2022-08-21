@@ -143,6 +143,7 @@ func (*mockProtocolBackend) ExternalSender() *txsender.ExternalSender {
 }
 func (*mockProtocolBackend) SetEthAddress(ethcommon.Address)                  {}
 func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {}
+func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash)                {}
 
 func newServer(t *testing.T) *Server {
 	ctx, cancel := context.WithCancel(context.Background())

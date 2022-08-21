@@ -80,9 +80,8 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 
 	s.nextExpectedMessage = msg
 
-	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
-	if s.statusCh != nil {
+	if s.statusCh != nil && stage != types.UnknownStatus {
 		s.statusCh <- stage
 	}
 }
@@ -240,7 +239,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	if s.Env() != common.Development {
 		log.Infof("waiting for new blocks...")
 		// wait for 2 new blocks, otherwise balance might be 0
-		// TODO: check transaction hash
+		// TODO: check transaction hash (#164)
 		height, err := monero.WaitForBlocks(s.Backend, 2)
 		if err != nil {
 			return nil, err
@@ -283,10 +282,16 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 
 	log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.Env()), balance.Balance)
 
-	// TODO: also check that the balance isn't unlocked only after an unreasonable amount of blocks
 	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
 		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
 			balance.Balance, float64(s.receivedAmountInPiconero()))
+	}
+
+	// also check that the balance isn't unlocked only after an unreasonable amount of blocks
+	// somewhat arbitrarily chosen as 10x the default unlock time
+	// maybe make this configurable?
+	if balance.BlocksToUnlock > 100 {
+		return nil, fmt.Errorf("locked XMR unlocks too far into the future: got %d blocks", balance.BlocksToUnlock)
 	}
 
 	if err := s.CloseWallet(); err != nil {
@@ -328,7 +333,8 @@ func (s *swapState) runT1ExpirationHandler() {
 		return
 	case err := <-waitCh:
 		if err != nil {
-			// TODO: Do we propagate this error? If we retry, the logic should probably be inside WaitForTimestamp.
+			// TODO: Do we propagate this error? If we retry, the logic should probably be inside
+			// WaitForTimestamp. (#162)
 			log.Errorf("Failure waiting for T1 timeout: err=%s", err)
 			return
 		}
@@ -352,7 +358,6 @@ func (s *swapState) handleT1Expired() {
 	}
 
 	log.Infof("got our ETH back: tx hash=%s", txhash)
-	s.clearNextExpectedMessage(types.CompletedRefund) // TODO: duplicate?
 
 	// send NotifyRefund msg
 	if err = s.SendSwapMessage(&message.NotifyRefund{

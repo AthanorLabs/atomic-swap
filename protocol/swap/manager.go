@@ -21,21 +21,33 @@ type Info struct {
 	statusCh       <-chan types.Status
 }
 
+// NewInfo ...
+func NewInfo(id types.Hash, provides types.ProvidesCoin, providedAmount, receivedAmount float64,
+	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
+	info := &Info{
+		id:             id,
+		provides:       provides,
+		providedAmount: providedAmount,
+		receivedAmount: receivedAmount,
+		exchangeRate:   exchangeRate,
+		status:         status,
+		statusCh:       statusCh,
+	}
+	return info
+}
+
+// NewEmptyInfo returns an empty *Info
+func NewEmptyInfo() *Info {
+	return &Info{}
+}
+
 // ID returns the swap ID.
 func (i *Info) ID() types.Hash {
-	if i == nil {
-		return types.Hash{} // TODO: does this ever happen??
-	}
-
 	return i.id
 }
 
 // Provides returns the coin that was provided for this swap.
 func (i *Info) Provides() types.ProvidesCoin {
-	if i == nil {
-		return ""
-	}
-
 	return i.provides
 }
 
@@ -56,10 +68,6 @@ func (i *Info) ExchangeRate() types.ExchangeRate {
 
 // Status returns the swap's status.
 func (i *Info) Status() Status {
-	if i == nil {
-		return 0
-	}
-
 	return i.status
 }
 
@@ -70,26 +78,7 @@ func (i *Info) StatusCh() <-chan types.Status {
 
 // SetStatus ...
 func (i *Info) SetStatus(s Status) {
-	if i == nil {
-		return
-	}
-
 	i.status = s
-}
-
-// NewInfo ...
-func NewInfo(id types.Hash, provides types.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
-	info := &Info{
-		id:             id,
-		provides:       provides,
-		providedAmount: providedAmount,
-		receivedAmount: receivedAmount,
-		exchangeRate:   exchangeRate,
-		status:         status,
-		statusCh:       statusCh,
-	}
-	return info
 }
 
 // Manager tracks current and past swaps.
