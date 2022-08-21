@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/dleq"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
@@ -49,6 +50,7 @@ func NewRecoveryState(b backend.Backend, basePath string, secret *mcrypto.Privat
 		contractSwap:   contractSwap,
 		infoFile:       pcommon.GetSwapRecoveryFilepath(basePath),
 		claimedCh:      make(chan struct{}),
+		info:           pswap.NewEmptyInfo(),
 	}
 
 	rs := &recoveryState{
