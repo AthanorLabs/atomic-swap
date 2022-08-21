@@ -56,7 +56,8 @@ func newSwap(
 
 	nonce := big.NewInt(0)
 	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
-	tx, err = contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress, tm, nonce)
+	tx, err = contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress, tm,
+		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt := tests.MineTransaction(t, ec, tx)
 

@@ -186,6 +186,7 @@ type ContractSwap struct {
 	PubKeyRefund [32]byte
 	Timeout0     *big.Int
 	Timeout1     *big.Int
+	Asset        ethcommon.Address
 	Value        *big.Int
 	Nonce        *big.Int
 }

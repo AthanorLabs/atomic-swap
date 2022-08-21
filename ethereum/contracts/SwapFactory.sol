@@ -39,12 +39,12 @@ contract SwapFactory is Secp256k1 {
 
         // timestamp after which Bob cannot claim, only Alice can refund.
         uint256 timeout_1;
-
-        // the value of this swap.
-        uint256 value;
         
         // the asset being swapped: equal to address(0) for ETH, or an ERC-20 token address
         address asset;
+
+        // the value of this swap.
+        uint256 value;
 
         // choose random
         uint256 nonce;
@@ -69,10 +69,10 @@ contract SwapFactory is Secp256k1 {
     ) public payable returns (bytes32) {
 
         Swap memory swap;
-        swap.owner = payable(msg.sender); 
-        swap.claimer = _claimer;
+        swap.owner = payable(msg.sender);
         swap.pubKeyClaim = _pubKeyClaim;
         swap.pubKeyRefund = _pubKeyRefund;
+        swap.claimer = _claimer;
         swap.timeout_0 = block.timestamp + _timeoutDuration;
         swap.timeout_1 = block.timestamp + (_timeoutDuration * 2);
         swap.asset = _asset;

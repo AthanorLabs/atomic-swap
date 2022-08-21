@@ -131,7 +131,8 @@ func (s *ExternalSender) DeleteID(id types.Hash) {
 func (s *ExternalSender) NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int,
 	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	input, err := s.abi.Pack("new_swap", _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
+	input, err := s.abi.Pack("new_swap", _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
+		ethcommon.HexToAddress("0x0000000000000000000000000000000000000000"), value, _nonce)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}

@@ -44,7 +44,7 @@ func TestSwapFactory_NewSwap(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, [32]byte{},
-		ethcommon.Address{}, defaultTimeoutDuration, nonce)
+		ethcommon.Address{}, defaultTimeoutDuration, ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-		defaultTimeoutDuration, nonce)
+		defaultTimeoutDuration, ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -101,6 +101,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 		PubKeyRefund: [32]byte{},
 		Timeout0:     t0,
 		Timeout1:     t1,
+		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -148,7 +149,7 @@ func TestSwap_Claim_random(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-		defaultTimeoutDuration, nonce)
+		defaultTimeoutDuration, ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -168,6 +169,7 @@ func TestSwap_Claim_random(t *testing.T) {
 		PubKeyRefund: [32]byte{},
 		Timeout0:     t0,
 		Timeout1:     t1,
+		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -217,7 +219,8 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, nonce)
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration,
+		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -237,6 +240,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
+		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -280,7 +284,8 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	timeout := big.NewInt(1) // T1 expires before we get the receipt for new_swap TX
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout, nonce)
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout,
+		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -300,6 +305,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
+		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -380,6 +386,7 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 			PubKeyRefund: [32]byte{}, // no one calls refund in this test
 			Timeout0:     nil,        // timeouts initialised when swap is created
 			Timeout1:     nil,
+			Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
 			Value:        big.NewInt(0),
 			Nonce:        big.NewInt(int64(i)),
 		}
@@ -400,6 +407,8 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 				sc.swap.PubKeyRefund,
 				sc.swap.Claimer,
 				defaultTimeoutDuration,
+				ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+				big.NewInt(0),
 				sc.swap.Nonce,
 			)
 			require.NoError(t, err)

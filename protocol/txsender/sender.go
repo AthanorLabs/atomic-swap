@@ -61,7 +61,8 @@ func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyR
 	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 	txOpts.Value = value
-	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
+	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
+		ethcommon.HexToAddress("0x0000000000000000000000000000000000000000"), value, _nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
