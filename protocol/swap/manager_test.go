@@ -10,7 +10,7 @@ import (
 
 func TestManager_AddSwap_Ongoing(t *testing.T) {
 	m := NewManager().(*manager)
-	info := NewInfo(types.Hash{}, types.ProvidesXMR, 1, 1, 0.1, types.ExpectingKeys, nil)
+	info := NewInfo(types.Hash{}, types.ProvidesXMR, 1, 1, 0.1, types.EthAssetETH, types.ExpectingKeys, nil)
 
 	err := m.AddSwap(info)
 	require.NoError(t, err)

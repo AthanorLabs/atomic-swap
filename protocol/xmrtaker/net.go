@@ -18,7 +18,7 @@ func (a *Instance) Provides() types.ProvidesCoin {
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
 	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
-		offer.ExchangeRate, offer.GetID())
+		offer.ExchangeRate, offer.EthAsset, offer.GetID())
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 }
 
 func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
-	exchangeRate types.ExchangeRate, offerID types.Hash) (*swapState, error) {
+	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
 
@@ -46,7 +46,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 	}
 
 	s, err := newSwapState(a.backend, offerID, pcommon.GetSwapInfoFilepath(a.basepath), a.transferBack,
-		providesAmount, receivedAmount, exchangeRate)
+		providesAmount, receivedAmount, exchangeRate, ethAsset)
 	if err != nil {
 		return nil, err
 	}

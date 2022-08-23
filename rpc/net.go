@@ -227,6 +227,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.O
 		req.MinimumAmount,
 		req.MaximumAmount,
 		req.ExchangeRate,
+		req.EthAsset,
 	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(o)

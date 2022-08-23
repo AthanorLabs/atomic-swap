@@ -56,6 +56,8 @@ type swapState struct {
 	xmrmakerSecp256k1PublicKey *secp256k1.PublicKey
 	xmrmakerAddress            ethcommon.Address
 
+	ethAsset types.EthAsset
+
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
 	contractSwap   swapfactory.SwapFactorySwap
@@ -73,7 +75,7 @@ type swapState struct {
 
 func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
 	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
-	exchangeRate types.ExchangeRate) (*swapState, error) {
+	exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (*swapState, error) {
 	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
@@ -87,7 +89,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
 	info := pswap.NewInfo(offerID, types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
-		exchangeRate, stage, statusCh)
+		exchangeRate, ethAsset, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -109,6 +111,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		done:                make(chan struct{}),
 		info:                info,
 		statusCh:            statusCh,
+		ethAsset:            ethAsset,
 	}
 
 	if err := pcommon.WriteContractAddressToFile(s.infoFile, b.ContractAddr().String()); err != nil {
@@ -426,7 +429,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 
 	nonce := generateNonce()
 	txHash, receipt, err := s.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
-		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, amount.BigInt())
+		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, types.EthAsset(s.ethAsset), amount.BigInt())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}

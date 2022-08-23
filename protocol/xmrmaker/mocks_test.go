@@ -10,7 +10,7 @@ import (
 	reflect "reflect"
 	time "time"
 
-	"github.com/MarinX/monerorpc/wallet"
+	wallet "github.com/MarinX/monerorpc/wallet"
 	ethereum "github.com/ethereum/go-ethereum"
 	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	common "github.com/ethereum/go-ethereum/common"
@@ -394,9 +394,9 @@ func (mr *MockBackendMockRecorder) Net() *gomock.Call {
 }
 
 // NewSwap mocks base method.
-func (m *MockBackend) NewSwap(arg0 types0.Hash, arg1, arg2 [32]byte, arg3 common.Address, arg4, arg5, arg6 *big.Int) (common.Hash, *types.Receipt, error) {
+func (m *MockBackend) NewSwap(arg0 types0.Hash, arg1, arg2 [32]byte, arg3 common.Address, arg4, arg5 *big.Int, arg6 types0.EthAsset, arg7 *big.Int) (common.Hash, *types.Receipt, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(common.Hash)
 	ret1, _ := ret[1].(*types.Receipt)
 	ret2, _ := ret[2].(error)
@@ -404,9 +404,9 @@ func (m *MockBackend) NewSwap(arg0 types0.Hash, arg1, arg2 [32]byte, arg3 common
 }
 
 // NewSwap indicates an expected call of NewSwap.
-func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwap", reflect.TypeOf((*MockBackend)(nil).NewSwap), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwap", reflect.TypeOf((*MockBackend)(nil).NewSwap), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 }
 
 // NewSwapFactory mocks base method.

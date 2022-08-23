@@ -97,7 +97,7 @@ func generateBlocksAsync() {
 
 func TestXMRTaker_Discover(t *testing.T) {
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	defer func() {
 		err = bc.ClearOffers(nil)
@@ -120,7 +120,7 @@ func TestXMRMaker_Discover(t *testing.T) {
 
 func TestXMRTaker_Query(t *testing.T) {
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	defer func() {
 		err = bc.ClearOffers(nil)
@@ -707,7 +707,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	defer cancel()
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	defer func() {
 		err = bc.ClearOffers(nil)

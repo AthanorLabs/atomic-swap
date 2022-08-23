@@ -9,7 +9,7 @@ import (
 )
 
 // MakeOffer calls net_makeOffer.
-func (c *Client) MakeOffer(min, max, exchangeRate float64) (string, error) {
+func (c *Client) MakeOffer(min, max, exchangeRate float64, ethAsset types.EthAsset) (string, error) {
 	const (
 		method = "net_makeOffer"
 	)
@@ -18,6 +18,7 @@ func (c *Client) MakeOffer(min, max, exchangeRate float64) (string, error) {
 		MinimumAmount: min,
 		MaximumAmount: max,
 		ExchangeRate:  types.ExchangeRate(exchangeRate),
+		EthAsset:      ethAsset,
 	}
 
 	params, err := json.Marshal(req)

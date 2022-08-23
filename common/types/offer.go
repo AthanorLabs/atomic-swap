@@ -41,10 +41,11 @@ type Offer struct {
 	MinimumAmount float64
 	MaximumAmount float64
 	ExchangeRate  ExchangeRate
+	EthAsset      EthAsset
 }
 
 // NewOffer creates and returns an Offer with an initialised id field
-func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate ExchangeRate) *Offer {
+func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate ExchangeRate, ethAsset EthAsset) *Offer {
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
 		panic(err)
@@ -55,6 +56,7 @@ func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate Ex
 		MinimumAmount: minAmount,
 		MaximumAmount: maxAmount,
 		ExchangeRate:  exRate,
+		EthAsset:      ethAsset,
 	}
 }
 
@@ -68,12 +70,13 @@ func (o *Offer) GetID() Hash {
 
 // String ...
 func (o *Offer) String() string {
-	return fmt.Sprintf("Offer ID=%s Provides=%v MinimumAmount=%v MaximumAmount=%v ExchangeRate=%v",
+	return fmt.Sprintf("Offer ID=%s Provides=%v MinimumAmount=%v MaximumAmount=%v ExchangeRate=%v EthAsset=%v",
 		o.id,
 		o.Provides,
 		o.MinimumAmount,
 		o.MaximumAmount,
 		o.ExchangeRate,
+		o.EthAsset,
 	)
 }
 
@@ -85,12 +88,14 @@ func (o Offer) MarshalJSON() ([]byte, error) {
 		MinimumAmount float64
 		MaximumAmount float64
 		ExchangeRate  ExchangeRate
+		EthAsset      EthAsset
 	}{
 		ID:            o.id.String(),
 		Provides:      o.Provides,
 		MinimumAmount: o.MinimumAmount,
 		MaximumAmount: o.MaximumAmount,
 		ExchangeRate:  o.ExchangeRate,
+		EthAsset:      o.EthAsset,
 	})
 }
 
@@ -102,6 +107,7 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 		MinimumAmount float64
 		MaximumAmount float64
 		ExchangeRate  ExchangeRate
+		EthAsset      EthAsset
 	}{}
 	if err := json.Unmarshal(data, &ou); err != nil {
 		return err
@@ -118,6 +124,7 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 	o.MinimumAmount = ou.MinimumAmount
 	o.MaximumAmount = ou.MaximumAmount
 	o.ExchangeRate = ou.ExchangeRate
+	o.EthAsset = ou.EthAsset
 	return nil
 }
 

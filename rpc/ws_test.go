@@ -77,6 +77,7 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) *swap.Info {
 		1,
 		1,
 		1,
+		types.EthAssetETH,
 		types.CompletedSuccess,
 		statusCh,
 	)

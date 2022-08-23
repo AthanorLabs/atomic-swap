@@ -21,7 +21,7 @@ type Sender interface {
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
 	NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
-		_timeoutDuration *big.Int, _nonce *big.Int, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
+		_timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
 	SetReady(id types.Hash, _swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
 	Claim(id types.Hash, _swap swapfactory.SwapFactorySwap,
 		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
@@ -55,14 +55,14 @@ func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
 func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 
 func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
-	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int,
+	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
 	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txLock.Lock()
 	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 	txOpts.Value = value
 	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
-		ethcommon.HexToAddress("0x0000000000000000000000000000000000000000"), value, _nonce)
+		ethcommon.Address(_ethAsset), value, _nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err

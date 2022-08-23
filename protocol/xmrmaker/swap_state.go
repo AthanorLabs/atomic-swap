@@ -94,7 +94,7 @@ func newSwapState(
 	}
 	statusCh <- stage
 	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, stage, statusCh)
+		exchangeRate, offer.EthAsset, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}

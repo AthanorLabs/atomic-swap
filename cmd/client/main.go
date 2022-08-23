@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/rpcclient"
 	"github.com/noot/atomic-swap/rpcclient/wsclient"
@@ -85,6 +86,10 @@ var (
 					&cli.BoolFlag{
 						Name:  "subscribe",
 						Usage: "subscribe to push notifications about the swap's status",
+					},
+					&cli.StringFlag{
+						Name:  "eth-asset",
+						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
 					daemonAddrFlag,
 				},
@@ -334,8 +339,14 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
+	ethAssetStr := ctx.String("eth-asset")
+	ethAsset := types.EthAsset(common.HexToAddress("0x0000000000000000000000000000000000000000"))
+	if ethAssetStr != "" {
+		ethAsset = types.EthAsset(common.HexToAddress(ethAssetStr))
+	}
+
 	c := rpcclient.NewClient(endpoint)
-	id, err := c.MakeOffer(min, max, exchangeRate)
+	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset)
 	if err != nil {
 		return err
 	}
