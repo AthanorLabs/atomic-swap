@@ -15,7 +15,7 @@ start-bob-wallet
 sleep 5
 
 start-swapd() {
-	local swapd_user="${1}"
+	local swapd_user="${1:?}"
 	local swapd_flags=("${@:2}")
 	echo "Starting ${swapd_user^}'s swapd, logs in ${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 	./swapd "${swapd_flags[@]}" &>"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log" &
