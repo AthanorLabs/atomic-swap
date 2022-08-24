@@ -306,6 +306,7 @@ func (d *daemon) make(c *cli.Context) error {
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
+		Basepath:    cfg.Basepath,
 		ChainID:     chainID,
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
