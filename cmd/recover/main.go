@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -141,7 +140,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		return errMustProvideInfoFile
 	}
 
-	infofileBytes, err := ioutil.ReadFile(filepath.Clean(infofilePath))
+	infofileBytes, err := os.ReadFile(filepath.Clean(infofilePath))
 	if err != nil {
 		return err
 	}

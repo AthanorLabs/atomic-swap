@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	os.Exit(0)
 }
 
-var defaultPort uint16 = 5001
+var defaultPort uint16 = 5009
 var testID = types.Hash{99}
 
 type mockHandler struct {
@@ -59,9 +59,13 @@ func (s *mockSwapState) Exit() error {
 }
 
 func newHost(t *testing.T, port uint16) *host {
+	dir, err := os.MkdirTemp(os.TempDir(), "atomicswap*")
+	require.NoError(t, err)
+
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
+		Basepath:    dir,
 		ChainID:     common.GanacheChainID,
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
@@ -71,6 +75,9 @@ func newHost(t *testing.T, port uint16) *host {
 
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = h.Stop()
+	})
 	return h
 }
 
