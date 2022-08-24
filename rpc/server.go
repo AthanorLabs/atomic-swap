@@ -79,9 +79,9 @@ func (s *Server) Start() <-chan error {
 		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 		originsOk := handlers.AllowedOrigins([]string{"*"})
 
-		log.Infof("starting RPC server on http://localhost:%d", s.port)
+		log.Infof("starting RPC server on http://127.0.0.1:%d", s.port)
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
+		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
 			log.Errorf("failed to start http RPC server: %s", err)
 			errCh <- err
 		}
@@ -95,9 +95,9 @@ func (s *Server) Start() <-chan error {
 		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 		originsOk := handlers.AllowedOrigins([]string{"*"})
 
-		log.Infof("starting websockets server on ws://localhost:%d", s.wsPort)
+		log.Infof("starting websockets server on ws://127.0.0.1:%d", s.wsPort)
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
+		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
 			log.Errorf("failed to start websockets RPC server: %s", err)
 			errCh <- err
 		}

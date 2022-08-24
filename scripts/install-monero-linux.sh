@@ -1,10 +1,17 @@
 #!/bin/bash
-
+#
+# Installs the latest version of monero CLI tools. You can force a reinstall or upgrade by
+# deleting the monero-bin symlink or the version specific folder that it links to. This
+# script changes directories and should be executed, not sourced.
+#
 arch=linux64
 
+PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+cd "${PROJECT_ROOT}"
+
 if [[ -d "monero-bin" ]]; then
-    echo "$(dirname $(realpath monero-bin)) already installed"
-    exit 0
+	echo "$(dirname "$(realpath monero-bin)") already installed"
+	exit 0
 fi
 
 set -e
