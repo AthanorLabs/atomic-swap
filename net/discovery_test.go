@@ -24,12 +24,6 @@ func TestHost_Discover(t *testing.T) {
 	err = hc.Start()
 	require.NoError(t, err)
 
-	defer func() {
-		_ = ha.Stop()
-		_ = hb.Stop()
-		_ = hc.Stop()
-	}()
-
 	// connect a + b and b + c, see if c can discover a via DHT
 	err = ha.h.Connect(ha.ctx, hb.addrInfo())
 	require.NoError(t, err)

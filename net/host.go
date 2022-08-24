@@ -226,6 +226,10 @@ func (h *host) Stop() error {
 		return err
 	}
 
+	if err := h.h.Close(); err != nil {
+		return fmt.Errorf("failed to close libp2p host: %w", err)
+	}
+
 	err := h.h.Peerstore().Close()
 	if err != nil {
 		return fmt.Errorf("failed to close peerstore: %w", err)
@@ -234,10 +238,6 @@ func (h *host) Stop() error {
 	err = h.ds.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close libp2p datastore: %w", err)
-	}
-
-	if err := h.h.Close(); err != nil {
-		return fmt.Errorf("failed to close libp2p host: %w", err)
 	}
 
 	return nil
