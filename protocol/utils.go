@@ -31,6 +31,7 @@ func ConvertContractSwapToMsg(swap swapfactory.SwapFactorySwap) *message.Contrac
 		PubKeyRefund: swap.PubKeyRefund,
 		Timeout0:     swap.Timeout0,
 		Timeout1:     swap.Timeout1,
+		Asset:        swap.Asset,
 		Value:        swap.Value,
 		Nonce:        swap.Nonce,
 	}

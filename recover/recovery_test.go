@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	mcrypto "github.com/noot/atomic-swap/crypto/monero"
 	pcommon "github.com/noot/atomic-swap/protocol"
 	"github.com/noot/atomic-swap/protocol/backend"
@@ -57,7 +58,7 @@ func newSwap(
 	nonce := big.NewInt(0)
 	xmrmakerAddress := common.EthereumPrivateKeyToAddress(pkXMRMaker)
 	tx, err = contract.NewSwap(txOpts, claimKey, refundKey, xmrmakerAddress, tm,
-		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
+		ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt := tests.MineTransaction(t, ec, tx)
 
@@ -75,6 +76,7 @@ func newSwap(
 		PubKeyRefund: refundKey,
 		Timeout0:     t0,
 		Timeout1:     t1,
+		Asset:        ethcommon.Address(types.EthAssetETH),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}

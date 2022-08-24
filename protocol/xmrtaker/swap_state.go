@@ -56,6 +56,7 @@ type swapState struct {
 	xmrmakerSecp256k1PublicKey *secp256k1.PublicKey
 	xmrmakerAddress            ethcommon.Address
 
+	// ETH asset being swapped
 	ethAsset types.EthAsset
 
 	// swap contract and timeouts in it; set once contract is deployed
@@ -434,19 +435,35 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
-	log.Debugf("instantiated swap on-chain: amount=%s txHash=%s", amount, txHash)
+	log.Debugf("instantiated swap on-chain: amount=%s asset=%v txHash=%s", amount, s.ethAsset, txHash)
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
 	}
 
-	s.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
+	log.Debugf("About to get the id from the log")
+	log.Debugf("log: %v", log)
+	for _, rLog := range receipt.Logs {
+		s.contractSwapID, err = swapfactory.GetIDFromLog(rLog)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
+		log.Debugf("swap ID not found in transaction receipt's logs")
 		return ethcommon.Hash{}, err
 	}
 
-	t0, t1, err := swapfactory.GetTimeoutsFromLog(receipt.Logs[0])
+	var t0 *big.Int
+	var t1 *big.Int
+	for _, log := range receipt.Logs {
+		t0, t1, err = swapfactory.GetTimeoutsFromLog(log)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
+		log.Debugf("timeouts not found in transaction receipt's logs")
 		return ethcommon.Hash{}, err
 	}
 
@@ -459,6 +476,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		PubKeyRefund: cmtXMRTaker,
 		Timeout0:     t0,
 		Timeout1:     t1,
+		Asset:        ethcommon.Address(s.ethAsset),
 		Value:        amount.BigInt(),
 		Nonce:        nonce,
 	}

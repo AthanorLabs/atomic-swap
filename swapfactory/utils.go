@@ -102,12 +102,17 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, err
 
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
+
 	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return [32]byte{}, err
 	}
 
 	const event = "New"
+	if log.Topics[0] != abi.Events[event].ID {
+		// Wrong log
+		return [32]byte{}, errors.New("wrong log topic")
+	}
 
 	data := log.Data
 	res, err := abi.Unpack(event, data)
@@ -131,6 +136,10 @@ func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
 	}
 
 	const event = "New"
+	if log.Topics[0] != abi.Events[event].ID {
+		// Wrong log
+		return nil, nil, errors.New("wrong log topic")
+	}
 
 	data := log.Data
 	res, err := abi.Unpack(event, data)
@@ -145,5 +154,4 @@ func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
 	t0 := res[3].(*big.Int)
 	t1 := res[4].(*big.Int)
 	return t0, t1, nil
-
 }

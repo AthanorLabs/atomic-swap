@@ -52,7 +52,7 @@ contract SwapFactory is Secp256k1 {
 
     mapping(bytes32 => Stage) public swaps;
 
-    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey, uint256 timeout_0, uint256 timeout_1, address asset);
+    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey, uint256 timeout_0, uint256 timeout_1, address asset, uint256 value);
     event Ready(bytes32 swapID);
     event Claimed(bytes32 swapID, bytes32 s);
     event Refunded(bytes32 swapID, bytes32 s);
@@ -93,7 +93,7 @@ contract SwapFactory is Secp256k1 {
         // make sure this isn't overriding an existing swap
         require(swaps[swapID] == Stage.INVALID);
 
-        emit New(swapID, _pubKeyClaim, _pubKeyRefund, swap.timeout_0, swap.timeout_1, swap.asset);
+        emit New(swapID, _pubKeyClaim, _pubKeyRefund, swap.timeout_0, swap.timeout_1, swap.asset, swap.value);
         swaps[swapID] = Stage.PENDING;
         return swapID;
     }

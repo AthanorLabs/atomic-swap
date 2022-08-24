@@ -147,8 +147,9 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 
 	ethAddr := ss.EthAddress()
 	nonce := big.NewInt(0)
+	asset := types.EthAssetETH
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
-		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), amount, nonce)
+		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
 	receipt := tests.MineTransaction(t, ss, tx)
 
@@ -166,7 +167,7 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 		PubKeyRefund: refundKey,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+		Asset:        ethcommon.Address(asset),
 		Value:        amount,
 		Nonce:        nonce,
 	}

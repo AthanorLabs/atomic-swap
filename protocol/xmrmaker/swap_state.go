@@ -448,14 +448,25 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
 	}
 
+	if receipt.Status == 0 {
+		// swap transaction reverted
+		return errLockTxReverted
+	}
+
 	// check that New log was emitted
 	if len(receipt.Logs) == 0 {
 		return errCannotFindNewLog
 	}
 
-	event, err := s.Contract().ParseNew(*receipt.Logs[0])
+	var event *swapfactory.SwapFactoryNew
+	for _, log := range receipt.Logs {
+		event, err = s.Contract().ParseNew(*log)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
-		return err
+		return errCannotFindNewLog
 	}
 
 	if !bytes.Equal(event.SwapID[:], s.contractSwapID[:]) {
@@ -475,11 +486,14 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 
 	// TODO: check timeouts
 
+	// check asset of created swap
+	if types.EthAsset(s.contractSwap.Asset) != types.EthAsset(event.Asset) {
+		return fmt.Errorf("swap asset is not expected: got %v, expected %v", event.Asset, s.contractSwap.Asset)
+	}
+
 	// check value of created swap
-	value := s.contractSwap.Value
-	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
-	if value.Cmp(expected) < 0 {
-		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", value, expected)
+	if s.contractSwap.Value.Cmp(event.Value) != 0 {
+		return fmt.Errorf("swap value is not expected: got %v, expected %v", event.Value, s.contractSwap.Value)
 	}
 
 	return nil
@@ -547,7 +561,11 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
+		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	} else {
+		// TODO: Check balance of ERC-20 token
+	}
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
@@ -564,6 +582,10 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
+		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	} else {
+		// TODO: Check ERC-20 balance
+	}
 	return txHash, nil
 }

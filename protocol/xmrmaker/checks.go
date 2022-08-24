@@ -74,6 +74,7 @@ func checkContractSwapID(msg *message.NotifyETHLocked) error {
 
 	hash := crypto.Keccak256Hash(args)
 	if !bytes.Equal(hash[:], msg.ContractSwapID[:]) {
+		log.Debugf("swap hash mismatch, expected args=%v\n", args)
 		return errSwapIDMismatch
 	}
 
