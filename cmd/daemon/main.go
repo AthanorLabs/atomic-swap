@@ -303,6 +303,18 @@ func (d *daemon) make(c *cli.Context) error {
 		libp2pPort = defaultLibp2pPort
 	}
 
+	exists, err := common.Exists(cfg.Basepath)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		err = common.MakeDir(cfg.Basepath)
+		if err != nil {
+			return err
+		}
+	}
+
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,

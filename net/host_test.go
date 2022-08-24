@@ -83,6 +83,4 @@ func TestNewHost(t *testing.T) {
 	h := newHost(t, defaultPort)
 	err := h.Start()
 	require.NoError(t, err)
-	err = h.Stop()
-	require.NoError(t, err)
 }

@@ -65,8 +65,8 @@ func newTestContext(t *testing.T, description string, flags []string, values []i
 func TestDaemon_DevXMRTaker(t *testing.T) {
 	c := newTestContext(t,
 		"test --dev-xmrtaker",
-		[]string{flagDevXMRTaker},
-		[]interface{}{true},
+		[]string{flagDevXMRTaker, flagBasepath},
+		[]interface{}{true, t.TempDir()},
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -84,8 +84,8 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 func TestDaemon_DevXMRMaker(t *testing.T) {
 	c := newTestContext(t,
 		"test --dev-xmrmaker",
-		[]string{flagDevXMRMaker, flagDeploy},
-		[]interface{}{true, true},
+		[]string{flagDevXMRMaker, flagDeploy, flagBasepath},
+		[]interface{}{true, true, t.TempDir()},
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

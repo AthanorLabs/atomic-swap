@@ -14,6 +14,8 @@ import (
 )
 
 const (
+	// TODO: just move all the flags to here, or their own package? there's a lot of duplicate ones
+	flagBasepath        = "basepath"
 	flagEthereumPrivKey = "ethereum-privkey"
 	flagEnv             = "env"
 )
@@ -71,6 +73,11 @@ func GetEnvironment(c *cli.Context) (env common.Environment, cfg common.Config, 
 		cfg = common.DevelopmentConfig
 	default:
 		return 0, common.Config{}, errInvalidEnv
+	}
+
+	basepath := c.String(flagBasepath)
+	if basepath != "" {
+		cfg.Basepath = basepath
 	}
 
 	return env, cfg, nil
