@@ -12,11 +12,28 @@ $(DLEQ_LIB):
 .PHONY: init
 init: $(DLEQ_LIB)
 
-.PHONY: lint
-lint: init
+.PHONY: lint-go
+lint-go: init
 	./scripts/install-lint.sh
 	${GOPATH}/bin/golangci-lint run
+
+.PHONY: lint-shell
+lint-shell: init
 	shellcheck scripts/*.sh
+
+.PHONY: lint
+lint: lint-go lint-shell
+
+.PHONY: format-go
+format-go:
+	go fmt ./...
+
+.PHONY: format-shell
+format-shell:
+	shfmt -w scripts/*.sh
+
+.PHONY: format
+format: format-go format-shell
 
 .PHONY: test
 test: init
@@ -48,11 +65,6 @@ bindings:
 .PHONY: mock
 mock:
 	go generate -run mockgen ./...
-
-.PHONY: format
-format:
-	go fmt ./...
-	shfmt -w scripts/*.sh
 
 .PHONY: clean
 clean:
