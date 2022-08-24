@@ -127,15 +127,15 @@ func (d *discovery) discover(provides types.ProvidesCoin,
 		return nil, err
 	}
 
-	timer := time.After(searchTime)
+	timer := time.NewTicker(searchTime)
 	peers := []peer.AddrInfo{}
 
 	for {
 		select {
 		case <-d.ctx.Done():
-			//timer.Stop()
+			timer.Stop()
 			return peers, d.ctx.Err()
-		case <-timer:
+		case <-timer.C:
 			return peers, nil
 		case peer := <-peerCh:
 			if peer.ID == d.h.ID() || peer.ID == "" {

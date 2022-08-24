@@ -9,9 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testAdvertisementSleepDuration = time.Second
-)
+var testAdvertisementSleepDuration = time.Millisecond * 100
 
 func TestHost_Discover(t *testing.T) {
 	ha := newHost(t, defaultPort)
