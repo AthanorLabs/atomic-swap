@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	// TODO: just move all the flags to here, or their own package? there's a lot of duplicate ones
 	flagEthereumPrivKey = "ethereum-privkey"
 	flagEnv             = "env"
 )

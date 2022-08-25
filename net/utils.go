@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	mrand "math/rand"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func generateKey(seed int64, fp string) (crypto.PrivKey, error) {
 
 // loadKey attempts to load a private key from the provided filepath
 func loadKey(fp string) (crypto.PrivKey, error) {
-	keyData, err := ioutil.ReadFile(filepath.Clean(fp))
+	keyData, err := os.ReadFile(filepath.Clean(fp))
 	if err != nil {
 		return nil, err
 	}

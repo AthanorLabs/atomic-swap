@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testAdvertisementSleepDuration = time.Millisecond * 100
+
 func TestHost_Discover(t *testing.T) {
 	ha := newHost(t, defaultPort)
 	err := ha.Start()
@@ -20,24 +22,23 @@ func TestHost_Discover(t *testing.T) {
 	err = hc.Start()
 	require.NoError(t, err)
 
-	defer func() {
-		_ = ha.Stop()
-		_ = hb.Stop()
-		_ = hc.Stop()
-	}()
-
 	// connect a + b and b + c, see if c can discover a via DHT
 	err = ha.h.Connect(ha.ctx, hb.addrInfo())
 	require.NoError(t, err)
 
-	err = hc.h.Connect(ha.ctx, hb.addrInfo())
+	err = hc.h.Connect(hc.ctx, hb.addrInfo())
 	require.NoError(t, err)
 
+	require.GreaterOrEqual(t, len(ha.h.Network().Peers()), 1)
+	require.GreaterOrEqual(t, len(hb.h.Network().Peers()), 2)
+	require.GreaterOrEqual(t, len(hc.h.Network().Peers()), 1)
+
 	ha.Advertise()
-	time.Sleep(initialAdvertisementTimeout)
+	hb.Advertise()
+	hc.Advertise()
+	time.Sleep(testAdvertisementSleepDuration)
 
 	peers, err := hc.Discover(types.ProvidesXMR, time.Second)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(peers))
-	require.Equal(t, ha.h.ID(), peers[0].ID)
+	require.GreaterOrEqual(t, len(peers), 1)
 }

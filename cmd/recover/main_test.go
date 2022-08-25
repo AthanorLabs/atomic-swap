@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -123,7 +122,7 @@ func createInfoFile(t *testing.T, kpA, kpB *mcrypto.PrivateKeyPair, contractAddr
 	bz, err := json.MarshalIndent(infofile, "", "\t")
 	require.NoError(t, err)
 	filepath := path.Join(t.TempDir(), "test-infofile.txt")
-	err = ioutil.WriteFile(filepath, bz, os.ModePerm)
+	err = os.WriteFile(filepath, bz, os.ModePerm)
 	require.NoError(t, err)
 	return filepath
 }
