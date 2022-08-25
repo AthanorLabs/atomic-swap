@@ -49,6 +49,10 @@ const (
 
 var (
 	log = logging.Logger("cmd")
+
+	// default dev basepaths
+	defaultXMRMakerBasepath = os.TempDir() + "/xmrmaker"
+	defaultXMRTakerBasepath = os.TempDir() + "/xmrtaker"
 )
 
 const (
@@ -301,6 +305,17 @@ func (d *daemon) make(c *cli.Context) error {
 		libp2pPort = defaultXMRMakerLibp2pPort
 	default:
 		libp2pPort = defaultLibp2pPort
+	}
+
+	// basepath is already set in default case
+	basepath := c.String(flagBasepath)
+	switch {
+	case basepath != "":
+		cfg.Basepath = basepath
+	case devXMRTaker:
+		cfg.Basepath = defaultXMRTakerBasepath
+	case devXMRMaker:
+		cfg.Basepath = defaultXMRMakerBasepath
 	}
 
 	exists, err := common.Exists(cfg.Basepath)
