@@ -4,8 +4,8 @@
 # currently running test daemons.
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
-  echo "Execute ${BASH_SOURCE[0]} instead of souring it"
-  return
+	echo "Execute ${BASH_SOURCE[0]} instead of souring it"
+	return
 fi
 
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
