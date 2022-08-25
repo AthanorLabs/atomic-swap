@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
 	"os"
@@ -139,7 +138,7 @@ func runTester(c *cli.Context) error {
 		config = defaultConfigFile
 	}
 
-	bz, err := ioutil.ReadFile(filepath.Clean(config))
+	bz, err := os.ReadFile(filepath.Clean(config))
 	if err != nil {
 		return err
 	}

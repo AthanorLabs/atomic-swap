@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/ecdsa"
+	"os"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -29,4 +30,27 @@ func GetTopic(sig string) ethcommon.Hash {
 	var b [32]byte
 	copy(b[:], h)
 	return b
+}
+
+// MakeDir makes a directory
+func MakeDir(dir string) error {
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Exists returns whether the given file or directory exists
+func Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	return false, err
 }

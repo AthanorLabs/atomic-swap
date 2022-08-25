@@ -16,11 +16,6 @@ func TestHost_Query(t *testing.T) {
 	err = hb.Start()
 	require.NoError(t, err)
 
-	defer func() {
-		_ = ha.Stop()
-		_ = hb.Stop()
-	}()
-
 	err = ha.h.Connect(ha.ctx, hb.addrInfo())
 	require.NoError(t, err)
 
