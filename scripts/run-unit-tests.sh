@@ -1,6 +1,13 @@
 #!/bin/bash
 
-./scripts/setup-env.sh
+PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+cd "${PROJECT_ROOT}" || exit 1
+
+source "scripts/testlib.sh"
+start-monerod-regtest
+start-ganache
+start-alice-wallet
+start-bob-wallet
 
 # run unit tests
 echo "running unit tests..."
@@ -12,6 +19,10 @@ if [[ -e coverage.out ]]; then
 	go tool cover -html=coverage.out -o coverage.html
 fi
 
-# kill processes
-kill "${GANACHE_PID}" || echo "ganache was not running at end of test"
+stop-alice-wallet
+stop-bob-wallet
+stop-monerod-regtest
+stop-ganache
+remove-test-data-dir
+
 exit $OK

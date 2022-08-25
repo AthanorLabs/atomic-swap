@@ -2,7 +2,7 @@
 
 ### Requirements
 
-- go 1.17+ (see [build instructions](./build.md) to download Go.)
+- go 1.18+ (see [build instructions](./build.md) to download Go.)
 - ganache (can be installed with `npm install --location=global ganache`)
 
 These programs and scripts have only been tested on X86-64 Ubuntu 20.04 and 22.04.
