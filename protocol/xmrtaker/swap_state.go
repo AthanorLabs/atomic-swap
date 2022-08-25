@@ -441,8 +441,6 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
 	}
 
-	log.Debugf("About to get the id from the log")
-	log.Debugf("log: %v", log)
 	for _, rLog := range receipt.Logs {
 		s.contractSwapID, err = swapfactory.GetIDFromLog(rLog)
 		if err == nil {

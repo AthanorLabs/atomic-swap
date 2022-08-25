@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/noot/atomic-swap/common"
+	"github.com/noot/atomic-swap/common/types"
 	"github.com/noot/atomic-swap/crypto/secp256k1"
 	"github.com/noot/atomic-swap/dleq"
 	"github.com/noot/atomic-swap/ethereum/block"
@@ -44,7 +45,7 @@ func TestSwapFactory_NewSwap(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, [32]byte{},
-		ethcommon.Address{}, defaultTimeoutDuration, ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
+		ethcommon.Address{}, defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -81,7 +82,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-		defaultTimeoutDuration, ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
+		defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -101,7 +102,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 		PubKeyRefund: [32]byte{},
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+		Asset:        ethcommon.Address(types.EthAssetETH),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -149,7 +150,7 @@ func TestSwap_Claim_random(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-		defaultTimeoutDuration, ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
+		defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -169,7 +170,7 @@ func TestSwap_Claim_random(t *testing.T) {
 		PubKeyRefund: [32]byte{},
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+		Asset:        ethcommon.Address(types.EthAssetETH),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -220,7 +221,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration,
-		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
+		ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -240,7 +241,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+		Asset:        ethcommon.Address(types.EthAssetETH),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -285,7 +286,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	nonce := big.NewInt(0)
 	timeout := big.NewInt(1) // T1 expires before we get the receipt for new_swap TX
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout,
-		ethcommon.HexToAddress("0000000000000000000000000000000000000000"), big.NewInt(0), nonce)
+		ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -305,7 +306,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+		Asset:        ethcommon.Address(types.EthAssetETH),
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -386,7 +387,7 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 			PubKeyRefund: [32]byte{}, // no one calls refund in this test
 			Timeout0:     nil,        // timeouts initialised when swap is created
 			Timeout1:     nil,
-			Asset:        ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+			Asset:        ethcommon.Address(types.EthAssetETH),
 			Value:        big.NewInt(0),
 			Nonce:        big.NewInt(int64(i)),
 		}
@@ -407,7 +408,7 @@ func TestSwap_MultipleSwaps(t *testing.T) {
 				sc.swap.PubKeyRefund,
 				sc.swap.Claimer,
 				defaultTimeoutDuration,
-				ethcommon.HexToAddress("0000000000000000000000000000000000000000"),
+				ethcommon.Address(types.EthAssetETH),
 				big.NewInt(0),
 				sc.swap.Nonce,
 			)
