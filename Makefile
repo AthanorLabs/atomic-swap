@@ -19,7 +19,7 @@ lint-go: init
 
 .PHONY: lint-shell
 lint-shell: init
-	shellcheck scripts/*.sh
+	shellcheck --source-path=.:scripts scripts/*.sh
 
 .PHONY: lint
 lint: lint-go lint-shell

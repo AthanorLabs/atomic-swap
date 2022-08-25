@@ -10,7 +10,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
 cd "${PROJECT_ROOT}"
 
 if [[ -d "monero-bin" ]]; then
-	echo "$(dirname "$(realpath monero-bin)") already installed"
+	echo "$(realpath monero-bin) already installed"
 	exit 0
 fi
 
