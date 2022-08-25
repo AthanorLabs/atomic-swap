@@ -9,6 +9,7 @@ if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
 fi
 
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
+# shellcheck source-path=SCRIPTDIR
 "${SCRIPTS_DIR}/cleanup-test-processes.sh"
 sleep 2 # give monerod time to fully shutdown
 source "${SCRIPTS_DIR}/testlib.sh"
