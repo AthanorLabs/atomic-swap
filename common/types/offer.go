@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -88,14 +89,14 @@ func (o Offer) MarshalJSON() ([]byte, error) {
 		MinimumAmount float64
 		MaximumAmount float64
 		ExchangeRate  ExchangeRate
-		EthAsset      EthAsset
+		EthAsset      string
 	}{
 		ID:            o.id.String(),
 		Provides:      o.Provides,
 		MinimumAmount: o.MinimumAmount,
 		MaximumAmount: o.MaximumAmount,
 		ExchangeRate:  o.ExchangeRate,
-		EthAsset:      o.EthAsset,
+		EthAsset:      ethcommon.Address(o.EthAsset).Hex(),
 	})
 }
 
@@ -107,7 +108,7 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 		MinimumAmount float64
 		MaximumAmount float64
 		ExchangeRate  ExchangeRate
-		EthAsset      EthAsset
+		EthAsset      string
 	}{}
 	if err := json.Unmarshal(data, &ou); err != nil {
 		return err
@@ -124,7 +125,12 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 	o.MinimumAmount = ou.MinimumAmount
 	o.MaximumAmount = ou.MaximumAmount
 	o.ExchangeRate = ou.ExchangeRate
-	o.EthAsset = ou.EthAsset
+	if ou.EthAsset == "" {
+		// Default to EthAssetETH
+		o.EthAsset = EthAssetETH
+	} else {
+		o.EthAsset = EthAsset(ethcommon.HexToAddress(ou.EthAsset))
+	}
 	return nil
 }
 

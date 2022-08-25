@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/noot/atomic-swap/common"
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
@@ -222,12 +223,20 @@ func (s *NetService) MakeOffer(_ *http.Request, req *rpctypes.MakeOfferRequest,
 }
 
 func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.OfferExtra, error) {
+	ethAsset := types.EthAssetETH
+	if req.EthAsset != "" {
+		if !ethcommon.IsHexAddress(req.EthAsset) {
+			return "", nil, errEthAssetIncorrectFormat
+		}
+		ethAsset = types.EthAsset(ethcommon.HexToAddress(req.EthAsset))
+	}
+
 	o := types.NewOffer(
 		types.ProvidesXMR,
 		req.MinimumAmount,
 		req.MaximumAmount,
 		req.ExchangeRate,
-		req.EthAsset,
+		ethAsset,
 	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(o)

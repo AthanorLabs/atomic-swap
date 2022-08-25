@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/noot/atomic-swap/common/rpctypes"
 	"github.com/noot/atomic-swap/common/types"
 )
@@ -18,7 +19,7 @@ func (c *Client) MakeOffer(min, max, exchangeRate float64, ethAsset types.EthAss
 		MinimumAmount: min,
 		MaximumAmount: max,
 		ExchangeRate:  types.ExchangeRate(exchangeRate),
-		EthAsset:      ethAsset,
+		EthAsset:      ethcommon.Address(ethAsset).Hex(),
 	}
 
 	params, err := json.Marshal(req)
