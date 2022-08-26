@@ -8,7 +8,9 @@ Follow the [build instructions](./build.md) to ensure you have Go installed and 
 
 Follow the instructions [here](local.md) to set up your local Alice (ETH-holder, XMR-wanter) and Bob (XMR-holder, ETH-wanter) nodes. 
 
-You can also run `bash scripts/setup-env.sh` to quickly set up the local Monero and ganache environment.
+See the instructions in `scripts/testlib.sh` to quickly set up the local Monerod and ganache environment.
+If you need to later kill `ganache`, `monerod`, `monero-wallet-rpc`, `swapd`, you can use the script
+`scripts/cleanup-test-processes.sh`.
 
 ## Deploying or using deployed SwapFactory.sol
 
@@ -80,7 +82,7 @@ To setup the test environment and run all unit tests, execute:
 make test
 ```
 
-This include tests for main protocol functionality, such as:
+This includes tests for main protocol functionality, such as:
 1. Success case, where both parties obey the protocol
 2. Case where Bob never locks monero on his side. Alice can Refund
 3. Case where Bob locks monero, but never claims his ether from the contract
@@ -103,3 +105,16 @@ Then, if you update an interface, generate new mocks using:
 ```bash
 go generate -run mockgen ./...
 ```
+
+## Linting and Formatting
+
+There are `make format` and `make lint` targets to format and check code for
+errors. These targets require two programs that can be installed using `apt`
+on Ubuntu for Bash formatting and linting:
+```
+sudo apt install -y shfmt shellcheck
+```
+
+Go linting uses `golangci-lint`. If it is not already installed in your user's
+GOBIN directory, the `make lint` command will install it for you using
+`scripts/install-lint.sh`.

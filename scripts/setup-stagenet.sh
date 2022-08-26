@@ -7,7 +7,7 @@ echo "starting monerod..."
 sleep 5
 
 echo "starting monero-wallet-rpc on port 18083..."
-nohup ./monero-bin/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./node-keys --stagenet --trusted-daemon &> monero-wallet-cli.log &
+nohup ./monero-bin/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./node-keys --stagenet --trusted-daemon &>monero-wallet-cli.log &
 
 # open wallet (must have funds)
 sleep 5
