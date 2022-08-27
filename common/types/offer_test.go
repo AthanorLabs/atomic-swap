@@ -16,7 +16,8 @@ func TestOffer_MarshalJSON(t *testing.T) {
 	require.False(t, id.IsZero())
 
 	expected := fmt.Sprintf(
-		`{"ID":"%s","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,"EthAsset":"0x0000000000000000000000000000000000000000"}`, id)
+		`{"ID":"%s","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,`+
+			`"EthAsset":"0x0000000000000000000000000000000000000000"}`, id)
 	jsonData, err := json.Marshal(offer)
 	require.NoError(t, err)
 	require.Equal(t, expected, string(jsonData))
@@ -25,7 +26,8 @@ func TestOffer_MarshalJSON(t *testing.T) {
 func TestOffer_UnmarshalJSON(t *testing.T) {
 	idStr := "0102030405060708091011121314151617181920212223242526272829303131"
 	offerJSON := fmt.Sprintf(
-		`{"ID":"%s","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,"EthAsset":"0x0000000000000000000000000000000000000001"}`, idStr)
+		`{"ID":"%s","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,`+
+			`"EthAsset":"0x0000000000000000000000000000000000000001"}`, idStr)
 	var offer Offer
 	err := json.Unmarshal([]byte(offerJSON), &offer)
 	require.NoError(t, err)
@@ -63,7 +65,8 @@ func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
 }
 
 func TestOffer_UnmarshalJSON_BadID(t *testing.T) {
-	offerJSON := []byte(`{"ID":"","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,"EthAsset":"0x0000000000000000000000000000000000000000"}`)
+	offerJSON := []byte(`{"ID":"","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,` +
+		`"EthAsset":"0x0000000000000000000000000000000000000000"}`)
 	var offer Offer
 	err := json.Unmarshal(offerJSON, &offer)
 	require.Error(t, err)

@@ -21,7 +21,8 @@ type Sender interface {
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
 	NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
-		_timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
+		_timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
+		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
 	SetReady(id types.Hash, _swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
 	Claim(id types.Hash, _swap swapfactory.SwapFactorySwap,
 		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)

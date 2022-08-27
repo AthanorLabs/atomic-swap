@@ -431,7 +431,8 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 
 	nonce := generateNonce()
 	txHash, receipt, err := s.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
-		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce, types.EthAsset(s.ethAsset), amount.BigInt())
+		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce,
+		s.ethAsset, amount.BigInt())
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
