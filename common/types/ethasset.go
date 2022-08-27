@@ -14,5 +14,5 @@ func (asset EthAsset) String() string {
 	return ethcommon.Address(asset).Hex()
 }
 
-// ETH (rather than an ERC-20 token)
+// EthAssetETH describes regular ETH (rather than an ERC-20 token)
 var EthAssetETH = EthAsset(ethcommon.HexToAddress("0x0"))

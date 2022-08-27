@@ -557,9 +557,8 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
 		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
-	} else {
-		// TODO: Check balance of ERC-20 token
 	}
+	// TODO: Check balance of ERC-20 token
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
@@ -578,8 +577,8 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
 		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
-	} else {
-		// TODO: Check ERC-20 balance
 	}
+	// TODO: Check balance of ERC-20 token
+
 	return txHash, nil
 }

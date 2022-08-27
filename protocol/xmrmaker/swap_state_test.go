@@ -110,7 +110,8 @@ func newTestXMRMaker(t *testing.T) *Instance {
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	xmrmaker := newTestXMRMaker(t)
 	infoFile := path.Join(t.TempDir(), "test.keys")
-	swapState, err := newSwapState(xmrmaker.backend, types.NewOffer("", 0, 0, 0, types.EthAssetETH), xmrmaker.offerManager, nil, infoFile,
+	swapState, err := newSwapState(xmrmaker.backend,
+		types.NewOffer("", 0, 0, 0, types.EthAssetETH), xmrmaker.offerManager, nil, infoFile,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
 	swapState.SetContract(xmrmaker.backend.Contract())

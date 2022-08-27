@@ -255,6 +255,7 @@ Parameters:
 - `minimumAmount`: minimum amount to swap, in XMR.
 - `maximumAmount`: maximum amount to swap, in XMR.
 - `exchangeRate`: exchange rate of ETH-XMR for the swap, expressed in a fraction of XMR/ETH. For example, if you wish to trade 10 XMR for 1 ETH, the exchange rate would be 0.1.
+- `ethAsset`: (optional) Ethereum asset to trade, either an ERC-20 token address or the zero address for regular ETH. default: regular ETH
 
 Returns:
 - `offerID`: ID of the swap offer.
