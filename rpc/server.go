@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/protocol/txsender"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
@@ -79,9 +79,9 @@ func (s *Server) Start() <-chan error {
 		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 		originsOk := handlers.AllowedOrigins([]string{"*"})
 
-		log.Infof("starting RPC server on http://localhost:%d", s.port)
+		log.Infof("starting RPC server on http://127.0.0.1:%d", s.port)
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
+		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
 			log.Errorf("failed to start http RPC server: %s", err)
 			errCh <- err
 		}
@@ -95,9 +95,9 @@ func (s *Server) Start() <-chan error {
 		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 		originsOk := handlers.AllowedOrigins([]string{"*"})
 
-		log.Infof("starting websockets server on ws://localhost:%d", s.wsPort)
+		log.Infof("starting websockets server on ws://127.0.0.1:%d", s.wsPort)
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
+		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
 			log.Errorf("failed to start websockets RPC server: %s", err)
 			errCh <- err
 		}
@@ -114,12 +114,14 @@ type Protocol interface {
 
 // ProtocolBackend represents protocol/backend.Backend
 type ProtocolBackend interface {
+	Env() common.Environment
 	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
 	ExternalSender() *txsender.ExternalSender
 	SetEthAddress(ethcommon.Address)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	ClearXMRDepositAddress(types.Hash)
 }
 
 // XMRTaker ...

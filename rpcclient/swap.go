@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
-	"github.com/noot/atomic-swap/rpc"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
 // GetPastSwapIDs calls swap_getPastIDs

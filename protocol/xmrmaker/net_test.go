@@ -3,8 +3,8 @@ package xmrmaker
 import (
 	"testing"
 
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net/message"
 
 	"github.com/stretchr/testify/require"
 )

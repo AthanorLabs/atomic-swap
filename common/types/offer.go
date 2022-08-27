@@ -13,6 +13,9 @@ import (
 // Hash represents a 32-byte hash
 type Hash [32]byte
 
+// EmptyHash is an empty Hash
+var EmptyHash = Hash{}
+
 // String returns the hex-encoded hash
 func (h Hash) String() string {
 	return hex.EncodeToString(h[:])

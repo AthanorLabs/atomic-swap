@@ -10,18 +10,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/crypto/secp256k1"
-	"github.com/noot/atomic-swap/dleq"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/net/message"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/backend"
-	pswap "github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/dleq"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
@@ -352,6 +352,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
 			return txHash, err
 		}
+
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
 		// even though the current block is before T0. In this case, the transaction will be reverted, the
 		// gas fee is lost, but we can wait until T1 and try again.
@@ -497,7 +498,7 @@ func (s *swapState) ready() error {
 	if stage != swapfactory.StagePending {
 		return fmt.Errorf("can not set contract to ready when swap stage is %s", swapfactory.StageToString(stage))
 	}
-	_, _, err = s.SetReady(s.ID(), s.contractSwap)
+	_, _, err = s.SetReady(types.EmptyHash, s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -564,7 +565,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	log.Infof("monero claimed in account %s; transferring to original account %s",
 		addr, depositAddr)
 
-	err = mcrypto.ValidateAddress(string(depositAddr))
+	err = mcrypto.ValidateAddress(string(depositAddr), s.Env())
 	if err != nil {
 		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
 		return addr, nil

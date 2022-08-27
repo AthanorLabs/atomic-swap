@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/types"
 
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -104,7 +104,7 @@ func (d *discovery) advertise() {
 	for {
 		select {
 		case <-d.advertiseCh:
-			// TODO: check current offers, as this may change
+			// TODO: check current offers, as this may change (#160)
 			d.provides = []types.ProvidesCoin{types.ProvidesXMR}
 			doAdvertise()
 		case <-time.After(ttl):

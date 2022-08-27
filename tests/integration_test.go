@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/rpcclient"
-	"github.com/noot/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
+	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
 
 const (
@@ -200,7 +200,7 @@ func TestSuccess_OneSwap(t *testing.T) {
 	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
 	require.NoError(t, err)
 
-	// TODO: implement discovery over websockets
+	// TODO: implement discovery over websockets (#97)
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
@@ -360,7 +360,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 // "come online" to see, and he will then refund also.
 func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
 	// Skipping test as it can't guarantee that the refund will happen before the swap completes
-	// successfully:  // https://github.com/noot/atomic-swap/issues/144
+	// successfully:  // https://github.com/athanorlabs/atomic-swap/issues/144
 	t.Skip()
 	testRefundXMRMakerCancels(t, 7, types.CompletedRefund)
 	time.Sleep(time.Second * 5)
@@ -877,7 +877,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 		awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint) //nolint:govet
 		require.NoError(t, err)
 
-		// TODO: implement discovery over websockets
+		// TODO: implement discovery over websockets (#97)
 		providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(providers))

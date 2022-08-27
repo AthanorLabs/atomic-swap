@@ -14,14 +14,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/cmd/utils"
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/protocol/xmrmaker"
-	"github.com/noot/atomic-swap/protocol/xmrtaker"
-	"github.com/noot/atomic-swap/rpc"
+	"github.com/athanorlabs/atomic-swap/cmd/utils"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
+	"github.com/athanorlabs/atomic-swap/rpc"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -49,6 +49,10 @@ const (
 
 var (
 	log = logging.Logger("cmd")
+
+	// default dev basepaths
+	defaultXMRMakerBasepath = os.TempDir() + "/xmrmaker"
+	defaultXMRTakerBasepath = os.TempDir() + "/xmrtaker"
 )
 
 const (
@@ -303,9 +307,33 @@ func (d *daemon) make(c *cli.Context) error {
 		libp2pPort = defaultLibp2pPort
 	}
 
+	// basepath is already set in default case
+	basepath := c.String(flagBasepath)
+	switch {
+	case basepath != "":
+		cfg.Basepath = basepath
+	case devXMRTaker:
+		cfg.Basepath = defaultXMRTakerBasepath
+	case devXMRMaker:
+		cfg.Basepath = defaultXMRMakerBasepath
+	}
+
+	exists, err := common.Exists(cfg.Basepath)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		err = common.MakeDir(cfg.Basepath)
+		if err != nil {
+			return err
+		}
+	}
+
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
+		Basepath:    cfg.Basepath,
 		ChainID:     chainID,
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
@@ -431,7 +459,7 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		daemonEndpoint = cfg.MoneroDaemonEndpoint
 	}
 
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
 	var gasPrice *big.Int
 	if c.Uint(flagGasPrice) != 0 {
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))

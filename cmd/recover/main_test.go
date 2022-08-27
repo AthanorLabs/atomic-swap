@@ -4,20 +4,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/protocol/xmrmaker"
-	"github.com/noot/atomic-swap/protocol/xmrtaker"
-	"github.com/noot/atomic-swap/swapfactory"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -123,7 +122,7 @@ func createInfoFile(t *testing.T, kpA, kpB *mcrypto.PrivateKeyPair, contractAddr
 	bz, err := json.MarshalIndent(infofile, "", "\t")
 	require.NoError(t, err)
 	filepath := path.Join(t.TempDir(), "test-infofile.txt")
-	err = ioutil.WriteFile(filepath, bz, os.ModePerm)
+	err = os.WriteFile(filepath, bz, os.ModePerm)
 	require.NoError(t, err)
 	return filepath
 }

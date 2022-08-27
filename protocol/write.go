@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // InfoFileContents represents the contents of the swap info file used in case
@@ -95,7 +95,7 @@ func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair,
 }
 
 func setupFile(infofile string) (*os.File, *InfoFileContents, error) {
-	exists, err := exists(infofile)
+	exists, err := common.Exists(infofile)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -105,7 +105,7 @@ func setupFile(infofile string) (*os.File, *InfoFileContents, error) {
 		contents *InfoFileContents
 	)
 	if !exists {
-		err = makeDir(filepath.Dir(infofile))
+		err = common.MakeDir(filepath.Dir(infofile))
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to make directory %s: %w", filepath.Dir(infofile), err)
 		}
@@ -144,26 +144,4 @@ func setupFile(infofile string) (*os.File, *InfoFileContents, error) {
 	}
 
 	return file, contents, nil
-}
-
-func makeDir(dir string) error {
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// exists returns whether the given file or directory exists
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-
-	return false, err
 }

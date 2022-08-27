@@ -13,15 +13,15 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/ethereum/block"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/protocol/txsender"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -71,6 +71,7 @@ type Backend interface {
 	SetGasPrice(uint64)
 	SetEthAddress(ethcommon.Address)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	ClearXMRDepositAddress(types.Hash)
 	SetBaseXMRDepositAddress(mcrypto.Address)
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
@@ -357,12 +358,19 @@ func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {
 func (b *backend) SetXMRDepositAddress(addr mcrypto.Address, id types.Hash) {
 	b.Lock()
 	defer b.Unlock()
-	// TODO: clear this out when swap is done, memory leak!!!
 	b.xmrDepositAddrs[id] = addr
 }
 
-// TODO: these are kinda sus, maybe remove them? forces everyone to use
-// the same contract though
+func (b *backend) ClearXMRDepositAddress(id types.Hash) {
+	b.Lock()
+	defer b.Unlock()
+	delete(b.xmrDepositAddrs, id)
+}
+
+// NOTE: this is called when a swap is initiated and the XMR-taker specifies the contract
+// address they will be using.
+// the contract bytecode is validated in the calling code, but this should never be called
+// for unvalidated contracts.
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
 	b.Sender.SetContract(contract)

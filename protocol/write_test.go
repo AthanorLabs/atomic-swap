@@ -4,8 +4,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 
 	"github.com/stretchr/testify/require"
 )

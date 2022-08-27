@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 // stampChecker collects all the pieces of data needed to create a transaction that calls

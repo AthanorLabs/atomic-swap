@@ -6,11 +6,11 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/dleq"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/swapfactory"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/dleq"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 type recoveryState struct {

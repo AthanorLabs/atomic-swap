@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
 	"os"
@@ -16,10 +15,10 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -112,7 +111,6 @@ func runTester(c *cli.Context) error {
 
 	isDev = c.Bool(flagDev)
 	if !isDev {
-		// TODO: add a flag to specify local endpoint
 		defaultMoneroClient = monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
 	}
 
@@ -140,7 +138,7 @@ func runTester(c *cli.Context) error {
 		config = defaultConfigFile
 	}
 
-	bz, err := ioutil.ReadFile(filepath.Clean(config))
+	bz, err := os.ReadFile(filepath.Clean(config))
 	if err != nil {
 		return err
 	}

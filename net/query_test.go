@@ -3,7 +3,7 @@ package net
 import (
 	"testing"
 
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -15,11 +15,6 @@ func TestHost_Query(t *testing.T) {
 	hb := newHost(t, defaultPort+1)
 	err = hb.Start()
 	require.NoError(t, err)
-
-	defer func() {
-		_ = ha.Stop()
-		_ = hb.Stop()
-	}()
 
 	err = ha.h.Connect(ha.ctx, hb.addrInfo())
 	require.NoError(t, err)

@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"

@@ -6,11 +6,11 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/monero"
-	"github.com/noot/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -55,15 +55,21 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		err     error
 	)
 
+	// if this is set, it transfers all xmr received during swaps back to the given wallet.
 	if cfg.TransferBack {
 		address, err = getAddress(cfg.Backend, cfg.MoneroWalletFile, cfg.MoneroWalletPassword)
 		if err != nil {
 			return nil, err
 		}
 		cfg.Backend.SetBaseXMRDepositAddress(address)
+	} else {
+		// check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured
+		err = checkWalletDir(cfg.Backend)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// TODO: check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured
 	return &Instance{
 		backend:        cfg.Backend,
 		basepath:       cfg.Basepath,
@@ -73,6 +79,16 @@ func NewInstance(cfg *Config) (*Instance, error) {
 	}, nil
 }
 
+func checkWalletDir(walletClient monero.WalletClient) error {
+	// don't need to check error here, since if there's no wallet open that's fine
+	_ = walletClient.CloseWallet()
+	err := walletClient.CreateWallet(swapDepositWallet, "")
+	if err != nil {
+		return err
+	}
+	return walletClient.CloseWallet()
+}
+
 func getAddress(walletClient monero.WalletClient, file, password string) (mcrypto.Address, error) {
 	// open XMR wallet, if it exists
 	if file != "" {
@@ -80,7 +96,6 @@ func getAddress(walletClient monero.WalletClient, file, password string) (mcrypt
 			return "", err
 		}
 	} else {
-		// TODO: prompt user for wallet or error if not in dev mode
 		log.Info("monero wallet file not set; creating wallet swap-deposit-wallet")
 		err := walletClient.CreateWallet(swapDepositWallet, "")
 		if err != nil {

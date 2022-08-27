@@ -54,7 +54,7 @@ source .profile
 
 9. Clone and build the atomic-swap binaries:
 ```bash
-git clone https://github.com/noot/atomic-swap.git
+git clone https://github.com/athanorlabs/atomic-swap.git
 cd atomic-swap
 make build
 ```
@@ -183,4 +183,4 @@ To connect to a different Ethereum network, follow [Setup](#setup) steps 4-7 but
 
 ## Bug reports
 
-If you find any bugs or unexpected swap occurrences, please [open an issue](https://github.com/noot/atomic-swap/issues/new) on the repo, detailing exact steps you took to setup `swapd` and what caused the bug to occur. Your OS and environment would be helpful as well. Any bug reports or general improvement suggestions are much appreciated.
+If you find any bugs or unexpected swap occurrences, please [open an issue](https://github.com/athanorlabs/atomic-swap/issues/new) on the repo, detailing exact steps you took to setup `swapd` and what caused the bug to occur. Your OS and environment would be helpful as well. Any bug reports or general improvement suggestions are much appreciated.

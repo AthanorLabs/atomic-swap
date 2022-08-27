@@ -3,9 +3,11 @@ package offers
 import (
 	"sync"
 
-	"github.com/noot/atomic-swap/common/types"
-	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
+
+const statusChSize = 6 // the max number of stages a swap can potentially go through
 
 // Manager synchronises access to the offers map.
 type Manager struct {
@@ -53,7 +55,7 @@ func (m *Manager) AddOffer(o *types.Offer) *types.OfferExtra {
 	}
 
 	extra := &types.OfferExtra{
-		StatusCh: make(chan types.Status, 7), // TODO: Constant for this? How was 7 picked?
+		StatusCh: make(chan types.Status, statusChSize),
 		InfoFile: pcommon.GetSwapInfoFilepath(m.basePath),
 	}
 

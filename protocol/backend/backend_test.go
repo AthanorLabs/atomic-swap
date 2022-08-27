@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"

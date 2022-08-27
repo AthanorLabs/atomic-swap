@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/noot/atomic-swap/net/message"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )

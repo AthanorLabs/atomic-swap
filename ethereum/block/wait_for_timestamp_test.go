@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 // Checks normal, non-cancelled operation

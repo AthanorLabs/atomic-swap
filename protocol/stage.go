@@ -1,8 +1,8 @@
 package protocol
 
 import (
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 // GetStatus returns the status corresponding to a next expected message type.

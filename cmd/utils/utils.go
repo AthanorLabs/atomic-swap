@@ -10,10 +10,11 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 const (
+	// TODO: just move all the flags to here, or their own package? there's a lot of duplicate ones
 	flagEthereumPrivKey = "ethereum-privkey"
 	flagEnv             = "env"
 )
@@ -39,7 +40,6 @@ func GetEthereumPrivateKey(c *cli.Context, env common.Environment, devXMRMaker,
 		ethPrivKeyHex = strings.TrimSpace(string(key))
 	} else {
 		if env != common.Development || useExternal {
-			// TODO: allow this to be set via RPC
 			log.Warnf("%s", errNoEthereumPrivateKey)
 			return "", nil
 		}

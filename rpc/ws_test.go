@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/net/message"
-	"github.com/noot/atomic-swap/protocol/swap"
-	"github.com/noot/atomic-swap/protocol/txsender"
-	"github.com/noot/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
+	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -131,7 +131,9 @@ func newMockProtocolBackend() *mockProtocolBackend {
 		sm: new(mockSwapManager),
 	}
 }
-
+func (*mockProtocolBackend) Env() common.Environment {
+	return common.Development
+}
 func (*mockProtocolBackend) SetGasPrice(uint64)                   {}
 func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {}
 func (b *mockProtocolBackend) SwapManager() swap.Manager {
@@ -142,6 +144,7 @@ func (*mockProtocolBackend) ExternalSender() *txsender.ExternalSender {
 }
 func (*mockProtocolBackend) SetEthAddress(ethcommon.Address)                  {}
 func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {}
+func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash)                {}
 
 func newServer(t *testing.T) *Server {
 	ctx, cancel := context.WithCancel(context.Background())

@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/noot/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 // checkContractSwapID checks that the `Swap` type sent matches the swap ID when hashed

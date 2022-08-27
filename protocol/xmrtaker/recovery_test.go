@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {

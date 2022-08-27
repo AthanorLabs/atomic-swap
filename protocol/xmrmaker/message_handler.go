@@ -7,13 +7,13 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	"github.com/noot/atomic-swap/net"
-	"github.com/noot/atomic-swap/net/message"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -103,9 +103,8 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 	}
 
 	s.nextExpectedMessage = msg
-	// TODO: check stage is not unknown (ie. swap completed)
 	stage := pcommon.GetStatus(msg.Type())
-	if s.statusCh != nil {
+	if s.statusCh != nil && stage != types.UnknownStatus {
 		s.statusCh <- stage
 	}
 }
@@ -171,7 +170,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, err
 	}
 
-	// TODO: check these (in checkContract)
+	// TODO: check these (in checkContract) (#161)
 	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 
 	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
@@ -211,7 +210,8 @@ func (s *swapState) runT0ExpirationHandler() {
 		return
 	case err := <-waitCh:
 		if err != nil {
-			// TODO: Do we propagate this error? If we retry, the logic should probably be inside WaitForTimestamp.
+			// TODO: Do we propagate this error? If we retry, the logic should probably be inside
+			// WaitForTimestamp. (#162)
 			log.Errorf("Failure waiting for T0 timeout: err=%s", err)
 			return
 		}
@@ -232,7 +232,7 @@ func (s *swapState) handleT0Expired() {
 	txHash, err := s.claimFunds()
 	if err != nil {
 		log.Errorf("failed to claim: err=%s", err)
-		// TODO: retry claim, depending on error
+		// TODO: retry claim, depending on error (#162)
 		if err = s.exit(); err != nil {
 			log.Errorf("exit failed: err=%s", err)
 		}

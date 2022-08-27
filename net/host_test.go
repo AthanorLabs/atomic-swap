@@ -7,8 +7,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	os.Exit(0)
 }
 
-var defaultPort uint16 = 5001
+var defaultPort uint16 = 5009
 var testID = types.Hash{99}
 
 type mockHandler struct {
@@ -62,6 +62,7 @@ func newHost(t *testing.T, port uint16) *host {
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
+		Basepath:    t.TempDir(),
 		ChainID:     common.GanacheChainID,
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
@@ -71,13 +72,15 @@ func newHost(t *testing.T, port uint16) *host {
 
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = h.Stop()
+		require.NoError(t, err)
+	})
 	return h
 }
 
 func TestNewHost(t *testing.T) {
 	h := newHost(t, defaultPort)
 	err := h.Start()
-	require.NoError(t, err)
-	err = h.Stop()
 	require.NoError(t, err)
 }

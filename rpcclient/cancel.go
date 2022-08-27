@@ -3,9 +3,9 @@ package rpcclient
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/rpc"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
 // Cancel calls swap_cancel.

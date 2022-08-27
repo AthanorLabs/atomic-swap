@@ -7,13 +7,13 @@ import (
 	"path"
 	"testing"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/swapfactory"
-	"github.com/noot/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -164,10 +164,6 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 }
 
 func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
-	// if testing.Short() {
-	// 	t.Skip() // TODO: fails on CI with "no contract code at address"
-	// }
-
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 

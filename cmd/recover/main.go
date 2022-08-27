@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -13,15 +12,15 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 
-	"github.com/noot/atomic-swap/cmd/utils"
-	"github.com/noot/atomic-swap/common"
-	mcrypto "github.com/noot/atomic-swap/crypto/monero"
-	pcommon "github.com/noot/atomic-swap/protocol"
-	"github.com/noot/atomic-swap/protocol/backend"
-	"github.com/noot/atomic-swap/protocol/xmrmaker"
-	"github.com/noot/atomic-swap/protocol/xmrtaker"
-	recovery "github.com/noot/atomic-swap/recover"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/cmd/utils"
+	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
+	recovery "github.com/athanorlabs/atomic-swap/recover"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -141,7 +140,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		return errMustProvideInfoFile
 	}
 
-	infofileBytes, err := ioutil.ReadFile(filepath.Clean(infofilePath))
+	infofileBytes, err := os.ReadFile(filepath.Clean(infofilePath))
 	if err != nil {
 		return err
 	}
@@ -263,13 +262,13 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	// TODO: add --external-signer option to allow front-end integration
+	// TODO: add --external-signer option to allow front-end integration (#124)
 	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, false, false)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
 	var gasPrice *big.Int
 	if c.Uint(flagGasPrice) != 0 {
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
@@ -293,7 +292,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	bcfg := &backend.Config{
 		Ctx:                  ctx,
 		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint, // TODO: only set if env=development
 		EthereumClient:       ec,
 		EthereumPrivateKey:   pk,
 		Environment:          env,
@@ -302,6 +300,10 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapContract:         contract,
 		SwapContractAddress:  contractAddr,
+	}
+
+	if env == common.Development {
+		bcfg.MoneroDaemonEndpoint = common.DefaultMoneroDaemonEndpoint
 	}
 
 	return backend.NewBackend(bcfg)

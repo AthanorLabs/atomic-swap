@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/noot/atomic-swap/common/types"
-	"github.com/noot/atomic-swap/ethereum/block"
-	"github.com/noot/atomic-swap/swapfactory"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"

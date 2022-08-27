@@ -3,7 +3,7 @@ package rpcclient
 import (
 	"encoding/json"
 
-	"github.com/noot/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
 // Query calls net_query.

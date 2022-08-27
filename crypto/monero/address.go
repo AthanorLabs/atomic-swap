@@ -1,10 +1,11 @@
 package mcrypto
 
 import (
+	"bytes"
 	"fmt"
 
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/crypto"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/crypto"
 )
 
 const (
@@ -15,15 +16,37 @@ const (
 	AddressLength = 1 + 32 + 32 + 4
 )
 
+var (
+	errChecksumMismatch         = fmt.Errorf("invalid address checksum")
+	errInvalidAddressLength     = fmt.Errorf("invalid monero address length")
+	errInvalidPrefixGotMainnet  = fmt.Errorf("invalid monero address: expected stagenet, got mainnet")
+	errInvalidPrefixGotStagenet = fmt.Errorf("invalid monero address: expected mainnet, got stagenet")
+)
+
 // Address represents a base58-encoded string
 type Address string
 
 // ValidateAddress checks if the given address is valid
-// TODO: also check chain prefix
-func ValidateAddress(addr string) error {
+func ValidateAddress(addr string, env common.Environment) error {
 	b := DecodeMoneroBase58(addr)
 	if len(b) != AddressLength {
-		return fmt.Errorf("invalid monero address length: got %d, expected %d", len(b), AddressLength)
+		return fmt.Errorf("%w: got %d, expected %d", errInvalidAddressLength, len(b), AddressLength)
+	}
+
+	switch env {
+	case common.Mainnet, common.Development:
+		if b[0] != addressPrefixMainnet {
+			return errInvalidPrefixGotStagenet
+		}
+	case common.Stagenet:
+		if b[0] != addressPrefixStagenet {
+			return errInvalidPrefixGotMainnet
+		}
+	}
+
+	checksum := getChecksum(b[:65])
+	if !bytes.Equal(checksum[:], b[65:69]) {
+		return errChecksumMismatch
 	}
 
 	return nil

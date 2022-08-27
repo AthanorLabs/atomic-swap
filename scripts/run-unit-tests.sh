@@ -1,24 +1,13 @@
 #!/bin/bash
 
-# install monero and run daemon and wallet RPC servers for alice and bob
-./scripts/install-monero-linux.sh
-echo "starting monerod..."
-./monero-bin/monerod --detach --regtest --offline --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081
-sleep 5
+PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+cd "${PROJECT_ROOT}" || exit 1
 
-# install ganache and run
-GANACHE_EXEC="$(npm config get prefix)/bin/ganache"
-if [[ ! -x "${GANACHE_EXEC}" ]]; then
-	echo "installing ganache"
-	npm install --location=global ganache
-fi
-echo "starting ganache"
-export NODE_OPTIONS=--max_old_space_size=8192
-"${GANACHE_EXEC}" --deterministic --accounts=50 --miner.blockTime=1 &> ganache.log &
-GANACHE_PID=$!
-
-# wait for servers to start
-sleep 10
+source "scripts/testlib.sh"
+start-monerod-regtest
+start-ganache
+start-alice-wallet
+start-bob-wallet
 
 # run unit tests
 echo "running unit tests..."
@@ -30,6 +19,10 @@ if [[ -e coverage.out ]]; then
 	go tool cover -html=coverage.out -o coverage.html
 fi
 
-# kill processes
-kill "${GANACHE_PID}" || echo "ganache was not running at end of test"
+stop-alice-wallet
+stop-bob-wallet
+stop-monerod-regtest
+stop-ganache
+remove-test-data-dir
+
 exit $OK

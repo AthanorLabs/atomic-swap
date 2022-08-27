@@ -1,9 +1,9 @@
 package xmrtaker
 
 import (
-	"github.com/noot/atomic-swap/common"
-	"github.com/noot/atomic-swap/common/types"
-	pcommon "github.com/noot/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color" //nolint:misspell
 )
