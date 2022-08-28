@@ -448,6 +448,8 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 	}
 
 	s.SetContract(contract)
+	s.sender.SetContractAddress(address)
+	s.sender.SetContract(contract)
 	return nil
 }
 

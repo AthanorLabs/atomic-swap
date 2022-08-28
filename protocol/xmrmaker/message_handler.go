@@ -139,7 +139,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, errNilContractSwapID
 	}
 
-	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%x", msg.Address, msg.ContractSwapID)
+	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%s", msg.Address, msg.ContractSwapID)
 
 	// validate that swap ID == keccak256(swap struct)
 	if err := checkContractSwapID(msg); err != nil {
@@ -148,6 +148,8 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
+	fmt.Println(s.contractSwapID)
+	fmt.Println(s.contractSwap)
 
 	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
 		return nil, err

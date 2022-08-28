@@ -77,13 +77,13 @@ func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclien
 	}, nil
 }
 
-// // SetContract ...
-// func (s *ExternalSender) SetContract(_ *swapfactory.SwapFactory) {}
+// SetContract ...
+func (s *ExternalSender) SetContract(_ *swapfactory.SwapFactory) {}
 
-// // SetContractAddress ...
-// func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
-// 	s.contractAddr = addr
-// }
+// SetContractAddress ...
+func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
+	s.contractAddr = addr
+}
 
 // OngoingCh returns the channel of outgoing transactions to be signed and submitted
 func (s *ExternalSender) OngoingCh(id types.Hash) (<-chan *Transaction, error) {

@@ -18,8 +18,8 @@ import (
 
 // Sender signs and submits transactions to the chain
 type Sender interface {
-	// SetContract(*swapfactory.SwapFactory)
-	// SetContractAddress(ethcommon.Address)
+	SetContract(*swapfactory.SwapFactory)
+	SetContractAddress(ethcommon.Address)
 	Approve(id types.Hash, spender ethcommon.Address,
 		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) // for ERC20 swaps
 	NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
@@ -52,11 +52,11 @@ func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract
 	}
 }
 
-// func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
-// 	s.contract = contract
-// }
+func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
+	s.contract = contract
+}
 
-// func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
+func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 
 func (s *privateKeySender) Approve(_ types.Hash, spender ethcommon.Address,
 	amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
