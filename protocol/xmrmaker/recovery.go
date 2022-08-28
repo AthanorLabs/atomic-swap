@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
-
+	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type recoveryState struct {
@@ -32,11 +32,18 @@ func NewRecoveryState(b backend.Backend, basePath string, secret *mcrypto.Privat
 	var sc [32]byte
 	copy(sc[:], secret.Bytes())
 
+	// TODO: update to work with ERC20s
+	sender, err := b.NewTxSender(types.EthAssetETH.Address(), nil)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:            ctx,
 		cancel:         cancel,
 		Backend:        b,
+		sender:         sender,
 		privkeys:       kp,
 		pubkeys:        pubkp,
 		dleqProof:      dleq.NewProofWithSecret(sc),

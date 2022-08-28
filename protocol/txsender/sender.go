@@ -86,7 +86,8 @@ func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyR
 	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
 
-	if _ethAsset != types.EthAssetETH {
+	// transfer ETH if we're not doing an ERC20 swap
+	if _ethAsset == types.EthAssetETH {
 		txOpts.Value = value
 	}
 
