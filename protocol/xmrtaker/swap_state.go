@@ -513,9 +513,6 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		Nonce:        nonce,
 	}
 
-	fmt.Println(s.contractSwapID)
-	fmt.Println(s.contractSwap)
-
 	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
 		return ethcommon.Hash{}, err
 	}

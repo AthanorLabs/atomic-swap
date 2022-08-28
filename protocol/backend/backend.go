@@ -150,24 +150,9 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	var (
-		addr ethcommon.Address
-	)
+	var addr ethcommon.Address
 	if cfg.EthereumPrivateKey != nil {
-		// 	txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
-		// 	sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
-		// } else {
-		// 	log.Debugf("instantiated backend with external sender")
-		// 	var err error
-		// 	sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.Environment, cfg.EthereumClient, cfg.SwapContractAddress)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
 	}
 
 	// monero-wallet-rpc client
@@ -256,15 +241,6 @@ func (b *backend) EthAddress() ethcommon.Address {
 func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
 }
-
-// func (b *backend) ExternalSender() *txsender.ExternalSender {
-// 	s, ok := b.Sender.(*txsender.ExternalSender)
-// 	if !ok {
-// 		return nil
-// 	}
-
-// 	return s
-// }
 
 func (b *backend) Net() net.MessageSender {
 	return b.MessageSender
@@ -427,7 +403,6 @@ func (b *backend) ClearXMRDepositAddress(id types.Hash) {
 // for unvalidated contracts.
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
-	//b.Sender.SetContract(contract)
 }
 
 func (b *backend) SetContractAddress(addr ethcommon.Address) {
