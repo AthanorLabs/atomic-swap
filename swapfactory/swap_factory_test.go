@@ -22,7 +22,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-var defaultTimeoutDuration = big.NewInt(60) // 60 seconds
+var (
+	defaultTimeoutDuration = big.NewInt(60) // 60 seconds
+	ethAssetAddress        = ethcommon.Address(types.EthAssetETH)
+)
 
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
 	conn, chainID := tests.NewEthClient(t)
@@ -54,7 +57,7 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 }
 
 func TestSwapFactory_NewSwap(t *testing.T) {
-	testNewSwap(t, ethcommon.Address(types.EthAssetETH))
+	testNewSwap(t, ethAssetAddress)
 }
 
 func TestSwapFactory_Claim_vec(t *testing.T) {
@@ -201,79 +204,11 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwap_Claim_random(t *testing.T) {
-	testClaim(t, ethcommon.Address(types.EthAssetETH), 0)
-	// // generate claim secret and public key
-	// dleq := &dleq.CGODLEq{}
-	// proof, err := dleq.Prove()
-	// require.NoError(t, err)
-	// res, err := dleq.Verify(proof)
-	// require.NoError(t, err)
-
-	// // hash public key
-	// cmt := res.Secp256k1PublicKey().Keccak256()
-
-	// // deploy swap contract with claim key hash
-	// auth, conn, pkA := setupXMRTakerAuth(t)
-	// pub := pkA.Public().(*ecdsa.PublicKey)
-	// addr := crypto.PubkeyToAddress(*pub)
-
-	// _, tx, contract, err := DeploySwapFactory(auth, conn)
-	// require.NoError(t, err)
-	// receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	// require.NoError(t, err)
-	// t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
-
-	// nonce := big.NewInt(0)
-	// tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-	// 	defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
-	// require.NoError(t, err)
-	// receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	// require.NoError(t, err)
-	// t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
-
-	// require.Equal(t, 1, len(receipt.Logs))
-	// id, err := GetIDFromLog(receipt.Logs[0])
-	// require.NoError(t, err)
-
-	// t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
-	// require.NoError(t, err)
-
-	// swap := SwapFactorySwap{
-	// 	Owner:        addr,
-	// 	Claimer:      addr,
-	// 	PubKeyClaim:  cmt,
-	// 	PubKeyRefund: [32]byte{},
-	// 	Timeout0:     t0,
-	// 	Timeout1:     t1,
-	// 	Asset:        ethcommon.Address(types.EthAssetETH),
-	// 	Value:        big.NewInt(0),
-	// 	Nonce:        nonce,
-	// }
-
-	// // set contract to Ready
-	// tx, err = contract.SetReady(auth, swap)
-	// require.NoError(t, err)
-	// receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	// t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
-	// require.NoError(t, err)
-
-	// // now let's try to claim
-	// var s [32]byte
-	// secret := proof.Secret()
-	// copy(s[:], common.Reverse(secret[:]))
-	// tx, err = contract.Claim(auth, swap, s)
-	// require.NoError(t, err)
-	// receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	// require.NoError(t, err)
-	// t.Logf("gas cost to call Claim: %d", receipt.GasUsed)
-
-	// stage, err := contract.Swaps(nil, id)
-	// require.NoError(t, err)
-	// require.Equal(t, StageCompleted, stage)
+func TestSwapFactory_Claim_random(t *testing.T) {
+	testClaim(t, ethAssetAddress, 0)
 }
 
-func TestSwap_Refund_beforeT0(t *testing.T) {
+func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// generate refund secret and public key
 	dleq := &dleq.CGODLEq{}
 	proof, err := dleq.Prove()
@@ -297,17 +232,17 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration,
-		ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
+		asset, big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 
-	require.Equal(t, 1, len(receipt.Logs))
-	id, err := GetIDFromLog(receipt.Logs[0])
+	require.Equal(t, newLogIndex+1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
 	swap := SwapFactorySwap{
@@ -317,7 +252,7 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.Address(types.EthAssetETH),
+		Asset:        asset,
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -337,7 +272,11 @@ func TestSwap_Refund_beforeT0(t *testing.T) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwap_Refund_afterT1(t *testing.T) {
+func TestSwapFactory_Refund_beforeT0(t *testing.T) {
+	testRefundBeforeT0(t, ethAssetAddress, 0)
+}
+
+func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// generate refund secret and public key
 	dleq := &dleq.CGODLEq{}
 	proof, err := dleq.Prove()
@@ -362,17 +301,17 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	nonce := big.NewInt(0)
 	timeout := big.NewInt(1) // T1 expires before we get the receipt for new_swap TX
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout,
-		ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
+		asset, big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 
-	require.Equal(t, 1, len(receipt.Logs))
-	id, err := GetIDFromLog(receipt.Logs[0])
+	require.Equal(t, newLogIndex+1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
 	swap := SwapFactorySwap{
@@ -382,7 +321,7 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.Address(types.EthAssetETH),
+		Asset:        asset,
 		Value:        big.NewInt(0),
 		Nonce:        nonce,
 	}
@@ -407,7 +346,11 @@ func TestSwap_Refund_afterT1(t *testing.T) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwap_MultipleSwaps(t *testing.T) {
+func TestSwapFactory_Refund_afterT1(t *testing.T) {
+	testRefundAfterT1(t, ethAssetAddress, 0)
+}
+
+func TestSwapFactory_MultipleSwaps(t *testing.T) {
 	// test case where contract has multiple swaps happening at once
 	conn, chainID := tests.NewEthClient(t)
 

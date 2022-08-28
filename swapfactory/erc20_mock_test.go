@@ -47,3 +47,31 @@ func TestSwapFactory_Claim_ERC20(t *testing.T) {
 	// obviously real ERC20s shouldn't have this behaviour
 	testClaim(t, erc20Addr, 2)
 }
+
+func TestSwapFactory_RefundBeforeT0_ERC20(t *testing.T) {
+	auth, conn, pkA := setupXMRTakerAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	require.NoError(t, err)
+	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy ERC20Mock.sol: %d", receipt.GasUsed)
+
+	testRefundBeforeT0(t, erc20Addr, 2)
+}
+
+func TestSwapFactory_RefundAfterT1_ERC20(t *testing.T) {
+	auth, conn, pkA := setupXMRTakerAuth(t)
+	pub := pkA.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	require.NoError(t, err)
+	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
+	require.NoError(t, err)
+	t.Logf("gas cost to deploy ERC20Mock.sol: %d", receipt.GasUsed)
+
+	testRefundAfterT1(t, erc20Addr, 2)
+}
