@@ -32,7 +32,7 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 	return auth, conn, pkA
 }
 
-func TestSwapFactory_NewSwap(t *testing.T) {
+func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	auth, conn, _ := setupXMRTakerAuth(t)
 	address, tx, contract, err := DeploySwapFactory(auth, conn)
 	require.NoError(t, err)
@@ -45,12 +45,16 @@ func TestSwapFactory_NewSwap(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, [32]byte{},
-		ethcommon.Address{}, defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
+		ethcommon.Address{}, defaultTimeoutDuration, asset, big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
+}
+
+func TestSwapFactory_NewSwap(t *testing.T) {
+	testNewSwap(t, ethcommon.Address(types.EthAssetETH))
 }
 
 func TestSwapFactory_Claim_vec(t *testing.T) {
