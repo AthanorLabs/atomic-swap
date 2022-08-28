@@ -6,12 +6,9 @@ import (
 	"math/big"
 	"testing"
 
-	//ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
-	//"github.com/athanorlabs/atomic-swap/common"
-	//"github.com/athanorlabs/atomic-swap/dleq"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
