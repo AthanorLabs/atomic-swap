@@ -69,7 +69,6 @@ type Backend interface {
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
-	//ExternalSender() *txsender.ExternalSender
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 	HasEthereumPrivateKey() bool
 	EthClient() *ethclient.Client
