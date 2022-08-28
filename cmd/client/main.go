@@ -322,6 +322,7 @@ func runMake(ctx *cli.Context) error {
 			return err
 		}
 
+		// TODO: handle eth asset
 		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
 		if err != nil {
 			return err

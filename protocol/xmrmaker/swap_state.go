@@ -550,13 +550,22 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	addr := s.EthAddress()
 
-	balance, err := s.BalanceAt(s.ctx, addr, nil)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
+		balance, err := s.BalanceAt(s.ctx, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
 		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	} else {
+		// get token details
+		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		if err == nil {
+			balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+			if err != nil {
+				return ethcommon.Hash{}, err
+			}
+			log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+		}
 	}
 	// TODO: Check balance of ERC-20 token
 
@@ -570,15 +579,22 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	log.Infof("sent claim tx, tx hash=%s", txHash)
 
-	balance, err = s.BalanceAt(s.ctx, addr, nil)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
+		balance, err := s.BalanceAt(s.ctx, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
 		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	} else {
+		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		if err == nil {
+			balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+			if err != nil {
+				return ethcommon.Hash{}, err
+			}
+			log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+		}
 	}
-	// TODO: Check balance of ERC-20 token
 
 	return txHash, nil
 }

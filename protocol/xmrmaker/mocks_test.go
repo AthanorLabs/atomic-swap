@@ -205,6 +205,38 @@ func (mr *MockBackendMockRecorder) Ctx() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ctx", reflect.TypeOf((*MockBackend)(nil).Ctx))
 }
 
+// ERC20BalanceAt mocks base method.
+func (m *MockBackend) ERC20BalanceAt(arg0 context.Context, arg1, arg2 common0.Address, arg3 *big.Int) (*big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ERC20BalanceAt", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ERC20BalanceAt indicates an expected call of ERC20BalanceAt.
+func (mr *MockBackendMockRecorder) ERC20BalanceAt(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ERC20BalanceAt", reflect.TypeOf((*MockBackend)(nil).ERC20BalanceAt), arg0, arg1, arg2, arg3)
+}
+
+// ERC20Info mocks base method.
+func (m *MockBackend) ERC20Info(arg0 context.Context, arg1 common0.Address) (string, string, byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ERC20Info", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(byte)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ERC20Info indicates an expected call of ERC20Info.
+func (mr *MockBackendMockRecorder) ERC20Info(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ERC20Info", reflect.TypeOf((*MockBackend)(nil).ERC20Info), arg0, arg1)
+}
+
 // Env mocks base method.
 func (m *MockBackend) Env() common.Environment {
 	m.ctrl.T.Helper()

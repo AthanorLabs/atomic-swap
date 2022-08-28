@@ -41,6 +41,9 @@ type Backend interface {
 
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
+	ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string, decimals uint8, err error)
+	ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
+		blockNumber *big.Int) (*big.Int, error)
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -268,6 +271,36 @@ func (b *backend) SetSwapTimeout(timeout time.Duration) {
 
 func (b *backend) BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error) {
 	return b.ethClient.BalanceAt(ctx, account, blockNumber)
+}
+
+func (b *backend) ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
+	blockNumber *big.Int) (*big.Int, error) {
+	tokenContract, err := swapfactory.NewIERC20(token, b.ethClient)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+	return tokenContract.BalanceOf(&bind.CallOpts{}, account)
+}
+
+func (b *backend) ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string,
+	decimals uint8, err error) {
+	tokenContract, err := swapfactory.NewIERC20(token, b.ethClient)
+	if err != nil {
+		return "", "", 18, err
+	}
+	name, err = tokenContract.Name(&bind.CallOpts{})
+	if err != nil {
+		return "", "", 18, err
+	}
+	symbol, err = tokenContract.Symbol(&bind.CallOpts{})
+	if err != nil {
+		return "", "", 18, err
+	}
+	decimals, err = tokenContract.Decimals(&bind.CallOpts{})
+	if err != nil {
+		return "", "", 18, err
+	}
+	return name, symbol, decimals, nil
 }
 
 func (b *backend) CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error) {
