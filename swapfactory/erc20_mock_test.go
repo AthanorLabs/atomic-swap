@@ -32,7 +32,7 @@ func TestSwapFactory_Claim_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, erc20Contract, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -42,10 +42,7 @@ func TestSwapFactory_Claim_ERC20(t *testing.T) {
 	// Approval
 	// Transfer
 	// New
-	//
-	// The ERC20Mock contract auto-approves on a call to `transferFrom`,
-	// obviously real ERC20s shouldn't have this behaviour
-	testClaim(t, erc20Addr, 2)
+	testClaim(t, erc20Addr, 2, big.NewInt(99), erc20Contract)
 }
 
 func TestSwapFactory_RefundBeforeT0_ERC20(t *testing.T) {

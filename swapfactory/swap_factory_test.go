@@ -133,7 +133,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int) {
+func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *big.Int, erc20Contract *ERC20Mock) {
 	// generate claim secret and public key
 	dleq := &dleq.CGODLEq{}
 	proof, err := dleq.Prove()
@@ -149,19 +149,33 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	swapFactoryAddress, tx, contract, err := DeploySwapFactory(auth, conn)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
+	if asset != ethAssetAddress {
+		require.NotNil(t, erc20Contract)
+		tx, err = erc20Contract.Approve(auth, swapFactoryAddress, value)
+		require.NoError(t, err)
+		receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+		require.NoError(t, err)
+		t.Logf("gas cost to call Approve: %d", receipt.GasUsed)
+	}
+
 	nonce := big.NewInt(0)
+	if asset == ethAssetAddress {
+		auth.Value = value
+	}
+
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-		defaultTimeoutDuration, asset, big.NewInt(0), nonce)
+		defaultTimeoutDuration, asset, value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
+	auth.Value = big.NewInt(0)
 
 	require.Equal(t, newLogIndex+1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
@@ -178,7 +192,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Asset:        asset,
-		Value:        big.NewInt(0),
+		Value:        value,
 		Nonce:        nonce,
 	}
 
@@ -205,7 +219,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 }
 
 func TestSwapFactory_Claim_random(t *testing.T) {
-	testClaim(t, ethAssetAddress, 0)
+	testClaim(t, ethAssetAddress, 0, big.NewInt(0), nil)
 }
 
 func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) {
