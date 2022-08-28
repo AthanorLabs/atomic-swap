@@ -37,7 +37,10 @@ type Backend interface {
 	monero.WalletClient
 	monero.DaemonClient
 	net.MessageSender
-	txsender.Sender
+
+	// create a new transaction sender, called per-swap
+	NewTxSender(asset ethcommon.Address,
+		erc20Contract *swapfactory.IERC20) (txsender.Sender, error)
 
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
@@ -66,8 +69,10 @@ type Backend interface {
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
-	ExternalSender() *txsender.ExternalSender
+	//ExternalSender() *txsender.ExternalSender
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
+	HasEthereumPrivateKey() bool
+	EthClient() *ethclient.Client
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
@@ -102,7 +107,6 @@ type backend struct {
 	chainID    *big.Int
 	gasPrice   *big.Int
 	gasLimit   uint64
-	txsender.Sender
 
 	// swap contract
 	contract     *swapfactory.SwapFactory
@@ -147,24 +151,23 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}
 
 	var (
-		addr   ethcommon.Address
-		sender txsender.Sender
+		addr ethcommon.Address
 	)
 	if cfg.EthereumPrivateKey != nil {
-		txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
-		if err != nil {
-			return nil, err
-		}
+		// 	txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
 
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
-		sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
-	} else {
-		log.Debugf("instantiated backend with external sender")
-		var err error
-		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.Environment, cfg.EthereumClient, cfg.SwapContractAddress)
-		if err != nil {
-			return nil, err
-		}
+		// 	sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
+		// } else {
+		// 	log.Debugf("instantiated backend with external sender")
+		// 	var err error
+		// 	sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.Environment, cfg.EthereumClient, cfg.SwapContractAddress)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
 	}
 
 	// monero-wallet-rpc client
@@ -191,7 +194,6 @@ func NewBackend(cfg *Config) (Backend, error) {
 			From:    addr,
 			Context: cfg.Ctx,
 		},
-		Sender:          sender,
 		ethAddress:      addr,
 		chainID:         cfg.ChainID,
 		gasPrice:        cfg.GasPrice,
@@ -203,6 +205,24 @@ func NewBackend(cfg *Config) (Backend, error) {
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 	}, nil
+}
+
+func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *swapfactory.IERC20) (txsender.Sender, error) {
+	if b.ethPrivKey == nil {
+		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient, b.contractAddr, asset)
+	}
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	sender := txsender.NewSenderWithPrivateKey(b.ctx, b.ethClient, b.contract, erc20Contract, txOpts)
+	return sender, nil
+}
+
+func (b *backend) HasEthereumPrivateKey() bool {
+	return b.ethPrivKey != nil
 }
 
 func (b *backend) CallOpts() *bind.CallOpts {
@@ -237,14 +257,14 @@ func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
 }
 
-func (b *backend) ExternalSender() *txsender.ExternalSender {
-	s, ok := b.Sender.(*txsender.ExternalSender)
-	if !ok {
-		return nil
-	}
+// func (b *backend) ExternalSender() *txsender.ExternalSender {
+// 	s, ok := b.Sender.(*txsender.ExternalSender)
+// 	if !ok {
+// 		return nil
+// 	}
 
-	return s
-}
+// 	return s
+// }
 
 func (b *backend) Net() net.MessageSender {
 	return b.MessageSender
@@ -377,7 +397,8 @@ func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFacto
 }
 
 func (b *backend) SetEthAddress(addr ethcommon.Address) {
-	if b.ExternalSender() == nil {
+	// only allowed if using external signer
+	if b.ethPrivKey != nil {
 		return
 	}
 
@@ -406,7 +427,7 @@ func (b *backend) ClearXMRDepositAddress(id types.Hash) {
 // for unvalidated contracts.
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
-	b.Sender.SetContract(contract)
+	//b.Sender.SetContract(contract)
 }
 
 func (b *backend) SetContractAddress(addr ethcommon.Address) {

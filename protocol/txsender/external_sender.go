@@ -46,15 +46,17 @@ type ExternalSender struct {
 	ec           *ethclient.Client
 	abi          *abi.ABI
 	contractAddr ethcommon.Address
+	erc20Addr    ethcommon.Address
 
 	sync.RWMutex
 
+	// TODO: remove this for just *swapChs as the sender will be per-swap
 	swaps map[types.Hash]*swapChs
 }
 
 // NewExternalSender returns a new ExternalSender
 func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclient.Client,
-	contractAddr ethcommon.Address) (*ExternalSender, error) {
+	contractAddr ethcommon.Address, erc20Addr ethcommon.Address) (*ExternalSender, error) {
 	abi, err := swapfactory.SwapFactoryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -70,17 +72,18 @@ func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclien
 		ec:           ec,
 		abi:          abi,
 		contractAddr: contractAddr,
+		erc20Addr:    erc20Addr,
 		swaps:        make(map[types.Hash]*swapChs),
 	}, nil
 }
 
-// SetContract ...
-func (s *ExternalSender) SetContract(_ *swapfactory.SwapFactory) {}
+// // SetContract ...
+// func (s *ExternalSender) SetContract(_ *swapfactory.SwapFactory) {}
 
-// SetContractAddress ...
-func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
-	s.contractAddr = addr
-}
+// // SetContractAddress ...
+// func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
+// 	s.contractAddr = addr
+// }
 
 // OngoingCh returns the channel of outgoing transactions to be signed and submitted
 func (s *ExternalSender) OngoingCh(id types.Hash) (<-chan *Transaction, error) {
@@ -106,6 +109,7 @@ func (s *ExternalSender) IncomingCh(id types.Hash) (chan<- ethcommon.Hash, error
 }
 
 // AddID initialises the sender with a swap w/ the given ID
+// TODO: remove this
 func (s *ExternalSender) AddID(id types.Hash) {
 	s.Lock()
 	defer s.Unlock()
@@ -121,10 +125,22 @@ func (s *ExternalSender) AddID(id types.Hash) {
 }
 
 // DeleteID deletes the swap w/ the given ID from the sender
+// TODO: remove this
 func (s *ExternalSender) DeleteID(id types.Hash) {
 	s.Lock()
 	defer s.Unlock()
 	delete(s.swaps, id)
+}
+
+// Approve prompts the external sender to sign an ERC20 Approve transaction
+func (s *ExternalSender) Approve(id types.Hash, spender ethcommon.Address,
+	amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input, err := s.abi.Pack("approve", spender, amount)
+	if err != nil {
+		return ethcommon.Hash{}, nil, err
+	}
+
+	return s.sendAndReceive(id, input, s.erc20Addr)
 }
 
 // NewSwap prompts the external sender to sign a new_swap transaction
@@ -174,7 +190,7 @@ func (s *ExternalSender) SetReady(id types.Hash,
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(id, input)
+	return s.sendAndReceive(id, input, s.contractAddr)
 }
 
 // Claim prompts the external sender to sign a claim transaction
@@ -185,7 +201,7 @@ func (s *ExternalSender) Claim(id types.Hash, _swap swapfactory.SwapFactorySwap,
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(id, input)
+	return s.sendAndReceive(id, input, s.contractAddr)
 }
 
 // Refund prompts the external sender to sign a refund transaction
@@ -196,13 +212,13 @@ func (s *ExternalSender) Refund(id types.Hash, _swap swapfactory.SwapFactorySwap
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(id, input)
+	return s.sendAndReceive(id, input, s.contractAddr)
 }
 
 func (s *ExternalSender) sendAndReceive(id types.Hash,
-	input []byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input []byte, to ethcommon.Address) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx := &Transaction{
-		To:   s.contractAddr,
+		To:   to,
 		Data: fmt.Sprintf("0x%x", input),
 	}
 

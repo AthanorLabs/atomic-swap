@@ -16,7 +16,6 @@ var (
 	errCannotRefund  = errors.New("cannot refund if not the ETH provider")
 
 	// ws errors
-	errUnimplemented     = errors.New("unimplemented")
-	errInvalidMethod     = errors.New("invalid method")
-	errSignerNotRequired = errors.New("signer not required")
+	errUnimplemented = errors.New("unimplemented")
+	errInvalidMethod = errors.New("invalid method")
 )

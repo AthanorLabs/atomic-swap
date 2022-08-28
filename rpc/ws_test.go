@@ -103,6 +103,9 @@ func (*mockXMRTaker) Refund(types.Hash) (ethcommon.Hash, error) {
 	return ethcommon.Hash{}, nil
 }
 func (*mockXMRTaker) SetSwapTimeout(_ time.Duration) {}
+func (*mockXMRTaker) ExternalSender(_ types.Hash) (*txsender.ExternalSender, error) {
+	return nil, fmt.Errorf("unimplemented")
+}
 
 type mockSwapState struct{}
 
@@ -138,9 +141,6 @@ func (*mockProtocolBackend) SetGasPrice(uint64)                   {}
 func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {}
 func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
-}
-func (*mockProtocolBackend) ExternalSender() *txsender.ExternalSender {
-	return nil
 }
 func (*mockProtocolBackend) SetEthAddress(ethcommon.Address)                  {}
 func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {}

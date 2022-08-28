@@ -18,8 +18,10 @@ import (
 
 // Sender signs and submits transactions to the chain
 type Sender interface {
-	SetContract(*swapfactory.SwapFactory)
-	SetContractAddress(ethcommon.Address)
+	// SetContract(*swapfactory.SwapFactory)
+	// SetContractAddress(ethcommon.Address)
+	Approve(id types.Hash, spender ethcommon.Address,
+		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) // for ERC20 swaps
 	NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
 		_timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
 		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
@@ -31,16 +33,17 @@ type Sender interface {
 }
 
 type privateKeySender struct {
-	ctx      context.Context
-	ec       *ethclient.Client
-	contract *swapfactory.SwapFactory
-	txOpts   *bind.TransactOpts
-	txLock   sync.Mutex // locks from TX start until receipt so we don't reuse ETH nonce values
+	ctx           context.Context
+	ec            *ethclient.Client
+	contract      *swapfactory.SwapFactory
+	erc20Contract *swapfactory.IERC20
+	txOpts        *bind.TransactOpts
+	txLock        sync.Mutex // locks from TX start until receipt so we don't reuse ETH nonce values
 }
 
 // NewSenderWithPrivateKey returns a new *privateKeySender
 func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *swapfactory.SwapFactory,
-	txOpts *bind.TransactOpts) Sender {
+	erc20Contract *swapfactory.IERC20, txOpts *bind.TransactOpts) Sender {
 	return &privateKeySender{
 		ctx:      ctx,
 		ec:       ec,
@@ -49,11 +52,32 @@ func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract
 	}
 }
 
-func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
-	s.contract = contract
-}
+// func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
+// 	s.contract = contract
+// }
 
-func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
+// func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
+
+func (s *privateKeySender) Approve(_ types.Hash, spender ethcommon.Address,
+	amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	s.txLock.Lock()
+	defer s.txLock.Unlock()
+	txOpts := *s.txOpts
+
+	tx, err := s.erc20Contract.Approve(&txOpts, spender, amount)
+	if err != nil {
+		err = fmt.Errorf("set_ready tx creation failed, %w", err)
+		return ethcommon.Hash{}, nil, err
+	}
+
+	receipt, err := block.WaitForReceipt(s.ctx, s.ec, tx.Hash())
+	if err != nil {
+		err = fmt.Errorf("set_ready failed, %w", err)
+		return ethcommon.Hash{}, nil, err
+	}
+
+	return tx.Hash(), receipt, nil
+}
 
 func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
@@ -61,7 +85,11 @@ func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyR
 	s.txLock.Lock()
 	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
-	txOpts.Value = value
+
+	if _ethAsset != types.EthAssetETH {
+		txOpts.Value = value
+	}
+
 	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
 		ethcommon.Address(_ethAsset), value, _nonce)
 	if err != nil {

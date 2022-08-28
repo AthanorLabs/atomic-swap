@@ -11,7 +11,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
@@ -30,17 +29,17 @@ type wsServer struct {
 	sm      SwapManager
 	ns      *NetService
 	backend ProtocolBackend
-	signer  *txsender.ExternalSender
+	taker   XMRTaker
 }
 
 func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend,
-	signer *txsender.ExternalSender) *wsServer {
+	taker XMRTaker) *wsServer {
 	s := &wsServer{
 		ctx:     ctx,
 		sm:      sm,
 		ns:      ns,
 		backend: backend,
-		signer:  signer,
+		taker:   taker,
 	}
 
 	return s
@@ -154,33 +153,33 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerIDStr, ethAddress,
 	xmrAddr string) error {
-	if s.signer == nil {
-		return errSignerNotRequired
-	}
-
-	if err := mcrypto.ValidateAddress(xmrAddr, s.backend.Env()); err != nil {
-		return err
-	}
-
-	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
-
 	offerID, err := offerIDStringToHash(offerIDStr)
 	if err != nil {
 		return err
 	}
 
-	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
-	defer s.backend.ClearXMRDepositAddress(offerID)
-
-	s.signer.AddID(offerID)
-	defer s.signer.DeleteID(offerID)
-
-	txsOutCh, err := s.signer.OngoingCh(offerID)
+	signer, err := s.taker.ExternalSender(offerID)
 	if err != nil {
 		return err
 	}
 
-	txsInCh, err := s.signer.IncomingCh(offerID)
+	if err = mcrypto.ValidateAddress(xmrAddr, s.backend.Env()); err != nil {
+		return err
+	}
+
+	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
+	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
+	defer s.backend.ClearXMRDepositAddress(offerID)
+
+	signer.AddID(offerID)
+	defer signer.DeleteID(offerID)
+
+	txsOutCh, err := signer.OngoingCh(offerID)
+	if err != nil {
+		return err
+	}
+
+	txsInCh, err := signer.IncomingCh(offerID)
 	if err != nil {
 		return err
 	}

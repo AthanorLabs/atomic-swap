@@ -26,6 +26,7 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
@@ -36,6 +37,7 @@ var refundedTopic = common.GetTopic(common.RefundedEventSignature)
 
 type swapState struct {
 	backend.Backend
+	sender txsender.Sender
 
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -95,11 +97,31 @@ func newSwapState(
 		return nil, err
 	}
 
+	var sender txsender.Sender
+	if offer.EthAsset != types.EthAssetETH {
+		erc20Contract, err := swapfactory.NewIERC20(offer.EthAsset.Address(), b.EthClient())
+		if err != nil {
+			return nil, err
+		}
+
+		sender, err = b.NewTxSender(offer.EthAsset.Address(), erc20Contract)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		sender, err = b.NewTxSender(offer.EthAsset.Address(), nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
 		cancel:              cancel,
 		Backend:             b,
+		sender:              sender,
 		offer:               offer,
 		offerManager:        om,
 		infoFile:            infoFile,
@@ -572,7 +594,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
 	unused := types.Hash{}
-	txHash, _, err := s.Claim(unused, s.contractSwap, sc)
+	txHash, _, err := s.sender.Claim(unused, s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

@@ -21,6 +21,7 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -34,6 +35,7 @@ const revertUnableToRefund = "it's the counterparty's turn, unable to refund, tr
 // and its current state.
 type swapState struct {
 	backend.Backend
+	sender txsender.Sender
 
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -91,12 +93,30 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	statusCh <- stage
 	info := pswap.NewInfo(offerID, types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
 		exchangeRate, ethAsset, stage, statusCh)
-	if err := b.SwapManager().AddSwap(info); err != nil {
+	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 
-	if b.ExternalSender() != nil {
+	if !b.HasEthereumPrivateKey() {
 		transferBack = true // front-end must set final deposit address
+	}
+
+	var sender txsender.Sender
+	if ethAsset != types.EthAssetETH {
+		erc20Contract, err := swapfactory.NewIERC20(ethAsset.Address(), b.EthClient()) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		sender, err = b.NewTxSender(ethAsset.Address(), erc20Contract)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sender, err = b.NewTxSender(ethAsset.Address(), nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ctx, cancel := context.WithCancel(b.Ctx())
@@ -104,6 +124,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		ctx:                 ctx,
 		cancel:              cancel,
 		Backend:             b,
+		sender:              sender,
 		infoFile:            infofile,
 		transferBack:        transferBack,
 		nextExpectedMessage: &net.SendKeysMessage{},
@@ -417,6 +438,8 @@ func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateVi
 }
 
 // lockETH the Swap contract function new_swap and locks `amount` ether in it.
+// TODO: rename to lockAsset or createNewSwap or something?
+// TODO: update units to not necessarily be an EtherAmount
 func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
 		return ethcommon.Hash{}, errNoPublicKeysSet
@@ -426,11 +449,20 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, errCounterpartyKeysNotSet
 	}
 
+	if s.ethAsset != types.EthAssetETH {
+		// TODO: check logs
+		// TODO: check units
+		_, _, err := s.sender.Approve(s.ID(), s.ContractAddr(), amount.BigInt())
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+	}
+
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
 	nonce := generateNonce()
-	txHash, receipt, err := s.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
+	txHash, receipt, err := s.sender.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
 		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce,
 		s.ethAsset, amount.BigInt())
 	if err != nil {
@@ -499,7 +531,7 @@ func (s *swapState) ready() error {
 	if stage != swapfactory.StagePending {
 		return fmt.Errorf("can not set contract to ready when swap stage is %s", swapfactory.StageToString(stage))
 	}
-	_, _, err = s.SetReady(types.EmptyHash, s.contractSwap)
+	_, _, err = s.sender.SetReady(types.EmptyHash, s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -521,7 +553,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	txHash, _, err := s.Refund(s.ID(), s.contractSwap, sc)
+	txHash, _, err := s.sender.Refund(s.ID(), s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
