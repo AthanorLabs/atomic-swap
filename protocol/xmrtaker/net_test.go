@@ -12,8 +12,8 @@ import (
 func newTestXMRTaker(t *testing.T) *Instance {
 	b := newBackend(t)
 	cfg := &Config{
-		Backend:  b,
-		Basepath: path.Join(t.TempDir(), "xmrtaker"),
+		Backend: b,
+		DataDir: path.Join(t.TempDir(), "xmrtaker"),
 	}
 
 	xmrtaker, err := NewInstance(cfg)

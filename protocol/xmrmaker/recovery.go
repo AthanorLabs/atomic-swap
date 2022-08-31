@@ -19,7 +19,7 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b backend.Backend, basePath string, secret *mcrypto.PrivateSpendKey,
+func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.PrivateSpendKey,
 	contractAddr ethcommon.Address,
 	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) {
 	kp, err := secret.AsPrivateKeyPair()
@@ -42,7 +42,7 @@ func NewRecoveryState(b backend.Backend, basePath string, secret *mcrypto.Privat
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		contractSwap:   contractSwap,
-		infoFile:       pcommon.GetSwapRecoveryFilepath(basePath),
+		infoFile:       pcommon.GetSwapRecoveryFilepath(dataDir),
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

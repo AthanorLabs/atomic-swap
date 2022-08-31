@@ -122,7 +122,7 @@ func (d *discovery) discover(provides types.ProvidesCoin,
 		searchTime.Seconds(),
 	)
 
-	peerCh, err := d.rd.FindPeers(d.ctx, string("XMR"))
+	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))
 	if err != nil {
 		return nil, err
 	}

@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/urfave/cli"
+	logging "github.com/ipfs/go-log"
+	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cmd/utils"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -21,15 +21,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	recovery "github.com/athanorlabs/atomic-swap/recover"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
-
-	logging "github.com/ipfs/go-log"
 )
 
 const (
 	flagEnv                  = "env"
 	flagMoneroWalletEndpoint = "monero-endpoint"
 	flagEthereumEndpoint     = "ethereum-endpoint"
-	flagEthereumPrivateKey   = "ethereum-privkey"
+	flagEthereumPrivKey      = "ethereum-privkey"
 	flagEthereumChainID      = "ethereum-chain-id"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
@@ -56,7 +54,8 @@ var (
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  flagEnv,
-				Usage: "environment to use: one of mainnet, stagenet, or dev",
+				Usage: "Environment to use: one of mainnet, stagenet, or dev",
+				Value: "dev",
 			},
 			&cli.StringFlag{
 				Name:  flagMoneroWalletEndpoint,
@@ -64,35 +63,35 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumEndpoint,
-				Usage: "ethereum client endpoint",
+				Usage: "Ethereum client endpoint",
 			},
 			&cli.StringFlag{
-				Name:  flagEthereumPrivateKey,
-				Usage: "file containing a private key hex string",
+				Name:  flagEthereumPrivKey,
+				Usage: "File containing a private key hex string",
 			},
 			&cli.UintFlag{
 				Name:  flagEthereumChainID,
-				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
+				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
 			},
 			&cli.UintFlag{
 				Name:  flagGasPrice,
-				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
+				Usage: "Ethereum gas price to use for transactions (in gwei). If not set, the gas price is set via oracle.",
 			},
 			&cli.UintFlag{
 				Name:  flagGasLimit,
-				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
+				Usage: "Ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
 			},
 			&cli.StringFlag{
 				Name:  flagInfoFile,
-				Usage: "path to swap infofile",
+				Usage: "Path to swap infofile",
 			},
 			&cli.BoolFlag{
 				Name:  flagXMRMaker,
-				Usage: "true if recovering as an xmr-maker",
+				Usage: "Use when recovering as an xmr-maker",
 			},
 			&cli.BoolFlag{
 				Name:  flagXMRTaker,
-				Usage: "true if recovering as an xmr-taker",
+				Usage: "Use when recovering as an xmr-taker",
 			},
 		},
 	}
@@ -108,8 +107,8 @@ func main() {
 // Recoverer is implemented by a backend which is able to recover swap funds
 type Recoverer interface {
 	WalletFromSharedSecret(secret *mcrypto.PrivateKeyInfo) (mcrypto.Address, error)
-	RecoverFromXMRMakerSecretAndContract(b backend.Backend, basepath string, xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) //nolint:lll
-	RecoverFromXMRTakerSecretAndContract(b backend.Backend, basepath string, xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error)               //nolint:lll
+	RecoverFromXMRMakerSecretAndContract(b backend.Backend, dataDir string, xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) //nolint:lll
+	RecoverFromXMRTakerSecretAndContract(b backend.Backend, dataDir string, xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error)               //nolint:lll
 }
 
 type instance struct {
@@ -126,11 +125,12 @@ func runRecover(c *cli.Context) error {
 func (inst *instance) recover(c *cli.Context) error {
 	xmrmaker := c.Bool(flagXMRMaker)
 	xmrtaker := c.Bool(flagXMRTaker)
-	if !xmrmaker && !xmrtaker {
+	// Either maker or taker must be specified, but not both, so their values must be opposite
+	if xmrmaker == xmrtaker {
 		return errMustSpecifyXMRMakerOrTaker
 	}
 
-	env, cfg, err := utils.GetEnvironment(c)
+	env, cfg, err := utils.GetEnvironment(c.String(flagEnv))
 	if err != nil {
 		return err
 	}
@@ -173,10 +173,10 @@ func (inst *instance) recover(c *cli.Context) error {
 		return err
 	}
 
-	basepath := filepath.Dir(filepath.Clean(infofilePath))
+	dataDir := filepath.Dir(filepath.Clean(infofilePath))
 
 	if xmrmaker {
-		res, err := r.RecoverFromXMRMakerSecretAndContract(b, basepath, infofile.PrivateKeyInfo.PrivateSpendKey,
+		res, err := r.RecoverFromXMRMakerSecretAndContract(b, dataDir, infofile.PrivateKeyInfo.PrivateSpendKey,
 			contractAddr, infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
@@ -194,7 +194,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	}
 
 	if xmrtaker {
-		res, err := r.RecoverFromXMRTakerSecretAndContract(b, basepath, infofile.PrivateKeyInfo.PrivateSpendKey,
+		res, err := r.RecoverFromXMRTakerSecretAndContract(b, dataDir, infofile.PrivateKeyInfo.PrivateSpendKey,
 			infofile.ContractSwapID, infofile.ContractSwap)
 		if err != nil {
 			return err
@@ -245,9 +245,8 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		moneroEndpoint, ethEndpoint string
 	)
 
-	chainID := int64(c.Uint(flagEthereumChainID))
-	if chainID == 0 {
-		chainID = cfg.EthereumChainID
+	if c.IsSet(flagEthereumChainID) {
+		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
 	}
 
 	if c.String(flagMoneroWalletEndpoint) != "" {
@@ -263,7 +262,10 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	}
 
 	// TODO: add --external-signer option to allow front-end integration (#124)
-	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, false, false)
+	ethPrivKeyFile := c.String(flagEthereumPrivKey)
+	devXMRMaker := false // Not directly supported, but you can put the Ganache key in a file
+	devXMRTaker := false
+	ethPrivKey, err := utils.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
 	if err != nil {
 		return nil, err
 	}
@@ -272,11 +274,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	var gasPrice *big.Int
 	if c.Uint(flagGasPrice) != 0 {
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
-	}
-
-	pk, err := ethcrypto.HexToECDSA(ethPrivKey)
-	if err != nil {
-		return nil, err
 	}
 
 	ec, err := ethclient.Dial(ethEndpoint)
@@ -293,9 +290,9 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		Ctx:                  ctx,
 		MoneroWalletEndpoint: moneroEndpoint,
 		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
+		EthereumPrivateKey:   ethPrivKey,
 		Environment:          env,
-		ChainID:              big.NewInt(chainID),
+		ChainID:              big.NewInt(cfg.EthereumChainID),
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapContract:         contract,

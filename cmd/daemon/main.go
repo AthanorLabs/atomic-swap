@@ -3,16 +3,15 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
+	"path"
 	"strings"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cmd/utils"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -50,15 +49,15 @@ const (
 var (
 	log = logging.Logger("cmd")
 
-	// default dev basepaths
-	defaultXMRMakerBasepath = os.TempDir() + "/xmrmaker"
-	defaultXMRTakerBasepath = os.TempDir() + "/xmrtaker"
+	// default dev base paths
+	defaultXMRMakerDataDir = path.Join(os.TempDir(), "xmrmaker")
+	defaultXMRTakerDataDir = path.Join(os.TempDir(), "xmrtaker")
 )
 
 const (
 	flagRPCPort    = "rpc-port"
 	flagWSPort     = "ws-port"
-	flagBasepath   = "basepath"
+	flagDataDir    = "data-dir"
 	flagLibp2pKey  = "libp2p-key"
 	flagLibp2pPort = "libp2p-port"
 	flagBootnodes  = "bootnodes"
@@ -92,35 +91,41 @@ var (
 		Flags: []cli.Flag{
 			&cli.UintFlag{
 				Name:  flagRPCPort,
-				Usage: "port for the daemon RPC server to run on; default 5001",
+				Usage: "Port for the daemon RPC server to run on",
+				Value: defaultRPCPort,
 			},
 			&cli.UintFlag{
 				Name:  flagWSPort,
-				Usage: "port for the daemon RPC websockets server to run on; default 8080",
+				Usage: "Port for the daemon RPC websockets server to run on",
+				Value: defaultWSPort,
 			},
 			&cli.StringFlag{
-				Name:  flagBasepath,
-				Usage: "path to store swap artefacts",
+				Name:  flagDataDir,
+				Usage: "Path to store swap artifacts", //nolint:misspell
+				Value: "{HOME}/.atomicswap/{ENV}",     // For --help only, actual default replaces variables
 			},
 			&cli.StringFlag{
 				Name:  flagLibp2pKey,
 				Usage: "libp2p private key",
+				Value: defaultLibp2pKey,
 			},
 			&cli.UintFlag{
 				Name:  flagLibp2pPort,
 				Usage: "libp2p port to listen on",
+				Value: defaultLibp2pPort,
 			},
 			&cli.StringFlag{
 				Name:  flagWalletFile,
-				Usage: "filename of wallet file containing XMR to be swapped; required if running as XMR provider",
+				Usage: "Filename of wallet file containing XMR to be swapped; required if running as XMR provider",
 			},
 			&cli.StringFlag{
 				Name:  flagWalletPassword,
-				Usage: "password of wallet file containing XMR to be swapped",
+				Usage: "Password of wallet file containing XMR to be swapped",
 			},
 			&cli.StringFlag{
 				Name:  flagEnv,
-				Usage: "environment to use: one of mainnet, stagenet, or dev",
+				Usage: "Environment to use: one of mainnet, stagenet, or dev",
+				Value: "dev",
 			},
 			&cli.StringFlag{
 				Name:  flagMoneroWalletEndpoint,
@@ -132,55 +137,57 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumEndpoint,
-				Usage: "ethereum client endpoint",
+				Usage: "Ethereum client endpoint",
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumPrivKey,
-				Usage: "file containing a private key hex string",
+				Usage: "File containing a private key as hex string",
 			},
 			&cli.UintFlag{
 				Name:  flagEthereumChainID,
-				Usage: "ethereum chain ID; eg. mainnet=1, ropsten=3, rinkeby=4, goerli=5, ganache=1337",
+				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
 			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
-				Usage: "address of instance of SwapFactory.sol already deployed on-chain; required if running on mainnet",
+				Usage: "Address of instance of SwapFactory.sol already deployed on-chain; required if running on mainnet",
 			},
-			&cli.StringFlag{
-				Name:  flagBootnodes,
-				Usage: "comma-separated string of libp2p bootnodes",
+			&cli.StringSliceFlag{
+				Name:    flagBootnodes,
+				Aliases: []string{"bn"},
+				Usage:   "libp2p bootnode, comma separated if passing multiple to a single flag",
 			},
 			&cli.UintFlag{
 				Name:  flagGasPrice,
-				Usage: "ethereum gas price to use for transactions (in gwei). if not set, the gas price is set via oracle.",
+				Usage: "Ethereum gas price to use for transactions (in gwei). If not set, the gas price is set via oracle.",
 			},
 			&cli.UintFlag{
 				Name:  flagGasLimit,
-				Usage: "ethereum gas limit to use for transactions. if not set, the gas limit is estimated for each transaction.",
+				Usage: "Ethereum gas limit to use for transactions. If not set, the gas limit is estimated for each transaction.",
 			},
 			&cli.BoolFlag{
 				Name:  flagDevXMRTaker,
-				Usage: "run in development mode and use ETH provider default values",
+				Usage: "Run in development mode and use ETH provider default values",
 			},
 			&cli.BoolFlag{
 				Name:  flagDevXMRMaker,
-				Usage: "run in development mode and use XMR provider default values",
+				Usage: "Run in development mode and use XMR provider default values",
 			},
 			&cli.BoolFlag{
 				Name:  flagDeploy,
-				Usage: "deploy an instance of the swap contract; defaults to false",
+				Usage: "Deploy an instance of the swap contract",
 			},
 			&cli.BoolFlag{
 				Name:  flagTransferBack,
-				Usage: "when receiving XMR in a swap, transfer it back to the original wallet.",
+				Usage: "When receiving XMR in a swap, transfer it back to the original wallet.",
 			},
 			&cli.StringFlag{
 				Name:  flagLog,
-				Usage: "set log level: one of [error|warn|info|debug]",
+				Usage: "Set log level: one of [error|warn|info|debug]",
+				Value: "info",
 			},
 			&cli.BoolFlag{
 				Name:  flagUseExternalSigner,
-				Usage: "use external signer, for usage with the swap UI",
+				Usage: "Use external signer, for usage with the swap UI",
 			},
 		},
 	}
@@ -216,14 +223,10 @@ func setLogLevels(c *cli.Context) error {
 	)
 
 	level := c.String(flagLog)
-	if level == "" {
-		level = levelInfo
-	}
-
 	switch level {
 	case levelError, levelWarn, levelInfo, levelDebug:
 	default:
-		return errors.New("invalid log level")
+		return fmt.Errorf("invalid log level %q", level)
 	}
 
 	_ = logging.SetLogLevel("xmrtaker", level)
@@ -258,83 +261,84 @@ func runDaemon(c *cli.Context) error {
 	return nil
 }
 
-func (d *daemon) make(c *cli.Context) error {
-	env, cfg, err := utils.GetEnvironment(c)
-	if err != nil {
-		return err
-	}
-
-	devXMRTaker := c.Bool(flagDevXMRTaker)
-	devXMRMaker := c.Bool(flagDevXMRMaker)
-
-	chainID := int64(c.Uint(flagEthereumChainID))
-	if chainID == 0 {
-		chainID = cfg.EthereumChainID
-	}
-
-	var bootnodes []string
-	if c.String(flagBootnodes) != "" {
-		bootnodes = strings.Split(c.String(flagBootnodes), ",")
-	}
-
-	k := c.String(flagLibp2pKey)
-	p := uint16(c.Uint(flagLibp2pPort))
-	var (
-		libp2pKey  string
-		libp2pPort uint16
-		rpcPort    uint16
-	)
-
-	switch {
-	case k != "":
-		libp2pKey = k
-	case devXMRTaker:
-		libp2pKey = defaultXMRTakerLibp2pKey
-	case devXMRMaker:
-		libp2pKey = defaultXMRMakerLibp2pKey
-	default:
-		libp2pKey = defaultLibp2pKey
-	}
-
-	switch {
-	case p != 0:
-		libp2pPort = p
-	case devXMRTaker:
-		libp2pPort = defaultXMRTakerLibp2pPort
-	case devXMRMaker:
-		libp2pPort = defaultXMRMakerLibp2pPort
-	default:
-		libp2pPort = defaultLibp2pPort
-	}
-
-	// basepath is already set in default case
-	basepath := c.String(flagBasepath)
-	switch {
-	case basepath != "":
-		cfg.Basepath = basepath
-	case devXMRTaker:
-		cfg.Basepath = defaultXMRTakerBasepath
-	case devXMRMaker:
-		cfg.Basepath = defaultXMRMakerBasepath
-	}
-
-	exists, err := common.Exists(cfg.Basepath)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		err = common.MakeDir(cfg.Basepath)
-		if err != nil {
-			return err
+// expandBootnodes expands the boot nodes passed on the command
+// line that can be specified individually with multiple flags,
+// but can also contain multiple boot nodes passed to single flag
+// separated by commas.
+func expandBootnodes(nodesCLI []string) []string {
+	var nodes []string
+	for _, n := range nodesCLI {
+		splitNodes := strings.Split(n, ",")
+		for _, ns := range splitNodes {
+			nodes = append(nodes, strings.TrimSpace(ns))
 		}
+	}
+	return nodes
+}
+
+func (d *daemon) make(c *cli.Context) error {
+	env, cfg, err := utils.GetEnvironment(c.String(flagEnv))
+	if err != nil {
+		return err
+	}
+
+	devXMRMaker := c.Bool(flagDevXMRMaker)
+	devXMRTaker := c.Bool(flagDevXMRTaker)
+	if devXMRMaker && devXMRTaker {
+		return errFlagsMutuallyExclusive(flagDevXMRMaker, flagDevXMRTaker)
+	}
+
+	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
+	// `flagEthereumChainID` is passed:
+	if c.IsSet(flagEthereumChainID) {
+		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
+	}
+
+	bootnodes := expandBootnodes(c.StringSlice(flagBootnodes))
+
+	libp2pKey := c.String(flagLibp2pKey)
+	if !c.IsSet(flagLibp2pKey) {
+		switch {
+		case devXMRTaker:
+			libp2pKey = defaultXMRTakerLibp2pKey
+		case devXMRMaker:
+			libp2pKey = defaultXMRMakerLibp2pKey
+		}
+	}
+
+	libp2pPort := uint16(c.Uint(flagLibp2pPort))
+	if !c.IsSet(flagLibp2pPort) {
+		switch {
+		case devXMRTaker:
+			libp2pPort = defaultXMRTakerLibp2pPort
+		case devXMRMaker:
+			libp2pPort = defaultXMRMakerLibp2pPort
+		}
+	}
+
+	// cfg.DataDir was already defaulted from the `flagEnv` value and `flagDataDir` does
+	// not directly set a default value.
+	if c.IsSet(flagDataDir) {
+		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
+	} else {
+		// Override in dev scenarios if the value was not explicitly set
+		switch {
+		case devXMRTaker:
+			cfg.DataDir = defaultXMRTakerDataDir
+		case devXMRMaker:
+			cfg.DataDir = defaultXMRMakerDataDir
+		}
+	}
+
+	if err = common.MakeDir(cfg.DataDir); err != nil {
+		return err
 	}
 
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
-		Basepath:    cfg.Basepath,
-		ChainID:     chainID,
+		DataDir:     cfg.DataDir,
+		EthChainID:  cfg.EthereumChainID,
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   bootnodes,
@@ -346,7 +350,7 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 
 	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, chainID, devXMRMaker, sm, host)
+	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host)
 	if err != nil {
 		return err
 	}
@@ -364,27 +368,24 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	p = uint16(c.Uint(flagRPCPort))
-	switch {
-	case p != 0:
-		rpcPort = p
-	case devXMRTaker:
-		rpcPort = defaultXMRTakerRPCPort
-	case devXMRMaker:
-		rpcPort = defaultXMRMakerRPCPort
-	default:
-		rpcPort = defaultRPCPort
+	rpcPort := uint16(c.Uint(flagRPCPort))
+	if !c.IsSet(flagRPCPort) {
+		switch {
+		case devXMRTaker:
+			rpcPort = defaultXMRTakerRPCPort
+		case devXMRMaker:
+			rpcPort = defaultXMRMakerRPCPort
+		}
 	}
 
 	wsPort := uint16(c.Uint(flagWSPort))
-	switch {
-	case wsPort != 0:
-	case devXMRTaker:
-		wsPort = defaultXMRTakerWSPort
-	case devXMRMaker:
-		wsPort = defaultXMRMakerWSPort
-	default:
-		wsPort = defaultWSPort
+	if !c.IsSet(flagWSPort) {
+		switch {
+		case devXMRTaker:
+			wsPort = defaultXMRTakerWSPort
+		case devXMRMaker:
+			wsPort = defaultXMRMakerWSPort
+		}
 	}
 
 	rpcCfg := &rpc.Config{
@@ -414,24 +415,44 @@ func (d *daemon) make(c *cli.Context) error {
 		}
 	}()
 
-	log.Infof("started swapd with basepath %s",
-		cfg.Basepath,
-	)
+	log.Infof("started swapd with data-dir %s", cfg.DataDir)
 	return nil
 }
 
-func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg common.Config,
-	chainID int64, devXMRMaker bool, sm swap.Manager, net net.Host) (backend.Backend, error) {
+func errFlagsMutuallyExclusive(flag1, flag2 string) error {
+	return fmt.Errorf("flags %q and %q are mutually exclusive", flag1, flag2)
+}
+
+func errFlagRequired(flag string) error {
+	return fmt.Errorf("required flag %q not specified", flag)
+}
+
+func newBackend(
+	ctx context.Context,
+	c *cli.Context,
+	env common.Environment,
+	cfg common.Config,
+	devXMRMaker bool,
+	devXMRTaker bool,
+	sm swap.Manager,
+	net net.Host,
+) (backend.Backend, error) {
 	var (
-		moneroEndpoint, daemonEndpoint, ethEndpoint string
+		moneroEndpoint string
+		daemonEndpoint string
+		ethEndpoint    string
+		ethPrivKey     *ecdsa.PrivateKey
 	)
 
-	if c.String(flagMoneroWalletEndpoint) != "" {
+	switch {
+	case c.String(flagMoneroWalletEndpoint) != "":
 		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
-	} else if devXMRMaker {
+	case devXMRMaker:
 		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
-	} else {
+	case devXMRTaker:
 		moneroEndpoint = common.DefaultXMRTakerMoneroEndpoint
+	default:
+		return nil, errFlagRequired(flagMoneroWalletEndpoint)
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -440,15 +461,15 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
-	ethPrivKey, err := utils.GetEthereumPrivateKey(c, env, devXMRMaker, c.Bool(flagUseExternalSigner))
-	if err != nil {
-		return nil, err
+	useExternalSigner := c.Bool(flagUseExternalSigner)
+	ethPrivKeyFile := c.String(flagEthereumPrivKey)
+	if useExternalSigner && ethPrivKeyFile != "" {
+		return nil, errFlagsMutuallyExclusive(flagUseExternalSigner, flagEthereumPrivKey)
 	}
 
-	var pk *ecdsa.PrivateKey
-	if ethPrivKey != "" {
-		pk, err = ethcrypto.HexToECDSA(ethPrivKey)
-		if err != nil {
+	if !useExternalSigner {
+		var err error
+		if ethPrivKey, err = utils.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
 			return nil, err
 		}
 	}
@@ -483,8 +504,8 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		contractAddr = ethcommon.Address{}
 	}
 
-	contract, contractAddr, err := getOrDeploySwapFactory(ctx, contractAddr, env, cfg.Basepath,
-		big.NewInt(chainID), pk, ec)
+	chainID := big.NewInt(cfg.EthereumChainID)
+	contract, contractAddr, err := getOrDeploySwapFactory(ctx, contractAddr, env, cfg.DataDir, chainID, ethPrivKey, ec)
 	if err != nil {
 		return nil, err
 	}
@@ -494,9 +515,9 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		MoneroWalletEndpoint: moneroEndpoint,
 		MoneroDaemonEndpoint: daemonEndpoint,
 		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
+		EthereumPrivateKey:   ethPrivKey,
 		Environment:          env,
-		ChainID:              big.NewInt(chainID),
+		ChainID:              chainID,
 		GasPrice:             gasPrice,
 		GasLimit:             uint64(c.Uint(flagGasLimit)),
 		SwapManager:          sm,
@@ -527,7 +548,7 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 
 	xmrtakerCfg := &xmrtaker.Config{
 		Backend:              b,
-		Basepath:             cfg.Basepath,
+		DataDir:              cfg.DataDir,
 		MoneroWalletFile:     walletFile,
 		MoneroWalletPassword: walletPassword,
 		TransferBack:         c.Bool(flagTransferBack),
@@ -540,7 +561,7 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 
 	xmrmakerCfg := &xmrmaker.Config{
 		Backend:        b,
-		Basepath:       cfg.Basepath,
+		DataDir:        cfg.DataDir,
 		WalletFile:     walletFile,
 		WalletPassword: walletPassword,
 	}

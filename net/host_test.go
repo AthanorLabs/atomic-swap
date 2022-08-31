@@ -62,8 +62,8 @@ func newHost(t *testing.T, port uint16) *host {
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
-		Basepath:    t.TempDir(),
-		ChainID:     common.GanacheChainID,
+		DataDir:     t.TempDir(),
+		EthChainID:  common.GanacheChainID,
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
 		Bootnodes:   []string{},

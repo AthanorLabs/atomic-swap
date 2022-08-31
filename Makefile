@@ -45,7 +45,7 @@ test-integration: init
 
 .PHONY: install
 install: init
-	cd cmd/ && go install
+	cd cmd/ && go install ./...
 
 .PHONY: build
 build: init

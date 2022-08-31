@@ -18,8 +18,8 @@ var (
 // Instance implements the functionality that will be needed by a user who owns XMR
 // and wishes to swap for ETH.
 type Instance struct {
-	backend  backend.Backend
-	basepath string
+	backend backend.Backend
+	dataDir string
 
 	walletFile, walletPassword string
 
@@ -32,7 +32,7 @@ type Instance struct {
 // Config contains the configuration values for a new XMRMaker instance.
 type Config struct {
 	Backend                    backend.Backend
-	Basepath                   string
+	DataDir                    string
 	WalletFile, WalletPassword string
 }
 
@@ -49,10 +49,10 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	return &Instance{
 		backend:        cfg.Backend,
-		basepath:       cfg.Basepath,
+		dataDir:        cfg.DataDir,
 		walletFile:     cfg.WalletFile,
 		walletPassword: cfg.WalletPassword,
-		offerManager:   offers.NewManager(cfg.Basepath),
+		offerManager:   offers.NewManager(cfg.DataDir),
 		swapStates:     make(map[types.Hash]*swapState),
 	}, nil
 }

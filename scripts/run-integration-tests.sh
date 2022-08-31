@@ -10,6 +10,10 @@ start-monerod-regtest
 start-ganache
 start-alice-wallet
 start-bob-wallet
+start-charlie-wallet
+
+CHARLIE_ETH_KEY="${SWAP_TEST_DATA_DIR}/charlie-eth.key"
+echo "87c546d6cb8ec705bea47e2ab40f42a768b1e5900686b0cecc68c0e8b74cd789" >"${CHARLIE_ETH_KEY}"
 
 # wait for wallets to start
 sleep 5
@@ -40,6 +44,8 @@ start-swapd bob \
 	--deploy
 
 start-swapd charlie \
+	--monero-endpoint "http://127.0.0.1:${CHARLIE_WALLET_PORT}" \
+	--ethereum-privkey "${CHARLIE_ETH_KEY}" \
 	--libp2p-port 9955 \
 	--rpc-port 5003 \
 	--ws-port 8083 \
@@ -58,8 +64,10 @@ stop-swapd bob
 stop-swapd charlie
 stop-alice-wallet
 stop-bob-wallet
+stop-charlie-wallet
 stop-monerod-regtest
 stop-ganache
+rm -f "${CHARLIE_ETH_KEY}"
 remove-test-data-dir
 
 exit $OK

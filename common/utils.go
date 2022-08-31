@@ -32,13 +32,10 @@ func GetTopic(sig string) ethcommon.Hash {
 	return b
 }
 
-// MakeDir makes a directory
+// MakeDir creates a directory, including leading directories, if they don't already exist.
+// File permissions of created directories are only granted to the current user.
 func MakeDir(dir string) error {
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return err
-	}
-
-	return nil
+	return os.MkdirAll(dir, 0700)
 }
 
 // Exists returns whether the given file or directory exists

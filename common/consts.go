@@ -2,7 +2,7 @@ package common
 
 const (
 	MainnetChainID = 1 //nolint
-	RopstenChainID = 3
+	GorliChainID   = 5
 	GanacheChainID = 1337
 
 	DefaultXMRTakerMoneroEndpoint = "http://127.0.0.1:18084/json_rpc"

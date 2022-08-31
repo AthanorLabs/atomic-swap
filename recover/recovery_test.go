@@ -137,8 +137,8 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim(t *testing.T) {
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
-	basePath := path.Join(t.TempDir(), "test-infofile")
-	res, err := r.RecoverFromXMRMakerSecretAndContract(b, basePath, keys.PrivateKeyPair.SpendKey().Hex(),
+	dataDir := path.Join(t.TempDir(), "test-infofile")
+	res, err := r.RecoverFromXMRMakerSecretAndContract(b, dataDir, keys.PrivateKeyPair.SpendKey().Hex(),
 		addr.String(), swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Claimed)
@@ -153,8 +153,8 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 	b := newBackend(t, addr, contract, tests.GetMakerTestKey(t))
 
 	r := newRecoverer(t)
-	basePath := path.Join(t.TempDir(), "test-infofile")
-	res, err := r.RecoverFromXMRMakerSecretAndContract(b, basePath, keys.PrivateKeyPair.SpendKey().Hex(),
+	dataDir := path.Join(t.TempDir(), "test-infofile")
+	res, err := r.RecoverFromXMRMakerSecretAndContract(b, dataDir, keys.PrivateKeyPair.SpendKey().Hex(),
 		addr.String(), swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Claimed)
@@ -169,8 +169,8 @@ func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
 	b := newBackend(t, addr, contract, tests.GetTakerTestKey(t))
 
 	r := newRecoverer(t)
-	basePath := path.Join(t.TempDir(), "test-infofile")
-	res, err := r.RecoverFromXMRTakerSecretAndContract(b, basePath, keys.PrivateKeyPair.SpendKey().Hex(),
+	dataDir := path.Join(t.TempDir(), "test-infofile")
+	res, err := r.RecoverFromXMRTakerSecretAndContract(b, dataDir, keys.PrivateKeyPair.SpendKey().Hex(),
 		swapID, swap)
 	require.NoError(t, err)
 	require.True(t, res.Refunded)

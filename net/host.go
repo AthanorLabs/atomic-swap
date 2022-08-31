@@ -71,8 +71,8 @@ type host struct {
 type Config struct {
 	Ctx         context.Context
 	Environment common.Environment
-	Basepath    string
-	ChainID     int64
+	DataDir     string
+	EthChainID  int64
 	Port        uint16
 	KeyFile     string
 	Bootnodes   []string
@@ -111,7 +111,7 @@ func NewHost(cfg *Config) (*host, error) {
 		}
 	}
 
-	ds, err := badger.NewDatastore(path.Join(cfg.Basepath, "libp2p-datastore"), &badger.DefaultOptions)
+	ds, err := badger.NewDatastore(path.Join(cfg.DataDir, "libp2p-datastore"), &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func NewHost(cfg *Config) (*host, error) {
 	hst := &host{
 		ctx:        ourCtx,
 		cancel:     cancel,
-		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.ChainID),
+		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID),
 		h:          h,
 		handler:    cfg.Handler,
 		ds:         ds,

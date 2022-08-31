@@ -23,8 +23,8 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 
 	newSwap(t, s, [32]byte{}, sr, big.NewInt(1), timeout)
 
-	basePath := path.Join(t.TempDir(), "test-infofile")
-	rs, err := NewRecoveryState(inst.backend, basePath, s.privkeys.SpendKey(), s.ContractAddr(),
+	dataDir := path.Join(t.TempDir(), "test-infofile")
+	rs, err := NewRecoveryState(inst.backend, dataDir, s.privkeys.SpendKey(), s.ContractAddr(),
 		s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 

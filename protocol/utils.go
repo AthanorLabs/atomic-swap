@@ -11,15 +11,15 @@ import (
 )
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
-func GetSwapInfoFilepath(basePath string) string {
+func GetSwapInfoFilepath(dataDir string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
-	return path.Join(basePath, t)
+	return path.Join(dataDir, t)
 }
 
 // GetSwapRecoveryFilepath returns an info file path with the current timestamp.
-func GetSwapRecoveryFilepath(basePath string) string {
+func GetSwapRecoveryFilepath(dataDir string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
-	return path.Join(basePath, fmt.Sprintf("recovery-%s.txt", t))
+	return path.Join(dataDir, fmt.Sprintf("recovery-%s.txt", t))
 }
 
 // ConvertContractSwapToMsg converts a swapfactory.SwapFactorySwap to a *message.ContractSwap
