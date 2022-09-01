@@ -583,13 +583,15 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	} else {
 		// get token details
 		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err == nil {
-			balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
-			if err != nil {
-				return ethcommon.Hash{}, err
-			}
-			log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+		if err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
+
+		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
 	}
 	// TODO: Check balance of ERC-20 token
 
@@ -610,13 +612,16 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
 		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err == nil {
-			balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
-			if err != nil {
-				return ethcommon.Hash{}, err
-			}
-			log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+		if err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
+
+		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+
+		log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
 	}
 
 	return txHash, nil

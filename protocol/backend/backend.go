@@ -274,7 +274,7 @@ func (b *backend) ERC20BalanceAt(ctx context.Context, token ethcommon.Address, a
 	if err != nil {
 		return big.NewInt(0), err
 	}
-	return tokenContract.BalanceOf(&bind.CallOpts{}, account)
+	return tokenContract.BalanceOf(b.callOpts, account)
 }
 
 func (b *backend) ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string,
@@ -283,15 +283,15 @@ func (b *backend) ERC20Info(ctx context.Context, token ethcommon.Address) (name 
 	if err != nil {
 		return "", "", 18, err
 	}
-	name, err = tokenContract.Name(&bind.CallOpts{})
+	name, err = tokenContract.Name(b.callOpts)
 	if err != nil {
 		return "", "", 18, err
 	}
-	symbol, err = tokenContract.Symbol(&bind.CallOpts{})
+	symbol, err = tokenContract.Symbol(b.callOpts)
 	if err != nil {
 		return "", "", 18, err
 	}
-	decimals, err = tokenContract.Decimals(&bind.CallOpts{})
+	decimals, err = tokenContract.Decimals(b.callOpts)
 	if err != nil {
 		return "", "", 18, err
 	}

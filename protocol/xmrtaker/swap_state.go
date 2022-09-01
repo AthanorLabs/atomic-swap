@@ -450,6 +450,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	if s.ethAsset != types.EthAssetETH {
+		// TODO: check if allowance is already enough
 		// TODO: check logs
 		// TODO: check units
 		_, _, err := s.sender.Approve(s.ContractAddr(), amount.BigInt())
@@ -469,7 +470,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
-	log.Debugf("instantiated swap on-chain: amount=%s asset=%v txHash=%s", amount, s.ethAsset, txHash)
+	log.Debugf("instantiated swap on-chain: amount=%s asset=%s txHash=%s", amount, s.ethAsset, txHash)
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
@@ -482,8 +483,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		}
 	}
 	if err != nil {
-		log.Debugf("swap ID not found in transaction receipt's logs")
-		return ethcommon.Hash{}, err
+		return ethcommon.Hash{}, fmt.Errorf("swap ID not found in transaction receipt's logs: %w", err)
 	}
 
 	var t0 *big.Int
@@ -495,8 +495,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 		}
 	}
 	if err != nil {
-		log.Debugf("timeouts not found in transaction receipt's logs")
-		return ethcommon.Hash{}, err
+		return ethcommon.Hash{}, fmt.Errorf("timeouts not found in transaction receipt's logs: %w", err)
 	}
 
 	s.setTimeouts(t0, t1)
