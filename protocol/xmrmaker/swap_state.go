@@ -595,8 +595,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
-	unused := types.Hash{}
-	txHash, _, err := s.sender.Claim(unused, s.contractSwap, sc)
+	txHash, _, err := s.sender.Claim(s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

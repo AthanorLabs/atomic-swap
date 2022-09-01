@@ -20,15 +20,15 @@ import (
 type Sender interface {
 	SetContract(*swapfactory.SwapFactory)
 	SetContractAddress(ethcommon.Address)
-	Approve(id types.Hash, spender ethcommon.Address,
+	Approve(spender ethcommon.Address,
 		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) // for ERC20 swaps
-	NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
+	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
 		_timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
 		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
-	SetReady(id types.Hash, _swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Claim(id types.Hash, _swap swapfactory.SwapFactorySwap,
+	SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
+	Claim(_swap swapfactory.SwapFactorySwap,
 		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Refund(id types.Hash, _swap swapfactory.SwapFactorySwap,
+	Refund(_swap swapfactory.SwapFactorySwap,
 		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
 }
 
@@ -58,7 +58,7 @@ func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
 
 func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 
-func (s *privateKeySender) Approve(_ types.Hash, spender ethcommon.Address,
+func (s *privateKeySender) Approve(spender ethcommon.Address,
 	amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txLock.Lock()
 	defer s.txLock.Unlock()
@@ -79,7 +79,7 @@ func (s *privateKeySender) Approve(_ types.Hash, spender ethcommon.Address,
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
+func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
 	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txLock.Lock()
@@ -107,8 +107,7 @@ func (s *privateKeySender) NewSwap(_ types.Hash, _pubKeyClaim [32]byte, _pubKeyR
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) SetReady(_ types.Hash,
-	_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txLock.Lock()
 	defer s.txLock.Unlock()
 	txOpts := *s.txOpts // make a copy, so we don't modify the original
@@ -127,7 +126,7 @@ func (s *privateKeySender) SetReady(_ types.Hash,
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap,
+func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txLock.Lock()
 	defer s.txLock.Unlock()
@@ -147,7 +146,7 @@ func (s *privateKeySender) Claim(_ types.Hash, _swap swapfactory.SwapFactorySwap
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Refund(_ types.Hash, _swap swapfactory.SwapFactorySwap,
+func (s *privateKeySender) Refund(_swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txLock.Lock()
 	defer s.txLock.Unlock()

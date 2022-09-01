@@ -452,7 +452,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	if s.ethAsset != types.EthAssetETH {
 		// TODO: check logs
 		// TODO: check units
-		_, _, err := s.sender.Approve(s.ID(), s.ContractAddr(), amount.BigInt())
+		_, _, err := s.sender.Approve(s.ContractAddr(), amount.BigInt())
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -462,7 +462,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
 	nonce := generateNonce()
-	txHash, receipt, err := s.sender.NewSwap(s.ID(), cmtXMRMaker, cmtXMRTaker,
+	txHash, receipt, err := s.sender.NewSwap(cmtXMRMaker, cmtXMRTaker,
 		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce,
 		s.ethAsset, amount.BigInt())
 	if err != nil {
@@ -531,7 +531,7 @@ func (s *swapState) ready() error {
 	if stage != swapfactory.StagePending {
 		return fmt.Errorf("can not set contract to ready when swap stage is %s", swapfactory.StageToString(stage))
 	}
-	_, _, err = s.sender.SetReady(types.EmptyHash, s.contractSwap)
+	_, _, err = s.sender.SetReady(s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
 			return nil
@@ -553,7 +553,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")
-	txHash, _, err := s.sender.Refund(s.ID(), s.contractSwap, sc)
+	txHash, _, err := s.sender.Refund(s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}

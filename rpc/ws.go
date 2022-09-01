@@ -171,18 +171,8 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
 	defer s.backend.ClearXMRDepositAddress(offerID)
 
-	signer.AddID(offerID)
-	defer signer.DeleteID(offerID)
-
-	txsOutCh, err := signer.OngoingCh(offerID)
-	if err != nil {
-		return err
-	}
-
-	txsInCh, err := signer.IncomingCh(offerID)
-	if err != nil {
-		return err
-	}
+	txsOutCh := signer.OngoingCh(offerID)
+	txsInCh := signer.IncomingCh(offerID)
 
 	var timeout time.Duration
 	switch s.backend.Env() {
