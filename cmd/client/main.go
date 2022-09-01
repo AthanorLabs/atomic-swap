@@ -316,14 +316,19 @@ func runMake(ctx *cli.Context) error {
 		endpoint = defaultSwapdAddress
 	}
 
+	ethAssetStr := ctx.String("eth-asset")
+	ethAsset := types.EthAssetETH
+	if ethAssetStr != "" {
+		ethAsset = types.EthAsset(common.HexToAddress(ethAssetStr))
+	}
+
 	if ctx.Bool("subscribe") {
 		c, err := wsclient.NewWsClient(context.Background(), endpoint)
 		if err != nil {
 			return err
 		}
 
-		// TODO: handle eth asset
-		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
+		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate), ethAsset)
 		if err != nil {
 			return err
 		}
@@ -338,12 +343,6 @@ func runMake(ctx *cli.Context) error {
 		}
 
 		return nil
-	}
-
-	ethAssetStr := ctx.String("eth-asset")
-	ethAsset := types.EthAsset(common.HexToAddress("0x0000000000000000000000000000000000000000"))
-	if ethAssetStr != "" {
-		ethAsset = types.EthAsset(common.HexToAddress(ethAssetStr))
 	}
 
 	c := rpcclient.NewClient(endpoint)

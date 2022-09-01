@@ -159,7 +159,7 @@ func TestSuccess_OneSwap(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -253,7 +253,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -393,7 +393,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 	}()
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	offersBefore, err := bc.GetOffers()
@@ -502,7 +502,7 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -607,7 +607,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -818,7 +818,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 		require.NoError(t, err)
 
 		offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-			types.ExchangeRate(exchangeRate))
+			types.ExchangeRate(exchangeRate), types.EthAssetETH)
 		require.NoError(t, err)
 
 		t.Log("maker made offer ", offerID)

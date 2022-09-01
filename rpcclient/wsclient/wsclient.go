@@ -24,7 +24,7 @@ type WsClient interface {
 	TakeOfferAndSubscribe(multiaddr, offerID string,
 		providesAmount float64) (id uint64, ch <-chan types.Status, err error)
 	MakeOfferAndSubscribe(min, max float64,
-		exchangeRate types.ExchangeRate) (string, <-chan types.Status, error)
+		exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (string, <-chan types.Status, error)
 }
 
 type wsClient struct {
@@ -316,11 +316,12 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 }
 
 func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
-	exchangeRate types.ExchangeRate) (string, <-chan types.Status, error) {
+	exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (string, <-chan types.Status, error) {
 	params := &rpctypes.MakeOfferRequest{
 		MinimumAmount: min,
 		MaximumAmount: max,
 		ExchangeRate:  exchangeRate,
+		EthAsset:      ethAsset.Address().String(),
 	}
 
 	bz, err := json.Marshal(params)
