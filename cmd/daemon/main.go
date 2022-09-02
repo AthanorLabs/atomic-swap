@@ -483,7 +483,7 @@ func newBackend(ctx context.Context, c *cli.Context, env common.Environment, cfg
 		contractAddr = ethcommon.Address{}
 	}
 
-	contract, contractAddr, err := getOrDeploySwapFactory(contractAddr, env, cfg.Basepath,
+	contract, contractAddr, err := getOrDeploySwapFactory(ctx, contractAddr, env, cfg.Basepath,
 		big.NewInt(chainID), pk, ec)
 	if err != nil {
 		return nil, err
