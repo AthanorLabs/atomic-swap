@@ -450,12 +450,31 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	if s.ethAsset != types.EthAssetETH {
-		// TODO: check if allowance is already enough
 		// TODO: check logs
 		// TODO: check units
-		_, _, err := s.sender.Approve(s.ContractAddr(), amount.BigInt())
+
+		// check that the approval is required
+		// TODO: separate to its own function and create unit tests
+		token, err := swapfactory.NewIERC20(s.ethAsset.Address(), s.EthClient())
 		if err != nil {
+			log.Errorf("failed to instantiate IERC20: %s", s.ethAsset)
 			return ethcommon.Hash{}, err
+		}
+		allowance, err := token.Allowance(s.CallOpts(), s.ethAsset.Address(), s.ContractAddr())
+		if err != nil {
+			log.Errorf("failed to get allowance for token: %s", s.ethAsset)
+			return ethcommon.Hash{}, err
+		}
+
+		if allowance.Cmp(amount.BigInt()) == -1 {
+			log.Info("approving token for use by the swap contract...")
+			_, _, err = s.sender.Approve(s.ContractAddr(), amount.BigInt())
+			if err != nil {
+				log.Errorf("failed to approve token: %s", s.ethAsset)
+				return ethcommon.Hash{}, err
+			}
+		} else {
+			log.Info("the token has already been approved, continuing...")
 		}
 	}
 
