@@ -54,7 +54,7 @@ type PeerWithOffers struct {
 
 // QueryAllResponse ...
 type QueryAllResponse struct {
-	PeersWithOffers []*PeerWithOffers
+	PeersWithOffers []*PeerWithOffers `json:"peersWithOffers"`
 }
 
 // TakeOfferRequest ...

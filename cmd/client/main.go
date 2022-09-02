@@ -65,6 +65,23 @@ var (
 				},
 			},
 			{
+				Name:    "query-all",
+				Aliases: []string{"qall"},
+				Usage:   "discover peers that provide a certain coin and their offers",
+				Action:  runQueryAll,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "provides",
+						Usage: "coin to find providers for: one of [ETH, XMR]",
+					},
+					&cli.UintFlag{
+						Name:  "search-time",
+						Usage: "duration of time to search for, in seconds",
+					},
+					daemonAddrFlag,
+				},
+			},
+			{
 				Name:    "make",
 				Aliases: []string{"m"},
 				Usage:   "mke a swap offer; currently monero holders must be the makers",
@@ -287,6 +304,41 @@ func runQuery(ctx *cli.Context) error {
 	for _, o := range res.Offers {
 		fmt.Printf("%v\n", o)
 	}
+	return nil
+}
+
+func runQueryAll(ctx *cli.Context) error {
+	provides, err := types.NewProvidesCoin(ctx.String("provides"))
+	if err != nil {
+		return err
+	}
+
+	if provides == "" {
+		provides = types.ProvidesXMR
+	}
+
+	endpoint := ctx.String("daemon-addr")
+	if endpoint == "" {
+		endpoint = defaultSwapdAddress
+	}
+
+	searchTime := ctx.Uint("search-time")
+
+	c := rpcclient.NewClient(endpoint)
+	peers, err := c.QueryAll(provides, uint64(searchTime))
+	if err != nil {
+		return err
+	}
+
+	for i, peer := range peers {
+		fmt.Printf("Peer %d:\n", i)
+		fmt.Printf("\tMultiaddress: %v\n", peer.Peer)
+		fmt.Printf("\tOffers:\n")
+		for _, o := range peer.Offers {
+			fmt.Printf("\t%v\n", o)
+		}
+	}
+
 	return nil
 }
 
