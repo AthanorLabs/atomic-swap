@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
@@ -19,10 +21,12 @@ import (
 
 var (
 	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
+	errInvalidSwapContract  = errors.New("given contract address does not contain correct code")
 )
 
-func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, basePath string, chainID *big.Int,
-	privkey *ecdsa.PrivateKey, ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
+func getOrDeploySwapFactory(ctx context.Context, address ethcommon.Address, env common.Environment,
+	basePath string, chainID *big.Int, privkey *ecdsa.PrivateKey,
+	ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf *swapfactory.SwapFactory
 	)
@@ -58,9 +62,28 @@ func getOrDeploySwapFactory(address ethcommon.Address, env common.Environment, b
 			return nil, ethcommon.Address{}, err
 		}
 		log.Infof("loaded SwapFactory.sol from address %s", address)
+
+		err = checkContractCode(ctx, ec, address)
+		if err != nil {
+			return nil, ethcommon.Address{}, err
+		}
 	}
 
 	return sf, address, nil
+}
+
+func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr ethcommon.Address) error {
+	code, err := ec.CodeAt(ctx, contractAddr, nil)
+	if err != nil {
+		return err
+	}
+
+	expectedCode := ethcommon.FromHex(swapfactory.SwapFactoryMetaData.Bin)
+	if !bytes.Contains(expectedCode, code) {
+		return errInvalidSwapContract
+	}
+
+	return nil
 }
 
 func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*swapfactory.SwapFactory, error) {

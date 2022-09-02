@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -15,7 +16,9 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 	ec, chainID := tests.NewEthClient(t)
 	tmpDir := t.TempDir()
 
-	_, addr, err := getOrDeploySwapFactory(ethcommon.Address{},
+	_, addr, err := getOrDeploySwapFactory(
+		context.Background(),
+		ethcommon.Address{},
 		common.Development,
 		tmpDir,
 		chainID,
@@ -25,7 +28,9 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 	require.NoError(t, err)
 	t.Log(addr)
 
-	_, addr2, err := getOrDeploySwapFactory(addr,
+	_, addr2, err := getOrDeploySwapFactory(
+		context.Background(),
+		addr,
 		common.Development,
 		tmpDir,
 		chainID,
