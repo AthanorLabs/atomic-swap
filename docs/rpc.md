@@ -39,6 +39,24 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_d
 # {"jsonrpc":"2.0","result":{"peers":[["/ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7","/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"]]},"id":"0"}
 ```
 
+### `net_queryAll`
+
+Discover peers on the network via DHT that have active swap offers and gets all their swap offers.
+
+Parameters:
+- `provides` (optional): one of `ETH` or `XMR`, depending on which offer you are searching for. **Note**: Currently only `XMR` offers are supported. Default is `XMR`.
+- `searchTime` (optional): duration in seconds for which to perform the search. Default is 12s.
+
+Returns:
+- `peersWithOffers`: list of peers's multiaddresses and their current offers.
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_queryAll","params":{"searchTime":3}}' -H 'Content-Type: application/json'
+# {"jsonrpc":"2.0","result":{"PeersWithOffers":[{"peer":["/ip4/206.189.47.220/tcp/9900/p2p/12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB"],"offers":[{"ID":"a41b00034daee28df414ba337b3ddf942893a117f9a9fcf62bd5a664738710db","Provides":"XMR","MinimumAmount":0.1,"MaximumAmount":1,"ExchangeRate":0.5}]},{"peer":["/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6"],"offers":[{"ID":"25188edd7573f43fca5760f0aacdc1a358171a8fc6bdf11876fa937f77fc583c","Provides":"XMR","MinimumAmount":0.1,"MaximumAmount":1,"ExchangeRate":0.5}]}]},"id":"0"}
+```
+
 ### `net_queryPeer`
 
 Query a specific peer for their current active offers.

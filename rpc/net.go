@@ -55,6 +55,52 @@ func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesR
 	return nil
 }
 
+// QueryAll discovers peers who provide a certain coin and queries all of them for their current offers.
+func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.QueryAllResponse) error {
+	peers, err := s.discover(req)
+	if err != nil {
+		return err
+	}
+
+	resp.PeersWithOffers = make([]*rpctypes.PeerWithOffers, len(peers))
+	for i, p := range peers {
+		multiaddrs := addrInfoToStrings(p)
+		resp.PeersWithOffers[i] = &rpctypes.PeerWithOffers{
+			Peer: multiaddrs,
+		}
+
+		for _, maddr := range multiaddrs {
+			who, err := net.StringToAddrInfo(maddr)
+			if err != nil {
+				return err
+			}
+
+			msg, err := s.net.Query(who)
+			if err != nil {
+				continue
+			}
+
+			resp.PeersWithOffers[i].Offers = msg.Offers
+			break
+		}
+	}
+
+	return nil
+}
+
+func (s *NetService) discover(req *rpctypes.DiscoverRequest) ([]peer.AddrInfo, error) {
+	searchTime, err := time.ParseDuration(fmt.Sprintf("%ds", req.SearchTime))
+	if err != nil {
+		return nil, err
+	}
+
+	if searchTime == 0 {
+		searchTime = defaultSearchTime
+	}
+
+	return s.net.Discover(req.Provides, searchTime)
+}
+
 // Discover discovers peers over the network that provide a certain coin up for `SearchTime` duration of time.
 func (s *NetService) Discover(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.DiscoverResponse) error {
 	searchTime, err := time.ParseDuration(fmt.Sprintf("%ds", req.SearchTime))
