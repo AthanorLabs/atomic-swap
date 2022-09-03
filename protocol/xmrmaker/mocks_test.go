@@ -635,6 +635,22 @@ func (mr *MockBackendMockRecorder) SweepAll(arg0, arg1 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SweepAll", reflect.TypeOf((*MockBackend)(nil).SweepAll), arg0, arg1)
 }
 
+// TransactionByHash mocks base method.
+func (m *MockBackend) TransactionByHash(arg0 context.Context, arg1 common0.Hash) (*types0.Transaction, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransactionByHash", arg0, arg1)
+	ret0, _ := ret[0].(*types0.Transaction)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// TransactionByHash indicates an expected call of TransactionByHash.
+func (mr *MockBackendMockRecorder) TransactionByHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionByHash", reflect.TypeOf((*MockBackend)(nil).TransactionByHash), arg0, arg1)
+}
+
 // TransactionReceipt mocks base method.
 func (m *MockBackend) TransactionReceipt(arg0 context.Context, arg1 common0.Hash) (*types0.Receipt, error) {
 	m.ctrl.T.Helper()

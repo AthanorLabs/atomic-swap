@@ -49,6 +49,7 @@ type Backend interface {
 		blockNumber *big.Int) (*big.Int, error)
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
+	TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
@@ -304,6 +305,10 @@ func (b *backend) CodeAt(ctx context.Context, account ethcommon.Address, blockNu
 
 func (b *backend) FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error) {
 	return b.ethClient.FilterLogs(ctx, q)
+}
+
+func (b *backend) TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error) { //nolint:lll
+	return b.ethClient.TransactionByHash(ctx, hash)
 }
 
 func (b *backend) TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {

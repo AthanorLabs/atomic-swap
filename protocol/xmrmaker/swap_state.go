@@ -462,6 +462,15 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
+	tx, _, err := s.TransactionByHash(s.ctx, txHash)
+	if err != nil {
+		return err
+	}
+
+	if tx.To() == nil || *(tx.To()) != s.ContractAddr() {
+		return errInvalidETHLockedTransaction
+	}
+
 	receipt, err := s.WaitForReceipt(s.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
