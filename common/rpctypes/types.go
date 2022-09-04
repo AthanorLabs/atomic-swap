@@ -46,6 +46,17 @@ type QueryPeerResponse struct {
 	Offers []*types.Offer `json:"offers"`
 }
 
+// PeerWithOffers ...
+type PeerWithOffers struct {
+	Peer   []string       `json:"peer"`
+	Offers []*types.Offer `json:"offers"`
+}
+
+// QueryAllResponse ...
+type QueryAllResponse struct {
+	PeersWithOffers []*PeerWithOffers `json:"peersWithOffers"`
+}
+
 // TakeOfferRequest ...
 type TakeOfferRequest struct {
 	Multiaddr      string  `json:"multiaddr"`
