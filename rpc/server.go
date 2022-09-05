@@ -61,7 +61,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.ProtocolBackend.ExternalSender()), //nolint:lll
+		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.XMRTaker),
 		port:     cfg.Port,
 		wsPort:   cfg.WsPort,
 	}, nil
@@ -118,7 +118,6 @@ type ProtocolBackend interface {
 	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
-	ExternalSender() *txsender.ExternalSender
 	SetEthAddress(ethcommon.Address)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
@@ -129,6 +128,7 @@ type XMRTaker interface {
 	Protocol
 	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
 	Refund(types.Hash) (ethcommon.Hash, error)
+	ExternalSender(offerID types.Hash) (*txsender.ExternalSender, error)
 }
 
 // XMRMaker ...

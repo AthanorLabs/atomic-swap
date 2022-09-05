@@ -33,6 +33,7 @@ func convertContractSwap(msg *message.ContractSwap) swapfactory.SwapFactorySwap 
 		PubKeyRefund: msg.PubKeyRefund,
 		Timeout0:     msg.Timeout0,
 		Timeout1:     msg.Timeout1,
+		Asset:        msg.Asset,
 		Value:        msg.Value,
 		Nonce:        msg.Nonce,
 	}

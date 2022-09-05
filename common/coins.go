@@ -60,6 +60,15 @@ func (a EtherAmount) AsEther() float64 {
 	return res
 }
 
+// ToDecimals returns the amount rounded to a fixed number of decimal places
+func (a EtherAmount) ToDecimals(decimals uint8) float64 {
+	decimalsValue := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	wei := big.NewFloat(0).SetInt(a.BigInt())
+	ether := big.NewFloat(0).Quo(wei, big.NewFloat(0).SetInt(decimalsValue))
+	res, _ := ether.Float64()
+	return res
+}
+
 // String ...
 func (a EtherAmount) String() string {
 	return a.BigInt().String()

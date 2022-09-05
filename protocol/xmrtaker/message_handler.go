@@ -138,7 +138,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v ETH", msg.ProvidedAmount, s.info.ProvidedAmount()))
+	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v %s", msg.ProvidedAmount, s.info.ProvidedAmount(),
+		s.info.EthAsset()))
 
 	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
 	txHash, err := s.lockETH(s.providedAmountInWei())

@@ -1,0 +1,10 @@
+2022-08-08T14:46:54.014-0400	WARN	cmd	utils/utils.go:47	no ethereum private key file provided, using ganache deterministic key
+2022-08-08T14:46:54.102-0400	INFO	cmd	daemon/contract.go:47	deployed SwapFactory.sol: address=0x5b1869D9A4C187F2EAa108f3062412ecf0526b24 tx hash=0xf52f1de6422b431474fc6918d824361ed268ab91c02180cfe98ac427c35eeed0
+2022-08-08T14:46:54.116-0400	INFO	cmd	daemon/main.go:485	created backend with monero endpoint http://127.0.0.1:18084/json_rpc and ethereum endpoint ws://localhost:8545
+2022-08-08T14:46:54.116-0400	WARN	xmrmaker	xmrmaker/instance.go:46	monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer
+2022-08-08T14:46:54.116-0400	INFO	net	net/host.go:182	Started listening: address=/ip4/192.168.0.102/tcp/9955/p2p/12D3KooWRFGzijDDrVXRgLgJ6zsS4eJy8ueN7rW7hFHkBbosaoEo
+2022-08-08T14:46:54.116-0400	INFO	net	net/host.go:182	Started listening: address=/ip4/127.0.0.1/tcp/9955/p2p/12D3KooWRFGzijDDrVXRgLgJ6zsS4eJy8ueN7rW7hFHkBbosaoEo
+2022-08-08T14:46:55.118-0400	INFO	cmd	daemon/main.go:389	started swapd with basepath /home/elizabeth/.atomicswap/dev
+2022-08-08T14:46:55.118-0400	INFO	rpc	rpc/server.go:82	starting RPC server on http://localhost:5003
+2022-08-08T14:46:55.118-0400	INFO	rpc	rpc/server.go:98	starting websockets server on ws://localhost:8083
+signal interrupt, shutting down...
