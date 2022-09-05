@@ -37,12 +37,19 @@ type Backend interface {
 	monero.WalletClient
 	monero.DaemonClient
 	net.MessageSender
-	txsender.Sender
+
+	// create a new transaction sender, called per-swap
+	NewTxSender(asset ethcommon.Address,
+		erc20Contract *swapfactory.IERC20) (txsender.Sender, error)
 
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
+	ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string, decimals uint8, err error)
+	ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
+		blockNumber *big.Int) (*big.Int, error)
 	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
 	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
+	TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
@@ -63,8 +70,9 @@ type Backend interface {
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
-	ExternalSender() *txsender.ExternalSender
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
+	HasEthereumPrivateKey() bool
+	EthClient() *ethclient.Client
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
@@ -99,7 +107,6 @@ type backend struct {
 	chainID    *big.Int
 	gasPrice   *big.Int
 	gasLimit   uint64
-	txsender.Sender
 
 	// swap contract
 	contract     *swapfactory.SwapFactory
@@ -143,25 +150,9 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	var (
-		addr   ethcommon.Address
-		sender txsender.Sender
-	)
+	var addr ethcommon.Address
 	if cfg.EthereumPrivateKey != nil {
-		txOpts, err := bind.NewKeyedTransactorWithChainID(cfg.EthereumPrivateKey, cfg.ChainID)
-		if err != nil {
-			return nil, err
-		}
-
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
-		sender = txsender.NewSenderWithPrivateKey(cfg.Ctx, cfg.EthereumClient, cfg.SwapContract, txOpts)
-	} else {
-		log.Debugf("instantiated backend with external sender")
-		var err error
-		sender, err = txsender.NewExternalSender(cfg.Ctx, cfg.Environment, cfg.EthereumClient, cfg.SwapContractAddress)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// monero-wallet-rpc client
@@ -188,7 +179,6 @@ func NewBackend(cfg *Config) (Backend, error) {
 			From:    addr,
 			Context: cfg.Ctx,
 		},
-		Sender:          sender,
 		ethAddress:      addr,
 		chainID:         cfg.ChainID,
 		gasPrice:        cfg.GasPrice,
@@ -200,6 +190,24 @@ func NewBackend(cfg *Config) (Backend, error) {
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 	}, nil
+}
+
+func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *swapfactory.IERC20) (txsender.Sender, error) {
+	if b.ethPrivKey == nil {
+		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient, b.contractAddr, asset)
+	}
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	sender := txsender.NewSenderWithPrivateKey(b.ctx, b.ethClient, b.contract, erc20Contract, txOpts)
+	return sender, nil
+}
+
+func (b *backend) HasEthereumPrivateKey() bool {
+	return b.ethPrivKey != nil
 }
 
 func (b *backend) CallOpts() *bind.CallOpts {
@@ -234,15 +242,6 @@ func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
 }
 
-func (b *backend) ExternalSender() *txsender.ExternalSender {
-	s, ok := b.Sender.(*txsender.ExternalSender)
-	if !ok {
-		return nil
-	}
-
-	return s
-}
-
 func (b *backend) Net() net.MessageSender {
 	return b.MessageSender
 }
@@ -270,12 +269,46 @@ func (b *backend) BalanceAt(ctx context.Context, account ethcommon.Address, bloc
 	return b.ethClient.BalanceAt(ctx, account, blockNumber)
 }
 
+func (b *backend) ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
+	blockNumber *big.Int) (*big.Int, error) {
+	tokenContract, err := swapfactory.NewIERC20(token, b.ethClient)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+	return tokenContract.BalanceOf(b.callOpts, account)
+}
+
+func (b *backend) ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string,
+	decimals uint8, err error) {
+	tokenContract, err := swapfactory.NewIERC20(token, b.ethClient)
+	if err != nil {
+		return "", "", 18, err
+	}
+	name, err = tokenContract.Name(b.callOpts)
+	if err != nil {
+		return "", "", 18, err
+	}
+	symbol, err = tokenContract.Symbol(b.callOpts)
+	if err != nil {
+		return "", "", 18, err
+	}
+	decimals, err = tokenContract.Decimals(b.callOpts)
+	if err != nil {
+		return "", "", 18, err
+	}
+	return name, symbol, decimals, nil
+}
+
 func (b *backend) CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error) {
 	return b.ethClient.CodeAt(ctx, account, blockNumber)
 }
 
 func (b *backend) FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error) {
 	return b.ethClient.FilterLogs(ctx, q)
+}
+
+func (b *backend) TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error) { //nolint:lll
+	return b.ethClient.TransactionByHash(ctx, hash)
 }
 
 func (b *backend) TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
@@ -344,7 +377,8 @@ func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFacto
 }
 
 func (b *backend) SetEthAddress(addr ethcommon.Address) {
-	if b.ExternalSender() == nil {
+	// only allowed if using external signer
+	if b.ethPrivKey != nil {
 		return
 	}
 
@@ -373,7 +407,6 @@ func (b *backend) ClearXMRDepositAddress(id types.Hash) {
 // for unvalidated contracts.
 func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
 	b.contract = contract
-	b.Sender.SetContract(contract)
 }
 
 func (b *backend) SetContractAddress(addr ethcommon.Address) {

@@ -19,3 +19,20 @@ fi
 	--pkg swapfactory \
 	--type SwapFactory \
 	--out swapfactory/swap_factory.go
+
+"${SOLC_BIN}" --abi ethereum/contracts/ERC20Mock.sol -o ethereum/abi/ --overwrite
+"${SOLC_BIN}" --bin ethereum/contracts/ERC20Mock.sol -o ethereum/bin/ --overwrite
+
+"${ABIGEN}" \
+	--abi ethereum/abi/ERC20Mock.abi \
+	--bin ethereum/bin/ERC20Mock.bin \
+	--pkg swapfactory \
+	--type ERC20Mock \
+	--out swapfactory/erc20_mock.go
+
+"${SOLC_BIN}" --abi ethereum/contracts/IERC20Metadata.sol -o ethereum/abi/ --overwrite
+"${ABIGEN}" \
+	--abi ethereum/abi/IERC20Metadata.abi \
+	--pkg swapfactory \
+	--type IERC20 \
+	--out swapfactory/ierc20.go

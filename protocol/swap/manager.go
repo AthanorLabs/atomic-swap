@@ -17,19 +17,21 @@ type Info struct {
 	providedAmount float64
 	receivedAmount float64
 	exchangeRate   types.ExchangeRate
+	ethAsset       types.EthAsset
 	status         Status
 	statusCh       <-chan types.Status
 }
 
 // NewInfo ...
 func NewInfo(id types.Hash, provides types.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate, status Status, statusCh <-chan types.Status) *Info {
+	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, status Status, statusCh <-chan types.Status) *Info {
 	info := &Info{
 		id:             id,
 		provides:       provides,
 		providedAmount: providedAmount,
 		receivedAmount: receivedAmount,
 		exchangeRate:   exchangeRate,
+		ethAsset:       ethAsset,
 		status:         status,
 		statusCh:       statusCh,
 	}
@@ -64,6 +66,12 @@ func (i *Info) ReceivedAmount() float64 {
 // ExchangeRate returns the exchange rate for this swap, represented by a ratio of XMR/ETH.
 func (i *Info) ExchangeRate() types.ExchangeRate {
 	return i.exchangeRate
+}
+
+// EthAsset returns the Ethereum asset for this swap, either an ERC-20 address or the zero address
+// for regular ETH
+func (i *Info) EthAsset() types.EthAsset {
+	return i.ethAsset
 }
 
 // Status returns the swap's status.

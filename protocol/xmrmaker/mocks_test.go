@@ -23,6 +23,7 @@ import (
 	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	common0 "github.com/ethereum/go-ethereum/common"
 	types0 "github.com/ethereum/go-ethereum/core/types"
+	ethclient "github.com/ethereum/go-ethereum/ethclient"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -90,22 +91,6 @@ func (m *MockBackend) ChainID() *big.Int {
 func (mr *MockBackendMockRecorder) ChainID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainID", reflect.TypeOf((*MockBackend)(nil).ChainID))
-}
-
-// Claim mocks base method.
-func (m *MockBackend) Claim(arg0 types.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common0.Hash, *types0.Receipt, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Claim", arg0, arg1, arg2)
-	ret0, _ := ret[0].(common0.Hash)
-	ret1, _ := ret[1].(*types0.Receipt)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// Claim indicates an expected call of Claim.
-func (mr *MockBackendMockRecorder) Claim(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Claim", reflect.TypeOf((*MockBackend)(nil).Claim), arg0, arg1, arg2)
 }
 
 // ClearXMRDepositAddress mocks base method.
@@ -205,6 +190,38 @@ func (mr *MockBackendMockRecorder) Ctx() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ctx", reflect.TypeOf((*MockBackend)(nil).Ctx))
 }
 
+// ERC20BalanceAt mocks base method.
+func (m *MockBackend) ERC20BalanceAt(arg0 context.Context, arg1, arg2 common0.Address, arg3 *big.Int) (*big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ERC20BalanceAt", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ERC20BalanceAt indicates an expected call of ERC20BalanceAt.
+func (mr *MockBackendMockRecorder) ERC20BalanceAt(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ERC20BalanceAt", reflect.TypeOf((*MockBackend)(nil).ERC20BalanceAt), arg0, arg1, arg2, arg3)
+}
+
+// ERC20Info mocks base method.
+func (m *MockBackend) ERC20Info(arg0 context.Context, arg1 common0.Address) (string, string, byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ERC20Info", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(byte)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ERC20Info indicates an expected call of ERC20Info.
+func (mr *MockBackendMockRecorder) ERC20Info(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ERC20Info", reflect.TypeOf((*MockBackend)(nil).ERC20Info), arg0, arg1)
+}
+
 // Env mocks base method.
 func (m *MockBackend) Env() common.Environment {
 	m.ctrl.T.Helper()
@@ -233,18 +250,18 @@ func (mr *MockBackendMockRecorder) EthAddress() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddress", reflect.TypeOf((*MockBackend)(nil).EthAddress))
 }
 
-// ExternalSender mocks base method.
-func (m *MockBackend) ExternalSender() *txsender.ExternalSender {
+// EthClient mocks base method.
+func (m *MockBackend) EthClient() *ethclient.Client {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExternalSender")
-	ret0, _ := ret[0].(*txsender.ExternalSender)
+	ret := m.ctrl.Call(m, "EthClient")
+	ret0, _ := ret[0].(*ethclient.Client)
 	return ret0
 }
 
-// ExternalSender indicates an expected call of ExternalSender.
-func (mr *MockBackendMockRecorder) ExternalSender() *gomock.Call {
+// EthClient indicates an expected call of EthClient.
+func (mr *MockBackendMockRecorder) EthClient() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExternalSender", reflect.TypeOf((*MockBackend)(nil).ExternalSender))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthClient", reflect.TypeOf((*MockBackend)(nil).EthClient))
 }
 
 // FilterLogs mocks base method.
@@ -364,6 +381,20 @@ func (mr *MockBackendMockRecorder) GetHeight() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHeight", reflect.TypeOf((*MockBackend)(nil).GetHeight))
 }
 
+// HasEthereumPrivateKey mocks base method.
+func (m *MockBackend) HasEthereumPrivateKey() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasEthereumPrivateKey")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// HasEthereumPrivateKey indicates an expected call of HasEthereumPrivateKey.
+func (mr *MockBackendMockRecorder) HasEthereumPrivateKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasEthereumPrivateKey", reflect.TypeOf((*MockBackend)(nil).HasEthereumPrivateKey))
+}
+
 // LatestBlockTimestamp mocks base method.
 func (m *MockBackend) LatestBlockTimestamp(arg0 context.Context) (time.Time, error) {
 	m.ctrl.T.Helper()
@@ -405,22 +436,6 @@ func (mr *MockBackendMockRecorder) Net() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Net", reflect.TypeOf((*MockBackend)(nil).Net))
 }
 
-// NewSwap mocks base method.
-func (m *MockBackend) NewSwap(arg0 types.Hash, arg1, arg2 [32]byte, arg3 common0.Address, arg4, arg5, arg6 *big.Int) (common0.Hash, *types0.Receipt, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewSwap", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(common0.Hash)
-	ret1, _ := ret[1].(*types0.Receipt)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// NewSwap indicates an expected call of NewSwap.
-func (mr *MockBackendMockRecorder) NewSwap(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwap", reflect.TypeOf((*MockBackend)(nil).NewSwap), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-}
-
 // NewSwapFactory mocks base method.
 func (m *MockBackend) NewSwapFactory(arg0 common0.Address) (*swapfactory.SwapFactory, error) {
 	m.ctrl.T.Helper()
@@ -434,6 +449,21 @@ func (m *MockBackend) NewSwapFactory(arg0 common0.Address) (*swapfactory.SwapFac
 func (mr *MockBackendMockRecorder) NewSwapFactory(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSwapFactory", reflect.TypeOf((*MockBackend)(nil).NewSwapFactory), arg0)
+}
+
+// NewTxSender mocks base method.
+func (m *MockBackend) NewTxSender(arg0 common0.Address, arg1 *swapfactory.IERC20) (txsender.Sender, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewTxSender", arg0, arg1)
+	ret0, _ := ret[0].(txsender.Sender)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewTxSender indicates an expected call of NewTxSender.
+func (mr *MockBackendMockRecorder) NewTxSender(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewTxSender", reflect.TypeOf((*MockBackend)(nil).NewTxSender), arg0, arg1)
 }
 
 // OpenWallet mocks base method.
@@ -462,22 +492,6 @@ func (m *MockBackend) Refresh() error {
 func (mr *MockBackendMockRecorder) Refresh() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockBackend)(nil).Refresh))
-}
-
-// Refund mocks base method.
-func (m *MockBackend) Refund(arg0 types.Hash, arg1 swapfactory.SwapFactorySwap, arg2 [32]byte) (common0.Hash, *types0.Receipt, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Refund", arg0, arg1, arg2)
-	ret0, _ := ret[0].(common0.Hash)
-	ret1, _ := ret[1].(*types0.Receipt)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// Refund indicates an expected call of Refund.
-func (mr *MockBackendMockRecorder) Refund(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refund", reflect.TypeOf((*MockBackend)(nil).Refund), arg0, arg1, arg2)
 }
 
 // SendSwapMessage mocks base method.
@@ -554,22 +568,6 @@ func (mr *MockBackendMockRecorder) SetGasPrice(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGasPrice", reflect.TypeOf((*MockBackend)(nil).SetGasPrice), arg0)
 }
 
-// SetReady mocks base method.
-func (m *MockBackend) SetReady(arg0 types.Hash, arg1 swapfactory.SwapFactorySwap) (common0.Hash, *types0.Receipt, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetReady", arg0, arg1)
-	ret0, _ := ret[0].(common0.Hash)
-	ret1, _ := ret[1].(*types0.Receipt)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// SetReady indicates an expected call of SetReady.
-func (mr *MockBackendMockRecorder) SetReady(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockBackend)(nil).SetReady), arg0, arg1)
-}
-
 // SetSwapTimeout mocks base method.
 func (m *MockBackend) SetSwapTimeout(arg0 time.Duration) {
 	m.ctrl.T.Helper()
@@ -635,6 +633,22 @@ func (m *MockBackend) SweepAll(arg0 mcrypto.Address, arg1 uint64) (*wallet.Sweep
 func (mr *MockBackendMockRecorder) SweepAll(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SweepAll", reflect.TypeOf((*MockBackend)(nil).SweepAll), arg0, arg1)
+}
+
+// TransactionByHash mocks base method.
+func (m *MockBackend) TransactionByHash(arg0 context.Context, arg1 common0.Hash) (*types0.Transaction, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransactionByHash", arg0, arg1)
+	ret0, _ := ret[0].(*types0.Transaction)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// TransactionByHash indicates an expected call of TransactionByHash.
+func (mr *MockBackendMockRecorder) TransactionByHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionByHash", reflect.TypeOf((*MockBackend)(nil).TransactionByHash), arg0, arg1)
 }
 
 // TransactionReceipt mocks base method.

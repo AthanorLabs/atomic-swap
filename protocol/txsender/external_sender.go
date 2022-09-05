@@ -21,9 +21,7 @@ import (
 
 var (
 	errTransactionTimeout = errors.New("timed out waiting for transaction to be signed")
-	errNoSwapWithID       = errors.New("no swap with given id")
-
-	transactionTimeout = time.Minute * 2 // amount of time user has to sign message
+	transactionTimeout    = time.Minute * 2 // amount of time user has to sign message
 )
 
 // Transaction represents a transaction to be signed by the front-end
@@ -33,28 +31,25 @@ type Transaction struct {
 	Value string
 }
 
-type swapChs struct {
-	// outgoing encoded txs to be signed
-	out chan *Transaction
-	// incoming tx hashes
-	in chan ethcommon.Hash
-}
-
 // ExternalSender represents a transaction signer and sender that is external to the daemon (ie. a front-end)
 type ExternalSender struct {
 	ctx          context.Context
 	ec           *ethclient.Client
 	abi          *abi.ABI
 	contractAddr ethcommon.Address
+	erc20Addr    ethcommon.Address
 
-	sync.RWMutex
+	sync.Mutex
 
-	swaps map[types.Hash]*swapChs
+	// outgoing encoded txs to be signed
+	out chan *Transaction
+	// incoming tx hashes
+	in chan ethcommon.Hash
 }
 
 // NewExternalSender returns a new ExternalSender
 func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclient.Client,
-	contractAddr ethcommon.Address) (*ExternalSender, error) {
+	contractAddr ethcommon.Address, erc20Addr ethcommon.Address) (*ExternalSender, error) {
 	abi, err := swapfactory.SwapFactoryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -70,7 +65,9 @@ func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclien
 		ec:           ec,
 		abi:          abi,
 		contractAddr: contractAddr,
-		swaps:        make(map[types.Hash]*swapChs),
+		erc20Addr:    erc20Addr,
+		out:          make(chan *Transaction),
+		in:           make(chan ethcommon.Hash),
 	}, nil
 }
 
@@ -83,55 +80,32 @@ func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
 }
 
 // OngoingCh returns the channel of outgoing transactions to be signed and submitted
-func (s *ExternalSender) OngoingCh(id types.Hash) (<-chan *Transaction, error) {
-	s.RLock()
-	defer s.RUnlock()
-	chs, has := s.swaps[id]
-	if !has {
-		return nil, errNoSwapWithID
-	}
-
-	return chs.out, nil
+func (s *ExternalSender) OngoingCh(id types.Hash) <-chan *Transaction {
+	return s.out
 }
 
 // IncomingCh returns the channel of incoming transaction hashes that have been signed and submitted
-func (s *ExternalSender) IncomingCh(id types.Hash) (chan<- ethcommon.Hash, error) {
-	s.RLock()
-	defer s.RUnlock()
-	chs, has := s.swaps[id]
-	if !has {
-		return nil, errNoSwapWithID
-	}
-	return chs.in, nil
+func (s *ExternalSender) IncomingCh(id types.Hash) chan<- ethcommon.Hash {
+	return s.in
 }
 
-// AddID initialises the sender with a swap w/ the given ID
-func (s *ExternalSender) AddID(id types.Hash) {
-	s.Lock()
-	defer s.Unlock()
-	_, has := s.swaps[id]
-	if has {
-		return
+// Approve prompts the external sender to sign an ERC20 Approve transaction
+func (s *ExternalSender) Approve(spender ethcommon.Address,
+	amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input, err := s.abi.Pack("approve", spender, amount)
+	if err != nil {
+		return ethcommon.Hash{}, nil, err
 	}
 
-	s.swaps[id] = &swapChs{
-		out: make(chan *Transaction),
-		in:  make(chan ethcommon.Hash),
-	}
-}
-
-// DeleteID deletes the swap w/ the given ID from the sender
-func (s *ExternalSender) DeleteID(id types.Hash) {
-	s.Lock()
-	defer s.Unlock()
-	delete(s.swaps, id)
+	return s.sendAndReceive(input, s.erc20Addr)
 }
 
 // NewSwap prompts the external sender to sign a new_swap transaction
-func (s *ExternalSender) NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
-	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int,
+func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
+	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
 	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	input, err := s.abi.Pack("new_swap", _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration, _nonce)
+	input, err := s.abi.Pack("new_swap", _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
+		_ethAsset, value, _nonce)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
@@ -142,19 +116,15 @@ func (s *ExternalSender) NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRe
 		Value: fmt.Sprintf("%v", common.EtherAmount(*value).AsEther()),
 	}
 
-	s.RLock()
-	defer s.RUnlock()
-	chs, has := s.swaps[id]
-	if !has {
-		return ethcommon.Hash{}, nil, errNoSwapWithID
-	}
+	s.Lock()
+	defer s.Unlock()
 
-	chs.out <- tx
+	s.out <- tx
 	var txHash ethcommon.Hash
 	select {
 	case <-time.After(transactionTimeout):
 		return ethcommon.Hash{}, nil, errTransactionTimeout
-	case txHash = <-chs.in:
+	case txHash = <-s.in:
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
@@ -166,58 +136,52 @@ func (s *ExternalSender) NewSwap(id types.Hash, _pubKeyClaim [32]byte, _pubKeyRe
 }
 
 // SetReady prompts the external sender to sign a set_ready transaction
-func (s *ExternalSender) SetReady(id types.Hash,
-	_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *ExternalSender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("set_ready", _swap)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(id, input)
+	return s.sendAndReceive(input, s.contractAddr)
 }
 
 // Claim prompts the external sender to sign a claim transaction
-func (s *ExternalSender) Claim(id types.Hash, _swap swapfactory.SwapFactorySwap,
+func (s *ExternalSender) Claim(_swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("claim", _swap, _s)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(id, input)
+	return s.sendAndReceive(input, s.contractAddr)
 }
 
 // Refund prompts the external sender to sign a refund transaction
-func (s *ExternalSender) Refund(id types.Hash, _swap swapfactory.SwapFactorySwap,
+func (s *ExternalSender) Refund(_swap swapfactory.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("refund", _swap, _s)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
 
-	return s.sendAndReceive(id, input)
+	return s.sendAndReceive(input, s.contractAddr)
 }
 
-func (s *ExternalSender) sendAndReceive(id types.Hash,
-	input []byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *ExternalSender) sendAndReceive(input []byte, to ethcommon.Address) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	tx := &Transaction{
-		To:   s.contractAddr,
+		To:   to,
 		Data: fmt.Sprintf("0x%x", input),
 	}
 
-	s.RLock()
-	defer s.RUnlock()
-	chs, has := s.swaps[id]
-	if !has {
-		return ethcommon.Hash{}, nil, errNoSwapWithID
-	}
+	s.Lock()
+	defer s.Unlock()
 
-	chs.out <- tx
+	s.out <- tx
 	var txHash ethcommon.Hash
 	select {
 	case <-time.After(transactionTimeout):
 		return ethcommon.Hash{}, nil, errTransactionTimeout
-	case txHash = <-chs.in:
+	case txHash = <-s.in:
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
