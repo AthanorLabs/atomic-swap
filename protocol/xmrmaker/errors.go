@@ -3,6 +3,7 @@ package xmrmaker
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 var (
@@ -28,11 +29,55 @@ var (
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
-	errBalanceTooLow             = errors.New("balance lower than amount to be provided")
 	errNoOfferWithID             = errors.New("failed to find offer with given ID")
 	errOfferIDNotSet             = errors.New("offer ID was not set")
-	errAmountProvidedTooLow      = errors.New("amount provided by taker is too low for offer")
-	errAmountProvidedTooHigh     = errors.New("amount provided by taker is too high for offer")
-	errUnlockedBalanceTooLow     = errors.New("unlocked balance is less than maximum offer amount")
 	errSwapCompleted             = errors.New("swap is already completed")
 )
+
+type errBalanceTooLow struct {
+	unlockedBalance float64
+	providedAmount  float64
+}
+
+func (e errBalanceTooLow) Error() string {
+	return fmt.Sprintf("balance of %s XMR is below provided %s XMR",
+		strconv.FormatFloat(e.unlockedBalance, 'f', -1, 64),
+		strconv.FormatFloat(e.providedAmount, 'f', -1, 64),
+	)
+}
+
+type errAmountProvidedTooLow struct {
+	providedAmount float64
+	minAmount      float64
+}
+
+func (e errAmountProvidedTooLow) Error() string {
+	return fmt.Sprintf("%s XMR provided by taker is under offer minimum of %s XMR",
+		strconv.FormatFloat(e.providedAmount, 'f', -1, 64),
+		strconv.FormatFloat(e.minAmount, 'f', -1, 64),
+	)
+}
+
+type errAmountProvidedTooHigh struct {
+	providedAmount float64
+	maxAmount      float64
+}
+
+func (e errAmountProvidedTooHigh) Error() string {
+	return fmt.Sprintf("%s XMR provided by taker is over offer maximum of %s XMR",
+		strconv.FormatFloat(e.providedAmount, 'f', -1, 64),
+		strconv.FormatFloat(e.maxAmount, 'f', -1, 64),
+	)
+}
+
+type errUnlockedBalanceTooLow struct {
+	minAmount       float64
+	unlockedBalance float64
+}
+
+func (e errUnlockedBalanceTooLow) Error() string {
+	return fmt.Sprintf("balance %s XMR is too low for maximum offer amount of %s XMR",
+		strconv.FormatFloat(e.minAmount, 'f', -1, 64),
+		strconv.FormatFloat(e.unlockedBalance, 'f', -1, 64),
+	)
+}

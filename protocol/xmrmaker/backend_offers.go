@@ -17,8 +17,9 @@ func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
 		return nil, err
 	}
 
-	if common.MoneroAmount(balance.UnlockedBalance) < common.MoneroToPiconero(o.MaximumAmount) {
-		return nil, errUnlockedBalanceTooLow
+	unlockedBalance := common.MoneroAmount(balance.UnlockedBalance)
+	if unlockedBalance < common.MoneroToPiconero(o.MaximumAmount) {
+		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
 	}
 
 	extra := b.offerManager.AddOffer(o)

@@ -45,7 +45,16 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, errBalanceTooLow
 	}
 
-	s, err := newSwapState(a.backend, offerID, pcommon.GetSwapInfoFilepath(a.dataDir), a.transferBack, providesAmount, receivedAmount, exchangeRate, ethAsset)
+	s, err := newSwapState(
+		a.backend,
+		offerID,
+		pcommon.GetSwapInfoFilepath(a.dataDir),
+		a.transferBack,
+		providesAmount,
+		receivedAmount,
+		exchangeRate,
+		ethAsset,
+	)
 	if err != nil {
 		return nil, err
 	}
