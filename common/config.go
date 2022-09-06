@@ -30,7 +30,7 @@ var StagenetConfig = Config{
 	DataDir:              fmt.Sprintf("%s/.atomicswap/stagenet", homeDir),
 	MoneroDaemonEndpoint: "http://127.0.0.1:38081/json_rpc",
 	EthereumChainID:      GorliChainID,
-	ContractAddress:      ethcommon.HexToAddress("0x2125320230096B33b55f6d7905Fef61A3a0906a0"),
+	ContractAddress:      ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
@@ -40,7 +40,6 @@ var StagenetConfig = Config{
 		"/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz",
 		"/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu",
 		"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
-		"/ip4/206.189.47.220/tcp/9900/p2p/12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB",
 	},
 }
 
