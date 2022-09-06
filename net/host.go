@@ -218,7 +218,7 @@ func (h *host) logPeers() {
 	}
 }
 
-// close closes host services and the libp2p host (host services first)
+// Stop closes host services and the libp2p host (host services first)
 func (h *host) Stop() error {
 	h.cancel()
 
