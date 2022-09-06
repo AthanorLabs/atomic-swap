@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/urfave/cli/v2"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -399,6 +399,11 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Published offer with ID %s\n", id)
+	addrs, err := c.Addresses()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("On addresses: %v\n", addrs)
 	return nil
 }
 
