@@ -108,6 +108,8 @@ type backend struct {
 	gasPrice   *big.Int
 	gasLimit   uint64
 
+	txOpts *txsender.TxOpts
+
 	// swap contract
 	contract     *swapfactory.SwapFactory
 	contractAddr ethcommon.Address
@@ -150,9 +152,19 @@ func NewBackend(cfg *Config) (Backend, error) {
 		defaultTimeoutDuration = time.Hour
 	}
 
-	var addr ethcommon.Address
+	var (
+		addr   ethcommon.Address
+		txOpts *txsender.TxOpts
+		err    error
+	)
 	if cfg.EthereumPrivateKey != nil {
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
+
+		// TODO: set gas limit and price?
+		txOpts, err = txsender.NewTxOpts(cfg.EthereumPrivateKey, cfg.ChainID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// monero-wallet-rpc client
@@ -183,6 +195,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		chainID:         cfg.ChainID,
 		gasPrice:        cfg.GasPrice,
 		gasLimit:        cfg.GasLimit,
+		txOpts:          txOpts,
 		contract:        cfg.SwapContract,
 		contractAddr:    cfg.SwapContractAddress,
 		swapManager:     cfg.SwapManager,
@@ -197,12 +210,7 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *swapfactor
 		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient, b.contractAddr, asset)
 	}
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	sender := txsender.NewSenderWithPrivateKey(b.ctx, b.ethClient, b.contract, erc20Contract, txOpts)
+	sender := txsender.NewSenderWithPrivateKey(b.ctx, b.ethClient, b.contract, erc20Contract, b.txOpts)
 	return sender, nil
 }
 
