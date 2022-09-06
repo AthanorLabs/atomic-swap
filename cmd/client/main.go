@@ -9,6 +9,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/urfave/cli/v2"
 )
@@ -110,6 +111,10 @@ var (
 					&cli.BoolFlag{
 						Name:  "subscribe",
 						Usage: "Subscribe to push notifications about the swap's status",
+					},
+					&cli.StringFlag{
+						Name:  "eth-asset",
+						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
 					daemonAddrFlag,
 				},
@@ -358,13 +363,19 @@ func runMake(ctx *cli.Context) error {
 
 	endpoint := ctx.String("daemon-addr")
 
+	ethAssetStr := ctx.String("eth-asset")
+	ethAsset := types.EthAssetETH
+	if ethAssetStr != "" {
+		ethAsset = types.EthAsset(common.HexToAddress(ethAssetStr))
+	}
+
 	if ctx.Bool("subscribe") {
 		c, err := wsclient.NewWsClient(context.Background(), endpoint)
 		if err != nil {
 			return err
 		}
 
-		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate))
+		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate), ethAsset)
 		if err != nil {
 			return err
 		}
@@ -382,7 +393,7 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	c := rpcclient.NewClient(endpoint)
-	id, err := c.MakeOffer(min, max, exchangeRate)
+	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset)
 	if err != nil {
 		return err
 	}

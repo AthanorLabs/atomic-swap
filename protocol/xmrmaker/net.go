@@ -52,8 +52,9 @@ func (b *Instance) initiate(
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
-	log.Infof(color.New(color.Bold).Sprintf("receiving %v ETH for %v XMR",
+	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
 		s.info.ReceivedAmount(),
+		s.info.EthAsset(),
 		s.info.ProvidedAmount()),
 	)
 	b.swapStates[offer.GetID()] = s

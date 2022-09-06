@@ -34,6 +34,7 @@ type Config struct {
 	Backend                    backend.Backend
 	DataDir                    string
 	WalletFile, WalletPassword string
+	ExternalSender             bool
 }
 
 // NewInstance returns a new *xmrmaker.Instance.

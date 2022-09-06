@@ -11,6 +11,7 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -44,6 +45,7 @@ type Config struct {
 	DataDir                                string
 	MoneroWalletFile, MoneroWalletPassword string
 	TransferBack                           bool
+	ExternalSender                         bool
 }
 
 // NewInstance returns a new instance of XMRTaker.
@@ -136,4 +138,23 @@ func (a *Instance) Refund(offerID types.Hash) (ethcommon.Hash, error) {
 // GetOngoingSwapState ...
 func (a *Instance) GetOngoingSwapState(offerID types.Hash) common.SwapState {
 	return a.swapStates[offerID]
+}
+
+// ExternalSender returns the *txsender.ExternalSender for a swap, if the swap exists and is using
+// and external tx sender
+func (a *Instance) ExternalSender(offerID types.Hash) (*txsender.ExternalSender, error) {
+	a.swapMu.Lock()
+	defer a.swapMu.Unlock()
+
+	s, has := a.swapStates[offerID]
+	if !has {
+		return nil, errNoOngoingSwap
+	}
+
+	es, ok := s.sender.(*txsender.ExternalSender)
+	if !ok {
+		return nil, errSenderIsNotExternal
+	}
+
+	return es, nil
 }

@@ -12,7 +12,7 @@ import (
 func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 	b := newTestXMRMaker(t)
 
-	offer := types.NewOffer(types.ProvidesXMR, 0.001, 0.002, 0.1)
+	offer := types.NewOffer(types.ProvidesXMR, 0.001, 0.002, 0.1, types.EthAssetETH)
 	_, err := b.MakeOffer(offer)
 	require.NoError(t, err)
 

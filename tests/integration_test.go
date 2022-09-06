@@ -103,7 +103,7 @@ func TestXMRTaker_Discover(t *testing.T) {
 		generateBlocks(64)
 	}
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	defer func() {
 		err = bc.ClearOffers(nil)
@@ -129,7 +129,7 @@ func TestXMRTaker_Query(t *testing.T) {
 		generateBlocks(64)
 	}
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	defer func() {
 		err = bc.ClearOffers(nil)
@@ -172,7 +172,7 @@ func TestSuccess_OneSwap(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -266,7 +266,7 @@ func TestRefund_XMRTakerCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -406,7 +406,7 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 	}()
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	offersBefore, err := bc.GetOffers()
@@ -515,7 +515,7 @@ func TestAbort_XMRTakerCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -620,7 +620,7 @@ func TestAbort_XMRMakerCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate))
+		types.ExchangeRate(exchangeRate), types.EthAssetETH)
 	require.NoError(t, err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
@@ -720,7 +720,7 @@ func TestError_ShouldOnlyTakeOfferOnce(t *testing.T) {
 	defer cancel()
 
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate)
+	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	defer func() {
 		err = bc.ClearOffers(nil)
@@ -831,7 +831,7 @@ func TestSuccess_ConcurrentSwaps(t *testing.T) {
 		require.NoError(t, err)
 
 		offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-			types.ExchangeRate(exchangeRate))
+			types.ExchangeRate(exchangeRate), types.EthAssetETH)
 		require.NoError(t, err)
 
 		t.Log("maker made offer ", offerID)

@@ -47,6 +47,9 @@ func checkContractSwapID(msg *message.NotifyETHLocked) error {
 			Type: uint256Ty,
 		},
 		{
+			Type: addressTy,
+		},
+		{
 			Type: uint256Ty,
 		},
 		{
@@ -61,6 +64,7 @@ func checkContractSwapID(msg *message.NotifyETHLocked) error {
 		msg.ContractSwap.PubKeyRefund,
 		msg.ContractSwap.Timeout0,
 		msg.ContractSwap.Timeout1,
+		msg.ContractSwap.Asset,
 		msg.ContractSwap.Value,
 		msg.ContractSwap.Nonce,
 	)
@@ -70,6 +74,7 @@ func checkContractSwapID(msg *message.NotifyETHLocked) error {
 
 	hash := crypto.Keccak256Hash(args)
 	if !bytes.Equal(hash[:], msg.ContractSwapID[:]) {
+		log.Debugf("swap hash mismatch, expected args=%v\n", args)
 		return errSwapIDMismatch
 	}
 

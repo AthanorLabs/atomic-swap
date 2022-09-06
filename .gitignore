@@ -31,3 +31,4 @@ swaptester
 node.key
 xmrmaker.key
 xmrtaker.key
+cmd/daemon/*.key

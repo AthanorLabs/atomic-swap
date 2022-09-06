@@ -26,6 +26,7 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
@@ -36,6 +37,7 @@ var refundedTopic = common.GetTopic(common.RefundedEventSignature)
 
 type swapState struct {
 	backend.Backend
+	sender txsender.Sender
 
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -90,9 +92,28 @@ func newSwapState(
 	}
 	statusCh <- stage
 	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, stage, statusCh)
+		exchangeRate, offer.EthAsset, stage, statusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
+	}
+
+	var sender txsender.Sender
+	if offer.EthAsset != types.EthAssetETH {
+		erc20Contract, err := swapfactory.NewIERC20(offer.EthAsset.Address(), b.EthClient())
+		if err != nil {
+			return nil, err
+		}
+
+		sender, err = b.NewTxSender(offer.EthAsset.Address(), erc20Contract)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		sender, err = b.NewTxSender(offer.EthAsset.Address(), nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ctx, cancel := context.WithCancel(b.Ctx())
@@ -100,6 +121,7 @@ func newSwapState(
 		ctx:                 ctx,
 		cancel:              cancel,
 		Backend:             b,
+		sender:              sender,
 		offer:               offer,
 		offerManager:        om,
 		infoFile:            infoFile,
@@ -426,6 +448,8 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 	}
 
 	s.SetContract(contract)
+	s.sender.SetContractAddress(address)
+	s.sender.SetContract(contract)
 	return nil
 }
 
@@ -438,9 +462,23 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
+	tx, _, err := s.TransactionByHash(s.ctx, txHash)
+	if err != nil {
+		return err
+	}
+
+	if tx.To() == nil || *(tx.To()) != s.ContractAddr() {
+		return errInvalidETHLockedTransaction
+	}
+
 	receipt, err := s.WaitForReceipt(s.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
+	}
+
+	if receipt.Status == 0 {
+		// swap transaction reverted
+		return errLockTxReverted
 	}
 
 	// check that New log was emitted
@@ -448,9 +486,15 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return errCannotFindNewLog
 	}
 
-	event, err := s.Contract().ParseNew(*receipt.Logs[0])
+	var event *swapfactory.SwapFactoryNew
+	for _, log := range receipt.Logs {
+		event, err = s.Contract().ParseNew(*log)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
-		return err
+		return errCannotFindNewLog
 	}
 
 	if !bytes.Equal(event.SwapID[:], s.contractSwapID[:]) {
@@ -470,11 +514,14 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 
 	// TODO: check timeouts (#161)
 
+	// check asset of created swap
+	if types.EthAsset(s.contractSwap.Asset) != types.EthAsset(event.Asset) {
+		return fmt.Errorf("swap asset is not expected: got %v, expected %v", event.Asset, s.contractSwap.Asset)
+	}
+
 	// check value of created swap
-	value := s.contractSwap.Value
-	expected := common.EtherToWei(s.info.ReceivedAmount()).BigInt()
-	if value.Cmp(expected) < 0 {
-		return fmt.Errorf("contract does not have expected balance: got %s, expected %s", value, expected)
+	if s.contractSwap.Value.Cmp(event.Value) != 0 {
+		return fmt.Errorf("swap value is not expected: got %v, expected %v", event.Value, s.contractSwap.Value)
 	}
 
 	return nil
@@ -536,28 +583,55 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	addr := s.EthAddress()
 
-	balance, err := s.BalanceAt(s.ctx, addr, nil)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
+	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
+		balance, err := s.BalanceAt(s.ctx, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	} else {
+		// get token details
+		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		if err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
+		}
 
-	log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+	}
+	// TODO: Check balance of ERC-20 token
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
-	unused := types.Hash{}
-	txHash, _, err := s.Claim(unused, s.contractSwap, sc)
+	txHash, _, err := s.sender.Claim(s.contractSwap, sc)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
 	log.Infof("sent claim tx, tx hash=%s", txHash)
 
-	balance, err = s.BalanceAt(s.ctx, addr, nil)
-	if err != nil {
-		return ethcommon.Hash{}, err
+	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
+		balance, err := s.BalanceAt(s.ctx, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
+	} else {
+		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		if err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
+		}
+
+		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+
+		log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
 	}
 
-	log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	return txHash, nil
 }

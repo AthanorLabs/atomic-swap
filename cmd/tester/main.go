@@ -371,6 +371,7 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 	offerID, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmount,
 		maxProvidesAmount,
 		getRandomExchangeRate(),
+		types.EthAssetETH,
 	)
 	if err != nil {
 		log.Errorf("failed to make offer (node %d): %s", d.idx, err)
