@@ -44,7 +44,7 @@ start-swapd bob \
 	--deploy
 
 start-swapd charlie \
-	--monero-endpoint "http://127.0.0.1:${CHARLIE_WALLET_PORT}" \
+	--monero-endpoint "http://127.0.0.1:${CHARLIE_WALLET_PORT}/json_rpc" \
 	--ethereum-privkey "${CHARLIE_ETH_KEY}" \
 	--libp2p-port 9955 \
 	--rpc-port 5003 \
@@ -57,7 +57,14 @@ sleep 3 # Time for Bob and Charlie's swapd to be fully up
 # run tests
 echo "running integration tests..."
 TESTS=integration go test ./tests -v -count=1
-OK=$?
+OK="${?}"
+
+# If we failed, make a copy of the log files that won't get deleted
+if [[ "${OK}" -ne 0 ]]; then
+	mkdir -p "${SWAP_TEST_DATA_DIR}/saved-logs"
+	cp "${SWAP_TEST_DATA_DIR}/"*.log "${SWAP_TEST_DATA_DIR}/saved-logs/"
+	echo "Logs saved to ${SWAP_TEST_DATA_DIR}/saved-logs/"
+fi
 
 stop-swapd alice
 stop-swapd bob
@@ -68,6 +75,8 @@ stop-charlie-wallet
 stop-monerod-regtest
 stop-ganache
 rm -f "${CHARLIE_ETH_KEY}"
-remove-test-data-dir
+if [[ "${OK}" -eq 0 ]]; then
+	remove-test-data-dir
+fi
 
-exit $OK
+exit "${OK}"
