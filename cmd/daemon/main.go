@@ -261,10 +261,9 @@ func runDaemon(c *cli.Context) error {
 	return nil
 }
 
-// expandBootnodes expands the boot nodes passed on the command
-// line that can be specified individually with multiple flags,
-// but can also contain multiple boot nodes passed to single flag
-// separated by commas.
+// expandBootnodes expands the boot nodes passed on the command line that
+// can be specified individually with multiple flags, but can also contain
+// multiple boot nodes passed to single flag separated by commas.
 func expandBootnodes(nodesCLI []string) []string {
 	var nodes []string
 	for _, n := range nodesCLI {
@@ -290,11 +289,19 @@ func (d *daemon) make(c *cli.Context) error {
 
 	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
 	// `flagEthereumChainID` is passed:
-	if c.IsSet(flagEthereumChainID) {
+	if c.Uint(flagEthereumChainID) != 0 {
 		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
 	}
 
-	bootnodes := expandBootnodes(c.StringSlice(flagBootnodes))
+	if len(c.StringSlice(flagBootnodes)) > 0 {
+		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
+	}
+
+	//
+	// Note: Overrides for devXMRTaker/devXMRMaker use "IsSet" instead of checking the value so that
+	//       the devXMRTaker/devXMRMaker configurations take precedence over normal default values,
+	//       but will not override values explicitly set by the end user.
+	//
 
 	libp2pKey := c.String(flagLibp2pKey)
 	if !c.IsSet(flagLibp2pKey) {
@@ -341,7 +348,7 @@ func (d *daemon) make(c *cli.Context) error {
 		EthChainID:  cfg.EthereumChainID,
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
-		Bootnodes:   bootnodes,
+		Bootnodes:   cfg.Bootnodes,
 	}
 
 	host, err := net.NewHost(netCfg)
@@ -445,6 +452,8 @@ func newBackend(
 	)
 
 	switch {
+	// flagMoneroWalletEndpoint doesn't have a default, so we don't have to use c.IsSet when
+	// doing the devXMRMaker/devXMRTaker overrides. We'll also be eliminating this flag soon.
 	case c.String(flagMoneroWalletEndpoint) != "":
 		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
 	case devXMRMaker:
@@ -486,12 +495,11 @@ func newBackend(
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
-	var contractAddr ethcommon.Address
 	contractAddrStr := c.String(flagContractAddress)
-	if contractAddrStr == "" {
-		contractAddr = ethcommon.Address{}
-	} else {
-		contractAddr = ethcommon.HexToAddress(contractAddrStr)
+	if contractAddrStr != "" {
+		// We check the contract code at the address later, so we don't need
+		// to tightly validate the address here.
+		cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
 	}
 
 	ec, err := ethclient.Dial(ethEndpoint)
@@ -501,11 +509,16 @@ func newBackend(
 
 	deploy := c.Bool(flagDeploy)
 	if deploy {
-		contractAddr = ethcommon.Address{}
+		if c.IsSet(flagContractAddress) {
+			return nil, errFlagsMutuallyExclusive(flagDeploy, flagContractAddress)
+		}
+		// Zero out any default contract address in the config, so we deploy
+		cfg.ContractAddress = ethcommon.Address{}
 	}
 
 	chainID := big.NewInt(cfg.EthereumChainID)
-	contract, contractAddr, err := getOrDeploySwapFactory(ctx, contractAddr, env, cfg.DataDir, chainID, ethPrivKey, ec)
+	contract, contractAddr, err :=
+		getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, chainID, ethPrivKey, ec)
 	if err != nil {
 		return nil, err
 	}

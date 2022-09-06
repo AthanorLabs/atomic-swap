@@ -73,12 +73,15 @@ var (
 				Action:  runQueryAll,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "provides",
-						Usage: "coin to find providers for: one of [ETH, XMR]",
+						Name: "provides",
+						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
+							types.ProvidesXMR, types.ProvidesETH),
+						Value: string(types.ProvidesXMR),
 					},
 					&cli.UintFlag{
 						Name:  "search-time",
-						Usage: "duration of time to search for, in seconds",
+						Usage: "Duration of time to search for, in seconds",
+						Value: defaultDiscoverSearchTimeSecs,
 					},
 					daemonAddrFlag,
 				},
@@ -247,7 +250,7 @@ var (
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
@@ -310,10 +313,6 @@ func runQueryAll(ctx *cli.Context) error {
 	provides, err := types.NewProvidesCoin(ctx.String("provides"))
 	if err != nil {
 		return err
-	}
-
-	if provides == "" {
-		provides = types.ProvidesXMR
 	}
 
 	endpoint := ctx.String("daemon-addr")
