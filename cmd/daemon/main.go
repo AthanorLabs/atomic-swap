@@ -49,9 +49,12 @@ const (
 var (
 	log = logging.Logger("cmd")
 
-	// default dev base paths
-	defaultXMRMakerDataDir = path.Join(os.TempDir(), "xmrmaker")
-	defaultXMRTakerDataDir = path.Join(os.TempDir(), "xmrtaker")
+	// Default dev base paths. If SWAP_TEST_DATA_DIR is not defined, it is
+	// still safe, there just won't be an intermediate directory and tests
+	// could fail from stale data.
+	testDataDir            = os.Getenv("SWAP_TEST_DATA_DIR")
+	defaultXMRMakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrmaker")
+	defaultXMRTakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrtaker")
 )
 
 const (
