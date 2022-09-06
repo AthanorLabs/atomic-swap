@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/swapfactory"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type recoveryState struct {
