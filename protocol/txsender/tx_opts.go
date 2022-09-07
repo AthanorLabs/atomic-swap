@@ -27,7 +27,7 @@ func NewTxOpts(privkey *ecdsa.PrivateKey, chainID *big.Int) (*TxOpts, error) {
 }
 
 // Inner returns a copy of bind.TransactOpts. The original is never used in a transaction,
-// so the copies given out do not have the Nonce, and Gas* fields initialized allowing them
+// so the copies given out do not have the Nonce, and Gas* fields initialised allowing them
 // to be initialized dynamically. Reference:
 // https://github.com/ethereum/go-ethereum/blob/v1.10.23/accounts/abi/bind/base.go#L49-L63
 func (txOpts *TxOpts) Inner() bind.TransactOpts {
