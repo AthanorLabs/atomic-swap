@@ -160,7 +160,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	if cfg.EthereumPrivateKey != nil {
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
 
-		// TODO: set gas limit and price?
+		// TODO: set gas limit + price based on network (#153)
 		txOpts, err = txsender.NewTxOpts(cfg.EthereumPrivateKey, cfg.ChainID)
 		if err != nil {
 			return nil, err
