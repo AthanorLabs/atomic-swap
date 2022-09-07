@@ -25,7 +25,7 @@ var MainnetConfig = Config{
 	EthereumChainID:      MainnetChainID,
 }
 
-// StagenetConfig is the monero stagenet and ethereum ropsten configuration
+// StagenetConfig is the monero stagenet and ethereum Gorli configuration
 var StagenetConfig = Config{
 	DataDir:              fmt.Sprintf("%s/.atomicswap/stagenet", homeDir),
 	MoneroDaemonEndpoint: "http://127.0.0.1:38081/json_rpc",
