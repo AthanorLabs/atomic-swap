@@ -24,9 +24,15 @@ var (
 	errInvalidSwapContract  = errors.New("given contract address does not contain correct code")
 )
 
-func getOrDeploySwapFactory(ctx context.Context, address ethcommon.Address, env common.Environment,
-	basePath string, chainID *big.Int, privkey *ecdsa.PrivateKey,
-	ec *ethclient.Client) (*swapfactory.SwapFactory, ethcommon.Address, error) {
+func getOrDeploySwapFactory(
+	ctx context.Context,
+	address ethcommon.Address,
+	env common.Environment,
+	dataDir string,
+	chainID *big.Int,
+	privkey *ecdsa.PrivateKey,
+	ec *ethclient.Client,
+) (*swapfactory.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf *swapfactory.SwapFactory
 	)
@@ -51,7 +57,7 @@ func getOrDeploySwapFactory(ctx context.Context, address ethcommon.Address, env 
 		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
 
 		// store the contract address on disk
-		fp := path.Join(basePath, "contractaddress")
+		fp := path.Join(dataDir, "contractaddress")
 		if err = pcommon.WriteContractAddressToFile(fp, address.String()); err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
 		}

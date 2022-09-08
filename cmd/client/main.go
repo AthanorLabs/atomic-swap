@@ -6,30 +6,28 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/urfave/cli/v2"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
-	"github.com/ethereum/go-ethereum/common"
-
-	logging "github.com/ipfs/go-log"
-	"github.com/urfave/cli"
 )
 
 const (
-	defaultSwapdAddress = "http://localhost:5001"
+	defaultSwapdAddress           = "http://127.0.0.1:5001"
+	defaultDiscoverSearchTimeSecs = 12
 )
-
-var log = logging.Logger("cmd")
 
 var (
 	app = &cli.App{
 		Name:  "swapcli",
 		Usage: "Client for swapd",
-		Commands: []cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:    "addresses",
 				Aliases: []string{"a"},
-				Usage:   "list our daemon's libp2p listening addresses",
+				Usage:   "List our daemon's libp2p listening addresses",
 				Action:  runAddresses,
 				Flags: []cli.Flag{
 					daemonAddrFlag,
@@ -38,16 +36,19 @@ var (
 			{
 				Name:    "discover",
 				Aliases: []string{"d"},
-				Usage:   "discover peers who provide a certain coin",
+				Usage:   "Discover peers who provide a certain coin",
 				Action:  runDiscover,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "provides",
-						Usage: "coin to find providers for: one of [ETH, XMR]",
+						Name: "provides",
+						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
+							types.ProvidesXMR, types.ProvidesETH),
+						Value: string(types.ProvidesXMR),
 					},
 					&cli.UintFlag{
 						Name:  "search-time",
-						Usage: "duration of time to search for, in seconds",
+						Usage: "Duration of time to search for, in seconds",
+						Value: defaultDiscoverSearchTimeSecs,
 					},
 					daemonAddrFlag,
 				},
@@ -55,12 +56,13 @@ var (
 			{
 				Name:    "query",
 				Aliases: []string{"q"},
-				Usage:   "query a peer for details on what they provide",
+				Usage:   "Query a peer for details on what they provide",
 				Action:  runQuery,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "multiaddr",
-						Usage: "peer's multiaddress, as provided by discover",
+						Name:     "multiaddr",
+						Usage:    "Peer's multiaddress, as provided by discover",
+						Required: true,
 					},
 					daemonAddrFlag,
 				},
@@ -72,12 +74,15 @@ var (
 				Action:  runQueryAll,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "provides",
-						Usage: "coin to find providers for: one of [ETH, XMR]",
+						Name: "provides",
+						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
+							types.ProvidesXMR, types.ProvidesETH),
+						Value: string(types.ProvidesXMR),
 					},
 					&cli.UintFlag{
 						Name:  "search-time",
-						Usage: "duration of time to search for, in seconds",
+						Usage: "Duration of time to search for, in seconds",
+						Value: defaultDiscoverSearchTimeSecs,
 					},
 					daemonAddrFlag,
 				},
@@ -85,24 +90,27 @@ var (
 			{
 				Name:    "make",
 				Aliases: []string{"m"},
-				Usage:   "mke a swap offer; currently monero holders must be the makers",
+				Usage:   "Make a swap offer; currently monero holders must be the makers",
 				Action:  runMake,
 				Flags: []cli.Flag{
 					&cli.Float64Flag{
-						Name:  "min-amount",
-						Usage: "minimum amount to be swapped, in XMR",
+						Name:     "min-amount",
+						Usage:    "Minimum amount to be swapped, in XMR",
+						Required: true,
 					},
 					&cli.Float64Flag{
-						Name:  "max-amount",
-						Usage: "maximum amount to be swapped, in XMR",
+						Name:     "max-amount",
+						Usage:    "Maximum amount to be swapped, in XMR",
+						Required: true,
 					},
 					&cli.Float64Flag{
-						Name:  "exchange-rate",
-						Usage: "desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
+						Name:     "exchange-rate",
+						Usage:    "Desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
+						Required: true,
 					},
 					&cli.BoolFlag{
 						Name:  "subscribe",
-						Usage: "subscribe to push notifications about the swap's status",
+						Usage: "Subscribe to push notifications about the swap's status",
 					},
 					&cli.StringFlag{
 						Name:  "eth-asset",
@@ -114,73 +122,79 @@ var (
 			{
 				Name:    "take",
 				Aliases: []string{"t"},
-				Usage:   "initiate a swap by taking an offer; currently only eth holders can be the takers",
+				Usage:   "Initiate a swap by taking an offer; currently only eth holders can be the takers",
 				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "multiaddr",
-						Usage: "peer's multiaddress, as provided by discover",
+						Name:     "multiaddr",
+						Usage:    "Peer's multiaddress, as provided by discover",
+						Required: true,
 					},
 					&cli.StringFlag{
-						Name:  "offer-id",
-						Usage: "ID of the offer being taken",
+						Name:     "offer-id",
+						Usage:    "ID of the offer being taken",
+						Required: true,
 					},
 					&cli.Float64Flag{
-						Name:  "provides-amount",
-						Usage: "amount of coin to send in the swap",
+						Name:     "provides-amount",
+						Usage:    "Amount of coin to send in the swap",
+						Required: true,
 					},
 					&cli.BoolFlag{
 						Name:  "subscribe",
-						Usage: "subscribe to push notifications about the swap's status",
+						Usage: "Subscribe to push notifications about the swap's status",
 					},
 					daemonAddrFlag,
 				},
 			},
 			{
 				Name:   "get-past-swap-ids",
-				Usage:  "get past swap IDs",
+				Usage:  "Get past swap IDs",
 				Action: runGetPastSwapIDs,
 				Flags:  []cli.Flag{daemonAddrFlag},
 			},
 			{
 				Name:   "get-ongoing-swap",
-				Usage:  "get information about ongoing swap, if there is one",
+				Usage:  "Get information about ongoing swap, if there is one",
 				Action: runGetOngoingSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "offer-id",
-						Usage: "ID of swap to retrieve info for",
+						Name:     "offer-id",
+						Usage:    "ID of swap to retrieve info for",
+						Required: true,
 					},
 					daemonAddrFlag,
 				},
 			},
 			{
 				Name:   "get-past-swap",
-				Usage:  "get information about a past swap with the given ID",
+				Usage:  "Get information about a past swap with the given ID",
 				Action: runGetPastSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "offer-id",
-						Usage: "ID of swap to retrieve info for",
+						Name:     "offer-id",
+						Usage:    "ID of swap to retrieve info for",
+						Required: true,
 					},
 					daemonAddrFlag,
 				},
 			},
 			{
 				Name:   "refund",
-				Usage:  "if we are the ETH provider for an ongoing swap, refund it if possible.",
+				Usage:  "If we are the ETH provider for an ongoing swap, refund it if possible.",
 				Action: runRefund,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "offer-id",
-						Usage: "ID of swap to retrieve info for",
+						Name:     "offer-id",
+						Usage:    "ID of swap to retrieve info for",
+						Required: true,
 					},
 					daemonAddrFlag,
 				},
 			},
 			{
 				Name:   "cancel",
-				Usage:  "cancel a ongoing swap if possible.",
+				Usage:  "Cancel a ongoing swap if possible.",
 				Action: runCancel,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -192,36 +206,38 @@ var (
 			},
 			{
 				Name:   "clear-offers",
-				Usage:  "clear current offers. if no offer IDs are provided, clears all current offers.",
+				Usage:  "Clear current offers. If no offer IDs are provided, clears all current offers.",
 				Action: runClearOffers,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "offer-ids",
-						Usage: "a comma-separated list of offer IDs to delete",
+						Usage: "A comma-separated list of offer IDs to delete",
 					},
 					daemonAddrFlag,
 				},
 			},
 			{
 				Name:   "get-stage",
-				Usage:  "get the stage of a current swap.",
+				Usage:  "Get the stage of a current swap.",
 				Action: runGetStage,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "offer-id",
-						Usage: "ID of swap to retrieve info for",
+						Name:     "offer-id",
+						Usage:    "ID of swap to retrieve info for",
+						Required: true,
 					},
 					daemonAddrFlag,
 				},
 			},
 			{
 				Name:   "set-swap-timeout",
-				Usage:  "set the duration between swap initiation and t0 and t0 and t1, in seconds",
+				Usage:  "Set the duration between swap initiation and t0 and t0 and t1, in seconds",
 				Action: runSetSwapTimeout,
 				Flags: []cli.Flag{
 					&cli.UintFlag{
-						Name:  "duration",
-						Usage: "duration of timeout, in seconds",
+						Name:     "duration",
+						Usage:    "Duration of timeout, in seconds",
+						Required: true,
 					},
 					daemonAddrFlag,
 				},
@@ -232,13 +248,14 @@ var (
 
 	daemonAddrFlag = &cli.StringFlag{
 		Name:  "daemon-addr",
-		Usage: "address of swap daemon; default http://localhost:5001",
+		Usage: "Address of swap daemon",
+		Value: defaultSwapdAddress,
 	}
 )
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		log.Error(err)
+		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
@@ -265,15 +282,7 @@ func runDiscover(ctx *cli.Context) error {
 		return err
 	}
 
-	if provides == "" {
-		provides = types.ProvidesXMR
-	}
-
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	searchTime := ctx.Uint("search-time")
 
 	c := rpcclient.NewClient(endpoint)
@@ -291,14 +300,7 @@ func runDiscover(ctx *cli.Context) error {
 
 func runQuery(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
-	if maddr == "" {
-		return errNoMultiaddr
-	}
-
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
 
 	c := rpcclient.NewClient(endpoint)
 	res, err := c.Query(maddr)
@@ -316,10 +318,6 @@ func runQueryAll(ctx *cli.Context) error {
 	provides, err := types.NewProvidesCoin(ctx.String("provides"))
 	if err != nil {
 		return err
-	}
-
-	if provides == "" {
-		provides = types.ProvidesXMR
 	}
 
 	endpoint := ctx.String("daemon-addr")
@@ -364,9 +362,6 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
 
 	ethAssetStr := ctx.String("eth-asset")
 	ethAsset := types.EthAssetETH
@@ -404,29 +399,23 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Published offer with ID %s\n", id)
+	addrs, err := c.Addresses()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("On addresses: %v\n", addrs)
 	return nil
 }
 
 func runTake(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
-	if maddr == "" {
-		return errNoMultiaddr
-	}
-
 	offerID := ctx.String("offer-id")
-	if offerID == "" {
-		return errNoOfferID
-	}
-
 	providesAmount := ctx.Float64("provides-amount")
 	if providesAmount == 0 {
 		return errNoProvidesAmount
 	}
 
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
 
 	if ctx.Bool("subscribe") {
 		c, err := wsclient.NewWsClient(context.Background(), endpoint)
@@ -479,14 +468,7 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 
 func runGetOngoingSwap(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	offerID := ctx.String("offer-id")
-	if offerID == "" {
-		return errNoOfferID
-	}
 
 	c := rpcclient.NewClient(endpoint)
 	info, err := c.GetOngoingSwap(offerID)
@@ -506,14 +488,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 
 func runGetPastSwap(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	offerID := ctx.String("offer-id")
-	if offerID == "" {
-		return errNoOfferID
-	}
 
 	c := rpcclient.NewClient(endpoint)
 	info, err := c.GetPastSwap(offerID)
@@ -533,14 +508,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 
 func runRefund(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	offerID := ctx.String("offer-id")
-	if offerID == "" {
-		return errNoOfferID
-	}
 
 	c := rpcclient.NewClient(endpoint)
 	resp, err := c.Refund(offerID)
@@ -554,14 +522,7 @@ func runRefund(ctx *cli.Context) error {
 
 func runCancel(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	offerID := ctx.String("offer-id")
-	if offerID == "" {
-		return errNoOfferID
-	}
 
 	c := rpcclient.NewClient(endpoint)
 	resp, err := c.Cancel(offerID)
@@ -575,10 +536,6 @@ func runCancel(ctx *cli.Context) error {
 
 func runClearOffers(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	c := rpcclient.NewClient(endpoint)
 
 	ids := ctx.String("offer-ids")
@@ -603,14 +560,7 @@ func runClearOffers(ctx *cli.Context) error {
 
 func runGetStage(ctx *cli.Context) error {
 	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	offerID := ctx.String("offer-id")
-	if offerID == "" {
-		return errNoOfferID
-	}
 
 	c := rpcclient.NewClient(endpoint)
 	resp, err := c.GetStage(offerID)
@@ -624,11 +574,10 @@ func runGetStage(ctx *cli.Context) error {
 
 func runSetSwapTimeout(ctx *cli.Context) error {
 	duration := ctx.Uint("duration")
-
-	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
+	if duration == 0 {
+		return errNoDuration
 	}
+	endpoint := ctx.String("daemon-addr")
 
 	c := rpcclient.NewClient(endpoint)
 	err := c.SetSwapTimeout(uint64(duration))
@@ -636,6 +585,6 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Set timeout duration to %ds", duration)
+	fmt.Printf("Set timeout duration to %ds\n", duration)
 	return nil
 }

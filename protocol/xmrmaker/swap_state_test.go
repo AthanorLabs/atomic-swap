@@ -86,7 +86,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 
 	cfg := &Config{
 		Backend:        b,
-		Basepath:       path.Join(t.TempDir(), "xmrmaker"),
+		DataDir:        path.Join(t.TempDir(), "xmrmaker"),
 		WalletFile:     testWallet,
 		WalletPassword: "",
 	}

@@ -67,7 +67,10 @@ func generateBlocks(num uint64) {
 	}
 
 	fmt.Println("> Generating blocks for test setup...")
-	_ = d.GenerateBlocks(xmrmakerAddr.Address, num)
+	err = d.GenerateBlocks(xmrmakerAddr.Address, num)
+	if err != nil {
+		panic(err)
+	}
 	err = c.Refresh()
 	if err != nil {
 		panic(err)
@@ -96,6 +99,9 @@ func generateBlocksAsync() {
 }
 
 func TestXMRTaker_Discover(t *testing.T) {
+	if os.Getenv(generateBlocksEnv) != falseStr {
+		generateBlocks(64)
+	}
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
@@ -119,6 +125,9 @@ func TestXMRMaker_Discover(t *testing.T) {
 }
 
 func TestXMRTaker_Query(t *testing.T) {
+	if os.Getenv(generateBlocksEnv) != falseStr {
+		generateBlocks(64)
+	}
 	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
 	offerID, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
@@ -150,6 +159,10 @@ func TestXMRTaker_Query(t *testing.T) {
 }
 
 func TestSuccess_OneSwap(t *testing.T) {
+	if os.Getenv(generateBlocksEnv) != falseStr {
+		generateBlocks(64)
+	}
+
 	const testTimeout = time.Second * 75
 
 	ctx, cancel := context.WithCancel(context.Background())

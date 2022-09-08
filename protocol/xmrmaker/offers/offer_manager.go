@@ -11,9 +11,9 @@ const statusChSize = 6 // the max number of stages a swap can potentially go thr
 
 // Manager synchronises access to the offers map.
 type Manager struct {
-	mu       sync.Mutex // synchronises access to the offers map
-	offers   map[types.Hash]*offerWithExtra
-	basePath string
+	mu      sync.Mutex // synchronises access to the offers map
+	offers  map[types.Hash]*offerWithExtra
+	dataDir string
 }
 
 type offerWithExtra struct {
@@ -21,12 +21,12 @@ type offerWithExtra struct {
 	extra *types.OfferExtra
 }
 
-// NewManager creates a new offers manager. The passed in basePath is the directory where the
+// NewManager creates a new offers manager. The passed in dataDir is the directory where the
 // recovery file is for each individual swap is stored.
-func NewManager(basePath string) *Manager {
+func NewManager(dataDir string) *Manager {
 	return &Manager{
-		offers:   make(map[types.Hash]*offerWithExtra),
-		basePath: basePath,
+		offers:  make(map[types.Hash]*offerWithExtra),
+		dataDir: dataDir,
 	}
 }
 
@@ -56,7 +56,7 @@ func (m *Manager) AddOffer(o *types.Offer) *types.OfferExtra {
 
 	extra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, statusChSize),
-		InfoFile: pcommon.GetSwapInfoFilepath(m.basePath),
+		InfoFile: pcommon.GetSwapInfoFilepath(m.dataDir),
 	}
 
 	m.offers[id] = &offerWithExtra{

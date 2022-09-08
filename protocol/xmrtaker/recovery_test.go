@@ -28,8 +28,8 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	_, err = s.lockETH(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	basePath := path.Join(t.TempDir(), "test-infoFile")
-	rs, err := NewRecoveryState(s, basePath, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
+	dataDir := path.Join(t.TempDir(), "test-infoFile")
+	rs, err := NewRecoveryState(s, dataDir, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 	return rs
 }

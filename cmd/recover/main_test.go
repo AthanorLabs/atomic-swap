@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"testing"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -19,57 +18,43 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
-func newTestContext(t *testing.T, description string, flags []string, values []interface{}) *cli.Context {
-	require.Equal(t, len(flags), len(values))
-
+func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
 	set := flag.NewFlagSet(description, 0)
-	for i := range values {
-		switch v := values[i].(type) {
+	for flag, value := range flags {
+		switch v := value.(type) {
 		case bool:
-			set.Bool(flags[i], v, "")
+			set.Bool(flag, v, "")
 		case string:
-			set.String(flags[i], v, "")
+			set.String(flag, v, "")
 		case uint:
-			set.Uint(flags[i], v, "")
+			set.Uint(flag, v, "")
 		case int64:
-			set.Int64(flags[i], v, "")
+			set.Int64(flag, v, "")
 		case []string:
-			set.Var(&cli.StringSlice{}, flags[i], "")
+			set.Var(&cli.StringSlice{}, flag, "")
 		default:
-			t.Fatalf("unexpected cli value type: %T", values[i])
+			t.Fatalf("unexpected cli value type: %T", value)
 		}
 	}
 
 	ctx := cli.NewContext(app, set, nil)
-	var (
-		err error
-		i   int
-	)
 
-	for i = range values {
-		switch v := values[i].(type) {
-		case bool:
-			err = ctx.Set(flags[i], strconv.FormatBool(v))
-		case string:
-			err = ctx.Set(flags[i], values[i].(string))
-		case uint:
-			err = ctx.Set(flags[i], strconv.Itoa(int(values[i].(uint))))
-		case int64:
-			err = ctx.Set(flags[i], strconv.Itoa(int(values[i].(int64))))
+	for flag, value := range flags {
+		switch v := value.(type) {
+		case bool, uint, int64, string:
+			require.NoError(t, ctx.Set(flag, fmt.Sprintf("%v", v)))
 		case []string:
-			for _, str := range values[i].([]string) {
-				err = ctx.Set(flags[i], str)
-				require.NoError(t, err)
+			for _, str := range v {
+				require.NoError(t, ctx.Set(flag, str))
 			}
 		default:
-			t.Fatalf("unexpected cli value type: %T", values[i])
+			t.Fatalf("unexpected cli value type: %T", value)
 		}
 	}
 
-	require.NoError(t, err, fmt.Sprintf("failed to set cli flag: %T, err: %s", flags[i], err))
 	return ctx
 }
 
@@ -122,9 +107,16 @@ func createInfoFile(t *testing.T, kpA, kpB *mcrypto.PrivateKeyPair, contractAddr
 	bz, err := json.MarshalIndent(infofile, "", "\t")
 	require.NoError(t, err)
 	filepath := path.Join(t.TempDir(), "test-infofile.txt")
-	err = os.WriteFile(filepath, bz, os.ModePerm)
+	err = os.WriteFile(filepath, bz, 0600)
 	require.NoError(t, err)
 	return filepath
+}
+
+func createEthPrivKeyFile(t *testing.T, ethKeyHex string) string {
+	fileName := path.Join(t.TempDir(), "eth.key")
+	err := os.WriteFile(fileName, []byte(ethKeyHex), 0600)
+	require.NoError(t, err)
+	return fileName
 }
 
 func TestRecover_sharedSwapSecret(t *testing.T) {
@@ -137,11 +129,11 @@ func TestRecover_sharedSwapSecret(t *testing.T) {
 
 	c := newTestContext(t,
 		"test --xmrtaker with shared swap secret",
-		[]string{flagXMRTaker, flagInfoFile, flagMoneroWalletEndpoint},
-		[]interface{}{
-			true,
-			infoFilePath,
-			tests.CreateWalletRPCService(t),
+		map[string]any{
+			flagEnv:                  "dev",
+			flagXMRTaker:             true,
+			flagInfoFile:             infoFilePath,
+			flagMoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		},
 	)
 
@@ -157,10 +149,12 @@ func TestRecover_withXMRMakerSecretAndContract(t *testing.T) {
 
 	c := newTestContext(t,
 		"test --xmrmaker with contract address and secret",
-		[]string{flagXMRMaker, flagInfoFile},
-		[]interface{}{
-			true,
-			infoFilePath,
+		map[string]any{
+			flagEnv:                  "dev",
+			flagXMRMaker:             true,
+			flagInfoFile:             infoFilePath,
+			flagEthereumPrivKey:      createEthPrivKeyFile(t, common.DefaultPrivKeyXMRMaker),
+			flagMoneroWalletEndpoint: tests.CreateWalletRPCService(t),
 		},
 	)
 
@@ -179,10 +173,11 @@ func TestRecover_withXMRTakerSecretAndContract(t *testing.T) {
 
 	c := newTestContext(t,
 		"test --xmrtaker with contract address and secret",
-		[]string{flagXMRTaker, flagInfoFile},
-		[]interface{}{
-			true,
-			infoFilePath,
+		map[string]any{
+			flagEnv:             "dev",
+			flagXMRTaker:        true,
+			flagInfoFile:        infoFilePath,
+			flagEthereumPrivKey: createEthPrivKeyFile(t, common.DefaultPrivKeyXMRTaker),
 		},
 	)
 

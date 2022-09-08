@@ -34,7 +34,10 @@ func (b *Instance) initiate(
 
 	// check user's balance and that they actually have what they will provide
 	if balance.UnlockedBalance <= uint64(providesAmount) {
-		return nil, errBalanceTooLow
+		return nil, errBalanceTooLow{
+			unlockedBalance: common.MoneroAmount(balance.UnlockedBalance).AsMonero(),
+			providedAmount:  providesAmount.AsMonero(),
+		}
 	}
 
 	s, err := newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
@@ -86,11 +89,11 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 
 	if providedAmount < offer.MinimumAmount {
-		return nil, nil, errAmountProvidedTooLow
+		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinimumAmount}
 	}
 
 	if providedAmount > offer.MaximumAmount {
-		return nil, nil, errAmountProvidedTooHigh
+		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaximumAmount}
 	}
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)
