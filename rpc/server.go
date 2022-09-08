@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -24,17 +25,15 @@ var log = logging.Logger("rpc")
 
 // Server represents the JSON-RPC server
 type Server struct {
-	s        *rpc.Server
-	wsServer *wsServer
-	port     uint16
-	wsPort   uint16
+	ctx        context.Context
+	listener   net.Listener
+	httpServer *http.Server
 }
 
 // Config ...
 type Config struct {
 	Ctx             context.Context
-	Port            uint16
-	WsPort          uint16
+	Address         string // "IP:port"
 	Net             Net
 	XMRTaker        XMRTaker
 	XMRMaker        XMRMaker
@@ -43,67 +42,71 @@ type Config struct {
 
 // NewServer ...
 func NewServer(cfg *Config) (*Server, error) {
-	s := rpc.NewServer()
-	s.RegisterCodec(NewCodec(), "application/json")
+	rpcServer := rpc.NewServer()
+	rpcServer.RegisterCodec(NewCodec(), "application/json")
 
 	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager())
-	if err := s.RegisterService(ns, "net"); err != nil {
+	if err := rpcServer.RegisterService(ns, "net"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewPersonalService(cfg.XMRMaker, cfg.ProtocolBackend), "personal"); err != nil {
+	if err := rpcServer.RegisterService(NewPersonalService(cfg.XMRMaker, cfg.ProtocolBackend), "personal"); err != nil {
 		return nil, err
 	}
 
-	if err := s.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil { //nolint:lll
+	if err := rpcServer.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil { //nolint:lll
 		return nil, err
+	}
+
+	wsServer := newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.XMRTaker)
+
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(cfg.Ctx, "tcp", cfg.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	r := mux.NewRouter()
+	r.Handle("/", rpcServer)
+	r.Handle("/ws", wsServer)
+
+	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	server := &http.Server{
+		Addr:              ln.Addr().String(),
+		ReadHeaderTimeout: time.Second,
+		Handler:           handlers.CORS(headersOk, methodsOk, originsOk)(r),
+		BaseContext: func(listener net.Listener) context.Context {
+			return cfg.Ctx
+		},
 	}
 
 	return &Server{
-		s:        s,
-		wsServer: newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.XMRTaker),
-		port:     cfg.Port,
-		wsPort:   cfg.WsPort,
+		ctx:        cfg.Ctx,
+		listener:   ln,
+		httpServer: server,
 	}, nil
 }
 
-// Start starts the JSON-RPC server.
-func (s *Server) Start() <-chan error {
-	errCh := make(chan error)
+// HttpURL returns the URL used for HTTP requests
+func (s *Server) HttpURL() string { //nolint:revive
+	return fmt.Sprintf("http://%s", s.httpServer.Addr)
+}
 
-	go func() {
-		r := mux.NewRouter()
-		r.Handle("/", s.s)
+// WsURL returns the URL used for websocket requests
+func (s *Server) WsURL() string {
+	return fmt.Sprintf("ws://%s/ws", s.httpServer.Addr)
+}
 
-		headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
-		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-		originsOk := handlers.AllowedOrigins([]string{"*"})
+// Start starts the JSON-RPC and Websocket server.
+func (s *Server) Start() error {
 
-		log.Infof("starting RPC server on http://127.0.0.1:%d", s.port)
+	log.Infof("Starting RPC server on %s", s.HttpURL())
+	log.Infof("Starting websockets server on %s", s.WsURL())
 
-		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", s.port), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
-			log.Errorf("failed to start http RPC server: %s", err)
-			errCh <- err
-		}
-	}()
-
-	go func() {
-		r := mux.NewRouter()
-		r.Handle("/", s.wsServer)
-
-		headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
-		methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-		originsOk := handlers.AllowedOrigins([]string{"*"})
-
-		log.Infof("starting websockets server on ws://127.0.0.1:%d", s.wsPort)
-
-		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", s.wsPort), handlers.CORS(headersOk, methodsOk, originsOk)(r)); err != nil { //nolint:lll
-			log.Errorf("failed to start websockets RPC server: %s", err)
-			errCh <- err
-		}
-	}()
-
-	return errCh
+	err := s.httpServer.Serve(s.listener) // Serve never returns nil
+	return fmt.Errorf("RPC server failed: %w", err)
 }
 
 // Protocol represents the functions required by the rpc service into the protocol handler.

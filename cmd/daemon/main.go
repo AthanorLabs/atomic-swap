@@ -40,10 +40,6 @@ const (
 	defaultRPCPort         = 5005
 	defaultXMRTakerRPCPort = 5001
 	defaultXMRMakerRPCPort = 5002
-
-	defaultWSPort         = 6005
-	defaultXMRTakerWSPort = 8081
-	defaultXMRMakerWSPort = 8082
 )
 
 var (
@@ -59,7 +55,6 @@ var (
 
 const (
 	flagRPCPort    = "rpc-port"
-	flagWSPort     = "ws-port"
 	flagDataDir    = "data-dir"
 	flagLibp2pKey  = "libp2p-key"
 	flagLibp2pPort = "libp2p-port"
@@ -96,11 +91,6 @@ var (
 				Name:  flagRPCPort,
 				Usage: "Port for the daemon RPC server to run on",
 				Value: defaultRPCPort,
-			},
-			&cli.UintFlag{
-				Name:  flagWSPort,
-				Usage: "Port for the daemon RPC websockets server to run on",
-				Value: defaultWSPort,
 			},
 			&cli.StringFlag{
 				Name:  flagDataDir,
@@ -198,8 +188,7 @@ var (
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		log.Error(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
 
@@ -387,21 +376,11 @@ func (d *daemon) make(c *cli.Context) error {
 			rpcPort = defaultXMRMakerRPCPort
 		}
 	}
-
-	wsPort := uint16(c.Uint(flagWSPort))
-	if !c.IsSet(flagWSPort) {
-		switch {
-		case devXMRTaker:
-			wsPort = defaultXMRTakerWSPort
-		case devXMRMaker:
-			wsPort = defaultXMRMakerWSPort
-		}
-	}
+	listenAddr := fmt.Sprintf("127.0.0.1:%d", rpcPort)
 
 	rpcCfg := &rpc.Config{
 		Ctx:             d.ctx,
-		Port:            rpcPort,
-		WsPort:          wsPort,
+		Address:         listenAddr,
 		Net:             host,
 		XMRTaker:        a,
 		XMRMaker:        b,
@@ -413,20 +392,8 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	errCh := s.Start()
-	go func() {
-		select {
-		case <-d.ctx.Done():
-			return
-		case err := <-errCh:
-			log.Errorf("failed to start RPC server: %s", err)
-			d.cancel()
-			os.Exit(1)
-		}
-	}()
-
-	log.Infof("started swapd with data-dir %s", cfg.DataDir)
-	return nil
+	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
+	return s.Start()
 }
 
 func errFlagsMutuallyExclusive(flag1, flag2 string) error {

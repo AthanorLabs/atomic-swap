@@ -1,22 +1,24 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
 
 const (
-	defaultSwapdAddress           = "http://127.0.0.1:5001"
+	defaultSwapdPort              = 5001
 	defaultDiscoverSearchTimeSecs = 12
+
+	flagSwapdPort = "swapd-port"
 )
 
 var (
@@ -30,7 +32,7 @@ var (
 				Usage:   "List our daemon's libp2p listening addresses",
 				Action:  runAddresses,
 				Flags: []cli.Flag{
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -50,7 +52,7 @@ var (
 						Usage: "Duration of time to search for, in seconds",
 						Value: defaultDiscoverSearchTimeSecs,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -64,7 +66,7 @@ var (
 						Usage:    "Peer's multiaddress, as provided by discover",
 						Required: true,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -84,7 +86,7 @@ var (
 						Usage: "Duration of time to search for, in seconds",
 						Value: defaultDiscoverSearchTimeSecs,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -116,7 +118,7 @@ var (
 						Name:  "eth-asset",
 						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -144,14 +146,14 @@ var (
 						Name:  "subscribe",
 						Usage: "Subscribe to push notifications about the swap's status",
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
 				Name:   "get-past-swap-ids",
 				Usage:  "Get past swap IDs",
 				Action: runGetPastSwapIDs,
-				Flags:  []cli.Flag{daemonAddrFlag},
+				Flags:  []cli.Flag{swapdPortFlag},
 			},
 			{
 				Name:   "get-ongoing-swap",
@@ -163,7 +165,7 @@ var (
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -176,7 +178,7 @@ var (
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -189,7 +191,7 @@ var (
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -201,7 +203,7 @@ var (
 						Name:  "offer-id",
 						Usage: "ID of swap to retrieve info for",
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -213,7 +215,7 @@ var (
 						Name:  "offer-ids",
 						Usage: "A comma-separated list of offer IDs to delete",
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -226,7 +228,7 @@ var (
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 			{
@@ -239,17 +241,17 @@ var (
 						Usage:    "Duration of timeout, in seconds",
 						Required: true,
 					},
-					daemonAddrFlag,
+					swapdPortFlag,
 				},
 			},
 		},
-		Flags: []cli.Flag{daemonAddrFlag},
+		Flags: []cli.Flag{swapdPortFlag},
 	}
 
-	daemonAddrFlag = &cli.StringFlag{
-		Name:  "daemon-addr",
-		Usage: "Address of swap daemon",
-		Value: defaultSwapdAddress,
+	swapdPortFlag = &cli.UintFlag{
+		Name:  flagSwapdPort,
+		Usage: "RPC port of swap daemon",
+		Value: defaultSwapdPort,
 	}
 )
 
@@ -260,13 +262,20 @@ func main() {
 	}
 }
 
-func runAddresses(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
+func newRRPClient(ctx *cli.Context) *rpcclient.Client {
+	swapdPort := ctx.Uint(flagSwapdPort)
+	endpoint := fmt.Sprintf("http://127.0.0.1:%d", swapdPort)
+	return rpcclient.NewClient(endpoint)
+}
 
-	c := rpcclient.NewClient(endpoint)
+func newWSClient(ctx *cli.Context) (wsclient.WsClient, error) {
+	swapdPort := ctx.Uint(flagSwapdPort)
+	endpoint := fmt.Sprintf("ws://127.0.0.1:%d/ws", swapdPort)
+	return wsclient.NewWsClient(ctx.Context, endpoint)
+}
+
+func runAddresses(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
 	addrs, err := c.Addresses()
 	if err != nil {
 		return err
@@ -282,10 +291,9 @@ func runDiscover(ctx *cli.Context) error {
 		return err
 	}
 
-	endpoint := ctx.String("daemon-addr")
 	searchTime := ctx.Uint("search-time")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	peers, err := c.Discover(provides, uint64(searchTime))
 	if err != nil {
 		return err
@@ -300,9 +308,8 @@ func runDiscover(ctx *cli.Context) error {
 
 func runQuery(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
-	endpoint := ctx.String("daemon-addr")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	res, err := c.Query(maddr)
 	if err != nil {
 		return err
@@ -320,14 +327,9 @@ func runQueryAll(ctx *cli.Context) error {
 		return err
 	}
 
-	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
 	searchTime := ctx.Uint("search-time")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	peers, err := c.QueryAll(provides, uint64(searchTime))
 	if err != nil {
 		return err
@@ -360,27 +362,41 @@ func runMake(ctx *cli.Context) error {
 	if exchangeRate == 0 {
 		return errNoExchangeRate
 	}
-
-	endpoint := ctx.String("daemon-addr")
+	otherMin := min * exchangeRate
+	otherMax := max * exchangeRate
 
 	ethAssetStr := ctx.String("eth-asset")
 	ethAsset := types.EthAssetETH
 	if ethAssetStr != "" {
-		ethAsset = types.EthAsset(common.HexToAddress(ethAssetStr))
+		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
+	}
+
+	c := newRRPClient(ctx)
+	ourAddresses, err := c.Addresses()
+	if err != nil {
+		return err
+	}
+
+	printOffferSummary := func(offerID string) {
+		fmt.Printf("Published offer with ID: %s\n", offerID)
+		fmt.Printf("On addresses: %v\n", ourAddresses)
+		fmt.Printf("Takers can provide between %s to %s %s\n",
+			common.FmtFloat(otherMin), common.FmtFloat(otherMax), ethAsset)
 	}
 
 	if ctx.Bool("subscribe") {
-		c, err := wsclient.NewWsClient(context.Background(), endpoint)
+		wsc, err := newWSClient(ctx) //nolint:govet
+		if err != nil {
+			return err
+		}
+		defer wsc.Close()
+
+		id, statusCh, err := wsc.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate), ethAsset)
 		if err != nil {
 			return err
 		}
 
-		id, statusCh, err := c.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate), ethAsset)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Made offer with ID %s\n", id)
+		printOffferSummary(id)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -392,18 +408,12 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	c := rpcclient.NewClient(endpoint)
 	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Published offer with ID %s\n", id)
-	addrs, err := c.Addresses()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("On addresses: %v\n", addrs)
+	printOffferSummary(id)
 	return nil
 }
 
@@ -415,15 +425,14 @@ func runTake(ctx *cli.Context) error {
 		return errNoProvidesAmount
 	}
 
-	endpoint := ctx.String("daemon-addr")
-
 	if ctx.Bool("subscribe") {
-		c, err := wsclient.NewWsClient(context.Background(), endpoint)
+		wsc, err := newWSClient(ctx)
 		if err != nil {
 			return err
 		}
+		defer wsc.Close()
 
-		statusCh, err := c.TakeOfferAndSubscribe(maddr, offerID, providesAmount)
+		statusCh, err := wsc.TakeOfferAndSubscribe(maddr, offerID, providesAmount)
 		if err != nil {
 			return err
 		}
@@ -440,7 +449,7 @@ func runTake(ctx *cli.Context) error {
 		return nil
 	}
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	err := c.TakeOffer(maddr, offerID, providesAmount)
 	if err != nil {
 		return err
@@ -451,12 +460,7 @@ func runTake(ctx *cli.Context) error {
 }
 
 func runGetPastSwapIDs(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
-	if endpoint == "" {
-		endpoint = defaultSwapdAddress
-	}
-
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	ids, err := c.GetPastSwapIDs()
 	if err != nil {
 		return err
@@ -467,10 +471,9 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 }
 
 func runGetOngoingSwap(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
 	offerID := ctx.String("offer-id")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	info, err := c.GetOngoingSwap(offerID)
 	if err != nil {
 		return err
@@ -487,10 +490,9 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 }
 
 func runGetPastSwap(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
 	offerID := ctx.String("offer-id")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	info, err := c.GetPastSwap(offerID)
 	if err != nil {
 		return err
@@ -507,10 +509,9 @@ func runGetPastSwap(ctx *cli.Context) error {
 }
 
 func runRefund(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
 	offerID := ctx.String("offer-id")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	resp, err := c.Refund(offerID)
 	if err != nil {
 		return err
@@ -521,10 +522,9 @@ func runRefund(ctx *cli.Context) error {
 }
 
 func runCancel(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
 	offerID := ctx.String("offer-id")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	resp, err := c.Cancel(offerID)
 	if err != nil {
 		return err
@@ -535,8 +535,7 @@ func runCancel(ctx *cli.Context) error {
 }
 
 func runClearOffers(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 
 	ids := ctx.String("offer-ids")
 	if ids == "" {
@@ -559,10 +558,9 @@ func runClearOffers(ctx *cli.Context) error {
 }
 
 func runGetStage(ctx *cli.Context) error {
-	endpoint := ctx.String("daemon-addr")
 	offerID := ctx.String("offer-id")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	resp, err := c.GetStage(offerID)
 	if err != nil {
 		return err
@@ -577,9 +575,8 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 	if duration == 0 {
 		return errNoDuration
 	}
-	endpoint := ctx.String("daemon-addr")
 
-	c := rpcclient.NewClient(endpoint)
+	c := newRRPClient(ctx)
 	err := c.SetSwapTimeout(uint64(duration))
 	if err != nil {
 		return err

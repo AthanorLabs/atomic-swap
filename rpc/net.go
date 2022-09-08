@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )
