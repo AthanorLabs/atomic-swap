@@ -23,7 +23,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/noot/cgo-dleq v0.0.0-20220726051627-d0716fb55684
 	github.com/stretchr/testify v1.8.0
-	github.com/urfave/cli v1.22.9
+	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 
@@ -139,6 +139,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect

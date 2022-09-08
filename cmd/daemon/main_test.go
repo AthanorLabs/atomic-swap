@@ -4,69 +4,57 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
-func newTestContext(t *testing.T, description string, flags []string, values []interface{}) *cli.Context {
-	require.Equal(t, len(flags), len(values))
-
+func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
 	set := flag.NewFlagSet(description, 0)
-	for i := range values {
-		switch v := values[i].(type) {
+	for flag, value := range flags {
+		switch v := value.(type) {
 		case bool:
-			set.Bool(flags[i], v, "")
+			set.Bool(flag, v, "")
 		case string:
-			set.String(flags[i], v, "")
+			set.String(flag, v, "")
 		case uint:
-			set.Uint(flags[i], v, "")
+			set.Uint(flag, v, "")
 		case int64:
-			set.Int64(flags[i], v, "")
+			set.Int64(flag, v, "")
 		case []string:
-			set.Var(&cli.StringSlice{}, flags[i], "")
+			set.Var(&cli.StringSlice{}, flag, "")
 		default:
-			t.Fatalf("unexpected cli value type: %T", values[i])
+			t.Fatalf("unexpected cli value type: %T", value)
 		}
 	}
 
 	ctx := cli.NewContext(app, set, nil)
-	var (
-		err error
-		i   int
-	)
 
-	for i = range values {
-		switch v := values[i].(type) {
-		case bool:
-			err = ctx.Set(flags[i], strconv.FormatBool(v))
-		case string:
-			err = ctx.Set(flags[i], values[i].(string))
-		case uint:
-			err = ctx.Set(flags[i], strconv.Itoa(int(values[i].(uint))))
-		case int64:
-			err = ctx.Set(flags[i], strconv.Itoa(int(values[i].(int64))))
+	for flag, value := range flags {
+		switch v := value.(type) {
+		case bool, uint, int64, string:
+			require.NoError(t, ctx.Set(flag, fmt.Sprintf("%v", v)))
 		case []string:
-			for _, str := range values[i].([]string) {
-				err = ctx.Set(flags[i], str)
-				require.NoError(t, err)
+			for _, str := range v {
+				require.NoError(t, ctx.Set(flag, str))
 			}
 		default:
-			t.Fatalf("unexpected cli value type: %T", values[i])
+			t.Fatalf("unexpected cli value type: %T", value)
 		}
 	}
 
-	require.NoError(t, err, fmt.Sprintf("failed to set cli flag: %T, err: %s", flags[i], err))
 	return ctx
 }
 
 func TestDaemon_DevXMRTaker(t *testing.T) {
 	c := newTestContext(t,
 		"test --dev-xmrtaker",
-		[]string{flagDevXMRTaker, flagBasepath},
-		[]interface{}{true, t.TempDir()},
+		map[string]any{
+			flagEnv:         "dev",
+			flagDevXMRTaker: true,
+			flagDataDir:     t.TempDir(),
+		},
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -84,8 +72,12 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 func TestDaemon_DevXMRMaker(t *testing.T) {
 	c := newTestContext(t,
 		"test --dev-xmrmaker",
-		[]string{flagDevXMRMaker, flagDeploy, flagBasepath},
-		[]interface{}{true, true, t.TempDir()},
+		map[string]any{
+			flagEnv:         "dev",
+			flagDevXMRMaker: true,
+			flagDeploy:      true,
+			flagDataDir:     t.TempDir(),
+		},
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -98,4 +90,24 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 
 	err := d.make(c)
 	require.NoError(t, err)
+}
+
+func Test_expandBootnodes(t *testing.T) {
+	cliNodes := []string{
+		" node1, node2 ,node3,node4 ",
+		"node5",
+		"\tnode6\n",
+		"node7,node8",
+	}
+	expected := []string{
+		"node1",
+		"node2",
+		"node3",
+		"node4",
+		"node5",
+		"node6",
+		"node7",
+		"node8",
+	}
+	require.EqualValues(t, expected, expandBootnodes(cliNodes))
 }

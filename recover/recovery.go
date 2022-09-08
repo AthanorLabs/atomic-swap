@@ -89,7 +89,7 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 }
 
 // RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
-func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, basePath string,
+func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, dataDir string,
 	xmrmakerSecret, contractAddr string, swapID [32]byte,
 	swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	bs, err := hex.DecodeString(xmrmakerSecret)
@@ -103,7 +103,7 @@ func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, base
 	}
 
 	addr := ethcommon.HexToAddress(contractAddr)
-	rs, err := xmrmaker.NewRecoveryState(b, basePath, bk, addr, swapID, swap)
+	rs, err := xmrmaker.NewRecoveryState(b, dataDir, bk, addr, swapID, swap)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, base
 }
 
 // RecoverFromXMRTakerSecretAndContract recovers funds by either claiming locked monero or refunding ether.
-func (r *recoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, basePath string,
+func (r *recoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, dataDir string,
 	xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
 	as, err := hex.DecodeString(xmrtakerSecret)
 	if err != nil {
@@ -124,7 +124,7 @@ func (r *recoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, base
 		return nil, err
 	}
 
-	rs, err := xmrtaker.NewRecoveryState(b, basePath, ak, swapID, swap)
+	rs, err := xmrtaker.NewRecoveryState(b, dataDir, ak, swapID, swap)
 	if err != nil {
 		return nil, err
 	}

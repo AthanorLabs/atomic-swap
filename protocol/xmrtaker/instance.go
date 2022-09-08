@@ -27,8 +27,8 @@ var (
 // Instance implements the functionality that will be used by a user who owns ETH
 // and wishes to swap for XMR.
 type Instance struct {
-	backend  backend.Backend
-	basepath string
+	backend backend.Backend
+	dataDir string
 
 	walletFile, walletPassword string
 	transferBack               bool // transfer xmr back to original account
@@ -42,7 +42,7 @@ type Instance struct {
 // Config contains the configuration values for a new XMRTaker instance.
 type Config struct {
 	Backend                                backend.Backend
-	Basepath                               string
+	DataDir                                string
 	MoneroWalletFile, MoneroWalletPassword string
 	TransferBack                           bool
 	ExternalSender                         bool
@@ -74,7 +74,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	return &Instance{
 		backend:        cfg.Backend,
-		basepath:       cfg.Basepath,
+		dataDir:        cfg.DataDir,
 		walletFile:     cfg.MoneroWalletFile,
 		walletPassword: cfg.MoneroWalletPassword,
 		swapStates:     make(map[types.Hash]*swapState),

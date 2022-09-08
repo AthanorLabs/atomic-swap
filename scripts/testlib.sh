@@ -21,8 +21,11 @@
 
 MONEROD_PORT=18081
 GANACHE_PORT=8545
+
 BOB_WALLET_PORT=18083
 ALICE_WALLET_PORT=18084
+CHARLIE_WALLET_PORT=18085
+
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 MONERO_BIN_DIR="${PROJECT_ROOT}/monero-bin"
 
@@ -80,6 +83,7 @@ stop-program() {
 		echo "ERROR: failed to kill ${name}"
 		return 1
 	fi
+	sleep 2 # let program flush data and exit so we delete all files below
 	# Remove the PID file, log file and any data subdirectory
 	rm -rf "${SWAP_TEST_DATA_DIR:?}/${name}"{.pid,.log,}
 }
@@ -201,4 +205,12 @@ start-bob-wallet() {
 
 stop-bob-wallet() {
 	stop-program bob-monero-wallet-rpc
+}
+
+start-charlie-wallet() {
+	start-monero-wallet-rpc charlie "${CHARLIE_WALLET_PORT}"
+}
+
+stop-charlie-wallet() {
+	stop-program charlie-monero-wallet-rpc
 }
