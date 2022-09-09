@@ -48,9 +48,11 @@ var (
 
 var (
 	app = &cli.App{
-		Name:   "swaprecover",
-		Usage:  "A program for recovering swap funds due to unexpected shutdowns",
-		Action: runRecover,
+		Name:                 "swaprecover",
+		Usage:                "A program for recovering swap funds due to unexpected shutdowns",
+		Action:               runRecover,
+		EnableBashCompletion: true,
+		Suggest:              true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  flagEnv,

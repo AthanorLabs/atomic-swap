@@ -23,8 +23,10 @@ const (
 
 var (
 	app = &cli.App{
-		Name:  "swapcli",
-		Usage: "Client for swapd",
+		Name:                 "swapcli",
+		Usage:                "Client for swapd",
+		EnableBashCompletion: true,
+		Suggest:              true,
 		Commands: []*cli.Command{
 			{
 				Name:    "addresses",
@@ -245,13 +247,13 @@ var (
 				},
 			},
 		},
-		Flags: []cli.Flag{swapdPortFlag},
 	}
 
 	swapdPortFlag = &cli.UintFlag{
-		Name:  flagSwapdPort,
-		Usage: "RPC port of swap daemon",
-		Value: defaultSwapdPort,
+		Name:    flagSwapdPort,
+		Usage:   "RPC port of swap daemon",
+		Value:   defaultSwapdPort,
+		EnvVars: []string{"SWAPD_PORT"},
 	}
 )
 

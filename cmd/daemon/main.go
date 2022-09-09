@@ -83,9 +83,11 @@ const (
 
 var (
 	app = &cli.App{
-		Name:   "swapd",
-		Usage:  "A program for doing atomic swaps between ETH and XMR",
-		Action: runDaemon,
+		Name:                 "swapd",
+		Usage:                "A program for doing atomic swaps between ETH and XMR",
+		Action:               runDaemon,
+		EnableBashCompletion: true,
+		Suggest:              true,
 		Flags: []cli.Flag{
 			&cli.UintFlag{
 				Name:  flagRPCPort,
