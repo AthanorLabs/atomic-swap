@@ -37,6 +37,19 @@ func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.
 		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
 	}
 
+	//
+	// There is libp2p bug when calling `dual.New` with a cancelled context creating a panic,
+	// so we added the extra guard below:
+	// Panic:  https://github.com/jbenet/goprocess/blob/v0.1.4/impl-mutex.go#L99
+	// Caller: https://github.com/libp2p/go-libp2p-kad-dht/blob/v0.17.0/dht.go#L222
+	//
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		// not cancelled, continue on
+	}
+
 	dht, err := dual.New(ctx, h, dhtOpts...)
 	if err != nil {
 		return nil, err
