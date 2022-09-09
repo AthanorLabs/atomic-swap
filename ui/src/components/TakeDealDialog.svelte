@@ -14,7 +14,7 @@
   import HelperText from '@smui/textfield/helper-text'
   import { currentAccount, sign } from '../stores/metamask'
 
-  const WS_ADDRESS = 'ws://127.0.0.1:8081'
+  const WS_ADDRESS = 'ws://127.0.0.1:5001/ws'
 
   let amountProvided: number | null = null
   let xmrAddress = ''
