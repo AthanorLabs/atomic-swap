@@ -1,5 +1,5 @@
 [
-	"ws://localhost:8081",
-	"ws://localhost:8082",
-	"ws://localhost:8080"
+	"ws://localhost:5001/ws",
+	"ws://localhost:5002/ws",
+	"ws://localhost:5000/ws"
 ]

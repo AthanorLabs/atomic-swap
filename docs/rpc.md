@@ -258,7 +258,7 @@ Returns:
 
 Example:
 ```bash
-wscat -c ws://localhost:8081
+wscat -c ws://localhost:5001/ws
 # Connected (press CTRL+C to quit)
 # > {"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": "7492ceb4d0f5f45ecd5d06923b35cae406d1406cd685ce1ba184f2a40c683ac2"}, "id": 0}
 # < {"jsonrpc":"2.0","result":{"stage":"ETHLocked"},"error":null,"id":null}
@@ -282,7 +282,7 @@ Returns:
 
 Example (including notifications when swap is taken):
 ```bash
-wscat -c ws://localhost:8082
+wscat -c ws://localhost:5002/ws
 # Connected (press CTRL+C to quit)
 # > {"jsonrpc":"2.0", "method":"net_makeOfferAndSubscribe", "params": {"minimumAmount": 0.1, "maximumAmount": 1, "exchangeRate": 0.05}, "id": 0}
 # < {"jsonrpc":"2.0","result":{"offerID":"cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9"},"error":null,"id":null}
@@ -308,7 +308,7 @@ Returns:
 
 Example:
 ```bash
-wscat -c ws://localhost:8081
+wscat -c ws://localhost:5001/ws
 # Connected (press CTRL+C to quit)
 # > {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"multiaddr": "/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID": "cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9", "providesAmount": 0.05}, "id": 0}
 # < {"jsonrpc":"2.0","result":{"id":0},"error":null,"id":null}

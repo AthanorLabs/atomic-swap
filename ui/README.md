@@ -1,6 +1,6 @@
 # Atomic swap UI
 
-This is a draft UI to interract with the atomic swap nodes
+This is a draft UI to interact with the atomic swap nodes
 
 ## Get started
 

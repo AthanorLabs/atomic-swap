@@ -34,7 +34,7 @@ Create a wallet for "Bob", who will own XMR later on:
 ./monero-wallet-cli // you will be prompted to create a wallet. In the next steps, we will go with "Bob", without password. Remember the name and optionally the password for the upcoming steps
 ```
 
-You do not need to mine blocks, and you can exit the the wallet-cli once Bob's account has been created by typing "exit".
+You do not need to mine blocks, and you can exit the wallet-cli once Bob's account has been created by typing "exit".
 
 Start monero-wallet-rpc for Bob on port 18083. Make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
 ```bash
@@ -98,13 +98,13 @@ In terminal 3, we will interact with the swap daemon using `swapcli`.
 
 Firstly, we need Bob to make an offer and advertise it, so that Alice can take it:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --daemon-addr=http://localhost:5002
+./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5002
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
 Alternatively, you can make the offer via websockets and get notified when the swap is taken:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --daemon-addr=ws://localhost:8082 --subscribe
+./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5002 --subscribe
 ```
 
 Now, we can have Alice begin discovering peers who have offers advertised.
@@ -127,7 +127,7 @@ Now, we can tell Alice to initiate the protocol w/ the peer (Bob), the offer (co
 
 Alternatively, you can take the offer via websockets and get notified when the swap status updates:
 ```bash
-./swapcli take --multiaddr /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --daemon-addr=ws://localhost:8081
+./swapcli take --multiaddr /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --swapd-port 5001
 ```
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.
