@@ -379,7 +379,7 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
-	printOffferSummary := func(offerID string) {
+	printOfferSummary := func(offerID string) {
 		fmt.Printf("Published offer with ID: %s\n", offerID)
 		fmt.Printf("On addresses: %v\n", ourAddresses)
 		fmt.Printf("Takers can provide between %s to %s %s\n",
@@ -398,7 +398,7 @@ func runMake(ctx *cli.Context) error {
 			return err
 		}
 
-		printOffferSummary(id)
+		printOfferSummary(id)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -415,7 +415,7 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
-	printOffferSummary(id)
+	printOfferSummary(id)
 	return nil
 }
 
