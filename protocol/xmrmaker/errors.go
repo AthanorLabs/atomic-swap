@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 var (
@@ -41,8 +43,8 @@ type errBalanceTooLow struct {
 
 func (e errBalanceTooLow) Error() string {
 	return fmt.Sprintf("balance of %s XMR is below provided %s XMR",
-		strconv.FormatFloat(e.unlockedBalance, 'f', -1, 64),
-		strconv.FormatFloat(e.providedAmount, 'f', -1, 64),
+		common.FmtFloat(e.unlockedBalance),
+		common.FmtFloat(e.providedAmount),
 	)
 }
 
@@ -53,8 +55,8 @@ type errAmountProvidedTooLow struct {
 
 func (e errAmountProvidedTooLow) Error() string {
 	return fmt.Sprintf("%s XMR provided by taker is under offer minimum of %s XMR",
-		strconv.FormatFloat(e.providedAmount, 'f', -1, 64),
-		strconv.FormatFloat(e.minAmount, 'f', -1, 64),
+		common.FmtFloat(e.providedAmount),
+		common.FmtFloat(e.minAmount),
 	)
 }
 
@@ -65,8 +67,8 @@ type errAmountProvidedTooHigh struct {
 
 func (e errAmountProvidedTooHigh) Error() string {
 	return fmt.Sprintf("%s XMR provided by taker is over offer maximum of %s XMR",
-		strconv.FormatFloat(e.providedAmount, 'f', -1, 64),
-		strconv.FormatFloat(e.maxAmount, 'f', -1, 64),
+		common.FmtFloat(e.providedAmount),
+		common.FmtFloat(e.maxAmount),
 	)
 }
 

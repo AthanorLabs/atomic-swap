@@ -3,6 +3,7 @@ package common
 import (
 	"math"
 	"math/big"
+	"strconv"
 )
 
 var (
@@ -72,4 +73,10 @@ func (a EtherAmount) ToDecimals(decimals uint8) float64 {
 // String ...
 func (a EtherAmount) String() string {
 	return a.BigInt().String()
+}
+
+// FmtFloat creates a string from a floating point value that keeps maximum precision,
+// does not use exponent notation, and has no trailing zeros after the decimal point.
+func FmtFloat(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }

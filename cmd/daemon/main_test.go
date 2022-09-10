@@ -4,7 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -65,8 +67,17 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		cancel: cancel,
 	}
 
-	err := d.make(c)
-	require.NoError(t, err)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		err := d.make(c) // blocks on RPC server start
+		require.ErrorIs(t, err, context.Canceled)
+		wg.Done()
+	}()
+	time.Sleep(500 * time.Millisecond) // let the server start
+	cancel()
+	wg.Wait()
 }
 
 func TestDaemon_DevXMRMaker(t *testing.T) {
@@ -88,8 +99,17 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 		cancel: cancel,
 	}
 
-	err := d.make(c)
-	require.NoError(t, err)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		err := d.make(c) // blocks on RPC server start
+		require.ErrorIs(t, err, context.Canceled)
+		wg.Done()
+	}()
+	time.Sleep(500 * time.Millisecond) // let the server start
+	cancel()
+	wg.Wait()
 }
 
 func Test_expandBootnodes(t *testing.T) {

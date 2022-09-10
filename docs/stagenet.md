@@ -93,7 +93,7 @@ yarn start
 
 1. Search for existing XMR offers using `swapcli`:
 ```bash
-./swapcli discover --provides XMR --search-time 3 --daemon-addr=http://localhost:5005
+./swapcli discover --provides XMR --search-time 3 --swapd-port 5001
 # [[/ip4/127.0.0.1/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
@@ -113,7 +113,7 @@ yarn start
 
 3. b. Alternatively, you can take the offer via websockets and get notified when the swap status updates:
 ```bash
-./swapcli take --multiaddr /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --daemon-addr=ws://localhost:8081
+./swapcli take --multiaddr /ip4/127.0.0.1/tcp/9934/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --swapd-port 5001
 ```
 
 If all goes well, you should see the node execute the swap protocol. If the swap ends successfully, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step (so `./node-keys`) named `swap-deposit-wallet`. This wallet will contained the received XMR.
@@ -140,13 +140,13 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 4. a. Make an offer with `swapcli`:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --daemon-addr http://localhost:5005
+./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
 4. b. Alternatively, make an offer and subscribe to updates on it with `swapcli`:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --daemon-addr ws://localhost:6005 --subscribe
+./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001 --subscribe
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 

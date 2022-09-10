@@ -28,10 +28,10 @@ const (
 	falseStr          = "false"
 
 	defaultXMRTakerDaemonEndpoint   = "http://localhost:5001"
-	defaultXMRTakerDaemonWSEndpoint = "ws://localhost:8081"
+	defaultXMRTakerDaemonWSEndpoint = "ws://localhost:5001/ws"
 	defaultXMRMakerDaemonEndpoint   = "http://localhost:5002"
-	defaultXMRMakerDaemonWSEndpoint = "ws://localhost:8082"
-	defaultCharlieDaemonWSEndpoint  = "ws://localhost:8083"
+	defaultXMRMakerDaemonWSEndpoint = "ws://localhost:5002/ws"
+	defaultCharlieDaemonWSEndpoint  = "ws://localhost:5003/ws"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
 

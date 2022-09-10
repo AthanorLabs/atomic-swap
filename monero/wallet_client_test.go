@@ -25,9 +25,9 @@ func TestClient_Transfer(t *testing.T) {
 	require.NoError(t, err)
 
 	daemon := NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-	_ = daemon.GenerateBlocks(xmrmakerAddr.Address, 512)
-
-	time.Sleep(time.Second * 10)
+	err = daemon.GenerateBlocks(xmrmakerAddr.Address, 512)
+	require.NoError(t, err)
+	require.NoError(t, cXMRMaker.Refresh())
 
 	balance, err := cXMRMaker.GetBalance(0)
 	require.NoError(t, err)
@@ -76,12 +76,14 @@ func TestClient_Transfer(t *testing.T) {
 			break
 		}
 
-		_ = daemon.GenerateBlocks(xmrmakerAddr.Address, 1)
-		time.Sleep(time.Second)
+		err = daemon.GenerateBlocks(xmrmakerAddr.Address, 1)
+		require.NoError(t, err)
+		require.NoError(t, cXMRMaker.Refresh())
 	}
 
 	err = daemon.GenerateBlocks(xmrmakerAddr.Address, 16)
 	require.NoError(t, err)
+	require.NoError(t, cXMRMaker.Refresh())
 
 	// generate spend account for A+B
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())

@@ -20,9 +20,8 @@ type WsClient interface {
 	Close()
 	Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error)
 	Query(maddr string) (*rpctypes.QueryPeerResponse, error)
-	SubscribeSwapStatus(id uint64) (<-chan types.Status, error)
-	TakeOfferAndSubscribe(multiaddr, offerID string,
-		providesAmount float64) (id uint64, ch <-chan types.Status, err error)
+	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
+	TakeOfferAndSubscribe(multiaddr, offerID string, providesAmount float64) (ch <-chan types.Status, err error)
 	MakeOfferAndSubscribe(min, max float64,
 		exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (string, <-chan types.Status, error)
 }
@@ -37,7 +36,7 @@ type wsClient struct {
 func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///nolint:revive
 	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial endpoint: %w", err)
+		return nil, fmt.Errorf("failed to dial WS endpoint: %w", err)
 	}
 
 	if err = resp.Body.Close(); err != nil {
