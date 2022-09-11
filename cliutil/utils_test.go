@@ -75,3 +75,9 @@ func TestGetEnvironment_fail(t *testing.T) {
 	_, _, err := GetEnvironment("goerli")
 	require.ErrorIs(t, err, errInvalidEnv)
 }
+
+func TestGetVersion(t *testing.T) {
+	// Nothing we can test other than that it does not panic without a built executable
+	require.NotEmpty(t, GetVersion())
+	t.Log(GetVersion())
+}

@@ -50,6 +50,7 @@ var (
 	app = &cli.App{
 		Name:                 "swaprecover",
 		Usage:                "A program for recovering swap funds due to unexpected shutdowns",
+		Version:              cliutil.GetVersion(),
 		Action:               runRecover,
 		EnableBashCompletion: true,
 		Suggest:              true,

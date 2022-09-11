@@ -15,6 +15,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -41,9 +42,10 @@ var (
 
 var (
 	app = &cli.App{
-		Name:   "swaptester",
-		Usage:  "A program for automatically testing swapd instances by performing many swaps",
-		Action: runTester,
+		Name:    "swaptester",
+		Usage:   "A program for automatically testing swapd instances by performing many swaps",
+		Version: cliutil.GetVersion(),
+		Action:  runTester,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  flagConfig,

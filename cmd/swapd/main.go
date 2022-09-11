@@ -85,6 +85,7 @@ var (
 	app = &cli.App{
 		Name:                 "swapd",
 		Usage:                "A program for doing atomic swaps between ETH and XMR",
+		Version:              cliutil.GetVersion(),
 		Action:               runDaemon,
 		EnableBashCompletion: true,
 		Suggest:              true,
