@@ -8,6 +8,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
 
+	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
@@ -25,6 +26,7 @@ var (
 	app = &cli.App{
 		Name:                 "swapcli",
 		Usage:                "Client for swapd",
+		Version:              cliutil.GetVersion(),
 		EnableBashCompletion: true,
 		Suggest:              true,
 		Commands: []*cli.Command{
