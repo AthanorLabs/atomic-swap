@@ -32,7 +32,7 @@ var testPackages = []struct {
 	name    string
 	numKeys int
 }{
-	{"cmd/daemon", 2},
+	{"cmd/swapd", 2},
 	{"ethereum/block", 2},
 	{"protocol/backend", 2},
 	{"protocol/xmrmaker", 2},

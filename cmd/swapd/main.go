@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
-	"github.com/athanorlabs/atomic-swap/cmd/utils"
+	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -85,6 +85,7 @@ var (
 	app = &cli.App{
 		Name:                 "swapd",
 		Usage:                "A program for doing atomic swaps between ETH and XMR",
+		Version:              cliutil.GetVersion(),
 		Action:               runDaemon,
 		EnableBashCompletion: true,
 		Suggest:              true,
@@ -270,7 +271,7 @@ func expandBootnodes(nodesCLI []string) []string {
 }
 
 func (d *daemon) make(c *cli.Context) error {
-	env, cfg, err := utils.GetEnvironment(c.String(flagEnv))
+	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
 	if err != nil {
 		return err
 	}
@@ -450,7 +451,7 @@ func newBackend(
 
 	if !useExternalSigner {
 		var err error
-		if ethPrivKey, err = utils.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
+		if ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
 			return nil, err
 		}
 	}

@@ -12,7 +12,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
-	"github.com/athanorlabs/atomic-swap/cmd/utils"
+	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -50,6 +50,7 @@ var (
 	app = &cli.App{
 		Name:                 "swaprecover",
 		Usage:                "A program for recovering swap funds due to unexpected shutdowns",
+		Version:              cliutil.GetVersion(),
 		Action:               runRecover,
 		EnableBashCompletion: true,
 		Suggest:              true,
@@ -132,7 +133,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		return errMustSpecifyXMRMakerOrTaker
 	}
 
-	env, cfg, err := utils.GetEnvironment(c.String(flagEnv))
+	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
 	if err != nil {
 		return err
 	}
@@ -267,7 +268,7 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	ethPrivKeyFile := c.String(flagEthereumPrivKey)
 	devXMRMaker := false // Not directly supported, but you can put the Ganache key in a file
 	devXMRTaker := false
-	ethPrivKey, err := utils.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
+	ethPrivKey, err := cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
 	if err != nil {
 		return nil, err
 	}
