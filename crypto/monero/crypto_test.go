@@ -29,9 +29,10 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	pvk, err := hex.DecodeString(pvkBytes)
 	require.NoError(t, err)
 
-	// test DecodeMoneroBase58
+	// test MoneroAddrBase58ToBytes
 	address := "49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB"
-	addressBytes := DecodeMoneroBase58(address)
+	addressBytes, err := MoneroAddrBase58ToBytes(address)
+	require.NoError(t, err)
 	require.Equal(t, psk, addressBytes[1:33])
 	require.Equal(t, pvk, addressBytes[33:65])
 

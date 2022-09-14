@@ -57,7 +57,7 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
-// SpendKeyBytes returns the canoncail byte encoding of the private spend key.
+// SpendKeyBytes returns the canonical byte encoding of the private spend key.
 func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
 }
@@ -70,12 +70,12 @@ func (kp *PrivateKeyPair) PublicKeyPair() *PublicKeyPair {
 	}
 }
 
-// SpendKey returns the keypair's spend key
+// SpendKey returns the key pair's spend key
 func (kp *PrivateKeyPair) SpendKey() *PrivateSpendKey {
 	return kp.sk
 }
 
-// ViewKey returns the keypair's view key
+// ViewKey returns the key pair's view key
 func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
 	return kp.vk
 }
@@ -285,12 +285,12 @@ func NewPublicKeyPair(sk, vk *PublicKey) *PublicKeyPair {
 	}
 }
 
-// SpendKey returns the keypair's spend key.
+// SpendKey returns the key pair's spend key.
 func (kp *PublicKeyPair) SpendKey() *PublicKey {
 	return kp.sk
 }
 
-// ViewKey returns the keypair's view key.
+// ViewKey returns the key pair's view key.
 func (kp *PublicKeyPair) ViewKey() *PublicKey {
 	return kp.vk
 }
