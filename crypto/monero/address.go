@@ -2,6 +2,7 @@ package mcrypto
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -11,16 +12,14 @@ import (
 const (
 	addressPrefixMainnet  byte = 18
 	addressPrefixStagenet byte = 24
-
-	// AddressLength is the length of a Monero address
-	AddressLength = 1 + 32 + 32 + 4
 )
 
 var (
-	errChecksumMismatch         = fmt.Errorf("invalid address checksum")
-	errInvalidAddressLength     = fmt.Errorf("invalid monero address length")
-	errInvalidPrefixGotMainnet  = fmt.Errorf("invalid monero address: expected stagenet, got mainnet")
-	errInvalidPrefixGotStagenet = fmt.Errorf("invalid monero address: expected mainnet, got stagenet")
+	errChecksumMismatch         = errors.New("invalid address checksum")
+	errInvalidAddressLength     = errors.New("invalid monero address length")
+	errInvalidAddressEncoding   = errors.New("invalid monero address encoding")
+	errInvalidPrefixGotMainnet  = errors.New("invalid monero address: expected stagenet, got mainnet")
+	errInvalidPrefixGotStagenet = errors.New("invalid monero address: expected mainnet, got stagenet")
 )
 
 // Address represents a base58-encoded string
@@ -28,9 +27,9 @@ type Address string
 
 // ValidateAddress checks if the given address is valid
 func ValidateAddress(addr string, env common.Environment) error {
-	b := DecodeMoneroBase58(addr)
-	if len(b) != AddressLength {
-		return fmt.Errorf("%w: got %d, expected %d", errInvalidAddressLength, len(b), AddressLength)
+	b, err := MoneroAddrBase58ToBytes(addr)
+	if err != nil {
+		return err
 	}
 
 	switch env {
@@ -66,14 +65,13 @@ func (kp *PrivateKeyPair) AddressBytes(env common.Environment) []byte {
 // Address returns the base58-encoded address for a PrivateKeyPair with the given environment
 // (ie. mainnet or stagenet)
 func (kp *PrivateKeyPair) Address(env common.Environment) Address {
-	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
+	return Address(MoneroAddrBytesToBase58(kp.AddressBytes(env)))
 }
 
 // AddressBytes returns the address as bytes for a PublicKeyPair with the given environment (ie. mainnet or stagenet)
 func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
 	psk := kp.sk.key.Bytes()
 	pvk := kp.vk.key.Bytes()
-	c := append(psk, pvk...)
 
 	var prefix byte
 	switch env {
@@ -81,18 +79,24 @@ func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
 		prefix = addressPrefixMainnet
 	case common.Stagenet:
 		prefix = addressPrefixStagenet
+	default:
+		panic(fmt.Sprintf("unhandled env %d", env))
 	}
 
 	// address encoding is:
 	// (network_prefix) + (32-byte public spend key) + (32-byte-byte public view key)
 	// + first_4_Bytes(Hash(network_prefix + (32-byte public spend key) + (32-byte public view key)))
-	checksum := getChecksum(append([]byte{prefix}, c...))
-	addr := append(append([]byte{prefix}, c...), checksum[:4]...)
-	return addr
+	addr := append(append([]byte{prefix}, psk...), pvk...)
+	checksum := getChecksum(addr)
+	addrWithChecksum := append(addr, checksum[:4]...)
+	if len(addrWithChecksum) != 69 { // 1 (prefix) + 32 (pub spend key) + 32 (pub view key) + 4 (checksum)
+		panic(fmt.Sprintf("monero address %d instead of 69", len(addrWithChecksum)))
+	}
+	return addrWithChecksum
 }
 
 // Address returns the base58-encoded address for a PublicKeyPair with the given environment
 // (ie. mainnet or stagenet)
 func (kp *PublicKeyPair) Address(env common.Environment) Address {
-	return Address(EncodeMoneroBase58(kp.AddressBytes(env)))
+	return Address(MoneroAddrBytesToBase58(kp.AddressBytes(env)))
 }

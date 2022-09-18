@@ -5,8 +5,8 @@ go 1.18
 require (
 	filippo.io/edwards25519 v1.0.0
 	github.com/MarinX/monerorpc v1.0.0
+	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
-	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b
 	github.com/ethereum/go-ethereum v1.10.21
 	github.com/fatih/color v1.13.0
 	github.com/golang/mock v1.6.0
