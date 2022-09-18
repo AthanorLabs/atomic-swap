@@ -1,6 +1,7 @@
 package mcrypto
 
 import (
+	"encoding/hex"
 	"errors"
 	"testing"
 
@@ -26,4 +27,16 @@ func TestValidateAddress(t *testing.T) {
 
 	err = ValidateAddress("fake", common.Mainnet)
 	require.True(t, errors.Is(err, errInvalidAddressLength))
+}
+
+func TestValidateAddress_loop(t *testing.T) {
+	// Tests our address encoding/decoding with randomised data
+	for i := 0; i < 1000; i++ {
+		kp, err := GenerateKeys() // create random key
+		require.NoError(t, err)
+		addrHex := hex.EncodeToString(kp.AddressBytes(common.Mainnet))
+		addr := kp.Address(common.Mainnet)                  // generates a base58 encoded address
+		err = ValidateAddress(string(addr), common.Mainnet) // decodes base58 as part of validation
+		require.NoError(t, err, addrHex)                    // save this hex address if the test fails!
+	}
 }

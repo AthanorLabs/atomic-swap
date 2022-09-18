@@ -1,82 +1,95 @@
-// this file is from https://github.com/paxosglobal/moneroutil/tree/33d7e0c11a62d2ac67213781a0b485d0de4aca70
-
 package mcrypto
 
 import (
-	"math/big"
 	"strings"
+
+	"github.com/btcsuite/btcd/btcutil/base58"
 )
 
-// BASE58 ...
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+const (
+	// AddressBytesLen is the length (69) of a Monero address in raw bytes:
+	//  1 - Network byte
+	// 32 - Public spend key
+	// 32 - Public view key
+	//  4 - First 4 bytes of keccak-256 checksum of previous bytes
+	AddressBytesLen = 1 + 32 + 32 + 4
 
-var base58Lookup = map[string]int{
-	"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "8": 7,
-	"9": 8, "A": 9, "B": 10, "C": 11, "D": 12, "E": 13, "F": 14, "G": 15,
-	"H": 16, "J": 17, "K": 18, "L": 19, "M": 20, "N": 21, "P": 22, "Q": 23,
-	"R": 24, "S": 25, "T": 26, "U": 27, "V": 28, "W": 29, "X": 30, "Y": 31,
-	"Z": 32, "a": 33, "b": 34, "c": 35, "d": 36, "e": 37, "f": 38, "g": 39,
-	"h": 40, "i": 41, "j": 42, "k": 43, "m": 44, "n": 45, "o": 46, "p": 47,
-	"q": 48, "r": 49, "s": 50, "t": 51, "u": 52, "v": 53, "w": 54, "x": 55,
-	"y": 56, "z": 57,
-}
-var bigBase = big.NewInt(58)
+	// EncodedAddressLen is the length (95) of a base58 encoded Monero address:
+	// 88 - Eight, 11-symbol base58 blocks each representing 8 binary bytes (64 binary bytes total)
+	//  7 - Remaining base58 block representing 5 binary bytes
+	EncodedAddressLen = 8*11 + 1*7
+)
 
-func encodeChunk(raw []byte, padding int) (result string) {
-	remainder := new(big.Int)
-	remainder.SetBytes(raw)
-	bigZero := new(big.Int)
-	for remainder.Cmp(bigZero) > 0 {
-		current := new(big.Int)
-		remainder.DivMod(remainder, bigBase, current)
-		result = string(BASE58[current.Int64()]) + result
+// MoneroAddrBytesToBase58 takes a 69-byte binary monero address (including the 4-byte
+// checksum) and returns it encoded using Monero's unique base58 algorithm. It is the
+// caller's responsibility to only pass 65 byte input slices.
+func MoneroAddrBytesToBase58(addrBytes []byte) string {
+	if len(addrBytes) != AddressBytesLen {
+		panic("MoneroAddrBytesToBase58 passed non-addrBytes value")
 	}
-	if len(result) < padding {
-		result = strings.Repeat("1", (padding-len(result))) + result
-	}
-	return
-}
 
-func decodeChunk(encoded string) (result []byte) {
-	bigResult := big.NewInt(0)
-	currentMultiplier := big.NewInt(1)
-	tmp := new(big.Int)
-	for i := len(encoded) - 1; i >= 0; i-- {
-		tmp.SetInt64(int64(base58Lookup[string(encoded[i])]))
-		tmp.Mul(currentMultiplier, tmp)
-		bigResult.Add(bigResult, tmp)
-		currentMultiplier.Mul(currentMultiplier, bigBase)
-	}
-	result = bigResult.Bytes()
-	return
-}
+	var encodedAddr string
 
-// EncodeMoneroBase58 encodes byte data using base-58
-func EncodeMoneroBase58(data ...[]byte) (result string) {
-	var combined []byte
-	for _, item := range data {
-		combined = append(combined, item...)
+	// Handle the first 64 binary bytes in 8 byte chunks yielding exactly 88 (8 * 11)
+	// base58 characters.
+	for i := 0; i < 8; i++ {
+		// Encoded block will be 11 characters or fewer. If less, we pad to 11 characters.
+		block := base58.Encode(addrBytes[i*8 : i*8+8]) // yields 11 or fewer characters
+		if len(block) < 11 {
+			// Prepend "1"'s (zero in base58) as padding to get exactly 11 characters.
+			block = strings.Repeat("1", 11-len(block)) + block
+		}
+		encodedAddr += block
 	}
-	length := len(combined)
-	rounds := length / 8
-	for i := 0; i < rounds; i++ {
-		result += encodeChunk(combined[i*8:(i+1)*8], 11)
+	// Last block is 5 bytes which converts to 7 characters or fewer in base58. We always
+	// pad to 7 characters giving an encoded address size of 95 characters.
+	//
+	// Note: If you wanted to write a general purpose, monero-specific, base58 encoder,
+	// you'd keep a table of modulus-8 values mapped to their maximum base58 encoded
+	// length like this: https://github.com/monero-rs/base58-monero/blob/v1.0.0/src/base58.rs#L92-L93
+	// It's not functionality that we would use, so all we need to know is that 5 binary
+	// bytes maps to 7 or fewer base58 characters.
+	lastBlock := base58.Encode(addrBytes[64:])
+	if len(lastBlock) < 7 {
+		// Prepend "1"'s (zero in base58) as padding to get exactly 7 characters.
+		lastBlock = strings.Repeat("1", 7-len(lastBlock)) + lastBlock
 	}
-	if length%8 > 0 {
-		result += encodeChunk(combined[rounds*8:], 7)
-	}
-	return
+	encodedAddr += lastBlock
+
+	return encodedAddr
 }
 
-// DecodeMoneroBase58 decodes base-58 encoded data into a byte slice
-func DecodeMoneroBase58(data string) (result []byte) {
-	length := len(data)
-	rounds := length / 11
-	for i := 0; i < rounds; i++ {
-		result = append(result, decodeChunk(data[i*11:(i+1)*11])...)
+// MoneroAddrBase58ToBytes decodes a monero base58 encoded address into a byte slice
+func MoneroAddrBase58ToBytes(encodedAddress string) ([]byte, error) {
+	if len(encodedAddress) != EncodedAddressLen {
+		err := errInvalidAddressLength
+		return nil, err
 	}
-	if length%11 > 0 {
-		result = append(result, decodeChunk(data[rounds*11:])...)
+
+	result := make([]byte, 0, EncodedAddressLen)
+
+	// Handle the first 88 bytes in 11-byte base58 chunks. Each 11 byte chunk converts to
+	// 8 binary bytes.
+	for i := 0; i < 8; i++ {
+		block := base58.Decode(encodedAddress[i*11 : i*11+11])
+		if len(block) == 0 {
+			return nil, errInvalidAddressEncoding
+		}
+		// The decoder will never return less than 8 bytes from 11 base58 input
+		// characters, but it can return up to 11 bytes, because it adds a leading zero
+		// byte for every sequential "1" symbol on the left of the input. So in the edge
+		// case of passing 11 1's "11111111111", you'll get back 11 bytes of zeros.
+		block = block[len(block)-8:] // strip any leading zeros
+		result = append(result, block...)
 	}
-	return
+	// Handle the final 7 bytes, which convert to 5 binary bytes
+	lastBlock := base58.Decode(encodedAddress[88:])
+	if len(lastBlock) == 0 {
+		return nil, errInvalidAddressEncoding
+	}
+	// See above. We can decode up to 7 bytes with leading zeros, but never less than 5.
+	lastBlock = lastBlock[len(lastBlock)-5:] // strip any leading zeros
+	result = append(result, lastBlock...)
+
+	return result, nil
 }

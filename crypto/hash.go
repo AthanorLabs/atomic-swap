@@ -1,14 +1,11 @@
 package crypto
 
-import "github.com/ebfe/keccak"
+import (
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+)
 
 // Keccak256 returns the keccak256 hash of the data.
 func Keccak256(data ...[]byte) (result [32]byte) {
-	h := keccak.New256()
-	for _, b := range data {
-		_, _ = h.Write(b)
-	}
-	r := h.Sum(nil)
-	copy(result[:], r)
+	copy(result[:], ethcrypto.Keccak256(data...))
 	return
 }
