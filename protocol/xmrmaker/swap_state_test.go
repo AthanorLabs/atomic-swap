@@ -68,17 +68,16 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
-		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
-		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
-		Environment:          common.Development,
-		ChainID:              chainID,
-		SwapContract:         contract,
-		SwapContractAddress:  addr,
-		SwapManager:          pswap.NewManager(),
-		Net:                  new(mockNet),
+		Ctx:                 context.Background(),
+		MoneroClient:        monero.CreateWalletClient(t),
+		EthereumClient:      ec,
+		EthereumPrivateKey:  pk,
+		Environment:         common.Development,
+		ChainID:             chainID,
+		SwapContract:        contract,
+		SwapContractAddress: addr,
+		SwapManager:         pswap.NewManager(),
+		Net:                 new(mockNet),
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -91,17 +90,10 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		WalletPassword: "",
 	}
 
-	// NewInstance(..) below expects a pre-existing wallet, so create it
-	err = monero.NewWalletClient(bcfg.MoneroWalletEndpoint).CreateWallet(cfg.WalletFile, "")
-	require.NoError(t, err)
-
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	xmrmakerAddr, err := b.GetAddress(0)
-	require.NoError(t, err)
-
-	_ = b.GenerateBlocks(xmrmakerAddr.Address, 512)
+	monero.MineMinXMRBalance(t, b, 1.0)
 	err = b.Refresh()
 	require.NoError(t, err)
 	return xmrmaker

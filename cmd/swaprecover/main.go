@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/monero"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
@@ -25,7 +27,11 @@ import (
 
 const (
 	flagEnv                  = "env"
-	flagMoneroWalletEndpoint = "monero-endpoint"
+	flagDataDir              = "data-dir"
+	flagMoneroDaemonHost     = "monerod-host"
+	flagMoneroDaemonPort     = "monerod-port"
+	flagMoneroWalletPath     = "wallet-file"
+	flagMoneroWalletPassword = "wallet-password"
 	flagEthereumEndpoint     = "ethereum-endpoint"
 	flagEthereumPrivKey      = "ethereum-privkey"
 	flagEthereumChainID      = "ethereum-chain-id"
@@ -61,8 +67,29 @@ var (
 				Value: "dev",
 			},
 			&cli.StringFlag{
-				Name:  flagMoneroWalletEndpoint,
-				Usage: "monero-wallet-rpc endpoint",
+				Name:  flagDataDir,
+				Usage: "Path to store swap artifacts", //nolint:misspell
+				Value: "{HOME}/.atomicswap/{ENV}",     // For --help only, actual default replaces variables
+			},
+			&cli.StringFlag{
+				Name:  flagMoneroDaemonHost,
+				Usage: "monerod host",
+				Value: "127.0.0.1",
+			},
+			&cli.UintFlag{
+				Name: flagMoneroDaemonPort,
+				Usage: fmt.Sprintf("monerod port (--%s=stagenet changes default to %d)",
+					flagEnv, common.DefaultMoneroDaemonStagenetPort),
+				Value: common.DefaultMoneroDaemonMainnetPort, // at least for now, this is also the dev default
+			},
+			&cli.StringFlag{
+				Name:  flagMoneroWalletPath,
+				Usage: "Path to the recovery Monero wallet file, created if missing",
+				Value: "{DATA-DIR}/{ENV}/wallet/swap-wallet",
+			},
+			&cli.StringFlag{
+				Name:  flagMoneroWalletPassword,
+				Usage: "Password of monero wallet file",
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumEndpoint,
@@ -74,11 +101,12 @@ var (
 			},
 			&cli.UintFlag{
 				Name:  flagEthereumChainID,
-				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
+				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337", // TODO: add defaults information
 			},
 			&cli.UintFlag{
-				Name:  flagGasPrice,
-				Usage: "Ethereum gas price to use for transactions (in gwei). If not set, the gas price is set via oracle.",
+				Name:   flagGasPrice,
+				Usage:  "Ethereum gas price to use for transactions (in gwei). If not set, the gas price is set via oracle.",
+				Hidden: true, // Not well tested, hiding from end users for now
 			},
 			&cli.UintFlag{
 				Name:  flagGasLimit,
@@ -115,7 +143,7 @@ type Recoverer interface {
 }
 
 type instance struct {
-	getRecovererFunc func(c *cli.Context, env common.Environment) (Recoverer, error)
+	getRecovererFunc func(c *cli.Context, env common.Environment, cfg *common.Config) (Recoverer, error)
 }
 
 func runRecover(c *cli.Context) error {
@@ -138,6 +166,12 @@ func (inst *instance) recover(c *cli.Context) error {
 		return err
 	}
 
+	// cfg.DataDir was already defaulted from the `flagEnv` value and `flagDataDir` does
+	// not directly set a default value.
+	if c.IsSet(flagDataDir) {
+		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
+	}
+
 	infofilePath := c.String(flagInfoFile)
 	if infofilePath == "" {
 		return errMustProvideInfoFile
@@ -153,7 +187,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		return err
 	}
 
-	r, err := inst.getRecovererFunc(c, env)
+	r, err := inst.getRecovererFunc(c, env, &cfg)
 	if err != nil {
 		return err
 	}
@@ -175,6 +209,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer b.Close()
 
 	dataDir := filepath.Dir(filepath.Clean(infofilePath))
 
@@ -218,20 +253,37 @@ func (inst *instance) recover(c *cli.Context) error {
 	return nil
 }
 
-func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
+func getRecoverer(c *cli.Context, env common.Environment, cfg *common.Config) (Recoverer, error) {
 	var (
-		moneroEndpoint, ethEndpoint string
+		moneroEndpoint string
 	)
 
-	if c.String(flagMoneroWalletEndpoint) != "" {
-		moneroEndpoint = c.String("monero-endpoint")
-	} else {
-		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
+	// For the monero wallet related values, keep the default config values unless the end
+	// use explicitly set the flag.
+	if c.IsSet(flagMoneroDaemonHost) {
+		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
+	}
+	if c.IsSet(flagMoneroDaemonPort) {
+		cfg.MoneroDaemonPort = c.Uint(flagMoneroDaemonPort)
+	}
+	walletFilePath := cfg.MoneroWalletPath()
+	if c.IsSet(flagMoneroWalletPath) {
+		walletFilePath = c.String(flagMoneroWalletPath)
+	}
+	walletClient, err := monero.NewWalletClient(&monero.WalletClientConf{
+		Env:                 env,
+		WalletFilePath:      walletFilePath,
+		MonerodPort:         cfg.MoneroDaemonPort,
+		MonerodHost:         cfg.MoneroDaemonHost,
+		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String("ethereum-endpoint")
-	} else {
+	// TODO: This should use the same config that swapd uses
+	ethEndpoint := c.String(flagEthereumEndpoint)
+	if ethEndpoint == "" {
 		ethEndpoint = common.DefaultEthEndpoint
 	}
 
@@ -239,23 +291,40 @@ func getRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
 		moneroEndpoint,
 		ethEndpoint,
 	)
-	return recovery.NewRecoverer(env, moneroEndpoint, ethEndpoint)
+	return recovery.NewRecoverer(env, walletClient, ethEndpoint)
 }
 
 func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	cfg common.Config, contractAddr ethcommon.Address) (backend.Backend, error) {
 	var (
-		moneroEndpoint, ethEndpoint string
+		ethEndpoint string
 	)
 
 	if c.IsSet(flagEthereumChainID) {
 		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
 	}
 
-	if c.String(flagMoneroWalletEndpoint) != "" {
-		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
-	} else {
-		moneroEndpoint = common.DefaultXMRTakerMoneroEndpoint
+	// For the monero wallet related values, keep the default config values unless the end
+	// use explicitly set the flag.
+	if c.IsSet(flagMoneroDaemonHost) {
+		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
+	}
+	if c.IsSet(flagMoneroDaemonPort) {
+		cfg.MoneroDaemonPort = c.Uint(flagMoneroDaemonPort)
+	}
+	moneroWalletPath := cfg.MoneroWalletPath()
+	if c.IsSet(flagMoneroWalletPath) {
+		moneroWalletPath = c.String(flagMoneroWalletPath)
+	}
+	mc, err := monero.NewWalletClient(&monero.WalletClientConf{
+		Env:                 env,
+		WalletFilePath:      moneroWalletPath,
+		MonerodPort:         cfg.MoneroDaemonPort,
+		MonerodHost:         cfg.MoneroDaemonHost,
+		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if c.String(flagEthereumEndpoint) != "" {
@@ -270,6 +339,7 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 	devXMRTaker := false
 	ethPrivKey, err := cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
 	if err != nil {
+		mc.Close()
 		return nil, err
 	}
 
@@ -281,29 +351,27 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 
 	ec, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
+		mc.Close()
 		return nil, err
 	}
 
 	contract, err := swapfactory.NewSwapFactory(contractAddr, ec)
 	if err != nil {
+		mc.Close()
 		return nil, err
 	}
 
 	bcfg := &backend.Config{
-		Ctx:                  ctx,
-		MoneroWalletEndpoint: moneroEndpoint,
-		EthereumClient:       ec,
-		EthereumPrivateKey:   ethPrivKey,
-		Environment:          env,
-		ChainID:              big.NewInt(cfg.EthereumChainID),
-		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint(flagGasLimit)),
-		SwapContract:         contract,
-		SwapContractAddress:  contractAddr,
-	}
-
-	if env == common.Development {
-		bcfg.MoneroDaemonEndpoint = common.DefaultMoneroDaemonEndpoint
+		Ctx:                 ctx,
+		MoneroClient:        mc,
+		EthereumClient:      ec,
+		EthereumPrivateKey:  ethPrivKey,
+		Environment:         env,
+		ChainID:             big.NewInt(cfg.EthereumChainID),
+		GasPrice:            gasPrice,
+		GasLimit:            uint64(c.Uint(flagGasLimit)),
+		SwapContract:        contract,
+		SwapContractAddress: contractAddr,
 	}
 
 	return backend.NewBackend(bcfg)

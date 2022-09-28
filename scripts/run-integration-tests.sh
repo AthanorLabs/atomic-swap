@@ -3,27 +3,41 @@
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
 
+# Integration tests still need Bob's wallet on a pre-established port, so XMR Maker
+# funds can be mined.
+BOB_WALLET_PORT=18083
+
 ./scripts/build.sh || exit 1
 
 source "scripts/testlib.sh"
 start-monerod-regtest
 start-ganache
-start-alice-wallet
-start-bob-wallet
-start-charlie-wallet
 
-CHARLIE_ETH_KEY="${SWAP_TEST_DATA_DIR}/charlie-eth.key"
+mkdir -p "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
+
+# Charlie uses deterministic ganache key #49
+CHARLIE_ETH_KEY="${SWAP_TEST_DATA_DIR}/charlie/eth.key"
 echo "87c546d6cb8ec705bea47e2ab40f42a768b1e5900686b0cecc68c0e8b74cd789" >"${CHARLIE_ETH_KEY}"
 
-# wait for wallets to start
-sleep 5
+# This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
+ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2
+ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 
 start-swapd() {
 	local swapd_user="${1:?}"
 	local swapd_flags=("${@:2}")
+	local log_file="${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 	echo "Starting ${swapd_user^}'s swapd, logs in ${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
-	./swapd "${swapd_flags[@]}" &>"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log" &
+	./swapd "${swapd_flags[@]}" &>"${log_file}" &
 	echo "${!}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
+	sleep 4
+	if ! kill -0 "${!}" 2>/dev/null; then
+		echo "Failed to start ${swapd_user^}'s swapd"
+		echo "=============== Failed logs  ==============="
+		cat "${log_file}"
+		echo "============================================"
+		exit 1
+	fi
 }
 
 stop-swapd() {
@@ -33,25 +47,30 @@ stop-swapd() {
 
 start-swapd alice \
 	--dev-xmrtaker \
-	--libp2p-key=./tests/alice.key
+	"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
+	"--libp2p-key=${ALICE_LIBP2PKEY}" \
+	--deploy
 
-sleep 3 # Alice's swapd is a bootnode for Bob and Charlie's swapd
+if ! CONTRACT_ADDR="$(cat "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
+	echo "Failed to get Alice's deployed contract address"
+	exit 1
+fi
 
 start-swapd bob \
 	--dev-xmrmaker \
-	--bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 \
-	--wallet-file test-wallet \
-	--deploy
+	"--wallet-port=${BOB_WALLET_PORT}" \
+	"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
+	--libp2p-port=9944 \
+	"--bootnodes=${ALICE_MULTIADDR}" \
+	"--contract-address=${CONTRACT_ADDR}"
 
 start-swapd charlie \
-	--monero-endpoint "http://127.0.0.1:${CHARLIE_WALLET_PORT}/json_rpc" \
+	--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 	--ethereum-privkey "${CHARLIE_ETH_KEY}" \
-	--libp2p-port 9955 \
+	--libp2p-port=9955 \
 	--rpc-port 5003 \
-	--bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 \
-	--deploy
-
-sleep 3 # Time for Bob and Charlie's swapd to be fully up
+	"--bootnodes=${ALICE_MULTIADDR}" \
+	"--contract-address=${CONTRACT_ADDR}"
 
 # run tests
 echo "running integration tests..."
@@ -68,12 +87,13 @@ fi
 stop-swapd alice
 stop-swapd bob
 stop-swapd charlie
-stop-alice-wallet
-stop-bob-wallet
-stop-charlie-wallet
 stop-monerod-regtest
 stop-ganache
 rm -f "${CHARLIE_ETH_KEY}"
+rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,info-*.json,monero-wallet-rpc.log}
+rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore}
+rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
+
 if [[ "${OK}" -eq 0 ]]; then
 	remove-test-data-dir
 fi

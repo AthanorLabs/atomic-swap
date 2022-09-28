@@ -622,7 +622,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return addr, nil
 	}
 
-	err = s.waitUntilBalanceUnlocks(depositAddr)
+	err = s.waitUntilBalanceUnlocks()
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
@@ -646,29 +646,25 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	return addr, nil
 }
 
-func (s *swapState) waitUntilBalanceUnlocks(depositAddr mcrypto.Address) error {
+func (s *swapState) waitUntilBalanceUnlocks() error {
 	for {
 		if s.ctx.Err() != nil {
 			return s.ctx.Err()
 		}
 
 		log.Infof("checking if balance unlocked...")
-
-		if s.Env() == common.Development {
-			_ = s.GenerateBlocks(string(depositAddr), 64)
-			_ = s.Refresh()
-		}
-
 		balance, err := s.GetBalance(0)
 		if err != nil {
 			return fmt.Errorf("failed to get balance: %w", err)
 		}
 
+		// TODO: Should this function be waiting for some minimum unlocked balance instead?
 		if balance.Balance == balance.UnlockedBalance {
 			return nil
 		}
-
-		time.Sleep(time.Second * 30)
+		if _, err = monero.WaitForBlocks(s, int(balance.BlocksToUnlock)); err != nil {
+			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
+		}
 	}
 }
 

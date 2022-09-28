@@ -1,8 +1,17 @@
 package monero
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"path"
+	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/MarinX/monerorpc"
 	"github.com/MarinX/monerorpc/wallet"
@@ -27,17 +36,72 @@ type WalletClient interface {
 	CreateWallet(filename, password string) error
 	OpenWallet(filename, password string) error
 	CloseWallet() error
+	Endpoint() string // URL on which the wallet is accepting RPC requests
+	Close()           // Close closes the client itself, including any wallets that were open
+}
+
+// WalletClientConf wraps the configuration fields needed to call NewWalletClient
+type WalletClientConf struct {
+	Env                 common.Environment // Required
+	WalletFilePath      string             // Required, wallet created if it does not exist
+	WalletPassword      string             // Optional, password used to open wallet or when creating a new wallet
+	WalletPort          uint               // Optional, zero means OS picks a random port
+	MonerodPort         uint               // optional, defaulted from Env if not set
+	MonerodHost         string             // optional, defaults to 127.0.0.1
+	MoneroWalletRPCPath string             // optional, path to monero-rpc-binary
+	LogPath             string             // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
 }
 
 type walletClient struct {
-	mu  sync.Mutex
-	rpc wallet.Wallet // full API with slightly different method signatures
+	mu         sync.Mutex
+	rpc        wallet.Wallet // full API with slightly different method signatures
+	endpoint   string
+	rpcProcess *os.Process // monero-wallet-rpc process that we create
 }
 
-// NewWalletClient returns a new monero-wallet-rpc walletClient.
-func NewWalletClient(endpoint string) *walletClient {
+// NewWalletClient returns a WalletClient for a newly created monero-wallet-rpc process.
+func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
+	if conf.WalletFilePath == "" {
+		panic("WalletFile is a required conf field") // should have been caught before we were invoked
+	}
+	if conf.WalletPort == 0 {
+		var err error
+		conf.WalletPort, err = getFreePort()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	walletExists, err := common.Exists(conf.WalletFilePath)
+	if err != nil {
+		return nil, err
+	}
+	isNewWallet := !walletExists
+
+	endpoint, proc, err := createWalletRPCService(conf, isNewWallet)
+	if err != nil {
+		return nil, err
+	}
+
+	c := NewThinWalletClient(endpoint).(*walletClient)
+	c.rpcProcess = proc
+
+	if isNewWallet {
+		walletName := path.Base(conf.WalletFilePath)
+		if err := c.createAndOpenWallet(walletName, conf.WalletPassword); err != nil {
+			c.Close()
+			return nil, err
+		}
+		log.Infof("New Monero wallet %s created", conf.WalletFilePath)
+	}
+	return c, nil
+}
+
+// NewThinWalletClient returns a WalletClient for an existing monero-wallet-rpc process.
+func NewThinWalletClient(endpoint string) WalletClient {
 	return &walletClient{
-		rpc: monerorpc.New(endpoint, nil).Wallet,
+		rpc:      monerorpc.New(endpoint, nil).Wallet,
+		endpoint: endpoint,
 	}
 }
 
@@ -47,6 +111,13 @@ func (c *walletClient) LockClient() {
 
 func (c *walletClient) UnlockClient() {
 	c.mu.Unlock()
+}
+
+func (c *walletClient) createAndOpenWallet(walletName string, walletPassword string) error {
+	if err := c.CreateWallet(walletName, walletPassword); err != nil {
+		return err
+	}
+	return c.OpenWallet(walletName, walletPassword)
 }
 
 func (c *walletClient) GetAccounts() (*wallet.GetAccountsResponse, error) {
@@ -171,4 +242,180 @@ func (c *walletClient) GetHeight() (uint64, error) {
 		return 0, err
 	}
 	return res.Height, nil
+}
+
+func (c *walletClient) Endpoint() string {
+	return c.endpoint
+}
+
+func (c *walletClient) Close() {
+	c.LockClient()
+	defer c.UnlockClient()
+	if c.rpcProcess != nil {
+		p := c.rpcProcess
+		c.rpcProcess = nil
+		err := p.Kill()
+		if err != nil {
+			_, _ = p.Wait()
+		}
+	}
+}
+
+// createWalletRPCService starts a monero-wallet-rpc listening on a random port for tests. The json_rpc
+// URL of the started service is returned.
+func createWalletRPCService(conf *WalletClientConf, isNewWallet bool) (string, *os.Process, error) {
+	walletRPCBin := conf.MoneroWalletRPCPath
+	if walletRPCBin == "" {
+		var err error
+		walletRPCBin, err = getMoneroWalletRPCBin()
+		if err != nil {
+			return "", nil, err
+		}
+	}
+
+	if conf.LogPath == "" {
+		// default to the folder above the wallet
+		conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
+	}
+
+	walletRPCBinArgs := getWalletRPCFlags(conf, isNewWallet)
+	proc, err := launchMoneroWalletRPCChild(walletRPCBin, walletRPCBinArgs...)
+	if err != nil {
+		return "", nil, fmt.Errorf("%w, see %s for details", err, conf.LogPath)
+	}
+
+	return fmt.Sprintf("http://127.0.0.1:%d/json_rpc", conf.WalletPort), proc, nil
+}
+
+// getMoneroWalletRPCBin returns the monero-wallet-rpc binary. It first looks for
+// "./monero-bin/monero-wallet-rpc". If not found, it then looks for "monero-wallet-rpc"
+// in the user's path.
+func getMoneroWalletRPCBin() (string, error) {
+	execName := "monero-wallet-rpc"
+	priorityPath := path.Join("monero-bin", execName)
+	path, err := exec.LookPath(priorityPath)
+	if err == nil {
+		return path, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	// search for the executable in the user's PATH
+	return exec.LookPath(execName)
+}
+
+func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string) (*os.Process, error) {
+	cmd := exec.Command(walletRPCBin, walletRPCBinArgs...)
+
+	pRead, pWrite, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+	cmd.Stdout = pWrite
+	cmd.Stderr = pWrite
+
+	// Last entry wins if LANG/LC_ALL were already set. It would be nice to not
+	// include the user's environment, but we'd have to narrow down the minimal
+	// set. A directory named ".shared-ringdb" is created in the current working
+	// directory if we don't add os.Environ().
+	cmd.Env = append(os.Environ(), "LANG=C", "LC_ALL=C")
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGTERM,
+	}
+
+	err = cmd.Start()
+	// The writing side of the pipe will remain open in the child process after we close it
+	// here, and the reading side will get an EOF after the last writing side closes. We
+	// need to close the parent writing side after starting the child, in order for the child
+	// to inherit the pipe's file descriptor for Stdout/Stderr. We can't close it in a defer
+	// statement, because we need the scanner below to get EOF if the child process exits
+	// on error.
+	_ = pWrite.Close()
+
+	// Handle err from cmd.Start() above
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(pRead)
+	started := false
+	// Loop terminates when the child process exits or when we get the message that the RPC server started
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skips the first 3 lines of boilerplate output, but logs the version after it
+		if line != "This is the RPC monero wallet. It needs to connect to a monero" &&
+			line != "daemon to work correctly." &&
+			line != "" {
+			log.Infof("monero-wallet-rpc: %s", line)
+		}
+		if strings.HasSuffix(line, "Starting wallet RPC server") {
+			started = true
+			break
+		}
+	}
+	if !started {
+		_, _ = cmd.Process.Wait() // shouldn't block, process already exited
+		return nil, errors.New("failed to start monero-wallet-rpc")
+	}
+	time.Sleep(200 * time.Millisecond) // additional start time
+
+	// drain any additional output
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			log.Infof("monero-wallet-rpc: %s", line)
+		}
+	}()
+	return cmd.Process, nil
+}
+
+// getWalletRPCFlags returns the flags used when launching monero-wallet-rpc
+func getWalletRPCFlags(conf *WalletClientConf, isNewWallet bool) []string {
+	args := []string{
+		"--rpc-bind-ip=127.0.0.1",
+		fmt.Sprintf("--rpc-bind-port=%d", conf.WalletPort),
+		"--disable-rpc-login", // TODO: Enable this?
+		// monero-wallet-rpc doesn't allow "--password=" syntax for empty passwords, so we use 2 args
+		"--password", conf.WalletPassword,
+		fmt.Sprintf("--log-file=%s", conf.LogPath),
+	}
+
+	switch conf.Env {
+	case common.Development, common.Mainnet:
+	// do nothing
+	case common.Stagenet:
+		args = append(args, "--stagenet")
+	default:
+		panic("unhandled monero environment type")
+	}
+	// monero-wallet-rpc defaults --daemon-host to 127.0.0.1 if not set
+	if conf.MonerodHost != "" {
+		args = append(args, fmt.Sprintf("--daemon-host=%s", conf.MonerodHost))
+	}
+	// monero-wallet-rpc defaults --daemon-port to 18081 (38081 if --stagenet is passed)
+	if conf.MonerodPort != 0 {
+		args = append(args, fmt.Sprintf("--daemon-port=%d", conf.MonerodPort))
+	}
+
+	if isNewWallet {
+		// Wallet will be created after monero-wallet-rpc starts
+		args = append(args, fmt.Sprintf("--wallet-dir=%s", path.Dir(conf.WalletFilePath)))
+	} else {
+		args = append(args, fmt.Sprintf("--wallet-file=%s", conf.WalletFilePath))
+	}
+
+	return args
+}
+
+// getFreePort returns an OS allocated and immediately freed port. There is nothing preventing
+// something else on the system from using the port before the caller has a chance, but OS
+// allocated ports are randomised to make the risk negligible.
+func getFreePort() (uint, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	defer func() { _ = ln.Close() }()
+	if err != nil {
+		return 0, err
+	}
+	return uint(ln.Addr().(*net.TCPAddr).Port), nil
 }

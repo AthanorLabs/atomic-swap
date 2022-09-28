@@ -15,6 +15,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -60,11 +61,12 @@ const (
 	flagLibp2pPort = "libp2p-port"
 	flagBootnodes  = "bootnodes"
 
-	flagWalletFile           = "wallet-file"
-	flagWalletPassword       = "wallet-password"
 	flagEnv                  = "env"
-	flagMoneroWalletEndpoint = "monero-endpoint"
-	flagMoneroDaemonEndpoint = "monero-daemon-endpoint"
+	flagMoneroDaemonHost     = "monerod-host"
+	flagMoneroDaemonPort     = "monerod-port"
+	flagMoneroWalletPath     = "wallet-file"
+	flagMoneroWalletPassword = "wallet-password"
+	flagMoneroWalletPort     = "wallet-port"
 	flagEthereumEndpoint     = "ethereum-endpoint"
 	flagEthereumPrivKey      = "ethereum-privkey"
 	flagEthereumChainID      = "ethereum-chain-id"
@@ -78,7 +80,7 @@ const (
 	flagDeploy       = "deploy"
 	flagTransferBack = "transfer-back"
 
-	flagLog = "log"
+	flagLogLevel = "log-level"
 )
 
 var (
@@ -111,25 +113,34 @@ var (
 				Value: defaultLibp2pPort,
 			},
 			&cli.StringFlag{
-				Name:  flagWalletFile,
-				Usage: "Filename of wallet file containing XMR to be swapped; required if running as XMR provider",
-			},
-			&cli.StringFlag{
-				Name:  flagWalletPassword,
-				Usage: "Password of wallet file containing XMR to be swapped",
-			},
-			&cli.StringFlag{
 				Name:  flagEnv,
 				Usage: "Environment to use: one of mainnet, stagenet, or dev",
 				Value: "dev",
 			},
 			&cli.StringFlag{
-				Name:  flagMoneroWalletEndpoint,
-				Usage: "monero-wallet-rpc endpoint",
+				Name:  flagMoneroDaemonHost,
+				Usage: "monerod host",
+				Value: "127.0.0.1",
+			},
+			&cli.UintFlag{
+				Name: flagMoneroDaemonPort,
+				Usage: fmt.Sprintf("monerod port (--%s=stagenet changes default to %d)",
+					flagEnv, common.DefaultMoneroDaemonStagenetPort),
+				Value: common.DefaultMoneroDaemonMainnetPort, // at least for now, this is also the dev default
 			},
 			&cli.StringFlag{
-				Name:  flagMoneroDaemonEndpoint,
-				Usage: "monerod RPC endpoint; only used if running in development mode",
+				Name:  flagMoneroWalletPath,
+				Usage: "Path to the Monero wallet file, created if missing",
+				Value: "{DATA-DIR}/{ENV}/wallet/swap-wallet",
+			},
+			&cli.StringFlag{
+				Name:  flagMoneroWalletPassword,
+				Usage: "Password of monero wallet file",
+			},
+			&cli.UintFlag{
+				Name:   flagMoneroWalletPort,
+				Usage:  "The port that the internal monero-wallet-rpc instance listens on",
+				Hidden: true, // flag is for integration tests and won't be supported long term
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumEndpoint,
@@ -177,7 +188,7 @@ var (
 				Usage: "When receiving XMR in a swap, transfer it back to the original wallet.",
 			},
 			&cli.StringFlag{
-				Name:  flagLog,
+				Name:  flagLogLevel,
 				Usage: "Set log level: one of [error|warn|info|debug]",
 				Value: "info",
 			},
@@ -209,32 +220,8 @@ type daemon struct {
 	cancel context.CancelFunc
 }
 
-func setLogLevels(c *cli.Context) error {
-	const (
-		levelError = "error"
-		levelWarn  = "warn"
-		levelInfo  = "info"
-		levelDebug = "debug"
-	)
-
-	level := c.String(flagLog)
-	switch level {
-	case levelError, levelWarn, levelInfo, levelDebug:
-	default:
-		return fmt.Errorf("invalid log level %q", level)
-	}
-
-	_ = logging.SetLogLevel("xmrtaker", level)
-	_ = logging.SetLogLevel("xmrmaker", level)
-	_ = logging.SetLogLevel("common", level)
-	_ = logging.SetLogLevel("cmd", level)
-	_ = logging.SetLogLevel("net", level)
-	_ = logging.SetLogLevel("rpc", level)
-	return nil
-}
-
 func runDaemon(c *cli.Context) error {
-	if err := setLogLevels(c); err != nil {
+	if err := logging.SetLogLevel("*", c.String(flagLogLevel)); err != nil {
 		return err
 	}
 
@@ -356,6 +343,7 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer backend.Close()
 
 	a, b, err := getProtocolInstances(c, cfg, backend)
 	if err != nil {
@@ -403,10 +391,6 @@ func errFlagsMutuallyExclusive(flag1, flag2 string) error {
 	return fmt.Errorf("flags %q and %q are mutually exclusive", flag1, flag2)
 }
 
-func errFlagRequired(flag string) error {
-	return fmt.Errorf("required flag %q not specified", flag)
-}
-
 func newBackend(
 	ctx context.Context,
 	c *cli.Context,
@@ -418,24 +402,9 @@ func newBackend(
 	net net.Host,
 ) (backend.Backend, error) {
 	var (
-		moneroEndpoint string
-		daemonEndpoint string
-		ethEndpoint    string
-		ethPrivKey     *ecdsa.PrivateKey
+		ethEndpoint string
+		ethPrivKey  *ecdsa.PrivateKey
 	)
-
-	switch {
-	// flagMoneroWalletEndpoint doesn't have a default, so we don't have to use c.IsSet when
-	// doing the devXMRMaker/devXMRTaker overrides. We'll also be eliminating this flag soon.
-	case c.String(flagMoneroWalletEndpoint) != "":
-		moneroEndpoint = c.String(flagMoneroWalletEndpoint)
-	case devXMRMaker:
-		moneroEndpoint = common.DefaultXMRMakerMoneroEndpoint
-	case devXMRTaker:
-		moneroEndpoint = common.DefaultXMRTakerMoneroEndpoint
-	default:
-		return nil, errFlagRequired(flagMoneroWalletEndpoint)
-	}
 
 	if c.String(flagEthereumEndpoint) != "" {
 		ethEndpoint = c.String(flagEthereumEndpoint)
@@ -454,12 +423,6 @@ func newBackend(
 		if ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
 			return nil, err
 		}
-	}
-
-	if c.String(flagMoneroDaemonEndpoint) != "" {
-		daemonEndpoint = c.String(flagMoneroDaemonEndpoint)
-	} else {
-		daemonEndpoint = cfg.MoneroDaemonEndpoint
 	}
 
 	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
@@ -496,29 +459,54 @@ func newBackend(
 		return nil, err
 	}
 
+	// For the monero wallet related values, keep the default config values unless the end
+	// use explicitly set the flag.
+	if c.IsSet(flagMoneroDaemonHost) {
+		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
+	}
+	if c.IsSet(flagMoneroDaemonPort) {
+		cfg.MoneroDaemonPort = c.Uint(flagMoneroDaemonPort)
+	}
+	walletFilePath := cfg.MoneroWalletPath()
+	if c.IsSet(flagMoneroWalletPath) {
+		walletFilePath = c.String(flagMoneroWalletPath)
+	}
+	mc, err := monero.NewWalletClient(&monero.WalletClientConf{
+		Env:                 env,
+		WalletFilePath:      walletFilePath,
+		MonerodPort:         cfg.MoneroDaemonPort,
+		MonerodHost:         cfg.MoneroDaemonHost,
+		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
+		WalletPassword:      c.String(flagMoneroWalletPassword),
+		WalletPort:          c.Uint(flagMoneroWalletPort),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	bcfg := &backend.Config{
-		Ctx:                  ctx,
-		MoneroWalletEndpoint: moneroEndpoint,
-		MoneroDaemonEndpoint: daemonEndpoint,
-		EthereumClient:       ec,
-		EthereumPrivateKey:   ethPrivKey,
-		Environment:          env,
-		ChainID:              chainID,
-		GasPrice:             gasPrice,
-		GasLimit:             uint64(c.Uint(flagGasLimit)),
-		SwapManager:          sm,
-		SwapContract:         contract,
-		SwapContractAddress:  contractAddr,
-		Net:                  net,
+		Ctx:                 ctx,
+		MoneroClient:        mc,
+		EthereumClient:      ec,
+		EthereumPrivateKey:  ethPrivKey,
+		Environment:         env,
+		ChainID:             chainID,
+		GasPrice:            gasPrice,
+		GasLimit:            uint64(c.Uint(flagGasLimit)),
+		SwapManager:         sm,
+		SwapContract:        contract,
+		SwapContractAddress: contractAddr,
+		Net:                 net,
 	}
 
 	b, err := backend.NewBackend(bcfg)
 	if err != nil {
+		mc.Close()
 		return nil, fmt.Errorf("failed to make backend: %w", err)
 	}
 
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
-		moneroEndpoint,
+		mc.Endpoint(),
 		ethEndpoint,
 	)
 

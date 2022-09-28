@@ -10,10 +10,10 @@
 /monero-*
 
 # Generated binaries
-swapcli
-swapd
-swaprecover
-swaptester
+/swapcli
+/swapd
+/swaprecover
+/swaptester
 
 # Test binary, built with `go test -c`
 *.test

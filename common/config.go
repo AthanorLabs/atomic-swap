@@ -1,36 +1,40 @@
 package common
 
 import (
-	"fmt"
 	"os"
+	"path"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 var homeDir, _ = os.UserHomeDir()
+var baseDir = path.Join(homeDir, ".atomicswap")
 
 // Config contains constants that are defaults for various environments
 type Config struct {
-	DataDir              string
-	MoneroDaemonEndpoint string
-	EthereumChainID      int64
-	ContractAddress      ethcommon.Address
-	Bootnodes            []string
+	DataDir          string
+	MoneroDaemonHost string
+	MoneroDaemonPort uint
+	EthereumChainID  int64
+	ContractAddress  ethcommon.Address
+	Bootnodes        []string
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration
 var MainnetConfig = Config{
-	DataDir:              fmt.Sprintf("%s/.atomicswap/mainnet", homeDir),
-	MoneroDaemonEndpoint: "http://127.0.0.1:18081/json_rpc",
-	EthereumChainID:      MainnetChainID,
+	DataDir:          path.Join(baseDir, "mainnet"),
+	MoneroDaemonHost: "127.0.0.1",
+	MoneroDaemonPort: DefaultMoneroDaemonMainnetPort,
+	EthereumChainID:  MainnetChainID,
 }
 
 // StagenetConfig is the monero stagenet and ethereum Gorli configuration
 var StagenetConfig = Config{
-	DataDir:              fmt.Sprintf("%s/.atomicswap/stagenet", homeDir),
-	MoneroDaemonEndpoint: "http://127.0.0.1:38081/json_rpc",
-	EthereumChainID:      GorliChainID,
-	ContractAddress:      ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7"),
+	DataDir:          path.Join(baseDir, "stagenet"),
+	MoneroDaemonHost: "node.sethforprivacy.com",
+	MoneroDaemonPort: DefaultMoneroDaemonStagenetPort,
+	EthereumChainID:  GorliChainID,
+	ContractAddress:  ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
@@ -45,7 +49,13 @@ var StagenetConfig = Config{
 
 // DevelopmentConfig is the monero and ethereum development environment configuration
 var DevelopmentConfig = Config{
-	DataDir:              fmt.Sprintf("%s/.atomicswap/dev", homeDir),
-	MoneroDaemonEndpoint: "http://127.0.0.1:18081/json_rpc",
-	EthereumChainID:      GanacheChainID,
+	DataDir:          path.Join(baseDir, "dev"),
+	MoneroDaemonPort: DefaultMoneroDaemonDevPort,
+	EthereumChainID:  GanacheChainID,
+}
+
+// MoneroWalletPath returns the path to the wallet file, which depends on the
+// current value of the data dir.
+func (c Config) MoneroWalletPath() string {
+	return path.Join(c.DataDir, "wallet", "swap-wallet")
 }

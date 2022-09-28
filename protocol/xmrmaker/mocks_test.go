@@ -105,6 +105,18 @@ func (mr *MockBackendMockRecorder) ClearXMRDepositAddress(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).ClearXMRDepositAddress), arg0)
 }
 
+// Close mocks base method.
+func (m *MockBackend) Close() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Close")
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockBackendMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockBackend)(nil).Close))
+}
+
 // CloseWallet mocks base method.
 func (m *MockBackend) CloseWallet() error {
 	m.ctrl.T.Helper()
@@ -220,6 +232,20 @@ func (m *MockBackend) ERC20Info(arg0 context.Context, arg1 common0.Address) (str
 func (mr *MockBackendMockRecorder) ERC20Info(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ERC20Info", reflect.TypeOf((*MockBackend)(nil).ERC20Info), arg0, arg1)
+}
+
+// Endpoint mocks base method.
+func (m *MockBackend) Endpoint() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Endpoint")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Endpoint indicates an expected call of Endpoint.
+func (mr *MockBackendMockRecorder) Endpoint() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Endpoint", reflect.TypeOf((*MockBackend)(nil).Endpoint))
 }
 
 // Env mocks base method.
@@ -590,6 +616,34 @@ func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 types.Hash
 func (mr *MockBackendMockRecorder) SetXMRDepositAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).SetXMRDepositAddress), arg0, arg1)
+}
+
+// StartMining mocks base method.
+func (m *MockBackend) StartMining(arg0 *wallet.StartMiningRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartMining", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StartMining indicates an expected call of StartMining.
+func (mr *MockBackendMockRecorder) StartMining(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartMining", reflect.TypeOf((*MockBackend)(nil).StartMining), arg0)
+}
+
+// StopMining mocks base method.
+func (m *MockBackend) StopMining() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopMining")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopMining indicates an expected call of StopMining.
+func (mr *MockBackendMockRecorder) StopMining() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMining", reflect.TypeOf((*MockBackend)(nil).StopMining))
 }
 
 // SwapManager mocks base method.

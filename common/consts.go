@@ -5,10 +5,11 @@ const (
 	GorliChainID   = 5
 	GanacheChainID = 1337
 
-	DefaultXMRTakerMoneroEndpoint = "http://127.0.0.1:18084/json_rpc"
-	DefaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
-	DefaultMoneroDaemonEndpoint   = "http://127.0.0.1:18081/json_rpc"
-	DefaultEthEndpoint            = "ws://localhost:8545"
+	DefaultMoneroDaemonMainnetPort  = 18081
+	DefaultMoneroDaemonDevPort      = DefaultMoneroDaemonMainnetPort
+	DefaultMoneroDaemonStagenetPort = 38081
+	DefaultMoneroDaemonEndpoint     = "http://127.0.0.1:18081/json_rpc"
+	DefaultEthEndpoint              = "ws://127.0.0.1:8545"
 
 	// DefaultPrivKeyXMRTaker is the private key at index 0 from `ganache --deterministic`
 	DefaultPrivKeyXMRTaker = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
