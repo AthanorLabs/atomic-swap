@@ -100,8 +100,7 @@ start-monerod-regtest() {
 		--pidfile="${SWAP_TEST_DATA_DIR}/monerod.pid" \
 		--fixed-difficulty=1 \
 		--rpc-bind-ip=127.0.0.1 \
-		--rpc-bind-port=18081 \
-		--keep-fakechain
+		--rpc-bind-port=18081
 	sleep 5
 }
 
