@@ -26,8 +26,9 @@ func TestCreateMoneroWallet(t *testing.T) {
 	require.NoError(t, err)
 
 	c, err := NewWalletClient(&WalletClientConf{
-		Env:            common.Development,
-		WalletFilePath: path.Join(t.TempDir(), "wallet", "not-used"),
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	addr, err := CreateWallet("create-wallet-test", common.Development, c, kp)

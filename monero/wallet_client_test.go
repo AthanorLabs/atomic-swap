@@ -15,16 +15,7 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
-func init() {
-	curDir, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	// Project root is one directory up and monero-bin is below it. The only external program
-	// any test in this package calls is monero-wallet-rpc, so we don't need any other
-	// directories in our path.
-	os.Setenv("PATH", path.Join(path.Dir(curDir), "monero-bin"))
-}
+var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
 
 func TestClient_Transfer(t *testing.T) {
 	const amount = 2800000000
@@ -47,8 +38,9 @@ func TestClient_Transfer(t *testing.T) {
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	cXMRTaker, err := NewWalletClient(&WalletClientConf{
-		Env:            common.Development,
-		WalletFilePath: path.Join(t.TempDir(), "wallet", "not-used"),
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	require.NoError(t, cXMRTaker.CloseWallet())
@@ -102,9 +94,10 @@ func TestClient_Transfer(t *testing.T) {
 func TestClient_CloseWallet(t *testing.T) {
 	password := t.Name()
 	c, err := NewWalletClient(&WalletClientConf{
-		Env:            common.Development,
-		WalletFilePath: path.Join(t.TempDir(), "wallet", "test-wallet"),
-		WalletPassword: password,
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "test-wallet"),
+		WalletPassword:      password,
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	defer c.Close()
@@ -118,8 +111,9 @@ func TestClient_CloseWallet(t *testing.T) {
 
 func TestClient_GetAccounts(t *testing.T) {
 	c, err := NewWalletClient(&WalletClientConf{
-		Env:            common.Development,
-		WalletFilePath: path.Join(t.TempDir(), "wallet", "test-wallet"),
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "test-wallet"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	defer c.Close()
@@ -130,8 +124,9 @@ func TestClient_GetAccounts(t *testing.T) {
 
 func TestClient_GetHeight(t *testing.T) {
 	c, err := NewWalletClient(&WalletClientConf{
-		Env:            common.Development,
-		WalletFilePath: path.Join(t.TempDir(), "wallet", "test-wallet"),
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "test-wallet"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	defer c.Close()
@@ -148,8 +143,9 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	c, err := NewWalletClient(&WalletClientConf{
-		Env:            common.Development,
-		WalletFilePath: path.Join(t.TempDir(), "wallet", "not-used"),
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	defer c.Close()
@@ -175,5 +171,7 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 	os.Chdir("..")
 	walletRPCPath, err := getMoneroWalletRPCBin()
 	require.NoError(t, err)
-	t.Log(walletRPCPath)
+	// monero-bin/monero-wallet-rpc should take precedence over any monero-wallet-rpc in
+	// the user's path if the relative path to the binary exists.
+	require.Equal(t, "monero-bin/monero-wallet-rpc", walletRPCPath)
 }
