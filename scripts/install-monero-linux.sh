@@ -16,9 +16,7 @@ fi
 
 set -e
 
-# Temporary change, v0.18.1.1 is giving us issues
-#curl -L "https://downloads.getmonero.org/cli/${arch}" -o monero.tar.bz2
-curl -L "https://downloads.getmonero.org/cli/monero-linux-x64-v0.18.1.0.tar.bz2" -o monero.tar.bz2
+curl -L "https://downloads.getmonero.org/cli/${arch}" -o monero.tar.bz2
 tar xjvf monero.tar.bz2
 
 # Give the architecture and version specific release dir a fixed "monero-bin" symlink

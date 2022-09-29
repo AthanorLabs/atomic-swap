@@ -29,9 +29,10 @@ start-swapd() {
 	local log_file="${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 	echo "Starting ${swapd_user^}'s swapd, logs in ${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 	./swapd "${swapd_flags[@]}" &>"${log_file}" &
-	echo "${!}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
-	sleep 4
-	if ! kill -0 "${!}" 2>/dev/null; then
+	local swapd_pid="${!}"
+	echo "${swapd_pid}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
+	sleep 1
+	if ! kill -0 "${swapd_pid}" 2>/dev/null; then
 		echo "Failed to start ${swapd_user^}'s swapd"
 		echo "=============== Failed logs  ==============="
 		cat "${log_file}"
@@ -51,6 +52,16 @@ start-swapd alice \
 	"--libp2p-key=${ALICE_LIBP2PKEY}" \
 	--deploy
 
+#
+# Wait up to 5 seconds for Alice's swapd instance to start and deploy the swap contract
+#
+CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-address.json"
+for _ in {1..5}; do
+	if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
+		break
+	fi
+	sleep 1
+done
 if ! CONTRACT_ADDR="$(cat "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
 	echo "Failed to get Alice's deployed contract address"
 	exit 1
@@ -71,6 +82,9 @@ start-swapd charlie \
 	--rpc-port 5003 \
 	"--bootnodes=${ALICE_MULTIADDR}" \
 	"--contract-address=${CONTRACT_ADDR}"
+
+# Give time for Bob and Charlie's swapd instances to fully start
+sleep 5
 
 # run tests
 echo "running integration tests..."

@@ -382,8 +382,11 @@ func getWalletRPCFlags(conf *WalletClientConf, isNewWallet bool) []string {
 	}
 
 	switch conf.Env {
-	case common.Development, common.Mainnet:
-	// do nothing
+	case common.Development:
+		// See https://github.com/monero-project/monero/issues/8600
+		args = append(args, "--allow-mismatched-daemon-version")
+	case common.Mainnet:
+		// do nothing
 	case common.Stagenet:
 		args = append(args, "--stagenet")
 	default:
