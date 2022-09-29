@@ -72,6 +72,7 @@ type Backend interface {
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 	HasEthereumPrivateKey() bool
 	EthClient() *ethclient.Client
+	MoneroClient() monero.WalletClient
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
@@ -227,6 +228,10 @@ func (b *backend) EthAddress() ethcommon.Address {
 
 func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
+}
+
+func (b *backend) MoneroClient() monero.WalletClient {
+	return b.WalletClient
 }
 
 func (b *backend) Net() net.MessageSender {

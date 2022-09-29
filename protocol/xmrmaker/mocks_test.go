@@ -14,6 +14,7 @@ import (
 	common "github.com/athanorlabs/atomic-swap/common"
 	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	monero "github.com/athanorlabs/atomic-swap/monero"
 	net "github.com/athanorlabs/atomic-swap/net"
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -305,20 +306,6 @@ func (mr *MockBackendMockRecorder) FilterLogs(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterLogs", reflect.TypeOf((*MockBackend)(nil).FilterLogs), arg0, arg1)
 }
 
-// GenerateBlocks mocks base method.
-func (m *MockBackend) GenerateBlocks(arg0 string, arg1 uint64) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateBlocks", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// GenerateBlocks indicates an expected call of GenerateBlocks.
-func (mr *MockBackendMockRecorder) GenerateBlocks(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateBlocks", reflect.TypeOf((*MockBackend)(nil).GenerateBlocks), arg0, arg1)
-}
-
 // GenerateFromKeys mocks base method.
 func (m *MockBackend) GenerateFromKeys(arg0 *mcrypto.PrivateKeyPair, arg1, arg2 string, arg3 common.Environment) error {
 	m.ctrl.T.Helper()
@@ -446,6 +433,20 @@ func (m *MockBackend) LockClient() {
 func (mr *MockBackendMockRecorder) LockClient() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockClient", reflect.TypeOf((*MockBackend)(nil).LockClient))
+}
+
+// MoneroClient mocks base method.
+func (m *MockBackend) MoneroClient() monero.WalletClient {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MoneroClient")
+	ret0, _ := ret[0].(monero.WalletClient)
+	return ret0
+}
+
+// MoneroClient indicates an expected call of MoneroClient.
+func (mr *MockBackendMockRecorder) MoneroClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoneroClient", reflect.TypeOf((*MockBackend)(nil).MoneroClient))
 }
 
 // Net mocks base method.
@@ -616,34 +617,6 @@ func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 types.Hash
 func (mr *MockBackendMockRecorder) SetXMRDepositAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).SetXMRDepositAddress), arg0, arg1)
-}
-
-// StartMining mocks base method.
-func (m *MockBackend) StartMining(arg0 *wallet.StartMiningRequest) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartMining", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StartMining indicates an expected call of StartMining.
-func (mr *MockBackendMockRecorder) StartMining(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartMining", reflect.TypeOf((*MockBackend)(nil).StartMining), arg0)
-}
-
-// StopMining mocks base method.
-func (m *MockBackend) StopMining() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StopMining")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StopMining indicates an expected call of StopMining.
-func (mr *MockBackendMockRecorder) StopMining() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMining", reflect.TypeOf((*MockBackend)(nil).StopMining))
 }
 
 // SwapManager mocks base method.

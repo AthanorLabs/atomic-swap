@@ -323,6 +323,13 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
+	sm := swap.NewManager()
+	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm)
+	if err != nil {
+		return err
+	}
+	defer backend.Close()
+
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
@@ -331,19 +338,14 @@ func (d *daemon) make(c *cli.Context) error {
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   cfg.Bootnodes,
+		EthAddress:  backend.EthAddress(),
+		EthCli:      backend.EthClient(),
+		MoneroCli:   backend.MoneroClient(),
 	}
-
 	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
 	}
-
-	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
 
 	a, b, err := getProtocolInstances(c, cfg, backend)
 	if err != nil {
