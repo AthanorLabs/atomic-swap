@@ -339,7 +339,7 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 
 	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host)
+	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm)
 	if err != nil {
 		return err
 	}
@@ -399,7 +399,6 @@ func newBackend(
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
-	net net.Host,
 ) (backend.Backend, error) {
 	var (
 		ethEndpoint string
@@ -496,7 +495,6 @@ func newBackend(
 		SwapManager:         sm,
 		SwapContract:        contract,
 		SwapContractAddress: contractAddr,
-		Net:                 net,
 	}
 
 	b, err := backend.NewBackend(bcfg)

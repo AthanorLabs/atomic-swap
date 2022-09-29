@@ -77,7 +77,6 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		SwapManager:         pswap.NewManager(),
-		Net:                 new(mockNet),
 	}
 
 	b, err := backend.NewBackend(bcfg)

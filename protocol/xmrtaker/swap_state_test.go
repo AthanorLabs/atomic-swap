@@ -72,7 +72,6 @@ func newBackend(t *testing.T) backend.Backend {
 		SwapManager:         pswap.NewManager(),
 		SwapContract:        contract,
 		SwapContractAddress: addr,
-		Net:                 new(mockNet),
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -99,7 +98,6 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 		SwapManager:         pswap.NewManager(),
 		SwapContract:        contract,
 		SwapContractAddress: addr,
-		Net:                 new(mockNet),
 	}
 
 	b, err := backend.NewBackend(bcfg)

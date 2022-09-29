@@ -132,8 +132,6 @@ type Config struct {
 	SwapContractAddress ethcommon.Address
 
 	SwapManager swap.Manager
-
-	Net net.MessageSender
 }
 
 // NewBackend returns a new Backend
@@ -182,7 +180,6 @@ func NewBackend(cfg *Config) (Backend, error) {
 		contractAddr:    cfg.SwapContractAddress,
 		swapManager:     cfg.SwapManager,
 		swapTimeout:     defaultTimeoutDuration,
-		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 	}, nil
 }
