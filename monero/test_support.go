@@ -106,7 +106,7 @@ func BackgroundMineBlocks(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if false { // change to true if debugging and you want to see when new blocks are generated
-				t.Logf("Block generated height=%d, status=%v", resp.Height, resp.Status)
+				t.Logf("Block generated height=%d", resp.Height)
 			}
 		}
 	}()
