@@ -8,7 +8,6 @@ const (
 	DefaultMoneroDaemonMainnetPort  = 18081
 	DefaultMoneroDaemonDevPort      = DefaultMoneroDaemonMainnetPort
 	DefaultMoneroDaemonStagenetPort = 38081
-	DefaultMoneroDaemonEndpoint     = "http://127.0.0.1:18081/json_rpc"
 	DefaultEthEndpoint              = "ws://127.0.0.1:8545"
 
 	// DefaultPrivKeyXMRTaker is the private key at index 0 from `ganache --deterministic`

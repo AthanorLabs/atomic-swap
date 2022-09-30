@@ -175,3 +175,34 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 	// the user's path if the relative path to the binary exists.
 	require.Equal(t, "monero-bin/monero-wallet-rpc", walletRPCPath)
 }
+
+func Test_validateMonerodConfig_devSuccess(t *testing.T) {
+	err := validateMonerodConfig(common.Development, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+	require.NoError(t, err)
+}
+
+func Test_validateMonerodConfig_stagenetSuccess(t *testing.T) {
+	host := "node.sethforprivacy.com"
+	err := validateMonerodConfig(common.Stagenet, host, 38089)
+	require.NoError(t, err)
+}
+
+func Test_validateMonerodConfig_mainnetSuccess(t *testing.T) {
+	host := "node.sethforprivacy.com"
+	err := validateMonerodConfig(common.Mainnet, host, 18089)
+	require.NoError(t, err)
+}
+
+func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
+	err := validateMonerodConfig(common.Mainnet, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "is not a mainnet node")
+}
+
+func Test_validateMonerodConfig_invalidPort(t *testing.T) {
+	nonUsedPort, err := getFreePort()
+	require.NoError(t, err)
+	err = validateMonerodConfig(common.Development, "127.0.0.1", nonUsedPort)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "connection refused")
+}

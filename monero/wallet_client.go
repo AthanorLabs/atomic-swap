@@ -261,6 +261,41 @@ func (c *walletClient) Close() {
 	}
 }
 
+// validateMonerodConfig validates the monerod node before we launch monero-wallet-rpc, as
+// doing the pre-checks creates more obvious error messages and faster failure.
+func validateMonerodConfig(env common.Environment, monerodHost string, monerodPort uint) error {
+	endpoint := fmt.Sprintf("http://%s:%d/json_rpc", monerodHost, monerodPort)
+	daemonCli := monerorpc.New(endpoint, nil).Daemon
+	info, err := daemonCli.GetInfo()
+	if err != nil {
+		return fmt.Errorf("could not validate monerod endpoint %s: %w", endpoint, err)
+	}
+	switch env {
+	case common.Stagenet:
+		if !info.Stagenet {
+			return fmt.Errorf("monerod endpoint %s is not a stagenet node", endpoint)
+		}
+	case common.Mainnet:
+		if !info.Mainnet {
+			return fmt.Errorf("monerod endpoint %s is not a mainnet node", endpoint)
+		}
+	case common.Development:
+		if info.NetType != "fakechain" {
+			return fmt.Errorf("monerod endpoint %s should have a network type of \"fakechain\" in dev mode",
+				endpoint)
+		}
+	default:
+		panic("unhandled environment type")
+	}
+	if env != common.Development && info.Offline {
+		return fmt.Errorf("monerod endpoint %s is offline", endpoint)
+	}
+	if !info.Synchronized {
+		return fmt.Errorf("monerod endpoint %s is not synchronised", endpoint)
+	}
+	return nil
+}
+
 // createWalletRPCService starts a monero-wallet-rpc listening on a random port for tests. The json_rpc
 // URL of the started service is returned.
 func createWalletRPCService(conf *WalletClientConf, isNewWallet bool) (string, *os.Process, error) {
@@ -271,6 +306,10 @@ func createWalletRPCService(conf *WalletClientConf, isNewWallet bool) (string, *
 		if err != nil {
 			return "", nil, err
 		}
+	}
+
+	if err := validateMonerodConfig(conf.Env, conf.MonerodHost, conf.MonerodPort); err != nil {
+		return "", nil, err
 	}
 
 	if conf.LogPath == "" {
