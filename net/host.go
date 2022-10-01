@@ -3,13 +3,9 @@ package net
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"path"
 	"sync"
 	"time"
-
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
@@ -20,12 +16,11 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/monero"
-
 	"github.com/chyeh/pubip"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 const (
@@ -70,10 +65,6 @@ type host struct {
 
 	queryMu  sync.Mutex
 	queryBuf []byte
-
-	ethAddress ethcommon.Address
-	ethCli     *ethclient.Client
-	moneroCli  monero.WalletClient
 }
 
 // Config is used to configure the network Host.
@@ -86,9 +77,6 @@ type Config struct {
 	KeyFile     string
 	Bootnodes   []string
 	Handler     Handler
-	EthAddress  ethcommon.Address
-	EthCli      *ethclient.Client
-	MoneroCli   monero.WalletClient
 }
 
 // NewHost returns a new host
@@ -184,9 +172,6 @@ func NewHost(cfg *Config) (*host, error) {
 		bootnodes:  bns,
 		queryBuf:   make([]byte, 1024*5),
 		swaps:      make(map[types.Hash]*swap),
-		ethAddress: cfg.EthAddress,
-		ethCli:     cfg.EthCli,
-		moneroCli:  cfg.MoneroCli,
 	}
 
 	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes)
@@ -268,45 +253,6 @@ func (h *host) Addresses() []string {
 		addrs = append(addrs, ma.String())
 	}
 	return addrs
-}
-
-// BalanceResponse contains the values for the not-yet-implemented GetBalances RPC call.
-// TODO: Complete RPC API and move this type to appropriate place.
-type BalanceResponse struct {
-	MoneroAddress           string
-	PiconeroBalance         common.MoneroAmount
-	PiconeroUnlockedBalance common.MoneroAmount
-	BlocksToUnlock          uint64
-
-	EthAddress ethcommon.Address
-	EthBalance *big.Int
-}
-
-func (h *host) Balances() (*BalanceResponse, error) {
-	if err := h.moneroCli.Refresh(); err != nil {
-		return nil, err
-	}
-	mAddr, err := h.moneroCli.GetAddress(0)
-	if err != nil {
-		return nil, err
-	}
-	mBal, err := h.moneroCli.GetBalance(0)
-	if err != nil {
-		return nil, err
-	}
-	eBal, err := h.ethCli.BalanceAt(context.Background(), h.ethAddress, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BalanceResponse{
-		MoneroAddress:           mAddr.Address,
-		PiconeroBalance:         common.MoneroAmount(mBal.Balance),
-		PiconeroUnlockedBalance: common.MoneroAmount(mBal.UnlockedBalance),
-		BlocksToUnlock:          mBal.BlocksToUnlock,
-		EthAddress:              h.ethAddress,
-		EthBalance:              eBal,
-	}, nil
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.

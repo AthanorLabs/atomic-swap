@@ -338,9 +338,6 @@ func (d *daemon) make(c *cli.Context) error {
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   cfg.Bootnodes,
-		EthAddress:  backend.EthAddress(),
-		EthCli:      backend.EthClient(),
-		MoneroCli:   backend.MoneroClient(),
 	}
 	host, err := net.NewHost(netCfg)
 	if err != nil {

@@ -14,7 +14,6 @@ import (
 	common "github.com/athanorlabs/atomic-swap/common"
 	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	monero "github.com/athanorlabs/atomic-swap/monero"
 	net "github.com/athanorlabs/atomic-swap/net"
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -277,6 +276,22 @@ func (mr *MockBackendMockRecorder) EthAddress() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddress", reflect.TypeOf((*MockBackend)(nil).EthAddress))
 }
 
+// EthBalance mocks base method.
+func (m *MockBackend) EthBalance() (common0.Address, *big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthBalance")
+	ret0, _ := ret[0].(common0.Address)
+	ret1, _ := ret[1].(*big.Int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// EthBalance indicates an expected call of EthBalance.
+func (mr *MockBackendMockRecorder) EthBalance() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBalance", reflect.TypeOf((*MockBackend)(nil).EthBalance))
+}
+
 // EthClient mocks base method.
 func (m *MockBackend) EthClient() *ethclient.Client {
 	m.ctrl.T.Helper()
@@ -433,20 +448,6 @@ func (m *MockBackend) LockClient() {
 func (mr *MockBackendMockRecorder) LockClient() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockClient", reflect.TypeOf((*MockBackend)(nil).LockClient))
-}
-
-// MoneroClient mocks base method.
-func (m *MockBackend) MoneroClient() monero.WalletClient {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MoneroClient")
-	ret0, _ := ret[0].(monero.WalletClient)
-	return ret0
-}
-
-// MoneroClient indicates an expected call of MoneroClient.
-func (mr *MockBackendMockRecorder) MoneroClient() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoneroClient", reflect.TypeOf((*MockBackend)(nil).MoneroClient))
 }
 
 // Net mocks base method.

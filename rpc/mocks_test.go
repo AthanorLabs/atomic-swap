@@ -3,9 +3,11 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"time"
 
+	"github.com/MarinX/monerorpc/wallet"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -147,6 +149,10 @@ func (*mockXMRMaker) ClearOffers([]string) error {
 	panic("not implemented")
 }
 
+func (*mockXMRMaker) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
+	panic("not implemented")
+}
+
 type mockSwapState struct{}
 
 func (*mockSwapState) HandleProtocolMessage(msg message.Message) (resp message.Message, done bool, err error) {
@@ -196,6 +202,10 @@ func (b *mockProtocolBackend) SwapManager() swap.Manager {
 }
 
 func (*mockProtocolBackend) SetEthAddress(ethcommon.Address) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) EthBalance() (ethcommon.Address, *big.Int, error) {
 	panic("not implemented")
 }
 

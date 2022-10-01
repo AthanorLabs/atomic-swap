@@ -52,6 +52,7 @@ type Backend interface {
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
+	EthBalance() (ethcommon.Address, *big.Int, error)
 
 	// helpers
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -72,7 +73,6 @@ type Backend interface {
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 	HasEthereumPrivateKey() bool
 	EthClient() *ethclient.Client
-	MoneroClient() monero.WalletClient
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
@@ -230,10 +230,6 @@ func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
 }
 
-func (b *backend) MoneroClient() monero.WalletClient {
-	return b.WalletClient
-}
-
 func (b *backend) Net() net.MessageSender {
 	return b.MessageSender
 }
@@ -373,8 +369,16 @@ func (b *backend) SetEthAddress(addr ethcommon.Address) {
 	if b.ethPrivKey != nil {
 		return
 	}
-
 	b.ethAddress = addr
+}
+
+func (b *backend) EthBalance() (ethcommon.Address, *big.Int, error) {
+	addr := b.EthAddress()
+	bal, err := b.ethClient.BalanceAt(b.ctx, addr, nil)
+	if err != nil {
+		return ethcommon.Address{}, nil, err
+	}
+	return addr, bal, nil
 }
 
 func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {

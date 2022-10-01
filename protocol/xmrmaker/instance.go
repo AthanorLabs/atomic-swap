@@ -3,6 +3,8 @@ package xmrmaker
 import (
 	"sync"
 
+	"github.com/MarinX/monerorpc/wallet"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -74,4 +76,21 @@ func (b *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
 	defer b.swapMu.Unlock()
 
 	return b.swapStates[id]
+}
+
+// GetMoneroBalance returns the primary wallet address, and current balance of the user's monero
+// wallet.
+func (b *Instance) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
+	addr, err := b.backend.GetAddress(0)
+	if err != nil {
+		return "", nil, err
+	}
+	if err = b.backend.Refresh(); err != nil {
+		return "", nil, err
+	}
+	balance, err := b.backend.GetBalance(0)
+	if err != nil {
+		return "", nil, err
+	}
+	return addr.Address, balance, nil
 }

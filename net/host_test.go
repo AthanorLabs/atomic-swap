@@ -7,13 +7,11 @@ import (
 	"path"
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/tests"
-
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 func TestMain(m *testing.M) {
@@ -61,19 +59,15 @@ func (s *mockSwapState) Exit() error {
 }
 
 func newHost(t *testing.T, port uint16) *host {
-	ethCli, chainID := tests.NewEthClient(t)
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
 		DataDir:     t.TempDir(),
-		EthChainID:  chainID.Int64(),
+		EthChainID:  common.GanacheChainID,
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
 		Bootnodes:   []string{},
 		Handler:     &mockHandler{},
-		EthAddress:  common.EthereumPrivateKeyToAddress(tests.GetTakerTestKey(t)),
-		EthCli:      ethCli,
-		MoneroCli:   monero.CreateWalletClient(t),
 	}
 
 	h, err := NewHost(cfg)
@@ -89,13 +83,4 @@ func TestNewHost(t *testing.T) {
 	h := newHost(t, defaultPort)
 	err := h.Start()
 	require.NoError(t, err)
-}
-
-func TestGetBalances(t *testing.T) {
-	h := newHost(t, defaultPort)
-	balances, err := h.Balances()
-	require.NoError(t, err)
-	require.NotEmpty(t, balances.MoneroAddress)
-	require.NotEmpty(t, balances.EthAddress)
-	require.Greater(t, balances.EthBalance.Int64(), int64(0))
 }

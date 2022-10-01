@@ -17,7 +17,7 @@ import (
 
 const defaultSearchTime = time.Second * 12
 
-// Net contains the functions required by the rpc service into the network.
+// Net contains the functions required by the rpc service into the network. TODO: "into the network"???
 type Net interface {
 	Addresses() []string
 	Advertise()
