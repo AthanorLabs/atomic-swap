@@ -92,7 +92,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, b, 1.0)
+	monero.MineMinXMRBalance(t, b, 5.0)
 	err = b.Refresh()
 	require.NoError(t, err)
 	return xmrmaker
