@@ -308,6 +308,20 @@ func createWalletRPCService(conf *WalletClientConf, isNewWallet bool) (string, *
 		}
 	}
 
+	if conf.MonerodHost == "" {
+		conf.MonerodHost = "127.0.0.1"
+	}
+	if conf.MonerodPort == 0 {
+		switch conf.Env {
+		case common.Mainnet, common.Development:
+			conf.MonerodPort = common.DefaultMoneroDaemonMainnetPort
+		case common.Stagenet:
+			conf.MonerodPort = common.DefaultMoneroDaemonStagenetPort
+		default:
+			panic("unhandled environment value")
+		}
+	}
+
 	if err := validateMonerodConfig(conf.Env, conf.MonerodHost, conf.MonerodPort); err != nil {
 		return "", nil, err
 	}
