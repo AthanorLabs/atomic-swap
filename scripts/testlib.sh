@@ -148,6 +148,7 @@ start-ganache() {
 		--miner.blockTime=1 \
 		&>"${SWAP_TEST_DATA_DIR}/ganache.log" &
 	echo "${!}" >"${SWAP_TEST_DATA_DIR}/ganache.pid"
+	sleep 2
 }
 
 stop-ganache() {
