@@ -32,3 +32,5 @@ node.key
 xmrmaker.key
 xmrtaker.key
 cmd/daemon/*.key
+tests/*.key
+tests/*.log
