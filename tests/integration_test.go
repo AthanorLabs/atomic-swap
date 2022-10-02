@@ -383,11 +383,13 @@ func TestRefund_XMRMakerCancels_untilAfterT1(t *testing.T) {
 // funds, but XMRMaker goes offline until past isReady==true and t0, but comes online before t1. When
 // XMRMaker comes back online, he should claim the ETH, causing XMRTaker to also claim the XMR.
 func TestRefund_XMRMakerCancels_afterIsReady(t *testing.T) {
+	// Skipping test as it can't guarantee that the refund will happen before the swap completes
+	// successfully:  // https://github.com/athanorlabs/atomic-swap/issues/144
+	t.Skip()
 	testRefundXMRMakerCancels(t, 30, types.CompletedSuccess)
 }
 
 func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) {
-	t.Skip("wtf")
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
