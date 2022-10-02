@@ -306,11 +306,12 @@ func runBalances(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Ethereum adddress: %s\n", balances.EthAddress)
-	fmt.Printf("Balance: %s\n", balances.EthBalance)
+	fmt.Printf("Balance: %s\n", common.FmtFloat((*common.EtherAmount)(balances.WeiBalance).AsEther()))
 	fmt.Println()
 	fmt.Printf("Monero adddress: %s\n", balances.MoneroAddress)
-	fmt.Printf("Balance: %s\n", common.FmtFloat(balances.PiconeroBalance.AsMonero()))
-	fmt.Printf("Unlocked balance: %s\n", common.FmtFloat(balances.PiconeroUnlockedBalance.AsMonero()))
+	fmt.Printf("Balance: %s\n", common.FmtFloat(common.MoneroAmount(balances.PiconeroBalance).AsMonero()))
+	fmt.Printf("Unlocked balance: %s\n",
+		common.FmtFloat(common.MoneroAmount(balances.PiconeroUnlockedBalance).AsMonero()))
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
 	return nil
 }

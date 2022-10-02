@@ -2,6 +2,7 @@ package rpcclient
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/rpc"
@@ -52,6 +53,9 @@ func (c *Client) Balances() (*rpctypes.BalancesResponse, error) {
 	var balances rpctypes.BalancesResponse
 	if err = json.Unmarshal(resp.Result, &balances); err != nil {
 		return nil, err
+	}
+	if balances.WeiBalance == nil {
+		return nil, errors.New("required field wei_balance missing")
 	}
 
 	return &balances, nil

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
@@ -73,11 +72,11 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 
 	*resp = rpctypes.BalancesResponse{
 		MoneroAddress:           mAddr,
-		PiconeroBalance:         common.MoneroAmount(mBal.Balance),
-		PiconeroUnlockedBalance: common.MoneroAmount(mBal.UnlockedBalance),
+		PiconeroBalance:         mBal.Balance,
+		PiconeroUnlockedBalance: mBal.UnlockedBalance,
 		BlocksToUnlock:          mBal.BlocksToUnlock,
 		EthAddress:              eAddr.String(),
-		EthBalance:              eBal,
+		WeiBalance:              eBal,
 	}
 	return nil
 }
