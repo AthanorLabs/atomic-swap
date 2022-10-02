@@ -34,3 +34,7 @@ xmrtaker.key
 cmd/daemon/*.key
 tests/*.key
 tests/*.log
+
+# Ethereum contract compilation artifacts
+ethereum/abi/
+ethereum/bin/
