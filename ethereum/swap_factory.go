@@ -51,7 +51,7 @@ var SwapFactoryMetaData = &bind.MetaData{
 // Deprecated: Use SwapFactoryMetaData.ABI instead.
 var SwapFactoryABI = SwapFactoryMetaData.ABI
 
-// SwapFactoryBin is the compiled bytecode used for deploying new contracts.
+// SwapFactoryBin is the compiled bytecode used for deploying new ethereum.
 // Deprecated: Use SwapFactoryMetaData.Bin instead.
 var SwapFactoryBin = SwapFactoryMetaData.Bin
 

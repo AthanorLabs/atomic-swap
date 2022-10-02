@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -17,7 +17,7 @@ func checkContractCode(ctx context.Context, b backend.Backend, contractAddr ethc
 		return err
 	}
 
-	expectedCode := ethcommon.FromHex(swapfactory.SwapFactoryMetaData.Bin)
+	expectedCode := ethcommon.FromHex(contracts.SwapFactoryMetaData.Bin)
 	if !bytes.Contains(expectedCode, code) {
 		return errInvalidSwapContract
 	}
@@ -25,8 +25,8 @@ func checkContractCode(ctx context.Context, b backend.Backend, contractAddr ethc
 	return nil
 }
 
-func convertContractSwap(msg *message.ContractSwap) swapfactory.SwapFactorySwap {
-	return swapfactory.SwapFactorySwap{
+func convertContractSwap(msg *message.ContractSwap) contracts.SwapFactorySwap {
+	return contracts.SwapFactorySwap{
 		Owner:        msg.Owner,
 		Claimer:      msg.Claimer,
 		PubKeyClaim:  msg.PubKeyClaim,
