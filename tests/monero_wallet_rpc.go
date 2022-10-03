@@ -77,6 +77,7 @@ func getWalletRPCFlags(t *testing.T, port int) []string {
 		"--disable-rpc-login",
 		fmt.Sprintf("--log-file=%s", path.Join(walletDir, "monero-wallet-rpc.log")),
 		fmt.Sprintf("--wallet-dir=%s", t.TempDir()),
+		"--allow-mismatched-daemon-version",
 	}
 }
 
