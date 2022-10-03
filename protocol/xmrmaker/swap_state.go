@@ -20,6 +20,7 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -28,7 +29,6 @@ import (
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 const revertSwapCompleted = "swap is already completed"
@@ -57,7 +57,7 @@ type swapState struct {
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
-	contractSwap   swapfactory.SwapFactorySwap
+	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
 
 	// XMRTaker's keys for this session
@@ -99,7 +99,7 @@ func newSwapState(
 
 	var sender txsender.Sender
 	if offer.EthAsset != types.EthAssetETH {
-		erc20Contract, err := swapfactory.NewIERC20(offer.EthAsset.Address(), b.EthClient())
+		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.EthClient())
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +326,7 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	)
 
 	for _, log := range logs {
-		matches, err := swapfactory.CheckIfLogIDMatches(log, refundedEvent, s.contractSwapID) //nolint:govet
+		matches, err := contracts.CheckIfLogIDMatches(log, refundedEvent, s.contractSwapID) //nolint:govet
 		if err != nil {
 			continue
 		}
@@ -342,7 +342,7 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoRefundLogsFound
 	}
 
-	sa, err := swapfactory.GetSecretFromLog(&foundLog, refundedEvent)
+	sa, err := contracts.GetSecretFromLog(&foundLog, refundedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}
@@ -356,11 +356,11 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 	switch stage {
-	case swapfactory.StageInvalid:
+	case contracts.StageInvalid:
 		return ethcommon.Hash{}, errClaimInvalid
-	case swapfactory.StageCompleted:
+	case contracts.StageCompleted:
 		return ethcommon.Hash{}, errClaimSwapComplete
-	case swapfactory.StagePending, swapfactory.StageReady:
+	case contracts.StagePending, contracts.StageReady:
 		// do nothing
 	default:
 		panic("Unhandled stage value")
@@ -381,7 +381,7 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, errClaimPastTime
 	}
 
-	if ts.Before(s.t0) && stage != swapfactory.StageReady {
+	if ts.Before(s.t0) && stage != contracts.StageReady {
 		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically? (#163)
 		// we need to wait until t0 to claim
 		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
@@ -486,7 +486,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return errCannotFindNewLog
 	}
 
-	var event *swapfactory.SwapFactoryNew
+	var event *contracts.SwapFactoryNew
 	for _, log := range receipt.Logs {
 		event, err = s.Contract().ParseNew(*log)
 		if err == nil {

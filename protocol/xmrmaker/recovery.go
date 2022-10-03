@@ -9,9 +9,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 type recoveryState struct {
@@ -22,7 +22,7 @@ type recoveryState struct {
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.PrivateSpendKey,
 	contractAddr ethcommon.Address,
-	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) {
+	contractSwapID [32]byte, contractSwap contracts.SwapFactorySwap) (*recoveryState, error) {
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
 		return nil, err

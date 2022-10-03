@@ -11,13 +11,13 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -61,7 +61,7 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
@@ -155,13 +155,13 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 	receipt := tests.MineTransaction(t, ss, tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
-	ss.contractSwapID, err = swapfactory.GetIDFromLog(receipt.Logs[0])
+	ss.contractSwapID, err = contracts.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := swapfactory.GetTimeoutsFromLog(receipt.Logs[0])
+	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	ss.contractSwap = swapfactory.SwapFactorySwap{
+	ss.contractSwap = contracts.SwapFactorySwap{
 		Owner:        ethAddr,
 		Claimer:      ethAddr,
 		PubKeyClaim:  claimKey,

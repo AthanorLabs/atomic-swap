@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -16,31 +16,31 @@ import (
 
 // Sender signs and submits transactions to the chain
 type Sender interface {
-	SetContract(*swapfactory.SwapFactory)
+	SetContract(*contracts.SwapFactory)
 	SetContractAddress(ethcommon.Address)
 	Approve(spender ethcommon.Address,
 		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) // for ERC20 swaps
 	NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte, _claimer ethcommon.Address,
 		_timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
 		amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error)
-	SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Claim(_swap swapfactory.SwapFactorySwap,
+	SetReady(_swap contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
+	Claim(_swap contracts.SwapFactorySwap,
 		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Refund(_swap swapfactory.SwapFactorySwap,
+	Refund(_swap contracts.SwapFactorySwap,
 		_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
 }
 
 type privateKeySender struct {
 	ctx           context.Context
 	ec            *ethclient.Client
-	contract      *swapfactory.SwapFactory
-	erc20Contract *swapfactory.IERC20
+	contract      *contracts.SwapFactory
+	erc20Contract *contracts.IERC20
 	txOpts        *TxOpts
 }
 
 // NewSenderWithPrivateKey returns a new *privateKeySender
-func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *swapfactory.SwapFactory,
-	erc20Contract *swapfactory.IERC20, txOpts *TxOpts) Sender {
+func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *contracts.SwapFactory,
+	erc20Contract *contracts.IERC20, txOpts *TxOpts) Sender {
 	return &privateKeySender{
 		ctx:      ctx,
 		ec:       ec,
@@ -49,7 +49,7 @@ func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract
 	}
 }
 
-func (s *privateKeySender) SetContract(contract *swapfactory.SwapFactory) {
+func (s *privateKeySender) SetContract(contract *contracts.SwapFactory) {
 	s.contract = contract
 }
 
@@ -104,7 +104,7 @@ func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) SetReady(_swap contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txOpts.Lock()
 	defer s.txOpts.Unlock()
 	txOpts := s.txOpts.Inner()
@@ -124,7 +124,7 @@ func (s *privateKeySender) SetReady(_swap swapfactory.SwapFactorySwap) (ethcommo
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap,
+func (s *privateKeySender) Claim(_swap contracts.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txOpts.Lock()
 	defer s.txOpts.Unlock()
@@ -145,7 +145,7 @@ func (s *privateKeySender) Claim(_swap swapfactory.SwapFactorySwap,
 	return tx.Hash(), receipt, nil
 }
 
-func (s *privateKeySender) Refund(_swap swapfactory.SwapFactorySwap,
+func (s *privateKeySender) Refund(_swap contracts.SwapFactorySwap,
 	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	s.txOpts.Lock()
 	defer s.txOpts.Unlock()

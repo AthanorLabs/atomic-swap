@@ -33,12 +33,12 @@ var testPackages = []struct {
 	numKeys int
 }{
 	{"cmd/swapd", 2},
+	{"ethereum", 16},
 	{"ethereum/block", 2},
 	{"protocol/backend", 2},
 	{"protocol/xmrmaker", 2},
 	{"protocol/xmrtaker", 2},
 	{"recover", 2},
-	{"swapfactory", 16},
 }
 
 const (

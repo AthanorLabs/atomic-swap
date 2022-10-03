@@ -15,6 +15,7 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -22,7 +23,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
@@ -63,7 +63,7 @@ type swapState struct {
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
-	contractSwap   swapfactory.SwapFactorySwap
+	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
 
 	// next expected network message
@@ -103,7 +103,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 
 	var sender txsender.Sender
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := swapfactory.NewIERC20(ethAsset.Address(), b.EthClient()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), b.EthClient()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
@@ -348,16 +348,16 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 	switch stage {
-	case swapfactory.StageInvalid:
+	case contracts.StageInvalid:
 		return ethcommon.Hash{}, errRefundInvalid
-	case swapfactory.StageCompleted:
+	case contracts.StageCompleted:
 		return ethcommon.Hash{}, errRefundSwapCompleted
-	case swapfactory.StagePending, swapfactory.StageReady:
+	case contracts.StagePending, contracts.StageReady:
 		// do nothing
 	default:
 		panic("Unhandled stage value")
 	}
-	isReady := stage == swapfactory.StageReady
+	isReady := stage == contracts.StageReady
 
 	ts, err := s.LatestBlockTimestamp(s.ctx)
 	if err != nil {
@@ -455,7 +455,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 
 		// check that the approval is required
 		// TODO: separate to its own function and create unit tests
-		token, err := swapfactory.NewIERC20(s.ethAsset.Address(), s.EthClient())
+		token, err := contracts.NewIERC20(s.ethAsset.Address(), s.EthClient())
 		if err != nil {
 			log.Errorf("failed to instantiate IERC20: %s", s.ethAsset)
 			return ethcommon.Hash{}, err
@@ -496,7 +496,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	for _, rLog := range receipt.Logs {
-		s.contractSwapID, err = swapfactory.GetIDFromLog(rLog)
+		s.contractSwapID, err = contracts.GetIDFromLog(rLog)
 		if err == nil {
 			break
 		}
@@ -508,7 +508,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	var t0 *big.Int
 	var t1 *big.Int
 	for _, log := range receipt.Logs {
-		t0, t1, err = swapfactory.GetTimeoutsFromLog(log)
+		t0, t1, err = contracts.GetTimeoutsFromLog(log)
 		if err == nil {
 			break
 		}
@@ -519,7 +519,7 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 
 	s.setTimeouts(t0, t1)
 
-	s.contractSwap = swapfactory.SwapFactorySwap{
+	s.contractSwap = contracts.SwapFactorySwap{
 		Owner:        s.EthAddress(),
 		Claimer:      s.xmrmakerAddress,
 		PubKeyClaim:  cmtXMRMaker,
@@ -546,8 +546,8 @@ func (s *swapState) ready() error {
 	if err != nil {
 		return err
 	}
-	if stage != swapfactory.StagePending {
-		return fmt.Errorf("can not set contract to ready when swap stage is %s", swapfactory.StageToString(stage))
+	if stage != contracts.StagePending {
+		return fmt.Errorf("can not set contract to ready when swap stage is %s", contracts.StageToString(stage))
 	}
 	_, _, err = s.sender.SetReady(s.contractSwap)
 	if err != nil {
