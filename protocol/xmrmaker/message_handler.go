@@ -10,10 +10,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -280,7 +280,7 @@ func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
 		return "", errClaimTxHasNoLogs
 	}
 
-	sa, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Refunded")
+	sa, err := contracts.GetSecretFromLog(receipt.Logs[0], "Refunded")
 	if err != nil {
 		return "", err
 	}

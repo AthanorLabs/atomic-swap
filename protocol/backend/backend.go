@@ -16,12 +16,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -40,7 +40,7 @@ type Backend interface {
 
 	// create a new transaction sender, called per-swap
 	NewTxSender(asset ethcommon.Address,
-		erc20Contract *swapfactory.IERC20) (txsender.Sender, error)
+		erc20Contract *contracts.IERC20) (txsender.Sender, error)
 
 	// ethclient methods
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
@@ -56,7 +56,7 @@ type Backend interface {
 
 	// helpers
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
-	NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error)
+	NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error)
 
 	// getters
 	Ctx() context.Context
@@ -66,7 +66,7 @@ type Backend interface {
 	TxOpts() (*bind.TransactOpts, error)
 	SwapManager() swap.Manager
 	EthAddress() ethcommon.Address
-	Contract() *swapfactory.SwapFactory
+	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
 	SwapTimeout() time.Duration
@@ -81,7 +81,7 @@ type Backend interface {
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	SetBaseXMRDepositAddress(mcrypto.Address)
-	SetContract(*swapfactory.SwapFactory)
+	SetContract(*contracts.SwapFactory)
 	SetContractAddress(ethcommon.Address)
 }
 
@@ -111,7 +111,7 @@ type backend struct {
 	txOpts *txsender.TxOpts
 
 	// swap contract
-	contract     *swapfactory.SwapFactory
+	contract     *contracts.SwapFactory
 	contractAddr ethcommon.Address
 	swapTimeout  time.Duration
 
@@ -132,7 +132,7 @@ type Config struct {
 	GasPrice           *big.Int
 	GasLimit           uint64
 
-	SwapContract        *swapfactory.SwapFactory
+	SwapContract        *contracts.SwapFactory
 	SwapContractAddress ethcommon.Address
 
 	SwapManager swap.Manager
@@ -205,7 +205,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}, nil
 }
 
-func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *swapfactory.IERC20) (txsender.Sender, error) {
+func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error) {
 	if b.ethPrivKey == nil {
 		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient, b.contractAddr, asset)
 	}
@@ -226,7 +226,7 @@ func (b *backend) ChainID() *big.Int {
 	return b.chainID
 }
 
-func (b *backend) Contract() *swapfactory.SwapFactory {
+func (b *backend) Contract() *contracts.SwapFactory {
 	return b.contract
 }
 
@@ -279,7 +279,7 @@ func (b *backend) BalanceAt(ctx context.Context, account ethcommon.Address, bloc
 
 func (b *backend) ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
 	blockNumber *big.Int) (*big.Int, error) {
-	tokenContract, err := swapfactory.NewIERC20(token, b.ethClient)
+	tokenContract, err := contracts.NewIERC20(token, b.ethClient)
 	if err != nil {
 		return big.NewInt(0), err
 	}
@@ -288,7 +288,7 @@ func (b *backend) ERC20BalanceAt(ctx context.Context, token ethcommon.Address, a
 
 func (b *backend) ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string,
 	decimals uint8, err error) {
-	tokenContract, err := swapfactory.NewIERC20(token, b.ethClient)
+	tokenContract, err := contracts.NewIERC20(token, b.ethClient)
 	if err != nil {
 		return "", "", 18, err
 	}
@@ -380,8 +380,8 @@ func (b *backend) LatestBlockTimestamp(ctx context.Context) (time.Time, error) {
 	return time.Unix(int64(hdr.Time), 0), nil
 }
 
-func (b *backend) NewSwapFactory(addr ethcommon.Address) (*swapfactory.SwapFactory, error) {
-	return swapfactory.NewSwapFactory(addr, b.ethClient)
+func (b *backend) NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error) {
+	return contracts.NewSwapFactory(addr, b.ethClient)
 }
 
 func (b *backend) SetEthAddress(addr ethcommon.Address) {
@@ -413,7 +413,7 @@ func (b *backend) ClearXMRDepositAddress(id types.Hash) {
 // address they will be using.
 // the contract bytecode is validated in the calling code, but this should never be called
 // for unvalidated contracts.
-func (b *backend) SetContract(contract *swapfactory.SwapFactory) {
+func (b *backend) SetContract(contract *contracts.SwapFactory) {
 	b.contract = contract
 }
 

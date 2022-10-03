@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
@@ -22,8 +22,8 @@ func GetSwapRecoveryFilepath(dataDir string) string {
 	return path.Join(dataDir, fmt.Sprintf("recovery-%s.txt", t))
 }
 
-// ConvertContractSwapToMsg converts a swapfactory.SwapFactorySwap to a *message.ContractSwap
-func ConvertContractSwapToMsg(swap swapfactory.SwapFactorySwap) *message.ContractSwap {
+// ConvertContractSwapToMsg converts a contracts.SwapFactorySwap to a *message.ContractSwap
+func ConvertContractSwapToMsg(swap contracts.SwapFactorySwap) *message.ContractSwap {
 	return &message.ContractSwap{
 		Owner:        swap.Owner,
 		Claimer:      swap.Claimer,

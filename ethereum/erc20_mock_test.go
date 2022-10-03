@@ -1,4 +1,4 @@
-package swapfactory
+package contracts
 
 import (
 	"context"

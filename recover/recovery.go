@@ -6,11 +6,11 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -91,7 +91,7 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 // RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.
 func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, dataDir string,
 	xmrmakerSecret, contractAddr string, swapID [32]byte,
-	swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
+	swap contracts.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	bs, err := hex.DecodeString(xmrmakerSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode XMRMaker's secret: %w", err)
@@ -113,7 +113,7 @@ func (r *recoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, data
 
 // RecoverFromXMRTakerSecretAndContract recovers funds by either claiming locked monero or refunding ether.
 func (r *recoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, dataDir string,
-	xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
+	xmrtakerSecret string, swapID [32]byte, swap contracts.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
 	as, err := hex.DecodeString(xmrtakerSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode XMRTaker's secret: %w", err)
