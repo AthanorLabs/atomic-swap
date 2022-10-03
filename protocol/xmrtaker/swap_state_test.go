@@ -13,12 +13,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	logging "github.com/ipfs/go-log"
@@ -55,7 +55,7 @@ func newBackend(t *testing.T) backend.Backend {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(ctx, ec, tx)
@@ -86,7 +86,7 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
-	addr, _, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	addr, _, contract, err := contracts.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
@@ -191,7 +191,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	// check swap is marked completed
 	stage, err := s.Contract().Swaps(nil, s.contractSwapID)
 	require.NoError(t, err)
-	require.Equal(t, swapfactory.StageCompleted, stage)
+	require.Equal(t, contracts.StageCompleted, stage)
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
