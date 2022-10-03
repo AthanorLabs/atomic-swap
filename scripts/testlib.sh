@@ -184,7 +184,8 @@ start-monero-wallet-rpc() {
 		--pidfile="${SWAP_TEST_DATA_DIR}/${name}.pid" \
 		--log-file="${SWAP_TEST_DATA_DIR}/${name}.log" \
 		--disable-rpc-login \
-		--wallet-dir "${wallet_dir}"
+		--wallet-dir "${wallet_dir}" \
+		--allow-mismatched-daemon-version
 }
 
 start-alice-wallet() {
