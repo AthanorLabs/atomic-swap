@@ -389,7 +389,7 @@ func TestRefund_XMRMakerCancels_afterIsReady(t *testing.T) {
 	testRefundXMRMakerCancels(t, 30, types.CompletedSuccess)
 }
 
-func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) {
+func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitStatus types.Status) { //nolint:unused
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		generateBlocks(64)
 	}
@@ -461,7 +461,6 @@ func testRefundXMRMakerCancels(t *testing.T, swapTimeout uint64, expectedExitSta
 	require.NoError(t, err)
 	require.Equal(t, 1, len(providers))
 	require.GreaterOrEqual(t, len(providers[0]), 2)
-
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(t, err)
 
