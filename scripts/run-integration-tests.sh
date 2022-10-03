@@ -39,7 +39,7 @@ sleep 3 # Alice's swapd is a bootnode for Bob and Charlie's swapd
 
 start-swapd bob \
 	--dev-xmrmaker \
-	--bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 \
+	--bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH \
 	--wallet-file test-wallet \
 	--deploy
 
@@ -48,7 +48,7 @@ start-swapd charlie \
 	--ethereum-privkey "${CHARLIE_ETH_KEY}" \
 	--libp2p-port 9955 \
 	--rpc-port 5003 \
-	--bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2 \
+	--bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH \
 	--deploy
 
 sleep 3 # Time for Bob and Charlie's swapd to be fully up

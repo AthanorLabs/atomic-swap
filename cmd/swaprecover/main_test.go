@@ -10,11 +10,11 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
@@ -65,14 +65,14 @@ func (r *mockRecoverer) WalletFromSharedSecret(_ *mcrypto.PrivateKeyInfo) (mcryp
 }
 
 func (r *mockRecoverer) RecoverFromXMRMakerSecretAndContract(b backend.Backend, _ string, xmrmakerSecret,
-	contractAddr string, swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
+	contractAddr string, swapID [32]byte, _ contracts.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) {
 	return &xmrmaker.RecoveryResult{
 		Claimed: true,
 	}, nil
 }
 
 func (r *mockRecoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, _ string, xmrtakerSecret string,
-	swapID [32]byte, _ swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
+	swapID [32]byte, _ contracts.SwapFactorySwap) (*xmrtaker.RecoveryResult, error) {
 	return &xmrtaker.RecoveryResult{
 		Claimed: true,
 	}, nil

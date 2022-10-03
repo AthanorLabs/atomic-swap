@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package swapfactory
+package contracts
 
 import (
 	"errors"
@@ -51,7 +51,7 @@ var SwapFactoryMetaData = &bind.MetaData{
 // Deprecated: Use SwapFactoryMetaData.ABI instead.
 var SwapFactoryABI = SwapFactoryMetaData.ABI
 
-// SwapFactoryBin is the compiled bytecode used for deploying new contracts.
+// SwapFactoryBin is the compiled bytecode used for deploying new ethereum.
 // Deprecated: Use SwapFactoryMetaData.Bin instead.
 var SwapFactoryBin = SwapFactoryMetaData.Bin
 

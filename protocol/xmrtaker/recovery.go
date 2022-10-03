@@ -13,10 +13,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
@@ -28,7 +28,7 @@ type recoveryState struct {
 // NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
 func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.PrivateSpendKey,
-	contractSwapID [32]byte, contractSwap swapfactory.SwapFactorySwap) (*recoveryState, error) {
+	contractSwapID [32]byte, contractSwap contracts.SwapFactorySwap) (*recoveryState, error) {
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	)
 
 	for _, log := range logs {
-		matches, err := swapfactory.CheckIfLogIDMatches(log, claimedEvent, s.contractSwapID) //nolint:govet
+		matches, err := contracts.CheckIfLogIDMatches(log, claimedEvent, s.contractSwapID) //nolint:govet
 		if err != nil {
 			continue
 		}
@@ -155,7 +155,7 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoClaimLogsFound
 	}
 
-	sa, err := swapfactory.GetSecretFromLog(&foundLog, claimedEvent)
+	sa, err := contracts.GetSecretFromLog(&foundLog, claimedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}

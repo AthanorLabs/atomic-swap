@@ -11,11 +11,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color" //nolint:misspell
@@ -387,7 +387,7 @@ func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) 
 
 	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
 
-	skB, err := swapfactory.GetSecretFromLog(receipt.Logs[0], "Claimed")
+	skB, err := contracts.GetSecretFromLog(receipt.Logs[0], "Claimed")
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret from log: %w", err)
 	}
