@@ -42,10 +42,11 @@ type privateKeySender struct {
 func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *contracts.SwapFactory,
 	erc20Contract *contracts.IERC20, txOpts *TxOpts) Sender {
 	return &privateKeySender{
-		ctx:      ctx,
-		ec:       ec,
-		contract: contract,
-		txOpts:   txOpts,
+		ctx:           ctx,
+		ec:            ec,
+		contract:      contract,
+		erc20Contract: erc20Contract,
+		txOpts:        txOpts,
 	}
 }
 
@@ -60,6 +61,10 @@ func (s *privateKeySender) Approve(spender ethcommon.Address,
 	s.txOpts.Lock()
 	defer s.txOpts.Unlock()
 	txOpts := s.txOpts.Inner()
+
+	if s.erc20Contract == nil {
+		panic("erc20Contract should not be nil")
+	}
 
 	tx, err := s.erc20Contract.Approve(&txOpts, spender, amount)
 	if err != nil {
