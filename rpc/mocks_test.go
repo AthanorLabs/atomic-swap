@@ -137,10 +137,6 @@ func (*mockXMRMaker) MakeOffer(offer *types.Offer) (*types.OfferExtra, error) {
 	return offerExtra, nil
 }
 
-func (*mockXMRMaker) SetMoneroWalletFile(file string, password string) error {
-	panic("not implemented")
-}
-
 func (*mockXMRMaker) GetOffers() []*types.Offer {
 	panic("not implemented")
 }

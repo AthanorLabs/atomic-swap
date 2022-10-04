@@ -21,18 +21,6 @@ func NewPersonalService(xmrmaker XMRMaker, pb ProtocolBackend) *PersonalService 
 	}
 }
 
-// SetMoneroWalletFileRequest ...
-type SetMoneroWalletFileRequest struct {
-	WalletFile     string `json:"walletFile"`
-	WalletPassword string `json:"password"`
-}
-
-// SetMoneroWalletFile opens the given wallet file in monero-wallet-rpc.
-// It must exist in the monero-wallet-rpc wallet-dir that was specified on its startup.
-func (s *PersonalService) SetMoneroWalletFile(_ *http.Request, req *SetMoneroWalletFileRequest, _ *interface{}) error {
-	return s.xmrmaker.SetMoneroWalletFile(req.WalletFile, req.WalletPassword)
-}
-
 // SetSwapTimeoutRequest ...
 type SetSwapTimeoutRequest struct {
 	Timeout uint64 `json:"timeout"` // timeout in seconds

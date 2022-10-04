@@ -42,14 +42,6 @@ type Config struct {
 // NewInstance returns a new *xmrmaker.Instance.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains XMRMaker's XMR.
 func NewInstance(cfg *Config) (*Instance, error) {
-	if cfg.WalletFile != "" {
-		if err := cfg.Backend.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
-			return nil, err
-		}
-	} else {
-		log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
-	}
-
 	return &Instance{
 		backend:        cfg.Backend,
 		dataDir:        cfg.DataDir,
@@ -58,16 +50,6 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		offerManager:   offers.NewManager(cfg.DataDir),
 		swapStates:     make(map[types.Hash]*swapState),
 	}, nil
-}
-
-// SetMoneroWalletFile sets the Instance's current monero wallet file.
-func (b *Instance) SetMoneroWalletFile(file, password string) error {
-	_ = b.backend.CloseWallet()
-	return b.backend.OpenWallet(file, password)
-}
-
-func (b *Instance) openWallet() error { //nolint
-	return b.backend.OpenWallet(b.walletFile, b.walletPassword)
 }
 
 // GetOngoingSwapState ...
