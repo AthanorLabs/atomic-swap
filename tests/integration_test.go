@@ -33,7 +33,7 @@ const (
 	defaultXMRMakerSwapdWSEndpoint = "ws://localhost:5002/ws"
 	defaultCharlieSwapdWSEndpoint  = "ws://localhost:5003/ws"
 
-	DefaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
+	defaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
 
@@ -56,7 +56,7 @@ func TestRunIntegrationTests(t *testing.T) {
 func (s *IntegrationTestSuite) SetupTest() {
 	// Ensure minimum XMR Maker balance before each test is run
 	if os.Getenv(generateBlocksEnv) != falseStr {
-		cli := monero.NewThinWalletClient(DefaultXMRMakerMoneroEndpoint)
+		cli := monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
 		monero.MineMinXMRBalance(s.T(), cli, common.MoneroToPiconero(xmrmakerProvideAmount))
 	}
 }
