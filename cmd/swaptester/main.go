@@ -13,14 +13,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MarinX/monerorpc"
+	monerodaemon "github.com/MarinX/monerorpc/daemon"
+	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
-
-	logging "github.com/ipfs/go-log"
 )
 
 const (
@@ -29,14 +31,16 @@ const (
 	flagLogLevel = "log-level"
 	flagDev      = "dev"
 
-	defaultConfigFile = "testerconfig.json"
+	defaultConfigFile             = "testerconfig.json"
+	defaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
 )
 
 var (
-	defaultTimeout      = time.Minute * 15
-	log                 = logging.Logger("cmd")
-	isDev               = false
-	defaultMoneroClient monero.WalletClient
+	defaultTimeout       = time.Minute * 15
+	log                  = logging.Logger("cmd")
+	isDev                = false
+	defaultMoneroClient  monero.WalletClient
+	moneroDaemonEndpoint = fmt.Sprintf("http://127.0.0.1:%d/json_rpc", common.DefaultMoneroDaemonDevPort)
 )
 
 var (
@@ -113,10 +117,11 @@ func runTester(c *cli.Context) error {
 	}
 
 	isDev = c.Bool(flagDev)
-	//if !isDev {
-	//	// TODO: Come back and fix this, ask why only when dev flag is given
-	//	///defaultMoneroClient = monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
-	//}
+	if !isDev {
+		// TODO: Why do this when dev flag is not given? Can the code work if it is given?
+		// For this to work, you'll need to pass --wallet-port 18083 to the XMR Maker swapd
+		defaultMoneroClient = monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
+	}
 
 	var timeout time.Duration
 
@@ -191,20 +196,23 @@ func getRandomExchangeRate() types.ExchangeRate {
 }
 
 func generateBlocks() {
-	// TODO: Come back and fix this
-	/*
-		cXMRMaker := monero.NewWalletClient(common.DefaultXMRTakerMoneroEndpoint)
-
-		xmrmakerAddr, err := cXMRMaker.GetAddress(0)
+	cXMRMaker := monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
+	xmrmakerAddr, err := cXMRMaker.GetAddress(0)
+	if err != nil {
+		log.Errorf("failed to get default monero address: %s", err)
+		return
+	}
+	log.Infof("development: generating blocks...")
+	daemonCli := monerorpc.New(moneroDaemonEndpoint, nil).Daemon
+	for i := 0; i < 128; i += 32 {
+		_, err = daemonCli.GenerateBlocks(&monerodaemon.GenerateBlocksRequest{
+			AmountOfBlocks: 32,
+			WalletAddress:  xmrmakerAddr.Address,
+		})
 		if err != nil {
-			log.Errorf("failed to get default monero address: %s", err)
-			return
+			log.Warnf("Error generating blocks: %s", err)
 		}
-
-		log.Infof("development: generating blocks...")
-		dclient := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-		_ = dclient.GenerateBlocks(xmrmakerAddr.Address, 128)
-	*/
+	}
 }
 
 type daemon struct {
