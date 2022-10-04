@@ -457,8 +457,9 @@ func newBackend(
 
 	contractAddrStr := c.String(flagContractAddress)
 	if contractAddrStr != "" {
-		// We check the contract code at the address later, so we don't need
-		// to tightly validate the address here.
+		if !ethcommon.IsHexAddress(contractAddrStr) {
+			return nil, fmt.Errorf("%q is not a valid contract address", contractAddrStr)
+		}
 		cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
 	}
 

@@ -64,7 +64,7 @@ start-daemons() {
 		fi
 		sleep 1
 	done
-	if ! CONTRACT_ADDR="$(cat "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
+	if ! CONTRACT_ADDR="$(jq -r .ContractAddress "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
 		echo "Failed to get Alice's deployed contract address"
 		stop-daemons
 		exit 1
