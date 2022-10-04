@@ -10,9 +10,7 @@ BOB_WALLET_PORT=18083
 ./scripts/build.sh || exit 1
 
 source "scripts/testlib.sh"
-start-monerod-regtest
-start-ganache
-
+check-set-swap-test-data-dir
 mkdir -p "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
 
 # Charlie uses deterministic ganache key #49
@@ -20,7 +18,7 @@ CHARLIE_ETH_KEY="${SWAP_TEST_DATA_DIR}/charlie/eth.key"
 echo "87c546d6cb8ec705bea47e2ab40f42a768b1e5900686b0cecc68c0e8b74cd789" >"${CHARLIE_ETH_KEY}"
 
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
-ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2
+ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 
 start-swapd() {
@@ -46,69 +44,73 @@ stop-swapd() {
 	stop-program "${swapd_user}-swapd"
 }
 
-start-swapd alice \
-	--dev-xmrtaker \
-	"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
-	"--libp2p-key=${ALICE_LIBP2PKEY}" \
-	--deploy
+start-daemons() {
+	start-monerod-regtest
+	start-ganache
 
-#
-# Wait up to 5 seconds for Alice's swapd instance to start and deploy the swap contract
-#
-CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-address.json"
-for _ in {1..5}; do
-	if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
-		break
+	start-swapd alice \
+		--dev-xmrtaker \
+		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
+		"--libp2p-key=${ALICE_LIBP2PKEY}" \
+		--deploy
+
+	#
+	# Wait up to 10 seconds for Alice's swapd instance to start and deploy the swap contract
+	#
+	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-address.json"
+	for _ in {1..10}; do
+		if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
+			break
+		fi
+		sleep 1
+	done
+	if ! CONTRACT_ADDR="$(cat "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
+		echo "Failed to get Alice's deployed contract address"
+		stop-daemons
+		exit 1
 	fi
-	sleep 1
-done
-if ! CONTRACT_ADDR="$(cat "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
-	echo "Failed to get Alice's deployed contract address"
-	exit 1
-fi
 
-start-swapd bob \
-	--dev-xmrmaker \
-	"--wallet-port=${BOB_WALLET_PORT}" \
-	"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
-	--libp2p-port=9944 \
-	"--bootnodes=${ALICE_MULTIADDR}" \
-	"--contract-address=${CONTRACT_ADDR}"
+	start-swapd bob \
+		--dev-xmrmaker \
+		"--wallet-port=${BOB_WALLET_PORT}" \
+		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
+		--libp2p-port=9944 \
+		"--bootnodes=${ALICE_MULTIADDR}" \
+		"--contract-address=${CONTRACT_ADDR}"
 
-start-swapd charlie \
-	--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
-	--ethereum-privkey "${CHARLIE_ETH_KEY}" \
-	--libp2p-port=9955 \
-	--rpc-port 5003 \
-	"--bootnodes=${ALICE_MULTIADDR}" \
-	"--contract-address=${CONTRACT_ADDR}"
+	start-swapd charlie \
+		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
+		--ethereum-privkey "${CHARLIE_ETH_KEY}" \
+		--libp2p-port=9955 \
+		--rpc-port 5003 \
+		"--bootnodes=${ALICE_MULTIADDR}" \
+		"--contract-address=${CONTRACT_ADDR}"
 
-# Give time for Bob and Charlie's swapd instances to fully start
-sleep 5
+	# Give time for Bob and Charlie's swapd instances to fully start
+	sleep 5
+}
+
+stop-daemons() {
+	stop-swapd charlie
+	stop-swapd bob
+	stop-swapd alice
+	stop-monerod-regtest
+	stop-ganache
+}
 
 # run tests
 echo "running integration tests..."
+start-daemons
 TESTS=integration go test ./tests -v -count=1
 OK="${?}"
+KEEP_TEST_DATA="${OK}" stop-daemons
 
-# If we failed, make a copy of the log files that won't get deleted
-if [[ "${OK}" -ne 0 ]]; then
-	mkdir -p "${SWAP_TEST_DATA_DIR}/saved-logs"
-	cp "${SWAP_TEST_DATA_DIR}/"*.log "${SWAP_TEST_DATA_DIR}/saved-logs/"
-	echo "Logs saved to ${SWAP_TEST_DATA_DIR}/saved-logs/"
-fi
-
-stop-swapd alice
-stop-swapd bob
-stop-swapd charlie
-stop-monerod-regtest
-stop-ganache
-rm -f "${CHARLIE_ETH_KEY}"
-rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,info-*.json,monero-wallet-rpc.log}
-rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore}
-rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
-
+# Cleanup test files if we succeeded
 if [[ "${OK}" -eq 0 ]]; then
+	rm -f "${CHARLIE_ETH_KEY}"
+	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,info-*.json,monero-wallet-rpc.log}
+	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore}
+	rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
 	remove-test-data-dir
 fi
 

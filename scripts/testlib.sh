@@ -79,9 +79,11 @@ stop-program() {
 		echo "ERROR: failed to kill ${name}"
 		return 1
 	fi
-	sleep 2 # let program flush data and exit so we delete all files below
-	# Remove the PID file, log file and any data subdirectory
-	rm -rf "${SWAP_TEST_DATA_DIR:?}/${name}"{.pid,.log,}
+	if [[ "${KEEP_TEST_DATA}" -ne 1 ]]; then
+		sleep 2 # let program flush data and exit so we delete all files below
+		# Remove the PID file, log file and any data subdirectory
+		rm -rf "${SWAP_TEST_DATA_DIR:?}/${name}"{.pid,.log,}
+	fi
 }
 
 start-monerod-regtest() {

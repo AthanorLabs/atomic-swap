@@ -7,11 +7,14 @@ pkill --echo --uid "${UID}" --full '/ganache.* --deterministic '
 
 # If you have monero-wallet-rpc or swapd processes owned by the current user
 # that you don't want to kill, don't use this script!
-pkill --echo --uid "${UID}" --full '/swapd '
+if pkill --echo --uid "${UID}" --full '/swapd '; then
+	# If swapd instances were killed, give the monero-wallet-rpc instances
+	# some time to shutdown.
+	sleep 4 # Give time for wallet to shutdown
+fi
 
-# In theory, killing the swapd processes should kill the monero-wallet-rpc
-# processes. Sleep for a second so we know.
-sleep 1
+# Take note of monero-wallet-rpc instances being killed here if the instances
+# were started by swapd
 pkill --echo --uid "${UID}" --full '/monero-wallet-rpc '
 
 # Don't use the exit value of the last pkill, since it will exit with

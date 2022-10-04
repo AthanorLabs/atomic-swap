@@ -21,4 +21,4 @@ stop-monerod-regtest
 stop-ganache
 remove-test-data-dir
 
-exit $OK
+exit "${OK}"
