@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
@@ -455,19 +456,6 @@ func newBackend(
 		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
-	contractAddrStr := c.String(flagContractAddress)
-	if contractAddrStr != "" {
-		if !ethcommon.IsHexAddress(contractAddrStr) {
-			return nil, fmt.Errorf("%q is not a valid contract address", contractAddrStr)
-		}
-		cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
-	}
-
-	ec, err := ethclient.Dial(ethEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
 	deploy := c.Bool(flagDeploy)
 	if deploy {
 		if c.IsSet(flagContractAddress) {
@@ -475,6 +463,21 @@ func newBackend(
 		}
 		// Zero out any default contract address in the config, so we deploy
 		cfg.ContractAddress = ethcommon.Address{}
+	} else {
+		contractAddrStr := c.String(flagContractAddress)
+		if contractAddrStr != "" {
+			if !ethcommon.IsHexAddress(contractAddrStr) {
+				return nil, fmt.Errorf("%q is not a valid contract address", contractAddrStr)
+			}
+			cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
+		}
+		if bytes.Equal(cfg.ContractAddress.Bytes(), ethcommon.Address{}.Bytes()) {
+			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
+		}
+	}
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	chainID := big.NewInt(cfg.EthereumChainID)
