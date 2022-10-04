@@ -7,18 +7,18 @@ import (
 	"path"
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/monero"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-	"github.com/athanorlabs/atomic-swap/protocol/backend"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
-	"github.com/athanorlabs/atomic-swap/tests"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 var defaultTimeout int64 = 7 // 7 seconds
@@ -36,9 +36,9 @@ func newSwap(
 	setReady bool,
 ) (
 	ethcommon.Address,
-	*swapfactory.SwapFactory,
+	*contracts.SwapFactory,
 	[32]byte,
-	swapfactory.SwapFactorySwap,
+	contracts.SwapFactorySwap,
 ) {
 	tm := big.NewInt(defaultTimeout)
 
@@ -48,7 +48,7 @@ func newSwap(
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
@@ -64,13 +64,13 @@ func newSwap(
 	receipt := tests.MineTransaction(t, ec, tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
-	swapID, err := swapfactory.GetIDFromLog(receipt.Logs[0])
+	swapID, err := contracts.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := swapfactory.GetTimeoutsFromLog(receipt.Logs[0])
+	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	swap := swapfactory.SwapFactorySwap{
+	swap := contracts.SwapFactorySwap{
 		Owner:        txOpts.From,
 		Claimer:      xmrmakerAddress,
 		PubKeyClaim:  claimKey,
@@ -93,7 +93,7 @@ func newSwap(
 func newBackend(
 	t *testing.T,
 	addr ethcommon.Address,
-	contract *swapfactory.SwapFactory,
+	contract *contracts.SwapFactory,
 	privkey *ecdsa.PrivateKey,
 ) backend.Backend {
 	pk := privkey

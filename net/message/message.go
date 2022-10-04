@@ -178,7 +178,7 @@ func (m *SendKeysMessage) Type() Type {
 	return SendKeysType
 }
 
-// ContractSwap is the same as swapfactory.SwapFactorySwap
+// ContractSwap is the same as contracts.SwapFactorySwap
 type ContractSwap struct {
 	Owner        ethcommon.Address
 	Claimer      ethcommon.Address

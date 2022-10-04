@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/swapfactory"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -26,7 +26,7 @@ func TestCheckContractCode(t *testing.T) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, _, err := swapfactory.DeploySwapFactory(txOpts, ec)
+	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(ctx, ec, tx)

@@ -14,11 +14,11 @@ import (
 	common "github.com/athanorlabs/atomic-swap/common"
 	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	net "github.com/athanorlabs/atomic-swap/net"
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	txsender "github.com/athanorlabs/atomic-swap/protocol/txsender"
-	swapfactory "github.com/athanorlabs/atomic-swap/swapfactory"
 	ethereum "github.com/ethereum/go-ethereum"
 	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	common0 "github.com/ethereum/go-ethereum/common"
@@ -147,10 +147,10 @@ func (mr *MockBackendMockRecorder) CodeAt(arg0, arg1, arg2 interface{}) *gomock.
 }
 
 // Contract mocks base method.
-func (m *MockBackend) Contract() *swapfactory.SwapFactory {
+func (m *MockBackend) Contract() *contracts.SwapFactory {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Contract")
-	ret0, _ := ret[0].(*swapfactory.SwapFactory)
+	ret0, _ := ret[0].(*contracts.SwapFactory)
 	return ret0
 }
 
@@ -465,10 +465,10 @@ func (mr *MockBackendMockRecorder) Net() *gomock.Call {
 }
 
 // NewSwapFactory mocks base method.
-func (m *MockBackend) NewSwapFactory(arg0 common0.Address) (*swapfactory.SwapFactory, error) {
+func (m *MockBackend) NewSwapFactory(arg0 common0.Address) (*contracts.SwapFactory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewSwapFactory", arg0)
-	ret0, _ := ret[0].(*swapfactory.SwapFactory)
+	ret0, _ := ret[0].(*contracts.SwapFactory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -480,7 +480,7 @@ func (mr *MockBackendMockRecorder) NewSwapFactory(arg0 interface{}) *gomock.Call
 }
 
 // NewTxSender mocks base method.
-func (m *MockBackend) NewTxSender(arg0 common0.Address, arg1 *swapfactory.IERC20) (txsender.Sender, error) {
+func (m *MockBackend) NewTxSender(arg0 common0.Address, arg1 *contracts.IERC20) (txsender.Sender, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewTxSender", arg0, arg1)
 	ret0, _ := ret[0].(txsender.Sender)
@@ -549,7 +549,7 @@ func (mr *MockBackendMockRecorder) SetBaseXMRDepositAddress(arg0 interface{}) *g
 }
 
 // SetContract mocks base method.
-func (m *MockBackend) SetContract(arg0 *swapfactory.SwapFactory) {
+func (m *MockBackend) SetContract(arg0 *contracts.SwapFactory) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetContract", arg0)
 }

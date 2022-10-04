@@ -16,13 +16,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	recovery "github.com/athanorlabs/atomic-swap/recover"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 )
 
 const (
@@ -139,8 +139,8 @@ func main() {
 // Recoverer is implemented by a backend which is able to recover swap funds
 type Recoverer interface {
 	WalletFromSharedSecret(secret *mcrypto.PrivateKeyInfo) (mcrypto.Address, error)
-	RecoverFromXMRMakerSecretAndContract(b backend.Backend, dataDir string, xmrmakerSecret, contractAddr string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) //nolint:lll
-	RecoverFromXMRTakerSecretAndContract(b backend.Backend, dataDir string, xmrtakerSecret string, swapID [32]byte, swap swapfactory.SwapFactorySwap) (*xmrtaker.RecoveryResult, error)               //nolint:lll
+	RecoverFromXMRMakerSecretAndContract(b backend.Backend, dataDir string, xmrmakerSecret, contractAddr string, swapID [32]byte, swap contracts.SwapFactorySwap) (*xmrmaker.RecoveryResult, error) //nolint:lll
+	RecoverFromXMRTakerSecretAndContract(b backend.Backend, dataDir string, xmrtakerSecret string, swapID [32]byte, swap contracts.SwapFactorySwap) (*xmrtaker.RecoveryResult, error)               //nolint:lll
 }
 
 type instance struct {
@@ -332,7 +332,7 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		return nil, err
 	}
 
-	contract, err := swapfactory.NewSwapFactory(contractAddr, ec)
+	contract, err := contracts.NewSwapFactory(contractAddr, ec)
 	if err != nil {
 		return nil, err
 	}

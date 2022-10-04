@@ -10,8 +10,8 @@ import (
 	"path"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -32,9 +32,9 @@ func getOrDeploySwapFactory(
 	chainID *big.Int,
 	privkey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
-) (*swapfactory.SwapFactory, ethcommon.Address, error) {
+) (*contracts.SwapFactory, ethcommon.Address, error) {
 	var (
-		sf *swapfactory.SwapFactory
+		sf *contracts.SwapFactory
 	)
 
 	if env != common.Mainnet && (address == ethcommon.Address{}) {
@@ -47,14 +47,14 @@ func getOrDeploySwapFactory(
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to make transactor: %w", err)
 		}
 
-		// deploy SwapFactory.sol
+		// deploy contracts.sol
 		var tx *ethtypes.Transaction
 		address, tx, sf, err = deploySwapFactory(ec, txOpts)
 		if err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w; please check your chain ID", err)
 		}
 
-		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
+		log.Infof("deployed contracts.sol: address=%s tx hash=%s", address, tx.Hash())
 
 		// store the contract address on disk
 		fp := path.Join(dataDir, "contract-address.json")
@@ -67,7 +67,7 @@ func getOrDeploySwapFactory(
 		if err != nil {
 			return nil, ethcommon.Address{}, err
 		}
-		log.Infof("loaded SwapFactory.sol from address %s", address)
+		log.Infof("loaded contracts.sol from address %s", address)
 
 		err = checkContractCode(ctx, ec, address)
 		if err != nil {
@@ -84,7 +84,7 @@ func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr e
 		return err
 	}
 
-	expectedCode := ethcommon.FromHex(swapfactory.SwapFactoryMetaData.Bin)
+	expectedCode := ethcommon.FromHex(contracts.SwapFactoryMetaData.Bin)
 	if !bytes.Contains(expectedCode, code) {
 		return errInvalidSwapContract
 	}
@@ -92,10 +92,10 @@ func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr e
 	return nil
 }
 
-func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*swapfactory.SwapFactory, error) {
-	return swapfactory.NewSwapFactory(addr, client)
+func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*contracts.SwapFactory, error) {
+	return contracts.NewSwapFactory(addr, client)
 }
 
-func deploySwapFactory(client *ethclient.Client, txOpts *bind.TransactOpts) (ethcommon.Address, *ethtypes.Transaction, *swapfactory.SwapFactory, error) { //nolint:lll
-	return swapfactory.DeploySwapFactory(txOpts, client)
+func deploySwapFactory(client *ethclient.Client, txOpts *bind.TransactOpts) (ethcommon.Address, *ethtypes.Transaction, *contracts.SwapFactory, error) { //nolint:lll
+	return contracts.DeploySwapFactory(txOpts, client)
 }

@@ -31,4 +31,9 @@
 node.key
 xmrmaker.key
 xmrtaker.key
-cmd/daemon/*.key
+/cmd/daemon/*.key
+/tests/*.log
+
+# Ethereum contract compilation artifacts
+/ethereum/abi/
+/ethereum/bin/

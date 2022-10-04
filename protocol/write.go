@@ -8,7 +8,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/swapfactory"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
 // InfoFileContents represents the contents of the swap info file used in case
@@ -16,7 +16,7 @@ import (
 type InfoFileContents struct {
 	ContractAddress      string
 	ContractSwapID       [32]byte
-	ContractSwap         swapfactory.SwapFactorySwap
+	ContractSwap         contracts.SwapFactorySwap
 	PrivateKeyInfo       *mcrypto.PrivateKeyInfo
 	SharedSwapPrivateKey *mcrypto.PrivateKeyInfo
 }
@@ -40,7 +40,7 @@ func WriteContractAddressToFile(infofile, addr string) error {
 }
 
 // WriteContractSwapToFile writes the given Swap contract struct to the given file
-func WriteContractSwapToFile(infofile string, swapID [32]byte, swap swapfactory.SwapFactorySwap) error {
+func WriteContractSwapToFile(infofile string, swapID [32]byte, swap contracts.SwapFactorySwap) error {
 	file, contents, err := setupFile(infofile)
 	if err != nil {
 		return err
