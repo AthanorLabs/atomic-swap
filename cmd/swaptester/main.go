@@ -74,8 +74,41 @@ func main() {
 	}
 }
 
+func setLogLevels(c *cli.Context) error {
+	const (
+		levelError = "error"
+		levelWarn  = "warn"
+		levelInfo  = "info"
+		levelDebug = "debug"
+	)
+
+	_ = logging.SetLogLevel("cmd", levelInfo)
+
+	level := c.String(flagLogLevel)
+	if level == "" {
+		level = levelInfo
+	}
+
+	switch level {
+	case levelError, levelWarn, levelInfo, levelDebug:
+	default:
+		return fmt.Errorf("invalid log level")
+	}
+
+	_ = logging.SetLogLevel("xmrtaker", level)
+	_ = logging.SetLogLevel("xmrmaker", level)
+	_ = logging.SetLogLevel("common", level)
+	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("rpcclient", level)
+	_ = logging.SetLogLevel("wsclient", level)
+	_ = logging.SetLogLevel("monero", level)
+	return nil
+}
+
 func runTester(c *cli.Context) error {
-	if err := logging.SetLogLevel("*", c.String(flagLogLevel)); err != nil {
+	err := setLogLevels(c)
+	if err != nil {
 		return err
 	}
 
