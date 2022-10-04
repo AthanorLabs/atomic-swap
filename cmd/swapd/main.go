@@ -220,8 +220,33 @@ type daemon struct {
 	cancel context.CancelFunc
 }
 
+func setLogLevels(c *cli.Context) error {
+	const (
+		levelError = "error"
+		levelWarn  = "warn"
+		levelInfo  = "info"
+		levelDebug = "debug"
+	)
+
+	level := c.String(flagLogLevel)
+	switch level {
+	case levelError, levelWarn, levelInfo, levelDebug:
+	default:
+		return fmt.Errorf("invalid log level %q", level)
+	}
+
+	_ = logging.SetLogLevel("xmrtaker", level)
+	_ = logging.SetLogLevel("xmrmaker", level)
+	_ = logging.SetLogLevel("common", level)
+	_ = logging.SetLogLevel("cmd", level)
+	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("monero", level)
+	return nil
+}
+
 func runDaemon(c *cli.Context) error {
-	if err := logging.SetLogLevel("*", c.String(flagLogLevel)); err != nil {
+	if err := setLogLevels(c); err != nil {
 		return err
 	}
 
@@ -271,7 +296,7 @@ func (d *daemon) make(c *cli.Context) error {
 
 	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
 	// `flagEthereumChainID` is passed:
-	if c.Uint(flagEthereumChainID) != 0 {
+	if c.IsSet(flagEthereumChainID) {
 		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
 	}
 
@@ -323,13 +348,6 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm)
-	if err != nil {
-		return err
-	}
-	defer backend.Close()
-
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
@@ -343,6 +361,13 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	sm := swap.NewManager()
+	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host)
+	if err != nil {
+		return err
+	}
+	defer backend.Close()
 
 	a, b, err := getProtocolInstances(c, cfg, backend)
 	if err != nil {
@@ -398,6 +423,7 @@ func newBackend(
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
+	net net.Host,
 ) (backend.Backend, error) {
 	var (
 		ethEndpoint string
@@ -494,6 +520,7 @@ func newBackend(
 		SwapManager:         sm,
 		SwapContract:        contract,
 		SwapContractAddress: contractAddr,
+		Net:                 net,
 	}
 
 	b, err := backend.NewBackend(bcfg)

@@ -50,6 +50,7 @@ var (
 	_   = logging.SetLogLevel("cmd", "debug")
 	_   = logging.SetLogLevel("net", "debug")
 	_   = logging.SetLogLevel("rpc", "debug")
+	_   = logging.SetLogLevel("monero", "debug")
 )
 
 var (
@@ -101,7 +102,7 @@ var (
 			},
 			&cli.UintFlag{
 				Name:  flagEthereumChainID,
-				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337", // TODO: add defaults information
+				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
 			},
 			&cli.UintFlag{
 				Name:   flagGasPrice,
@@ -281,7 +282,6 @@ func getRecoverer(c *cli.Context, env common.Environment, cfg *common.Config) (R
 		return nil, err
 	}
 
-	// TODO: This should use the same config that swapd uses
 	ethEndpoint := c.String(flagEthereumEndpoint)
 	if ethEndpoint == "" {
 		ethEndpoint = common.DefaultEthEndpoint
@@ -300,12 +300,45 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		ethEndpoint string
 	)
 
+	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
+	// `flagEthereumChainID` is passed:
 	if c.IsSet(flagEthereumChainID) {
 		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
 	}
 
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
+	} else {
+		ethEndpoint = common.DefaultEthEndpoint
+	}
+
+	// TODO: add --external-signer option to allow front-end integration (#124)
+	ethPrivKeyFile := c.String(flagEthereumPrivKey)
+	devXMRMaker := false // Not directly supported, but you can put the Ganache key in a file
+	devXMRTaker := false
+	ethPrivKey, err := cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
+	var gasPrice *big.Int
+	if c.Uint(flagGasPrice) != 0 {
+		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
+	}
+
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	contract, err := swapfactory.NewSwapFactory(contractAddr, ec)
+	if err != nil {
+		return nil, err
+	}
+
 	// For the monero wallet related values, keep the default config values unless the end
-	// use explicitly set the flag.
+	// user explicitly set the flag.
 	if c.IsSet(flagMoneroDaemonHost) {
 		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
 	}
@@ -324,40 +357,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
 	})
 	if err != nil {
-		return nil, err
-	}
-
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String(flagEthereumEndpoint)
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
-
-	// TODO: add --external-signer option to allow front-end integration (#124)
-	ethPrivKeyFile := c.String(flagEthereumPrivKey)
-	devXMRMaker := false // Not directly supported, but you can put the Ganache key in a file
-	devXMRTaker := false
-	ethPrivKey, err := cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
-	if err != nil {
-		mc.Close()
-		return nil, err
-	}
-
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
-	var gasPrice *big.Int
-	if c.Uint(flagGasPrice) != 0 {
-		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
-	}
-
-	ec, err := ethclient.Dial(ethEndpoint)
-	if err != nil {
-		mc.Close()
-		return nil, err
-	}
-
-	contract, err := swapfactory.NewSwapFactory(contractAddr, ec)
-	if err != nil {
-		mc.Close()
 		return nil, err
 	}
 
