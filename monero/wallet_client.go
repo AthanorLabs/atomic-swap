@@ -82,7 +82,7 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	}
 	isNewWallet := !walletExists
 
-	endpoint, proc, err := createWalletRPCService(conf, isNewWallet)
+	endpoint, proc, err := createWalletRPCService(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -90,13 +90,17 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	c := NewThinWalletClient(endpoint).(*walletClient)
 	c.rpcProcess = proc
 
+	walletName := path.Base(conf.WalletFilePath)
 	if isNewWallet {
-		walletName := path.Base(conf.WalletFilePath)
-		if err := c.createAndOpenWallet(walletName, conf.WalletPassword); err != nil {
+		if err := c.CreateWallet(walletName, conf.WalletPassword); err != nil {
 			c.Close()
 			return nil, err
 		}
 		log.Infof("New Monero wallet %s created", conf.WalletFilePath)
+	}
+	if err := c.OpenWallet(walletName, conf.WalletPassword); err != nil {
+		c.Close()
+		return nil, err
 	}
 	return c, nil
 }
@@ -115,13 +119,6 @@ func (c *walletClient) LockClient() {
 
 func (c *walletClient) UnlockClient() {
 	c.mu.Unlock()
-}
-
-func (c *walletClient) createAndOpenWallet(walletName string, walletPassword string) error {
-	if err := c.CreateWallet(walletName, walletPassword); err != nil {
-		return err
-	}
-	return c.OpenWallet(walletName, walletPassword)
 }
 
 func (c *walletClient) GetAccounts() (*wallet.GetAccountsResponse, error) {
@@ -302,7 +299,7 @@ func validateMonerodConfig(env common.Environment, monerodHost string, monerodPo
 
 // createWalletRPCService starts a monero-wallet-rpc listening on a random port for tests. The json_rpc
 // URL of the started service is returned.
-func createWalletRPCService(conf *WalletClientConf, isNewWallet bool) (string, *os.Process, error) {
+func createWalletRPCService(conf *WalletClientConf) (string, *os.Process, error) {
 	walletRPCBin := conf.MoneroWalletRPCPath
 	if walletRPCBin == "" {
 		var err error
@@ -335,7 +332,7 @@ func createWalletRPCService(conf *WalletClientConf, isNewWallet bool) (string, *
 		conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
 	}
 
-	walletRPCBinArgs := getWalletRPCFlags(conf, isNewWallet)
+	walletRPCBinArgs := getWalletRPCFlags(conf)
 	proc, err := launchMoneroWalletRPCChild(walletRPCBin, walletRPCBinArgs...)
 	if err != nil {
 		return "", nil, fmt.Errorf("%w, see %s for details", err, conf.LogPath)
@@ -428,14 +425,16 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 }
 
 // getWalletRPCFlags returns the flags used when launching monero-wallet-rpc
-func getWalletRPCFlags(conf *WalletClientConf, isNewWallet bool) []string {
+func getWalletRPCFlags(conf *WalletClientConf) []string {
 	args := []string{
 		"--rpc-bind-ip=127.0.0.1",
 		fmt.Sprintf("--rpc-bind-port=%d", conf.WalletPort),
 		"--disable-rpc-login", // TODO: Enable this?
+		fmt.Sprintf("--wallet-dir=%s", path.Dir(conf.WalletFilePath)),
 		// monero-wallet-rpc doesn't allow "--password=" syntax for empty passwords, so we use 2 args
 		"--password", conf.WalletPassword,
 		fmt.Sprintf("--log-file=%s", conf.LogPath),
+		"--log-level=0",
 	}
 
 	switch conf.Env {
@@ -456,13 +455,6 @@ func getWalletRPCFlags(conf *WalletClientConf, isNewWallet bool) []string {
 	// monero-wallet-rpc defaults --daemon-port to 18081 (38081 if --stagenet is passed)
 	if conf.MonerodPort != 0 {
 		args = append(args, fmt.Sprintf("--daemon-port=%d", conf.MonerodPort))
-	}
-
-	if isNewWallet {
-		// Wallet will be created after monero-wallet-rpc starts
-		args = append(args, fmt.Sprintf("--wallet-dir=%s", path.Dir(conf.WalletFilePath)))
-	} else {
-		args = append(args, fmt.Sprintf("--wallet-file=%s", conf.WalletFilePath))
 	}
 
 	return args
