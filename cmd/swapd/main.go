@@ -33,11 +33,6 @@ const (
 	defaultXMRTakerLibp2pPort = 9933
 	defaultXMRMakerLibp2pPort = 9934
 
-	// default libp2p key files
-	defaultLibp2pKey         = "node.key"
-	defaultXMRTakerLibp2pKey = "xmrtaker.key"
-	defaultXMRMakerLibp2pKey = "xmrmaker.key"
-
 	// default RPC port
 	defaultRPCPort         = 5005
 	defaultXMRTakerRPCPort = 5001
@@ -106,7 +101,7 @@ var (
 			&cli.StringFlag{
 				Name:  flagLibp2pKey,
 				Usage: "libp2p private key",
-				Value: defaultLibp2pKey,
+				Value: fmt.Sprintf("{DATA_DIR}/%s", common.DefaultLibp2pKeyFileName),
 			},
 			&cli.UintFlag{
 				Name:  flagLibp2pPort,
@@ -132,7 +127,7 @@ var (
 			&cli.StringFlag{
 				Name:  flagMoneroWalletPath,
 				Usage: "Path to the Monero wallet file, created if missing",
-				Value: "{DATA-DIR}/{ENV}/wallet/swap-wallet",
+				Value: fmt.Sprintf("{DATA-DIR}/wallet/%s", common.DefaultMoneroWalletName),
 			},
 			&cli.StringFlag{
 				Name:  flagMoneroWalletPassword,
@@ -149,7 +144,8 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumPrivKey,
-				Usage: "File containing a private key as hex string",
+				Usage: "File containing ethereum private key as hex, new key is generated if missing",
+				Value: fmt.Sprintf("{DATA-DIR}/%s", common.DefaultEthKeyFileName),
 			},
 			&cli.UintFlag{
 				Name:  flagEthereumChainID,
@@ -295,6 +291,22 @@ func (d *daemon) make(c *cli.Context) error {
 		return errFlagsMutuallyExclusive(flagDevXMRMaker, flagDevXMRTaker)
 	}
 
+	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
+	if c.IsSet(flagDataDir) {
+		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
+	} else if env == common.Development {
+		// Override in dev scenarios if the value was not explicitly set
+		switch {
+		case devXMRTaker:
+			cfg.DataDir = defaultXMRTakerDataDir
+		case devXMRMaker:
+			cfg.DataDir = defaultXMRMakerDataDir
+		}
+	}
+	if err = common.MakeDir(cfg.DataDir); err != nil {
+		return err
+	}
+
 	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
 	// `flagEthereumChainID` is passed:
 	if c.IsSet(flagEthereumChainID) {
@@ -305,20 +317,9 @@ func (d *daemon) make(c *cli.Context) error {
 		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
 	}
 
-	//
-	// Note: Overrides for devXMRTaker/devXMRMaker use "IsSet" instead of checking the value so that
-	//       the devXMRTaker/devXMRMaker configurations take precedence over normal default values,
-	//       but will not override values explicitly set by the end user.
-	//
-
-	libp2pKey := c.String(flagLibp2pKey)
-	if !c.IsSet(flagLibp2pKey) {
-		switch {
-		case devXMRTaker:
-			libp2pKey = defaultXMRTakerLibp2pKey
-		case devXMRMaker:
-			libp2pKey = defaultXMRMakerLibp2pKey
-		}
+	libp2pKey := cfg.LibP2PKeyFile()
+	if c.IsSet(flagLibp2pKey) {
+		libp2pKey = c.String(libp2pKey)
 	}
 
 	libp2pPort := uint16(c.Uint(flagLibp2pPort))
@@ -329,24 +330,6 @@ func (d *daemon) make(c *cli.Context) error {
 		case devXMRMaker:
 			libp2pPort = defaultXMRMakerLibp2pPort
 		}
-	}
-
-	// cfg.DataDir was already defaulted from the `flagEnv` value and `flagDataDir` does
-	// not directly set a default value.
-	if c.IsSet(flagDataDir) {
-		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
-	} else {
-		// Override in dev scenarios if the value was not explicitly set
-		switch {
-		case devXMRTaker:
-			cfg.DataDir = defaultXMRTakerDataDir
-		case devXMRMaker:
-			cfg.DataDir = defaultXMRMakerDataDir
-		}
-	}
-
-	if err = common.MakeDir(cfg.DataDir); err != nil {
-		return err
 	}
 
 	netCfg := &net.Config{
@@ -438,12 +421,15 @@ func newBackend(
 	}
 
 	useExternalSigner := c.Bool(flagUseExternalSigner)
-	ethPrivKeyFile := c.String(flagEthereumPrivKey)
-	if useExternalSigner && ethPrivKeyFile != "" {
+	if useExternalSigner && c.IsSet(flagEthereumPrivKey) {
 		return nil, errFlagsMutuallyExclusive(flagUseExternalSigner, flagEthereumPrivKey)
 	}
 
 	if !useExternalSigner {
+		ethPrivKeyFile := cfg.EthKeyFileName()
+		if c.IsSet(flagEthereumPrivKey) {
+			ethPrivKeyFile = c.String(flagEthereumPrivKey)
+		}
 		var err error
 		if ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
 			return nil, err

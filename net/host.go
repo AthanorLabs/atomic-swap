@@ -24,9 +24,8 @@ import (
 )
 
 const (
-	protocolID     = "/atomic-swap"
-	maxReads       = 128
-	defaultKeyFile = "net.key"
+	protocolID = "/atomic-swap"
+	maxReads   = 128
 )
 
 var log = logging.Logger("net")
@@ -81,8 +80,8 @@ type Config struct {
 
 // NewHost returns a new host
 func NewHost(cfg *Config) (*host, error) {
-	if cfg.KeyFile == "" {
-		cfg.KeyFile = defaultKeyFile
+	if cfg.DataDir == "" || cfg.KeyFile == "" {
+		panic("required parameters not set")
 	}
 
 	key, err := loadKey(cfg.KeyFile)

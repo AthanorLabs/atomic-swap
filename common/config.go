@@ -7,6 +7,17 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+const (
+	// DefaultMoneroWalletName is the default wallet name in {DATA_DIR}/wallet/
+	DefaultMoneroWalletName = "swap-wallet"
+
+	// DefaultLibp2pKeyFileName is the default libp2p private key file name in {DATA_DIR}
+	DefaultLibp2pKeyFileName = "net.key"
+
+	// DefaultEthKeyFileName is the default ethereum private key file name in {DATA_DIR}
+	DefaultEthKeyFileName = "eth.key"
+)
+
 var homeDir, _ = os.UserHomeDir()
 var baseDir = path.Join(homeDir, ".atomicswap")
 
@@ -54,8 +65,20 @@ var DevelopmentConfig = Config{
 	EthereumChainID:  GanacheChainID,
 }
 
-// MoneroWalletPath returns the path to the wallet file, which depends on the
-// current value of the data dir.
+// MoneroWalletPath returns the path to the wallet file, whose default value
+// depends on current value of the data dir.
 func (c Config) MoneroWalletPath() string {
-	return path.Join(c.DataDir, "wallet", "swap-wallet")
+	return path.Join(c.DataDir, "wallet", DefaultMoneroWalletName)
+}
+
+// LibP2PKeyFile returns the path to the libp2p key file, whose default value
+// depends on current value of the data dir.
+func (c Config) LibP2PKeyFile() string {
+	return path.Join(c.DataDir, DefaultLibp2pKeyFileName)
+}
+
+// EthKeyFileName returns the path to the ethereum key file, whose default value
+// depends on current value of the data dir.
+func (c Config) EthKeyFileName() string {
+	return path.Join(c.DataDir, DefaultEthKeyFileName)
 }

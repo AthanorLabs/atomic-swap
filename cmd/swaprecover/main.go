@@ -167,8 +167,7 @@ func (inst *instance) recover(c *cli.Context) error {
 		return err
 	}
 
-	// cfg.DataDir was already defaulted from the `flagEnv` value and `flagDataDir` does
-	// not directly set a default value.
+	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
 	if c.IsSet(flagDataDir) {
 		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
 	}
