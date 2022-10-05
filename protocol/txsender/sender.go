@@ -62,10 +62,6 @@ func (s *privateKeySender) Approve(spender ethcommon.Address,
 	defer s.txOpts.Unlock()
 	txOpts := s.txOpts.Inner()
 
-	if s.erc20Contract == nil {
-		panic("erc20Contract should not be nil")
-	}
-
 	tx, err := s.erc20Contract.Approve(&txOpts, spender, amount)
 	if err != nil {
 		err = fmt.Errorf("set_ready tx creation failed, %w", err)
