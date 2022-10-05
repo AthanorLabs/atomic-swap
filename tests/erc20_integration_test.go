@@ -3,13 +3,8 @@ package tests
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
-	"fmt"
 	"math/big"
-	"os"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -21,8 +16,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
-	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
 
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
@@ -49,95 +42,30 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 	return erc20Addr
 }
 
+func TestXMRTaker_ERC20_Query(t *testing.T) {
+	testXMRTakerQuery(t, types.EthAsset(deployERC20Mock(t)))
+}
+
 func TestSuccess_ERC20_OneSwap(t *testing.T) {
-	if os.Getenv(generateBlocksEnv) != falseStr {
-		generateBlocks(64)
-	}
+	testSuccess(t, types.EthAsset(deployERC20Mock(t)))
+}
 
-	erc20Addr := deployERC20Mock(t)
+func TestRefund_ERC20_XMRTakerCancels(t *testing.T) {
+	testRefundXMRTakerCancels(t, types.EthAsset(deployERC20Mock(t)))
+}
 
-	const testTimeout = time.Second * 75
+func TestAbort_ERC20_XMRTakerCancels(t *testing.T) {
+	testAbortXMRTakerCancels(t, types.EthAsset(deployERC20Mock(t)))
+}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestAbort_ERC20_XMRMakerCancels(t *testing.T) {
+	testAbortXMRMakerCancels(t, types.EthAsset(deployERC20Mock(t)))
+}
 
-	bwsc, err := wsclient.NewWsClient(ctx, defaultXMRMakerDaemonWSEndpoint)
-	require.NoError(t, err)
+func TestError_ERC20_ShouldOnlyTakeOfferOnce(t *testing.T) {
+	testErrorShouldOnlyTakeOfferOnce(t, types.EthAsset(deployERC20Mock(t)))
+}
 
-	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate), types.EthAsset(erc20Addr))
-	require.NoError(t, err)
-
-	bc := rpcclient.NewClient(defaultXMRMakerDaemonEndpoint)
-	offersBefore, err := bc.GetOffers()
-	require.NoError(t, err)
-	defer func() {
-		err = bc.ClearOffers(nil)
-		require.NoError(t, err)
-	}()
-
-	errCh := make(chan error, 2)
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case status := <-statusCh:
-				t.Log("> XMRMaker got status:", status)
-				if status.IsOngoing() {
-					continue
-				}
-
-				if status != types.CompletedSuccess {
-					errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
-				}
-				return
-			case <-time.After(testTimeout):
-				errCh <- errors.New("make offer subscription timed out")
-				return
-			}
-		}
-	}()
-
-	ac := rpcclient.NewClient(defaultXMRTakerDaemonEndpoint)
-	awsc, err := wsclient.NewWsClient(ctx, defaultXMRTakerDaemonWSEndpoint)
-	require.NoError(t, err)
-
-	// TODO: implement discovery over websockets (#97)
-	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
-	require.NoError(t, err)
-	require.Equal(t, 1, len(providers))
-	require.GreaterOrEqual(t, len(providers[0]), 2)
-
-	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
-	require.NoError(t, err)
-
-	go func() {
-		defer wg.Done()
-		for status := range takerStatusCh {
-			t.Log("> XMRTaker got status:", status)
-			if status.IsOngoing() {
-				continue
-			}
-			if status != types.CompletedSuccess {
-				errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
-			}
-			return
-		}
-	}()
-
-	wg.Wait()
-
-	select {
-	case err = <-errCh:
-		require.NoError(t, err)
-	default:
-	}
-
-	offersAfter, err := bc.GetOffers()
-	require.NoError(t, err)
-	require.Equal(t, 1, len(offersBefore)-len(offersAfter))
+func TestSuccess_ERC20_ConcurrentSwaps(t *testing.T) {
+	testSuccessConcurrentSwaps(t, types.EthAsset(deployERC20Mock(t)))
 }
