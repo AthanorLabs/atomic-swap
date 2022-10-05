@@ -457,13 +457,13 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 			return ethcommon.Hash{}, fmt.Errorf("failed to instantiate IERC20: %s", err)
 		}
 
-		allowance, err := token.Allowance(s.CallOpts(), s.ethAsset.Address(), s.ContractAddr())
+		balance, err := token.BalanceOf(s.CallOpts(), s.EthAddress())
 		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to get allowance for token: %s", err)
+			return ethcommon.Hash{}, fmt.Errorf("failed to get balance for token: %s", err)
 		}
 
 		log.Info("approving token for use by the swap contract...")
-		_, _, err = s.sender.Approve(s.ContractAddr(), big.NewInt(0).Add(allowance, amount.BigInt()))
+		_, _, err = s.sender.Approve(s.ContractAddr(), balance)
 		if err != nil {
 			return ethcommon.Hash{}, fmt.Errorf("failed to approve token: %s", err)
 		}

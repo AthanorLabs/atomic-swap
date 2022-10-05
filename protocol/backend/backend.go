@@ -147,7 +147,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}
 
 	if cfg.Environment == common.Development {
-		defaultTimeoutDuration = 75 * time.Second
+		defaultTimeoutDuration = 90 * time.Second
 	} else if cfg.Environment == common.Stagenet {
 		defaultTimeoutDuration = time.Hour
 	}
