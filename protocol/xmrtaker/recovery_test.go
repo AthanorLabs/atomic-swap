@@ -25,7 +25,7 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	s.setXMRMakerKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
 	s.xmrmakerAddress = s.EthAddress()
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	dataDir := path.Join(t.TempDir(), "test-infoFile")

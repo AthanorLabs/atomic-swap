@@ -208,7 +208,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -242,7 +242,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -390,7 +390,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -413,7 +413,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -437,7 +437,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
