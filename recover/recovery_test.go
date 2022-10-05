@@ -21,7 +21,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-var defaultTimeout int64 = 7 // 7 seconds
+var defaultTimeout int64 = 8 // 8 seconds
 
 func newRecoverer(t *testing.T) *recoverer {
 	r, err := NewRecoverer(common.Development, monero.CreateWalletClient(t), common.DefaultEthEndpoint)
