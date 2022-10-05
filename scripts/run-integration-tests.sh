@@ -55,7 +55,7 @@ sleep 3 # Time for Bob and Charlie's swapd to be fully up
 
 # run tests
 echo "running integration tests..."
-TESTS=integration go test ./tests -v -count=1
+TESTS=integration go test ./tests -v -count=1 -timeout=30m 
 OK="${?}"
 
 # If we failed, make a copy of the log files that won't get deleted
