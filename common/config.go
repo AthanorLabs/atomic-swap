@@ -43,7 +43,7 @@ var MainnetConfig = Config{
 var StagenetConfig = Config{
 	DataDir:          path.Join(baseDir, "stagenet"),
 	MoneroDaemonHost: "node.sethforprivacy.com",
-	MoneroDaemonPort: DefaultMoneroDaemonStagenetPort,
+	MoneroDaemonPort: 38089, // Seth is not using the default stagenet value of 38081 (so don't use our constant)
 	EthereumChainID:  GorliChainID,
 	ContractAddress:  ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7"),
 	Bootnodes: []string{
