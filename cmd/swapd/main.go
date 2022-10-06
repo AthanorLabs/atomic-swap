@@ -294,6 +294,9 @@ func (d *daemon) make(c *cli.Context) error {
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
 	if c.IsSet(flagDataDir) {
 		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
+		if cfg.DataDir == "" {
+			return errFlagValueEmpty(flagDataDir)
+		}
 	} else if env == common.Development {
 		// Override in dev scenarios if the value was not explicitly set
 		switch {
@@ -319,7 +322,10 @@ func (d *daemon) make(c *cli.Context) error {
 
 	libp2pKey := cfg.LibP2PKeyFile()
 	if c.IsSet(flagLibp2pKey) {
-		libp2pKey = c.String(libp2pKey)
+		libp2pKey = c.String(flagLibp2pKey)
+		if libp2pKey == "" {
+			return errFlagValueEmpty(flagLibp2pKey)
+		}
 	}
 
 	libp2pPort := uint16(c.Uint(flagLibp2pPort))
@@ -399,6 +405,10 @@ func errFlagsMutuallyExclusive(flag1, flag2 string) error {
 	return fmt.Errorf("flags %q and %q are mutually exclusive", flag1, flag2)
 }
 
+func errFlagValueEmpty(flag string) error {
+	return fmt.Errorf("flag %q requires a non-empty value", flag)
+}
+
 func newBackend(
 	ctx context.Context,
 	c *cli.Context,
@@ -429,6 +439,9 @@ func newBackend(
 		ethPrivKeyFile := cfg.EthKeyFileName()
 		if c.IsSet(flagEthereumPrivKey) {
 			ethPrivKeyFile = c.String(flagEthereumPrivKey)
+			if ethPrivKeyFile == "" {
+				return nil, errFlagValueEmpty(flagEthereumPrivKey)
+			}
 		}
 		var err error
 		if ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
@@ -477,6 +490,9 @@ func newBackend(
 	// use explicitly set the flag.
 	if c.IsSet(flagMoneroDaemonHost) {
 		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
+		if cfg.MoneroDaemonHost == "" {
+			return nil, errFlagValueEmpty(flagMoneroDaemonHost)
+		}
 	}
 	if c.IsSet(flagMoneroDaemonPort) {
 		cfg.MoneroDaemonPort = c.Uint(flagMoneroDaemonPort)
@@ -484,6 +500,9 @@ func newBackend(
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
+		if walletFilePath == "" {
+			return nil, errFlagValueEmpty(flagMoneroWalletPath)
+		}
 	}
 	mc, err := monero.NewWalletClient(&monero.WalletClientConf{
 		Env:                 env,
@@ -529,15 +548,21 @@ func newBackend(
 
 func getProtocolInstances(c *cli.Context, cfg common.Config,
 	b backend.Backend) (xmrtakerHandler, xmrmakerHandler, error) {
-	walletFile := c.String("wallet-file")
+	walletFilePath := cfg.MoneroWalletPath()
+	if c.IsSet(flagMoneroWalletPath) {
+		walletFilePath = c.String(flagMoneroWalletPath)
+		if walletFilePath == "" {
+			return nil, nil, errFlagValueEmpty(flagMoneroWalletPath)
+		}
+	}
 
 	// empty password is ok
-	walletPassword := c.String("wallet-password")
+	walletPassword := c.String(flagMoneroWalletPassword)
 
 	xmrtakerCfg := &xmrtaker.Config{
 		Backend:              b,
 		DataDir:              cfg.DataDir,
-		MoneroWalletFile:     walletFile,
+		MoneroWalletFile:     walletFilePath,
 		MoneroWalletPassword: walletPassword,
 		TransferBack:         c.Bool(flagTransferBack),
 	}
@@ -550,7 +575,7 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 	xmrmakerCfg := &xmrmaker.Config{
 		Backend:        b,
 		DataDir:        cfg.DataDir,
-		WalletFile:     walletFile,
+		WalletFile:     walletFilePath,
 		WalletPassword: walletPassword,
 	}
 
