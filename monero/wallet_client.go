@@ -20,6 +20,10 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
+const (
+	moneroWalletRPCLogPrefix = "[monero-wallet-rpc]: "
+)
+
 // WalletClient represents a monero-wallet-rpc client.
 type WalletClient interface {
 	LockClient() // can't use Lock/Unlock due to name conflict
@@ -368,11 +372,10 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 	cmd.Stdout = pWrite
 	cmd.Stderr = pWrite
 
-	// Last entry wins if LANG/LC_ALL were already set. It would be nice to not
-	// include the user's environment, but we'd have to narrow down the minimal
-	// set. A directory named ".shared-ringdb" is created in the current working
-	// directory if we don't add os.Environ().
-	cmd.Env = append(os.Environ(), "LANG=C", "LC_ALL=C")
+	// Last entry wins if an environment variable is in the list multiple times.
+	// We parse some output, so we want to force English. NO_COLO[U]R=1 failed to
+	// remove ansi colour escapes, but setting TERM=dumb succeeded.
+	cmd.Env = append(os.Environ(), "LANG=C", "LC_ALL=C", "TERM=dumb")
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGTERM,
@@ -401,7 +404,7 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 		if line != "This is the RPC monero wallet. It needs to connect to a monero" &&
 			line != "daemon to work correctly." &&
 			line != "" {
-			log.Infof("monero-wallet-rpc: %s", line)
+			log.Info(moneroWalletRPCLogPrefix, line)
 		}
 		if strings.HasSuffix(line, "Starting wallet RPC server") {
 			started = true
@@ -414,12 +417,16 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 	}
 	time.Sleep(200 * time.Millisecond) // additional start time
 
-	// drain any additional output
+	// Drain additional output. We are not detaching monero-wallet-rpc so it will
+	// die when we exit. This has the downside that logs are sent both to the
+	// monero-wallet-rpc.log file and to standard output.
 	go func() {
 		for scanner.Scan() {
-			line := scanner.Text()
-			log.Infof("monero-wallet-rpc: %s", line)
+			// We could log here, but it's noisy and we have a separate log file with
+			// full logs. A future version could parse the log messages and send some
+			// filtered subset to swapd's logs.
 		}
+		log.Error("monero-wallet-rpc exited")
 	}()
 	return cmd.Process, nil
 }
