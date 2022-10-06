@@ -3,10 +3,6 @@
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
 
-# Integration tests still need Bob's wallet on a pre-established port, so XMR Maker
-# funds can be mined.
-BOB_WALLET_PORT=18083
-
 ./scripts/build.sh || exit 1
 
 source "scripts/testlib.sh"
@@ -20,6 +16,7 @@ echo "87c546d6cb8ec705bea47e2ab40f42a768b1e5900686b0cecc68c0e8b74cd789" >"${CHAR
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
 ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
+LOG_LEVEL=debug
 
 start-swapd() {
 	local swapd_user="${1:?}"
@@ -50,6 +47,7 @@ start-daemons() {
 
 	start-swapd alice \
 		--dev-xmrtaker \
+		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
 		"--libp2p-key=${ALICE_LIBP2PKEY}" \
 		--deploy
@@ -72,13 +70,14 @@ start-daemons() {
 
 	start-swapd bob \
 		--dev-xmrmaker \
-		"--wallet-port=${BOB_WALLET_PORT}" \
+		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
 		--libp2p-port=9944 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
 		"--contract-address=${CONTRACT_ADDR}"
 
 	start-swapd charlie \
+		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--ethereum-privkey "${CHARLIE_ETH_KEY}" \
 		--libp2p-port=9955 \
@@ -87,7 +86,7 @@ start-daemons() {
 		"--contract-address=${CONTRACT_ADDR}"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
-	sleep 5
+	sleep 7
 }
 
 stop-daemons() {
@@ -109,6 +108,7 @@ KEEP_TEST_DATA="${OK}" stop-daemons
 if [[ "${OK}" -eq 0 ]]; then
 	rm -f "${CHARLIE_ETH_KEY}"
 	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,info-*.json,monero-wallet-rpc.log}
+	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{net,eth}.key
 	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore}
 	rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
 	remove-test-data-dir

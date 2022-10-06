@@ -25,7 +25,9 @@ import (
 )
 
 const (
-	monerodRegtestEndpoint = "http://127.0.0.1:18081/json_rpc"
+	// MonerodRegtestEndpoint is the RPC endpoint used by monerod in the dev environment's regtest mode.
+	MonerodRegtestEndpoint = "http://127.0.0.1:18081/json_rpc"
+
 	backgroundMineInterval = 500 * time.Millisecond
 	// Mastering monero example address (we don't use the background mining block rewards in tests)
 	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
@@ -93,7 +95,7 @@ func BackgroundMineBlocks(t *testing.T) {
 				// not cancelled, mine another block below
 			}
 
-			daemonCli := monerorpc.New(monerodRegtestEndpoint, nil).Daemon
+			daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 			resp, err := daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
 				AmountOfBlocks: 1,
 				WalletAddress:  blockRewardAddress,
@@ -115,7 +117,7 @@ func BackgroundMineBlocks(t *testing.T) {
 // MineMinXMRBalance enables mining for the passed wc wallet until it has an unlocked balance greater
 // than or equal to minBalance.
 func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.MoneroAmount) {
-	daemonCli := monerorpc.New(monerodRegtestEndpoint, nil).Daemon
+	daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 	addr, err := wc.GetAddress(0)
 	require.NoError(t, err)
 

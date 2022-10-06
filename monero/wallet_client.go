@@ -41,7 +41,7 @@ type WalletClient interface {
 	OpenWallet(filename, password string) error
 	CloseWallet() error
 	Endpoint() string // URL on which the wallet is accepting RPC requests
-	Close()           // Close closes the client itself, including any wallets that were open
+	Close()           // Close closes the client itself, including any open wallet
 }
 
 // WalletClientConf wraps the configuration fields needed to call NewWalletClient
@@ -66,7 +66,7 @@ type walletClient struct {
 // NewWalletClient returns a WalletClient for a newly created monero-wallet-rpc process.
 func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	if conf.WalletFilePath == "" {
-		panic("WalletFile is a required conf field") // should have been caught before we were invoked
+		panic("WalletFilePath is a required conf field") // should have been caught before we were invoked
 	}
 	if conf.WalletPort == 0 {
 		var err error
@@ -260,7 +260,7 @@ func (c *walletClient) Close() {
 		p := c.rpcProcess
 		c.rpcProcess = nil
 		err := p.Kill()
-		if err != nil {
+		if err == nil {
 			_, _ = p.Wait()
 		}
 	}

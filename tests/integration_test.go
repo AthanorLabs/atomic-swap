@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MarinX/monerorpc"
+	"github.com/MarinX/monerorpc/daemon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -33,8 +35,6 @@ const (
 	defaultXMRMakerSwapdWSEndpoint = "ws://localhost:5002/ws"
 	defaultCharlieSwapdWSEndpoint  = "ws://localhost:5003/ws"
 
-	defaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
-
 	defaultDiscoverTimeout = 2 // 2 seconds
 
 	xmrmakerProvideAmount = float64(1.0)
@@ -56,8 +56,30 @@ func TestRunIntegrationTests(t *testing.T) {
 func (s *IntegrationTestSuite) SetupTest() {
 	// Ensure minimum XMR Maker balance before each test is run
 	if os.Getenv(generateBlocksEnv) != falseStr {
-		cli := monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
-		monero.MineMinXMRBalance(s.T(), cli, common.MoneroToPiconero(xmrmakerProvideAmount))
+		// We need slightly more than xmrmakerProvideAmount for transaction fees
+		mineMinXMRMakerBalance(s.T(), common.MoneroToPiconero(xmrmakerProvideAmount*2))
+	}
+}
+
+// mineMinXMRMakerBalance is similar to monero.MineMinXMRBalance(...), but this version
+// uses the swapd RPC Balances method to get the wallet address and balance from a
+// running swapd instance instead of interacting with a wallet.
+func mineMinXMRMakerBalance(t *testing.T, minBalance common.MoneroAmount) {
+	daemonCli := monerorpc.New(monero.MonerodRegtestEndpoint, nil).Daemon
+	for {
+		balances, err := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint).Balances()
+		require.NoError(t, err)
+		if balances.PiconeroUnlockedBalance >= uint64(minBalance) {
+			break
+		}
+		_, err = daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
+			AmountOfBlocks: 32,
+			WalletAddress:  balances.MoneroAddress,
+		})
+		if err != nil && err.Error() == "Block not accepted" {
+			continue
+		}
+		require.NoError(t, err)
 	}
 }
 
@@ -292,7 +314,7 @@ func (s *IntegrationTestSuite) TestRefund_XMRTakerCancels() {
 
 			switch exitStatus {
 			case types.CompletedRefund:
-				// desired outcome, do nothing
+				// the desired outcome, do nothing
 			case types.CompletedSuccess:
 				s.T().Log("XMRTaker's cancel was beaten out by XMRMaker completing the swap")
 			default:
