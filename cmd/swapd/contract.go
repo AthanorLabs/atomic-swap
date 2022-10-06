@@ -54,7 +54,7 @@ func getOrDeploySwapFactory(
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w; please check your chain ID", err)
 		}
 
-		log.Infof("deployed contracts.sol: address=%s tx hash=%s", address, tx.Hash())
+		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
 
 		// store the contract address on disk
 		fp := path.Join(dataDir, "contractaddress")
