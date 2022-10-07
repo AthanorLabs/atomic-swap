@@ -41,7 +41,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, err
 	}
 
-	// check user's balance and that they actually have what they will provide
+	// Ensure the user's balance is strictly greater than the amount they will provide
 	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
 		return nil, errBalanceTooLow
 	}

@@ -12,6 +12,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 )
 
+const etherSymbol = "ETH"
+
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
 func GetSwapInfoFilepath(dataDir string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
@@ -50,5 +52,5 @@ func AssetSymbol(b backend.Backend, asset types.EthAsset) (string, error) {
 		return symbol, nil
 	}
 
-	return "ETH", nil
+	return etherSymbol, nil
 }
