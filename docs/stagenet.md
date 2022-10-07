@@ -36,7 +36,7 @@ For Linux 64-bit, you can do:
 5. Optional: Export the private key for this account by navigating to: three dots in upper right of
    Metamask -> account details -> export private key. Paste this private key into a file
    named `{DATA_DIR}/eth.key`. If you skip this step, a new goerli wallet will be created for you
-   that you can transfer stagenet ether to or fund directly in the next step.
+   that you can transfer Goerli ether to or fund directly in the next step.
 
 6. Fund your Goerli account using a faucet: 
 - https://goerli-faucet.pk910.de/
