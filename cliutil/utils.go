@@ -11,11 +11,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
 )
 
 var (
+	// Only use this logger in functions called by programs that use formatted logs like swapd (not swapcli)
+	log = logging.Logger("cmd")
+
 	errInvalidEnv = errors.New("--env must be one of mainnet, stagenet, or dev")
 )
 
@@ -38,7 +42,13 @@ func createAndWriteEthKeyFile(ethPrivKeyFile string, env common.Environment, dev
 	privKeyStr := hexutil.Encode(ethcrypto.FromECDSA(key))
 	privKeyStr = strings.TrimPrefix(privKeyStr, "0x")
 
-	return os.WriteFile(ethPrivKeyFile, []byte(privKeyStr), 0600)
+	if err := os.WriteFile(ethPrivKeyFile, []byte(privKeyStr), 0600); err != nil {
+		return err
+	}
+	pubAddr := ethcrypto.PubkeyToAddress(*(key.Public().(*ecdsa.PublicKey))).Hex()
+	log.Infof("New ETH wallet key generated in %s with public address %s", ethPrivKeyFile, pubAddr)
+
+	return nil
 }
 
 // GetEthereumPrivateKey reads or creates and returns an ethereum private key for the given the CLI options.
