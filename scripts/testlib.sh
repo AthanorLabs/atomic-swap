@@ -54,7 +54,7 @@ mine-monero-for-swapd() {
 	local swapd_port="${1:-5001}" # defaults to 5001 if not passed
 	local wallet_addr
 	wallet_addr="$(
-		"${PROJECT_ROOT}/swapcli" balances --swapd-port "${swapd_port}" | grep 'Monero adddress:' | sed 's/.*: //'
+		"${PROJECT_ROOT}/swapcli" balances --swapd-port "${swapd_port}" | grep 'Monero address:' | sed 's/.*: //'
 	)"
 	mine-monero "${wallet_addr}"
 }
