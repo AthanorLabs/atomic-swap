@@ -64,7 +64,7 @@ on http://localhost:5001 and Bob's runs on http://localhost:5002 by default.
 
 Now, in terminal 3, we will interact with the swap daemon using `swapcli`.
 
-First we need mine some monero for Bob. Alice already has Ethereum, because she is using
+First we need mine some XMR for Bob. Alice already has ETH, because she is using
 a prefunded by ganache address. You can see the balances for Bob with the following
 command:
 ```bash
