@@ -3,6 +3,7 @@ package xmrtaker
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
 	"os"
 	"sync"
 	"testing"
@@ -114,6 +115,30 @@ func newTestInstance(t *testing.T) *swapState {
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
+}
+
+func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
+	b := newBackend(t)
+
+	txOpts, err := b.TxOpts()
+	require.NoError(t, err)
+
+	_, tx, contract, err := contracts.DeployERC20Mock(
+		txOpts,
+		b.EthClient(),
+		"Mock",
+		"MOCK",
+		b.EthAddress(),
+		initialBalance,
+	)
+	require.NoError(t, err)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.EthClient(), tx)
+	require.NoError(t, err)
+
+	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
+		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAsset(addr))
+	require.NoError(t, err)
+	return swapState, contract
 }
 
 func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
@@ -444,4 +469,14 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	require.Equal(t, errUnexpectedMessageType, err)
 	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
+}
+
+func TestSwapState_ApproveToken(t *testing.T) {
+	initialBalance := big.NewInt(999999)
+	s, contract := newTestInstanceWithERC20(t, initialBalance)
+	err := s.approveToken()
+	require.NoError(t, err)
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.EthAddress(), s.ContractAddr())
+	require.NoError(t, err)
+	require.Equal(t, initialBalance, allowance)
 }

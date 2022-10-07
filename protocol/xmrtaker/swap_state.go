@@ -437,6 +437,26 @@ func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateVi
 	s.xmrmakerSecp256k1PublicKey = secp256k1Pub
 }
 
+func (s *swapState) approveToken() error {
+	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.EthClient())
+	if err != nil {
+		return fmt.Errorf("failed to instantiate IERC20: %s", err)
+	}
+
+	balance, err := token.BalanceOf(s.CallOpts(), s.EthAddress())
+	if err != nil {
+		return fmt.Errorf("failed to get balance for token: %s", err)
+	}
+
+	log.Info("approving token for use by the swap contract...")
+	_, _, err = s.sender.Approve(s.ContractAddr(), balance)
+	if err != nil {
+		return fmt.Errorf("failed to approve token: %s", err)
+	}
+
+	return nil
+}
+
 // lockETH the Swap contract function new_swap and locks `amount` ether in it.
 // TODO: update units to not necessarily be an EtherAmount
 func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error) {
@@ -449,23 +469,9 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 	}
 
 	if s.ethAsset != types.EthAssetETH {
-		// TODO: check logs
-		// TODO: check units
-		// TODO: separate to its own function and create unit tests
-		token, err := contracts.NewIERC20(s.ethAsset.Address(), s.EthClient())
+		err := s.approveToken()
 		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to instantiate IERC20: %s", err)
-		}
-
-		balance, err := token.BalanceOf(s.CallOpts(), s.EthAddress())
-		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to get balance for token: %s", err)
-		}
-
-		log.Info("approving token for use by the swap contract...")
-		_, _, err = s.sender.Approve(s.ContractAddr(), balance)
-		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to approve token: %s", err)
+			return ethcommon.Hash{}, err
 		}
 	}
 
