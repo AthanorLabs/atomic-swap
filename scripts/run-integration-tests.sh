@@ -85,7 +85,7 @@ start-daemons() {
 		"--contract-address=${CONTRACT_ADDR}"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
-	sleep 7
+	sleep 10
 }
 
 stop-daemons() {
