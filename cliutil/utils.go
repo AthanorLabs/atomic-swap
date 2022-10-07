@@ -45,9 +45,10 @@ func createAndWriteEthKeyFile(ethPrivKeyFile string, env common.Environment, dev
 	if err := os.WriteFile(ethPrivKeyFile, []byte(privKeyStr), 0600); err != nil {
 		return err
 	}
-	pubAddr := ethcrypto.PubkeyToAddress(*(key.Public().(*ecdsa.PublicKey))).Hex()
-	log.Infof("New ETH wallet key generated in %s with public address %s", ethPrivKeyFile, pubAddr)
 
+	log.Infof("New ETH wallet key generated in %s", ethPrivKeyFile)
+	log.Infof("Fund address %s to take an offer",
+		ethcrypto.PubkeyToAddress(*(key.Public().(*ecdsa.PublicKey))).Hex())
 	return nil
 }
 

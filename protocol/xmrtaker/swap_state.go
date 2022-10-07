@@ -658,7 +658,6 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 			return fmt.Errorf("failed to get balance: %w", err)
 		}
 
-		// TODO: Should this function be waiting for some minimum unlocked balance instead?
 		if balance.Balance == balance.UnlockedBalance {
 			return nil
 		}
