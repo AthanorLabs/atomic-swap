@@ -79,7 +79,6 @@ start-daemons() {
 	start-swapd charlie \
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
-		--ethereum-privkey "${CHARLIE_ETH_KEY}" \
 		--libp2p-port=9955 \
 		--rpc-port 5003 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
