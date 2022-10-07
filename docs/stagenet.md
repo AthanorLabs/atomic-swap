@@ -142,7 +142,7 @@ If all goes well, you should see the node execute the swap protocol. If the swap
  
 1. Find your stagenet address:
 ```bash
-curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"get_accounts","params":{}}' -H 'Content-Type: application/json'
+./swapcli balances | grep 'Monero address'
 ```
 
 2. Fund this address with some stagenet XMR. You can try the faucets here:
