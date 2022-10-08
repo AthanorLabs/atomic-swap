@@ -160,4 +160,3 @@ require (
 )
 
 replace github.com/noot/cgo-dleq => ./dleq/cgo-dleq
-replace github.com/ChainSafe/chaindb => ../../ChainSafe/chaindb

@@ -207,8 +207,8 @@ type xmrmakerHandler interface {
 }
 
 type daemon struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx      context.Context
+	cancel   context.CancelFunc
 	database *db.Database
 }
 
