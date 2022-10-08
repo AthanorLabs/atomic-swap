@@ -6,11 +6,15 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+
+	logging "github.com/ipfs/go-log"
 )
 
 const statusChSize = 6 // the max number of stages a swap can potentially go through
 
 var (
+	log = logging.Logger("offers")
+
 	errOfferDoesNotExist = errors.New("offer with given ID does not exist")
 )
 
@@ -48,6 +52,8 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 			offer: offer,
 			extra: extra,
 		}
+
+		log.Infof("loaded offer %s from database", offer.GetID())
 	}
 
 	return &Manager{

@@ -83,9 +83,6 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 			return nil, err
 		}
 
-		var id types.Hash
-		copy(id[:], key)
-		offer.SetID(id)
 		offers = append(offers, &offer)
 	}
 

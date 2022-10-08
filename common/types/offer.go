@@ -64,15 +64,6 @@ func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate Ex
 	}
 }
 
-// SetID sets the offer's ID.
-// Note: this will panic if the ID is already set (ie. the offer was created using NewOffer).
-func (o *Offer) SetID(id Hash) {
-	if !o.id.IsZero() {
-		panic("cannot set offer ID if it's already set")
-	}
-	o.id = id
-}
-
 // GetID returns the ID of the offer
 func (o *Offer) GetID() Hash {
 	if o.id.IsZero() {

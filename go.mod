@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	filippo.io/edwards25519 v1.0.0
-	github.com/ChainSafe/chaindb v0.1.5-0.20220708005902-df45dbc8e840
+	github.com/ChainSafe/chaindb v0.1.5-0.20221008013212-2694744a46d2
 	github.com/MarinX/monerorpc v1.0.0
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
@@ -159,4 +159,4 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
 
-replace github.com/noot/cgo-dleq => ./dleq/cgo-dleq
+replace github.com/ChainSafe/chaindb => ../../ChainSafe/chaindb

@@ -9,12 +9,14 @@ import (
 	"path"
 	"strings"
 
+	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -207,6 +209,7 @@ type xmrmakerHandler interface {
 type daemon struct {
 	ctx    context.Context
 	cancel context.CancelFunc
+	database *db.Database
 }
 
 func setLogLevels(c *cli.Context) error {
@@ -229,6 +232,7 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("common", level)
 	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	return nil
 }
@@ -252,7 +256,8 @@ func runDaemon(c *cli.Context) error {
 	}
 
 	d.wait()
-	// TODO: close database
+	// close database
+	_ = d.database.Close()
 	os.Exit(0)
 	return nil
 }
@@ -352,13 +357,23 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
+	dbCfg := &chaindb.Config{
+		DataDir: path.Join(cfg.DataDir, "db"),
+	}
+
+	db, err := db.NewDatabase(dbCfg)
+	if err != nil {
+		return err
+	}
+	d.database = db
+
 	sm := swap.NewManager()
 	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host)
 	if err != nil {
 		return err
 	}
 
-	a, b, err := getProtocolInstances(c, cfg, backend)
+	a, b, err := getProtocolInstances(c, cfg, backend, db)
 	if err != nil {
 		return err
 	}
@@ -527,7 +542,7 @@ func newBackend(
 }
 
 func getProtocolInstances(c *cli.Context, cfg common.Config,
-	b backend.Backend) (xmrtakerHandler, xmrmakerHandler, error) {
+	b backend.Backend, db *db.Database) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFile := c.String("wallet-file")
 
 	// empty password is ok
@@ -549,6 +564,7 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 	xmrmakerCfg := &xmrmaker.Config{
 		Backend:        b,
 		DataDir:        cfg.DataDir,
+		Database:       db,
 		WalletFile:     walletFile,
 		WalletPassword: walletPassword,
 	}
