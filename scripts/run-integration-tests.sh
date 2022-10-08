@@ -99,7 +99,7 @@ stop-daemons() {
 # run tests
 echo "running integration tests..."
 start-daemons
-TESTS=integration go test ./tests -v -count=1
+TESTS=integration go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 

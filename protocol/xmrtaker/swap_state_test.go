@@ -3,6 +3,7 @@ package xmrtaker
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
 	"os"
 	"sync"
 	"testing"
@@ -114,6 +115,30 @@ func newTestInstance(t *testing.T) *swapState {
 	return swapState
 }
 
+func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
+	b := newBackend(t)
+
+	txOpts, err := b.TxOpts()
+	require.NoError(t, err)
+
+	_, tx, contract, err := contracts.DeployERC20Mock(
+		txOpts,
+		b.EthClient(),
+		"Mock",
+		"MOCK",
+		b.EthAddress(),
+		initialBalance,
+	)
+	require.NoError(t, err)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.EthClient(), tx)
+	require.NoError(t, err)
+
+	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
+		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAsset(addr))
+	require.NoError(t, err)
+	return swapState, contract
+}
+
 func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
@@ -206,7 +231,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -240,7 +265,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -380,7 +405,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -403,7 +428,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -427,11 +452,21 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockETH(common.NewEtherAmount(1))
+	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
 	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
 	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
+}
+
+func TestSwapState_ApproveToken(t *testing.T) {
+	initialBalance := big.NewInt(999999)
+	s, contract := newTestInstanceWithERC20(t, initialBalance)
+	err := s.approveToken()
+	require.NoError(t, err)
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.EthAddress(), s.ContractAddr())
+	require.NoError(t, err)
+	require.Equal(t, initialBalance, allowance)
 }

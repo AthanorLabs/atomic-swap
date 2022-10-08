@@ -58,7 +58,7 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Warnf("failed to read websockets message: %s", err)
+			log.Debugf("failed to read websockets message: %s", err)
 			break
 		}
 

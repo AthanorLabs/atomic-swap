@@ -33,24 +33,30 @@ type Sender interface {
 type privateKeySender struct {
 	ctx           context.Context
 	ec            *ethclient.Client
-	contract      *contracts.SwapFactory
+	swapContract  *contracts.SwapFactory
 	erc20Contract *contracts.IERC20
 	txOpts        *TxOpts
 }
 
 // NewSenderWithPrivateKey returns a new *privateKeySender
-func NewSenderWithPrivateKey(ctx context.Context, ec *ethclient.Client, contract *contracts.SwapFactory,
-	erc20Contract *contracts.IERC20, txOpts *TxOpts) Sender {
+func NewSenderWithPrivateKey(
+	ctx context.Context,
+	ec *ethclient.Client,
+	swapContract *contracts.SwapFactory,
+	erc20Contract *contracts.IERC20,
+	txOpts *TxOpts,
+) Sender {
 	return &privateKeySender{
-		ctx:      ctx,
-		ec:       ec,
-		contract: contract,
-		txOpts:   txOpts,
+		ctx:           ctx,
+		ec:            ec,
+		swapContract:  swapContract,
+		erc20Contract: erc20Contract,
+		txOpts:        txOpts,
 	}
 }
 
 func (s *privateKeySender) SetContract(contract *contracts.SwapFactory) {
-	s.contract = contract
+	s.swapContract = contract
 }
 
 func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
@@ -88,7 +94,7 @@ func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte
 		txOpts.Value = value
 	}
 
-	tx, err := s.contract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
+	tx, err := s.swapContract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
 		ethcommon.Address(_ethAsset), value, _nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
@@ -109,7 +115,7 @@ func (s *privateKeySender) SetReady(_swap contracts.SwapFactorySwap) (ethcommon.
 	defer s.txOpts.Unlock()
 	txOpts := s.txOpts.Inner()
 
-	tx, err := s.contract.SetReady(&txOpts, _swap)
+	tx, err := s.swapContract.SetReady(&txOpts, _swap)
 	if err != nil {
 		err = fmt.Errorf("set_ready tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
@@ -130,7 +136,7 @@ func (s *privateKeySender) Claim(_swap contracts.SwapFactorySwap,
 	defer s.txOpts.Unlock()
 	txOpts := s.txOpts.Inner()
 
-	tx, err := s.contract.Claim(&txOpts, _swap, _s)
+	tx, err := s.swapContract.Claim(&txOpts, _swap, _s)
 	if err != nil {
 		err = fmt.Errorf("claim tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
@@ -151,7 +157,7 @@ func (s *privateKeySender) Refund(_swap contracts.SwapFactorySwap,
 	defer s.txOpts.Unlock()
 	txOpts := s.txOpts.Inner()
 
-	tx, err := s.contract.Refund(&txOpts, _swap, _s)
+	tx, err := s.swapContract.Refund(&txOpts, _swap, _s)
 	if err != nil {
 		err = fmt.Errorf("refund tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err

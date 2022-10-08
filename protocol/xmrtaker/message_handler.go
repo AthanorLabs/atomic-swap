@@ -138,16 +138,24 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v %s", msg.ProvidedAmount, s.info.ProvidedAmount(),
-		s.info.EthAsset()))
+	symbol, err := pcommon.AssetSymbol(s.Backend, s.ethAsset)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v %s",
+		msg.ProvidedAmount,
+		s.info.ProvidedAmount(),
+		symbol,
+	))
 
 	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
-	txHash, err := s.lockETH(s.providedAmountInWei())
+	txHash, err := s.lockAsset(s.providedAmountInWei())
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock ETH in contract: %w", err)
 	}
 
-	log.Info("locked ether in swap contract, waiting for XMR to be locked")
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
 
 	// start goroutine to check that XMRMaker locks before t_0
 	go func() {
