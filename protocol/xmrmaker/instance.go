@@ -7,7 +7,6 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 
@@ -35,7 +34,7 @@ type Instance struct {
 // Config contains the configuration values for a new XMRMaker instance.
 type Config struct {
 	Backend                    backend.Backend
-	Database                   *db.Database
+	Database                   offers.Database
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool

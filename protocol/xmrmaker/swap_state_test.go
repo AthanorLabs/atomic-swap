@@ -18,10 +18,12 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
@@ -54,7 +56,7 @@ var (
 	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
 )
 
-func newTestXMRMaker(t *testing.T) *Instance {
+func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 
@@ -83,11 +85,17 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	db := offers.NewMockDatabase(ctrl)
+	db.EXPECT().GetAllOffers()
+
 	cfg := &Config{
 		Backend:        b,
 		DataDir:        path.Join(t.TempDir(), "xmrmaker"),
 		WalletFile:     testWallet,
 		WalletPassword: "",
+		Database:       db,
 	}
 
 	xmrmaker, err := NewInstance(cfg)
@@ -96,7 +104,12 @@ func newTestXMRMaker(t *testing.T) *Instance {
 	monero.MineMinXMRBalance(t, b, 5.0)
 	err = b.Refresh()
 	require.NoError(t, err)
-	return xmrmaker
+	return xmrmaker, db
+}
+
+func newTestXMRMaker(t *testing.T) *Instance {
+	inst, _ := newTestXMRMakerAndDB(t)
+	return inst
 }
 
 func newTestInstance(t *testing.T) (*Instance, *swapState) {
