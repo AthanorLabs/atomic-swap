@@ -437,10 +437,30 @@ func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateVi
 	s.xmrmakerSecp256k1PublicKey = secp256k1Pub
 }
 
-// lockETH the Swap contract function new_swap and locks `amount` ether in it.
-// TODO: rename to lockAsset or createNewSwap or something?
+func (s *swapState) approveToken() error {
+	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.EthClient())
+	if err != nil {
+		return fmt.Errorf("failed to instantiate IERC20: %w", err)
+	}
+
+	balance, err := token.BalanceOf(s.CallOpts(), s.EthAddress())
+	if err != nil {
+		return fmt.Errorf("failed to get balance for token: %w", err)
+	}
+
+	log.Info("approving token for use by the swap contract...")
+	_, _, err = s.sender.Approve(s.ContractAddr(), balance)
+	if err != nil {
+		return fmt.Errorf("failed to approve token: %w", err)
+	}
+
+	log.Info("approved token for use by the swap contract")
+	return nil
+}
+
+// lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
 // TODO: update units to not necessarily be an EtherAmount
-func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
+func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
 		return ethcommon.Hash{}, errNoPublicKeysSet
 	}
@@ -450,31 +470,9 @@ func (s *swapState) lockETH(amount common.EtherAmount) (ethcommon.Hash, error) {
 	}
 
 	if s.ethAsset != types.EthAssetETH {
-		// TODO: check logs
-		// TODO: check units
-
-		// check that the approval is required
-		// TODO: separate to its own function and create unit tests
-		token, err := contracts.NewIERC20(s.ethAsset.Address(), s.EthClient())
+		err := s.approveToken()
 		if err != nil {
-			log.Errorf("failed to instantiate IERC20: %s", s.ethAsset)
 			return ethcommon.Hash{}, err
-		}
-		allowance, err := token.Allowance(s.CallOpts(), s.ethAsset.Address(), s.ContractAddr())
-		if err != nil {
-			log.Errorf("failed to get allowance for token: %s", s.ethAsset)
-			return ethcommon.Hash{}, err
-		}
-
-		if allowance.Cmp(amount.BigInt()) == -1 {
-			log.Info("approving token for use by the swap contract...")
-			_, _, err = s.sender.Approve(s.ContractAddr(), amount.BigInt())
-			if err != nil {
-				log.Errorf("failed to approve token: %s", s.ethAsset)
-				return ethcommon.Hash{}, err
-			}
-		} else {
-			log.Info("the token has already been approved, continuing...")
 		}
 	}
 
