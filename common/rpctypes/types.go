@@ -1,6 +1,8 @@
 package rpctypes
 
 import (
+	"math/big"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -102,4 +104,14 @@ type SignerResponse struct {
 type SignerTxSigned struct {
 	OfferID string `json:"offerID"`
 	TxHash  string `json:"txHash"`
+}
+
+// BalancesResponse holds the response for the combined Monero and Ethereum Balances request
+type BalancesResponse struct {
+	MoneroAddress           string   `json:"monero_address"`
+	PiconeroBalance         uint64   `json:"piconero_balance"`
+	PiconeroUnlockedBalance uint64   `json:"piconero_unlocked_balance"`
+	BlocksToUnlock          uint64   `json:"blocks_to_unlock"`
+	EthAddress              string   `json:"eth_address"`
+	WeiBalance              *big.Int `json:"wei_balance"`
 }

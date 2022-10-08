@@ -2,13 +2,14 @@
 
 Currently, an initial version of the swap is deployed onto the Goerli (Ethereum testnet) and Monero Stagenet networks. To join the network and try out the swap, either as a maker or a taker, please see the following.
 
-> Note: a swap on stagenet currenty takes around 10-20 minutes due to block times.
+> Note: a swap on stagenet currently takes around 10-20 minutes due to block times.
 
 > Note: the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all your (testnet) funds. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
 
 ## Setup 
 
-The atomic swap daemon requires a connection to a monero-wallet-rpc process connected to a stagenet daemon, a Goerli network endpoint, and a Goerli network private key funded with some GoETH. 
+The atomic swap daemon requires access to a fully synced, stagenet monerod daemon,
+a Goerli network endpoint, and a Goerli network private key funded with some GoETH.
 
 1. Install the Monero CLI if you haven't already. You can get it [here](https://www.getmonero.org/downloads/#cli):
 
@@ -23,15 +24,19 @@ For Linux 64-bit, you can do:
 ./monero-bin/monerod --detach --stagenet
 ```
 
-3. Create a wallet directory and start the monero-wallet-rpc process. The directory `node-keys` will store your monero wallet keys.
-```bash
-mkdir node-keys
-./monero-bin/monero-wallet-rpc --stagenet --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./node-keys &> monero-wallet-cli.log &
-```
+3. Optional: Place your stagenet monero wallet file in `{DATA_DIR}/wallet/` and call it
+   `swap-wallet`. By default `{DATA_DIR}` is `${HOME}/.atomicswap/stagenet`, but if you
+   are creating multiple stagenet `swapd` instances on the same host, you should pass
+   `swapd` the `--data-dir` flag so each instance has a separate directory to store its
+   data. If you skip this step, a new wallet will be created that you can later fund for
+   swaps.
 
 4. Create a Goerli wallet. You can do this using Metamask by selecting "Goerli Test Network" from the networks, then creating a new account with "Create account". I'd recommend naming this new account something explicit like `goerli-swap-account`.
 
-5. Export the private key for this account by navigating to: three dots in upper right of Metamask -> account details -> export private key. Paste this private key into a file named `goerli.key`.
+5. Optional: Export the private key for this account by navigating to: three dots in upper right of
+   Metamask -> account details -> export private key. Paste this private key into a file
+   named `{DATA_DIR}/eth.key`. If you skip this step, a new goerli wallet will be created for you
+   that you can transfer Goerli ether to or fund directly in the next step.
 
 6. Fund your Goerli account using a faucet: 
 - https://goerli-faucet.pk910.de/
@@ -59,10 +64,23 @@ cd atomic-swap
 make build
 ```
 
-10. Copy `goerli.key` into this directory. If you are using an Infura Goerli endpoint, copy-paste your API key into the field below following the `--ethereum-endpoint` flag. Otherwise, change `--ethereum-endpoint` to point to your endpoint. Finally, start the `swapd` atomic swap daemon process:
+10. Start the `swapd` daemon. If you are using an Infura Goerli endpoint,
+    copy-paste your API key into the field below following the `--ethereum-endpoint` flag.
+    Otherwise, change `--ethereum-endpoint` to point to your endpoint.
 ```bash
-./swapd --env stagenet --ethereum-privkey=goerli.key --monero-endpoint=http://localhost:18083/json_rpc --wallet-file=stagenet-wallet --ethereum-endpoint=https://goerli.infura.io/v3/<your-api-key> --rpc-port=5001
+./swapd --env stagenet --ethereum-endpoint=https://goerli.infura.io/v3/<your-api-key>
 ```
+Note: You probably need additional flags above:
+* `--data-dir PATH`: Needed if you are launching more than one `swapd` instance
+  on the same host, otherwise accepting the default of `${HOME}/.atomicswap/stagenet`
+  is fine.
+* `--monerod-host HOSTNAME_OR_IP` and `--monerod-port PORT_NUM`: Ideally, you have your
+  own stagenet node on the local network and will use these values. If that is not an
+  option, our stagenet default uses `node.sethforprivacy.com:38089`.
+* `--libp2p-port PORT`. The default is `9900`. Use this flag when creating multiple
+  swapd instances on the same host.
+* `--rpc-port PORT`. The default is `5005`. Use this flag when creating multiple
+  swapd instances on the same host.
 
 > Note: please also see the [RPC documentation](./rpc.md) for complete documentation on available RPC calls and their parameters.
 
@@ -121,24 +139,19 @@ If all goes well, you should see the node execute the swap protocol. If the swap
 > Note: optionally, you can add the `--transfer-back` flag when starting `swapd` to automatically transfer received XMR back into your original wallet, if you have one opened on the endpoint when starting `swapd`.
 
 ## Maker
-
-1. Create a stagenet wallet:
-```bash
-curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"create_wallet","params":{"filename":"stagenet-wallet","password":"","language":"English"}}' -H 'Content-Type: application/json'
-```
  
-2. Find your stagenet address:
+1. Find your stagenet address:
 ```bash
-curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"get_accounts","params":{}}' -H 'Content-Type: application/json'
+./swapcli balances | grep 'Monero address'
 ```
 
-3. Fund this address with some stagenet XMR. You can try the faucets here:
+2. Fund this address with some stagenet XMR. You can try the faucets here:
 - https://stagenet-faucet.xmr-tw.org/
 - https://community.rino.io/faucet/stagenet/
 
 If you don't have any luck with these, please message me on twitter/reddit (@elizabethereum) with your stagenet address, and I can send you some stagenet XMR.
 
-4. a. Make an offer with `swapcli`:
+3. a. Make an offer with `swapcli`:
 ```bash
 ./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
@@ -175,11 +188,11 @@ You can also try the swap on another Ethereum or EVM-compatible testnet. However
 
 To connect to a different Ethereum network, follow [Setup](#setup) steps 4-7 but with your desired network. Then, start `swapd` with your specified private key file, endpoint, and chain ID. Common chain IDs can be found [here](https://besu.hyperledger.org/en/stable/Concepts/NetworkID-And-ChainID/).
 
-> Note: this command will deploy a new instance of `SwapFactory.sol` to the network, as it has not been deployed onto any other networks currently. If you want to use an already-deployed swap contract, remove the `--deploy` flag and pass in the address using `--contract-addr=<addr>`. You need to have funds in your account to deploy the contract.
-
-```bash
-./swapd --env stagenet --ethereum-privkey=<network>.key --monero-endpoint=http://localhost:18083/json_rpc --wallet-file=stagenet-wallet --ethereum-endpoint=https://<network>.infura.io/v3/<your-api-key> --ethereum-chain-id=<network-chain-id> --deploy
-```
+> Note: The `--deploy` flag to `swapd` creates a new instance of `SwapFactory.sol` to the
+network. You need to have funds in your account to deploy the contract. To use a contract
+deployed with `--deploy` in subsequent `swapd` instances, use the flag
+`--contract-addr=ADDRESS`. When using `stagenet`, a deployed contract already exists and
+our code will use it by default.
 
 ## Bug reports
 

@@ -13,6 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MarinX/monerorpc"
+	monerodaemon "github.com/MarinX/monerorpc/daemon"
+	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -20,24 +23,24 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
-
-	logging "github.com/ipfs/go-log"
 )
 
 const (
-	flagConfig  = "config"
-	flagTimeout = "timeout"
-	flagLog     = "log"
-	flagDev     = "dev"
+	flagConfig   = "config"
+	flagTimeout  = "timeout"
+	flagLogLevel = "log-level"
+	flagDev      = "dev"
 
-	defaultConfigFile = "testerconfig.json"
+	defaultConfigFile             = "testerconfig.json"
+	defaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
 )
 
 var (
-	defaultTimeout      = time.Minute * 15
-	log                 = logging.Logger("cmd")
-	isDev               = false
-	defaultMoneroClient monero.WalletClient
+	defaultTimeout       = time.Minute * 15
+	log                  = logging.Logger("cmd")
+	isDev                = false
+	defaultMoneroClient  monero.WalletClient
+	moneroDaemonEndpoint = fmt.Sprintf("http://127.0.0.1:%d/json_rpc", common.DefaultMoneroDaemonDevPort)
 )
 
 var (
@@ -56,8 +59,9 @@ var (
 				Usage: "time for which to run tester, in minutes; default=15mins",
 			},
 			&cli.StringFlag{
-				Name:  flagLog,
+				Name:  flagLogLevel,
 				Usage: "set log level: one of [error|warn|info|debug]",
+				Value: "info",
 			},
 			&cli.BoolFlag{
 				Name:  flagDev,
@@ -84,7 +88,7 @@ func setLogLevels(c *cli.Context) error {
 
 	_ = logging.SetLogLevel("cmd", levelInfo)
 
-	level := c.String(flagLog)
+	level := c.String(flagLogLevel)
 	if level == "" {
 		level = levelInfo
 	}
@@ -102,6 +106,7 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("rpcclient", level)
 	_ = logging.SetLogLevel("wsclient", level)
+	_ = logging.SetLogLevel("monero", level)
 	return nil
 }
 
@@ -113,7 +118,9 @@ func runTester(c *cli.Context) error {
 
 	isDev = c.Bool(flagDev)
 	if !isDev {
-		defaultMoneroClient = monero.NewWalletClient(common.DefaultXMRMakerMoneroEndpoint)
+		// TODO: Why do this when dev flag is not given? Can the code work if it is given?
+		// For this to work, you'll need to pass --wallet-port 18083 to the XMR Maker swapd
+		defaultMoneroClient = monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
 	}
 
 	var timeout time.Duration
@@ -189,17 +196,23 @@ func getRandomExchangeRate() types.ExchangeRate {
 }
 
 func generateBlocks() {
-	cXMRMaker := monero.NewWalletClient(common.DefaultXMRTakerMoneroEndpoint)
-
+	cXMRMaker := monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
 	xmrmakerAddr, err := cXMRMaker.GetAddress(0)
 	if err != nil {
 		log.Errorf("failed to get default monero address: %s", err)
 		return
 	}
-
 	log.Infof("development: generating blocks...")
-	dclient := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-	_ = dclient.GenerateBlocks(xmrmakerAddr.Address, 128)
+	daemonCli := monerorpc.New(moneroDaemonEndpoint, nil).Daemon
+	for i := 0; i < 128; i += 32 {
+		_, err = daemonCli.GenerateBlocks(&monerodaemon.GenerateBlocksRequest{
+			AmountOfBlocks: 32,
+			WalletAddress:  xmrmakerAddr.Address,
+		})
+		if err != nil {
+			log.Warnf("Error generating blocks: %s", err)
+		}
+	}
 }
 
 type daemon struct {

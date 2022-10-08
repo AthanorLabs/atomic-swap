@@ -15,8 +15,6 @@ source "${SCRIPTS_DIR}/testlib.sh"
 
 start-monerod-regtest
 start-ganache
-start-alice-wallet
-start-bob-wallet
 
 printf "\nTo stop the daemons and, optionally, cleanup:\n\n"
 printf "\t%s/cleanup-test-processes.sh\n" "${SCRIPTS_DIR}"

@@ -35,6 +35,7 @@ var testPackages = []struct {
 	{"cmd/swapd", 2},
 	{"ethereum", 16},
 	{"ethereum/block", 2},
+	{"net", 2},
 	{"protocol/backend", 2},
 	{"protocol/xmrmaker", 2},
 	{"protocol/xmrtaker", 2},

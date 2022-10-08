@@ -35,10 +35,9 @@ var (
 // It also interfaces with the network layer.
 type Backend interface {
 	monero.WalletClient
-	monero.DaemonClient
 	net.MessageSender
 
-	// create a new transaction sender, called per-swap
+	// NewTxSender creates a new transaction sender, called per-swap
 	NewTxSender(asset ethcommon.Address,
 		erc20Contract *contracts.IERC20) (txsender.Sender, error)
 
@@ -53,6 +52,7 @@ type Backend interface {
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
+	EthBalance() (ethcommon.Address, *big.Int, error)
 
 	// helpers
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -92,7 +92,6 @@ type backend struct {
 
 	// monero endpoints
 	monero.WalletClient
-	monero.DaemonClient
 
 	// monero deposit address (used if xmrtaker has transferBack set to true)
 	sync.RWMutex
@@ -121,10 +120,8 @@ type backend struct {
 
 // Config is the config for the Backend
 type Config struct {
-	Ctx                  context.Context
-	MoneroWalletEndpoint string
-	MoneroDaemonEndpoint string // only needed for development
-
+	Ctx                context.Context
+	MoneroClient       monero.WalletClient
 	EthereumClient     *ethclient.Client
 	EthereumPrivateKey *ecdsa.PrivateKey
 	Environment        common.Environment
@@ -142,10 +139,6 @@ type Config struct {
 
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
-	if cfg.Environment == common.Development && cfg.MoneroDaemonEndpoint == "" {
-		return nil, errMustProvideDaemonEndpoint
-	}
-
 	if cfg.Environment == common.Development {
 		defaultTimeoutDuration = 90 * time.Second
 	} else if cfg.Environment == common.Stagenet {
@@ -167,15 +160,6 @@ func NewBackend(cfg *Config) (Backend, error) {
 		}
 	}
 
-	// monero-wallet-rpc client
-	walletClient := monero.NewWalletClient(cfg.MoneroWalletEndpoint)
-
-	// this is only used in the monero development environment to generate new blocks
-	var daemonClient monero.DaemonClient
-	if cfg.Environment == common.Development {
-		daemonClient = monero.NewDaemonClient(cfg.MoneroDaemonEndpoint)
-	}
-
 	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
 		return nil, errNilSwapContractOrAddress
 	}
@@ -183,8 +167,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	return &backend{
 		ctx:          cfg.Ctx,
 		env:          cfg.Environment,
-		WalletClient: walletClient,
-		DaemonClient: daemonClient,
+		WalletClient: cfg.MoneroClient,
 		ethClient:    cfg.EthereumClient,
 		ethPrivKey:   cfg.EthereumPrivateKey,
 		callOpts: &bind.CallOpts{
@@ -389,8 +372,16 @@ func (b *backend) SetEthAddress(addr ethcommon.Address) {
 	if b.ethPrivKey != nil {
 		return
 	}
-
 	b.ethAddress = addr
+}
+
+func (b *backend) EthBalance() (ethcommon.Address, *big.Int, error) {
+	addr := b.EthAddress()
+	bal, err := b.ethClient.BalanceAt(b.ctx, addr, nil)
+	if err != nil {
+		return ethcommon.Address{}, nil, err
+	}
+	return addr, bal, nil
 }
 
 func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {

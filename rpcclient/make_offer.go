@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // MakeOffer calls net_makeOffer.

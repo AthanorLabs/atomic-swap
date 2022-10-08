@@ -42,30 +42,30 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 	return erc20Addr
 }
 
-func TestXMRTaker_ERC20_Query(t *testing.T) {
-	testXMRTakerQuery(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestXMRTaker_ERC20_Query() {
+	s.testXMRTakerQuery(types.EthAsset(deployERC20Mock(s.T())))
 }
 
-func TestSuccess_ERC20_OneSwap(t *testing.T) {
-	testSuccess(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestSuccess_ERC20_OneSwap() {
+	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())))
 }
 
-func TestRefund_ERC20_XMRTakerCancels(t *testing.T) {
-	testRefundXMRTakerCancels(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestRefund_ERC20_XMRTakerCancels() {
+	s.testRefundXMRTakerCancels(types.EthAsset(deployERC20Mock(s.T())))
 }
 
-func TestAbort_ERC20_XMRTakerCancels(t *testing.T) {
-	testAbortXMRTakerCancels(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestAbort_ERC20_XMRTakerCancels() {
+	s.testAbortXMRTakerCancels(types.EthAsset(deployERC20Mock(s.T())))
 }
 
-func TestAbort_ERC20_XMRMakerCancels(t *testing.T) {
-	testAbortXMRMakerCancels(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestAbort_ERC20_XMRMakerCancels() {
+	s.testAbortXMRMakerCancels(types.EthAsset(deployERC20Mock(s.T())))
 }
 
-func TestError_ERC20_ShouldOnlyTakeOfferOnce(t *testing.T) {
-	testErrorShouldOnlyTakeOfferOnce(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestError_ERC20_ShouldOnlyTakeOfferOnce() {
+	s.testErrorShouldOnlyTakeOfferOnce(types.EthAsset(deployERC20Mock(s.T())))
 }
 
-func TestSuccess_ERC20_ConcurrentSwaps(t *testing.T) {
-	testSuccessConcurrentSwaps(t, types.EthAsset(deployERC20Mock(t)))
+func (s *IntegrationTestSuite) TestSuccess_ERC20_ConcurrentSwaps() {
+	s.testSuccessConcurrentSwaps(types.EthAsset(deployERC20Mock(s.T())))
 }
