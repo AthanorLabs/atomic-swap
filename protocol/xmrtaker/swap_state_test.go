@@ -9,20 +9,20 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/tests"
-
-	logging "github.com/ipfs/go-log"
-	"github.com/stretchr/testify/require"
 )
 
 var infofile = os.TempDir() + "/test.keys"
@@ -62,17 +62,16 @@ func newBackend(t *testing.T) backend.Backend {
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
-		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
-		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
-		Environment:          common.Development,
-		ChainID:              chainID,
-		SwapManager:          pswap.NewManager(),
-		SwapContract:         contract,
-		SwapContractAddress:  addr,
-		Net:                  new(mockNet),
+		Ctx:                 context.Background(),
+		MoneroClient:        monero.CreateWalletClient(t),
+		EthereumClient:      ec,
+		EthereumPrivateKey:  pk,
+		Environment:         common.Development,
+		ChainID:             chainID,
+		SwapManager:         pswap.NewManager(),
+		SwapContract:        contract,
+		SwapContractAddress: addr,
+		Net:                 new(mockNet),
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -90,17 +89,16 @@ func newXMRMakerBackend(t *testing.T) backend.Backend {
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
-		Ctx:                  context.Background(),
-		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
-		EthereumClient:       ec,
-		EthereumPrivateKey:   pk,
-		Environment:          common.Development,
-		ChainID:              chainID,
-		SwapManager:          pswap.NewManager(),
-		SwapContract:         contract,
-		SwapContractAddress:  addr,
-		Net:                  new(mockNet),
+		Ctx:                 context.Background(),
+		MoneroClient:        monero.CreateWalletClient(t),
+		EthereumClient:      ec,
+		EthereumPrivateKey:  pk,
+		Environment:         common.Development,
+		ChainID:             chainID,
+		SwapManager:         pswap.NewManager(),
+		SwapContract:        contract,
+		SwapContractAddress: addr,
+		Net:                 new(mockNet),
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -288,11 +286,8 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	maker := newXMRMakerBackend(t)
 	err := maker.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
-	// mine some blocks to get xmr
-	xmrmakerAddr, err := maker.GetAddress(0)
-	require.NoError(t, err)
-	require.NoError(t, maker.GenerateBlocks(xmrmakerAddr.Address, 512))
-	require.NoError(t, maker.Refresh())
+
+	monero.MineMinXMRBalance(t, maker, common.MoneroToPiconero(1))
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
@@ -327,8 +322,6 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
 	require.Equal(t, uint64(amt), tResp.Amount)
 
-	_ = maker.GenerateBlocks(xmrmakerAddr.Address, 100)
-
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
@@ -339,9 +332,6 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.False(t, done)
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyReadyType, resp.Type())
-
-	err = maker.GenerateBlocks(xmrmakerAddr.Address, 1)
-	require.NoError(t, err)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key

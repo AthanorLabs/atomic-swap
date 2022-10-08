@@ -133,21 +133,25 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_t
 
 ## `personal` namespace
 
-### `personal_setMoneroWalletFile`
+### `personal_balances`
 
-Sets the node's monero wallet file. The wallet file must be in the directory specified by `--wallet-dir` when starting the `monero-wallet-rpc` server.
+Returns combined information of both the Monero and Ethereum account addresses  and balances.
 
 Parameters:
-- `walletFile`: name of the wallet file.
-- `walletPassword`: password to the wallet.
+- none
 
 Returns:
-- none
+- `monero_address`: primary monero address of the swapd wallet
+- `piconero_balance`: balance the swapd wallet in piconero
+- `piconero_unlocked_balance`: balance the swapd wallet in piconero that is spendable immediately
+- `blocks_to_unlock`: number of blocks until the full piconero_balance will be unlocked
+- `eth_address`: address of the swapd ethereum wallet
+- `wei_balance`: balance of the ethereum wallet in wei
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_setMoneroWalletFile","params":{"walletFile":"test-wallet", "walletPassword": ""}}' -H 'Content-Type: application/json'
-#{"jsonrpc":"2.0","result":null,"id":"0"}
+curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_balances","params":{}}' -H 'Content-Type: application/json'
+#{"jsonrpc":"2.0","result":{"monero_address":"47RP5qtFwN2fEsRtiXQ5Pe4BDB5UxLxFbbRbvQy4sCLzN8xZxaJTBw25JE7Saz4fCngcY5ZbCk1XN3squfGQzs2pVjgG6tb","piconero_balance":2250425843583586,"piconero_unlocked_balance":175824411726902,"blocks_to_unlock":59,"eth_address":"0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0","wei_balance":999987682387589565906},"id":"0"}
 ```
 
 ## `swap` namespace
