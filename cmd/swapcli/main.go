@@ -40,6 +40,15 @@ var (
 				},
 			},
 			{
+				Name:    "balances",
+				Aliases: []string{"b"},
+				Usage:   "Show our monero and ethereum account balances",
+				Action:  runBalances,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
 				Name:    "discover",
 				Aliases: []string{"d"},
 				Usage:   "Discover peers who provide a certain coin",
@@ -286,6 +295,24 @@ func runAddresses(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Listening addresses: %v\n", addrs)
+	return nil
+}
+
+func runBalances(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	balances, err := c.Balances()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
+	fmt.Printf("Balance: %s\n", common.FmtFloat((*common.EtherAmount)(balances.WeiBalance).AsEther()))
+	fmt.Println()
+	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
+	fmt.Printf("Balance: %s\n", common.FmtFloat(common.MoneroAmount(balances.PiconeroBalance).AsMonero()))
+	fmt.Printf("Unlocked balance: %s\n",
+		common.FmtFloat(common.MoneroAmount(balances.PiconeroUnlockedBalance).AsMonero()))
+	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
 	return nil
 }
 

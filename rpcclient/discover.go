@@ -65,7 +65,7 @@ func (c *Client) QueryAll(provides types.ProvidesCoin, searchTime uint64) ([]*rp
 		return nil, resp.Error
 	}
 
-	var res *rpctypes.QueryAllResponse
+	var res rpctypes.QueryAllResponse
 	if err = json.Unmarshal(resp.Result, &res); err != nil {
 		return nil, err
 	}

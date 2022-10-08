@@ -3,6 +3,8 @@ package rpc
 import (
 	"net/http"
 	"time"
+
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
 // PersonalService handles private keys and wallets.
@@ -17,18 +19,6 @@ func NewPersonalService(xmrmaker XMRMaker, pb ProtocolBackend) *PersonalService 
 		xmrmaker: xmrmaker,
 		pb:       pb,
 	}
-}
-
-// SetMoneroWalletFileRequest ...
-type SetMoneroWalletFileRequest struct {
-	WalletFile     string `json:"walletFile"`
-	WalletPassword string `json:"password"`
-}
-
-// SetMoneroWalletFile opens the given wallet file in monero-wallet-rpc.
-// It must exist in the monero-wallet-rpc wallet-dir that was specified on its startup.
-func (s *PersonalService) SetMoneroWalletFile(_ *http.Request, req *SetMoneroWalletFileRequest, _ *interface{}) error {
-	return s.xmrmaker.SetMoneroWalletFile(req.WalletFile, req.WalletPassword)
 }
 
 // SetSwapTimeoutRequest ...
@@ -52,5 +42,29 @@ type SetGasPriceRequest struct {
 func (s *PersonalService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
 	s.pb.SetGasPrice(req.GasPrice)
 	s.pb.SetGasPrice(req.GasPrice)
+	return nil
+}
+
+// Balances returns combined information of both the Monero and Ethereum account addresses
+// and balances.
+func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctypes.BalancesResponse) error {
+	mAddr, mBal, err := s.xmrmaker.GetMoneroBalance()
+	if err != nil {
+		return err
+	}
+
+	eAddr, eBal, err := s.pb.EthBalance()
+	if err != nil {
+		return err
+	}
+
+	*resp = rpctypes.BalancesResponse{
+		MoneroAddress:           mAddr,
+		PiconeroBalance:         mBal.Balance,
+		PiconeroUnlockedBalance: mBal.UnlockedBalance,
+		BlocksToUnlock:          mBal.BlocksToUnlock,
+		EthAddress:              eAddr.String(),
+		WeiBalance:              eBal,
+	}
 	return nil
 }

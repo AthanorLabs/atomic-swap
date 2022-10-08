@@ -7,9 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
@@ -21,12 +18,14 @@ import (
 
 	"github.com/chyeh/pubip"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 const (
-	protocolID     = "/atomic-swap"
-	maxReads       = 128
-	defaultKeyFile = "net.key"
+	protocolID = "/atomic-swap"
+	maxReads   = 128
 )
 
 var log = logging.Logger("net")
@@ -81,8 +80,8 @@ type Config struct {
 
 // NewHost returns a new host
 func NewHost(cfg *Config) (*host, error) {
-	if cfg.KeyFile == "" {
-		cfg.KeyFile = defaultKeyFile
+	if cfg.DataDir == "" || cfg.KeyFile == "" {
+		panic("required parameters not set")
 	}
 
 	key, err := loadKey(cfg.KeyFile)

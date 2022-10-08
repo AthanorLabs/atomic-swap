@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"os"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -38,10 +39,14 @@ func MakeDir(dir string) error {
 	return os.MkdirAll(dir, 0700)
 }
 
-// Exists returns whether the given file or directory exists
-func Exists(path string) (bool, error) {
-	_, err := os.Stat(path)
+// FileExists returns whether the given file exists. If a directory exists
+// with the name of the passed file, an error is returned.
+func FileExists(path string) (bool, error) {
+	st, err := os.Stat(path)
 	if err == nil {
+		if st.IsDir() {
+			return false, fmt.Errorf("%q is occupied by a directory", path)
+		}
 		return true, nil
 	}
 

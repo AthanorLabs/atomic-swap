@@ -7,23 +7,24 @@ import (
 	"path"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/monero"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/tests"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/require"
 )
 
-var defaultTimeout int64 = 5 // 5 seconds
+var defaultTimeout int64 = 8 // 8 seconds
 
 func newRecoverer(t *testing.T) *recoverer {
-	r, err := NewRecoverer(common.Development, tests.CreateWalletRPCService(t), common.DefaultEthEndpoint)
+	r, err := NewRecoverer(common.Development, monero.CreateWalletClient(t), common.DefaultEthEndpoint)
 	require.NoError(t, err)
 	return r
 }
@@ -99,15 +100,14 @@ func newBackend(
 	ec, chainID := tests.NewEthClient(t)
 
 	cfg := &backend.Config{
-		Ctx:                  context.Background(),
-		Environment:          common.Development,
-		EthereumPrivateKey:   pk,
-		EthereumClient:       ec,
-		ChainID:              chainID,
-		MoneroWalletEndpoint: tests.CreateWalletRPCService(t),
-		MoneroDaemonEndpoint: common.DefaultMoneroDaemonEndpoint,
-		SwapContract:         contract,
-		SwapContractAddress:  addr,
+		Ctx:                 context.Background(),
+		Environment:         common.Development,
+		EthereumPrivateKey:  pk,
+		EthereumClient:      ec,
+		ChainID:             chainID,
+		MoneroClient:        monero.CreateWalletClient(t),
+		SwapContract:        contract,
+		SwapContractAddress: addr,
 	}
 
 	b, err := backend.NewBackend(cfg)

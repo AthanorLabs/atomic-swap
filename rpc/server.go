@@ -3,9 +3,12 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/MarinX/monerorpc/wallet"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -121,6 +124,7 @@ type ProtocolBackend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
 	SetEthAddress(ethcommon.Address)
+	EthBalance() (ethcommon.Address, *big.Int, error)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 }
@@ -137,9 +141,9 @@ type XMRTaker interface {
 type XMRMaker interface {
 	Protocol
 	MakeOffer(offer *types.Offer) (*types.OfferExtra, error)
-	SetMoneroWalletFile(file, password string) error
 	GetOffers() []*types.Offer
 	ClearOffers([]string) error
+	GetMoneroBalance() (string, *wallet.GetBalanceResponse, error)
 }
 
 // SwapManager ...

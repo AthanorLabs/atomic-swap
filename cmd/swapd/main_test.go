@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +15,13 @@ import (
 )
 
 func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
+	// The only external program any test in this package calls is monero-wallet-rpc, so we
+	// make monero-bin the only directory in our path.
+	curDir, err := os.Getwd()
+	require.NoError(t, err)
+	projectRoot := path.Dir(path.Dir(curDir)) // 2 dirs up from cmd/swaprecover
+	os.Setenv("PATH", path.Join(projectRoot, "monero-bin"))
+
 	set := flag.NewFlagSet(description, 0)
 	for flag, value := range flags {
 		switch v := value.(type) {

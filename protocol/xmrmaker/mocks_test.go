@@ -105,6 +105,18 @@ func (mr *MockBackendMockRecorder) ClearXMRDepositAddress(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearXMRDepositAddress", reflect.TypeOf((*MockBackend)(nil).ClearXMRDepositAddress), arg0)
 }
 
+// Close mocks base method.
+func (m *MockBackend) Close() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Close")
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockBackendMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockBackend)(nil).Close))
+}
+
 // CloseWallet mocks base method.
 func (m *MockBackend) CloseWallet() error {
 	m.ctrl.T.Helper()
@@ -222,6 +234,20 @@ func (mr *MockBackendMockRecorder) ERC20Info(arg0, arg1 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ERC20Info", reflect.TypeOf((*MockBackend)(nil).ERC20Info), arg0, arg1)
 }
 
+// Endpoint mocks base method.
+func (m *MockBackend) Endpoint() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Endpoint")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Endpoint indicates an expected call of Endpoint.
+func (mr *MockBackendMockRecorder) Endpoint() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Endpoint", reflect.TypeOf((*MockBackend)(nil).Endpoint))
+}
+
 // Env mocks base method.
 func (m *MockBackend) Env() common.Environment {
 	m.ctrl.T.Helper()
@@ -248,6 +274,22 @@ func (m *MockBackend) EthAddress() common0.Address {
 func (mr *MockBackendMockRecorder) EthAddress() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddress", reflect.TypeOf((*MockBackend)(nil).EthAddress))
+}
+
+// EthBalance mocks base method.
+func (m *MockBackend) EthBalance() (common0.Address, *big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthBalance")
+	ret0, _ := ret[0].(common0.Address)
+	ret1, _ := ret[1].(*big.Int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// EthBalance indicates an expected call of EthBalance.
+func (mr *MockBackendMockRecorder) EthBalance() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBalance", reflect.TypeOf((*MockBackend)(nil).EthBalance))
 }
 
 // EthClient mocks base method.
@@ -277,20 +319,6 @@ func (m *MockBackend) FilterLogs(arg0 context.Context, arg1 ethereum.FilterQuery
 func (mr *MockBackendMockRecorder) FilterLogs(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterLogs", reflect.TypeOf((*MockBackend)(nil).FilterLogs), arg0, arg1)
-}
-
-// GenerateBlocks mocks base method.
-func (m *MockBackend) GenerateBlocks(arg0 string, arg1 uint64) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateBlocks", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// GenerateBlocks indicates an expected call of GenerateBlocks.
-func (mr *MockBackendMockRecorder) GenerateBlocks(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateBlocks", reflect.TypeOf((*MockBackend)(nil).GenerateBlocks), arg0, arg1)
 }
 
 // GenerateFromKeys mocks base method.
