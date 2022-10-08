@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	filippo.io/edwards25519 v1.0.0
+	github.com/ChainSafe/chaindb v0.1.5-0.20220708005902-df45dbc8e840
 	github.com/MarinX/monerorpc v1.0.0
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
@@ -28,6 +29,7 @@ require (
 )
 
 require (
+	github.com/ChainSafe/log15 v1.0.0 // indirect
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

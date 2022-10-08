@@ -11,9 +11,9 @@ import (
 )
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
-func GetSwapInfoFilepath(dataDir string) string {
+func GetSwapInfoFilepath(dataDir string, offerID string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
-	return path.Join(dataDir, t)
+	return path.Join(dataDir, fmt.Sprintf("%s-%s", t, offerID))
 }
 
 // GetSwapRecoveryFilepath returns an info file path with the current timestamp.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 
@@ -32,6 +33,7 @@ type Instance struct {
 // Config contains the configuration values for a new XMRMaker instance.
 type Config struct {
 	Backend                    backend.Backend
+	Database                   *db.Database
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool
@@ -48,12 +50,17 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
 	}
 
+	om, err := offers.NewManager(cfg.DataDir, cfg.Database)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Instance{
 		backend:        cfg.Backend,
 		dataDir:        cfg.DataDir,
 		walletFile:     cfg.WalletFile,
 		walletPassword: cfg.WalletPassword,
-		offerManager:   offers.NewManager(cfg.DataDir),
+		offerManager:   om,
 		swapStates:     make(map[types.Hash]*swapState),
 	}, nil
 }

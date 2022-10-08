@@ -252,6 +252,7 @@ func runDaemon(c *cli.Context) error {
 	}
 
 	d.wait()
+	// TODO: close database
 	os.Exit(0)
 	return nil
 }

@@ -14,6 +14,7 @@ type Manager struct {
 	mu      sync.Mutex // synchronises access to the offers map
 	offers  map[types.Hash]*offerWithExtra
 	dataDir string
+	db      Database
 }
 
 type offerWithExtra struct {
@@ -23,11 +24,32 @@ type offerWithExtra struct {
 
 // NewManager creates a new offers manager. The passed in dataDir is the directory where the
 // recovery file is for each individual swap is stored.
-func NewManager(dataDir string) *Manager {
-	return &Manager{
-		offers:  make(map[types.Hash]*offerWithExtra),
-		dataDir: dataDir,
+func NewManager(dataDir string, db Database) (*Manager, error) {
+	// load offers from the database, if there are any
+	savedOffers, err := db.GetAllOffers()
+	if err != nil {
+		return nil, err
 	}
+
+	offers := make(map[types.Hash]*offerWithExtra)
+
+	for _, offer := range savedOffers {
+		extra := &types.OfferExtra{
+			StatusCh: make(chan types.Status, statusChSize),
+			InfoFile: pcommon.GetSwapInfoFilepath(dataDir, offer.GetID().String()),
+		}
+
+		offers[offer.GetID()] = &offerWithExtra{
+			offer: offer,
+			extra: extra,
+		}
+	}
+
+	return &Manager{
+		offers:  offers,
+		dataDir: dataDir,
+		db:      db,
+	}, nil
 }
 
 // GetOffer returns the offer data structures for the passed ID or nil for both values
@@ -56,7 +78,7 @@ func (m *Manager) AddOffer(o *types.Offer) *types.OfferExtra {
 
 	extra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, statusChSize),
-		InfoFile: pcommon.GetSwapInfoFilepath(m.dataDir),
+		InfoFile: pcommon.GetSwapInfoFilepath(m.dataDir, id.String()),
 	}
 
 	m.offers[id] = &offerWithExtra{
