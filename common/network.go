@@ -17,7 +17,7 @@ func (env Environment) String() string {
 	case Stagenet:
 		return "stagenet"
 	case Development:
-		return "development"
+		return "dev"
 	}
 
 	return "unknown"

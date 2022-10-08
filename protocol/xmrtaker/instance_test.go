@@ -3,14 +3,13 @@ package xmrtaker
 import (
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/tests"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/monero"
 )
 
 func TestGetAddress(t *testing.T) {
-	c := monero.NewWalletClient(tests.CreateWalletRPCService(t))
+	c := monero.CreateWalletClient(t)
 	addr, err := getAddress(c, "", "")
 	require.NoError(t, err)
 

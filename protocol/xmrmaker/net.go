@@ -5,6 +5,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color" //nolint:misspell
 )
@@ -53,11 +54,16 @@ func (b *Instance) initiate(
 		delete(b.swapStates, offer.GetID())
 	}()
 
+	symbol, err := pcommon.AssetSymbol(b.backend, offer.EthAsset)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.ID()))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
 		s.info.ReceivedAmount(),
-		s.info.EthAsset(),
+		symbol,
 		s.info.ProvidedAmount()),
 	)
 	b.swapStates[offer.GetID()] = s

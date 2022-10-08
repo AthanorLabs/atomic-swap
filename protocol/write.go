@@ -95,7 +95,7 @@ func WriteSharedSwapKeyPairToFile(infofile string, keys *mcrypto.PrivateKeyPair,
 }
 
 func setupFile(infofile string) (*os.File, *InfoFileContents, error) {
-	exists, err := common.Exists(infofile)
+	exists, err := common.FileExists(infofile)
 	if err != nil {
 		return nil, nil, err
 	}

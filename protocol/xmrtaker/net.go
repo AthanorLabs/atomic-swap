@@ -3,6 +3,7 @@ package xmrtaker
 import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color" //nolint:misspell
@@ -40,9 +41,26 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, err
 	}
 
-	// check user's balance and that they actually have what they will provide
-	if balance.Cmp(providesAmount.BigInt()) <= 0 {
+	// Ensure the user's balance is strictly greater than the amount they will provide
+	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
+		log.Warnf("Account %s needs additional funds for this transaction", a.backend.EthAddress())
 		return nil, errBalanceTooLow
+	}
+
+	if ethAsset != types.EthAssetETH {
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), a.backend.EthClient()) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		balance, err := erc20Contract.BalanceOf(a.backend.CallOpts(), a.backend.EthAddress())
+		if err != nil {
+			return nil, err
+		}
+
+		if balance.Cmp(providesAmount.BigInt()) <= 0 {
+			return nil, errBalanceTooLow
+		}
 	}
 
 	s, err := newSwapState(

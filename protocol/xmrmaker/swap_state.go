@@ -553,23 +553,12 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 
 	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
 
-	xmrmakerAddr, err := s.GetAddress(0)
+	// wait for a new block
+	height, err := monero.WaitForBlocks(s, 1)
 	if err != nil {
 		return "", err
 	}
-
-	// if we're on a development --regtest node, generate some blocks
-	if s.Env() == common.Development {
-		_ = s.GenerateBlocks(xmrmakerAddr.Address, 2)
-	} else {
-		// otherwise, wait for new blocks
-		height, err := monero.WaitForBlocks(s, 1)
-		if err != nil {
-			return "", err
-		}
-
-		log.Infof("monero block height: %d", height)
-	}
+	log.Infof("monero block height: %d", height)
 
 	if err := s.Refresh(); err != nil {
 		return "", err
@@ -583,26 +572,31 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	addr := s.EthAddress()
 
+	var (
+		symbol   string
+		decimals uint8
+		err      error
+	)
+	if types.EthAsset(s.contractSwap.Asset) != types.EthAssetETH {
+		_, symbol, decimals, err = s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		if err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
+		}
+	}
+
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.BalanceAt(s.ctx, addr, nil)
+		balance, err := s.BalanceAt(s.ctx, addr, nil) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
-		// get token details
-		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-
-		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
 	}
-	// TODO: Check balance of ERC-20 token
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	sc := s.getSecret()
@@ -620,17 +614,12 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
-		tokenName, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-
 		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 
-		log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), tokenName)
+		log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
 	}
 
 	return txHash, nil

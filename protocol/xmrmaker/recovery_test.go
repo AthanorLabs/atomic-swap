@@ -49,19 +49,12 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 }
 
 func TestClaimOrRecover_Recover(t *testing.T) {
-	if testing.Short() {
-		t.Skip() // TODO: fails on CI w/ "not enough money"
-	}
-
 	// test case where XMRMaker is able to reclaim his monero, after XMRTaker refunds
 	rs := newTestRecoveryState(t, 24*time.Hour)
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
-	daemonClient := monero.NewDaemonClient(common.DefaultMoneroDaemonEndpoint)
-	addr, err := rs.ss.GetAddress(0)
-	require.NoError(t, err)
-	_ = daemonClient.GenerateBlocks(addr.Address, 121)
+	monero.MineMinXMRBalance(t, rs.ss, common.MoneroToPiconero(1))
 
 	// lock XMR
 	rs.ss.setXMRTakerPublicKeys(rs.ss.pubkeys, nil)

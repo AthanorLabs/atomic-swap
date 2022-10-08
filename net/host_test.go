@@ -7,11 +7,11 @@ import (
 	"path"
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 func TestMain(m *testing.M) {

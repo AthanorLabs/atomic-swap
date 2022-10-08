@@ -29,7 +29,7 @@ func (a MoneroAmount) AsMonero() float64 {
 	return float64(a) / numMoneroUnits
 }
 
-// EtherAmount represents some amout of ether in the smallest denomination (wei)
+// EtherAmount represents some amount of ether in the smallest denomination (wei)
 type EtherAmount big.Int
 
 // NewEtherAmount converts some amount of wei into an EtherAmount.

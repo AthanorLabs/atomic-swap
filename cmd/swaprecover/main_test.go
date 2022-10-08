@@ -8,6 +8,9 @@ import (
 	"path"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -15,13 +18,16 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
-	"github.com/athanorlabs/atomic-swap/tests"
-
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
 )
 
 func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
+	// The only external program any test in this package calls is monero-wallet-rpc, so we
+	// make monero-bin the only directory in our path.
+	curDir, err := os.Getwd()
+	require.NoError(t, err)
+	projectRoot := path.Dir(path.Dir(curDir)) // 2 dirs up from cmd/swaprecover
+	os.Setenv("PATH", path.Join(projectRoot, "monero-bin"))
+
 	set := flag.NewFlagSet(description, 0)
 	for flag, value := range flags {
 		switch v := value.(type) {
@@ -78,7 +84,7 @@ func (r *mockRecoverer) RecoverFromXMRTakerSecretAndContract(b backend.Backend, 
 	}, nil
 }
 
-func getMockRecoverer(c *cli.Context, env common.Environment) (Recoverer, error) {
+func getMockRecoverer(c *cli.Context, env common.Environment, cfg *common.Config) (Recoverer, error) {
 	return &mockRecoverer{}, nil
 }
 
@@ -130,10 +136,10 @@ func TestRecover_sharedSwapSecret(t *testing.T) {
 	c := newTestContext(t,
 		"test --xmrtaker with shared swap secret",
 		map[string]any{
-			flagEnv:                  "dev",
-			flagXMRTaker:             true,
-			flagInfoFile:             infoFilePath,
-			flagMoneroWalletEndpoint: tests.CreateWalletRPCService(t),
+			flagEnv:      "dev",
+			flagDataDir:  t.TempDir(),
+			flagXMRTaker: true,
+			flagInfoFile: infoFilePath,
 		},
 	)
 
@@ -150,11 +156,10 @@ func TestRecover_withXMRMakerSecretAndContract(t *testing.T) {
 	c := newTestContext(t,
 		"test --xmrmaker with contract address and secret",
 		map[string]any{
-			flagEnv:                  "dev",
-			flagXMRMaker:             true,
-			flagInfoFile:             infoFilePath,
-			flagEthereumPrivKey:      createEthPrivKeyFile(t, common.DefaultPrivKeyXMRMaker),
-			flagMoneroWalletEndpoint: tests.CreateWalletRPCService(t),
+			flagEnv:             "dev",
+			flagXMRMaker:        true,
+			flagInfoFile:        infoFilePath,
+			flagEthereumPrivKey: createEthPrivKeyFile(t, common.DefaultPrivKeyXMRMaker),
 		},
 	)
 
