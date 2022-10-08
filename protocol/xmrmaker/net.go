@@ -81,9 +81,9 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, errOfferIDNotSet
 	}
 
-	offer, offerExtra := b.offerManager.TakeOffer(id)
-	if offer == nil {
-		return nil, nil, errNoOfferWithID
+	offer, offerExtra, err := b.offerManager.TakeOffer(id)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)

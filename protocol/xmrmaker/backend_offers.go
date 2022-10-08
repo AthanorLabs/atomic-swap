@@ -22,7 +22,11 @@ func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
 		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
 	}
 
-	extra := b.offerManager.AddOffer(o)
+	extra, err := b.offerManager.AddOffer(o)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }
@@ -37,8 +41,12 @@ func (b *Instance) GetOffers() []*types.Offer {
 func (b *Instance) ClearOffers(ids []string) error {
 	l := len(ids)
 	if l == 0 {
-		b.offerManager.ClearAllOffers()
+		err := b.offerManager.ClearAllOffers()
+		if err != nil {
+			return err
+		}
 	}
+
 	idHashes := make([]types.Hash, l)
 	for i, idStr := range ids {
 		id, err := types.HexToHash(idStr)

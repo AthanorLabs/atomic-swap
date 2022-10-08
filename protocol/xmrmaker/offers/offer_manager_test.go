@@ -19,6 +19,7 @@ func Test_Manager(t *testing.T) {
 	db := NewMockDatabase(ctrl)
 
 	db.EXPECT().GetAllOffers()
+	db.EXPECT().ClearAllOffers()
 
 	infoDir := t.TempDir()
 	mgr, err := NewManager(infoDir, db)
@@ -27,14 +28,19 @@ func Test_Manager(t *testing.T) {
 	for i := 0; i < numAdd; i++ {
 		offer := types.NewOffer(types.ProvidesXMR, float64(i), float64(i), types.ExchangeRate(i),
 			types.EthAssetETH)
-		offerExtra := mgr.AddOffer(offer)
+		db.EXPECT().PutOffer(offer)
+		offerExtra, err := mgr.AddOffer(offer)
+		require.NoError(t, err)
 		require.NotNil(t, offerExtra)
 	}
 
 	offers := mgr.GetOffers()
 	require.Len(t, offers, numAdd)
 	for i := 0; i < numTake; i++ {
-		offer, offerExtra := mgr.TakeOffer(offers[i].GetID())
+		id := offers[i].GetID()
+		db.EXPECT().DeleteOffer(id)
+		offer, offerExtra, err := mgr.TakeOffer(id)
+		require.NoError(t, err)
 		require.NotNil(t, offer)
 		require.NotNil(t, offerExtra)
 		require.True(t, strings.HasPrefix(offerExtra.InfoFile, infoDir))
@@ -44,6 +50,8 @@ func Test_Manager(t *testing.T) {
 	require.Len(t, offers, numAdd-numTake)
 
 	removeIDs := []types.Hash{offers[0].GetID(), offers[2].GetID()}
+	db.EXPECT().DeleteOffer(offers[0].GetID())
+	db.EXPECT().DeleteOffer(offers[2].GetID())
 	mgr.ClearOfferIDs(removeIDs)
 	offers = mgr.GetOffers()
 	require.Len(t, offers, numAdd-numTake-2)
