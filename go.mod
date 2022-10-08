@@ -159,4 +159,5 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
 
+replace github.com/noot/cgo-dleq => ./dleq/cgo-dleq
 replace github.com/ChainSafe/chaindb => ../../ChainSafe/chaindb
