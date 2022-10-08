@@ -107,13 +107,8 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	return xmrmaker, db
 }
 
-func newTestXMRMaker(t *testing.T) *Instance {
-	inst, _ := newTestXMRMakerAndDB(t)
-	return inst
-}
-
-func newTestInstance(t *testing.T) (*Instance, *swapState) {
-	xmrmaker := newTestXMRMaker(t)
+func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
+	xmrmaker, db := newTestXMRMakerAndDB(t)
 	infoFile := path.Join(t.TempDir(), "test.keys")
 	swapState, err := newSwapState(xmrmaker.backend,
 		types.NewOffer("", 0, 0, 0, types.EthAssetETH), xmrmaker.offerManager, nil, infoFile,
@@ -121,6 +116,11 @@ func newTestInstance(t *testing.T) (*Instance, *swapState) {
 	require.NoError(t, err)
 	swapState.SetContract(xmrmaker.backend.Contract())
 	swapState.SetContractAddress(xmrmaker.backend.ContractAddr())
+	return xmrmaker, swapState, db
+}
+
+func newTestInstance(t *testing.T) (*Instance, *swapState) {
+	xmrmaker, swapState, _ := newTestInstanceAndDB(t)
 	return xmrmaker, swapState
 }
 
@@ -428,7 +428,8 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 
 // test that if the protocol exits early, and XMRTaker refunds, XMRMaker can reclaim his monero
 func TestSwapState_Exit_Reclaim(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, db := newTestInstanceAndDB(t)
+	db.EXPECT().PutOffer(s.offer)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -473,7 +474,9 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 }
 
 func TestSwapState_Exit_Aborted(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, db := newTestInstanceAndDB(t)
+	db.EXPECT().PutOffer(s.offer)
+
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
 	require.NoError(t, err)
@@ -481,7 +484,9 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 }
 
 func TestSwapState_Exit_Aborted_1(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, db := newTestInstanceAndDB(t)
+	db.EXPECT().PutOffer(s.offer)
+
 	s.nextExpectedMessage = &message.NotifyETHLocked{}
 	err := s.Exit()
 	require.NoError(t, err)
@@ -489,7 +494,9 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 }
 
 func TestSwapState_Exit_Aborted_2(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, db := newTestInstanceAndDB(t)
+	db.EXPECT().PutOffer(s.offer)
+
 	s.nextExpectedMessage = nil
 	err := s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
@@ -508,8 +515,9 @@ func TestSwapState_Exit_Success(t *testing.T) {
 }
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
-	b, s := newTestInstance(t)
+	b, s, db := newTestInstanceAndDB(t)
 	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	db.EXPECT().PutOffer(s.offer)
 	b.MakeOffer(s.offer)
 
 	s.info.SetStatus(types.CompletedRefund)
