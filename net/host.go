@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	libp2phost "github.com/libp2p/go-libp2p-core/host"
@@ -71,7 +72,7 @@ type Config struct {
 	Ctx         context.Context
 	Environment common.Environment
 	DataDir     string
-	EthChainID  int64
+	EthClient   *ethclient.Client
 	Port        uint16
 	KeyFile     string
 	Bootnodes   []string
@@ -160,11 +161,16 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
+	chainID, err := cfg.EthClient.ChainID(cfg.Ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
 		ctx:        ourCtx,
 		cancel:     cancel,
-		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID),
+		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, chainID),
 		h:          h,
 		handler:    cfg.Handler,
 		ds:         ds,

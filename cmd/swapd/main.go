@@ -65,7 +65,6 @@ const (
 	flagMoneroWalletPort     = "wallet-port"
 	flagEthereumEndpoint     = "ethereum-endpoint"
 	flagEthereumPrivKey      = "ethereum-privkey"
-	flagEthereumChainID      = "ethereum-chain-id"
 	flagContractAddress      = "contract-address"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
@@ -146,10 +145,6 @@ var (
 				Name:  flagEthereumPrivKey,
 				Usage: "File containing ethereum private key as hex, new key is generated if missing",
 				Value: fmt.Sprintf("{DATA-DIR}/%s", common.DefaultEthKeyFileName),
-			},
-			&cli.UintFlag{
-				Name:  flagEthereumChainID,
-				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
 			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
@@ -310,12 +305,6 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
-	// `flagEthereumChainID` is passed:
-	if c.IsSet(flagEthereumChainID) {
-		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
-	}
-
 	if len(c.StringSlice(flagBootnodes)) > 0 {
 		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
 	}
@@ -338,11 +327,20 @@ func (d *daemon) make(c *cli.Context) error {
 		}
 	}
 
+	ethEndpoint := common.DefaultEthEndpoint
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
+	}
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return err
+	}
+
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
 		DataDir:     cfg.DataDir,
-		EthChainID:  cfg.EthereumChainID,
+		EthClient:   ec,
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   cfg.Bootnodes,
@@ -353,11 +351,12 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 
 	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host)
+	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
 	if err != nil {
 		return err
 	}
 	defer backend.Close()
+	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
 
 	a, b, err := getProtocolInstances(c, cfg, backend)
 	if err != nil {
@@ -418,17 +417,11 @@ func newBackend(
 	devXMRTaker bool,
 	sm swap.Manager,
 	net net.Host,
+	ec *ethclient.Client,
 ) (backend.Backend, error) {
 	var (
-		ethEndpoint string
-		ethPrivKey  *ecdsa.PrivateKey
+		ethPrivKey *ecdsa.PrivateKey
 	)
-
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String(flagEthereumEndpoint)
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
 
 	useExternalSigner := c.Bool(flagUseExternalSigner)
 	if useExternalSigner && c.IsSet(flagEthereumPrivKey) {
@@ -474,14 +467,8 @@ func newBackend(
 			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
 		}
 	}
-	ec, err := ethclient.Dial(ethEndpoint)
-	if err != nil {
-		return nil, err
-	}
 
-	chainID := big.NewInt(cfg.EthereumChainID)
-	contract, contractAddr, err :=
-		getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, chainID, ethPrivKey, ec)
+	contract, contractAddr, err := getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, ethPrivKey, ec)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +510,6 @@ func newBackend(
 		EthereumClient:      ec,
 		EthereumPrivateKey:  ethPrivKey,
 		Environment:         env,
-		ChainID:             chainID,
 		GasPrice:            gasPrice,
 		GasLimit:            uint64(c.Uint(flagGasLimit)),
 		SwapManager:         sm,
@@ -537,11 +523,6 @@ func newBackend(
 		mc.Close()
 		return nil, fmt.Errorf("failed to make backend: %w", err)
 	}
-
-	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
-		mc.Endpoint(),
-		ethEndpoint,
-	)
 
 	return b, nil
 }

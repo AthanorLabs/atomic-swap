@@ -6,7 +6,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
 	"path"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -29,7 +28,6 @@ func getOrDeploySwapFactory(
 	address ethcommon.Address,
 	env common.Environment,
 	dataDir string,
-	chainID *big.Int,
 	privkey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
 ) (*contracts.SwapFactory, ethcommon.Address, error) {
@@ -42,6 +40,10 @@ func getOrDeploySwapFactory(
 			return nil, ethcommon.Address{}, errNoEthereumPrivateKey
 		}
 
+		chainID, err := ec.ChainID(ctx)
+		if err != nil {
+			return nil, ethcommon.Address{}, err
+		}
 		txOpts, err := bind.NewKeyedTransactorWithChainID(privkey, chainID)
 		if err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to make transactor: %w", err)
@@ -51,7 +53,7 @@ func getOrDeploySwapFactory(
 		var tx *ethtypes.Transaction
 		address, tx, sf, err = deploySwapFactory(ec, txOpts)
 		if err != nil {
-			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w; please check your chain ID", err)
+			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w", err)
 		}
 
 		log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
