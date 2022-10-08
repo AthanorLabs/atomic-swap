@@ -556,23 +556,12 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 
 	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
 
-	xmrmakerAddr, err := s.GetAddress(0)
+	// wait for a new block
+	height, err := monero.WaitForBlocks(s, 1)
 	if err != nil {
 		return "", err
 	}
-
-	// if we're on a development --regtest node, generate some blocks
-	if s.Env() == common.Development {
-		_ = s.GenerateBlocks(xmrmakerAddr.Address, 2)
-	} else {
-		// otherwise, wait for new blocks
-		height, err := monero.WaitForBlocks(s, 1)
-		if err != nil {
-			return "", err
-		}
-
-		log.Infof("monero block height: %d", height)
-	}
+	log.Infof("monero block height: %d", height)
 
 	if err := s.Refresh(); err != nil {
 		return "", err

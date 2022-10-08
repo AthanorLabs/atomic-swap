@@ -22,10 +22,6 @@
 MONEROD_PORT=18081
 GANACHE_PORT=8545
 
-BOB_WALLET_PORT=18083
-ALICE_WALLET_PORT=18084
-CHARLIE_WALLET_PORT=18085
-
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 MONERO_BIN_DIR="${PROJECT_ROOT}/monero-bin"
 
@@ -45,6 +41,22 @@ monero-rpc-request() {
 		-d "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\",\"params\":${params}" \
 		-H 'Content-Type: application/json' \
 		-w "\n"
+}
+
+mine-monero() {
+	local monero_addr="${1:?}"  # primary monero address (required)
+	local num_blocks="${2:-64}" # defaults to 32 if not passed
+	monero-rpc-request "${MONEROD_PORT}" "generateblocks" \
+		"{\"amount_of_blocks\":${num_blocks},\"wallet_address\":\"${monero_addr}\"}"
+}
+
+mine-monero-for-swapd() {
+	local swapd_port="${1:-5001}" # defaults to 5001 if not passed
+	local wallet_addr
+	wallet_addr="$(
+		"${PROJECT_ROOT}/swapcli" balances --swapd-port "${swapd_port}" | grep 'Monero address:' | sed 's/.*: //'
+	)"
+	mine-monero "${wallet_addr}"
 }
 
 check-set-swap-test-data-dir() {
@@ -83,9 +95,11 @@ stop-program() {
 		echo "ERROR: failed to kill ${name}"
 		return 1
 	fi
-	sleep 2 # let program flush data and exit so we delete all files below
-	# Remove the PID file, log file and any data subdirectory
-	rm -rf "${SWAP_TEST_DATA_DIR:?}/${name}"{.pid,.log,}
+	if [[ "${KEEP_TEST_DATA}" -ne 1 ]]; then
+		sleep 2 # let program flush data and exit so we delete all files below
+		# Remove the PID file, log file and any data subdirectory
+		rm -rf "${SWAP_TEST_DATA_DIR:?}/${name}"{.pid,.log,}
+	fi
 }
 
 start-monerod-regtest() {
@@ -104,8 +118,7 @@ start-monerod-regtest() {
 		--pidfile="${SWAP_TEST_DATA_DIR}/monerod.pid" \
 		--fixed-difficulty=1 \
 		--rpc-bind-ip=127.0.0.1 \
-		--rpc-bind-port=18081 \
-		--keep-fakechain
+		--rpc-bind-port=18081
 	sleep 5
 }
 
@@ -153,65 +166,9 @@ start-ganache() {
 		--miner.blockTime=1 \
 		&>"${SWAP_TEST_DATA_DIR}/ganache.log" &
 	echo "${!}" >"${SWAP_TEST_DATA_DIR}/ganache.pid"
+	sleep 2
 }
 
 stop-ganache() {
 	stop-program ganache
-}
-
-start-monero-wallet-rpc() {
-	local wallet_user=$1 # alice, bob, charlie
-	local wallet_port=$2
-
-	check-set-swap-test-data-dir
-	if is-port-open "${wallet_port}"; then
-		echo "WARNING: Skipping launch of monero-wallet-rpc for ${wallet_user^}, port ${wallet_port} is already in use"
-		return 0 # Assume the user wanted to use the existing instance
-	fi
-	if ! is-port-open "${MONEROD_PORT}"; then
-		echo "ERROR: Aborting launch monero-wallet-rpc for ${wallet_user^}, monerod not detected on port ${MONEROD_PORT}"
-		return 0 # Assume the user wanted to use the existing instance
-	fi
-	check-set-swap-test-data-dir
-	local name="${wallet_user}-monero-wallet-rpc"
-	local wallet_dir="${SWAP_TEST_DATA_DIR}/${name}"
-	mkdir -p "${wallet_dir}"
-	echo "Starting ${wallet_user^}'s monero-wallet-rpc on port ${wallet_port} ..."
-	"${MONERO_BIN_DIR}/monero-wallet-rpc" \
-		--detach \
-		--rpc-bind-ip 127.0.0.1 \
-		--rpc-bind-port "${wallet_port}" \
-		--pidfile="${SWAP_TEST_DATA_DIR}/${name}.pid" \
-		--log-file="${SWAP_TEST_DATA_DIR}/${name}.log" \
-		--disable-rpc-login \
-		--wallet-dir "${wallet_dir}" \
-		--allow-mismatched-daemon-version
-}
-
-start-alice-wallet() {
-	start-monero-wallet-rpc alice "${ALICE_WALLET_PORT}"
-}
-
-stop-alice-wallet() {
-	stop-program alice-monero-wallet-rpc
-}
-
-start-bob-wallet() {
-	start-monero-wallet-rpc bob "${BOB_WALLET_PORT}"
-	sleep 5
-	# Send the json output to /dev/null, any serious errors will be to stderr
-	monero-rpc-request "${BOB_WALLET_PORT}" create_wallet \
-		'{"filename":"test-wallet","password":"","language":"English"}' >/dev/null
-}
-
-stop-bob-wallet() {
-	stop-program bob-monero-wallet-rpc
-}
-
-start-charlie-wallet() {
-	start-monero-wallet-rpc charlie "${CHARLIE_WALLET_PORT}"
-}
-
-stop-charlie-wallet() {
-	stop-program charlie-monero-wallet-rpc
 }

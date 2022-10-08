@@ -40,8 +40,9 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, err
 	}
 
-	// check user's balance and that they actually have what they will provide
+	// Ensure the user's balance is strictly greater than the amount they will provide
 	if balance.Cmp(providesAmount.BigInt()) <= 0 {
+		log.Warnf("Account %s needs additional funds for this transaction", a.backend.EthAddress())
 		return nil, errBalanceTooLow
 	}
 

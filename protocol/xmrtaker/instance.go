@@ -64,12 +64,6 @@ func NewInstance(cfg *Config) (*Instance, error) {
 			return nil, err
 		}
 		cfg.Backend.SetBaseXMRDepositAddress(address)
-	} else {
-		// check that XMRTaker's monero-wallet-cli endpoint has wallet-dir configured
-		err = checkWalletDir(cfg.Backend)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return &Instance{
@@ -79,16 +73,6 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		walletPassword: cfg.MoneroWalletPassword,
 		swapStates:     make(map[types.Hash]*swapState),
 	}, nil
-}
-
-func checkWalletDir(walletClient monero.WalletClient) error {
-	// don't need to check error here, since if there's no wallet open that's fine
-	_ = walletClient.CloseWallet()
-	err := walletClient.CreateWallet(swapDepositWallet, "")
-	if err != nil {
-		return err
-	}
-	return walletClient.CloseWallet()
 }
 
 func getAddress(walletClient monero.WalletClient, file, password string) (mcrypto.Address, error) {

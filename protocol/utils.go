@@ -13,13 +13,13 @@ import (
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
 func GetSwapInfoFilepath(dataDir string, offerID string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
-	return path.Join(dataDir, fmt.Sprintf("%s-%s", t, offerID))
+	return path.Join(dataDir, fmt.Sprintf("info-%s-%s", t, offerID))
 }
 
 // GetSwapRecoveryFilepath returns an info file path with the current timestamp.
 func GetSwapRecoveryFilepath(dataDir string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
-	return path.Join(dataDir, fmt.Sprintf("recovery-%s.txt", t))
+	return path.Join(dataDir, fmt.Sprintf("recovery-%s.json", t))
 }
 
 // ConvertContractSwapToMsg converts a contracts.SwapFactorySwap to a *message.ContractSwap

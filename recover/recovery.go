@@ -23,7 +23,7 @@ type recoverer struct {
 }
 
 // NewRecoverer ...
-func NewRecoverer(env common.Environment, moneroEndpoint, ethEndpoint string) (*recoverer, error) {
+func NewRecoverer(env common.Environment, xmrClient monero.WalletClient, ethEndpoint string) (*recoverer, error) {
 	ec, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewRecoverer(env common.Environment, moneroEndpoint, ethEndpoint string) (*
 	return &recoverer{
 		env:       env,
 		ethClient: ec,
-		xmrClient: monero.NewWalletClient(moneroEndpoint),
+		xmrClient: xmrClient,
 	}, nil
 }
 

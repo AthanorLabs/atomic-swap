@@ -3,6 +3,8 @@ package xmrmaker
 import (
 	"sync"
 
+	"github.com/MarinX/monerorpc/wallet"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/db"
@@ -42,14 +44,6 @@ type Config struct {
 // NewInstance returns a new *xmrmaker.Instance.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains XMRMaker's XMR.
 func NewInstance(cfg *Config) (*Instance, error) {
-	if cfg.WalletFile != "" {
-		if err := cfg.Backend.OpenWallet(cfg.WalletFile, cfg.WalletPassword); err != nil {
-			return nil, err
-		}
-	} else {
-		log.Warn("monero wallet-file not set; must be set via RPC call personal_setMoneroWalletFile before making an offer")
-	}
-
 	om, err := offers.NewManager(cfg.DataDir, cfg.Database)
 	if err != nil {
 		return nil, err
@@ -65,20 +59,27 @@ func NewInstance(cfg *Config) (*Instance, error) {
 	}, nil
 }
 
-// SetMoneroWalletFile sets the Instance's current monero wallet file.
-func (b *Instance) SetMoneroWalletFile(file, password string) error {
-	_ = b.backend.CloseWallet()
-	return b.backend.OpenWallet(file, password)
-}
-
-func (b *Instance) openWallet() error { //nolint
-	return b.backend.OpenWallet(b.walletFile, b.walletPassword)
-}
-
 // GetOngoingSwapState ...
 func (b *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
 	return b.swapStates[id]
+}
+
+// GetMoneroBalance returns the primary wallet address, and current balance of the user's monero
+// wallet.
+func (b *Instance) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
+	addr, err := b.backend.GetAddress(0)
+	if err != nil {
+		return "", nil, err
+	}
+	if err = b.backend.Refresh(); err != nil {
+		return "", nil, err
+	}
+	balance, err := b.backend.GetBalance(0)
+	if err != nil {
+		return "", nil, err
+	}
+	return addr.Address, balance, nil
 }

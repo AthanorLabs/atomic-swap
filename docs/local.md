@@ -15,61 +15,13 @@ if you want a more sophisticated setup.
 
 #### Set up development environment
 
-Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you. You can also check out the `scripts/run-unit-tests.sh` script for the commands needed to setup the environment.
+Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you.
+You can invoke it directly, but the next script below will run it if there is no symbolic link named
+`monero-bin` to a monero installation in the project's root directory.
 
-Start ganache with deterministic keys. We disable instamine, for a more realistic
-simulation, by setting the miner.blockTime.
-```bash
-ganache --deterministic --accounts=50 --miner.blockTime=1
-```
+Execute the `scripts/setup-env.sh` script to launch ganache, an ethereum simulator, and monerod in regtest
+mode. "regtest" mode is stand-alone (non-networked) mode of monerod for testing purposes.
 
-Start monerod for regtest, this binary is in the monero bin directory:
-```bash
-cd ./monero-bin
-./monerod --regtest --fixed-difficulty=1 --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18081 --offline
-```
-
-Create a wallet for "Bob", who will own XMR later on:
-```bash
-./monero-wallet-cli // you will be prompted to create a wallet. In the next steps, we will go with "Bob", without password. Remember the name and optionally the password for the upcoming steps
-```
-
-You do not need to mine blocks, and you can exit the wallet-cli once Bob's account has been created by typing "exit".
-
-Start monero-wallet-rpc for Bob on port 18083. Make sure `--wallet-dir` corresponds to the directory the wallet from the previous step is in:
-```bash
-./monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18083 --password "" --disable-rpc-login --wallet-dir .
-```
-
-Open the wallet:
-```bash
-curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"Bob","password":""}}' -H 'Content-Type: application/json'
-
-# {
-#   "id": "0",
-#   "jsonrpc": "2.0",
-#   "result": {
-#   }
-# }
-```
-
-Determine the address of `Bob` by looking at `monero-wallet-rpc` logs, in our case 45GcPCB ... uLkV5bTrZRe
-```bash
-# 2022-01-20 21:40:06.460	W Loaded wallet keys file, with public address: 45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe
-```
-
-Then, mine some blocks on the monero test chain by running the following RPC command, replacing the address with the one from Bob's wallet:
-```bash
-curl -X POST http://127.0.0.1:18081/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"generateblocks","params":{"wallet_address":"45GcPCBQgCG3tYcYqLdj4iQixpDZYw1MGew4PH1rthp9X2YrB2c2dty1r7SwhbCXw1RJMvfy8cW1UXyeESTAuLkV5bTrZRe","amount_of_blocks":100}' -H 'Content-Type: application/json'
-```
-
-This will deposit some XMR in Bob's account.
-
-
-Start monero-wallet-rpc for Alice on port 18084 (note that the directory provided to `--wallet-dir` is where Alice's XMR wallet will end up):
-```bash
-./monero-wallet-rpc --rpc-bind-ip 127.0.0.1 --rpc-bind-port 18084 --password "" --disable-rpc-login --wallet-dir .
-```
 #### Build and run
 
 Build binary:
@@ -84,19 +36,51 @@ To run as Alice, execute in terminal 1:
 ./swapd --dev-xmrtaker
 ```
 
-Alice will print out a libp2p node address, for example `/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWFUEQpGHQ3PtypLvgnWc5XjrqM2zyvdrZXin4vTpQ6QE5`. This will be used for Bob to connect.
-
-To run as Bob and connect to Alice, replace the bootnode in the following line with what Alice logged, and execute in terminal 2:
-
+Alice will print out a libp2p node address, for example
+`/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH`.
+This will be used for Bob to connect. You can either grab this address from the
+logs, our you can obtain it with this command:
 ```bash
-./swapd --dev-xmrmaker --wallet-file Bob --bootnodes /ip4/127.0.0.1/tcp/9933/p2p/12D3KooWFUEQpGHQ3PtypLvgnWc5XjrqM2zyvdrZXin4vTpQ6QE5
+./swapcli addresses
+```
+Pick the localhost address and assign it to a variable. For example (your value will be different):
+```bash
+BOOT_NODE=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWHRi24PVZ6TBnQJHdVyewDRcKFZtYV3qmB4KQo8iMyqik
+```
+Now get the ethereum contract address that Alice deployed to. This can be pulled from the Alice's logs,
+the file ..., or if you have `jq` installed (available via `sudo apt install jq`), you can set a
+variable like this:
+```bash
+CONTRACT_ADDR=$(jq -r .ContractAddress /tmp/xmrtaker/contract-address.json)
 ```
 
-Note: when using the `--dev-xmrtaker` and `--dev-xmrmaker` flags, Alice's RPC server runs on http://localhost:5001, Bob's runs on http://localhost:5002 by default.
+Now start Bob's swapd instance in terminal 2:
+```bash
+./swapd --dev-xmrmaker --bootnodes "${BOOT_NODE}" --contract-address "${CONTRACT_ADDR}"
+```
 
-In terminal 3, we will interact with the swap daemon using `swapcli`.
+Note: when using the `--dev-xmrtaker` and `--dev-xmrmaker` flags, Alice's RPC server runs
+on http://localhost:5001 and Bob's runs on http://localhost:5002 by default.
 
-Firstly, we need Bob to make an offer and advertise it, so that Alice can take it:
+Now, in terminal 3, we will interact with the swap daemon using `swapcli`.
+
+First we need mine some XMR for Bob. Alice already has ETH, because she is using
+a prefunded by ganache address. You can see the balances for Bob with the following
+command:
+```bash
+./swapcli balances --swapd-port 5002
+```
+Note that Alice is on the default swapd port of 5001, so the `--swapd-port` flag is optional
+when interacting with her daemon.
+
+To mine some monero blocks for Bob, you can use our bash shell function shown below:
+```bash
+source scripts/testlib.sh
+mine-monero-for-swapd 5002
+```
+Now you can use the second to last command to see Bob's updated monero balance.
+
+Next we need Bob to make an offer and advertise it, so that Alice can take it:
 ```bash
 ./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5002
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
