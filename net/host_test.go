@@ -60,12 +60,12 @@ func (s *mockSwapState) Exit() error {
 }
 
 func newHost(t *testing.T, port uint16) *host {
-	ec, _ := tests.NewEthClient(t)
+	_, chainID := tests.NewEthClient(t)
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
 		DataDir:     t.TempDir(),
-		EthClient:   ec,
+		EthChainID:  chainID.Int64(),
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
 		Bootnodes:   []string{},

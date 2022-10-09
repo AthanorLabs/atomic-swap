@@ -335,12 +335,16 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	chainID, err := ec.ChainID(d.ctx)
+	if err != nil {
+		return err
+	}
 
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
 		DataDir:     cfg.DataDir,
-		EthClient:   ec,
+		EthChainID:  chainID.Int64(),
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   cfg.Bootnodes,
