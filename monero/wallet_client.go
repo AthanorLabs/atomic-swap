@@ -427,7 +427,7 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 			// full logs. A future version could parse the log messages and send some
 			// filtered subset to swapd's logs.
 		}
-		log.Error("monero-wallet-rpc exited")
+		log.Warn("monero-wallet-rpc exited")
 	}()
 	return cmd.Process, nil
 }

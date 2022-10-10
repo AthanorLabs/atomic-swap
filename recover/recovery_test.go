@@ -97,14 +97,13 @@ func newBackend(
 	privkey *ecdsa.PrivateKey,
 ) backend.Backend {
 	pk := privkey
-	ec, chainID := tests.NewEthClient(t)
+	ec, _ := tests.NewEthClient(t)
 
 	cfg := &backend.Config{
 		Ctx:                 context.Background(),
 		Environment:         common.Development,
 		EthereumPrivateKey:  pk,
 		EthereumClient:      ec,
-		ChainID:             chainID,
 		MoneroClient:        monero.CreateWalletClient(t),
 		SwapContract:        contract,
 		SwapContractAddress: addr,

@@ -75,7 +75,6 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 		EthereumClient:      ec,
 		EthereumPrivateKey:  pk,
 		Environment:         common.Development,
-		ChainID:             chainID,
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		SwapManager:         pswap.NewManager(),

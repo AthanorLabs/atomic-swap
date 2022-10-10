@@ -79,20 +79,6 @@ func (mr *MockBackendMockRecorder) CallOpts() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CallOpts", reflect.TypeOf((*MockBackend)(nil).CallOpts))
 }
 
-// ChainID mocks base method.
-func (m *MockBackend) ChainID() *big.Int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainID")
-	ret0, _ := ret[0].(*big.Int)
-	return ret0
-}
-
-// ChainID indicates an expected call of ChainID.
-func (mr *MockBackendMockRecorder) ChainID() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainID", reflect.TypeOf((*MockBackend)(nil).ChainID))
-}
-
 // ClearXMRDepositAddress mocks base method.
 func (m *MockBackend) ClearXMRDepositAddress(arg0 types.Hash) {
 	m.ctrl.T.Helper()
