@@ -520,6 +520,9 @@ func TestSwapState_Exit_Success(t *testing.T) {
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
 	b, s, db := newTestInstanceAndDB(t)
+
+	b.net.(*MockHost).EXPECT().Advertise()
+
 	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
 	b.MakeOffer(s.offer)
