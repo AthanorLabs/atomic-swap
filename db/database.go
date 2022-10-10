@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 
@@ -19,6 +20,7 @@ type Database struct {
 
 // NewDatabase returns a new *Database.
 func NewDatabase(cfg *chaindb.Config) (*Database, error) {
+	fmt.Println("db path:", cfg.DataDir)
 	db, err := chaindb.NewBadgerDB(cfg)
 	if err != nil {
 		return nil, err
@@ -48,6 +50,7 @@ func (db *Database) Close() error {
 
 // PutOffer puts an offer in the database.
 func (db *Database) PutOffer(offer *types.Offer) error {
+	fmt.Println("putting offer in db")
 	val, err := json.Marshal(offer)
 	if err != nil {
 		return err
@@ -68,7 +71,8 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 	defer iter.Release()
 
 	offers := []*types.Offer{}
-	for iter.Next() {
+	valid := iter.Valid()
+	for valid {
 		// key is the offer ID
 		key := iter.Key()
 		if len(key) != 32 {
@@ -84,6 +88,7 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 		}
 
 		offers = append(offers, &offer)
+		valid = iter.Next()
 	}
 
 	return offers, nil

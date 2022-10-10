@@ -111,6 +111,11 @@ func (s *Server) Start() error {
 	return fmt.Errorf("RPC server failed: %w", err)
 }
 
+// Stop stops the JSON-RPC and websockets server.
+func (s *Server) Stop() error {
+	return s.httpServer.Close()
+}
+
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
 	Provides() types.ProvidesCoin

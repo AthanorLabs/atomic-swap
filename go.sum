@@ -45,8 +45,8 @@ github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 h1:cTp8I5+VIo
 github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/ChainSafe/chaindb v0.1.5-0.20221008013212-2694744a46d2 h1:+NABwffNCBzoLtvDjSnXkFfUVY9xkaujhM9Ijszw7RY=
-github.com/ChainSafe/chaindb v0.1.5-0.20221008013212-2694744a46d2/go.mod h1:P01m9E6xj6Mps1rtf7SurEX9oOcy1jYEyccZQAEw9+4=
+github.com/ChainSafe/chaindb v0.1.5-0.20221010004545-b27473595c86 h1:yxgI9O3MKNl8xFJtLlYd9Y94Qnqf/iFD9B1WbtcmhVU=
+github.com/ChainSafe/chaindb v0.1.5-0.20221010004545-b27473595c86/go.mod h1:P01m9E6xj6Mps1rtf7SurEX9oOcy1jYEyccZQAEw9+4=
 github.com/ChainSafe/log15 v1.0.0 h1:vRDVtWtVwIH5uSCBvgTTZh6FA58UBJ6+QiiypaZfBf8=
 github.com/ChainSafe/log15 v1.0.0/go.mod h1:5v1+ALHtdW0NfAeeoYyKmzCAMcAeqkdhIg4uxXWIgOg=
 github.com/DataDog/zstd v1.4.1 h1:3oxKN3wbHibqx897utPC2LTQU4J+IHWWJO+glkAkpFM=

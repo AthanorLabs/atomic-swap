@@ -205,7 +205,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	}
 
 	go func() {
-		err := d.make(c) // blocks on RPC server start
+		err = d.make(c) // blocks on RPC server start
 		require.NoError(t, err)
 	}()
 

@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	filippo.io/edwards25519 v1.0.0
-	github.com/ChainSafe/chaindb v0.1.5-0.20221008013212-2694744a46d2
+	github.com/ChainSafe/chaindb v0.1.5-0.20221010004545-b27473595c86
 	github.com/MarinX/monerorpc v1.0.2
 	github.com/athanorlabs/cgo-dleq v0.0.0-20220929204103-ca62cc9baa28
 	github.com/btcsuite/btcd/btcutil v1.1.2

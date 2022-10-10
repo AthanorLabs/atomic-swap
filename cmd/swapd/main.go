@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -215,13 +217,14 @@ type xmrmakerHandler interface {
 }
 
 type daemon struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
-	database *db.Database
-	host     net.Host
+	ctx       context.Context
+	cancel    context.CancelFunc
+	database  *db.Database
+	host      net.Host
+	rpcServer *rpc.Server
 }
 
-func setLogLevels(c *cli.Context) error {
+func setLogLevelsFromContext(c *cli.Context) error {
 	const (
 		levelError = "error"
 		levelWarn  = "warn"
@@ -236,6 +239,11 @@ func setLogLevels(c *cli.Context) error {
 		return fmt.Errorf("invalid log level %q", level)
 	}
 
+	setLogLevels(level)
+	return nil
+}
+
+func setLogLevels(level string) {
 	_ = logging.SetLogLevel("xmrtaker", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("common", level)
@@ -244,11 +252,10 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("monero", level)
-	return nil
 }
 
 func runDaemon(c *cli.Context) error {
-	if err := setLogLevels(c); err != nil {
+	if err := setLogLevelsFromContext(c); err != nil {
 		return err
 	}
 
@@ -283,6 +290,11 @@ func (d *daemon) stop() error {
 	}
 
 	err = d.host.Stop()
+	if err != nil {
+		return err
+	}
+
+	err = d.rpcServer.Stop()
 	if err != nil {
 		return err
 	}
@@ -432,9 +444,15 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	d.rpcServer = s
 
 	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
-	return s.Start()
+	err = s.Start()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	return nil
 }
 
 func errFlagsMutuallyExclusive(flag1, flag2 string) error {
