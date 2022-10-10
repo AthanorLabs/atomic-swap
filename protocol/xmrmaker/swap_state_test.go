@@ -73,7 +73,6 @@ func newTestXMRMaker(t *testing.T) *Instance {
 		EthereumClient:      ec,
 		EthereumPrivateKey:  pk,
 		Environment:         common.Development,
-		ChainID:             chainID,
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		SwapManager:         pswap.NewManager(),

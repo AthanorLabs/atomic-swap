@@ -1,11 +1,7 @@
 package common
 
 const (
-	MainnetChainID = 1 //nolint
-	GorliChainID   = 5
-	GanacheChainID = 1337
-
-	DefaultMoneroDaemonMainnetPort  = 18081
+	DefaultMoneroDaemonMainnetPort  = 18081 //nolint
 	DefaultMoneroDaemonDevPort      = DefaultMoneroDaemonMainnetPort
 	DefaultMoneroDaemonStagenetPort = 38081
 	DefaultEthEndpoint              = "ws://127.0.0.1:8545"

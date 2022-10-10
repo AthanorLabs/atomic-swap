@@ -34,7 +34,6 @@ const (
 	flagMoneroWalletPassword = "wallet-password"
 	flagEthereumEndpoint     = "ethereum-endpoint"
 	flagEthereumPrivKey      = "ethereum-privkey"
-	flagEthereumChainID      = "ethereum-chain-id"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 	flagInfoFile             = "infofile"
@@ -99,10 +98,6 @@ var (
 			&cli.StringFlag{
 				Name:  flagEthereumPrivKey,
 				Usage: "File containing a private key hex string",
-			},
-			&cli.UintFlag{
-				Name:  flagEthereumChainID,
-				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
 			},
 			&cli.UintFlag{
 				Name:   flagGasPrice,
@@ -299,12 +294,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		ethEndpoint string
 	)
 
-	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
-	// `flagEthereumChainID` is passed:
-	if c.IsSet(flagEthereumChainID) {
-		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
-	}
-
 	if c.String(flagEthereumEndpoint) != "" {
 		ethEndpoint = c.String(flagEthereumEndpoint)
 	} else {
@@ -365,7 +354,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		EthereumClient:      ec,
 		EthereumPrivateKey:  ethPrivKey,
 		Environment:         env,
-		ChainID:             big.NewInt(cfg.EthereumChainID),
 		GasPrice:            gasPrice,
 		GasLimit:            uint64(c.Uint(flagGasLimit)),
 		SwapContract:        contract,
