@@ -56,6 +56,7 @@ mine-monero-for-swapd() {
 	wallet_addr="$(
 		"${PROJECT_ROOT}/swapcli" balances --swapd-port "${swapd_port}" | grep 'Monero address:' | sed 's/.*: //'
 	)"
+	echo "mining to address ${wallet_addr}"
 	mine-monero "${wallet_addr}"
 }
 

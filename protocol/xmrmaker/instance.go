@@ -7,6 +7,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 
@@ -23,6 +24,8 @@ type Instance struct {
 	backend backend.Backend
 	dataDir string
 
+	net net.Host
+
 	walletFile, walletPassword string
 
 	offerManager *offers.Manager
@@ -38,6 +41,7 @@ type Config struct {
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool
+	Network                    net.Host
 }
 
 // NewInstance returns a new *xmrmaker.Instance.
@@ -48,6 +52,11 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		return nil, err
 	}
 
+	if om.NumOffers() > 0 {
+		// this is blocking if the network service hasn't started yet
+		go cfg.Network.Advertise()
+	}
+
 	return &Instance{
 		backend:        cfg.Backend,
 		dataDir:        cfg.DataDir,
@@ -55,6 +64,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		walletPassword: cfg.WalletPassword,
 		offerManager:   om,
 		swapStates:     make(map[types.Hash]*swapState),
+		net:            cfg.Network,
 	}, nil
 }
 

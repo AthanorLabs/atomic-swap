@@ -144,7 +144,6 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return err
 		}
 
-		s.ns.net.Advertise()
 		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
 	default:
 		return errInvalidMethod

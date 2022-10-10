@@ -508,8 +508,10 @@ func TestSwapState_Exit_Success(t *testing.T) {
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
-	o, oe := b.offerManager.GetOffer(s.offer.GetID())
-	require.Nil(t, o) // TODO: Document why it should be nil
+
+	// since the swap was successful, the offer should be removed.
+	o, oe, _ := b.offerManager.GetOffer(s.offer.GetID())
+	require.Nil(t, o)
 	require.Nil(t, oe)
 }
 
@@ -522,7 +524,10 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()
 	require.NoError(t, err)
-	o, oe := b.offerManager.GetOffer(s.offer.GetID())
-	require.NotNil(t, o) // TODO: Document why it should not be nil
+
+	// since the swap was not successful, the offer should be re-added to the offer manager.
+	o, oe, err := b.offerManager.GetOffer(s.offer.GetID())
+	require.NoError(t, err)
+	require.NotNil(t, o)
 	require.NotNil(t, oe)
 }

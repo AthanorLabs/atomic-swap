@@ -410,7 +410,7 @@ func (d *daemon) make(c *cli.Context) error {
 	defer backend.Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
 
-	a, b, err := getProtocolInstances(c, cfg, backend, db)
+	a, b, err := getProtocolInstances(c, cfg, backend, db, host)
 	if err != nil {
 		return err
 	}
@@ -586,7 +586,7 @@ func newBackend(
 }
 
 func getProtocolInstances(c *cli.Context, cfg common.Config,
-	b backend.Backend, db *db.Database) (xmrtakerHandler, xmrmakerHandler, error) {
+	b backend.Backend, db *db.Database, host net.Host) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
@@ -617,6 +617,7 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 		Database:       db,
 		WalletFile:     walletFilePath,
 		WalletPassword: walletPassword,
+		Network:        host,
 	}
 
 	xmrmaker, err := xmrmaker.NewInstance(xmrmakerCfg)

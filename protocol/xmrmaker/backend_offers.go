@@ -27,6 +27,7 @@ func (b *Instance) MakeOffer(o *types.Offer) (*types.OfferExtra, error) {
 		return nil, err
 	}
 
+	b.net.Advertise()
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }
