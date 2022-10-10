@@ -61,7 +61,6 @@ type Backend interface {
 	// getters
 	Ctx() context.Context
 	Env() common.Environment
-	ChainID() *big.Int
 	CallOpts() *bind.CallOpts
 	TxOpts() (*bind.TransactOpts, error)
 	SwapManager() swap.Manager
@@ -103,7 +102,6 @@ type backend struct {
 	ethPrivKey *ecdsa.PrivateKey
 	callOpts   *bind.CallOpts
 	ethAddress ethcommon.Address
-	chainID    *big.Int
 	gasPrice   *big.Int
 	gasLimit   uint64
 
@@ -125,7 +123,6 @@ type Config struct {
 	EthereumClient     *ethclient.Client
 	EthereumPrivateKey *ecdsa.PrivateKey
 	Environment        common.Environment
-	ChainID            *big.Int
 	GasPrice           *big.Int
 	GasLimit           uint64
 
@@ -148,13 +145,16 @@ func NewBackend(cfg *Config) (Backend, error) {
 	var (
 		addr   ethcommon.Address
 		txOpts *txsender.TxOpts
-		err    error
 	)
 	if cfg.EthereumPrivateKey != nil {
 		addr = common.EthereumPrivateKeyToAddress(cfg.EthereumPrivateKey)
 
+		chainID, err := cfg.EthereumClient.ChainID(cfg.Ctx)
+		if err != nil {
+			return nil, err
+		}
 		// TODO: set gas limit + price based on network (#153)
-		txOpts, err = txsender.NewTxOpts(cfg.EthereumPrivateKey, cfg.ChainID)
+		txOpts, err = txsender.NewTxOpts(cfg.EthereumPrivateKey, chainID)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +175,6 @@ func NewBackend(cfg *Config) (Backend, error) {
 			Context: cfg.Ctx,
 		},
 		ethAddress:      addr,
-		chainID:         cfg.ChainID,
 		gasPrice:        cfg.GasPrice,
 		gasLimit:        cfg.GasLimit,
 		txOpts:          txOpts,
@@ -203,10 +202,6 @@ func (b *backend) HasEthereumPrivateKey() bool {
 
 func (b *backend) CallOpts() *bind.CallOpts {
 	return b.callOpts
-}
-
-func (b *backend) ChainID() *big.Int {
-	return b.chainID
 }
 
 func (b *backend) Contract() *contracts.SwapFactory {
@@ -307,7 +302,11 @@ func (b *backend) TransactionReceipt(ctx context.Context, txHash ethcommon.Hash)
 }
 
 func (b *backend) TxOpts() (*bind.TransactOpts, error) {
-	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, b.chainID)
+	chainID, err := b.ethClient.ChainID(b.ctx)
+	if err != nil {
+		return nil, err
+	}
+	txOpts, err := bind.NewKeyedTransactorWithChainID(b.ethPrivKey, chainID)
 	if err != nil {
 		return nil, err
 	}

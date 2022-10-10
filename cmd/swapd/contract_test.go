@@ -13,7 +13,7 @@ import (
 
 func TestGetOrDeploySwapFactory(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
-	ec, chainID := tests.NewEthClient(t)
+	ec, _ := tests.NewEthClient(t)
 	tmpDir := t.TempDir()
 
 	_, addr, err := getOrDeploySwapFactory(
@@ -21,7 +21,6 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 		ethcommon.Address{},
 		common.Development,
 		tmpDir,
-		chainID,
 		pk,
 		ec,
 	)
@@ -33,7 +32,6 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 		addr,
 		common.Development,
 		tmpDir,
-		chainID,
 		pk,
 		ec,
 	)

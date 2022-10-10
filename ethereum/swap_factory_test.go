@@ -28,8 +28,10 @@ var (
 )
 
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
-	conn, chainID := tests.NewEthClient(t)
+	conn, _ := tests.NewEthClient(t)
 	pkA := tests.GetTakerTestKey(t)
+	chainID, err := conn.ChainID(context.Background())
+	require.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(pkA, chainID)
 	require.NoError(t, err)
 	return auth, conn, pkA
