@@ -33,20 +33,18 @@ const (
 	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
 )
 
-// CreateWalletClient starts a monero-wallet-rpc listening on a random port for tests and
-// returns the client interface for using it. Background mining is initiated so created transactions
-// get mined into blocks.
-func CreateWalletClient(t *testing.T) WalletClient {
+// CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
+func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
 	_, filename, _, ok := runtime.Caller(0) // this test file path
 	require.True(t, ok)
 	packageDir := path.Dir(filename)
 	repoBaseDir := path.Dir(packageDir)
-	monerWalletRPCPath := path.Join(repoBaseDir, "monero-bin", "monero-wallet-rpc")
+	moneroWalletRPCPath := path.Join(repoBaseDir, "monero-bin", "monero-wallet-rpc")
 
 	c, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
-		WalletFilePath:      path.Join(t.TempDir(), "test-wallet"),
-		MoneroWalletRPCPath: monerWalletRPCPath,
+		WalletFilePath:      path.Join(walletDir, "test-wallet"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -55,6 +53,13 @@ func CreateWalletClient(t *testing.T) WalletClient {
 	BackgroundMineBlocks(t)
 
 	return c
+}
+
+// CreateWalletClient starts a monero-wallet-rpc listening on a random port for tests and
+// returns the client interface for using it. Background mining is initiated so created transactions
+// get mined into blocks.
+func CreateWalletClient(t *testing.T) WalletClient {
+	return CreateWalletClientWithWalletDir(t, t.TempDir())
 }
 
 // GetBalance is a convenience method for tests that assumes you want the primary
@@ -120,6 +125,7 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.MoneroAm
 	daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 	addr, err := wc.GetAddress(0)
 	require.NoError(t, err)
+	t.Log("mining to address:", addr.Address)
 
 	for {
 		require.NoError(t, wc.Refresh())

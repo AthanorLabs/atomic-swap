@@ -218,6 +218,7 @@ type daemon struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	database *db.Database
+	host     net.Host
 }
 
 func setLogLevels(c *cli.Context) error {
@@ -265,9 +266,27 @@ func runDaemon(c *cli.Context) error {
 	}
 
 	d.wait()
-	// close database
-	_ = d.database.Close()
+
+	err = d.stop()
+	if err != nil {
+		log.Warnf("failed to gracefully stop daemon: %s", err)
+	}
+
 	os.Exit(0)
+	return nil
+}
+
+func (d *daemon) stop() error {
+	err := d.database.Close()
+	if err != nil {
+		return err
+	}
+
+	err = d.host.Stop()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -357,6 +376,7 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	d.host = host
 
 	dbCfg := &chaindb.Config{
 		DataDir: path.Join(cfg.DataDir, "db"),
