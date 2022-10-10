@@ -16,6 +16,8 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 	db.EXPECT().PutOffer(offer)
 	db.EXPECT().DeleteOffer(offer.GetID())
 
+	b.net.(*MockHost).EXPECT().Advertise()
+
 	_, err := b.MakeOffer(offer)
 	require.NoError(t, err)
 

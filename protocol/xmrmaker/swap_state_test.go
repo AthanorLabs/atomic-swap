@@ -89,12 +89,15 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	db := offers.NewMockDatabase(ctrl)
 	db.EXPECT().GetAllOffers()
 
+	net := NewMockHost(ctrl)
+
 	cfg := &Config{
 		Backend:        b,
 		DataDir:        path.Join(t.TempDir(), "xmrmaker"),
 		WalletFile:     testWallet,
 		WalletPassword: "",
 		Database:       db,
+		Network:        net,
 	}
 
 	xmrmaker, err := NewInstance(cfg)

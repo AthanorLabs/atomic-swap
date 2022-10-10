@@ -68,8 +68,7 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 	defer iter.Release()
 
 	offers := []*types.Offer{}
-	valid := iter.Valid()
-	for valid {
+	for iter.Valid() {
 		// key is the offer ID
 		key := iter.Key()
 		if len(key) != 32 {
@@ -85,7 +84,7 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 		}
 
 		offers = append(offers, &offer)
-		valid = iter.Next()
+		iter.Next()
 	}
 
 	return offers, nil
@@ -96,7 +95,7 @@ func (db *Database) ClearAllOffers() error {
 	iter := db.offerTable.NewIterator()
 	defer iter.Release()
 
-	for iter.Next() {
+	for iter.Valid() {
 		// key is the offer ID
 		key := iter.Key()
 		if len(key) != 32 {
@@ -107,6 +106,7 @@ func (db *Database) ClearAllOffers() error {
 		if err != nil {
 			return err
 		}
+		iter.Next()
 	}
 
 	return nil
