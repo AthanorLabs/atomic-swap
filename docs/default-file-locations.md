@@ -13,6 +13,12 @@ and `ENV` is the value from the `--env` flag (e.g. `stagenet`, `mainnet`).
 From here forward, we will use `{DATA_DIR}` to refer to this default value or the value
 passed with the `--data-dir` flag.
 
+### {DATA_DIR}/db
+
+This is the location of swapd's (BadgerDB) database. Currently, it stores offers made so that 
+they can be reloaded on restart. The database can be safely deleted if you don't have any offers
+made, or don't care about saving offers made.
+
 ### {DATA_DIR}/wallet/swap-wallet
 
 This is the default location for your monero wallet file. You can change the location
