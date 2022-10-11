@@ -1,19 +1,29 @@
 package offers
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+
+	logging "github.com/ipfs/go-log"
 )
 
 const statusChSize = 6 // the max number of stages a swap can potentially go through
 
+var (
+	log = logging.Logger("offers")
+
+	errOfferDoesNotExist = errors.New("offer with given ID does not exist")
+)
+
 // Manager synchronises access to the offers map.
 type Manager struct {
-	mu      sync.Mutex // synchronises access to the offers map
+	mu      sync.RWMutex // synchronises access to the offers map
 	offers  map[types.Hash]*offerWithExtra
 	dataDir string
+	db      Database
 }
 
 type offerWithExtra struct {
@@ -23,69 +33,104 @@ type offerWithExtra struct {
 
 // NewManager creates a new offers manager. The passed in dataDir is the directory where the
 // recovery file is for each individual swap is stored.
-func NewManager(dataDir string) *Manager {
-	return &Manager{
-		offers:  make(map[types.Hash]*offerWithExtra),
-		dataDir: dataDir,
+func NewManager(dataDir string, db Database) (*Manager, error) {
+	log.Infof("loading offers from db...")
+	// load offers from the database, if there are any
+	savedOffers, err := db.GetAllOffers()
+	if err != nil {
+		return nil, err
 	}
+
+	offers := make(map[types.Hash]*offerWithExtra)
+
+	for _, offer := range savedOffers {
+		extra := &types.OfferExtra{
+			StatusCh: make(chan types.Status, statusChSize),
+			InfoFile: pcommon.GetSwapInfoFilepath(dataDir, offer.GetID().String()),
+		}
+
+		offers[offer.GetID()] = &offerWithExtra{
+			offer: offer,
+			extra: extra,
+		}
+
+		log.Infof("loaded offer %s from database", offer.GetID())
+	}
+
+	return &Manager{
+		offers:  offers,
+		dataDir: dataDir,
+		db:      db,
+	}, nil
 }
 
 // GetOffer returns the offer data structures for the passed ID or nil for both values
 // if the offer ID is not found.
-func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	offer, has := m.offers[id]
 	if !has {
-		return nil, nil
+		return nil, nil, errOfferDoesNotExist
 	}
-	return offer.offer, offer.extra
+	return offer.offer, offer.extra, nil
 }
 
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
-func (m *Manager) AddOffer(o *types.Offer) *types.OfferExtra {
+func (m *Manager) AddOffer(o *types.Offer) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	id := o.GetID()
 	offer, has := m.offers[id]
 	if has {
-		return offer.extra
+		return offer.extra, nil
+	}
+
+	err := m.db.PutOffer(o)
+	if err != nil {
+		return nil, err
 	}
 
 	extra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, statusChSize),
-		InfoFile: pcommon.GetSwapInfoFilepath(m.dataDir),
+		InfoFile: pcommon.GetSwapInfoFilepath(m.dataDir, id.String()),
 	}
 
 	m.offers[id] = &offerWithExtra{
 		offer: o,
 		extra: extra,
 	}
-	return extra
+
+	return extra, nil
 }
 
 // TakeOffer returns any offer with the matching id and removes the offer from the manager. Nil
 // for both values is returned when the passed offer id is not currently managed.
-func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra) {
+func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	offer, has := m.offers[id]
 	if !has {
-		return nil, nil
+		return nil, nil, errOfferDoesNotExist
+	}
+
+	err := m.db.DeleteOffer(id)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	delete(m.offers, id)
-	return offer.offer, offer.extra
+	return offer.offer, offer.extra, nil
 }
 
 // GetOffers returns all current offers. The returned slice is in random order and will not
 // be the same from one invocation to the next.
 func (m *Manager) GetOffers() []*types.Offer {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	offers := make([]*types.Offer, 0, len(m.offers))
 	for _, o := range m.offers {
@@ -95,17 +140,39 @@ func (m *Manager) GetOffers() []*types.Offer {
 }
 
 // ClearAllOffers clears all offers.
-func (m *Manager) ClearAllOffers() {
+func (m *Manager) ClearAllOffers() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	err := m.db.ClearAllOffers()
+	if err != nil {
+		return err
+	}
+
 	m.offers = make(map[types.Hash]*offerWithExtra)
+	return nil
 }
 
 // ClearOfferIDs clears the passed in offer IDs if they exist.
 func (m *Manager) ClearOfferIDs(ids []types.Hash) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for _, hash := range ids {
-		delete(m.offers, hash)
+	for _, id := range ids {
+		_ = m.db.DeleteOffer(id)
+		delete(m.offers, id)
 	}
+}
+
+// DeleteOffer deletes the offer with the given ID, if it exists.
+func (m *Manager) DeleteOffer(id types.Hash) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_ = m.db.DeleteOffer(id)
+	delete(m.offers, id)
+}
+
+// NumOffers returns the current number of offers.
+func (m *Manager) NumOffers() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.offers)
 }

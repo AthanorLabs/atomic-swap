@@ -265,7 +265,6 @@ func (s *NetService) MakeOffer(_ *http.Request, req *rpctypes.MakeOfferRequest,
 
 	resp.ID = id
 	resp.InfoFile = extra.InfoFile
-	s.net.Advertise()
 	return nil
 }
 

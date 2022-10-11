@@ -208,7 +208,10 @@ func (s *swapState) exit() error {
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
-			s.offerManager.AddOffer(s.offer)
+			_, err := s.offerManager.AddOffer(s.offer)
+			if err != nil {
+				log.Warnf("failed to re-add offer %s: %s", s.offer.GetID(), err)
+			}
 		}
 
 		close(s.done)

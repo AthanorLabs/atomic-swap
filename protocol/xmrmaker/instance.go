@@ -7,6 +7,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 
@@ -23,6 +24,8 @@ type Instance struct {
 	backend backend.Backend
 	dataDir string
 
+	net net.Host
+
 	walletFile, walletPassword string
 
 	offerManager *offers.Manager
@@ -34,21 +37,34 @@ type Instance struct {
 // Config contains the configuration values for a new XMRMaker instance.
 type Config struct {
 	Backend                    backend.Backend
+	Database                   offers.Database
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool
+	Network                    net.Host
 }
 
 // NewInstance returns a new *xmrmaker.Instance.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains XMRMaker's XMR.
 func NewInstance(cfg *Config) (*Instance, error) {
+	om, err := offers.NewManager(cfg.DataDir, cfg.Database)
+	if err != nil {
+		return nil, err
+	}
+
+	if om.NumOffers() > 0 {
+		// this is blocking if the network service hasn't started yet
+		go cfg.Network.Advertise()
+	}
+
 	return &Instance{
 		backend:        cfg.Backend,
 		dataDir:        cfg.DataDir,
 		walletFile:     cfg.WalletFile,
 		walletPassword: cfg.WalletPassword,
-		offerManager:   offers.NewManager(cfg.DataDir),
+		offerManager:   om,
 		swapStates:     make(map[types.Hash]*swapState),
+		net:            cfg.Network,
 	}, nil
 }
 

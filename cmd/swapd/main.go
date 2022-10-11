@@ -4,18 +4,22 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"path"
 	"strings"
 
+	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -45,9 +49,10 @@ var (
 	// Default dev base paths. If SWAP_TEST_DATA_DIR is not defined, it is
 	// still safe, there just won't be an intermediate directory and tests
 	// could fail from stale data.
-	testDataDir            = os.Getenv("SWAP_TEST_DATA_DIR")
-	defaultXMRMakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrmaker")
-	defaultXMRTakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrtaker")
+	testDataDir = os.Getenv("SWAP_TEST_DATA_DIR")
+	// MkdirTemp uses os.TempDir() by default if the first argument is an empty string.
+	defaultXMRMakerDataDir, _ = os.MkdirTemp("", path.Join(testDataDir, "xmrmaker-*"))
+	defaultXMRTakerDataDir, _ = os.MkdirTemp("", path.Join(testDataDir, "xmrtaker-*"))
 )
 
 const (
@@ -195,6 +200,7 @@ var (
 func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
+		os.Exit(1)
 	}
 }
 
@@ -208,11 +214,14 @@ type xmrmakerHandler interface {
 }
 
 type daemon struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx       context.Context
+	cancel    context.CancelFunc
+	database  *db.Database
+	host      net.Host
+	rpcServer *rpc.Server
 }
 
-func setLogLevels(c *cli.Context) error {
+func setLogLevelsFromContext(c *cli.Context) error {
 	const (
 		levelError = "error"
 		levelWarn  = "warn"
@@ -227,18 +236,23 @@ func setLogLevels(c *cli.Context) error {
 		return fmt.Errorf("invalid log level %q", level)
 	}
 
+	setLogLevels(level)
+	return nil
+}
+
+func setLogLevels(level string) {
 	_ = logging.SetLogLevel("xmrtaker", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("common", level)
 	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("monero", level)
-	return nil
 }
 
 func runDaemon(c *cli.Context) error {
-	if err := setLogLevels(c); err != nil {
+	if err := setLogLevelsFromContext(c); err != nil {
 		return err
 	}
 
@@ -250,13 +264,40 @@ func runDaemon(c *cli.Context) error {
 		cancel: cancel,
 	}
 
-	err := d.make(c)
+	go func() {
+		err := d.make(c)
+		if err != nil {
+			log.Errorf("failed to make daemon: %s", err)
+			cancel()
+		}
+	}()
+
+	d.wait()
+
+	err := d.stop()
+	if err != nil {
+		log.Warnf("failed to gracefully stop daemon: %s", err)
+	}
+
+	return nil
+}
+
+func (d *daemon) stop() error {
+	err := d.database.Close()
 	if err != nil {
 		return err
 	}
 
-	d.wait()
-	os.Exit(0)
+	err = d.host.Stop()
+	if err != nil {
+		return err
+	}
+
+	err = d.rpcServer.Stop()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -353,6 +394,17 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	d.host = host
+
+	dbCfg := &chaindb.Config{
+		DataDir: path.Join(cfg.DataDir, "db"),
+	}
+
+	db, err := db.NewDatabase(dbCfg)
+	if err != nil {
+		return err
+	}
+	d.database = db
 
 	sm := swap.NewManager()
 	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
@@ -362,7 +414,7 @@ func (d *daemon) make(c *cli.Context) error {
 	defer backend.Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
 
-	a, b, err := getProtocolInstances(c, cfg, backend)
+	a, b, err := getProtocolInstances(c, cfg, backend, db, host)
 	if err != nil {
 		return err
 	}
@@ -399,9 +451,15 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	d.rpcServer = s
 
 	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
-	return s.Start()
+	err = s.Start()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	return nil
 }
 
 func errFlagsMutuallyExclusive(flag1, flag2 string) error {
@@ -532,7 +590,7 @@ func newBackend(
 }
 
 func getProtocolInstances(c *cli.Context, cfg common.Config,
-	b backend.Backend) (xmrtakerHandler, xmrmakerHandler, error) {
+	b backend.Backend, db *db.Database, host net.Host) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
@@ -560,8 +618,10 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 	xmrmakerCfg := &xmrmaker.Config{
 		Backend:        b,
 		DataDir:        cfg.DataDir,
+		Database:       db,
 		WalletFile:     walletFilePath,
 		WalletPassword: walletPassword,
+		Network:        host,
 	}
 
 	xmrmaker, err := xmrmaker.NewInstance(xmrmakerCfg)

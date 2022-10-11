@@ -10,6 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
+
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 )
@@ -139,4 +144,79 @@ func Test_expandBootnodes(t *testing.T) {
 		"node8",
 	}
 	require.EqualValues(t, expected, expandBootnodes(cliNodes))
+}
+
+func TestDaemon_PersistOffers(t *testing.T) {
+	defaultXMRMakerSwapdEndpoint := fmt.Sprintf("http://localhost:%d", defaultXMRMakerRPCPort)
+	startupTimeout := time.Second * 9
+
+	datadir := t.TempDir()
+	wc := monero.CreateWalletClientWithWalletDir(t, datadir)
+	monero.MineMinXMRBalance(t, wc, common.MoneroToPiconero(1))
+
+	c := newTestContext(t,
+		"test --dev-xmrmaker",
+		map[string]any{
+			flagEnv:              "dev",
+			flagDevXMRMaker:      true,
+			flagDeploy:           true,
+			flagDataDir:          datadir,
+			flagMoneroWalletPath: path.Join(datadir, "test-wallet"),
+		},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	d := &daemon{
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	go func() {
+		err := d.make(c) // blocks on RPC server start
+		require.NoError(t, err)
+	}()
+
+	time.Sleep(startupTimeout) // let the server start
+
+	// make an offer
+	client := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)
+	balance, err := client.Balances()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))
+
+	offerID, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH)
+	require.NoError(t, err)
+
+	// shut down daemon
+	cancel()
+	_ = d.stop()
+
+	// restart daemon
+	t.Log("restarting daemon")
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
+	d = &daemon{
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	go func() {
+		err = d.make(c) // blocks on RPC server start
+		require.NoError(t, err)
+	}()
+
+	defer func() {
+		cancel()
+		_ = d.stop()
+	}()
+
+	time.Sleep(startupTimeout) // let the server start
+
+	offers, err := client.GetOffers()
+	require.NoError(t, err)
+	require.Equal(t, 1, len(offers))
+	require.Equal(t, offerID, offers[0].GetID().String())
 }
