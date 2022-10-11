@@ -49,9 +49,10 @@ var (
 	// Default dev base paths. If SWAP_TEST_DATA_DIR is not defined, it is
 	// still safe, there just won't be an intermediate directory and tests
 	// could fail from stale data.
-	testDataDir            = os.Getenv("SWAP_TEST_DATA_DIR")
-	defaultXMRMakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrmaker")
-	defaultXMRTakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrtaker")
+	testDataDir = os.Getenv("SWAP_TEST_DATA_DIR")
+	// MkdirTemp uses os.TempDir() by default if the first argument is an empty string.
+	defaultXMRMakerDataDir, _ = os.MkdirTemp("", path.Join(testDataDir, "xmrmaker-*"))
+	defaultXMRTakerDataDir, _ = os.MkdirTemp("", path.Join(testDataDir, "xmrtaker-*"))
 )
 
 const (
@@ -199,6 +200,7 @@ var (
 func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
+		os.Exit(1)
 	}
 }
 
@@ -262,19 +264,21 @@ func runDaemon(c *cli.Context) error {
 		cancel: cancel,
 	}
 
-	err := d.make(c)
-	if err != nil {
-		return err
-	}
+	go func() {
+		err := d.make(c)
+		if err != nil {
+			log.Errorf("failed to make daemon: %s", err)
+			cancel()
+		}
+	}()
 
 	d.wait()
 
-	err = d.stop()
+	err := d.stop()
 	if err != nil {
 		log.Warnf("failed to gracefully stop daemon: %s", err)
 	}
 
-	os.Exit(0)
 	return nil
 }
 
