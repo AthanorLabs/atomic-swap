@@ -12,6 +12,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 func TestMain(m *testing.M) {
@@ -59,11 +60,12 @@ func (s *mockSwapState) Exit() error {
 }
 
 func newHost(t *testing.T, port uint16) *host {
+	_, chainID := tests.NewEthClient(t)
 	cfg := &Config{
 		Ctx:         context.Background(),
 		Environment: common.Development,
 		DataDir:     t.TempDir(),
-		EthChainID:  common.GanacheChainID,
+		EthChainID:  chainID.Int64(),
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
 		Bootnodes:   []string{},

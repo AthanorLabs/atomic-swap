@@ -4,18 +4,22 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"path"
 	"strings"
 
+	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -45,9 +49,10 @@ var (
 	// Default dev base paths. If SWAP_TEST_DATA_DIR is not defined, it is
 	// still safe, there just won't be an intermediate directory and tests
 	// could fail from stale data.
-	testDataDir            = os.Getenv("SWAP_TEST_DATA_DIR")
-	defaultXMRMakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrmaker")
-	defaultXMRTakerDataDir = path.Join(os.TempDir(), testDataDir, "xmrtaker")
+	testDataDir = os.Getenv("SWAP_TEST_DATA_DIR")
+	// MkdirTemp uses os.TempDir() by default if the first argument is an empty string.
+	defaultXMRMakerDataDir, _ = os.MkdirTemp("", path.Join(testDataDir, "xmrmaker-*"))
+	defaultXMRTakerDataDir, _ = os.MkdirTemp("", path.Join(testDataDir, "xmrtaker-*"))
 )
 
 const (
@@ -65,7 +70,6 @@ const (
 	flagMoneroWalletPort     = "wallet-port"
 	flagEthereumEndpoint     = "ethereum-endpoint"
 	flagEthereumPrivKey      = "ethereum-privkey"
-	flagEthereumChainID      = "ethereum-chain-id"
 	flagContractAddress      = "contract-address"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
@@ -147,10 +151,6 @@ var (
 				Usage: "File containing ethereum private key as hex, new key is generated if missing",
 				Value: fmt.Sprintf("{DATA-DIR}/%s", common.DefaultEthKeyFileName),
 			},
-			&cli.UintFlag{
-				Name:  flagEthereumChainID,
-				Usage: "Ethereum chain ID; eg. mainnet=1, goerli=5, ganache=1337",
-			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
 				Usage: "Address of instance of SwapFactory.sol already deployed on-chain; required if running on mainnet",
@@ -200,6 +200,7 @@ var (
 func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
+		os.Exit(1)
 	}
 }
 
@@ -213,11 +214,14 @@ type xmrmakerHandler interface {
 }
 
 type daemon struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx       context.Context
+	cancel    context.CancelFunc
+	database  *db.Database
+	host      net.Host
+	rpcServer *rpc.Server
 }
 
-func setLogLevels(c *cli.Context) error {
+func setLogLevelsFromContext(c *cli.Context) error {
 	const (
 		levelError = "error"
 		levelWarn  = "warn"
@@ -232,18 +236,23 @@ func setLogLevels(c *cli.Context) error {
 		return fmt.Errorf("invalid log level %q", level)
 	}
 
+	setLogLevels(level)
+	return nil
+}
+
+func setLogLevels(level string) {
 	_ = logging.SetLogLevel("xmrtaker", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("common", level)
 	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("monero", level)
-	return nil
 }
 
 func runDaemon(c *cli.Context) error {
-	if err := setLogLevels(c); err != nil {
+	if err := setLogLevelsFromContext(c); err != nil {
 		return err
 	}
 
@@ -255,13 +264,40 @@ func runDaemon(c *cli.Context) error {
 		cancel: cancel,
 	}
 
-	err := d.make(c)
+	go func() {
+		err := d.make(c)
+		if err != nil {
+			log.Errorf("failed to make daemon: %s", err)
+			cancel()
+		}
+	}()
+
+	d.wait()
+
+	err := d.stop()
+	if err != nil {
+		log.Warnf("failed to gracefully stop daemon: %s", err)
+	}
+
+	return nil
+}
+
+func (d *daemon) stop() error {
+	err := d.database.Close()
 	if err != nil {
 		return err
 	}
 
-	d.wait()
-	os.Exit(0)
+	err = d.host.Stop()
+	if err != nil {
+		return err
+	}
+
+	err = d.rpcServer.Stop()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -310,12 +346,6 @@ func (d *daemon) make(c *cli.Context) error {
 		return err
 	}
 
-	// By default, the chain ID is derived from the `flagEnv` value, but it can be overridden if
-	// `flagEthereumChainID` is passed:
-	if c.IsSet(flagEthereumChainID) {
-		cfg.EthereumChainID = int64(c.Uint(flagEthereumChainID))
-	}
-
 	if len(c.StringSlice(flagBootnodes)) > 0 {
 		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
 	}
@@ -338,11 +368,24 @@ func (d *daemon) make(c *cli.Context) error {
 		}
 	}
 
+	ethEndpoint := common.DefaultEthEndpoint
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
+	}
+	ec, err := ethclient.Dial(ethEndpoint)
+	if err != nil {
+		return err
+	}
+	chainID, err := ec.ChainID(d.ctx)
+	if err != nil {
+		return err
+	}
+
 	netCfg := &net.Config{
 		Ctx:         d.ctx,
 		Environment: env,
 		DataDir:     cfg.DataDir,
-		EthChainID:  cfg.EthereumChainID,
+		EthChainID:  chainID.Int64(),
 		Port:        libp2pPort,
 		KeyFile:     libp2pKey,
 		Bootnodes:   cfg.Bootnodes,
@@ -351,15 +394,27 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	d.host = host
+
+	dbCfg := &chaindb.Config{
+		DataDir: path.Join(cfg.DataDir, "db"),
+	}
+
+	db, err := db.NewDatabase(dbCfg)
+	if err != nil {
+		return err
+	}
+	d.database = db
 
 	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host)
+	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
 	if err != nil {
 		return err
 	}
 	defer backend.Close()
+	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
 
-	a, b, err := getProtocolInstances(c, cfg, backend)
+	a, b, err := getProtocolInstances(c, cfg, backend, db, host)
 	if err != nil {
 		return err
 	}
@@ -396,9 +451,15 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	d.rpcServer = s
 
 	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
-	return s.Start()
+	err = s.Start()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	return nil
 }
 
 func errFlagsMutuallyExclusive(flag1, flag2 string) error {
@@ -418,17 +479,11 @@ func newBackend(
 	devXMRTaker bool,
 	sm swap.Manager,
 	net net.Host,
+	ec *ethclient.Client,
 ) (backend.Backend, error) {
 	var (
-		ethEndpoint string
-		ethPrivKey  *ecdsa.PrivateKey
+		ethPrivKey *ecdsa.PrivateKey
 	)
-
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String(flagEthereumEndpoint)
-	} else {
-		ethEndpoint = common.DefaultEthEndpoint
-	}
 
 	useExternalSigner := c.Bool(flagUseExternalSigner)
 	if useExternalSigner && c.IsSet(flagEthereumPrivKey) {
@@ -474,14 +529,8 @@ func newBackend(
 			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
 		}
 	}
-	ec, err := ethclient.Dial(ethEndpoint)
-	if err != nil {
-		return nil, err
-	}
 
-	chainID := big.NewInt(cfg.EthereumChainID)
-	contract, contractAddr, err :=
-		getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, chainID, ethPrivKey, ec)
+	contract, contractAddr, err := getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, ethPrivKey, ec)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +572,6 @@ func newBackend(
 		EthereumClient:      ec,
 		EthereumPrivateKey:  ethPrivKey,
 		Environment:         env,
-		ChainID:             chainID,
 		GasPrice:            gasPrice,
 		GasLimit:            uint64(c.Uint(flagGasLimit)),
 		SwapManager:         sm,
@@ -538,16 +586,11 @@ func newBackend(
 		return nil, fmt.Errorf("failed to make backend: %w", err)
 	}
 
-	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
-		mc.Endpoint(),
-		ethEndpoint,
-	)
-
 	return b, nil
 }
 
 func getProtocolInstances(c *cli.Context, cfg common.Config,
-	b backend.Backend) (xmrtakerHandler, xmrmakerHandler, error) {
+	b backend.Backend, db *db.Database, host net.Host) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
@@ -575,8 +618,10 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 	xmrmakerCfg := &xmrmaker.Config{
 		Backend:        b,
 		DataDir:        cfg.DataDir,
+		Database:       db,
 		WalletFile:     walletFilePath,
 		WalletPassword: walletPassword,
+		Network:        host,
 	}
 
 	xmrmaker, err := xmrmaker.NewInstance(xmrmakerCfg)

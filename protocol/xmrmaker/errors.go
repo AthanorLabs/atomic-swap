@@ -31,7 +31,6 @@ var (
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
-	errNoOfferWithID             = errors.New("failed to find offer with given ID")
 	errOfferIDNotSet             = errors.New("offer ID was not set")
 	errSwapCompleted             = errors.New("swap is already completed")
 )

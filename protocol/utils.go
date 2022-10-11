@@ -15,9 +15,9 @@ import (
 const etherSymbol = "ETH"
 
 // GetSwapInfoFilepath returns an info file path with the current timestamp.
-func GetSwapInfoFilepath(dataDir string) string {
+func GetSwapInfoFilepath(dataDir string, offerID string) string {
 	t := time.Now().Format(common.TimeFmtNSecs)
-	return path.Join(dataDir, fmt.Sprintf("info-%s.json", t))
+	return path.Join(dataDir, fmt.Sprintf("info-%s-%s", t, offerID))
 }
 
 // GetSwapRecoveryFilepath returns an info file path with the current timestamp.

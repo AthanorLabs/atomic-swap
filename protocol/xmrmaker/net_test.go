@@ -10,9 +10,14 @@ import (
 )
 
 func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
-	b := newTestXMRMaker(t)
+	b, db := newTestXMRMakerAndDB(t)
 
 	offer := types.NewOffer(types.ProvidesXMR, 0.001, 0.002, 0.1, types.EthAssetETH)
+	db.EXPECT().PutOffer(offer)
+	db.EXPECT().DeleteOffer(offer.GetID())
+
+	b.net.(*MockHost).EXPECT().Advertise()
+
 	_, err := b.MakeOffer(offer)
 	require.NoError(t, err)
 

@@ -41,6 +41,9 @@ func (b *Instance) initiate(
 		}
 	}
 
+	// checks passed, delete offer for now
+	b.offerManager.DeleteOffer(offer.GetID())
+
 	s, err := newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
 		offerExtra.InfoFile, providesAmount, desiredAmount)
 	if err != nil {
@@ -87,9 +90,9 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, errOfferIDNotSet
 	}
 
-	offer, offerExtra := b.offerManager.TakeOffer(id)
-	if offer == nil {
-		return nil, nil, errNoOfferWithID
+	offer, offerExtra, err := b.offerManager.GetOffer(id)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
@@ -104,6 +107,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)
 	providedWei := common.EtherToWei(msg.ProvidedAmount)
+
 	state, err := b.initiate(offer, offerExtra, providedPicoXMR, providedWei)
 	if err != nil {
 		return nil, nil, err

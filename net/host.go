@@ -36,6 +36,7 @@ type Host interface {
 	Start() error
 	Stop() error
 
+	Advertise()
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
 	Query(who peer.AddrInfo) (*QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
@@ -192,6 +193,10 @@ func (h *host) Start() error {
 
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+queryID), h.handleQueryStream)
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+swapID), h.handleProtocolStream)
+	log.Debugf("supporting protocols %s and %s",
+		protocol.ID(h.protocolID+queryID),
+		protocol.ID(h.protocolID+swapID),
+	)
 
 	for _, addr := range h.multiaddrs() {
 		log.Info("Started listening: address=", addr)
