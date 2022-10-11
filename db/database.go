@@ -33,11 +33,6 @@ func NewDatabase(cfg *chaindb.Config) (*Database, error) {
 
 // Close flushes and closes the database.
 func (db *Database) Close() error {
-	err := db.offerTable.Flush()
-	if err != nil {
-		return err
-	}
-
 	err = db.offerTable.Close()
 	if err != nil {
 		return err
