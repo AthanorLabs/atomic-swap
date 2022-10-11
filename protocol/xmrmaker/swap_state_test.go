@@ -63,7 +63,8 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec)
+	var forwarderAddress ethcommon.Address
+	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)

@@ -530,7 +530,17 @@ func newBackend(
 		}
 	}
 
-	contract, contractAddr, err := getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, ethPrivKey, ec)
+	// TODO: get this from a flag, or just deploy also??
+	var forwarderAddress ethcommon.Address
+	contract, contractAddr, err := getOrDeploySwapFactory(
+		ctx,
+		cfg.ContractAddress,
+		env,
+		cfg.DataDir,
+		ethPrivKey,
+		ec,
+		forwarderAddress,
+	)
 	if err != nil {
 		return nil, err
 	}

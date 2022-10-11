@@ -26,7 +26,7 @@ func TestCheckContractCode(t *testing.T) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec)
+	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec, ethcommon.Address{})
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(ctx, ec, tx)

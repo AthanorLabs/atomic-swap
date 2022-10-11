@@ -30,6 +30,7 @@ func getOrDeploySwapFactory(
 	dataDir string,
 	privkey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
+	forwarderAddress ethcommon.Address,
 ) (*contracts.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf *contracts.SwapFactory
@@ -51,7 +52,7 @@ func getOrDeploySwapFactory(
 
 		// deploy contracts.sol
 		var tx *ethtypes.Transaction
-		address, tx, sf, err = deploySwapFactory(ec, txOpts)
+		address, tx, sf, err = deploySwapFactory(ec, txOpts, forwarderAddress)
 		if err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w", err)
 		}
@@ -98,6 +99,10 @@ func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*contract
 	return contracts.NewSwapFactory(addr, client)
 }
 
-func deploySwapFactory(client *ethclient.Client, txOpts *bind.TransactOpts) (ethcommon.Address, *ethtypes.Transaction, *contracts.SwapFactory, error) { //nolint:lll
-	return contracts.DeploySwapFactory(txOpts, client)
+func deploySwapFactory(
+	client *ethclient.Client,
+	txOpts *bind.TransactOpts,
+	forwarderAddress ethcommon.Address,
+) (ethcommon.Address, *ethtypes.Transaction, *contracts.SwapFactory, error) {
+	return contracts.DeploySwapFactory(txOpts, client, forwarderAddress)
 }

@@ -23,6 +23,7 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 		tmpDir,
 		pk,
 		ec,
+		ethcommon.Address{},
 	)
 	require.NoError(t, err)
 	t.Log(addr)
@@ -34,6 +35,7 @@ func TestGetOrDeploySwapFactory(t *testing.T) {
 		tmpDir,
 		pk,
 		ec,
+		ethcommon.Address{},
 	)
 	require.NoError(t, err)
 	require.Equal(t, addr, addr2)
