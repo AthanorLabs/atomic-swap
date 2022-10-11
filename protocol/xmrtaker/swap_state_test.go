@@ -81,32 +81,6 @@ func newBackend(t *testing.T) backend.Backend {
 	return b
 }
 
-// func newXMRMakerBackend(t *testing.T) backend.Backend {
-// 	pk := tests.GetMakerTestKey(t)
-// 	ec, chainID := tests.NewEthClient(t)
-
-// 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-// 	require.NoError(t, err)
-// 	addr, _, contract, err := contracts.DeploySwapFactory(txOpts, ec)
-// 	require.NoError(t, err)
-
-// 	bcfg := &backend.Config{
-// 		Ctx:                 context.Background(),
-// 		MoneroClient:        monero.CreateWalletClient(t),
-// 		EthereumClient:      ec,
-// 		EthereumPrivateKey:  pk,
-// 		Environment:         common.Development,
-// 		SwapManager:         pswap.NewManager(),
-// 		SwapContract:        contract,
-// 		SwapContractAddress: addr,
-// 		Net:                 new(mockNet),
-// 	}
-
-// 	b, err := backend.NewBackend(bcfg)
-// 	require.NoError(t, err)
-// 	return b
-// }
-
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
