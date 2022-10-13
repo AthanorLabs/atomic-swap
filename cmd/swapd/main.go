@@ -530,7 +530,7 @@ func newBackend(
 		}
 	}
 
-	// TODO: get this from a flag, or just deploy also??
+	// TODO: fetch this from swap contract var
 	var forwarderAddress ethcommon.Address
 	contract, contractAddr, err := getOrDeploySwapFactory(
 		ctx,
