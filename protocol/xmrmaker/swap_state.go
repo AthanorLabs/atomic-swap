@@ -121,7 +121,7 @@ func newSwapState(
 		Backend:             b,
 		sender:              sender,
 		offer:               offer,
-		offerExtra: offerExtra,
+		offerExtra:          offerExtra,
 		offerManager:        om,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
