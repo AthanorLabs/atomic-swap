@@ -11,16 +11,23 @@ import (
 )
 
 // MakeOffer calls net_makeOffer.
-func (c *Client) MakeOffer(min, max, exchangeRate float64, ethAsset types.EthAsset) (string, error) {
+func (c *Client) MakeOffer(
+	min, max, exchangeRate float64,
+	ethAsset types.EthAsset,
+	relayerEndpoint string,
+	relayerFee float64,
+) (string, error) {
 	const (
 		method = "net_makeOffer"
 	)
 
 	req := &rpctypes.MakeOfferRequest{
-		MinimumAmount: min,
-		MaximumAmount: max,
-		ExchangeRate:  types.ExchangeRate(exchangeRate),
-		EthAsset:      ethcommon.Address(ethAsset).Hex(),
+		MinimumAmount:   min,
+		MaximumAmount:   max,
+		ExchangeRate:    types.ExchangeRate(exchangeRate),
+		EthAsset:        ethcommon.Address(ethAsset).Hex(),
+		RelayerEndpoint: relayerEndpoint,
+		RelayerFee:      relayerFee,
 	}
 
 	params, err := json.Marshal(req)

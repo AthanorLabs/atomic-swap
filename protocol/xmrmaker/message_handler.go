@@ -84,8 +84,8 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, e
 func (s *swapState) clearNextExpectedMessage(status types.Status) {
 	s.nextExpectedMessage = nil
 	s.info.SetStatus(status)
-	if s.statusCh != nil {
-		s.statusCh <- status
+	if s.offerExtra.StatusCh != nil {
+		s.offerExtra.StatusCh <- status
 	}
 }
 
@@ -104,8 +104,8 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 
 	s.nextExpectedMessage = msg
 	stage := pcommon.GetStatus(msg.Type())
-	if s.statusCh != nil && stage != types.UnknownStatus {
-		s.statusCh <- stage
+	if s.offerExtra.StatusCh != nil && stage != types.UnknownStatus {
+		s.offerExtra.StatusCh <- stage
 	}
 }
 
@@ -149,7 +149,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
-	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
+	if err := pcommon.WriteContractSwapToFile(s.offerExtra.InfoFile, s.contractSwapID, s.contractSwap); err != nil {
 		return nil, err
 	}
 
@@ -162,7 +162,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.infoFile, msg.Address); err != nil {
+	if err := pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 

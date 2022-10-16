@@ -128,7 +128,7 @@ func (m *mockXMRMaker) GetOngoingSwapState(hash types.Hash) common.SwapState {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) MakeOffer(offer *types.Offer) (*types.OfferExtra, error) {
+func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ float64) (*types.OfferExtra, error) {
 	offerExtra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, 1),
 		InfoFile: "/dev/null",

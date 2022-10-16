@@ -78,7 +78,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 }
 
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
-func (m *Manager) AddOffer(o *types.Offer) (*types.OfferExtra, error) {
+func (m *Manager) AddOffer(o *types.Offer, relayerEndpoint string, relayerFee float64) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

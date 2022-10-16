@@ -73,10 +73,12 @@ type TakeOfferResponse struct {
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinimumAmount float64            `json:"minimumAmount"`
-	MaximumAmount float64            `json:"maximumAmount"`
-	ExchangeRate  types.ExchangeRate `json:"exchangeRate"`
-	EthAsset      string             `json:"ethAsset,omitempty"`
+	MinimumAmount   float64            `json:"minimumAmount"`
+	MaximumAmount   float64            `json:"maximumAmount"`
+	ExchangeRate    types.ExchangeRate `json:"exchangeRate"`
+	EthAsset        string             `json:"ethAsset,omitempty"`
+	RelayerEndpoint string             `json:"relayerEndpoint,omitempty"`
+	RelayerFee      float64            `json:"relayerFee,omitempty"`
 }
 
 // MakeOfferResponse ...

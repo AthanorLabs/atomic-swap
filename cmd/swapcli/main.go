@@ -131,6 +131,14 @@ var (
 						Name:  "eth-asset",
 						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
+					&cli.StringFlag{
+						Name:  "relayer-endpoint",
+						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
+					},
+					&cli.Float64Flag{
+						Name:  "relayer-fee",
+						Usage: "Fee to pay the relayer in percentage of the swap value",
+					},
 					swapdPortFlag,
 				},
 			},
@@ -408,6 +416,9 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
+	relayerEndpoint := ctx.String("relayer-endpoint")
+	relayerFee := ctx.Float64("relayer-fee")
+
 	printOfferSummary := func(offerID string) {
 		fmt.Printf("Published offer with ID: %s\n", offerID)
 		fmt.Printf("On addresses: %v\n", ourAddresses)
@@ -422,7 +433,14 @@ func runMake(ctx *cli.Context) error {
 		}
 		defer wsc.Close()
 
-		id, statusCh, err := wsc.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate), ethAsset)
+		id, statusCh, err := wsc.MakeOfferAndSubscribe(
+			min,
+			max,
+			types.ExchangeRate(exchangeRate),
+			ethAsset,
+			relayerEndpoint,
+			relayerFee,
+		)
 		if err != nil {
 			return err
 		}
@@ -439,7 +457,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset)
+	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerFee)
 	if err != nil {
 		return err
 	}

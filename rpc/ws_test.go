@@ -81,7 +81,7 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	c, err := wsclient.NewWsClient(s.ctx, s.WsURL())
 	require.NoError(t, err)
 
-	id, ch, err := c.MakeOfferAndSubscribe(0.1, 1, 0.05, types.EthAssetETH)
+	id, ch, err := c.MakeOfferAndSubscribe(0.1, 1, 0.05, types.EthAssetETH, "", 0)
 	require.NoError(t, err)
 	require.NotEqual(t, id, testSwapID)
 	select {

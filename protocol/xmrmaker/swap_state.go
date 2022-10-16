@@ -39,15 +39,14 @@ type swapState struct {
 	backend.Backend
 	sender txsender.Sender
 
-	ctx      context.Context
-	cancel   context.CancelFunc
-	stateMu  sync.Mutex
-	infoFile string
+	ctx     context.Context
+	cancel  context.CancelFunc
+	stateMu sync.Mutex
 
 	info         *pswap.Info
 	offer        *types.Offer
+	offerExtra   *types.OfferExtra
 	offerManager *offers.Manager
-	statusCh     chan types.Status
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -79,20 +78,19 @@ type swapState struct {
 func newSwapState(
 	b backend.Backend,
 	offer *types.Offer,
+	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	statusCh chan types.Status,
-	infoFile string,
 	providesAmount common.MoneroAmount,
 	desiredAmount common.EtherAmount,
 ) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
-	if statusCh == nil {
-		statusCh = make(chan types.Status, 7)
+	if offerExtra.StatusCh == nil {
+		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
-	statusCh <- stage
+	offerExtra.StatusCh <- stage
 	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, offer.EthAsset, stage, statusCh)
+		exchangeRate, offer.EthAsset, stage, offerExtra.StatusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -124,11 +122,9 @@ func newSwapState(
 		sender:              sender,
 		offer:               offer,
 		offerManager:        om,
-		infoFile:            infoFile,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		info:                info,
-		statusCh:            statusCh,
 		done:                make(chan struct{}),
 	}
 
@@ -161,7 +157,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 
 // InfoFile returns the swap's infoFile path
 func (s *swapState) InfoFile() string {
-	return s.infoFile
+	return s.offerExtra.InfoFile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -208,7 +204,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
-			_, err := s.offerManager.AddOffer(s.offer)
+			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerFee)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.GetID(), err)
 			}
@@ -299,7 +295,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infoFile, kpAB, s.Env()); err != nil {
+	if err = pcommon.WriteSharedSwapKeyPairToFile(s.offerExtra.InfoFile, kpAB, s.Env()); err != nil {
 		return "", err
 	}
 
@@ -419,7 +415,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
+	return pcommon.WriteKeysToFile(s.offerExtra.InfoFile, s.privkeys, s.Env())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {

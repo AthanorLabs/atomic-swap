@@ -113,10 +113,15 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
 	xmrmaker, db := newTestXMRMakerAndDB(t)
 	infoFile := path.Join(t.TempDir(), "test.keys")
+	oe := &types.OfferExtra{
+		InfoFile: infoFile,
+	}
+
 	swapState, err := newSwapState(xmrmaker.backend,
-		types.NewOffer("", 0, 0, 0, types.EthAssetETH), xmrmaker.offerManager, nil, infoFile,
+		types.NewOffer("", 0, 0, 0, types.EthAssetETH), oe, xmrmaker.offerManager,
 		common.MoneroAmount(33), desiredAmount)
 	require.NoError(t, err)
+
 	swapState.SetContract(xmrmaker.backend.Contract())
 	swapState.SetContractAddress(xmrmaker.backend.ContractAddr())
 	return xmrmaker, swapState, db
@@ -312,7 +317,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
 
-	for status := range s.statusCh {
+	for status := range s.offerExtra.StatusCh {
 		if status == types.CompletedSuccess {
 			break
 		} else if !status.IsOngoing() {
@@ -526,7 +531,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 
 	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	b.MakeOffer(s.offer)
+	b.MakeOffer(s.offer, "", 0)
 
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()
