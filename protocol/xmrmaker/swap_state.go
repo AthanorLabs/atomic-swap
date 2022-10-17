@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
@@ -29,6 +32,7 @@ import (
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
+	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 const revertSwapCompleted = "swap is already completed"
@@ -54,7 +58,9 @@ type swapState struct {
 	privkeys     *mcrypto.PrivateKeyPair
 	pubkeys      *mcrypto.PublicKeyPair
 
-	// swap contract and timeouts in it; set once contract is deployed
+	// swap contract and timeouts in it
+	contract       *contracts.SwapFactory
+	contractAddr   ethcommon.Address
 	contractSwapID [32]byte
 	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
@@ -439,17 +445,16 @@ func (s *swapState) setXMRTakerPublicKeys(sk *mcrypto.PublicKeyPair, secp256k1Pu
 
 // setContract sets the contract in which XMRTaker has locked her ETH.
 func (s *swapState) setContract(address ethcommon.Address) error {
+	s.contractAddr = address
+
 	var err error
-	// note: this overrides the backend contract
-	s.SetContractAddress(address)
-	contract, err := s.NewSwapFactory(address)
+	s.contract, err = s.NewSwapFactory(address)
 	if err != nil {
 		return err
 	}
 
-	s.SetContract(contract)
 	s.sender.SetContractAddress(address)
-	s.sender.SetContract(contract)
+	s.sender.SetContract(s.contract)
 	return nil
 }
 
@@ -598,14 +603,28 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
 	}
 
-	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
-	sc := s.getSecret()
-	txHash, _, err := s.sender.Claim(s.contractSwap, sc)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
+	var (
+		txHash ethcommon.Hash
+	)
 
-	log.Infof("sent claim tx, tx hash=%s", txHash)
+	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
+	if s.offerExtra.RelayerEndpoint != "" {
+		// relayer endpoint is set, claim using relayer
+		// TODO: eventually update when relayer discovery is implemented
+		txHash, err = s.claimRelayer()
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+	} else {
+		// claim and wait for tx to be included
+		sc := s.getSecret()
+		txHash, _, err = s.sender.Claim(s.contractSwap, sc)
+		if err != nil {
+			return ethcommon.Hash{}, err
+		}
+
+		log.Infof("sent claim tx, tx hash=%s", txHash)
+	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
 		balance, err := s.BalanceAt(s.ctx, addr, nil)
@@ -623,4 +642,56 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	}
 
 	return txHash, nil
+}
+
+// claimRelayer claims the ETH funds via relayer.
+func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
+	sk := s.EthPrivateKey()
+	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{})
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	rc, err := relayer.NewClient(sk, s.EthClient(), s.offerExtra.RelayerEndpoint, forwarderAddress)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryABI))
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	sc := s.getSecret()
+	feeValue := calculateRelayerFeeValue(s.contractSwap.Value, s.offerExtra.RelayerFee)
+	calldata, err := abi.Pack("claimRelayer", s.contractSwap, sc, feeValue)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	txHash, err := rc.SubmitTransaction(s.ContractAddr(), calldata)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	// wait for inclusion
+	_, err = s.WaitForReceipt(s.Ctx(), txHash)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	return txHash, nil
+}
+
+// relayerFee is a percentage (not yet divided by 100!!)
+func calculateRelayerFeeValue(swapValue *big.Int, relayerFee float64) *big.Int {
+	swapValueF := big.NewFloat(0).SetInt(swapValue)
+	relayerFeeF := big.NewFloat(relayerFee)
+	relayerFeeF = big.NewFloat(0).Quo(relayerFeeF, big.NewFloat(100))
+	feeValue := big.NewFloat(0).Mul(swapValueF, relayerFeeF)
+
+	numEtherUnits := big.NewFloat(math.Pow(10, 18))
+	feeValueWei := big.NewFloat(0).Mul(feeValue, numEtherUnits)
+	wei, _ := feeValueWei.Int(nil)
+	return wei
 }

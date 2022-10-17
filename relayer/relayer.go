@@ -26,8 +26,13 @@ type Client struct {
 }
 
 // NewClient returns a new relayer client.
-func NewClient(sk *ecdsa.PrivateKey, ec *ethclient.Client, relayerEndpoint, forwarderAddress string) (*Client, error) {
-	forwarder, err := forwarderFromAddress(ethcommon.HexToAddress(forwarderAddress), ec)
+func NewClient(
+	sk *ecdsa.PrivateKey,
+	ec *ethclient.Client,
+	relayerEndpoint string,
+	forwarderAddress ethcommon.Address,
+) (*Client, error) {
+	forwarder, err := forwarderFromAddress(forwarderAddress, ec)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +47,7 @@ func NewClient(sk *ecdsa.PrivateKey, ec *ethclient.Client, relayerEndpoint, forw
 		c:                client.NewClient(relayerEndpoint),
 		chainID:          chainID,
 		forwarder:        forwarder,
-		forwarderAddress: ethcommon.HexToAddress(forwarderAddress),
+		forwarderAddress: forwarderAddress,
 	}, nil
 }
 
