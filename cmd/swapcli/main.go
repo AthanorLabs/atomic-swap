@@ -136,8 +136,9 @@ var (
 						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
 					},
 					&cli.Float64Flag{
-						Name:  "relayer-fee",
-						Usage: "Fee to pay the relayer in percentage of the swap value",
+						Name: "relayer-commission",
+						Usage: "Commission to pay the relayer in percentage of the swap value:" +
+							" eg. --relayer-commission=0.01 for 1% commission",
 					},
 					swapdPortFlag,
 				},
@@ -417,7 +418,7 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	relayerEndpoint := ctx.String("relayer-endpoint")
-	relayerCommission := ctx.Float64("relayer-fee")
+	relayerCommission := ctx.Float64("relayer-commission")
 
 	printOfferSummary := func(offerID string) {
 		fmt.Printf("Published offer with ID: %s\n", offerID)
