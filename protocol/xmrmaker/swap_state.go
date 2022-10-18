@@ -211,7 +211,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
-			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerFee)
+			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.GetID(), err)
 			}
@@ -622,9 +622,9 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-
-		log.Infof("sent claim tx, tx hash=%s", txHash)
 	}
+
+	log.Infof("sent claim transaction, tx hash=%s", txHash)
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
 		balance, err := s.BalanceAt(s.ctx, addr, nil)
@@ -663,7 +663,11 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 	}
 
 	sc := s.getSecret()
-	feeValue := calculateRelayerFeeValue(s.contractSwap.Value, s.offerExtra.RelayerFee)
+	feeValue, err := calculateRelayerCommissionValue(s.contractSwap.Value, s.offerExtra.RelayerCommission)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
 	calldata, err := abi.Pack("claimRelayer", s.contractSwap, sc, feeValue)
 	if err != nil {
 		return ethcommon.Hash{}, err
@@ -683,15 +687,19 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 	return txHash, nil
 }
 
-// relayerFee is a percentage (not yet divided by 100!!)
-func calculateRelayerFeeValue(swapValue *big.Int, relayerFee float64) *big.Int {
-	swapValueF := big.NewFloat(0).SetInt(swapValue)
-	relayerFeeF := big.NewFloat(relayerFee)
-	relayerFeeF = big.NewFloat(0).Quo(relayerFeeF, big.NewFloat(100))
-	feeValue := big.NewFloat(0).Mul(swapValueF, relayerFeeF)
+var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
 
-	numEtherUnits := big.NewFloat(math.Pow(10, 18))
-	feeValueWei := big.NewFloat(0).Mul(feeValue, numEtherUnits)
-	wei, _ := feeValueWei.Int(nil)
-	return wei
+// swapValue is in wei
+// relayerCommission is a percentage (ie must be much less than 1)
+// error if it's greater than 0.1 (10%) - arbitrary, just a sanity check
+func calculateRelayerCommissionValue(swapValue *big.Int, relayerCommission float64) (*big.Int, error) {
+	if relayerCommission > 0.1 {
+		return nil, errRelayerCommissionTooHigh
+	}
+
+	swapValueF := big.NewFloat(0).SetInt(swapValue)
+	relayerCommissionF := big.NewFloat(relayerCommission)
+	feeValue := big.NewFloat(0).Mul(swapValueF, relayerCommissionF)
+	wei, _ := feeValue.Int(nil)
+	return wei, nil
 }

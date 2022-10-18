@@ -540,3 +540,17 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	require.NotNil(t, o)
 	require.NotNil(t, oe)
 }
+
+func TestCalculateRelayerCommissionValue(t *testing.T) {
+	swapValueF := big.NewFloat(0).Mul(big.NewFloat(4.567), numEtherUnitsFloat)
+	swapValue, _ := swapValueF.Int(nil)
+
+	relayerCommission := float64(0.01398)
+
+	expectedF := big.NewFloat(0).Mul(big.NewFloat(0.06384666), numEtherUnitsFloat)
+	expected, _ := expectedF.Int(nil)
+
+	val, err := calculateRelayerCommissionValue(swapValue, relayerCommission)
+	require.NoError(t, err)
+	require.Equal(t, expected, val)
+}

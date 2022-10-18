@@ -417,7 +417,7 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	relayerEndpoint := ctx.String("relayer-endpoint")
-	relayerFee := ctx.Float64("relayer-fee")
+	relayerCommission := ctx.Float64("relayer-fee")
 
 	printOfferSummary := func(offerID string) {
 		fmt.Printf("Published offer with ID: %s\n", offerID)
@@ -439,7 +439,7 @@ func runMake(ctx *cli.Context) error {
 			types.ExchangeRate(exchangeRate),
 			ethAsset,
 			relayerEndpoint,
-			relayerFee,
+			relayerCommission,
 		)
 		if err != nil {
 			return err
@@ -457,7 +457,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerFee)
+	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerCommission)
 	if err != nil {
 		return err
 	}

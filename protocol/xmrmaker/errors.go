@@ -28,6 +28,7 @@ var (
 	errSwapIDMismatch              = errors.New("hash of swap struct does not match swap ID")
 	errLockTxReverted              = errors.New("other party failed to lock ETH asset (transaction reverted)")
 	errInvalidETHLockedTransaction = errors.New("eth locked tx was not to correct contract address")
+	errRelayerCommissionTooHigh    = errors.New("relayer commission must be less than 0.1 (10%)")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

@@ -8,7 +8,11 @@ import (
 )
 
 // MakeOffer makes a new swap offer.
-func (b *Instance) MakeOffer(o *types.Offer, relayerEndpoint string, relayerFee float64) (*types.OfferExtra, error) {
+func (b *Instance) MakeOffer(
+	o *types.Offer,
+	relayerEndpoint string,
+	relayerCommission float64,
+) (*types.OfferExtra, error) {
 	b.backend.LockClient()
 	defer b.backend.UnlockClient()
 
@@ -23,7 +27,7 @@ func (b *Instance) MakeOffer(o *types.Offer, relayerEndpoint string, relayerFee 
 		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
 	}
 
-	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerFee)
+	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommission)
 	if err != nil {
 		return nil, err
 	}
