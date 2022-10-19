@@ -138,9 +138,19 @@ func deployForwarder(
 	ec *ethclient.Client,
 	txOpts *bind.TransactOpts,
 ) (ethcommon.Address, error) {
-	address, tx, _, err := gsnforwarder.DeployForwarder(txOpts, ec)
+	address, tx, contract, err := gsnforwarder.DeployForwarder(txOpts, ec)
 	if err != nil {
 		return ethcommon.Address{}, fmt.Errorf("failed to deploy Forwarder.sol: %w", err)
+	}
+
+	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	if err != nil {
+		return ethcommon.Address{}, err
+	}
+
+	tx, err = contract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
+	if err != nil {
+		return ethcommon.Address{}, fmt.Errorf("failed to register domain separator: %w", err)
 	}
 
 	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())

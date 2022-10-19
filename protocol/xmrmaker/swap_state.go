@@ -352,50 +352,6 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	return sa, nil
 }
 
-func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-	switch stage {
-	case contracts.StageInvalid:
-		return ethcommon.Hash{}, errClaimInvalid
-	case contracts.StageCompleted:
-		return ethcommon.Hash{}, errClaimSwapComplete
-	case contracts.StagePending, contracts.StageReady:
-		// do nothing
-	default:
-		panic("Unhandled stage value")
-	}
-
-	ts, err := s.LatestBlockTimestamp(s.ctx)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	// The block that our claim transaction goes into needs a timestamp that is strictly less
-	// than T1. Since the minimum interval between blocks is 1 second, the current block must
-	// be at least 2 seconds before T1 for a non-zero chance of the next block having a
-	// timestamp that is strictly less than T1.
-	if ts.After(s.t1.Add(-2 * time.Second)) {
-		// We've passed t1, so the only way we can regain control of the locked XMR is for
-		// XMRTaker to call refund on the contract.
-		return ethcommon.Hash{}, errClaimPastTime
-	}
-
-	if ts.Before(s.t0) && stage != contracts.StageReady {
-		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically? (#163)
-		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
-		err = s.WaitForTimestamp(s.ctx, s.t0)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-	}
-
-	return s.claimFunds()
-}
-
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
 // if the funds are locked.

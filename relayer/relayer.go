@@ -70,21 +70,20 @@ func (c *Client) SubmitTransaction(
 		return ethcommon.Hash{}, fmt.Errorf("failed to get nonce from forwarder: %w", err)
 	}
 
-	req := &gsnforwarder.IForwarderForwardRequest{
-		From:  c.key.Address(),
-		To:    to,
-		Value: big.NewInt(0),
-		Gas:   big.NewInt(679639582), // TODO: fetch from ethclient
-		Nonce: nonce,
-		Data:  calldata,
-	}
-
-	name := "Forwarder"
-	version := "0.0.1"
-
-	domainSeparator, err := rcommon.GetEIP712DomainSeparator(name, version, c.chainID, c.forwarderAddress)
+	domainSeparator, err := rcommon.GetEIP712DomainSeparator(gsnforwarder.DefaultName,
+		gsnforwarder.DefaultVersion, c.chainID, c.forwarderAddress)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to get EIP712 domain separator: %w", err)
+	}
+
+	req := &gsnforwarder.IForwarderForwardRequest{
+		From:           c.key.Address(),
+		To:             to,
+		Value:          big.NewInt(0),
+		Gas:            big.NewInt(700000000), // TODO: fetch from ethclient
+		Nonce:          nonce,
+		Data:           calldata,
+		ValidUntilTime: big.NewInt(0),
 	}
 
 	digest, err := rcommon.GetForwardRequestDigestToSign(
@@ -101,14 +100,29 @@ func (c *Client) SubmitTransaction(
 		return ethcommon.Hash{}, fmt.Errorf("failed to sign forward request digest: %w", err)
 	}
 
+	err = c.forwarder.Verify(
+		&bind.CallOpts{},
+		*req,
+		domainSeparator,
+		gsnforwarder.ForwardRequestTypehash,
+		nil,
+		sig,
+	)
+	if err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to verify signature: %w", err)
+	}
+
 	rpcReq := &rcommon.SubmitTransactionRequest{
-		From:      req.From,
-		To:        req.To,
-		Value:     req.Value,
-		Gas:       req.Gas,
-		Nonce:     req.Nonce,
-		Data:      req.Data,
-		Signature: sig,
+		From:            req.From,
+		To:              req.To,
+		Value:           req.Value,
+		Gas:             req.Gas,
+		Nonce:           req.Nonce,
+		Data:            req.Data,
+		Signature:       sig,
+		ValidUntilTime:  big.NewInt(0),
+		DomainSeparator: domainSeparator,
+		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
 	}
 
 	// submit transaction to relayer
