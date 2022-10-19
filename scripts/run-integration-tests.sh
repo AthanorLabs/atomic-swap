@@ -56,7 +56,7 @@ start-daemons() {
 	# Wait up to 10 seconds for Alice's swapd instance to start and deploy the swap contract
 	#
 	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-address.json"
-	for _ in {1..20}; do
+	for _ in {1..60}; do
 		if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
 			break
 		fi
