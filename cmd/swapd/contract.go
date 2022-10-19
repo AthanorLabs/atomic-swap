@@ -122,6 +122,11 @@ func deploySwapFactory(
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap factory: %w", err)
 	}
 
+	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	if err != nil {
+		return ethcommon.Address{}, nil, err
+	}
+
 	log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
 
 	// store the contract address on disk
