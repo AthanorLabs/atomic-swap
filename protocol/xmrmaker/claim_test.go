@@ -71,6 +71,8 @@ func runRelayer(
 
 func TestSwapState_ClaimRelayer(t *testing.T) {
 	sk := tests.GetMakerTestKey(t)
+	relayerSk := tests.GetTestKeyByIndex(t, 1)
+	require.NotEqual(t, sk, relayerSk)
 	conn, chainID := tests.NewEthClient(t)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(sk, chainID)
@@ -103,7 +105,7 @@ func TestSwapState_ClaimRelayer(t *testing.T) {
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// start relayer
-	runRelayer(t, conn, forwarderAddress, sk, chainID)
+	runRelayer(t, conn, forwarderAddress, relayerSk, chainID)
 
 	// deploy swap contract with claim key hash
 	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)
