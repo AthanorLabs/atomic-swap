@@ -45,6 +45,8 @@ github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 h1:cTp8I5+VIo
 github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/AthanorLabs/go-relayer v0.0.0-20220929181723-caf23152aa8f h1:kdbtHD5mxlcOo+cG0O6nPOdkY6dRFfgqQyt3L2nOpdU=
 github.com/AthanorLabs/go-relayer v0.0.0-20220929181723-caf23152aa8f/go.mod h1:s9h9II8xU/OaE49oc6gLKf6iiE7/Le48tpnpTBta/aE=
+github.com/AthanorLabs/go-relayer v0.0.0-20221019024912-c067c101cbc4 h1:ROxQk84fEOf9M88zyAr8zumPlvqZZtjp5cRhYZnp6HY=
+github.com/AthanorLabs/go-relayer v0.0.0-20221019024912-c067c101cbc4/go.mod h1:s9h9II8xU/OaE49oc6gLKf6iiE7/Le48tpnpTBta/aE=
 github.com/AthanorLabs/go-relayer-client v0.0.0-20220929181539-02b89bc5e882 h1:KF1zAVVKJHdojJwghbtx4W3BN7DvIoI2rPerHktdvhg=
 github.com/AthanorLabs/go-relayer-client v0.0.0-20220929181539-02b89bc5e882/go.mod h1:xIJgi0DWDiDnd4fkkKQP3D9YOR77cEU8nUWl11tS5oc=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=

@@ -195,9 +195,13 @@ func claimRelayer(
 	}
 
 	// wait for inclusion
-	_, err = block.WaitForReceipt(ctx, ec, txHash)
+	receipt, err := block.WaitForReceipt(ctx, ec, txHash)
 	if err != nil {
 		return ethcommon.Hash{}, err
+	}
+
+	if receipt.Status == 0 {
+		return ethcommon.Hash{}, fmt.Errorf("transaction failed")
 	}
 
 	return txHash, nil
