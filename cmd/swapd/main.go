@@ -75,10 +75,11 @@ const (
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
 
-	flagDevXMRTaker  = "dev-xmrtaker"
-	flagDevXMRMaker  = "dev-xmrmaker"
-	flagDeploy       = "deploy"
-	flagTransferBack = "transfer-back"
+	flagDevXMRTaker      = "dev-xmrtaker"
+	flagDevXMRMaker      = "dev-xmrmaker"
+	flagDeploy           = "deploy"
+	flagForwarderAddress = "forwarder-address"
+	flagTransferBack     = "transfer-back"
 
 	flagLogLevel = "log-level"
 )
@@ -179,6 +180,10 @@ var (
 			&cli.BoolFlag{
 				Name:  flagDeploy,
 				Usage: "Deploy an instance of the swap contract",
+			},
+			&cli.StringFlag{
+				Name:  flagForwarderAddress,
+				Usage: "If --deploy is set, provide the address of the trusted forwarder contract for the deployed swap contract",
 			},
 			&cli.BoolFlag{
 				Name:  flagTransferBack,
@@ -525,13 +530,27 @@ func newBackend(
 			}
 			cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
 		}
+
 		if bytes.Equal(cfg.ContractAddress.Bytes(), ethcommon.Address{}.Bytes()) {
 			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
 		}
 	}
 
-	// TODO: fetch this from swap contract var
+	// forwarderAddress is set only if we're deploying the swap contract, and the --forwarder-address
+	// flag is set. otherwise, if we're deploying and the flag isn't set, we also deploy the forwarder.
 	var forwarderAddress ethcommon.Address
+	forwarderAddressStr := c.String(flagForwarderAddress)
+	if deploy {
+		ok := ethcommon.IsHexAddress(forwarderAddressStr)
+		if !ok {
+			return nil, errors.New("forwarder-address is invalid")
+		}
+
+		forwarderAddress = ethcommon.HexToAddress(forwarderAddressStr)
+	} else if deploy && forwarderAddressStr != "" {
+		log.Warnf("forwarder-address is unused")
+	}
+
 	contract, contractAddr, err := getOrDeploySwapFactory(
 		ctx,
 		cfg.ContractAddress,

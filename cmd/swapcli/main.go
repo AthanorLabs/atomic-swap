@@ -419,6 +419,17 @@ func runMake(ctx *cli.Context) error {
 
 	relayerEndpoint := ctx.String("relayer-endpoint")
 	relayerCommission := ctx.Float64("relayer-commission")
+	if relayerCommission < 0 {
+		return errCannotHaveNegativeCommission
+	}
+
+	if relayerEndpoint != "" && relayerCommission == 0 {
+		return errMustSetRelayerCommission
+	}
+
+	if relayerCommission != 0 && relayerEndpoint == "" {
+		return errMustSetRelayerEndpoint
+	}
 
 	printOfferSummary := func(offerID string) {
 		fmt.Printf("Published offer with ID: %s\n", offerID)
