@@ -172,6 +172,9 @@ func TestSwapState_ClaimRelayer(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call Claim via relayer: %d", receipt.GasUsed)
 
+	// expected 1 Claimed log
+	require.Equal(t, 1, len(receipt.Logs))
+
 	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, contracts.StageCompleted, stage)

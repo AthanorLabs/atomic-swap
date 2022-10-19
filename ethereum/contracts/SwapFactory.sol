@@ -156,7 +156,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         Stage swapStage = swaps[swapID];
         require(swapStage != Stage.INVALID, "invalid swap");
         require(swapStage != Stage.COMPLETED, "swap is already completed");
-        require(msg.sender == _swap.claimer, "only claimer can claim!");
+        require(_msgSender() == _swap.claimer, "only claimer can claim!");
         require((block.timestamp >= _swap.timeout_0 || swapStage == Stage.READY), "too early to claim!");
         require(block.timestamp < _swap.timeout_1, "too late to claim!");
 
