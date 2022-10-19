@@ -540,14 +540,14 @@ func newBackend(
 	// flag is set. otherwise, if we're deploying and the flag isn't set, we also deploy the forwarder.
 	var forwarderAddress ethcommon.Address
 	forwarderAddressStr := c.String(flagForwarderAddress)
-	if deploy {
+	if deploy && forwarderAddressStr != "" {
 		ok := ethcommon.IsHexAddress(forwarderAddressStr)
 		if !ok {
 			return nil, errors.New("forwarder-address is invalid")
 		}
 
 		forwarderAddress = ethcommon.HexToAddress(forwarderAddressStr)
-	} else if deploy && forwarderAddressStr != "" {
+	} else if !deploy && forwarderAddressStr != "" {
 		log.Warnf("forwarder-address is unused")
 	}
 
