@@ -298,6 +298,10 @@ func (d *daemon) stop() error {
 		return err
 	}
 
+	if d.rpcServer == nil {
+		return nil
+	}
+
 	err = d.rpcServer.Stop()
 	if err != nil {
 		return err
@@ -320,7 +324,7 @@ func expandBootnodes(nodesCLI []string) []string {
 	return nodes
 }
 
-func (d *daemon) make(c *cli.Context) error {
+func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
 	if err != nil {
 		return err
@@ -416,6 +420,7 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	// this closes the monero.WalletClient
 	defer backend.Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
 
@@ -458,10 +463,31 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 	d.rpcServer = s
 
+	err = maybeBackgroundMine(d.ctx, devXMRMaker, backend)
+	if err != nil {
+		return err
+	}
+
 	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
 	err = s.Start()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
+	}
+
+	return nil
+}
+
+func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, b backend.Backend) error {
+	// if we're in dev-xmrmaker mode, start background mining blocks
+	// otherwise swaps won't succeed as they'll be waiting for blocks
+	if devXMRMaker {
+		addr, err := b.GetAddress(0)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("background mining blocks...")
+		go monero.BackgroundMineBlocks(ctx, addr.Address)
 	}
 
 	return nil

@@ -24,15 +24,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 )
 
-const (
-	// MonerodRegtestEndpoint is the RPC endpoint used by monerod in the dev environment's regtest mode.
-	MonerodRegtestEndpoint = "http://127.0.0.1:18081/json_rpc"
-
-	backgroundMineInterval = 500 * time.Millisecond
-	// Mastering monero example address (we don't use the background mining block rewards in tests)
-	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
-)
-
 // CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
 func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
 	_, filename, _, ok := runtime.Caller(0) // this test file path
@@ -50,7 +41,7 @@ func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClien
 	t.Cleanup(func() {
 		c.Close()
 	})
-	BackgroundMineBlocks(t)
+	TestBackgroundMineBlocks(t)
 
 	return c
 }
@@ -72,12 +63,12 @@ func GetBalance(t *testing.T, wc WalletClient) *wallet.GetBalanceResponse {
 	return balance
 }
 
-var mineMu sync.Mutex
-
-// BackgroundMineBlocks starts a background go routine to mine blocks in a monerod instance
+// TestBackgroundMineBlocks starts a background go routine to mine blocks in a monerod instance
 // that is in regtest mode. If there is an existing go routine that is already mining from
 // a previous call, no new go routine is created.
-func BackgroundMineBlocks(t *testing.T) {
+func TestBackgroundMineBlocks(t *testing.T) {
+	const blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5" //nolint:lll
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -105,7 +96,7 @@ func BackgroundMineBlocks(t *testing.T) {
 				AmountOfBlocks: 1,
 				WalletAddress:  blockRewardAddress,
 			})
-			if err != nil && err.Error() == "Block not accepted" {
+			if err != nil && err.Error() == errBlockNotAccepted {
 				// This probably happens when something else is simultaneously generating
 				// blocks, not an error that matters unless it is happening frequently.
 				t.Logf("Background mining had non-accepted block")
@@ -138,7 +129,7 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.MoneroAm
 			AmountOfBlocks: 32,
 			WalletAddress:  addr.Address,
 		})
-		if err != nil && err.Error() == "Block not accepted" {
+		if err != nil && err.Error() == errBlockNotAccepted {
 			continue
 		}
 		require.NoError(t, err)

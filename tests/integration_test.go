@@ -49,7 +49,6 @@ func TestRunIntegrationTests(t *testing.T) {
 	if testing.Short() || os.Getenv(testsEnv) != integrationMode {
 		t.Skip()
 	}
-	monero.BackgroundMineBlocks(t)
 	suite.Run(t, new(IntegrationTestSuite))
 }
 

@@ -148,7 +148,7 @@ func Test_expandBootnodes(t *testing.T) {
 
 func TestDaemon_PersistOffers(t *testing.T) {
 	defaultXMRMakerSwapdEndpoint := fmt.Sprintf("http://localhost:%d", defaultXMRMakerRPCPort)
-	startupTimeout := time.Second * 9
+	startupTimeout := time.Second * 15
 
 	datadir := t.TempDir()
 	wc := monero.CreateWalletClientWithWalletDir(t, datadir)

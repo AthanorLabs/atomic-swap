@@ -424,7 +424,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return err
 	}
 
-	if tx.To() == nil || *(tx.To()) != s.ContractAddr() {
+	if tx.To() == nil || *(tx.To()) != s.contractAddr {
 		return errInvalidETHLockedTransaction
 	}
 
