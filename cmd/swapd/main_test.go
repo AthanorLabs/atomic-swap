@@ -148,7 +148,8 @@ func Test_expandBootnodes(t *testing.T) {
 
 func TestDaemon_PersistOffers(t *testing.T) {
 	defaultXMRMakerSwapdEndpoint := fmt.Sprintf("http://localhost:%d", defaultXMRMakerRPCPort)
-	startupTimeout := time.Second * 15
+	// TODO: figure out a way to tell if the node is fully started, like startedCh
+	startupTimeout := time.Second * 24
 
 	datadir := t.TempDir()
 	wc := monero.CreateWalletClientWithWalletDir(t, datadir)
