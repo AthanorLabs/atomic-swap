@@ -367,7 +367,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	transData, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -383,7 +383,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	addr, err := s.handleRefund(tx.Hash().String())
 	require.NoError(t, err)
-	require.Equal(t, addrAB, addr)
+	require.Equal(t, transData.address, addr)
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {

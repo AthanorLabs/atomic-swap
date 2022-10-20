@@ -1,13 +1,13 @@
 package monero
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"math/big"
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -18,14 +18,14 @@ import (
 var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
 
 func TestClient_Transfer(t *testing.T) {
-	const amount = 2800000000
+	amount := common.MoneroToPiconero(10) // 1k monero
+
 	cXMRMaker := CreateWalletClient(t)
-	MineMinXMRBalance(t, cXMRMaker, amount)
+	MineMinXMRBalance(t, cXMRMaker, amount+common.MoneroToPiconero(0.1)) // add a little extra for fees
 
 	balance := GetBalance(t, cXMRMaker)
-	t.Log("balance: ", balance.Balance)
-	t.Log("unlocked balance: ", balance.UnlockedBalance)
-	t.Log("blocks to unlock: ", balance.BlocksToUnlock)
+	t.Logf("Bob's initial balance: bal=%d unlocked=%d blocks-to-unlock=%d",
+		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock)
 	require.Greater(t, balance.UnlockedBalance, uint64(amount))
 
 	kpA, err := mcrypto.GenerateKeys()
@@ -34,61 +34,123 @@ func TestClient_Transfer(t *testing.T) {
 	kpB, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	kpABPub := mcrypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair())
+	abAddress := mcrypto.SumSpendAndViewKeys(kpA.PublicKeyPair(), kpB.PublicKeyPair()).Address(common.Mainnet)
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
+	// Transfer from Bob's account to the Alice+Bob swap account
+	transResp, err := cXMRMaker.Transfer(abAddress, 0, uint64(amount))
+	require.NoError(t, err)
+	t.Logf("Bob sent %f (+fee %f) XMR to A+B address with TX ID %s",
+		common.MoneroAmount(transResp.Amount).AsMonero(), common.MoneroAmount(transResp.Fee).AsMonero(),
+		transResp.TxHash)
+	require.NoError(t, err)
+	transfer, err := cXMRMaker.WaitForTransReceipt(&WaitForReceiptRequest{
+		Ctx:              context.Background(),
+		TxID:             transResp.TxHash,
+		TxKey:            transResp.TxKey,
+		DestAddr:         abAddress,
+		NumConfirmations: MinSpendConfirmations,
+	})
+	require.GreaterOrEqual(t, transfer.Confirmations, uint64(MinSpendConfirmations))
+	t.Logf("Bob's TX was mined at height %d with %d confirmations", transfer.Height, transfer.Confirmations)
+
+	require.NoError(t, err)
+	cXMRMaker.Close() // Done with bob, make sure no one uses him again
+
+	// Establish Alice's primary wallet
+	alicePrimaryWallet := "test-swap-wallet"
 	cXMRTaker, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
-		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", alicePrimaryWallet),
 		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
-	require.NoError(t, cXMRTaker.CloseWallet())
+	addrResp, err := cXMRTaker.GetAddress(0)
+	require.NoError(t, err)
+	alicePrimaryAddr := mcrypto.Address(addrResp.Address)
 
-	// generate view-only account for A+B
+	// Alice generates a view-only wallet for A+B to confirm that Bob sent the funds
 	viewWalletName := "test-view-wallet"
-	err = cXMRTaker.(*walletClient).generateFromKeys(nil, vkABPriv, kpABPub.Address(common.Mainnet), viewWalletName, "")
-	require.NoError(t, err)
-	err = cXMRTaker.OpenWallet(viewWalletName, "")
+	err = cXMRTaker.(*walletClient).generateFromKeys(nil, vkABPriv, abAddress, viewWalletName, "")
 	require.NoError(t, err)
 
-	// transfer to account A+B
-	resp, err := cXMRMaker.Transfer(kpABPub.Address(common.Mainnet), 0, amount)
+	// Verify that generateFromKeys closed Alice's primary wallet and opened the new A+B
+	// view wallet by checking the address of the current wallet
+	addrResp, err = cXMRTaker.GetAddress(0)
 	require.NoError(t, err)
-	t.Logf("Transfer resp: %#v", resp)
-	_, err = WaitForBlocks(cXMRMaker, 1)
+	require.Equal(t, abAddress, mcrypto.Address(addrResp.Address))
+
+	balance = GetBalance(t, cXMRTaker)
+	height, err := cXMRTaker.GetHeight()
 	require.NoError(t, err)
+	t.Logf("A+B View-Only wallet balance: bal=%d unlocked=%d blocks-to-unlock=%d, cur-height=%d",
+		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock, height)
+	require.Zero(t, balance.BlocksToUnlock)
+	require.Equal(t, balance.UnlockedBalance, balance.Balance)
+	require.Equal(t, balance.UnlockedBalance, uint64(amount))
 
-	// Something strange is happening below. On the first loop iteration, we are seeing a positive
-	// Balance, a zero UnlockedBalance, but BlocksToUnlock is also zero. :| One the second loop,
-	// BlocksToUnlock is above zero.
-	for {
-		t.Log("checking XMR Taker balance:")
-		balance = GetBalance(t, cXMRTaker)
-		t.Log("\tbalance of AB: ", balance.Balance)
-		t.Log("\tunlocked balance of AB: ", balance.UnlockedBalance)
-		t.Log("\tblocks to unlock AB: ", balance.BlocksToUnlock)
-		if balance.UnlockedBalance > 0 {
-			require.NoError(t, cXMRTaker.CloseWallet())
-			break
-		}
-		time.Sleep(backgroundMineInterval)
-	}
-
-	// generate spend account for A+B
+	// At this point Alice has received the key from Bob to create an A+B spend wallet.
+	// She'll now sweep the funds from the A+B spend wallet into her primary wallet.
 	spendWalletName := "test-spend-wallet"
+	// TODO: Can we convert View-only wallet into spend wallet if it is the same wallet?
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
-	err = cXMRTaker.(*walletClient).generateFromKeys(skAKPriv, vkABPriv, kpABPub.Address(common.Mainnet), spendWalletName, "") //nolint:lll
+	err = cXMRTaker.(*walletClient).generateFromKeys(skAKPriv, vkABPriv, abAddress, spendWalletName, "")
 	require.NoError(t, err)
 
 	balance = GetBalance(t, cXMRTaker)
-	require.Greater(t, balance.UnlockedBalance, uint64(0))
+	// Verify that the spend wallet, like the view-only wallet, has the exact amount expected in it
+	require.Equal(t, balance.UnlockedBalance, uint64(amount))
 
-	// transfer from account A+B back to XMRMaker's address
-	xmrmakerAddr, err := cXMRTaker.GetAddress(0)
+	// Alice transfers from A+B spend wallet to her primary wallet's address
+	sweepResp, err := cXMRTaker.SweepAll(alicePrimaryAddr, 0)
 	require.NoError(t, err)
-	_, err = cXMRTaker.Transfer(mcrypto.Address(xmrmakerAddr.Address), 0, 1)
+	t.Logf("%#v", sweepResp)
+	require.Len(t, sweepResp.TxHashList, 1) // In our case, it should always be a single transaction
+	sweepTxID := sweepResp.TxHashList[0]
+	sweepTxKey := sweepResp.TxKeyList[0]
+	sweepAmount := sweepResp.AmountList[0]
+	sweepFee := sweepResp.FeeList[0]
+
+	t.Logf("Sweep of A+B wallet sent %d with fees %d to Alice's primary wallet",
+		sweepAmount, sweepFee)
+	require.Equal(t, uint64(amount), sweepAmount+sweepFee)
+
+	transfer, err = cXMRTaker.WaitForTransReceipt(&WaitForReceiptRequest{
+		Ctx:              context.Background(),
+		TxID:             sweepTxID,
+		TxKey:            sweepTxKey,
+		DestAddr:         alicePrimaryAddr,
+		NumConfirmations: 2,
+	})
 	require.NoError(t, err)
+	require.Equal(t, sweepFee, transfer.Fee)
+	require.Equal(t, sweepAmount, transfer.Amount)
+	t.Logf("Alice's sweep transactions was mined at height %d with %d confirmations",
+		transfer.Height, transfer.Confirmations)
+
+	// Verify zero balance of A+B wallet after sweep
+	balance = GetBalance(t, cXMRTaker)
+	require.Equal(t, balance.Balance, uint64(0))
+
+	// Switch Alice back to her primary wallet
+	require.NoError(t, cXMRTaker.OpenWallet(alicePrimaryWallet, ""))
+
+	balance = GetBalance(t, cXMRTaker)
+	t.Logf("Alice's primary wallet after sweep: bal=%d unlocked=%d blocks-to-unlock=%d",
+		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock)
+	require.Equal(t, balance.Balance, sweepAmount)
+}
+
+func Test_walletClient_SweepAll_nothingToSweepReturnsError(t *testing.T) {
+	emptyWallet := CreateWalletClient(t)
+	takerWallet := CreateWalletClient(t)
+
+	addrResp, err := takerWallet.GetAddress(0)
+	require.NoError(t, err)
+	destAddr := mcrypto.Address(addrResp.Address)
+
+	_, err = emptyWallet.SweepAll(destAddr, 0)
+	require.ErrorContains(t, err, "No unlocked balance in the specified account")
 }
 
 func TestClient_CloseWallet(t *testing.T) {
@@ -205,4 +267,27 @@ func Test_validateMonerodConfig_invalidPort(t *testing.T) {
 	err = validateMonerodConfig(common.Development, "127.0.0.1", nonUsedPort)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connection refused")
+}
+
+func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
+	amount := common.MoneroToPiconero(10) // 1k monero
+	destAddr := mcrypto.Address(blockRewardAddress)
+
+	c := CreateWalletClient(t)
+	MineMinXMRBalance(t, c, amount+common.MoneroToPiconero(0.1)) // add a little extra for fees
+
+	transResp, err := c.Transfer(destAddr, 0, uint64(amount))
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = c.WaitForTransReceipt(&WaitForReceiptRequest{
+		Ctx:              ctx,
+		TxID:             transResp.TxHash,
+		TxKey:            transResp.TxKey,
+		DestAddr:         destAddr,
+		NumConfirmations: 999999999, // wait for a number of confirmations that would take a long time
+	})
+	require.ErrorIs(t, err, context.Canceled)
 }

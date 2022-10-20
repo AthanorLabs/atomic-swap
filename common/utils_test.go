@@ -1,9 +1,11 @@
 package common
 
 import (
+	"context"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
@@ -34,4 +36,21 @@ func TestMakeDir(t *testing.T) {
 	fileStats, err := os.Stat(path)
 	require.NoError(t, err)
 	assert.Equal(t, "drwx------", fileStats.Mode().String()) // only user has access
+}
+
+// Checks normal, non-cancelled operation
+func TestSleepWithContext_fullSleep(t *testing.T) {
+	ctx := context.Background()
+	err := SleepWithContext(ctx, -1*time.Hour) // negative duration doesn't sleep or panic
+	assert.NoError(t, err)
+	err = SleepWithContext(ctx, 10*time.Millisecond)
+	assert.NoError(t, err)
+}
+
+// Checks that we handle context cancellation and break out of the sleep
+func TestSleepWithContext_canceled(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	err := SleepWithContext(ctx, 24*time.Hour) // time out the test if we fail
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }

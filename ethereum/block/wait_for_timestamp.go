@@ -6,19 +6,9 @@ import (
 
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-)
 
-// sleepWithContext is the same as time.Sleep(...) but with preemption if the context is complete.
-func sleepWithContext(ctx context.Context, d time.Duration) {
-	timer := time.NewTimer(d)
-	select {
-	case <-ctx.Done():
-		if !timer.Stop() {
-			<-timer.C
-		}
-	case <-timer.C:
-	}
-}
+	"github.com/athanorlabs/atomic-swap/common"
+)
 
 // WaitForEthBlockAfterTimestamp returns the header of the first block whose timestamp is >= ts.
 func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts int64) (*ethtypes.Header, error) {
@@ -26,7 +16,9 @@ func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts
 
 	// The sleep is safe even if timeDelta is negative. We only optimise for timestamps in the future, but if
 	// the timestamp had already passed for some reason, nothing bad happens.
-	sleepWithContext(ctx, timeDelta)
+	if err := common.SleepWithContext(ctx, timeDelta); err != nil {
+		return nil, err
+	}
 
 	// subscribe to new block headers
 	headers := make(chan *ethtypes.Header)

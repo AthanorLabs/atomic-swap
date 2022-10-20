@@ -58,7 +58,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 
 	// lock XMR
 	rs.ss.setXMRTakerPublicKeys(rs.ss.pubkeys, nil)
-	addrAB, err := rs.ss.lockFunds(1)
+	lockedXMR, err := rs.ss.lockFunds(1)
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -71,5 +71,5 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	res, err := rs.ClaimOrRecover()
 	require.NoError(t, err)
 	require.True(t, res.Recovered)
-	require.Equal(t, addrAB, res.MoneroAddress)
+	require.Equal(t, lockedXMR.address, res.MoneroAddress)
 }

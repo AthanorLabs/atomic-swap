@@ -249,7 +249,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		log.Infof("waiting for new blocks...")
 		// wait for 2 new blocks, otherwise balance might be 0
 		// TODO: check transaction hash (#164)
-		height, err := monero.WaitForBlocks(s.Backend, 2)
+		height, err := monero.WaitForBlocks(s.ctx, s.Backend, 2)
 		if err != nil {
 			return nil, err
 		}

@@ -2,6 +2,7 @@ package monero
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -22,6 +23,10 @@ import (
 
 const (
 	moneroWalletRPCLogPrefix = "[monero-wallet-rpc]: "
+
+	// MinSpendConfirmations is the number of confirmations required on transaction
+	// outputs before they can be spent again.
+	MinSpendConfirmations = 10
 )
 
 // WalletClient represents a monero-wallet-rpc client.
@@ -33,6 +38,7 @@ type WalletClient interface {
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
 	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
+	WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
 	GenerateFromKeys(kp *mcrypto.PrivateKeyPair, filename, password string, env common.Environment) error
 	GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, address mcrypto.Address, filename, password string) error
 	GetHeight() (uint64, error)
@@ -54,6 +60,15 @@ type WalletClientConf struct {
 	MonerodHost         string             // optional, defaults to 127.0.0.1
 	MoneroWalletRPCPath string             // optional, path to monero-rpc-binary
 	LogPath             string             // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
+}
+
+// WaitForReceiptRequest wraps the input parameters for WaitForTransReceipt
+type WaitForReceiptRequest struct {
+	Ctx              context.Context
+	TxID             string
+	TxKey            string
+	DestAddr         mcrypto.Address
+	NumConfirmations uint64
 }
 
 type walletClient struct {
@@ -135,6 +150,51 @@ func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error
 	})
 }
 
+// WaitForTransReceipt waits for the passed monero transaction ID to receive
+// numConfirmations and returns the transfer information. While this function will always
+// wait for the transaction to leave the mem-pool even if zero confirmations are
+// requested, it is the caller's responsibility to request enough confirmations that the
+// returned transfer information will not be invalidated by a block reorg.
+func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
+	ht, err := c.GetHeight()
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		var resp *wallet.CheckTxKeyResponse
+		resp, err = c.rpc.CheckTxKey(&wallet.CheckTxKeyRequest{
+			Txid:    req.TxID,
+			TxKey:   req.TxKey,
+			Address: string(req.DestAddr),
+		})
+		if err != nil {
+			return nil, err
+		}
+		if !resp.InPool && resp.Confirmations > req.NumConfirmations {
+			break
+		}
+		log.Debugf("Received %d of %d confirmations of XMR TXID=%s (height=%d, in-pool=%t)",
+			resp.Confirmations,
+			req.NumConfirmations,
+			req.TxID,
+			ht,
+			resp.InPool)
+		ht, err = WaitForBlocks(req.Ctx, c, 1)
+		if err != nil {
+			return nil, err
+		}
+	}
+	transResp, err := c.rpc.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
+		TxID:         req.TxID,
+		AccountIndex: 0,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &transResp.Transfer, nil
+}
+
 func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
 	return c.rpc.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
@@ -142,6 +202,7 @@ func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (
 			Address: string(to),
 		}},
 		AccountIndex: accountIdx,
+		GetTxKey:     true,
 		Priority:     0,
 	})
 }
@@ -150,6 +211,8 @@ func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.
 	return c.rpc.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
+		GetTxKeys:    true,
+		Priority:     0,
 	})
 }
 
@@ -351,9 +414,9 @@ func createWalletRPCService(conf *WalletClientConf) (string, *os.Process, error)
 func getMoneroWalletRPCBin() (string, error) {
 	execName := "monero-wallet-rpc"
 	priorityPath := path.Join("monero-bin", execName)
-	path, err := exec.LookPath(priorityPath)
+	execPath, err := exec.LookPath(priorityPath)
 	if err == nil {
-		return path, nil
+		return execPath, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return "", err

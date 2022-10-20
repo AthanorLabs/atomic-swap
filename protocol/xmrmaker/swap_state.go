@@ -530,11 +530,17 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	return nil
 }
 
+type lockedMonero struct {
+	txID    string          // Monero transaction ID (transaction hash in hex)
+	height  uint64          // block height of the transfer (for quick wallet restoration)
+	address mcrypto.Address // address the monero was sent to
+}
+
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
-	kp := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys)
+func (s *swapState) lockFunds(amount common.MoneroAmount) (*lockedMonero, error) {
+	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
 	s.LockClient()
@@ -542,33 +548,36 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 
 	balance, err := s.GetBalance(0)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	log.Debug("total XMR balance: ", balance.Balance)
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
-	address := kp.Address(s.Env())
-	txResp, err := s.Transfer(address, 0, uint64(amount))
+	transResp, err := s.Transfer(swapDestAddr, 0, uint64(amount))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
+	log.Infof("locked %f XMR, txID=%s fee=%d", amount.AsMonero(), transResp.TxHash, transResp.Fee)
 
-	// wait for a new block
-	height, err := monero.WaitForBlocks(s, 1)
+	transfer, err := s.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              s.ctx,
+		TxID:             transResp.TxHash,
+		TxKey:            transResp.TxKey,
+		DestAddr:         swapDestAddr,
+		NumConfirmations: monero.MinSpendConfirmations,
+	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	log.Infof("monero block height: %d", height)
-
-	if err := s.Refresh(); err != nil {
-		return "", err
-	}
-
-	log.Infof("successfully locked XMR funds: address=%s", address)
-	return address, nil
+	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
+		transfer.TxID, swapDestAddr, transfer.Height)
+	return &lockedMonero{
+		txID:    transfer.TxID,
+		height:  transfer.Height,
+		address: swapDestAddr,
+	}, nil
 }
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract

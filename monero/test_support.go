@@ -85,6 +85,8 @@ func BackgroundMineBlocks(t *testing.T) {
 		cancelFunc()
 		wg.Wait()
 	})
+	// Lower the sleep duration used by WaitForBlock
+	blockSleepDuration = backgroundMineInterval / 3
 	go func() {
 		defer wg.Done()
 		if !mineMu.TryLock() {
@@ -92,7 +94,6 @@ func BackgroundMineBlocks(t *testing.T) {
 		}
 		defer mineMu.Unlock()
 		for {
-			time.Sleep(backgroundMineInterval)
 			select {
 			case <-ctx.Done():
 				return

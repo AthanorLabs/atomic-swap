@@ -625,20 +625,10 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.SweepAll(depositAddr, 0)
+	_, err = s.SweepAll(depositAddr, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
-
-	if len(res.AmountList) == 0 {
-		return "", fmt.Errorf("sweep all did not return any amounts")
-	}
-
-	amount := res.AmountList[0]
-	log.Infof("transferred %v XMR to %s",
-		common.MoneroAmount(amount).AsMonero(),
-		depositAddr,
-	)
 
 	close(s.claimedCh)
 	return addr, nil
@@ -659,7 +649,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		if balance.Balance == balance.UnlockedBalance {
 			return nil
 		}
-		if _, err = monero.WaitForBlocks(s, int(balance.BlocksToUnlock)); err != nil {
+		if _, err = monero.WaitForBlocks(s.ctx, s, int(balance.BlocksToUnlock)); err != nil {
 			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
 		}
 	}

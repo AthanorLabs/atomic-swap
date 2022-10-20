@@ -1,6 +1,7 @@
 package monero
 
 import (
+	"context"
 	"path"
 	"testing"
 
@@ -16,7 +17,7 @@ func TestWaitForBlocks(t *testing.T) {
 	heightBefore, err := c.GetHeight()
 	require.NoError(t, err)
 
-	heightAfter, err := WaitForBlocks(c, 1)
+	heightAfter, err := WaitForBlocks(context.Background(), c, 1)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, heightAfter-heightBefore, uint64(1))
 }

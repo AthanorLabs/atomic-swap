@@ -1,6 +1,7 @@
 package monero
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -11,17 +12,20 @@ import (
 )
 
 const (
-	maxRetries         = 360
-	blockSleepDuration = time.Second * 10
+	maxRetries = 360
 )
 
 var (
+	// blockSleepDuration is the duration that we sleep between checks for new blocks. We
+	// lower it in dev environments if fast background mining is started.
+	blockSleepDuration = time.Second * 10
+
 	log = logging.Logger("monero")
 )
 
 // WaitForBlocks waits for `count` new blocks to arrive.
 // It returns the height of the chain.
-func WaitForBlocks(client WalletClient, count int) (uint64, error) {
+func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64, error) {
 	prevHeight, err := client.GetHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get height: %w", err)
@@ -43,7 +47,9 @@ func WaitForBlocks(client WalletClient, count int) (uint64, error) {
 			}
 
 			log.Infof("waiting for next block, current height=%d", height)
-			time.Sleep(blockSleepDuration)
+			if err = common.SleepWithContext(ctx, blockSleepDuration); err != nil {
+				return 0, err
+			}
 		}
 	}
 

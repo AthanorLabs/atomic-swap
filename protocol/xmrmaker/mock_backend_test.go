@@ -15,6 +15,7 @@ import (
 	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	monero "github.com/athanorlabs/atomic-swap/monero"
 	net "github.com/athanorlabs/atomic-swap/net"
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -749,6 +750,21 @@ func (m *MockBackend) WaitForTimestamp(arg0 context.Context, arg1 time.Time) err
 func (mr *MockBackendMockRecorder) WaitForTimestamp(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForTimestamp", reflect.TypeOf((*MockBackend)(nil).WaitForTimestamp), arg0, arg1)
+}
+
+// WaitForTransReceipt mocks base method.
+func (m *MockBackend) WaitForTransReceipt(arg0 *monero.WaitForReceiptRequest) (*wallet.Transfer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitForTransReceipt", arg0)
+	ret0, _ := ret[0].(*wallet.Transfer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WaitForTransReceipt indicates an expected call of WaitForTransReceipt.
+func (mr *MockBackendMockRecorder) WaitForTransReceipt(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForTransReceipt", reflect.TypeOf((*MockBackend)(nil).WaitForTransReceipt), arg0)
 }
 
 // XMRDepositAddress mocks base method.

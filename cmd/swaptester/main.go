@@ -396,7 +396,7 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 			if isDev {
 				generateBlocks()
 			} else {
-				_, err := monero.WaitForBlocks(defaultMoneroClient, 10)
+				_, err := monero.WaitForBlocks(context.Background(), defaultMoneroClient, 10)
 				if err != nil {
 					log.Errorf("failed to wait for blocks: %s", err)
 				}
