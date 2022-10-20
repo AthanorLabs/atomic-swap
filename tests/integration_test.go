@@ -28,6 +28,7 @@ const (
 	integrationMode   = "integration"
 	generateBlocksEnv = "GENERATEBLOCKS"
 	falseStr          = "false"
+	contractAddrEnv   = "CONTRACT_ADDR"
 
 	defaultXMRTakerSwapdEndpoint   = "http://localhost:5001"
 	defaultXMRTakerSwapdWSEndpoint = "ws://localhost:5001/ws"
@@ -144,10 +145,14 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 }
 
 func (s *IntegrationTestSuite) TestSuccess_OneSwap() {
-	s.testSuccessOneSwap(types.EthAssetETH)
+	s.testSuccessOneSwap(types.EthAssetETH, "", 0)
 }
 
-func (s *IntegrationTestSuite) testSuccessOneSwap(asset types.EthAsset) {
+func (s *IntegrationTestSuite) testSuccessOneSwap(
+	asset types.EthAsset,
+	relayerEndpoint string,
+	relayerCommission float64,
+) {
 	const testTimeout = time.Second * 75
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -157,7 +162,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(asset types.EthAsset) {
 	require.NoError(s.T(), err)
 
 	offerID, statusCh, err := bwsc.MakeOfferAndSubscribe(0.1, xmrmakerProvideAmount,
-		types.ExchangeRate(exchangeRate), asset, "", 0)
+		types.ExchangeRate(exchangeRate), asset, relayerEndpoint, relayerCommission)
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)

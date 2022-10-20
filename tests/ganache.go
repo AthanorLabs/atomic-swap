@@ -40,6 +40,7 @@ var testPackages = []struct {
 	{"protocol/xmrmaker", 2},
 	{"protocol/xmrtaker", 2},
 	{"recover", 2},
+	{"tests", 2},
 }
 
 const (
