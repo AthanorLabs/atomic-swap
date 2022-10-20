@@ -22,14 +22,22 @@ import (
 )
 
 var (
-	defaultTestTimeoutDuration = big.NewInt(60 * 5)
-	defaultRelayerEndpoint     = "http://127.0.0.1:7799"
-	relayerCommission          = float64(0.01)
+	defaultRelayerEndpoint = "http://127.0.0.1:7799"
+	relayerCommission      = float64(0.01)
 )
 
-func (s *IntegrationTestSuite) TestA_Success_ClaimRelayer() {
+func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {
 	setupRelayer(s.T())
 	s.testSuccessOneSwap(types.EthAssetETH, defaultRelayerEndpoint, relayerCommission)
+}
+
+func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
+	setupRelayer(s.T())
+	s.testSuccessOneSwap(
+		types.EthAsset(deployERC20Mock(s.T())),
+		defaultRelayerEndpoint,
+		relayerCommission,
+	)
 }
 
 func setupRelayer(t *testing.T) {
