@@ -345,9 +345,19 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
 	require.Equal(t, uint64(amt), tResp.Amount)
 
+	transfer, err := maker.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              s.ctx,
+		TxID:             tResp.TxHash,
+		TxKey:            tResp.TxKey,
+		DestAddr:         xmrAddr,
+		NumConfirmations: 1, // low value for testing
+	})
+	require.NoError(t, err)
+
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
+		TxID:    transfer.TxID,
 	}
 
 	resp, done, err = s.HandleProtocolMessage(lmsg)

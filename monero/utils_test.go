@@ -32,7 +32,11 @@ func TestCreateMoneroWallet(t *testing.T) {
 		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
-	addr, err := CreateWallet("create-wallet-test", common.Development, c, kp)
+
+	height, err := c.GetHeight()
+	require.NoError(t, err)
+
+	addr, err := CreateWallet("create-wallet-test", common.Development, c, kp, height)
 	require.NoError(t, err)
 	require.Equal(t, kp.Address(common.Development), addr)
 }

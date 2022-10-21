@@ -309,31 +309,31 @@ func (mr *MockBackendMockRecorder) FilterLogs(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // GenerateFromKeys mocks base method.
-func (m *MockBackend) GenerateFromKeys(arg0 *mcrypto.PrivateKeyPair, arg1, arg2 string, arg3 common.Environment) error {
+func (m *MockBackend) GenerateFromKeys(arg0 *mcrypto.PrivateKeyPair, arg1 uint64, arg2, arg3 string, arg4 common.Environment) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateFromKeys", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "GenerateFromKeys", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // GenerateFromKeys indicates an expected call of GenerateFromKeys.
-func (mr *MockBackendMockRecorder) GenerateFromKeys(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) GenerateFromKeys(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateFromKeys", reflect.TypeOf((*MockBackend)(nil).GenerateFromKeys), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateFromKeys", reflect.TypeOf((*MockBackend)(nil).GenerateFromKeys), arg0, arg1, arg2, arg3, arg4)
 }
 
 // GenerateViewOnlyWalletFromKeys mocks base method.
-func (m *MockBackend) GenerateViewOnlyWalletFromKeys(arg0 *mcrypto.PrivateViewKey, arg1 mcrypto.Address, arg2, arg3 string) error {
+func (m *MockBackend) GenerateViewOnlyWalletFromKeys(arg0 *mcrypto.PrivateViewKey, arg1 mcrypto.Address, arg2 uint64, arg3, arg4 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateViewOnlyWalletFromKeys", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "GenerateViewOnlyWalletFromKeys", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // GenerateViewOnlyWalletFromKeys indicates an expected call of GenerateViewOnlyWalletFromKeys.
-func (mr *MockBackendMockRecorder) GenerateViewOnlyWalletFromKeys(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) GenerateViewOnlyWalletFromKeys(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateViewOnlyWalletFromKeys", reflect.TypeOf((*MockBackend)(nil).GenerateViewOnlyWalletFromKeys), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateViewOnlyWalletFromKeys", reflect.TypeOf((*MockBackend)(nil).GenerateViewOnlyWalletFromKeys), arg0, arg1, arg2, arg3, arg4)
 }
 
 // GetAccounts mocks base method.

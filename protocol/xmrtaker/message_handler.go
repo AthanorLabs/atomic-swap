@@ -12,7 +12,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -228,9 +227,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	// check that XMR was locked in expected account, and confirm amount
 	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
 	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
-	kp := mcrypto.NewPublicKeyPair(sk, vk.Public())
+	lockedAddr := mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env())
 
-	if msg.Address != string(kp.Address(s.Env())) {
+	if msg.Address != string(lockedAddr) {
 		return nil, fmt.Errorf("address received in message does not match expected address")
 	}
 
@@ -239,25 +238,11 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	if err := s.GenerateViewOnlyWalletFromKeys(vk, kp.Address(s.Env()), walletName, ""); err != nil {
+	if err := s.GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.moneroBlockHeight, walletName, ""); err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
-
-	if s.Env() != common.Development {
-		log.Infof("waiting for new blocks...")
-		// wait for 2 new blocks, otherwise balance might be 0
-		// TODO: check transaction hash (#164)
-		height, err := monero.WaitForBlocks(s.ctx, s.Backend, 2)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Infof("monero block height: %d", height)
-	}
-
-	log.Debug("refreshing client...")
 
 	if err := s.Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh client: %w", err)
@@ -275,7 +260,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	for i, acc := range accounts.SubaddressAccounts {
 		addr := acc.BaseAddress
 
-		if mcrypto.Address(addr) == kp.Address(s.Env()) {
+		if mcrypto.Address(addr) == lockedAddr {
 			balance, err = s.GetBalance(uint64(i))
 			if err != nil {
 				return nil, fmt.Errorf("failed to get balance: %w", err)
@@ -286,10 +271,10 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	}
 
 	if balance == nil {
-		return nil, fmt.Errorf("failed to find account with address %s", kp.Address(s.Env()))
+		return nil, fmt.Errorf("failed to find account with address %s", lockedAddr)
 	}
 
-	log.Debugf("checking locked wallet, address=%s balance=%v", kp.Address(s.Env()), balance.Balance)
+	log.Debugf("checking locked wallet, address=%s balance=%v", lockedAddr, balance.Balance)
 
 	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
 		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",

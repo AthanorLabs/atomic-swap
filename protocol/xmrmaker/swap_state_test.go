@@ -383,7 +383,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	addr, err := s.handleRefund(tx.Hash().String())
 	require.NoError(t, err)
-	require.Equal(t, transData.address, addr)
+	require.Equal(t, transData.Address, string(addr))
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {

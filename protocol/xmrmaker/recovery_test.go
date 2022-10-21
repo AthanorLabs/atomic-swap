@@ -71,5 +71,6 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	res, err := rs.ClaimOrRecover()
 	require.NoError(t, err)
 	require.True(t, res.Recovered)
-	require.Equal(t, lockedXMR.address, res.MoneroAddress)
+	require.Equal(t, lockedXMR.Address, string(res.MoneroAddress))
+	require.NotEmpty(t, lockedXMR.Address, "")
 }

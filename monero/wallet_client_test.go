@@ -2,9 +2,6 @@ package monero
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
-	"math/big"
 	"os"
 	"path"
 	"testing"
@@ -71,7 +68,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	// Alice generates a view-only wallet for A+B to confirm that Bob sent the funds
 	viewWalletName := "test-view-wallet"
-	err = cXMRTaker.(*walletClient).generateFromKeys(nil, vkABPriv, abAddress, viewWalletName, "")
+	err = cXMRTaker.GenerateViewOnlyWalletFromKeys(vkABPriv, abAddress, transfer.Height, viewWalletName, "")
 	require.NoError(t, err)
 
 	// Verify that generateFromKeys closed Alice's primary wallet and opened the new A+B
@@ -94,7 +91,7 @@ func TestClient_Transfer(t *testing.T) {
 	spendWalletName := "test-spend-wallet"
 	// TODO: Can we convert View-only wallet into spend wallet if it is the same wallet?
 	skAKPriv := mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey())
-	err = cXMRTaker.(*walletClient).generateFromKeys(skAKPriv, vkABPriv, abAddress, spendWalletName, "")
+	err = cXMRTaker.(*walletClient).generateFromKeys(skAKPriv, vkABPriv, abAddress, transfer.Height, spendWalletName, "")
 	require.NoError(t, err)
 
 	balance = GetBalance(t, cXMRTaker)
@@ -201,9 +198,6 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	r, err := rand.Int(rand.Reader, big.NewInt(999))
-	require.NoError(t, err)
-
 	c, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
 		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
@@ -212,13 +206,22 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
+	height, err := c.GetHeight()
+	require.NoError(t, err)
+
 	addr, err := c.GetAddress(0)
 	require.NoError(t, err)
 	t.Logf("Address %s", addr.Address)
 
 	// initial wallet automatically closed when a new wallet is opened
-	err = c.(*walletClient).generateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(common.Mainnet),
-		fmt.Sprintf("test-wallet-%d", r), "")
+	err = c.(*walletClient).generateFromKeys(
+		kp.SpendKey(),
+		kp.ViewKey(),
+		kp.Address(common.Mainnet),
+		height,
+		"swap-deposit-wallet",
+		"",
+	)
 	require.NoError(t, err)
 
 	addr, err = c.GetAddress(0)

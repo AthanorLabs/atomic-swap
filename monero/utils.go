@@ -62,10 +62,11 @@ func CreateWallet(
 	env common.Environment,
 	client WalletClient,
 	kpAB *mcrypto.PrivateKeyPair,
+	restoreHeight uint64,
 ) (mcrypto.Address, error) {
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("%s-%s", name, t)
-	if err := client.GenerateFromKeys(kpAB, walletName, "", env); err != nil {
+	if err := client.GenerateFromKeys(kpAB, restoreHeight, walletName, "", env); err != nil {
 		return "", err
 	}
 

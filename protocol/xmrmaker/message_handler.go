@@ -173,20 +173,15 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	// TODO: check these (in checkContract) (#161)
 	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 
-	lockedXMR, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	notifyXMRLocked, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
-	}
-
-	// TODO: Extend NotifyXMRLock to include the block height and transaction ID
-	out := &message.NotifyXMRLock{
-		Address: string(lockedXMR.address),
 	}
 
 	go s.runT0ExpirationHandler()
 
 	s.setNextExpectedMessage(&message.NotifyReady{})
-	return out, nil
+	return notifyXMRLocked, nil
 }
 
 func (s *swapState) runT0ExpirationHandler() {

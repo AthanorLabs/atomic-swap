@@ -39,8 +39,20 @@ type WalletClient interface {
 	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
-	GenerateFromKeys(kp *mcrypto.PrivateKeyPair, filename, password string, env common.Environment) error
-	GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, address mcrypto.Address, filename, password string) error
+	GenerateFromKeys(
+		kp *mcrypto.PrivateKeyPair,
+		restoreHeight uint64,
+		filename,
+		password string,
+		env common.Environment,
+	) error
+	GenerateViewOnlyWalletFromKeys(
+		vk *mcrypto.PrivateViewKey,
+		address mcrypto.Address,
+		restoreHeight uint64,
+		filename,
+		password string,
+	) error
 	GetHeight() (uint64, error)
 	Refresh() error
 	CreateWallet(filename, password string) error
@@ -156,7 +168,7 @@ func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error
 // requested, it is the caller's responsibility to request enough confirmations that the
 // returned transfer information will not be invalidated by a block reorg.
 func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
-	ht, err := c.GetHeight()
+	height, err := c.GetHeight()
 	if err != nil {
 		return nil, err
 	}
@@ -178,9 +190,9 @@ func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.
 			resp.Confirmations,
 			req.NumConfirmations,
 			req.TxID,
-			ht,
+			height,
 			resp.InPool)
-		ht, err = WaitForBlocks(req.Ctx, c, 1)
+		height, err = WaitForBlocks(req.Ctx, c, 1)
 		if err != nil {
 			return nil, err
 		}
@@ -219,26 +231,29 @@ func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.
 // GenerateFromKeys creates a wallet from a given wallet address, view key, and optional spend key
 func (c *walletClient) GenerateFromKeys(
 	kp *mcrypto.PrivateKeyPair,
+	restoreHeight uint64,
 	filename, password string,
 	env common.Environment,
 ) error {
-	return c.generateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(env), filename, password)
+	return c.generateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(env), restoreHeight, filename, password)
 }
 
 // GenerateViewOnlyWalletFromKeys creates a view-only wallet from a given view key and address
 func (c *walletClient) GenerateViewOnlyWalletFromKeys(
 	vk *mcrypto.PrivateViewKey,
 	address mcrypto.Address,
+	restoreHeight uint64,
 	filename,
 	password string,
 ) error {
-	return c.generateFromKeys(nil, vk, address, filename, password)
+	return c.generateFromKeys(nil, vk, address, restoreHeight, filename, password)
 }
 
 func (c *walletClient) generateFromKeys(
 	sk *mcrypto.PrivateSpendKey,
 	vk *mcrypto.PrivateViewKey,
 	address mcrypto.Address,
+	restoreHeight uint64,
 	filename,
 	password string,
 ) error {
@@ -253,11 +268,12 @@ func (c *walletClient) generateFromKeys(
 	}
 
 	res, err := c.rpc.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
-		Filename: filename,
-		Address:  string(address),
-		Viewkey:  vk.Hex(),
-		Spendkey: spendKey,
-		Password: password,
+		Filename:      filename,
+		Address:       string(address),
+		RestoreHeight: restoreHeight,
+		Viewkey:       vk.Hex(),
+		Spendkey:      spendKey,
+		Password:      password,
 	})
 	if err != nil {
 		return err

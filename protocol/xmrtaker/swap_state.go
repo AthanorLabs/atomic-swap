@@ -58,6 +58,9 @@ type swapState struct {
 	xmrmakerSecp256k1PublicKey *secp256k1.PublicKey
 	xmrmakerAddress            ethcommon.Address
 
+	// block height at start of swap used for fast wallet creation
+	moneroBlockHeight uint64
+
 	// ETH asset being swapped
 	ethAsset types.EthAsset
 
@@ -119,6 +122,11 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		}
 	}
 
+	moneroBlockHeight, err := b.GetHeight()
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
@@ -127,6 +135,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		sender:              sender,
 		infoFile:            infofile,
 		transferBack:        transferBack,
+		moneroBlockHeight:   moneroBlockHeight,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
@@ -595,7 +604,8 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	s.LockClient()
 	defer s.UnlockClient()
 
-	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB)
+	// TODO: Pass optimised restore height below
+	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB, s.moneroBlockHeight)
 	if err != nil {
 		return "", err
 	}

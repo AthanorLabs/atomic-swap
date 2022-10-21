@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	ethcommon "github.com/ethereum/go-ethereum/common"
+
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // Type represents the type of a network message
@@ -227,7 +227,8 @@ func (m *NotifyETHLocked) Type() Type {
 
 // NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
 type NotifyXMRLock struct {
-	Address string
+	Address string // address the monero was sent to
+	TxID    string // Monero transaction ID (transaction hash in hex)
 }
 
 // String ...

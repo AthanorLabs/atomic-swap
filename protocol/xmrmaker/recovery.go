@@ -41,16 +41,17 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
-		ctx:            ctx,
-		cancel:         cancel,
-		Backend:        b,
-		sender:         sender,
-		privkeys:       kp,
-		pubkeys:        pubkp,
-		dleqProof:      dleq.NewProofWithSecret(sc),
-		contractSwapID: contractSwapID,
-		contractSwap:   contractSwap,
-		infoFile:       pcommon.GetSwapRecoveryFilepath(dataDir),
+		ctx:               ctx,
+		cancel:            cancel,
+		Backend:           b,
+		sender:            sender,
+		privkeys:          kp,
+		pubkeys:           pubkp,
+		dleqProof:         dleq.NewProofWithSecret(sc),
+		contractSwapID:    contractSwapID,
+		contractSwap:      contractSwap,
+		infoFile:          pcommon.GetSwapRecoveryFilepath(dataDir),
+		moneroBlockHeight: 0, // TODO: Can we optimise this?
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

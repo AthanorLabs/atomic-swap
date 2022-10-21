@@ -64,7 +64,7 @@ func (r *recoverer) WalletFromSecrets(xmrtakerSecret, xmrmakerSecret string) (mc
 		return "", err
 	}
 
-	return monero.CreateWallet("recovered-wallet", r.env, r.xmrClient, kp)
+	return monero.CreateWallet("recovered-wallet", r.env, r.xmrClient, kp, 0)
 }
 
 // WalletFromSharedSecret generates a monero wallet from the given shared secret.
@@ -85,7 +85,7 @@ func (r *recoverer) WalletFromSharedSecret(pk *mcrypto.PrivateKeyInfo) (mcrypto.
 	}
 
 	kp := mcrypto.NewPrivateKeyPair(sk, vk)
-	return monero.CreateWallet("recovered-wallet", r.env, r.xmrClient, kp)
+	return monero.CreateWallet("recovered-wallet", r.env, r.xmrClient, kp, 0)
 }
 
 // RecoverFromXMRMakerSecretAndContract recovers funds by either claiming ether or reclaiming locked monero.

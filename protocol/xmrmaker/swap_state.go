@@ -63,6 +63,7 @@ type swapState struct {
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
 	xmrtakerSecp256K1PublicKey *secp256k1.PublicKey
+	moneroBlockHeight          uint64 // height of the monero blockchain when the swap is started
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -116,6 +117,11 @@ func newSwapState(
 		}
 	}
 
+	moneroBlockHeight, err := b.GetHeight()
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
@@ -125,6 +131,7 @@ func newSwapState(
 		offer:               offer,
 		offerManager:        om,
 		infoFile:            infoFile,
+		moneroBlockHeight:   moneroBlockHeight,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		info:                info,
@@ -305,7 +312,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 
 	s.LockClient()
 	defer s.UnlockClient()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
+	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB, s.moneroBlockHeight)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
@@ -530,16 +537,10 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	return nil
 }
 
-type lockedMonero struct {
-	txID    string          // Monero transaction ID (transaction hash in hex)
-	height  uint64          // block height of the transfer (for quick wallet restoration)
-	address mcrypto.Address // address the monero was sent to
-}
-
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount common.MoneroAmount) (*lockedMonero, error) {
+func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
@@ -573,10 +574,9 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*lockedMonero, error)
 	}
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
-	return &lockedMonero{
-		txID:    transfer.TxID,
-		height:  transfer.Height,
-		address: swapDestAddr,
+	return &message.NotifyXMRLock{
+		Address: string(swapDestAddr),
+		TxID:    transfer.TxID,
 	}, nil
 }
 
