@@ -350,9 +350,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 		TxID:             tResp.TxHash,
 		TxKey:            tResp.TxKey,
 		DestAddr:         xmrAddr,
-		NumConfirmations: 1, // low value for testing
+		NumConfirmations: monero.MinSpendConfirmations,
 	})
 	require.NoError(t, err)
+	t.Logf("Transfer mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
 
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
