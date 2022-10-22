@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	rcommon "github.com/AthanorLabs/go-relayer/common"
-	gsnforwarder "github.com/AthanorLabs/go-relayer/examples/gsn_forwarder"
+	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
 	"github.com/AthanorLabs/go-relayer/relayer"
 	rrpc "github.com/AthanorLabs/go-relayer/rpc"
 
