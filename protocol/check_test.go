@@ -1,8 +1,7 @@
-package xmrmaker
+package protocol
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -10,15 +9,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCheckContractCode(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	b := NewMockBackend(ctrl)
-
 	ec, chainID := tests.NewEthClient(t)
 	ctx := context.Background()
 	pk := tests.GetMakerTestKey(t)
@@ -32,11 +26,6 @@ func TestCheckContractCode(t *testing.T) {
 	addr, err := bind.WaitDeployed(ctx, ec, tx)
 	require.NoError(t, err)
 
-	b.EXPECT().CodeAt(context.Background(), addr, nil).
-		DoAndReturn(func(ctx context.Context, account ethcommon.Address, _ *big.Int) ([]byte, error) {
-			return ec.CodeAt(ctx, account, nil)
-		})
-
-	err = checkContractCode(ctx, b, addr)
+	err = CheckContractCode(ctx, ec, addr)
 	require.NoError(t, err)
 }

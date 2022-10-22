@@ -66,6 +66,7 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 
 	forwarder, err := deployForwarder(context.Background(), ec, txOpts)
 	require.NoError(t, err)
+	t.Log(forwarder)
 
 	// deploy and get address
 	_, address, err := getOrDeploySwapFactory(

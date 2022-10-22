@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"errors"
@@ -55,31 +54,13 @@ func getOrDeploySwapFactory(
 		}
 		log.Infof("loaded SwapFactory.sol from address %s", address)
 
-		err = checkContractCode(ctx, ec, address)
+		err = pcommon.CheckContractCode(ctx, ec, address)
 		if err != nil {
 			return nil, ethcommon.Address{}, err
 		}
 	}
 
 	return sf, address, nil
-}
-
-func checkContractCode(ctx context.Context, ec *ethclient.Client, contractAddr ethcommon.Address) error {
-	code, err := ec.CodeAt(ctx, contractAddr, nil)
-	if err != nil {
-		return err
-	}
-
-	expectedCode := ethcommon.FromHex(contracts.SwapFactoryMetaData.Bin)
-
-	if !bytes.Contains(expectedCode, code) {
-		// TODO: fix this, it appears the compiled bytecode no longer contains
-		// the deployed code exactly
-		return nil
-		//return errInvalidSwapContract
-	}
-
-	return nil
 }
 
 func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*contracts.SwapFactory, error) {
