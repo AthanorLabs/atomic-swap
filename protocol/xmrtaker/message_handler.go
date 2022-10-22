@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MarinX/monerorpc/wallet"
-
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -248,44 +246,29 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("failed to refresh client: %w", err)
 	}
 
-	accounts, err := s.GetAccounts()
+	balance, err := s.GetBalance(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %w", err)
 	}
 
-	var (
-		balance *wallet.GetBalanceResponse
-	)
-
-	for i, acc := range accounts.SubaddressAccounts {
-		addr := acc.BaseAddress
-
-		if mcrypto.Address(addr) == lockedAddr {
-			balance, err = s.GetBalance(uint64(i))
-			if err != nil {
-				return nil, fmt.Errorf("failed to get balance: %w", err)
-			}
-
-			break
-		}
-	}
-
-	if balance == nil {
-		return nil, fmt.Errorf("failed to find account with address %s", lockedAddr)
-	}
-
-	log.Debugf("checking locked wallet, address=%s balance=%v", lockedAddr, balance.Balance)
+	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
+		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
 	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
 		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
 			balance.Balance, float64(s.receivedAmountInPiconero()))
 	}
 
-	// also check that the balance isn't unlocked only after an unreasonable amount of blocks
-	// somewhat arbitrarily chosen as 10x the default unlock time
-	// maybe make this configurable?
-	if balance.BlocksToUnlock > 100 {
-		return nil, fmt.Errorf("locked XMR unlocks too far into the future: got %d blocks", balance.BlocksToUnlock)
+	// Monero received from a transfer is locked for a minimum of 10 confirmations before
+	// it can be spent again. The maker is required to wait for 10 confirmations before
+	// notifying us that the XMR is locked and should not be adding additional wait
+	// requirements. We give one block of leniency, in case the taker's node is not fully
+	// synced. Our goal is to prevent double spends, issues due to block reorgs, and
+	// prevent the maker from locking our funds until close to the heat death of the
+	// universe (https://github.com/monero-project/research-lab/issues/78).
+	if balance.BlocksToUnlock > 1 {
+		return nil, fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
+			balance.BlocksToUnlock)
 	}
 
 	if err := s.CloseWallet(); err != nil {
