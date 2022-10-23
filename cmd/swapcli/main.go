@@ -423,6 +423,10 @@ func runMake(ctx *cli.Context) error {
 		return errCannotHaveNegativeCommission
 	}
 
+	if relayerCommission > 1 {
+		return errCannotHaveGreaterThan100Commission
+	}
+
 	if relayerEndpoint != "" && relayerCommission == 0 {
 		return errMustSetRelayerCommission
 	}
