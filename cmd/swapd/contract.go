@@ -20,7 +20,6 @@ import (
 
 var (
 	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
-	//errInvalidSwapContract  = errors.New("given contract address does not contain correct code")
 )
 
 func getOrDeploySwapFactory(

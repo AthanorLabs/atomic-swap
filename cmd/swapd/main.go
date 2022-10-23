@@ -420,6 +420,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	if err != nil {
 		return err
 	}
+
 	// this closes the monero.WalletClient
 	defer backend.Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
@@ -480,16 +481,17 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, b backend.Backend) error {
 	// if we're in dev-xmrmaker mode, start background mining blocks
 	// otherwise swaps won't succeed as they'll be waiting for blocks
-	if devXMRMaker {
-		addr, err := b.GetAddress(0)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("background mining blocks...")
-		go monero.BackgroundMineBlocks(ctx, addr.Address)
+	if !devXMRMaker {
+		return nil
 	}
 
+	addr, err := b.GetAddress(0)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("background mining blocks...")
+	go monero.BackgroundMineBlocks(ctx, addr.Address)
 	return nil
 }
 

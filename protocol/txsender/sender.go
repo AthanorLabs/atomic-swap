@@ -96,7 +96,6 @@ func (s *privateKeySender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte
 
 	tx, err := s.swapContract.NewSwap(&txOpts, _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
 		ethcommon.Address(_ethAsset), value, _nonce)
-
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
 		return ethcommon.Hash{}, nil, err
