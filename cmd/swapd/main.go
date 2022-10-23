@@ -183,7 +183,7 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  flagForwarderAddress,
-				Usage: "If --deploy is set, provide the address of the trusted forwarder contract for the deployed swap contract",
+				Usage: "Specifies the Ethereum address of the trusted forwarder contract when deploying the swap contract. Ignored if --deploy is not passed.", //nolint:lll
 			},
 			&cli.BoolFlag{
 				Name:  flagTransferBack,

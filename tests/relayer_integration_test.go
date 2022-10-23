@@ -45,9 +45,7 @@ func setupRelayer(t *testing.T) {
 	ec, chainID := NewEthClient(t)
 
 	swapContractAddrStr := os.Getenv(contractAddrEnv)
-	if swapContractAddrStr == "" {
-		panic("CONTRACT_ADDR env var not set")
-	}
+	require.NotEmptyf(t, swapContractAddrStr, "CONTRACT_ADDR environment variable not set")
 
 	swapContractAddr := ethcommon.HexToAddress(swapContractAddrStr)
 	contract, err := contracts.NewSwapFactory(swapContractAddr, ec)
