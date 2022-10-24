@@ -2,6 +2,8 @@ package common
 
 import (
 	"context"
+	"io/fs"
+	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -36,6 +38,34 @@ func TestMakeDir(t *testing.T) {
 	fileStats, err := os.Stat(path)
 	require.NoError(t, err)
 	assert.Equal(t, "drwx------", fileStats.Mode().String()) // only user has access
+}
+
+func TestFileExists(t *testing.T) {
+	tmpDir := t.TempDir()
+	presentFile := path.Join(tmpDir, "file-is-here.txt")
+	missingFile := path.Join(tmpDir, "no-file-here.txt")
+	noAccessFile := path.Join(tmpDir, "no-access", "any-file.txt")
+
+	// file exists
+	require.NoError(t, ioutil.WriteFile(presentFile, nil, 0600))
+	exists, err := FileExists(presentFile)
+	require.NoError(t, err)
+	assert.True(t, exists)
+
+	// file does not exist
+	exists, err = FileExists(missingFile)
+	require.NoError(t, err)
+	assert.False(t, exists)
+
+	// no access to know if the file exists
+	require.NoError(t, os.Mkdir(path.Dir(noAccessFile), 0000)) // no access permissions on dir
+	_, err = FileExists(noAccessFile)
+	require.ErrorIs(t, err, fs.ErrPermission)
+
+	// path present, but it is a directory instead of a file
+	_, err = FileExists(tmpDir)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "directory")
 }
 
 // Checks normal, non-cancelled operation

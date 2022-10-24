@@ -124,7 +124,7 @@ start-monerod-regtest() {
 	# Make sure the blockchain has some initial decoy outputs. Arbitrarily sending the
 	# rewards to the Mastering Monero address.
 	local rewardsAddr=4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5
-	mine-monero "${rewardsAddr}" > /dev/null
+	mine-monero "${rewardsAddr}" >/dev/null
 }
 
 stop-monerod-regtest() {
