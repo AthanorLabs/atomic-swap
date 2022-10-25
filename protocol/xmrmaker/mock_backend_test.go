@@ -495,6 +495,20 @@ func (mr *MockBackendMockRecorder) OpenWallet(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenWallet", reflect.TypeOf((*MockBackend)(nil).OpenWallet), arg0, arg1)
 }
 
+// PrimaryWalletAddress mocks base method.
+func (m *MockBackend) PrimaryWalletAddress() mcrypto.Address {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrimaryWalletAddress")
+	ret0, _ := ret[0].(mcrypto.Address)
+	return ret0
+}
+
+// PrimaryWalletAddress indicates an expected call of PrimaryWalletAddress.
+func (mr *MockBackendMockRecorder) PrimaryWalletAddress() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrimaryWalletAddress", reflect.TypeOf((*MockBackend)(nil).PrimaryWalletAddress))
+}
+
 // Refresh mocks base method.
 func (m *MockBackend) Refresh() error {
 	m.ctrl.T.Helper()

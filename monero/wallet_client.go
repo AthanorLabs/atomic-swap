@@ -35,6 +35,7 @@ type WalletClient interface {
 	UnlockClient()
 	GetAccounts() (*wallet.GetAccountsResponse, error)
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
+	PrimaryWalletAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
 	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
@@ -78,16 +79,18 @@ type WalletClientConf struct {
 type WaitForReceiptRequest struct {
 	Ctx              context.Context
 	TxID             string
-	TxKey            string
 	DestAddr         mcrypto.Address
 	NumConfirmations uint64
 }
 
 type walletClient struct {
-	mu         sync.Mutex
-	rpc        wallet.Wallet // full API with slightly different method signatures
-	endpoint   string
-	rpcProcess *os.Process // monero-wallet-rpc process that we create
+	mu                    sync.Mutex
+	rpc                   wallet.Wallet // full API with slightly different method signatures
+	endpoint              string
+	primaryWallet         string // primary wallet name not including any directory
+	primaryWalletPassword string // password for the primary wallet
+	primaryWalletAddr     mcrypto.Address
+	rpcProcess            *os.Process // monero-wallet-rpc process that we create
 }
 
 // NewWalletClient returns a WalletClient for a newly created monero-wallet-rpc process.
@@ -121,18 +124,25 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	c := NewThinWalletClient(endpoint).(*walletClient)
 	c.rpcProcess = proc
 
-	walletName := path.Base(conf.WalletFilePath)
+	c.primaryWallet = path.Base(conf.WalletFilePath)
+	c.primaryWalletPassword = conf.WalletPassword
 	if isNewWallet {
-		if err := c.CreateWallet(walletName, conf.WalletPassword); err != nil {
+		if err = c.CreateWallet(c.primaryWallet, conf.WalletPassword); err != nil {
 			c.Close()
 			return nil, err
 		}
 		log.Infof("New Monero wallet %s created", conf.WalletFilePath)
 	}
-	if err := c.OpenWallet(walletName, conf.WalletPassword); err != nil {
+	if err = c.OpenPrimaryWallet(); err != nil {
 		c.Close()
 		return nil, err
 	}
+	acctResp, err := c.GetAddress(0)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+	c.primaryWalletAddr = mcrypto.Address(acctResp.Address)
 	return c, nil
 }
 
@@ -173,38 +183,32 @@ func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.
 		return nil, err
 	}
 
+	var transfer *wallet.Transfer
+
 	for {
-		var resp *wallet.CheckTxKeyResponse
-		resp, err = c.rpc.CheckTxKey(&wallet.CheckTxKeyRequest{
-			Txid:    req.TxID,
-			TxKey:   req.TxKey,
-			Address: string(req.DestAddr),
+		transferResp, err := c.rpc.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
+			TxID:         req.TxID,
+			AccountIndex: 0,
 		})
 		if err != nil {
 			return nil, err
 		}
-		if !resp.InPool && resp.Confirmations > req.NumConfirmations {
+		transfer = &transferResp.Transfer
+		if transfer.Confirmations > req.NumConfirmations {
 			break
 		}
-		log.Debugf("Received %d of %d confirmations of XMR TXID=%s (height=%d, in-pool=%t)",
-			resp.Confirmations,
+		log.Debugf("Received %d of %d confirmations of XMR TXID=%s (height=%d)",
+			transfer.Confirmations,
 			req.NumConfirmations,
 			req.TxID,
-			height,
-			resp.InPool)
+			height)
 		height, err = WaitForBlocks(req.Ctx, c, 1)
 		if err != nil {
 			return nil, err
 		}
 	}
-	transResp, err := c.rpc.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
-		TxID:         req.TxID,
-		AccountIndex: 0,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &transResp.Transfer, nil
+
+	return transfer, nil
 }
 
 func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
@@ -214,8 +218,6 @@ func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (
 			Address: string(to),
 		}},
 		AccountIndex: accountIdx,
-		GetTxKey:     true,
-		Priority:     0,
 	})
 }
 
@@ -223,8 +225,6 @@ func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.
 	return c.rpc.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
-		GetTxKeys:    true,
-		Priority:     0,
 	})
 }
 
@@ -314,6 +314,18 @@ func (c *walletClient) OpenWallet(filename, password string) error {
 		Filename: filename,
 		Password: password,
 	})
+}
+
+func (c *walletClient) OpenPrimaryWallet() error {
+	return c.OpenWallet(c.primaryWallet, c.primaryWalletPassword)
+}
+
+func (c *walletClient) PrimaryWalletAddress() mcrypto.Address {
+	if c.primaryWalletAddr == "" {
+		// Initialised in constructor function, so this shouldn't ever happen
+		panic("primary wallet address was not initialised")
+	}
+	return c.primaryWalletAddr
 }
 
 func (c *walletClient) CloseWallet() error {

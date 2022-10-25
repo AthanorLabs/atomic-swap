@@ -565,7 +565,6 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 	transfer, err := s.WaitForTransReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             transResp.TxHash,
-		TxKey:            transResp.TxKey,
 		DestAddr:         swapDestAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
 	})

@@ -348,7 +348,6 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	transfer, err := maker.WaitForTransReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             tResp.TxHash,
-		TxKey:            tResp.TxKey,
 		DestAddr:         xmrAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
 	})

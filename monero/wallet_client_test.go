@@ -44,14 +44,12 @@ func TestClient_Transfer(t *testing.T) {
 	transfer, err := cXMRMaker.WaitForTransReceipt(&WaitForReceiptRequest{
 		Ctx:              context.Background(),
 		TxID:             transResp.TxHash,
-		TxKey:            transResp.TxKey,
 		DestAddr:         abAddress,
 		NumConfirmations: MinSpendConfirmations,
 	})
+	require.NoError(t, err)
 	require.GreaterOrEqual(t, transfer.Confirmations, uint64(MinSpendConfirmations))
 	t.Logf("Bob's TX was mined at height %d with %d confirmations", transfer.Height, transfer.Confirmations)
-
-	require.NoError(t, err)
 	cXMRMaker.Close() // Done with bob, make sure no one uses him again
 
 	// Establish Alice's primary wallet
@@ -104,7 +102,6 @@ func TestClient_Transfer(t *testing.T) {
 	t.Logf("%#v", sweepResp)
 	require.Len(t, sweepResp.TxHashList, 1) // In our case, it should always be a single transaction
 	sweepTxID := sweepResp.TxHashList[0]
-	sweepTxKey := sweepResp.TxKeyList[0]
 	sweepAmount := sweepResp.AmountList[0]
 	sweepFee := sweepResp.FeeList[0]
 
@@ -115,7 +112,6 @@ func TestClient_Transfer(t *testing.T) {
 	transfer, err = cXMRTaker.WaitForTransReceipt(&WaitForReceiptRequest{
 		Ctx:              context.Background(),
 		TxID:             sweepTxID,
-		TxKey:            sweepTxKey,
 		DestAddr:         alicePrimaryAddr,
 		NumConfirmations: 2,
 	})
@@ -288,7 +284,6 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	_, err = c.WaitForTransReceipt(&WaitForReceiptRequest{
 		Ctx:              ctx,
 		TxID:             transResp.TxHash,
-		TxKey:            transResp.TxKey,
 		DestAddr:         destAddr,
 		NumConfirmations: 999999999, // wait for a number of confirmations that would take a long time
 	})
