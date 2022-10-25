@@ -46,7 +46,7 @@ func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64,
 				return height, nil
 			}
 
-			log.Infof("waiting for next block, current height=%d", height)
+			log.Debugf("Waiting for next block, current height=%d", height)
 			if err = common.SleepWithContext(ctx, blockSleepDuration); err != nil {
 				return 0, err
 			}

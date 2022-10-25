@@ -197,7 +197,7 @@ func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.
 		if transfer.Confirmations > req.NumConfirmations {
 			break
 		}
-		log.Debugf("Received %d of %d confirmations of XMR TXID=%s (height=%d)",
+		log.Infof("Received %d of %d confirmations of XMR TXID=%s (height=%d)",
 			transfer.Confirmations,
 			req.NumConfirmations,
 			req.TxID,
