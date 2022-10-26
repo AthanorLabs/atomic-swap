@@ -224,6 +224,10 @@ type daemon struct {
 	database  *db.Database
 	host      net.Host
 	rpcServer *rpc.Server
+
+	// this channel is closed once the daemon has started up
+	// (but before the RPC server starts, since that blocks)
+	startedCh chan struct{}
 }
 
 func setLogLevelsFromContext(c *cli.Context) error {
@@ -264,10 +268,7 @@ func runDaemon(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := &daemon{
-		ctx:    ctx,
-		cancel: cancel,
-	}
+	d := newEmptyDaemon(ctx, cancel)
 
 	go func() {
 		err := d.make(c)
@@ -287,22 +288,34 @@ func runDaemon(c *cli.Context) error {
 	return nil
 }
 
+func newEmptyDaemon(ctx context.Context, cancel context.CancelFunc) *daemon {
+	return &daemon{
+		ctx:       ctx,
+		cancel:    cancel,
+		startedCh: make(chan struct{}),
+	}
+}
+
 func (d *daemon) stop() error {
-	err := d.database.Close()
-	if err != nil {
-		return err
+	if d.database != nil {
+		err := d.database.Close()
+		if err != nil {
+			return err
+		}
 	}
 
-	err = d.host.Stop()
-	if err != nil {
-		return err
+	if d.host != nil {
+		err := d.host.Stop()
+		if err != nil {
+			return err
+		}
 	}
 
 	if d.rpcServer == nil {
 		return nil
 	}
 
-	err = d.rpcServer.Stop()
+	err := d.rpcServer.Stop()
 	if err != nil {
 		return err
 	}
@@ -468,6 +481,8 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	if err != nil {
 		return err
 	}
+
+	close(d.startedCh)
 
 	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
 	err = s.Start()

@@ -29,6 +29,10 @@ func CheckContractCode(ctx context.Context, ec *ethclient.Client, contractAddr e
 
 	expectedCode := ethcommon.FromHex(expectedBytecode)
 
+	if len(code) != len(expectedCode) {
+		return errInvalidSwapContract
+	}
+
 	//nolint:lll
 	// sadly this is hard-coded for now since the forwarder address becomes part of the
 	// deployed bytecode.
