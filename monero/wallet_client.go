@@ -194,7 +194,8 @@ func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.
 			return nil, err
 		}
 		transfer = &transferResp.Transfer
-		if transfer.Confirmations > req.NumConfirmations {
+		// wait for transaction be mined (height set) even if 0 confirmations requested
+		if transfer.Height > 0 && transfer.Confirmations >= req.NumConfirmations {
 			break
 		}
 		log.Infof("Received %d of %d confirmations of XMR TXID=%s (height=%d)",
