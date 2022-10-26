@@ -28,4 +28,18 @@ func TestCheckContractCode(t *testing.T) {
 
 	err = CheckContractCode(ctx, ec, addr)
 	require.NoError(t, err)
+
+	// deploy with some arbitrary trustedForwarder address
+	_, tx, _, err = contracts.DeploySwapFactory(
+		txOpts,
+		ec,
+		ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7"),
+	)
+	require.NoError(t, err)
+
+	addr, err = bind.WaitDeployed(ctx, ec, tx)
+	require.NoError(t, err)
+
+	err = CheckContractCode(ctx, ec, addr)
+	require.NoError(t, err)
 }
