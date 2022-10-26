@@ -604,7 +604,6 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	s.LockClient()
 	defer s.UnlockClient()
 
-	// TODO: Pass optimised restore height below
 	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB, s.moneroBlockHeight)
 	if err != nil {
 		return "", err
