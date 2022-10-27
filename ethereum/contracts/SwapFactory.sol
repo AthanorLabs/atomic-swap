@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.5;
 
+import "./ERC2771Context.sol";
 import "./IERC20.sol";
 import "./Secp256k1.sol";
 
-contract SwapFactory is Secp256k1 {
+contract SwapFactory is ERC2771Context, Secp256k1 {
 
     // Swap state is PENDING when the swap is first created and funded
     // Alice sets Stage to READY when she sees the funds locked on the other chain.
@@ -57,9 +58,11 @@ contract SwapFactory is Secp256k1 {
     event Claimed(bytes32 swapID, bytes32 s);
     event Refunded(bytes32 swapID, bytes32 s);
 
-    // new_swap creates a new Swap instance with the given parameters.
+    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {}
+
+    // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
-    function new_swap(bytes32 _pubKeyClaim, 
+    function newSwap(bytes32 _pubKeyClaim, 
         bytes32 _pubKeyRefund, 
         address payable _claimer, 
         uint256 _timeoutDuration,
@@ -98,11 +101,11 @@ contract SwapFactory is Secp256k1 {
         return swapID;
     }
 
-    // Alice should call set_ready() within t_0 once she verifies the XMR has been locked
-    function set_ready(Swap memory _swap) public {
+    // Alice should call setReady() within t_0 once she verifies the XMR has been locked
+    function setReady(Swap memory _swap) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         require(swaps[swapID] == Stage.PENDING, "swap is not in PENDING state");
-        require(_swap.owner == msg.sender, "only the swap owner can call set_ready");
+        require(_swap.owner == msg.sender, "only the swap owner can call setReady");
         swaps[swapID] = Stage.READY;
         emit Ready(swapID);
     }
@@ -110,19 +113,9 @@ contract SwapFactory is Secp256k1 {
     // Bob can claim if:
     // - Alice has set the swap to `ready` or it's past t_0 but before t_1
     function claim(Swap memory _swap, bytes32 _s) public {
-        bytes32 swapID = keccak256(abi.encode(_swap));
-        Stage swapStage = swaps[swapID];
-        require(swapStage != Stage.INVALID, "invalid swap");
-        require(swapStage != Stage.COMPLETED, "swap is already completed");
-        require(msg.sender == _swap.claimer, "only claimer can claim!");
-        require((block.timestamp >= _swap.timeout_0 || swapStage == Stage.READY), "too early to claim!");
-        require(block.timestamp < _swap.timeout_1, "too late to claim!");
-
-        verifySecret(_s, _swap.pubKeyClaim);
-        emit Claimed(swapID, _s);
-
+        _claim(_swap, _s);
+        
         // send eth to caller (Bob)
-        swaps[swapID] = Stage.COMPLETED;
         if (_swap.asset == address(0)) {
             _swap.claimer.transfer(_swap.value);
         } else {
@@ -134,6 +127,42 @@ contract SwapFactory is Secp256k1 {
             // swap.value would then contain the share of the token
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
         }
+    }
+
+    // Bob can claim if:
+    // - Alice has set the swap to `ready` or it's past t_0 but before t_1
+    function claimRelayer(Swap memory _swap, bytes32 _s, uint256 fee) public {
+        require(isTrustedForwarder(msg.sender), "claimRelayer can only be called by a trusted forwarder");
+        _claim(_swap, _s);
+
+        // send eth to caller (Bob)
+        if (_swap.asset == address(0)) {
+            _swap.claimer.transfer(_swap.value - fee);
+            payable(tx.origin).transfer(fee);
+        } else {
+            // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
+            // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
+            // exposing Bob's secret while giving him nothing
+            
+            // potential solution: wrap tokens into shares instead of absolute values
+            // swap.value would then contain the share of the token
+            IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
+            payable(tx.origin).transfer(fee);
+        }
+    }
+
+    function _claim(Swap memory _swap, bytes32 _s) internal {
+        bytes32 swapID = keccak256(abi.encode(_swap));
+        Stage swapStage = swaps[swapID];
+        require(swapStage != Stage.INVALID, "invalid swap");
+        require(swapStage != Stage.COMPLETED, "swap is already completed");
+        require(_msgSender() == _swap.claimer, "only claimer can claim!");
+        require((block.timestamp >= _swap.timeout_0 || swapStage == Stage.READY), "too early to claim!");
+        require(block.timestamp < _swap.timeout_1, "too late to claim!");
+
+        verifySecret(_s, _swap.pubKeyClaim);
+        emit Claimed(swapID, _s);
+        swaps[swapID] = Stage.COMPLETED;
     }
 
     // Alice can claim a refund:

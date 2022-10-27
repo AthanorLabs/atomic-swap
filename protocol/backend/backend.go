@@ -65,6 +65,7 @@ type Backend interface {
 	TxOpts() (*bind.TransactOpts, error)
 	SwapManager() swap.Manager
 	EthAddress() ethcommon.Address
+	EthPrivateKey() *ecdsa.PrivateKey
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
 	Net() net.MessageSender
@@ -80,8 +81,6 @@ type Backend interface {
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	SetBaseXMRDepositAddress(mcrypto.Address)
-	SetContract(*contracts.SwapFactory)
-	SetContractAddress(ethcommon.Address)
 }
 
 type backend struct {
@@ -226,6 +225,10 @@ func (b *backend) EthAddress() ethcommon.Address {
 
 func (b *backend) EthClient() *ethclient.Client {
 	return b.ethClient
+}
+
+func (b *backend) EthPrivateKey() *ecdsa.PrivateKey {
+	return b.ethPrivKey
 }
 
 func (b *backend) Net() net.MessageSender {
@@ -397,16 +400,4 @@ func (b *backend) ClearXMRDepositAddress(id types.Hash) {
 	b.Lock()
 	defer b.Unlock()
 	delete(b.xmrDepositAddrs, id)
-}
-
-// NOTE: this is called when a swap is initiated and the XMR-taker specifies the contract
-// address they will be using.
-// the contract bytecode is validated in the calling code, but this should never be called
-// for unvalidated contracts.
-func (b *backend) SetContract(contract *contracts.SwapFactory) {
-	b.contract = contract
-}
-
-func (b *backend) SetContractAddress(addr ethcommon.Address) {
-	b.contractAddr = addr
 }

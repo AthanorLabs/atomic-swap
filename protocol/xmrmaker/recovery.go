@@ -50,7 +50,9 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		contractSwap:   contractSwap,
-		infoFile:       pcommon.GetSwapRecoveryFilepath(dataDir),
+		offerExtra: &types.OfferExtra{
+			InfoFile: pcommon.GetSwapRecoveryFilepath(dataDir),
+		},
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

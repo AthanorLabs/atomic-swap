@@ -22,8 +22,13 @@ type WsClient interface {
 	Query(maddr string) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
 	TakeOfferAndSubscribe(multiaddr, offerID string, providesAmount float64) (ch <-chan types.Status, err error)
-	MakeOfferAndSubscribe(min, max float64,
-		exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (string, <-chan types.Status, error)
+	MakeOfferAndSubscribe(
+		min, max float64,
+		exchangeRate types.ExchangeRate,
+		ethAsset types.EthAsset,
+		relayerEndpoint string,
+		relayerCommission float64,
+	) (string, <-chan types.Status, error)
 }
 
 type wsClient struct {
@@ -314,13 +319,20 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 	return respCh, nil
 }
 
-func (c *wsClient) MakeOfferAndSubscribe(min, max float64,
-	exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (string, <-chan types.Status, error) {
+func (c *wsClient) MakeOfferAndSubscribe(
+	min, max float64,
+	exchangeRate types.ExchangeRate,
+	ethAsset types.EthAsset,
+	relayerEndpoint string,
+	relayerCommission float64,
+) (string, <-chan types.Status, error) {
 	params := &rpctypes.MakeOfferRequest{
-		MinimumAmount: min,
-		MaximumAmount: max,
-		ExchangeRate:  exchangeRate,
-		EthAsset:      ethAsset.Address().String(),
+		MinimumAmount:     min,
+		MaximumAmount:     max,
+		ExchangeRate:      exchangeRate,
+		EthAsset:          ethAsset.Address().String(),
+		RelayerEndpoint:   relayerEndpoint,
+		RelayerCommission: relayerCommission,
 	}
 
 	bz, err := json.Marshal(params)

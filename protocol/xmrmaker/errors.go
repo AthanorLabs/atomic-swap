@@ -24,10 +24,10 @@ var (
 	errClaimTxHasNoLogs            = errors.New("claim transaction has no logs")
 	errCannotFindNewLog            = errors.New("cannot find New log")
 	errUnexpectedSwapID            = errors.New("unexpected swap ID was emitted by New log")
-	errInvalidSwapContract         = errors.New("given contract address does not contain correct code")
 	errSwapIDMismatch              = errors.New("hash of swap struct does not match swap ID")
 	errLockTxReverted              = errors.New("other party failed to lock ETH asset (transaction reverted)")
 	errInvalidETHLockedTransaction = errors.New("eth locked tx was not to correct contract address")
+	errRelayerCommissionTooHigh    = errors.New("relayer commission must be less than 0.1 (10%)")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
