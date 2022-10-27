@@ -148,7 +148,7 @@ func Test_expandBootnodes(t *testing.T) {
 
 func TestDaemon_PersistOffers(t *testing.T) {
 	defaultXMRMakerSwapdEndpoint := fmt.Sprintf("http://localhost:%d", defaultXMRMakerRPCPort)
-	startupTimeout := time.Second * 9
+	startupTimeout := time.Millisecond * 100
 
 	datadir := t.TempDir()
 	wc := monero.CreateWalletClientWithWalletDir(t, datadir)
@@ -168,16 +168,14 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := &daemon{
-		ctx:    ctx,
-		cancel: cancel,
-	}
+	d := newEmptyDaemon(ctx, cancel)
 
 	go func() {
 		err := d.make(c) // blocks on RPC server start
 		require.NoError(t, err)
 	}()
 
+	<-d.startedCh
 	time.Sleep(startupTimeout) // let the server start
 
 	// make an offer
@@ -186,7 +184,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))
 
-	offerID, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH)
+	offerID, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH, "", 0)
 	require.NoError(t, err)
 
 	// shut down daemon
@@ -198,10 +196,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
-	d = &daemon{
-		ctx:    ctx,
-		cancel: cancel,
-	}
+	d = newEmptyDaemon(ctx, cancel)
 
 	go func() {
 		err = d.make(c) // blocks on RPC server start
@@ -213,6 +208,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 		_ = d.stop()
 	}()
 
+	<-d.startedCh
 	time.Sleep(startupTimeout) // let the server start
 
 	offers, err := client.GetOffers()

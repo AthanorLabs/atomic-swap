@@ -75,10 +75,11 @@ const (
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
 
-	flagDevXMRTaker  = "dev-xmrtaker"
-	flagDevXMRMaker  = "dev-xmrmaker"
-	flagDeploy       = "deploy"
-	flagTransferBack = "transfer-back"
+	flagDevXMRTaker      = "dev-xmrtaker"
+	flagDevXMRMaker      = "dev-xmrmaker"
+	flagDeploy           = "deploy"
+	flagForwarderAddress = "forwarder-address"
+	flagTransferBack     = "transfer-back"
 
 	flagLogLevel = "log-level"
 )
@@ -180,6 +181,10 @@ var (
 				Name:  flagDeploy,
 				Usage: "Deploy an instance of the swap contract",
 			},
+			&cli.StringFlag{
+				Name:  flagForwarderAddress,
+				Usage: "Specifies the Ethereum address of the trusted forwarder contract when deploying the swap contract. Ignored if --deploy is not passed.", //nolint:lll
+			},
 			&cli.BoolFlag{
 				Name:  flagTransferBack,
 				Usage: "When receiving XMR in a swap, transfer it back to the original wallet.",
@@ -219,6 +224,10 @@ type daemon struct {
 	database  *db.Database
 	host      net.Host
 	rpcServer *rpc.Server
+
+	// this channel is closed once the daemon has started up
+	// (but before the RPC server starts, since that blocks)
+	startedCh chan struct{}
 }
 
 func setLogLevelsFromContext(c *cli.Context) error {
@@ -259,10 +268,7 @@ func runDaemon(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := &daemon{
-		ctx:    ctx,
-		cancel: cancel,
-	}
+	d := newEmptyDaemon(ctx, cancel)
 
 	go func() {
 		err := d.make(c)
@@ -282,18 +288,34 @@ func runDaemon(c *cli.Context) error {
 	return nil
 }
 
+func newEmptyDaemon(ctx context.Context, cancel context.CancelFunc) *daemon {
+	return &daemon{
+		ctx:       ctx,
+		cancel:    cancel,
+		startedCh: make(chan struct{}),
+	}
+}
+
 func (d *daemon) stop() error {
-	err := d.database.Close()
-	if err != nil {
-		return err
+	if d.database != nil {
+		err := d.database.Close()
+		if err != nil {
+			return err
+		}
 	}
 
-	err = d.host.Stop()
-	if err != nil {
-		return err
+	if d.host != nil {
+		err := d.host.Stop()
+		if err != nil {
+			return err
+		}
 	}
 
-	err = d.rpcServer.Stop()
+	if d.rpcServer == nil {
+		return nil
+	}
+
+	err := d.rpcServer.Stop()
 	if err != nil {
 		return err
 	}
@@ -315,7 +337,7 @@ func expandBootnodes(nodesCLI []string) []string {
 	return nodes
 }
 
-func (d *daemon) make(c *cli.Context) error {
+func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
 	if err != nil {
 		return err
@@ -411,6 +433,8 @@ func (d *daemon) make(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// this closes the monero.WalletClient
 	defer backend.Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
 
@@ -453,12 +477,36 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 	d.rpcServer = s
 
+	err = maybeBackgroundMine(d.ctx, devXMRMaker, backend)
+	if err != nil {
+		return err
+	}
+
+	close(d.startedCh)
+
 	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
 	err = s.Start()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 
+	return nil
+}
+
+func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, b backend.Backend) error {
+	// if we're in dev-xmrmaker mode, start background mining blocks
+	// otherwise swaps won't succeed as they'll be waiting for blocks
+	if !devXMRMaker {
+		return nil
+	}
+
+	addr, err := b.GetAddress(0)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("background mining blocks...")
+	go monero.BackgroundMineBlocks(ctx, addr.Address)
 	return nil
 }
 
@@ -525,12 +573,36 @@ func newBackend(
 			}
 			cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
 		}
+
 		if bytes.Equal(cfg.ContractAddress.Bytes(), ethcommon.Address{}.Bytes()) {
 			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
 		}
 	}
 
-	contract, contractAddr, err := getOrDeploySwapFactory(ctx, cfg.ContractAddress, env, cfg.DataDir, ethPrivKey, ec)
+	// forwarderAddress is set only if we're deploying the swap contract, and the --forwarder-address
+	// flag is set. otherwise, if we're deploying and the flag isn't set, we also deploy the forwarder.
+	var forwarderAddress ethcommon.Address
+	forwarderAddressStr := c.String(flagForwarderAddress)
+	if deploy && forwarderAddressStr != "" {
+		ok := ethcommon.IsHexAddress(forwarderAddressStr)
+		if !ok {
+			return nil, errors.New("forwarder-address is invalid")
+		}
+
+		forwarderAddress = ethcommon.HexToAddress(forwarderAddressStr)
+	} else if !deploy && forwarderAddressStr != "" {
+		log.Warnf("forwarder-address is unused")
+	}
+
+	contract, contractAddr, err := getOrDeploySwapFactory(
+		ctx,
+		cfg.ContractAddress,
+		env,
+		cfg.DataDir,
+		ethPrivKey,
+		ec,
+		forwarderAddress,
+	)
 	if err != nil {
 		return nil, err
 	}

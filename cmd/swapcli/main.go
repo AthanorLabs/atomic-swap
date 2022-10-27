@@ -19,7 +19,13 @@ const (
 	defaultSwapdPort              = 5001
 	defaultDiscoverSearchTimeSecs = 12
 
-	flagSwapdPort = "swapd-port"
+	flagSwapdPort         = "swapd-port"
+	flagMinAmount         = "min-amount"
+	flagMaxAmount         = "max-amount"
+	flagExchangeRate      = "exchange-rate"
+	flagProvidesAmount    = "provides-amount"
+	flagRelayerCommission = "relayer-commission"
+	flagRelayerEndpoint   = "relayer-endpoint"
 )
 
 var (
@@ -109,17 +115,17 @@ var (
 				Action:  runMake,
 				Flags: []cli.Flag{
 					&cli.Float64Flag{
-						Name:     "min-amount",
+						Name:     flagMinAmount,
 						Usage:    "Minimum amount to be swapped, in XMR",
 						Required: true,
 					},
 					&cli.Float64Flag{
-						Name:     "max-amount",
+						Name:     flagMaxAmount,
 						Usage:    "Maximum amount to be swapped, in XMR",
 						Required: true,
 					},
 					&cli.Float64Flag{
-						Name:     "exchange-rate",
+						Name:     flagExchangeRate,
 						Usage:    "Desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
 						Required: true,
 					},
@@ -130,6 +136,15 @@ var (
 					&cli.StringFlag{
 						Name:  "eth-asset",
 						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
+					},
+					&cli.StringFlag{
+						Name:  flagRelayerEndpoint,
+						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
+					},
+					&cli.Float64Flag{
+						Name: flagRelayerCommission,
+						Usage: "Commission to pay the relayer in percentage of the swap value:" +
+							" eg. --relayer-commission=0.01 for 1% commission",
 					},
 					swapdPortFlag,
 				},
@@ -151,7 +166,7 @@ var (
 						Required: true,
 					},
 					&cli.Float64Flag{
-						Name:     "provides-amount",
+						Name:     flagProvidesAmount,
 						Usage:    "Amount of coin to send in the swap",
 						Required: true,
 					},
@@ -379,17 +394,17 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
-	min := ctx.Float64("min-amount")
+	min := ctx.Float64(flagMinAmount)
 	if min == 0 {
 		return errNoMinAmount
 	}
 
-	max := ctx.Float64("max-amount")
+	max := ctx.Float64(flagMaxAmount)
 	if max == 0 {
 		return errNoMaxAmount
 	}
 
-	exchangeRate := ctx.Float64("exchange-rate")
+	exchangeRate := ctx.Float64(flagExchangeRate)
 	if exchangeRate == 0 {
 		return errNoExchangeRate
 	}
@@ -408,6 +423,24 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
+	relayerEndpoint := ctx.String(flagRelayerEndpoint)
+	relayerCommission := ctx.Float64(flagRelayerCommission)
+	if relayerCommission < 0 {
+		return errCannotHaveNegativeCommission
+	}
+
+	if relayerCommission > 1 {
+		return errCannotHaveGreaterThan100Commission
+	}
+
+	if relayerEndpoint != "" && relayerCommission == 0 {
+		return errMustSetRelayerCommission
+	}
+
+	if relayerCommission != 0 && relayerEndpoint == "" {
+		return errMustSetRelayerEndpoint
+	}
+
 	printOfferSummary := func(offerID string) {
 		fmt.Printf("Published offer with ID: %s\n", offerID)
 		fmt.Printf("On addresses: %v\n", ourAddresses)
@@ -422,7 +455,14 @@ func runMake(ctx *cli.Context) error {
 		}
 		defer wsc.Close()
 
-		id, statusCh, err := wsc.MakeOfferAndSubscribe(min, max, types.ExchangeRate(exchangeRate), ethAsset)
+		id, statusCh, err := wsc.MakeOfferAndSubscribe(
+			min,
+			max,
+			types.ExchangeRate(exchangeRate),
+			ethAsset,
+			relayerEndpoint,
+			relayerCommission,
+		)
 		if err != nil {
 			return err
 		}
@@ -439,7 +479,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset)
+	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerCommission)
 	if err != nil {
 		return err
 	}
@@ -451,7 +491,7 @@ func runMake(ctx *cli.Context) error {
 func runTake(ctx *cli.Context) error {
 	maddr := ctx.String("multiaddr")
 	offerID := ctx.String("offer-id")
-	providesAmount := ctx.Float64("provides-amount")
+	providesAmount := ctx.Float64(flagProvidesAmount)
 	if providesAmount == 0 {
 		return errNoProvidesAmount
 	}

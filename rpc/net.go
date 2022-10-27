@@ -256,8 +256,11 @@ func (s *NetService) TakeOfferSync(_ *http.Request, req *rpctypes.TakeOfferReque
 }
 
 // MakeOffer creates and advertises a new swap offer.
-func (s *NetService) MakeOffer(_ *http.Request, req *rpctypes.MakeOfferRequest,
-	resp *rpctypes.MakeOfferResponse) error {
+func (s *NetService) MakeOffer(
+	_ *http.Request,
+	req *rpctypes.MakeOfferRequest,
+	resp *rpctypes.MakeOfferResponse,
+) error {
 	id, extra, err := s.makeOffer(req)
 	if err != nil {
 		return err
@@ -285,7 +288,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.O
 		ethAsset,
 	)
 
-	offerExtra, err := s.xmrmaker.MakeOffer(o)
+	offerExtra, err := s.xmrmaker.MakeOffer(o, req.RelayerEndpoint, req.RelayerCommission)
 	if err != nil {
 		return "", nil, err
 	}

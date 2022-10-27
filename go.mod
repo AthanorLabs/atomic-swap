@@ -4,6 +4,8 @@ go 1.18
 
 require (
 	filippo.io/edwards25519 v1.0.0
+	github.com/AthanorLabs/go-relayer v0.0.0-20221022234503-174bb7b32389
+	github.com/AthanorLabs/go-relayer-client v0.0.0-20220929181539-02b89bc5e882
 	github.com/ChainSafe/chaindb v0.1.5-0.20221010190531-f900218c88f8
 	github.com/MarinX/monerorpc v1.0.2
 	github.com/athanorlabs/cgo-dleq v0.0.0-20220929204103-ca62cc9baa28
