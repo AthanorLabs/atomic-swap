@@ -55,7 +55,7 @@ func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
 
 // This test will fail if the compiled SwapFactory contract is updated, but the
 // forwarderAddressIndexes slice of trusted forwarder locations is not updated. Use this
-// test to update teh slice.
+// test to update the slice.
 func TestForwarderAddressIndexes(t *testing.T) {
 	// arbitrary sentinel address that we search for in the contract byte code
 	trustedForwarder := ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7")
@@ -74,7 +74,7 @@ func TestForwarderAddressIndexes(t *testing.T) {
 		"update forwarderAddressIndexes with above logged indexes to fix this test")
 }
 
-// Ensure that we correctly verify the SwapFactory contract when initialized with
+// Ensure that we correctly verify the SwapFactory contract when initialised with
 // different trusted forwarder addresses.
 func TestCheckSwapFactoryContractCode(t *testing.T) {
 	trustedForwarderAddresses := []string{

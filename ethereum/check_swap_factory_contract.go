@@ -18,17 +18,17 @@ const (
 	ethAddrByteLen = len(ethcommon.Address{}) // 20 bytes
 )
 
-// Inside expectedSwapFactoryBytecodeHex, there are 2 locations where the trusted
-// forwarder address, with which the contract was deployed, is embedded. When verifying
-// the bytecode of a deployed contract, we need special treatment for these 2, identical
-// 20-byte addresses at the start indexes below.
+// forwarderAddressIndexes, is a slice of the start indexes where the trusted forwarder
+// address is compiled into the deployed contract byte code. When verifying the bytecode
+// of a deployed contract, we need special treatment for these identical 20-byte address
+// blocks. See TestForwarderAddressIndexes to update the values.
 var forwarderAddressIndexes = []int{1485, 1523}
 
 var errInvalidSwapContract = errors.New("given contract address does not contain correct code")
 
-// CheckSwapFactoryContractCode checks that the bytecode at the given address matches that
-// of SwapFactory.sol. The trusted forwarder address that the contract was deployed with
-// is returned.
+// CheckSwapFactoryContractCode checks that the bytecode at the given address matches the
+// SwapFactory.sol contract. The trusted forwarder address that the contract was deployed
+// with is parsed out from the byte code and returned.
 func CheckSwapFactoryContractCode(
 	ctx context.Context,
 	ec *ethclient.Client,
