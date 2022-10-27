@@ -56,6 +56,18 @@ var (
 	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
 )
 
+func newSwapManager(t *testing.T) pswap.Manager {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	db := pswap.NewMockDatabase(ctrl)
+	db.EXPECT().GetAllSwaps()
+	db.EXPECT().PutSwap(gomock.Any()).AnyTimes()
+
+	sm, err := pswap.NewManager(db)
+	require.NoError(t, err)
+	return sm
+}
+
 func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
@@ -77,7 +89,7 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 		Environment:         common.Development,
 		SwapContract:        contract,
 		SwapContractAddress: addr,
-		SwapManager:         pswap.NewManager(),
+		SwapManager:         newSwapManager(t),
 		Net:                 new(mockNet),
 	}
 

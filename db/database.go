@@ -123,6 +123,27 @@ func (db *Database) PutSwap(s *swap.Info) error {
 	return db.swapTable.Put(key[:], val)
 }
 
+// HasSwap returns whether the db contains a swap with the given ID.
+func (db *Database) HasSwap(id types.Hash) (bool, error) {
+	return db.swapTable.Has(id[:])
+}
+
+// GetSwap returns a swap with the given ID, if it exists.
+func (db *Database) GetSwap(id types.Hash) (*swap.Info, error) {
+	value, err := db.swapTable.Get(id[:])
+	if err != nil {
+		return nil, err
+	}
+
+	var s swap.Info
+	err = json.Unmarshal(value, &s)
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
+}
+
 // DeleteSwap deletes a swap from the database.
 func (db *Database) DeleteSwap(id types.Hash) error {
 	return db.swapTable.Del(id[:])

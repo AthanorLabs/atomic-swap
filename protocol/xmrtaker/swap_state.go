@@ -234,8 +234,13 @@ func (s *swapState) exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap(s.info.ID)
 		close(s.done)
+
+		err := s.SwapManager().CompleteOngoingSwap(s.info.ID)
+		if err != nil {
+			log.Warnf("failed to mark swap %s as completed: %s", s.info.ID, err)
+			return
+		}
 
 		if s.info.Status == types.CompletedSuccess {
 			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID)

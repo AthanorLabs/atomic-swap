@@ -315,7 +315,7 @@ func expandBootnodes(nodesCLI []string) []string {
 	return nodes
 }
 
-func (d *daemon) make(c *cli.Context) error {
+func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
 	if err != nil {
 		return err
@@ -406,7 +406,11 @@ func (d *daemon) make(c *cli.Context) error {
 	}
 	d.database = db
 
-	sm := swap.NewManager()
+	sm, err := swap.NewManager(db)
+	if err != nil {
+		return err
+	}
+
 	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
 	if err != nil {
 		return err

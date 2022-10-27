@@ -212,7 +212,11 @@ func (s *swapState) exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
+		err := s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
+		if err != nil {
+			log.Warnf("failed to mark swap %s as completed: %s", s.offer.GetID(), err)
+			return
+		}
 
 		if s.info.Status != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully

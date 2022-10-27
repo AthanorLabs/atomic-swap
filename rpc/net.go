@@ -208,7 +208,11 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 		return nil, "", err
 	}
 
-	info := s.sm.GetOngoingSwap(id)
+	info, err := s.sm.GetOngoingSwap(id)
+	if err != nil {
+		return nil, "", err
+	}
+
 	if info == nil {
 		return nil, "", errFailedToGetSwapInfo
 	}
@@ -243,7 +247,11 @@ func (s *NetService) TakeOfferSync(_ *http.Request, req *rpctypes.TakeOfferReque
 	for {
 		time.Sleep(checkSwapSleepDuration)
 
-		info := s.sm.GetPastSwap(offerID)
+		info, err := s.sm.GetPastSwap(offerID)
+		if err != nil {
+			return err
+		}
+
 		if info == nil {
 			continue
 		}
