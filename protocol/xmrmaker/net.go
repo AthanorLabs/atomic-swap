@@ -44,8 +44,7 @@ func (b *Instance) initiate(
 	// checks passed, delete offer for now
 	b.offerManager.DeleteOffer(offer.GetID())
 
-	s, err := newSwapState(b.backend, offer, b.offerManager, offerExtra.StatusCh,
-		offerExtra.InfoFile, providesAmount, desiredAmount)
+	s, err := newSwapState(b.backend, offer, offerExtra, b.offerManager, providesAmount, desiredAmount)
 	if err != nil {
 		return nil, err
 	}

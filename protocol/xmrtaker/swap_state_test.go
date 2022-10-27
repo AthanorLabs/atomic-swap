@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
@@ -56,36 +57,11 @@ func newBackend(t *testing.T) backend.Backend {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec)
+	var forwarderAddress ethcommon.Address
+	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(ctx, ec, tx)
-	require.NoError(t, err)
-
-	bcfg := &backend.Config{
-		Ctx:                 context.Background(),
-		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      ec,
-		EthereumPrivateKey:  pk,
-		Environment:         common.Development,
-		SwapManager:         pswap.NewManager(),
-		SwapContract:        contract,
-		SwapContractAddress: addr,
-		Net:                 new(mockNet),
-	}
-
-	b, err := backend.NewBackend(bcfg)
-	require.NoError(t, err)
-	return b
-}
-
-func newXMRMakerBackend(t *testing.T) backend.Backend {
-	pk := tests.GetMakerTestKey(t)
-	ec, chainID := tests.NewEthClient(t)
-
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
-	addr, _, contract, err := contracts.DeploySwapFactory(txOpts, ec)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
@@ -306,11 +282,11 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	s.SetSwapTimeout(time.Minute * 2)
 
 	// close swap-deposit-wallet
-	maker := newXMRMakerBackend(t)
-	err := maker.CreateWallet("test-wallet", "")
+	backend := newBackend(t)
+	err := backend.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, maker, common.MoneroToPiconero(1))
+	monero.MineMinXMRBalance(t, backend, common.MoneroToPiconero(1))
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
@@ -340,12 +316,12 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	tResp, err := maker.Transfer(xmrAddr, 0, uint64(amt))
+	tResp, err := backend.Transfer(xmrAddr, 0, uint64(amt))
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
 	require.Equal(t, uint64(amt), tResp.Amount)
 
-	transfer, err := maker.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+	transfer, err := backend.WaitForTransReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             tResp.TxHash,
 		DestAddr:         xmrAddr,

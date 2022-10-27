@@ -39,15 +39,14 @@ type swapState struct {
 	backend.Backend
 	sender txsender.Sender
 
-	ctx      context.Context
-	cancel   context.CancelFunc
-	stateMu  sync.Mutex
-	infoFile string
+	ctx     context.Context
+	cancel  context.CancelFunc
+	stateMu sync.Mutex
 
 	info         *pswap.Info
 	offer        *types.Offer
+	offerExtra   *types.OfferExtra
 	offerManager *offers.Manager
-	statusCh     chan types.Status
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -55,7 +54,9 @@ type swapState struct {
 	privkeys     *mcrypto.PrivateKeyPair
 	pubkeys      *mcrypto.PublicKeyPair
 
-	// swap contract and timeouts in it; set once contract is deployed
+	// swap contract and timeouts in it
+	contract       *contracts.SwapFactory
+	contractAddr   ethcommon.Address
 	contractSwapID [32]byte
 	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
@@ -80,20 +81,19 @@ type swapState struct {
 func newSwapState(
 	b backend.Backend,
 	offer *types.Offer,
+	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	statusCh chan types.Status,
-	infoFile string,
 	providesAmount common.MoneroAmount,
 	desiredAmount common.EtherAmount,
 ) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
 	stage := types.ExpectingKeys
-	if statusCh == nil {
-		statusCh = make(chan types.Status, 7)
+	if offerExtra.StatusCh == nil {
+		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
-	statusCh <- stage
+	offerExtra.StatusCh <- stage
 	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, offer.EthAsset, stage, statusCh)
+		exchangeRate, offer.EthAsset, stage, offerExtra.StatusCh)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -129,13 +129,12 @@ func newSwapState(
 		Backend:             b,
 		sender:              sender,
 		offer:               offer,
+		offerExtra:          offerExtra,
 		offerManager:        om,
-		infoFile:            infoFile,
 		moneroBlockHeight:   moneroBlockHeight,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		info:                info,
-		statusCh:            statusCh,
 		done:                make(chan struct{}),
 	}
 
@@ -168,7 +167,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 
 // InfoFile returns the swap's infoFile path
 func (s *swapState) InfoFile() string {
-	return s.infoFile
+	return s.offerExtra.InfoFile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -215,7 +214,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status() != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
-			_, err := s.offerManager.AddOffer(s.offer)
+			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.GetID(), err)
 			}
@@ -306,7 +305,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = pcommon.WriteSharedSwapKeyPairToFile(s.infoFile, kpAB, s.Env()); err != nil {
+	if err = pcommon.WriteSharedSwapKeyPairToFile(s.offerExtra.InfoFile, kpAB, s.Env()); err != nil {
 		return "", err
 	}
 
@@ -360,50 +359,6 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	return sa, nil
 }
 
-func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-	switch stage {
-	case contracts.StageInvalid:
-		return ethcommon.Hash{}, errClaimInvalid
-	case contracts.StageCompleted:
-		return ethcommon.Hash{}, errClaimSwapComplete
-	case contracts.StagePending, contracts.StageReady:
-		// do nothing
-	default:
-		panic("Unhandled stage value")
-	}
-
-	ts, err := s.LatestBlockTimestamp(s.ctx)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	// The block that our claim transaction goes into needs a timestamp that is strictly less
-	// than T1. Since the minimum interval between blocks is 1 second, the current block must
-	// be at least 2 seconds before T1 for a non-zero chance of the next block having a
-	// timestamp that is strictly less than T1.
-	if ts.After(s.t1.Add(-2 * time.Second)) {
-		// We've passed t1, so the only way we can regain control of the locked XMR is for
-		// XMRTaker to call refund on the contract.
-		return ethcommon.Hash{}, errClaimPastTime
-	}
-
-	if ts.Before(s.t0) && stage != contracts.StageReady {
-		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically? (#163)
-		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
-		err = s.WaitForTimestamp(s.ctx, s.t0)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-	}
-
-	return s.claimFunds()
-}
-
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
 // if the funds are locked.
@@ -426,7 +381,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
+	return pcommon.WriteKeysToFile(s.offerExtra.InfoFile, s.privkeys, s.Env())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {
@@ -449,17 +404,16 @@ func (s *swapState) setXMRTakerPublicKeys(sk *mcrypto.PublicKeyPair, secp256k1Pu
 
 // setContract sets the contract in which XMRTaker has locked her ETH.
 func (s *swapState) setContract(address ethcommon.Address) error {
+	s.contractAddr = address
+
 	var err error
-	// note: this overrides the backend contract
-	s.SetContractAddress(address)
-	contract, err := s.NewSwapFactory(address)
+	s.contract, err = s.NewSwapFactory(address)
 	if err != nil {
 		return err
 	}
 
-	s.SetContract(contract)
 	s.sender.SetContractAddress(address)
-	s.sender.SetContract(contract)
+	s.sender.SetContract(s.contract)
 	return nil
 }
 
@@ -477,7 +431,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return err
 	}
 
-	if tx.To() == nil || *(tx.To()) != s.ContractAddr() {
+	if tx.To() == nil || *(tx.To()) != s.contractAddr {
 		return errInvalidETHLockedTransaction
 	}
 
@@ -577,61 +531,4 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 		Address: string(swapDestAddr),
 		TxID:    transfer.TxID,
 	}, nil
-}
-
-// claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
-func (s *swapState) claimFunds() (ethcommon.Hash, error) {
-	addr := s.EthAddress()
-
-	var (
-		symbol   string
-		decimals uint8
-		err      error
-	)
-	if types.EthAsset(s.contractSwap.Asset) != types.EthAssetETH {
-		_, symbol, decimals, err = s.ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-	}
-
-	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.BalanceAt(s.ctx, addr, nil) //nolint:govet
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
-	} else {
-		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil) //nolint:govet
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
-	}
-
-	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
-	sc := s.getSecret()
-	txHash, _, err := s.sender.Claim(s.contractSwap, sc)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	log.Infof("sent claim tx, tx hash=%s", txHash)
-
-	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.BalanceAt(s.ctx, addr, nil)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
-	} else {
-		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-
-		log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
-	}
-
-	return txHash, nil
 }

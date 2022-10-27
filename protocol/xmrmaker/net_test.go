@@ -18,7 +18,7 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 
 	b.net.(*MockHost).EXPECT().Advertise()
 
-	_, err := b.MakeOffer(offer)
+	_, err := b.MakeOffer(offer, "", 0)
 	require.NoError(t, err)
 
 	msg, _ := newTestXMRTakerSendKeysMessage(t)

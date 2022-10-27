@@ -53,10 +53,10 @@ start-daemons() {
 		--deploy
 
 	#
-	# Wait up to 10 seconds for Alice's swapd instance to start and deploy the swap contract
+	# Wait up to 60 seconds for Alice's swapd instance to start and deploy the swap contract
 	#
 	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-address.json"
-	for _ in {1..10}; do
+	for _ in {1..60}; do
 		if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
 			break
 		fi
@@ -99,7 +99,7 @@ stop-daemons() {
 # run tests
 echo "running integration tests..."
 start-daemons
-TESTS=integration go test ./tests -v -count=1 -timeout=30m
+TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 

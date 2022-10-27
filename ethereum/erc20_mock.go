@@ -38,7 +38,7 @@ var ERC20MockMetaData = &bind.MetaData{
 // Deprecated: Use ERC20MockMetaData.ABI instead.
 var ERC20MockABI = ERC20MockMetaData.ABI
 
-// ERC20MockBin is the compiled bytecode used for deploying new ethereum.
+// ERC20MockBin is the compiled bytecode used for deploying new contracts.
 // Deprecated: Use ERC20MockMetaData.Bin instead.
 var ERC20MockBin = ERC20MockMetaData.Bin
 

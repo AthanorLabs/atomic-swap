@@ -29,7 +29,7 @@ func Test_Manager(t *testing.T) {
 		offer := types.NewOffer(types.ProvidesXMR, float64(i), float64(i), types.ExchangeRate(i),
 			types.EthAssetETH)
 		db.EXPECT().PutOffer(offer)
-		offerExtra, err := mgr.AddOffer(offer)
+		offerExtra, err := mgr.AddOffer(offer, "", 0)
 		require.NoError(t, err)
 		require.NotNil(t, offerExtra)
 	}

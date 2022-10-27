@@ -39,7 +39,7 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 
 func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	auth, conn, _ := setupXMRTakerAuth(t)
-	address, tx, contract, err := DeploySwapFactory(auth, conn)
+	address, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
 	require.NotNil(t, tx)
@@ -83,7 +83,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	swapFactoryAddress, tx, contract, err := DeploySwapFactory(auth, conn)
+	swapFactoryAddress, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -240,7 +240,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -308,7 +308,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -374,7 +374,7 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(pkContractCreator, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn)
+	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)

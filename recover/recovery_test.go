@@ -48,7 +48,7 @@ func newSwap(
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec)
+	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, ethcommon.Address{})
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)

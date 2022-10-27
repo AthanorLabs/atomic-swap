@@ -36,10 +36,12 @@ var testPackages = []struct {
 	{"ethereum", 16},
 	{"ethereum/block", 2},
 	{"net", 2},
+	{"protocol", 1},
 	{"protocol/backend", 2},
 	{"protocol/xmrmaker", 2},
 	{"protocol/xmrtaker", 2},
 	{"recover", 2},
+	{"tests", 2},
 }
 
 const (

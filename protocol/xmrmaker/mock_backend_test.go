@@ -6,6 +6,7 @@ package xmrmaker
 
 import (
 	context "context"
+	ecdsa "crypto/ecdsa"
 	big "math/big"
 	reflect "reflect"
 	time "time"
@@ -291,6 +292,20 @@ func (m *MockBackend) EthClient() *ethclient.Client {
 func (mr *MockBackendMockRecorder) EthClient() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthClient", reflect.TypeOf((*MockBackend)(nil).EthClient))
+}
+
+// EthPrivateKey mocks base method.
+func (m *MockBackend) EthPrivateKey() *ecdsa.PrivateKey {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthPrivateKey")
+	ret0, _ := ret[0].(*ecdsa.PrivateKey)
+	return ret0
+}
+
+// EthPrivateKey indicates an expected call of EthPrivateKey.
+func (mr *MockBackendMockRecorder) EthPrivateKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthPrivateKey", reflect.TypeOf((*MockBackend)(nil).EthPrivateKey))
 }
 
 // FilterLogs mocks base method.

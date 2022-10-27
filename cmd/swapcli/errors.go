@@ -1,13 +1,18 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 )
 
+//nolint:lll
 var (
-	errNoMinAmount      = errors.New("must provide non-zero --min-amount")
-	errNoMaxAmount      = errors.New("must provide non-zero --max-amount")
-	errNoExchangeRate   = errors.New("must provide non-zero --exchange-rate")
-	errNoProvidesAmount = errors.New("must provide non-zero --provides-amount")
-	errNoDuration       = errors.New("must provide non-zero --duration")
+	errNoMinAmount                        = fmt.Errorf("must provide non-zero %s", flagMinAmount)
+	errNoMaxAmount                        = fmt.Errorf("must provide non-zero %s", flagMaxAmount)
+	errNoExchangeRate                     = fmt.Errorf("must provide non-zero %s", flagExchangeRate)
+	errNoProvidesAmount                   = fmt.Errorf("must provide non-zero %x", flagProvidesAmount)
+	errNoDuration                         = fmt.Errorf("must provide non-zero --duration")
+	errCannotHaveNegativeCommission       = fmt.Errorf("%s must be greater than zero", flagRelayerCommission)
+	errCannotHaveGreaterThan100Commission = fmt.Errorf("%s must be less than 1", flagRelayerCommission)
+	errMustSetRelayerCommission           = fmt.Errorf("%s must be set if %s is set", flagRelayerCommission, flagRelayerEndpoint)
+	errMustSetRelayerEndpoint             = fmt.Errorf("%s must be set if %s is set", flagRelayerEndpoint, flagRelayerCommission)
 )

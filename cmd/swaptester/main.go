@@ -387,6 +387,8 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 		maxProvidesAmount,
 		getRandomExchangeRate(),
 		types.EthAssetETH,
+		"",
+		0,
 	)
 	if err != nil {
 		log.Errorf("failed to make offer (node %d): %s", d.idx, err)
