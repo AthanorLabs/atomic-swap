@@ -144,11 +144,6 @@ func (db *Database) GetSwap(id types.Hash) (*swap.Info, error) {
 	return &s, nil
 }
 
-// DeleteSwap deletes a swap from the database.
-func (db *Database) DeleteSwap(id types.Hash) error {
-	return db.swapTable.Del(id[:])
-}
-
 // GetAllSwaps returns all swaps in the database.
 func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 	iter := db.swapTable.NewIterator()
