@@ -68,11 +68,11 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 		return errNoSwapWithID
 	}
 
-	resp.Provided = info.Provides()
-	resp.ProvidedAmount = info.ProvidedAmount()
-	resp.ReceivedAmount = info.ReceivedAmount()
-	resp.ExchangeRate = info.ExchangeRate()
-	resp.Status = info.Status().String()
+	resp.Provided = info.Provides
+	resp.ProvidedAmount = info.ProvidedAmount
+	resp.ReceivedAmount = info.ReceivedAmount
+	resp.ExchangeRate = info.ExchangeRate
+	resp.Status = info.Status.String()
 	return nil
 }
 
@@ -102,11 +102,11 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		return errNoOngoingSwap
 	}
 
-	resp.Provided = info.Provides()
-	resp.ProvidedAmount = info.ProvidedAmount()
-	resp.ReceivedAmount = info.ReceivedAmount()
-	resp.ExchangeRate = info.ExchangeRate()
-	resp.Status = info.Status().String()
+	resp.Provided = info.Provides
+	resp.ProvidedAmount = info.ProvidedAmount
+	resp.ReceivedAmount = info.ReceivedAmount
+	resp.ExchangeRate = info.ExchangeRate
+	resp.Status = info.Status.String()
 	return nil
 }
 
@@ -133,7 +133,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 		return errNoOngoingSwap
 	}
 
-	if info.Provides() != types.ProvidesETH {
+	if info.Provides != types.ProvidesETH {
 		return errCannotRefund
 	}
 
@@ -169,8 +169,8 @@ func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetS
 		return errNoOngoingSwap
 	}
 
-	resp.Stage = info.Status().String()
-	resp.Info = info.Status().Info()
+	resp.Stage = info.Status.String()
+	resp.Info = info.Status.Info()
 	return nil
 }
 
@@ -224,7 +224,7 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 	}
 
 	var ss common.SwapState
-	switch info.Provides() {
+	switch info.Provides {
 	case types.ProvidesETH:
 		ss = s.xmrtaker.GetOngoingSwapState(offerID)
 	case types.ProvidesXMR:
@@ -236,8 +236,8 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 	}
 	s.net.CloseProtocolStream(offerID)
 
-	info = s.sm.GetPastSwap(info.ID())
-	resp.Status = info.Status()
+	info = s.sm.GetPastSwap(info.ID)
+	resp.Status = info.Status
 	return nil
 }
 
@@ -246,6 +246,7 @@ func offerIDStringToHash(s string) (types.Hash, error) {
 	if err != nil {
 		return types.Hash{}, err
 	}
+
 	var offerID types.Hash
 	copy(offerID[:], offerIDBytes)
 	return offerID, nil

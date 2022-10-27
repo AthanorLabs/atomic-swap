@@ -84,7 +84,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		delete(a.swapStates, offerID)
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	a.swapStates[offerID] = s
 	return s, nil

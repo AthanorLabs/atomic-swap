@@ -385,8 +385,8 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
 	require.NoError(t, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedAbort, info.Status())
+	info := s.SwapManager().GetPastSwap(s.info.ID)
+	require.Equal(t, types.CompletedAbort, info.Status)
 }
 
 func TestExit_afterNotifyXMRLock(t *testing.T) {
@@ -408,8 +408,8 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 
 	err = s.Exit()
 	require.NoError(t, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedRefund, info.Status())
+	info := s.SwapManager().GetPastSwap(s.info.ID)
+	require.Equal(t, types.CompletedRefund, info.Status)
 }
 
 func TestExit_afterNotifyClaimed(t *testing.T) {
@@ -431,8 +431,8 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 
 	err = s.Exit()
 	require.NoError(t, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedRefund, info.Status())
+	info := s.SwapManager().GetPastSwap(s.info.ID)
+	require.Equal(t, types.CompletedRefund, info.Status)
 }
 
 func TestExit_invalidNextMessageType(t *testing.T) {
@@ -455,8 +455,8 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 
 	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedAbort, info.Status())
+	info := s.SwapManager().GetPastSwap(s.info.ID)
+	require.Equal(t, types.CompletedAbort, info.Status)
 }
 
 func TestSwapState_ApproveToken(t *testing.T) {

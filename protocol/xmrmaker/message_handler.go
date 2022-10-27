@@ -173,7 +173,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	// TODO: check these (in checkContract) (#161)
 	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 
-	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	addrAB, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
@@ -223,7 +223,7 @@ func (s *swapState) handleT0Expired() {
 	s.lockState()
 	defer s.unlockState()
 
-	if !s.info.Status().IsOngoing() {
+	if !s.info.Status.IsOngoing() {
 		// swap was already completed, just return
 		return
 	}

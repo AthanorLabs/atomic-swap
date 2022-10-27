@@ -331,7 +331,7 @@ func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) erro
 	}
 
 	resp := &rpctypes.SubscribeSwapStatusResponse{
-		Status: info.Status().String(),
+		Status: info.Status.String(),
 	}
 
 	if err := writeResponse(conn, resp); err != nil {

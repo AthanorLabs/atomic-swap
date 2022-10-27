@@ -91,8 +91,16 @@ func newSwapState(
 		statusCh = make(chan types.Status, 7)
 	}
 	statusCh <- stage
-	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, offer.EthAsset, stage, statusCh)
+	info := pswap.NewInfo(
+		offer.GetID(),
+		types.ProvidesXMR,
+		providesAmount.AsMonero(),
+		desiredAmount.AsEther(),
+		exchangeRate,
+		offer.EthAsset,
+		stage,
+		statusCh,
+	)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -150,7 +158,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}
 
 	return &net.SendKeysMessage{
-		ProvidedAmount:     s.info.ProvidedAmount(),
+		ProvidedAmount:     s.info.ProvidedAmount,
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
@@ -166,12 +174,12 @@ func (s *swapState) InfoFile() string {
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
-	return s.info.ReceivedAmount()
+	return s.info.ReceivedAmount
 }
 
 // ID returns the ID of the swap
 func (s *swapState) ID() types.Hash {
-	return s.info.ID()
+	return s.info.ID
 }
 
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
@@ -206,7 +214,7 @@ func (s *swapState) exit() error {
 		s.cancel()
 		s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
 
-		if s.info.Status() != types.CompletedSuccess {
+		if s.info.Status != types.CompletedSuccess {
 			// re-add offer, as it wasn't taken successfully
 			_, err := s.offerManager.AddOffer(s.offer)
 			if err != nil {
@@ -217,13 +225,13 @@ func (s *swapState) exit() error {
 		close(s.done)
 	}()
 
-	if s.info.Status() == types.CompletedSuccess {
+	if s.info.Status == types.CompletedSuccess {
 		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
 		log.Info(str)
 		return nil
 	}
 
-	if s.info.Status() == types.CompletedRefund {
+	if s.info.Status == types.CompletedRefund {
 		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
 		log.Info(str)
 		return nil
@@ -253,7 +261,7 @@ func (s *swapState) exit() error {
 			txHash, err := s.tryClaim()
 			if err != nil {
 				// note: this shouldn't happen, as it means we had a race condition somewhere
-				if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
+				if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status.IsOngoing() {
 					return nil
 				}
 

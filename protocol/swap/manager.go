@@ -6,89 +6,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
-type (
-	Status = types.Status //nolint:revive
-)
-
-// Info contains the details of the swap as well as its status.
-type Info struct {
-	id             types.Hash // swap offer ID
-	provides       types.ProvidesCoin
-	providedAmount float64
-	receivedAmount float64
-	exchangeRate   types.ExchangeRate
-	ethAsset       types.EthAsset
-	status         Status
-	statusCh       <-chan types.Status
-}
-
-// NewInfo ...
-func NewInfo(id types.Hash, provides types.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, status Status, statusCh <-chan types.Status) *Info {
-	info := &Info{
-		id:             id,
-		provides:       provides,
-		providedAmount: providedAmount,
-		receivedAmount: receivedAmount,
-		exchangeRate:   exchangeRate,
-		ethAsset:       ethAsset,
-		status:         status,
-		statusCh:       statusCh,
-	}
-	return info
-}
-
-// NewEmptyInfo returns an empty *Info
-func NewEmptyInfo() *Info {
-	return &Info{}
-}
-
-// ID returns the swap ID.
-func (i *Info) ID() types.Hash {
-	return i.id
-}
-
-// Provides returns the coin that was provided for this swap.
-func (i *Info) Provides() types.ProvidesCoin {
-	return i.provides
-}
-
-// ProvidedAmount returns the amount of coin provided for this swap, in standard units.
-func (i *Info) ProvidedAmount() float64 {
-	return i.providedAmount
-}
-
-// ReceivedAmount returns the amount of coin received for this swap, in standard units.
-func (i *Info) ReceivedAmount() float64 {
-	return i.receivedAmount
-}
-
-// ExchangeRate returns the exchange rate for this swap, represented by a ratio of XMR/ETH.
-func (i *Info) ExchangeRate() types.ExchangeRate {
-	return i.exchangeRate
-}
-
-// EthAsset returns the Ethereum asset for this swap, either an ERC-20 address or the zero address
-// for regular ETH
-func (i *Info) EthAsset() types.EthAsset {
-	return i.ethAsset
-}
-
-// Status returns the swap's status.
-func (i *Info) Status() Status {
-	return i.status
-}
-
-// StatusCh returns the swap's status update channel.
-func (i *Info) StatusCh() <-chan types.Status {
-	return i.statusCh
-}
-
-// SetStatus ...
-func (i *Info) SetStatus(s Status) {
-	i.status = s
-}
-
 // Manager tracks current and past swaps.
 type Manager interface {
 	AddSwap(info *Info) error
@@ -117,11 +34,11 @@ func (m *manager) AddSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
 
-	switch info.status.IsOngoing() {
+	switch info.Status.IsOngoing() {
 	case true:
-		m.ongoing[info.id] = info
+		m.ongoing[info.ID] = info
 	default:
-		m.past[info.id] = info
+		m.past[info.ID] = info
 	}
 
 	return nil

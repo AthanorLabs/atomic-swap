@@ -30,8 +30,8 @@ func TestManager_AddSwap_Past(t *testing.T) {
 	m := NewManager().(*manager)
 
 	info := &Info{
-		id:     types.Hash{1},
-		status: types.CompletedSuccess,
+		ID:     types.Hash{1},
+		Status: types.CompletedSuccess,
 	}
 
 	err := m.AddSwap(info)
@@ -39,8 +39,8 @@ func TestManager_AddSwap_Past(t *testing.T) {
 	require.NotNil(t, m.GetPastSwap(types.Hash{1}))
 
 	info = &Info{
-		id:     types.Hash{2},
-		status: types.CompletedSuccess,
+		ID:     types.Hash{2},
+		Status: types.CompletedSuccess,
 	}
 
 	err = m.AddSwap(info)

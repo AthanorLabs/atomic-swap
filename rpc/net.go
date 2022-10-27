@@ -248,7 +248,7 @@ func (s *NetService) TakeOfferSync(_ *http.Request, req *rpctypes.TakeOfferReque
 			continue
 		}
 
-		resp.Status = info.Status().String()
+		resp.Status = info.Status.String()
 		break
 	}
 
