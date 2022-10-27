@@ -32,8 +32,8 @@ func deployContract(t *testing.T, ec *ethclient.Client, trustedForwarder ethcomm
 	return contractAddr
 }
 
-// getContractCode is a test helper that returns the contract bytecode at a
-// given ethereum address.
+// getContractCode is a test helper that returns the contract bytecode at a given ethereum
+// address.
 func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 	ec, _ := tests.NewEthClient(t)
 	contractAddr := deployContract(t, ec, trustedForwarder)
@@ -43,7 +43,8 @@ func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 }
 
 // This test will fail if the compiled SwapFactory contract is updated, but the
-// expectedSwapFactoryBytecodeHex constant is not updated. Use it to update the value.
+// expectedSwapFactoryBytecodeHex constant is not updated. Use this test to update the
+// constant.
 func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
 	allZeroTrustedForwarder := ethcommon.Address{}
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t, allZeroTrustedForwarder))
@@ -52,6 +53,9 @@ func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
 		"update expectedSwapFactoryBytecodeHex with above logged value to fix this test")
 }
 
+// This test will fail if the compiled SwapFactory contract is updated, but the
+// forwarderAddressIndexes slice of trusted forwarder locations is not updated. Use this
+// test to update teh slice.
 func TestForwarderAddressIndexes(t *testing.T) {
 	// arbitrary sentinel address that we search for in the contract byte code
 	trustedForwarder := ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7")
@@ -70,6 +74,8 @@ func TestForwarderAddressIndexes(t *testing.T) {
 		"update forwarderAddressIndexes with above logged indexes to fix this test")
 }
 
+// Ensure that we correctly verify the SwapFactory contract when initialized with
+// different trusted forwarder addresses.
 func TestCheckSwapFactoryContractCode(t *testing.T) {
 	trustedForwarderAddresses := []string{
 		"0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa",
@@ -82,22 +88,18 @@ func TestCheckSwapFactoryContractCode(t *testing.T) {
 		contractAddr := deployContract(t, ec, tfAddr)
 		parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, contractAddr)
 		require.NoError(t, err)
-		parsedTFAddrHex := parsedTFAddr.Hex()
-		require.Equal(t, addrHex, parsedTFAddrHex)
+		require.Equal(t, addrHex, parsedTFAddr.Hex())
 	}
 }
 
+// Tests that we fail when the wrong contract byte code is found
 func TestCheckSwapFactoryContractCode_fail(t *testing.T) {
-	ec, _ := tests.NewEthClient(t)
-
+	ec, chainID := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	ctx := context.Background()
-	chainID, err := ec.ChainID(ctx)
-	require.NoError(t, err)
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	// Deploy an arbitrary contract is not the swap factory so the byte code will not match
+	// Deploying an arbitrary contract that won't match the swap factory contract
 	contractAddr, tx, _, err :=
 		DeployERC20Mock(txOpts, ec, "ERC20Mock", "MOCK", ethcommon.Address{0x1}, big.NewInt(9999))
 	require.NoError(t, err)
