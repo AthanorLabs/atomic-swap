@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
@@ -53,7 +54,7 @@ func getOrDeploySwapFactory(
 		}
 		log.Infof("loaded SwapFactory.sol from address %s", address)
 
-		err = pcommon.CheckContractCode(ctx, ec, address)
+		_, err = contracts.CheckSwapFactoryContractCode(ctx, ec, address)
 		if err != nil {
 			return nil, ethcommon.Address{}, err
 		}
