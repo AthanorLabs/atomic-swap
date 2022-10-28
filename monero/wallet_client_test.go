@@ -46,6 +46,7 @@ func TestClient_Transfer(t *testing.T) {
 		TxID:             transResp.TxHash,
 		DestAddr:         abAddress,
 		NumConfirmations: MinSpendConfirmations,
+		AccountIdx:       0,
 	})
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, transfer.Confirmations, uint64(MinSpendConfirmations))
@@ -114,6 +115,7 @@ func TestClient_Transfer(t *testing.T) {
 		TxID:             sweepTxID,
 		DestAddr:         alicePrimaryAddr,
 		NumConfirmations: 2,
+		AccountIdx:       0,
 	})
 	require.NoError(t, err)
 	require.Equal(t, sweepFee, transfer.Fee)
@@ -286,6 +288,7 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 		TxID:             transResp.TxHash,
 		DestAddr:         destAddr,
 		NumConfirmations: 999999999, // wait for a number of confirmations that would take a long time
+		AccountIdx:       0,
 	})
 	require.ErrorIs(t, err, context.Canceled)
 }

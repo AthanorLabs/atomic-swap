@@ -521,6 +521,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 		TxID:             transResp.TxHash,
 		DestAddr:         swapDestAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
+		AccountIdx:       0,
 	})
 	if err != nil {
 		return nil, err

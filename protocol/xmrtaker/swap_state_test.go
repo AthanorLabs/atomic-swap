@@ -326,6 +326,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 		TxID:             tResp.TxHash,
 		DestAddr:         xmrAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
+		AccountIdx:       0,
 	})
 	require.NoError(t, err)
 	t.Logf("Transfer mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)

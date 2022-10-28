@@ -81,6 +81,7 @@ type WaitForReceiptRequest struct {
 	TxID             string
 	DestAddr         mcrypto.Address
 	NumConfirmations uint64
+	AccountIdx       uint64
 }
 
 type walletClient struct {
@@ -188,7 +189,7 @@ func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.
 	for {
 		transferResp, err := c.rpc.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
 			TxID:         req.TxID,
-			AccountIndex: 0,
+			AccountIndex: req.AccountIdx,
 		})
 		if err != nil {
 			return nil, err
