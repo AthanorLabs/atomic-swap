@@ -17,9 +17,9 @@ func TestWaitForBlocks(t *testing.T) {
 	heightBefore, err := c.GetHeight()
 	require.NoError(t, err)
 
-	heightAfter, err := WaitForBlocks(context.Background(), c, 1)
+	heightAfter, err := WaitForBlocks(context.Background(), c, 2)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, heightAfter-heightBefore, uint64(1))
+	require.GreaterOrEqual(t, heightAfter-heightBefore, uint64(2))
 }
 
 func TestCreateMoneroWallet(t *testing.T) {
