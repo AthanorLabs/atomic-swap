@@ -29,9 +29,10 @@ var mineMu sync.Mutex
 func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-
 	defer wg.Wait()
 
+	// Lower the sleep duration used by WaitForBlock
+	blockSleepDuration = backgroundMineInterval / 3
 	go func() {
 		defer wg.Done()
 		if !mineMu.TryLock() {
@@ -40,7 +41,6 @@ func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 		defer mineMu.Unlock()
 
 		for {
-			time.Sleep(backgroundMineInterval)
 			select {
 			case <-ctx.Done():
 				return
