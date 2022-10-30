@@ -24,6 +24,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 )
 
+const (
+	// Mastering monero example address (we don't use the background mining block rewards in tests)
+	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
+)
+
 // CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
 func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
 	_, filename, _, ok := runtime.Caller(0) // this test file path
