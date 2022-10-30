@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -164,7 +163,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 ) {
 	const testTimeout = time.Second * 75
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
@@ -194,13 +193,12 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 				if status.IsOngoing() {
 					continue
 				}
-
 				if status != types.CompletedSuccess {
 					errCh <- fmt.Errorf("swap did not complete successfully: got %s", status)
 				}
 				return
-			case <-time.After(testTimeout):
-				errCh <- errors.New("make offer subscription timed out")
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("make offer context canceled: %w", ctx.Err())
 				return
 			}
 		}
@@ -255,7 +253,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 		swapTimeout = 30
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
@@ -295,8 +293,8 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 					errCh <- fmt.Errorf("swap did not succeed or refund for XMRMaker: status=%s", status)
 				}
 				return
-			case <-time.After(testTimeout):
-				errCh <- errors.New("make offer subscription timed out")
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("make offer context canceled: %w", ctx.Err())
 				return
 			}
 		}
@@ -388,7 +386,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 ) {
 	const testTimeout = time.Second * 60
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	bc := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)
@@ -435,8 +433,9 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 
 				s.T().Log("> XMRMaker refunded successfully")
 				return
-			case <-time.After(testTimeout):
-				errCh <- errors.New("make offer subscription timed out")
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("make offer context canceled: %w", ctx.Err())
+				return
 			}
 		}
 	}()
@@ -499,7 +498,7 @@ func (s *IntegrationTestSuite) TestAbort_XMRTakerCancels() {
 func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	const testTimeout = time.Second * 60
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
@@ -537,8 +536,9 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 				}
 
 				return
-			case <-time.After(testTimeout):
-				errCh <- errors.New("make offer subscription timed out")
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("make offer context canceled: %w", ctx.Err())
+				return
 			}
 		}
 	}()
@@ -601,7 +601,7 @@ func (s *IntegrationTestSuite) TestAbort_XMRMakerCancels() {
 func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	const testTimeout = time.Second * 60
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	bcli := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)
@@ -634,23 +634,21 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 				if status != types.KeysExchanged {
 					continue
 				}
-
 				s.T().Log("> XMRMaker cancelled swap!")
 				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
 				if err != nil {
 					errCh <- err
 					return
 				}
-
 				if exitStatus != types.CompletedAbort {
 					errCh <- fmt.Errorf("did not abort successfully: exit status was %s", exitStatus)
 					return
 				}
-
 				s.T().Log("> XMRMaker exited successfully")
 				return
-			case <-time.After(testTimeout):
-				errCh <- errors.New("make offer subscription timed out")
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("make offer context canceled: %w", ctx.Err())
+				return
 			}
 		}
 	}()
@@ -706,7 +704,7 @@ func (s *IntegrationTestSuite) TestError_ShouldOnlyTakeOfferOnce() {
 
 func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthAsset) {
 	const testTimeout = time.Second * 60
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	bc := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)
@@ -789,7 +787,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 	case err := <-errCh:
 		require.NotNil(s.T(), err)
 		s.T().Log("got expected error:", err)
-	case <-time.After(testTimeout):
+	case <-ctx.Done():
 		s.T().Fatalf("did not get error from XMRTaker or Charlie")
 	}
 
@@ -805,10 +803,10 @@ func (s *IntegrationTestSuite) TestSuccess_ConcurrentSwaps() {
 }
 
 func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) {
-	const testTimeout = time.Minute * 6
+	const testTimeout = time.Minute * 7
 	const numConcurrentSwaps = 10
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	type makerTest struct {
@@ -831,7 +829,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 		makerTests[i] = &makerTest{
 			offerID:  offerID,
 			statusCh: statusCh,
-			errCh:    make(chan error, 2),
+			errCh:    make(chan error, numConcurrentSwaps),
 			index:    i,
 		}
 	}
@@ -848,7 +846,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 	wg.Add(2 * numConcurrentSwaps)
 
 	// Track each XMRMaker's status asynchronously
-	for _, tc := range makerTests {
+	for _, mkrTest := range makerTests {
 		go func(mt *makerTest) {
 			defer wg.Done()
 
@@ -859,17 +857,16 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 					if status.IsOngoing() {
 						continue
 					}
-
 					if status != types.CompletedSuccess {
 						mt.errCh <- fmt.Errorf("XMRMaker[%d] swap did not succeed: %s", mt.index, status)
 					}
-
 					return
-				case <-time.After(testTimeout):
-					mt.errCh <- fmt.Errorf("XMRMaker[%d] offer subscription timed out", mt.index)
+				case <-ctx.Done():
+					mt.errCh <- fmt.Errorf("XMRMaker[%d] context canceled: %w", mt.index, ctx.Err())
+					return
 				}
 			}
-		}(tc)
+		}(mkrTest)
 	}
 
 	type takerTest struct {
@@ -898,28 +895,33 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 
 		takerTests[i] = &takerTest{
 			statusCh: takerStatusCh,
-			errCh:    make(chan error, 2),
+			errCh:    make(chan error, numConcurrentSwaps),
 			index:    i,
 		}
 	}
 
 	// Track each XMRTaker's status asynchronously
-	for _, tc := range takerTests {
-		go func(tc *takerTest) {
+	for _, tkrTest := range takerTests {
+		tkrTest := tkrTest
+		go func(tt *takerTest) {
 			defer wg.Done()
-			for status := range tc.statusCh {
-				s.T().Logf("> XMRTaker[%d] got status: %s", tc.index, status)
-				if status.IsOngoing() {
-					continue
+			for {
+				select {
+				case status := <-tt.statusCh:
+					s.T().Logf("> XMRTaker[%d] got status: %s", tt.index, status)
+					if status.IsOngoing() {
+						continue
+					}
+					if status != types.CompletedSuccess {
+						tt.errCh <- fmt.Errorf("XMRTaker[%d] did not succeed: %s", tt.index, status)
+					}
+					return
+				case <-ctx.Done():
+					tkrTest.errCh <- fmt.Errorf("XMRTaker[%d] context ended: %w", tt.index, ctx.Err())
+					return
 				}
-
-				if status != types.CompletedSuccess {
-					tc.errCh <- fmt.Errorf("XMRTaker[%d] did not succeed: %s", tc.index, status)
-				}
-
-				return
 			}
-		}(tc)
+		}(tkrTest)
 	}
 
 	wg.Wait()
