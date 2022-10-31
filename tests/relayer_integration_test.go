@@ -27,12 +27,10 @@ var (
 )
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {
-	setupRelayer(s.T())
 	s.testSuccessOneSwap(types.EthAssetETH, defaultRelayerEndpoint, relayerCommission)
 }
 
 func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
-	setupRelayer(s.T())
 	s.testSuccessOneSwap(
 		types.EthAsset(deployERC20Mock(s.T())),
 		defaultRelayerEndpoint,

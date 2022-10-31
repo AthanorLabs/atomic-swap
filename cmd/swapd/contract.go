@@ -95,6 +95,17 @@ func deploySwapFactory(
 		}
 
 		forwarderAddress = address
+	} else {
+		// ensure domain separator is registered
+		forwarder, err := gsnforwarder.NewForwarder(forwarderAddress, ec) //nolint:govet
+		if err != nil {
+			return ethcommon.Address{}, nil, err
+		}
+
+		err = registerDomainSeparator(ctx, ec, txOpts, forwarderAddress, forwarder)
+		if err != nil {
+			return ethcommon.Address{}, nil, err
+		}
 	}
 
 	// deploy contracts.sol
@@ -134,15 +145,35 @@ func deployForwarder(
 		return ethcommon.Address{}, err
 	}
 
-	tx, err = contract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
-	if err != nil {
-		return ethcommon.Address{}, fmt.Errorf("failed to register domain separator: %w", err)
-	}
-
-	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	err = registerDomainSeparator(ctx, ec, txOpts, address, contract)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
 
 	return address, nil
+}
+
+func registerDomainSeparator(
+	ctx context.Context,
+	ec *ethclient.Client,
+	txOpts *bind.TransactOpts,
+	address ethcommon.Address,
+	contract *gsnforwarder.Forwarder,
+) error {
+	tx, err := contract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
+	if err != nil {
+		return fmt.Errorf("failed to register domain separator: %w", err)
+	}
+
+	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("registered domain separator in forwarder at %s: name=%s version=%s",
+		address,
+		gsnforwarder.DefaultName,
+		gsnforwarder.DefaultVersion,
+	)
+	return nil
 }
