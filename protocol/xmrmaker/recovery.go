@@ -53,7 +53,7 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		offerExtra: &types.OfferExtra{
 			InfoFile: pcommon.GetSwapRecoveryFilepath(dataDir),
 		},
-		moneroBlockHeight: 0, // could optimise this if we start recording it in the swap recovery info
+		walletScanHeight: 0, // could optimise this if we start recording it in the swap recovery info
 	}
 
 	if err := s.setContract(contractAddr); err != nil {

@@ -187,9 +187,14 @@ func TestClient_GetHeight(t *testing.T) {
 	})
 	require.NoError(t, err)
 	defer c.Close()
-	resp, err := c.GetHeight()
+
+	require.NoError(t, c.Refresh())
+	walletHeight, err := c.GetHeight()
 	require.NoError(t, err)
-	require.NotEqual(t, 0, resp)
+	chainHeight, err := c.GetChainHeight()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, chainHeight, walletHeight)
+	require.LessOrEqual(t, chainHeight-walletHeight, uint64(2))
 }
 
 func TestCallGenerateFromKeys(t *testing.T) {

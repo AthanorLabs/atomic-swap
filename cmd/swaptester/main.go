@@ -31,8 +31,8 @@ const (
 	flagLogLevel = "log-level"
 	flagDev      = "dev"
 
-	defaultConfigFile             = "testerconfig.json"
-	defaultXMRMakerMoneroEndpoint = "http://127.0.0.1:18083/json_rpc"
+	defaultConfigFile               = "testerconfig.json"
+	defaultXMRMakerMoneroWalletPort = 18083
 )
 
 var (
@@ -120,7 +120,11 @@ func runTester(c *cli.Context) error {
 	if !isDev {
 		// TODO: Why do this when dev flag is not given? Can the code work if it is given?
 		// For this to work, you'll need to pass --wallet-port 18083 to the XMR Maker swapd
-		defaultMoneroClient = monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
+		defaultMoneroClient = monero.NewThinWalletClient(
+			"127.0.0.1",
+			common.DefaultMoneroDaemonDevPort,
+			defaultXMRMakerMoneroWalletPort,
+		)
 	}
 
 	var timeout time.Duration
@@ -196,7 +200,7 @@ func getRandomExchangeRate() types.ExchangeRate {
 }
 
 func generateBlocks() {
-	cXMRMaker := monero.NewThinWalletClient(defaultXMRMakerMoneroEndpoint)
+	cXMRMaker := defaultMoneroClient
 	xmrmakerAddr, err := cXMRMaker.GetAddress(0)
 	if err != nil {
 		log.Errorf("failed to get default monero address: %s", err)

@@ -396,6 +396,21 @@ func (mr *MockBackendMockRecorder) GetBalance(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalance", reflect.TypeOf((*MockBackend)(nil).GetBalance), arg0)
 }
 
+// GetChainHeight mocks base method.
+func (m *MockBackend) GetChainHeight() (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetChainHeight")
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetChainHeight indicates an expected call of GetChainHeight.
+func (mr *MockBackendMockRecorder) GetChainHeight() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChainHeight", reflect.TypeOf((*MockBackend)(nil).GetChainHeight))
+}
+
 // GetHeight mocks base method.
 func (m *MockBackend) GetHeight() (uint64, error) {
 	m.ctrl.T.Helper()

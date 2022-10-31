@@ -64,7 +64,7 @@ type swapState struct {
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
 	xmrtakerSecp256K1PublicKey *secp256k1.PublicKey
-	moneroBlockHeight          uint64 // height of the monero blockchain when the swap is started
+	walletScanHeight           uint64 // height of the monero blockchain when the swap is started
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -117,9 +117,13 @@ func newSwapState(
 		}
 	}
 
-	moneroBlockHeight, err := b.GetHeight()
+	walletScanHeight, err := b.GetChainHeight()
 	if err != nil {
 		return nil, err
+	}
+	// reduce the scan height a little in case there is a block reorg
+	if walletScanHeight >= monero.MinSpendConfirmations {
+		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
 	ctx, cancel := context.WithCancel(b.Ctx())
@@ -131,7 +135,7 @@ func newSwapState(
 		offer:               offer,
 		offerExtra:          offerExtra,
 		offerManager:        om,
-		moneroBlockHeight:   moneroBlockHeight,
+		walletScanHeight:    walletScanHeight,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		info:                info,
@@ -311,7 +315,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 
 	s.LockClient()
 	defer s.UnlockClient()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB, s.moneroBlockHeight)
+	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB, s.walletScanHeight)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
@@ -516,6 +520,11 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 
 	log.Infof("locked %f XMR, txID=%s fee=%d", amount.AsMonero(), transResp.TxHash, transResp.Fee)
 
+	// TODO: It would be friendlier to concurrent swaps if we didn't hold the client lock
+	//       for the entire confirmation period. Options to improve this include creating a
+	//       separate monero-wallet-rpc instance for A+B wallets or carefully releasing the
+	//       lock between confirmations and re-opening the A+B wallet after grabbing the
+	//       lock again.
 	transfer, err := s.WaitForTransReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             transResp.TxHash,

@@ -14,7 +14,7 @@ import (
 func TestWaitForBlocks(t *testing.T) {
 	c := CreateWalletClient(t)
 
-	heightBefore, err := c.GetHeight()
+	heightBefore, err := c.GetChainHeight()
 	require.NoError(t, err)
 
 	heightAfter, err := WaitForBlocks(context.Background(), c, 2)
