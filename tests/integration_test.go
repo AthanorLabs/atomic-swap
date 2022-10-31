@@ -37,6 +37,8 @@ const (
 
 	defaultDiscoverTimeout = 2 // 2 seconds
 
+	defaultSwapTimeout = 90 // number of seconds that we reset the taker's swap timeout to between tests
+
 	xmrmakerProvideAmount = float64(1.0)
 	exchangeRate          = float64(0.05)
 )
@@ -58,6 +60,13 @@ func (s *IntegrationTestSuite) SetupTest() {
 		// We need slightly more than xmrmakerProvideAmount for transaction fees
 		mineMinXMRMakerBalance(s.T(), common.MoneroToPiconero(xmrmakerProvideAmount*2))
 	}
+	s.setSwapTimeout(defaultSwapTimeout) // reset between tests, so every test starts in a known state
+}
+
+func (s *IntegrationTestSuite) setSwapTimeout(timeoutSeconds uint64) {
+	ac := rpcclient.NewClient(defaultXMRTakerSwapdEndpoint)
+	err := ac.SetSwapTimeout(timeoutSeconds)
+	require.NoError(s.T(), err)
 }
 
 // mineMinXMRMakerBalance is similar to monero.MineMinXMRBalance(...), but this version
@@ -303,8 +312,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	ac := rpcclient.NewClient(defaultXMRTakerSwapdEndpoint)
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-	err = ac.SetSwapTimeout(swapTimeout)
-	require.NoError(s.T(), err)
+	s.setSwapTimeout(swapTimeout)
 
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
@@ -443,8 +451,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	ac := rpcclient.NewClient(defaultXMRTakerSwapdEndpoint)
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-	err = ac.SetSwapTimeout(swapTimeout)
-	require.NoError(s.T(), err)
+	s.setSwapTimeout(swapTimeout)
 
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
@@ -803,11 +810,14 @@ func (s *IntegrationTestSuite) TestSuccess_ConcurrentSwaps() {
 }
 
 func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) {
-	const testTimeout = time.Minute * 7
 	const numConcurrentSwaps = 10
+	const swapTimeout = 30 * numConcurrentSwaps
+	const testTimeout = (swapTimeout * 2 * time.Second) + (1 * time.Minute)
 
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
+
+	s.setSwapTimeout(swapTimeout)
 
 	type makerTest struct {
 		offerID  string
