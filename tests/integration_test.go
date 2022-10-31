@@ -53,7 +53,7 @@ func TestRunIntegrationTests(t *testing.T) {
 	}
 
 	// setup transaction relayer
-	setupRelayer(s.T())
+	setupRelayer(t)
 
 	suite.Run(t, new(IntegrationTestSuite))
 }
