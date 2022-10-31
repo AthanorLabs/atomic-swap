@@ -13,7 +13,7 @@ const (
 	// MonerodRegtestEndpoint is the RPC endpoint used by monerod in the dev environment's regtest mode.
 	MonerodRegtestEndpoint = "http://127.0.0.1:18081/json_rpc"
 
-	backgroundMineInterval = 3 * time.Second
+	backgroundMineInterval = 1 * time.Second
 
 	errBlockNotAccepted = "Block not accepted"
 )
@@ -26,9 +26,10 @@ var mineMu sync.Mutex
 func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-
 	defer wg.Wait()
 
+	// Lower the sleep duration used by WaitForBlock
+	blockSleepDuration = backgroundMineInterval / 3
 	go func() {
 		defer wg.Done()
 		if !mineMu.TryLock() {
@@ -37,7 +38,6 @@ func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 		defer mineMu.Unlock()
 
 		for {
-			time.Sleep(backgroundMineInterval)
 			select {
 			case <-ctx.Done():
 				return
@@ -46,7 +46,7 @@ func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 			}
 
 			daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
-			_, err := daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
+			resp, err := daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
 				AmountOfBlocks: 1,
 				WalletAddress:  blockRewardAddress,
 			})
@@ -55,10 +55,11 @@ func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 				// blocks, not an error that matters unless it is happening frequently.
 				continue
 			} else if err != nil {
-				log.Warnf("failed to mine block: %s", err)
+				log.Warnf("Failed to mine block: %s", err)
 			}
-
-			log.Debugf("background mined 1 monero block")
+			if false { // change to true if debugging and you want to see when new blocks are generated
+				log.Debugf("Background mined 1 monero block at height=%d", resp.Height)
+			}
 		}
 	}()
 }

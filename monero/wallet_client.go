@@ -2,6 +2,7 @@ package monero
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc"
+	monerodaemon "github.com/MarinX/monerorpc/daemon"
 	"github.com/MarinX/monerorpc/wallet"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -22,6 +24,10 @@ import (
 
 const (
 	moneroWalletRPCLogPrefix = "[monero-wallet-rpc]: "
+
+	// MinSpendConfirmations is the number of confirmations required on transaction
+	// outputs before they can be spent again.
+	MinSpendConfirmations = 10
 )
 
 // WalletClient represents a monero-wallet-rpc client.
@@ -30,12 +36,27 @@ type WalletClient interface {
 	UnlockClient()
 	GetAccounts() (*wallet.GetAccountsResponse, error)
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
+	PrimaryWalletAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
 	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
-	GenerateFromKeys(kp *mcrypto.PrivateKeyPair, filename, password string, env common.Environment) error
-	GenerateViewOnlyWalletFromKeys(vk *mcrypto.PrivateViewKey, address mcrypto.Address, filename, password string) error
+	WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
+	GenerateFromKeys(
+		kp *mcrypto.PrivateKeyPair,
+		restoreHeight uint64,
+		filename,
+		password string,
+		env common.Environment,
+	) error
+	GenerateViewOnlyWalletFromKeys(
+		vk *mcrypto.PrivateViewKey,
+		address mcrypto.Address,
+		restoreHeight uint64,
+		filename,
+		password string,
+	) error
 	GetHeight() (uint64, error)
+	GetChainHeight() (uint64, error)
 	Refresh() error
 	CreateWallet(filename, password string) error
 	OpenWallet(filename, password string) error
@@ -56,24 +77,30 @@ type WalletClientConf struct {
 	LogPath             string             // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
 }
 
+// WaitForReceiptRequest wraps the input parameters for WaitForTransReceipt
+type WaitForReceiptRequest struct {
+	Ctx              context.Context
+	TxID             string
+	DestAddr         mcrypto.Address
+	NumConfirmations uint64
+	AccountIdx       uint64
+}
+
 type walletClient struct {
-	mu         sync.Mutex
-	rpc        wallet.Wallet // full API with slightly different method signatures
-	endpoint   string
-	rpcProcess *os.Process // monero-wallet-rpc process that we create
+	mu                    sync.Mutex
+	wRPC                  wallet.Wallet       // full monero-wallet-rpc API (larger than the WalletClient interface)
+	dRPC                  monerodaemon.Daemon // full monerod RPC API
+	endpoint              string
+	primaryWallet         string // primary wallet name not including any directory
+	primaryWalletPassword string // password for the primary wallet
+	primaryWalletAddr     mcrypto.Address
+	rpcProcess            *os.Process // monero-wallet-rpc process that we create
 }
 
 // NewWalletClient returns a WalletClient for a newly created monero-wallet-rpc process.
 func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	if conf.WalletFilePath == "" {
 		panic("WalletFilePath is a required conf field") // should have been caught before we were invoked
-	}
-	if conf.WalletPort == 0 {
-		var err error
-		conf.WalletPort, err = getFreePort()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if path.Dir(conf.WalletFilePath) == "." {
@@ -86,34 +113,44 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	}
 	isNewWallet := !walletExists
 
-	endpoint, proc, err := createWalletRPCService(conf)
+	proc, err := createWalletRPCService(conf)
 	if err != nil {
 		return nil, err
 	}
 
-	c := NewThinWalletClient(endpoint).(*walletClient)
+	c := NewThinWalletClient(conf.MonerodHost, conf.MonerodPort, conf.WalletPort).(*walletClient)
 	c.rpcProcess = proc
 
-	walletName := path.Base(conf.WalletFilePath)
+	c.primaryWallet = path.Base(conf.WalletFilePath)
+	c.primaryWalletPassword = conf.WalletPassword
 	if isNewWallet {
-		if err := c.CreateWallet(walletName, conf.WalletPassword); err != nil {
+		if err = c.CreateWallet(c.primaryWallet, conf.WalletPassword); err != nil {
 			c.Close()
 			return nil, err
 		}
 		log.Infof("New Monero wallet %s created", conf.WalletFilePath)
 	}
-	if err := c.OpenWallet(walletName, conf.WalletPassword); err != nil {
+	if err = c.OpenPrimaryWallet(); err != nil {
 		c.Close()
 		return nil, err
 	}
+	acctResp, err := c.GetAddress(0)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+	c.primaryWalletAddr = mcrypto.Address(acctResp.Address)
 	return c, nil
 }
 
 // NewThinWalletClient returns a WalletClient for an existing monero-wallet-rpc process.
-func NewThinWalletClient(endpoint string) WalletClient {
+func NewThinWalletClient(monerodHost string, monerodPort uint, walletPort uint) WalletClient {
+	monerodEndpoint := fmt.Sprintf("http://%s:%d/json_rpc", monerodHost, monerodPort)
+	walletEndpoint := fmt.Sprintf("http://127.0.0.1:%d/json_rpc", walletPort)
 	return &walletClient{
-		rpc:      monerorpc.New(endpoint, nil).Wallet,
-		endpoint: endpoint,
+		dRPC:     monerorpc.New(monerodEndpoint, nil).Daemon,
+		wRPC:     monerorpc.New(walletEndpoint, nil).Wallet,
+		endpoint: walletEndpoint,
 	}
 }
 
@@ -126,28 +163,72 @@ func (c *walletClient) UnlockClient() {
 }
 
 func (c *walletClient) GetAccounts() (*wallet.GetAccountsResponse, error) {
-	return c.rpc.GetAccounts(&wallet.GetAccountsRequest{})
+	return c.wRPC.GetAccounts(&wallet.GetAccountsRequest{})
 }
 
 func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error) {
-	return c.rpc.GetBalance(&wallet.GetBalanceRequest{
+	return c.wRPC.GetBalance(&wallet.GetBalanceRequest{
 		AccountIndex: idx,
 	})
 }
 
+// WaitForTransReceipt waits for the passed monero transaction ID to receive
+// numConfirmations and returns the transfer information. While this function will always
+// wait for the transaction to leave the mem-pool even if zero confirmations are
+// requested, it is the caller's responsibility to request enough confirmations that the
+// returned transfer information will not be invalidated by a block reorg.
+func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
+	height, err := c.GetHeight()
+	if err != nil {
+		return nil, err
+	}
+
+	var transfer *wallet.Transfer
+
+	for {
+		if err = c.Refresh(); err != nil {
+			return nil, err
+		}
+		transferResp, err := c.wRPC.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
+			TxID:         req.TxID,
+			AccountIndex: req.AccountIdx,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		transfer = &transferResp.Transfer
+		log.Infof("Received %d of %d confirmations of XMR TXID=%s (height=%d)",
+			transfer.Confirmations,
+			req.NumConfirmations,
+			req.TxID,
+			height)
+		// wait for transaction be mined (height set) even if 0 confirmations requested
+		if transfer.Height > 0 && transfer.Confirmations >= req.NumConfirmations {
+			break
+		}
+
+		height, err = WaitForBlocks(req.Ctx, c, 1)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return transfer, nil
+}
+
 func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
-	return c.rpc.Transfer(&wallet.TransferRequest{
+	return c.wRPC.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
 			Amount:  amount,
 			Address: string(to),
 		}},
 		AccountIndex: accountIdx,
-		Priority:     0,
 	})
 }
 
 func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error) {
-	return c.rpc.SweepAll(&wallet.SweepAllRequest{
+	return c.wRPC.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
 	})
@@ -156,26 +237,29 @@ func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.
 // GenerateFromKeys creates a wallet from a given wallet address, view key, and optional spend key
 func (c *walletClient) GenerateFromKeys(
 	kp *mcrypto.PrivateKeyPair,
+	restoreHeight uint64,
 	filename, password string,
 	env common.Environment,
 ) error {
-	return c.generateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(env), filename, password)
+	return c.generateFromKeys(kp.SpendKey(), kp.ViewKey(), kp.Address(env), restoreHeight, filename, password)
 }
 
 // GenerateViewOnlyWalletFromKeys creates a view-only wallet from a given view key and address
 func (c *walletClient) GenerateViewOnlyWalletFromKeys(
 	vk *mcrypto.PrivateViewKey,
 	address mcrypto.Address,
+	restoreHeight uint64,
 	filename,
 	password string,
 ) error {
-	return c.generateFromKeys(nil, vk, address, filename, password)
+	return c.generateFromKeys(nil, vk, address, restoreHeight, filename, password)
 }
 
 func (c *walletClient) generateFromKeys(
 	sk *mcrypto.PrivateSpendKey,
 	vk *mcrypto.PrivateViewKey,
 	address mcrypto.Address,
+	restoreHeight uint64,
 	filename,
 	password string,
 ) error {
@@ -189,12 +273,13 @@ func (c *walletClient) generateFromKeys(
 		spendKey = sk.Hex()
 	}
 
-	res, err := c.rpc.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
-		Filename: filename,
-		Address:  string(address),
-		Viewkey:  vk.Hex(),
-		Spendkey: spendKey,
-		Password: password,
+	res, err := c.wRPC.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
+		Filename:      filename,
+		Address:       string(address),
+		RestoreHeight: restoreHeight,
+		Viewkey:       vk.Hex(),
+		Spendkey:      spendKey,
+		Password:      password,
 	})
 	if err != nil {
 		return err
@@ -212,18 +297,18 @@ func (c *walletClient) generateFromKeys(
 }
 
 func (c *walletClient) GetAddress(idx uint64) (*wallet.GetAddressResponse, error) {
-	return c.rpc.GetAddress(&wallet.GetAddressRequest{
+	return c.wRPC.GetAddress(&wallet.GetAddressRequest{
 		AccountIndex: idx,
 	})
 }
 
 func (c *walletClient) Refresh() error {
-	_, err := c.rpc.Refresh(&wallet.RefreshRequest{})
+	_, err := c.wRPC.Refresh(&wallet.RefreshRequest{})
 	return err
 }
 
 func (c *walletClient) CreateWallet(filename, password string) error {
-	return c.rpc.CreateWallet(&wallet.CreateWalletRequest{
+	return c.wRPC.CreateWallet(&wallet.CreateWalletRequest{
 		Filename: filename,
 		Password: password,
 		Language: "English",
@@ -231,22 +316,45 @@ func (c *walletClient) CreateWallet(filename, password string) error {
 }
 
 func (c *walletClient) OpenWallet(filename, password string) error {
-	return c.rpc.OpenWallet(&wallet.OpenWalletRequest{
+	return c.wRPC.OpenWallet(&wallet.OpenWalletRequest{
 		Filename: filename,
 		Password: password,
 	})
 }
 
+func (c *walletClient) OpenPrimaryWallet() error {
+	return c.OpenWallet(c.primaryWallet, c.primaryWalletPassword)
+}
+
+func (c *walletClient) PrimaryWalletAddress() mcrypto.Address {
+	if c.primaryWalletAddr == "" {
+		// Initialised in constructor function, so this shouldn't ever happen
+		panic("primary wallet address was not initialised")
+	}
+	return c.primaryWalletAddr
+}
+
 func (c *walletClient) CloseWallet() error {
-	return c.rpc.CloseWallet()
+	return c.wRPC.CloseWallet()
 }
 
 func (c *walletClient) GetHeight() (uint64, error) {
-	res, err := c.rpc.GetHeight()
+	res, err := c.wRPC.GetHeight()
 	if err != nil {
 		return 0, err
 	}
 	return res.Height, nil
+}
+
+// GetChainHeight gets the blockchain height directly from the monero daemon instead
+// of the wallet height. Unlike the wallet method GetHeight, this method does not
+// require a wallet to be open and is safe to call without grabbing the client mutex.
+func (c *walletClient) GetChainHeight() (uint64, error) {
+	res, err := c.dRPC.GetBlockCount()
+	if err != nil {
+		return 0, err
+	}
+	return res.Count, nil
 }
 
 func (c *walletClient) Endpoint() string {
@@ -301,15 +409,16 @@ func validateMonerodConfig(env common.Environment, monerodHost string, monerodPo
 	return nil
 }
 
-// createWalletRPCService starts a monero-wallet-rpc listening on a random port for tests. The json_rpc
-// URL of the started service is returned.
-func createWalletRPCService(conf *WalletClientConf) (string, *os.Process, error) {
+// createWalletRPCService starts a monero-wallet-rpc instance. Default values are assigned
+// to the MonerodHost, MonerodPort, WalletPort and LogPath fields of the config if they
+// are not already set.
+func createWalletRPCService(conf *WalletClientConf) (*os.Process, error) {
 	walletRPCBin := conf.MoneroWalletRPCPath
 	if walletRPCBin == "" {
 		var err error
 		walletRPCBin, err = getMoneroWalletRPCBin()
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 	}
 
@@ -328,7 +437,7 @@ func createWalletRPCService(conf *WalletClientConf) (string, *os.Process, error)
 	}
 
 	if err := validateMonerodConfig(conf.Env, conf.MonerodHost, conf.MonerodPort); err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	if conf.LogPath == "" {
@@ -336,13 +445,21 @@ func createWalletRPCService(conf *WalletClientConf) (string, *os.Process, error)
 		conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
 	}
 
+	if conf.WalletPort == 0 {
+		var err error
+		conf.WalletPort, err = getFreePort()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	walletRPCBinArgs := getWalletRPCFlags(conf)
 	proc, err := launchMoneroWalletRPCChild(walletRPCBin, walletRPCBinArgs...)
 	if err != nil {
-		return "", nil, fmt.Errorf("%w, see %s for details", err, conf.LogPath)
+		return nil, fmt.Errorf("%w, see %s for details", err, conf.LogPath)
 	}
 
-	return fmt.Sprintf("http://127.0.0.1:%d/json_rpc", conf.WalletPort), proc, nil
+	return proc, nil
 }
 
 // getMoneroWalletRPCBin returns the monero-wallet-rpc binary. It first looks for
@@ -351,9 +468,9 @@ func createWalletRPCService(conf *WalletClientConf) (string, *os.Process, error)
 func getMoneroWalletRPCBin() (string, error) {
 	execName := "monero-wallet-rpc"
 	priorityPath := path.Join("monero-bin", execName)
-	path, err := exec.LookPath(priorityPath)
+	execPath, err := exec.LookPath(priorityPath)
 	if err == nil {
-		return path, nil
+		return execPath, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return "", err

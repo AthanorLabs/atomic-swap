@@ -1,6 +1,7 @@
 package monero
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,44 +11,47 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-const (
-	maxRetries         = 360
-	blockSleepDuration = time.Second * 10
-)
-
 var (
+	// blockSleepDuration is the duration that we sleep between checks for new blocks. We
+	// lower it in dev environments if fast background mining is started.
+	blockSleepDuration = time.Second * 10
+
 	log = logging.Logger("monero")
 )
 
 // WaitForBlocks waits for `count` new blocks to arrive.
 // It returns the height of the chain.
-func WaitForBlocks(client WalletClient, count int) (uint64, error) {
-	prevHeight, err := client.GetHeight()
+func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64, error) {
+	startHeight, err := client.GetChainHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get height: %w", err)
 	}
+	prevHeight := startHeight - 1 // prevHeight is only for logging
+	endHeight := startHeight + uint64(count)
 
-	for j := 0; j < count; j++ {
-		for i := 0; i < maxRetries; i++ {
-			if err := client.Refresh(); err != nil {
-				return 0, err
-			}
+	for {
+		if err := client.Refresh(); err != nil {
+			return 0, err
+		}
 
-			height, err := client.GetHeight()
-			if err != nil {
-				continue
-			}
+		height, err := client.GetChainHeight()
+		if err != nil {
+			return 0, err
+		}
 
-			if height > prevHeight {
-				return height, nil
-			}
+		if height >= endHeight {
+			return height, nil
+		}
 
-			log.Infof("waiting for next block, current height=%d", height)
-			time.Sleep(blockSleepDuration)
+		if height > prevHeight {
+			log.Debugf("Waiting for next block, current height %d (target height %d)", height, endHeight)
+			prevHeight = height
+		}
+
+		if err = common.SleepWithContext(ctx, blockSleepDuration); err != nil {
+			return 0, err
 		}
 	}
-
-	return 0, fmt.Errorf("timed out waiting for blocks")
 }
 
 // CreateWallet creates a monero wallet from a private keypair.
@@ -56,10 +60,11 @@ func CreateWallet(
 	env common.Environment,
 	client WalletClient,
 	kpAB *mcrypto.PrivateKeyPair,
+	restoreHeight uint64,
 ) (mcrypto.Address, error) {
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("%s-%s", name, t)
-	if err := client.GenerateFromKeys(kpAB, walletName, "", env); err != nil {
+	if err := client.GenerateFromKeys(kpAB, restoreHeight, walletName, "", env); err != nil {
 		return "", err
 	}
 

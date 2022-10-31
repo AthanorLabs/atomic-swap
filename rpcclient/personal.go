@@ -9,13 +9,13 @@ import (
 )
 
 // SetSwapTimeout calls personal_setSwapTimeout.
-func (c *Client) SetSwapTimeout(duration uint64) error {
+func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 	const (
 		method = "personal_setSwapTimeout"
 	)
 
 	req := &rpc.SetSwapTimeoutRequest{
-		Timeout: duration,
+		Timeout: timeoutSeconds,
 	}
 
 	params, err := json.Marshal(req)

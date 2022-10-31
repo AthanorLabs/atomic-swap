@@ -47,18 +47,19 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
-		ctx:            ctx,
-		cancel:         cancel,
-		Backend:        b,
-		sender:         sender,
-		privkeys:       kp,
-		pubkeys:        pubkp,
-		dleqProof:      dleq.NewProofWithSecret(sc),
-		contractSwapID: contractSwapID,
-		contractSwap:   contractSwap,
-		infoFile:       pcommon.GetSwapRecoveryFilepath(dataDir),
-		claimedCh:      make(chan struct{}),
-		info:           pswap.NewEmptyInfo(),
+		ctx:              ctx,
+		cancel:           cancel,
+		Backend:          b,
+		sender:           sender,
+		privkeys:         kp,
+		pubkeys:          pubkp,
+		dleqProof:        dleq.NewProofWithSecret(sc),
+		walletScanHeight: 0, // TODO: Can we optimise this?
+		contractSwapID:   contractSwapID,
+		contractSwap:     contractSwap,
+		infoFile:         pcommon.GetSwapRecoveryFilepath(dataDir),
+		claimedCh:        make(chan struct{}),
+		info:             pswap.NewEmptyInfo(),
 	}
 
 	rs := &recoveryState{

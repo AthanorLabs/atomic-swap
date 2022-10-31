@@ -58,6 +58,9 @@ type swapState struct {
 	xmrmakerSecp256k1PublicKey *secp256k1.PublicKey
 	xmrmakerAddress            ethcommon.Address
 
+	// block height at start of swap used for fast wallet creation
+	walletScanHeight uint64
+
 	// ETH asset being swapped
 	ethAsset types.EthAsset
 
@@ -119,6 +122,15 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		}
 	}
 
+	walletScanHeight, err := b.GetChainHeight()
+	if err != nil {
+		return nil, err
+	}
+	// reduce the scan height a little in case there is a block reorg
+	if walletScanHeight >= monero.MinSpendConfirmations {
+		walletScanHeight -= monero.MinSpendConfirmations
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
@@ -127,6 +139,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		sender:              sender,
 		infoFile:            infofile,
 		transferBack:        transferBack,
+		walletScanHeight:    walletScanHeight,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		xmrLockedCh:         make(chan struct{}),
 		claimedCh:           make(chan struct{}),
@@ -595,7 +608,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	s.LockClient()
 	defer s.UnlockClient()
 
-	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB)
+	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend, kpAB, s.walletScanHeight)
 	if err != nil {
 		return "", err
 	}
@@ -625,20 +638,10 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	res, err := s.SweepAll(depositAddr, 0)
+	_, err = s.SweepAll(depositAddr, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
-
-	if len(res.AmountList) == 0 {
-		return "", fmt.Errorf("sweep all did not return any amounts")
-	}
-
-	amount := res.AmountList[0]
-	log.Infof("transferred %v XMR to %s",
-		common.MoneroAmount(amount).AsMonero(),
-		depositAddr,
-	)
 
 	close(s.claimedCh)
 	return addr, nil
@@ -659,7 +662,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		if balance.Balance == balance.UnlockedBalance {
 			return nil
 		}
-		if _, err = monero.WaitForBlocks(s, int(balance.BlocksToUnlock)); err != nil {
+		if _, err = monero.WaitForBlocks(s.ctx, s, int(balance.BlocksToUnlock)); err != nil {
 			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
 		}
 	}
