@@ -204,6 +204,10 @@ func claimRelayer(
 		return ethcommon.Hash{}, fmt.Errorf("transaction failed")
 	}
 
+	if len(receipt.Logs) == 0 {
+		return ethcommon.Hash{}, fmt.Errorf("claim transaction had no logs")
+	}
+
 	return txHash, nil
 }
 

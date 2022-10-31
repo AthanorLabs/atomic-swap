@@ -69,8 +69,39 @@ func runRelayer(
 	})
 }
 
+func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
+	initialBalance := big.NewInt(100000000000)
+
+	sk := tests.GetMakerTestKey(t)
+	conn, chainID := tests.NewEthClient(t)
+
+	pub := sk.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+
+	txOpts, err := bind.NewKeyedTransactorWithChainID(sk, chainID)
+	require.NoError(t, err)
+
+	_, tx, _, err := contracts.DeployERC20Mock(
+		txOpts,
+		conn,
+		"Mock",
+		"MOCK",
+		addr,
+		initialBalance,
+	)
+	require.NoError(t, err)
+	contractAddr, err := bind.WaitDeployed(context.Background(), conn, tx)
+	require.NoError(t, err)
+
+	testSwapStateClaimRelayer(t, sk, types.EthAsset(contractAddr))
+}
+
 func TestSwapState_ClaimRelayer(t *testing.T) {
 	sk := tests.GetMakerTestKey(t)
+	testSwapStateClaimRelayer(t, sk, types.EthAssetETH)
+}
+
+func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.EthAsset) {
 	relayerSk := tests.GetTestKeyByIndex(t, 1)
 	require.NotEqual(t, sk, relayerSk)
 	conn, chainID := tests.NewEthClient(t)
@@ -114,23 +145,42 @@ func TestSwapState_ClaimRelayer(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
+	if asset != types.EthAssetETH {
+		token, err := contracts.NewIERC20(asset.Address(), conn) //nolint:govet
+		require.NoError(t, err)
+
+		balance, err := token.BalanceOf(&bind.CallOpts{}, addr)
+		require.NoError(t, err)
+
+		tx, err = token.Approve(txOpts, contractAddr, balance)
+		require.NoError(t, err)
+
+		_, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+		require.NoError(t, err)
+	}
+
 	value := big.NewInt(100000000000)
 	nonce := big.NewInt(0)
 	txOpts.Value = value
 
 	tx, err = contract.NewSwap(txOpts, cmt, [32]byte{}, addr,
-		defaultTestTimeoutDuration, types.EthAssetETH.Address(), value, nonce)
+		defaultTestTimeoutDuration, asset.Address(), value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 	txOpts.Value = big.NewInt(0)
 
-	require.Equal(t, 1, len(receipt.Logs))
-	id, err := contracts.GetIDFromLog(receipt.Logs[0])
+	logIndex := 0
+	if asset != types.EthAssetETH {
+		logIndex = 2
+	}
+
+	require.Equal(t, logIndex+1, len(receipt.Logs))
+	id, err := contracts.GetIDFromLog(receipt.Logs[logIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
+	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[logIndex])
 	require.NoError(t, err)
 
 	swap := contracts.SwapFactorySwap{
@@ -140,7 +190,7 @@ func TestSwapState_ClaimRelayer(t *testing.T) {
 		PubKeyRefund: [32]byte{},
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        types.EthAssetETH.Address(),
+		Asset:        asset.Address(),
 		Value:        value,
 		Nonce:        nonce,
 	}
@@ -174,8 +224,12 @@ func TestSwapState_ClaimRelayer(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call Claim via relayer: %d", receipt.GasUsed)
 
-	// expected 1 Claimed log
-	require.Equal(t, 1, len(receipt.Logs))
+	if asset != types.EthAssetETH {
+		require.Equal(t, 2, len(receipt.Logs))
+	} else {
+		// expected 1 Claimed log
+		require.Equal(t, 1, len(receipt.Logs))
+	}
 
 	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
