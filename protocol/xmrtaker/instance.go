@@ -1,23 +1,15 @@
 package xmrtaker
 
 import (
-	"fmt"
 	"sync"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
-
-	logging "github.com/ipfs/go-log"
-)
-
-const (
-	swapDepositWallet = "swap-deposit-wallet"
 )
 
 var (
@@ -30,8 +22,7 @@ type Instance struct {
 	backend backend.Backend
 	dataDir string
 
-	walletFile, walletPassword string
-	transferBack               bool // transfer xmr back to original account
+	transferBack bool // transfer xmr back to original account
 
 	// non-nil if a swap is currently happening, nil otherwise
 	// map of offer IDs -> ongoing swaps
@@ -41,68 +32,26 @@ type Instance struct {
 
 // Config contains the configuration values for a new XMRTaker instance.
 type Config struct {
-	Backend                                backend.Backend
-	DataDir                                string
-	MoneroWalletFile, MoneroWalletPassword string
-	TransferBack                           bool
-	ExternalSender                         bool
+	Backend        backend.Backend
+	DataDir        string
+	TransferBack   bool
+	ExternalSender bool
 }
 
 // NewInstance returns a new instance of XMRTaker.
 // It accepts an endpoint to a monero-wallet-rpc instance where XMRTaker will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
-	var (
-		address mcrypto.Address
-		err     error
-	)
-
 	// if this is set, it transfers all xmr received during swaps back to the given wallet.
 	if cfg.TransferBack {
-		address, err = getAddress(cfg.Backend, cfg.MoneroWalletFile, cfg.MoneroWalletPassword)
-		if err != nil {
-			return nil, err
-		}
-		cfg.Backend.SetBaseXMRDepositAddress(address)
+		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.PrimaryWalletAddress())
 	}
 
 	return &Instance{
-		backend:        cfg.Backend,
-		dataDir:        cfg.DataDir,
-		walletFile:     cfg.MoneroWalletFile,
-		walletPassword: cfg.MoneroWalletPassword,
-		swapStates:     make(map[types.Hash]*swapState),
+		backend:    cfg.Backend,
+		dataDir:    cfg.DataDir,
+		swapStates: make(map[types.Hash]*swapState),
 	}, nil
-}
-
-func getAddress(walletClient monero.WalletClient, file, password string) (mcrypto.Address, error) {
-	// open XMR wallet, if it exists
-	if file != "" {
-		if err := walletClient.OpenWallet(file, password); err != nil {
-			return "", err
-		}
-	} else {
-		log.Info("monero wallet file not set; creating wallet swap-deposit-wallet")
-		err := walletClient.CreateWallet(swapDepositWallet, "")
-		if err != nil {
-			if err := walletClient.OpenWallet(swapDepositWallet, ""); err != nil {
-				return "", fmt.Errorf("failed to create or open swap deposit wallet: %w", err)
-			}
-		}
-	}
-
-	// get wallet address to deposit funds into at end of swap
-	address, err := walletClient.GetAddress(0)
-	if err != nil {
-		return "", fmt.Errorf("failed to get monero wallet address: %w", err)
-	}
-
-	err = walletClient.CloseWallet()
-	if err != nil {
-		return "", fmt.Errorf("failed to close wallet: %w", err)
-	}
-
-	return mcrypto.Address(address.Address), nil
 }
 
 // Refund is called by the RPC function swap_refund.

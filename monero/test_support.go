@@ -24,6 +24,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 )
 
+const (
+	// Mastering monero example address (we don't use the background mining block rewards in tests)
+	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
+)
+
 // CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
 func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
 	_, filename, _, ok := runtime.Caller(0) // this test file path
@@ -67,8 +72,6 @@ func GetBalance(t *testing.T, wc WalletClient) *wallet.GetBalanceResponse {
 // that is in regtest mode. If there is an existing go routine that is already mining from
 // a previous call, no new go routine is created.
 func TestBackgroundMineBlocks(t *testing.T) {
-	const blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5" //nolint:lll
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -76,6 +79,8 @@ func TestBackgroundMineBlocks(t *testing.T) {
 		cancelFunc()
 		wg.Wait()
 	})
+	// Lower the sleep duration used by WaitForBlock
+	blockSleepDuration = backgroundMineInterval / 3
 	go func() {
 		defer wg.Done()
 		if !mineMu.TryLock() {
@@ -83,7 +88,6 @@ func TestBackgroundMineBlocks(t *testing.T) {
 		}
 		defer mineMu.Unlock()
 		for {
-			time.Sleep(backgroundMineInterval)
 			select {
 			case <-ctx.Done():
 				return

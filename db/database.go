@@ -159,6 +159,10 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 	for iter.Valid() {
 		// key is the swap ID
 		key := iter.Key()
+		if !bytes.Contains(key, []byte(swapPrefix)) {
+			break
+		}
+
 		if len(key) != 32 {
 			panic("key (swap ID) length is not 32")
 		}

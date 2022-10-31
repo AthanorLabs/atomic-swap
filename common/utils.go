@@ -1,9 +1,11 @@
 package common
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"os"
+	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -55,4 +57,19 @@ func FileExists(path string) (bool, error) {
 	}
 
 	return false, err
+}
+
+// SleepWithContext is the same as time.Sleep(...) but with preemption if the context is
+// complete. Returns nil if the sleep completed, otherwise the context's error.
+func SleepWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		if !timer.Stop() {
+			<-timer.C
+		}
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

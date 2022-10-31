@@ -9,6 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewManager(t *testing.T) {
+
+}
+
 func TestManager_AddSwap_Ongoing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

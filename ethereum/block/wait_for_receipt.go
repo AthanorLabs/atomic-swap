@@ -10,6 +10,8 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 const (
@@ -30,7 +32,9 @@ func WaitForReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.
 		receipt, err := ec.TransactionReceipt(ctx, txHash)
 		if err != nil {
 			log.Infof("waiting for transaction to be included in chain: txHash=%s", txHash)
-			time.Sleep(receiptSleepDuration)
+			if err = common.SleepWithContext(ctx, receiptSleepDuration); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		if receipt.Status != ethtypes.ReceiptStatusSuccessful {

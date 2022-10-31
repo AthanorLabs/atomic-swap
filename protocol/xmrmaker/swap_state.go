@@ -64,6 +64,7 @@ type swapState struct {
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
 	xmrtakerSecp256K1PublicKey *secp256k1.PublicKey
+	walletScanHeight           uint64 // height of the monero blockchain when the swap is started
 
 	// next expected network message
 	nextExpectedMessage net.Message
@@ -126,6 +127,15 @@ func newSwapState(
 		}
 	}
 
+	walletScanHeight, err := b.GetChainHeight()
+	if err != nil {
+		return nil, err
+	}
+	// reduce the scan height a little in case there is a block reorg
+	if walletScanHeight >= monero.MinSpendConfirmations {
+		walletScanHeight -= monero.MinSpendConfirmations
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:                 ctx,
@@ -135,6 +145,7 @@ func newSwapState(
 		offer:               offer,
 		offerExtra:          offerExtra,
 		offerManager:        om,
+		walletScanHeight:    walletScanHeight,
 		nextExpectedMessage: &net.SendKeysMessage{},
 		readyCh:             make(chan struct{}),
 		info:                info,
@@ -318,7 +329,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 
 	s.LockClient()
 	defer s.UnlockClient()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB)
+	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB, s.walletScanHeight)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
@@ -501,8 +512,8 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, error) {
-	kp := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys)
+func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLock, error) {
+	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
 	s.LockClient()
@@ -510,31 +521,38 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (mcrypto.Address, erro
 
 	balance, err := s.GetBalance(0)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	log.Debug("total XMR balance: ", balance.Balance)
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
-	address := kp.Address(s.Env())
-	txResp, err := s.Transfer(address, 0, uint64(amount))
+	transResp, err := s.Transfer(swapDestAddr, 0, uint64(amount))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	log.Infof("locked XMR, txHash=%s fee=%d", txResp.TxHash, txResp.Fee)
+	log.Infof("locked %f XMR, txID=%s fee=%d", amount.AsMonero(), transResp.TxHash, transResp.Fee)
 
-	// wait for a new block
-	height, err := monero.WaitForBlocks(s, 1)
+	// TODO: It would be friendlier to concurrent swaps if we didn't hold the client lock
+	//       for the entire confirmation period. Options to improve this include creating a
+	//       separate monero-wallet-rpc instance for A+B wallets or carefully releasing the
+	//       lock between confirmations and re-opening the A+B wallet after grabbing the
+	//       lock again.
+	transfer, err := s.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              s.ctx,
+		TxID:             transResp.TxHash,
+		DestAddr:         swapDestAddr,
+		NumConfirmations: monero.MinSpendConfirmations,
+		AccountIdx:       0,
+	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	log.Infof("monero block height: %d", height)
-
-	if err := s.Refresh(); err != nil {
-		return "", err
-	}
-
-	log.Infof("successfully locked XMR funds: address=%s", address)
-	return address, nil
+	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
+		transfer.TxID, swapDestAddr, transfer.Height)
+	return &message.NotifyXMRLock{
+		Address: string(swapDestAddr),
+		TxID:    transfer.TxID,
+	}, nil
 }

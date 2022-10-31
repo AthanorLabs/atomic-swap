@@ -187,7 +187,8 @@ var (
 			},
 			&cli.BoolFlag{
 				Name:  flagTransferBack,
-				Usage: "When receiving XMR in a swap, transfer it back to the original wallet.",
+				Usage: "Set to false to leave XMR in generated swap wallet instead of moving to primary.",
+				Value: true,
 			},
 			&cli.StringFlag{
 				Name:  flagLogLevel,
@@ -679,11 +680,9 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 	walletPassword := c.String(flagMoneroWalletPassword)
 
 	xmrtakerCfg := &xmrtaker.Config{
-		Backend:              b,
-		DataDir:              cfg.DataDir,
-		MoneroWalletFile:     walletFilePath,
-		MoneroWalletPassword: walletPassword,
-		TransferBack:         c.Bool(flagTransferBack),
+		Backend:      b,
+		DataDir:      cfg.DataDir,
+		TransferBack: c.Bool(flagTransferBack),
 	}
 
 	xmrtaker, err := xmrtaker.NewInstance(xmrtakerCfg)

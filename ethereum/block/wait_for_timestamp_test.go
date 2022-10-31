@@ -10,20 +10,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-// Checks normal, non-cancelled operation
-func TestSleepWithContext_fullSleep(t *testing.T) {
-	ctx := context.Background()
-	sleepWithContext(ctx, -1*time.Hour) // negative duration doesn't sleep or panic
-	sleepWithContext(ctx, 10*time.Millisecond)
-}
-
-// Checks that we handle context cancellation and break out of the sleep
-func TestSleepWithContext_canceled(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-	sleepWithContext(ctx, 24*time.Hour) // time out the test if we fail
-}
-
 // Tests the normal, full flow where we subscribe to new headers and quit after finding
 // a header with stamp >= ts.
 func TestWaitForEthBlockAfterTimestamp_smallWait(t *testing.T) {
