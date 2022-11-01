@@ -14,10 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Run go fmt
-        run: diff -u <(echo -n) <(gofmt -d -s .)
+      - name: Install npm formatting/linting tools
+        run: npm install --global --save-dev prettier prettier-plugin-solidity solhint
 
-      - name: golangci-lint
+      - name: Run formatters
+        run: make format && diff -u <(echo -n) <(git status --short --untracked-files=no)
+
+      - name: Run linters
         run: make lint
 
   vet-check:
@@ -25,7 +28,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.18.x'
+          go-version: '1.19.x'
       - uses: actions/checkout@v3
 
       - name: Run go vet
