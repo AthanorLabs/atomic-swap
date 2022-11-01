@@ -27,21 +27,6 @@ $ ./swapd --dev-xmrtaker --contract-address 0x3F2aF34E4250de94242Ac2B8A38550fd45
 # 2022-01-26T18:56:31.627-0500	INFO	cmd	daemon/contract.go:42	loaded SwapFactory.sol from address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
 ```
 
-If you want to deploy the contract without running `swapd`, you can use hardhat. You will need node.js installed.
-```bash
-cd ethereum
-npm install --save-dev hardhat
-```
-
-Then, you can run the deployment script against your desired network to deploy the contract.
-
-```bash
-$ npx hardhat run --network localhost scripts/deploy.js 
-# Compiling 2 files with 0.8.5
-# Compilation finished successfully
-# SwapFactory deployed to: 0xB0f6EC177Ab867E372479C0bfdBB0068bb5E1554
-```
-
 ## Compiling DLEq binaries
 
 The program utilizes a Rust DLEq library implemented by Farcaster.
@@ -113,6 +98,13 @@ errors. These targets require two programs that can be installed using `apt`
 on Ubuntu for Bash formatting and linting:
 ```
 sudo apt install -y shfmt shellcheck
+```
+The solidity formatting uses an npm executable named `prettier` which, for solidity,
+needs a plugin called `prettier-plugin-solidity`. For solidity linting, we use the
+`solhint` program.
+```
+npm install --global --save-dev prettier prettier-plugin-solidity
+npm install --global --save-dev solhint
 ```
 
 Go linting uses `golangci-lint`. If it is not already installed in your user's
