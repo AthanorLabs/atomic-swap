@@ -597,7 +597,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	}
 
 	// wait for offer to be re-added
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second)
 	offersAfter, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(offersBefore), len(offersAfter))

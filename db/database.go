@@ -69,8 +69,16 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 
 	offers := []*types.Offer{}
 	for iter.Valid() {
+		key := iter.Key()
+
+		// if the key becomes longer than 32, we're not iterating over offers
+		if len(key) > 32 {
+			break
+		}
+
 		// value is the encoded offer
 		value := iter.Value()
+
 		var offer types.Offer
 		err := json.Unmarshal(value, &offer)
 		if err != nil {
@@ -141,8 +149,16 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 
 	swaps := []*swap.Info{}
 	for iter.Valid() {
+		key := iter.Key()
+
+		// if the key becomes longer than 32, we're not iterating over swaps
+		if len(key) > 32 {
+			break
+		}
+
 		// value is the encoded swap
 		value := iter.Value()
+
 		var s swap.Info
 		err := json.Unmarshal(value, &s)
 		if err != nil {
