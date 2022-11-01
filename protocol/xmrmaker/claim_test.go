@@ -3,6 +3,8 @@ package xmrmaker
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -27,7 +29,6 @@ import (
 
 var (
 	defaultTestTimeoutDuration = big.NewInt(60 * 5)
-	defaultRelayerEndpoint     = "http://127.0.0.1:7799"
 	relayerCommission          = float64(0.01)
 )
 
@@ -37,6 +38,7 @@ func runRelayer(
 	forwarderAddress ethcommon.Address,
 	sk *ecdsa.PrivateKey,
 	chainID *big.Int,
+	port uint16,
 ) {
 	iforwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
 	require.NoError(t, err)
@@ -57,7 +59,7 @@ func runRelayer(
 	require.NoError(t, err)
 
 	rpcCfg := &rrpc.Config{
-		Port:    7799,
+		Port:    port,
 		Relayer: r,
 	}
 	server, err := rrpc.NewServer(rpcCfg)
@@ -136,7 +138,9 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// start relayer
-	runRelayer(t, conn, forwarderAddress, relayerSk, chainID)
+	port, err := rand.Int(rand.Reader, big.NewInt(65336))
+	require.NoError(t, err)
+	runRelayer(t, conn, forwarderAddress, relayerSk, chainID, uint16(port.Uint64()))
 
 	// deploy swap contract with claim key hash
 	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)
@@ -207,13 +211,15 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	secret := proof.Secret()
 	copy(s[:], common.Reverse(secret[:]))
 
+	relayerEndpoint := fmt.Sprintf("http://127.0.0.1:%d", port)
+
 	txHash, err := claimRelayer(
 		context.Background(),
 		sk,
 		contract,
 		contractAddr,
 		conn,
-		defaultRelayerEndpoint,
+		relayerEndpoint,
 		relayerCommission,
 		&swap,
 		s,
@@ -225,7 +231,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call Claim via relayer: %d", receipt.GasUsed)
 
 	if asset != types.EthAssetETH {
-		require.Equal(t, 2, len(receipt.Logs))
+		require.Equal(t, 3, len(receipt.Logs))
 	} else {
 		// expected 1 Claimed log
 		require.Equal(t, 1, len(receipt.Logs))
