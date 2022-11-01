@@ -109,6 +109,15 @@ func TestManager_AddSwap_Past(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
+	info = &Info{
+		ID:     types.Hash{3},
+		Status: types.ExpectingKeys,
+	}
+
+	db.EXPECT().PutSwap(info)
+	err = m.AddSwap(info)
+	require.NoError(t, err)
+
 	db.EXPECT().GetAllSwaps()
 	ids, err := m.GetPastIDs()
 	require.NoError(t, err)
