@@ -1,9 +1,7 @@
 package db
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -71,16 +69,6 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 
 	offers := []*types.Offer{}
 	for iter.Valid() {
-		// key is the offer ID
-		key := iter.Key()
-		if !bytes.Contains(key, []byte(offerPrefix)) {
-			break
-		}
-
-		if len(key) != 32 {
-			panic(fmt.Sprintf("key (offer ID) length is not 32: %s", key))
-		}
-
 		// value is the encoded offer
 		value := iter.Value()
 		var offer types.Offer
@@ -157,16 +145,6 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 
 	swaps := []*swap.Info{}
 	for iter.Valid() {
-		// key is the swap ID
-		key := iter.Key()
-		if !bytes.Contains(key, []byte(swapPrefix)) {
-			break
-		}
-
-		if len(key) != 32 {
-			panic("key (swap ID) length is not 32")
-		}
-
 		// value is the encoded swap
 		value := iter.Value()
 		var s swap.Info

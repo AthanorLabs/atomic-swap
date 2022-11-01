@@ -147,7 +147,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
-            payable(tx.origin).transfer(fee);
+            IERC20(_swap.asset).transfer(tx.origin, fee);
         }
     }
 

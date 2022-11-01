@@ -70,7 +70,7 @@ func TestForwarderAddressIndexes(t *testing.T) {
 	}
 
 	t.Logf("forwarderAddressIndexes: %v", addressLocations)
-	require.EqualValues(t, forwarderAddressIndexes, addressLocations,
+	require.EqualValues(t, forwarderAddressIndices, addressLocations,
 		"update forwarderAddressIndexes with above logged indexes to fix this test")
 }
 
