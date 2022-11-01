@@ -6,7 +6,6 @@ import "./IERC20.sol";
 import "./Secp256k1.sol";
 
 contract SwapFactory is ERC2771Context, Secp256k1 {
-
     // Swap state is PENDING when the swap is first created and funded
     // Alice sets Stage to READY when she sees the funds locked on the other chain.
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
@@ -22,38 +21,38 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
     struct Swap {
         // contract creator, Alice
         address payable owner;
-
         // address allowed to claim the ether in this contract
         address payable claimer;
-
         // the keccak256 hash of the expected public key derived from the secret `s_b`.
         // this public key is a point on the secp256k1 curve
         bytes32 pubKeyClaim;
-
         // the keccak256 hash of the expected public key derived from the secret `s_a`.
         // this public key is a point on the secp256k1 curve
         bytes32 pubKeyRefund;
-
         // timestamp (set at contract creation)
         // before which Alice can call either set_ready or refund
         uint256 timeout_0;
-
         // timestamp after which Bob cannot claim, only Alice can refund.
         uint256 timeout_1;
-        
         // the asset being swapped: equal to address(0) for ETH, or an ERC-20 token address
         address asset;
-
         // the value of this swap.
         uint256 value;
-
         // choose random
         uint256 nonce;
     }
 
     mapping(bytes32 => Stage) public swaps;
 
-    event New(bytes32 swapID, bytes32 claimKey, bytes32 refundKey, uint256 timeout_0, uint256 timeout_1, address asset, uint256 value);
+    event New(
+        bytes32 swapID,
+        bytes32 claimKey,
+        bytes32 refundKey,
+        uint256 timeout_0,
+        uint256 timeout_1,
+        address asset,
+        uint256 value
+    );
     event Ready(bytes32 swapID);
     event Claimed(bytes32 swapID, bytes32 s);
     event Refunded(bytes32 swapID, bytes32 s);
@@ -62,15 +61,15 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
 
     // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
-    function newSwap(bytes32 _pubKeyClaim, 
-        bytes32 _pubKeyRefund, 
-        address payable _claimer, 
+    function newSwap(
+        bytes32 _pubKeyClaim,
+        bytes32 _pubKeyRefund,
+        address payable _claimer,
         uint256 _timeoutDuration,
         address _asset,
         uint256 _value,
         uint256 _nonce
     ) public payable returns (bytes32) {
-
         Swap memory swap;
         swap.owner = payable(msg.sender);
         swap.pubKeyClaim = _pubKeyClaim;
@@ -96,7 +95,15 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         // make sure this isn't overriding an existing swap
         require(swaps[swapID] == Stage.INVALID);
 
-        emit New(swapID, _pubKeyClaim, _pubKeyRefund, swap.timeout_0, swap.timeout_1, swap.asset, swap.value);
+        emit New(
+            swapID,
+            _pubKeyClaim,
+            _pubKeyRefund,
+            swap.timeout_0,
+            swap.timeout_1,
+            swap.asset,
+            swap.value
+        );
         swaps[swapID] = Stage.PENDING;
         return swapID;
     }
@@ -114,7 +121,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
     // - Alice has set the swap to `ready` or it's past t_0 but before t_1
     function claim(Swap memory _swap, bytes32 _s) public {
         _claim(_swap, _s);
-        
+
         // send eth to caller (Bob)
         if (_swap.asset == address(0)) {
             _swap.claimer.transfer(_swap.value);
@@ -122,7 +129,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
             // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing
-            
+
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
@@ -131,8 +138,15 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
 
     // Bob can claim if:
     // - Alice has set the swap to `ready` or it's past t_0 but before t_1
-    function claimRelayer(Swap memory _swap, bytes32 _s, uint256 fee) public {
-        require(isTrustedForwarder(msg.sender), "claimRelayer can only be called by a trusted forwarder");
+    function claimRelayer(
+        Swap memory _swap,
+        bytes32 _s,
+        uint256 fee
+    ) public {
+        require(
+            isTrustedForwarder(msg.sender),
+            "claimRelayer can only be called by a trusted forwarder"
+        );
         _claim(_swap, _s);
 
         // send eth to caller (Bob)
@@ -143,7 +157,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
             // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing
-            
+
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
@@ -157,7 +171,10 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         require(swapStage != Stage.INVALID, "invalid swap");
         require(swapStage != Stage.COMPLETED, "swap is already completed");
         require(_msgSender() == _swap.claimer, "only claimer can claim!");
-        require((block.timestamp >= _swap.timeout_0 || swapStage == Stage.READY), "too early to claim!");
+        require(
+            (block.timestamp >= _swap.timeout_0 || swapStage == Stage.READY),
+            "too early to claim!"
+        );
         require(block.timestamp < _swap.timeout_1, "too late to claim!");
 
         verifySecret(_s, _swap.pubKeyClaim);
@@ -171,11 +188,14 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
     function refund(Swap memory _swap, bytes32 _s) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
-        require(swapStage != Stage.COMPLETED && swapStage != Stage.INVALID, "swap is already completed");
+        require(
+            swapStage != Stage.COMPLETED && swapStage != Stage.INVALID,
+            "swap is already completed"
+        );
         require(msg.sender == _swap.owner, "refund must be called by the swap owner");
         require(
             block.timestamp >= _swap.timeout_1 ||
-            (block.timestamp < _swap.timeout_0 && swapStage != Stage.READY),
+                (block.timestamp < _swap.timeout_0 && swapStage != Stage.READY),
             "it's the counterparty's turn, unable to refund, try again later"
         );
 
