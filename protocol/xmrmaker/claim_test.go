@@ -69,7 +69,7 @@ func runRelayer(
 	go func() {
 		err = <-errCh
 		if err != nil {
-			t.Fatalf("relayer server error: %s", err)
+			fmt.Printf("relayer server error: %s\n", err)
 		}
 	}()
 
