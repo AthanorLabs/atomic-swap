@@ -92,10 +92,6 @@ func (db *Database) ClearAllOffers() error {
 	for iter.Valid() {
 		// key is the offer ID
 		key := iter.Key()
-		if len(key) != 32 {
-			panic("key (offer ID) length is not 32")
-		}
-
 		err := db.offerTable.Del(key)
 		if err != nil {
 			return err
