@@ -98,8 +98,10 @@ func (m *Manager) AddOffer(
 	}
 
 	extra := &types.OfferExtra{
-		StatusCh: make(chan types.Status, statusChSize),
-		InfoFile: pcommon.GetSwapInfoFilepath(m.dataDir, id.String()),
+		StatusCh:          make(chan types.Status, statusChSize),
+		InfoFile:          pcommon.GetSwapInfoFilepath(m.dataDir, id.String()),
+		RelayerEndpoint:   relayerEndpoint,
+		RelayerCommission: relayerCommission,
 	}
 
 	m.offers[id] = &offerWithExtra{

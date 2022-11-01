@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -47,7 +46,7 @@ func TestFileExists(t *testing.T) {
 	noAccessFile := path.Join(tmpDir, "no-access", "any-file.txt")
 
 	// file exists
-	require.NoError(t, ioutil.WriteFile(presentFile, nil, 0600))
+	require.NoError(t, os.WriteFile(presentFile, nil, 0600))
 	exists, err := FileExists(presentFile)
 	require.NoError(t, err)
 	assert.True(t, exists)

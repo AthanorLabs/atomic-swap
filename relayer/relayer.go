@@ -80,7 +80,7 @@ func (c *Client) SubmitTransaction(
 		From:           c.key.Address(),
 		To:             to,
 		Value:          big.NewInt(0),
-		Gas:            big.NewInt(90000), // TODO: fetch from ethclient
+		Gas:            big.NewInt(200000), // TODO: fetch from ethclient
 		Nonce:          nonce,
 		Data:           calldata,
 		ValidUntilTime: big.NewInt(0),

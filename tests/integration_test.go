@@ -51,6 +51,10 @@ func TestRunIntegrationTests(t *testing.T) {
 	if testing.Short() || os.Getenv(testsEnv) != integrationMode {
 		t.Skip()
 	}
+
+	// setup transaction relayer
+	setupRelayer(t)
+
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
