@@ -222,8 +222,6 @@ func (s *swapState) exit() error {
 	log.Debugf("attempting to exit swap: nextExpectedMessage=%v", s.nextExpectedMessage)
 
 	defer func() {
-		// stop all running goroutines
-		s.cancel()
 		err := s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.offer.GetID(), err)
@@ -236,7 +234,12 @@ func (s *swapState) exit() error {
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.GetID(), err)
 			}
+
+			log.Debugf("re-added offer %s", s.offer.GetID())
 		}
+
+		// stop all running goroutines
+		s.cancel()
 
 		close(s.done)
 	}()
