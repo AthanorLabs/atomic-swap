@@ -10,7 +10,32 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
+	// test that creating a new manager loads all on-disk swaps
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	db := NewMockDatabase(ctrl)
 
+	db.EXPECT().GetAllSwaps()
+
+	m, err := NewManager(db)
+	require.NoError(t, err)
+
+	hashA := types.Hash{0x1}
+	infoA := NewInfo(hashA, types.ProvidesXMR, 1, 1, 0.1, types.EthAssetETH, types.ExpectingKeys, nil)
+	db.EXPECT().PutSwap(infoA)
+	err = m.AddSwap(infoA)
+	require.NoError(t, err)
+
+	infoB := NewInfo(types.Hash{0x2}, types.ProvidesXMR, 1, 1, 0.1, types.EthAssetETH, types.CompletedSuccess, nil)
+	db.EXPECT().PutSwap(infoB)
+	err = m.AddSwap(infoB)
+	require.NoError(t, err)
+
+	db.EXPECT().GetAllSwaps().Return([]*Info{infoA, infoB}, nil)
+	m, err = NewManager(db)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(m.ongoing))
+	require.Equal(t, infoA, m.ongoing[hashA])
 }
 
 func TestManager_AddSwap_Ongoing(t *testing.T) {
