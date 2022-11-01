@@ -65,7 +65,14 @@ func runRelayer(
 	server, err := rrpc.NewServer(rpcCfg)
 	require.NoError(t, err)
 
-	_ = server.Start()
+	errCh := server.Start()
+	go func() {
+		err = <-errCh
+		if err != nil {
+			t.Fatalf("relayer server error: %s", err)
+		}
+	}()
+
 	t.Cleanup(func() {
 		// TODO stop server
 	})
@@ -98,7 +105,7 @@ func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
 	testSwapStateClaimRelayer(t, sk, types.EthAsset(contractAddr))
 }
 
-func TestSwapState_ClaimRelayer(t *testing.T) {
+func TestSwapState_ClaimRelayer_ETH(t *testing.T) {
 	sk := tests.GetMakerTestKey(t)
 	testSwapStateClaimRelayer(t, sk, types.EthAssetETH)
 }
@@ -138,9 +145,10 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// start relayer
-	port, err := rand.Int(rand.Reader, big.NewInt(65336))
+	p, err := rand.Int(rand.Reader, big.NewInt(64312))
 	require.NoError(t, err)
-	runRelayer(t, conn, forwarderAddress, relayerSk, chainID, uint16(port.Uint64()))
+	port := uint16(p.Uint64() + 1024)
+	runRelayer(t, conn, forwarderAddress, relayerSk, chainID, port)
 
 	// deploy swap contract with claim key hash
 	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)

@@ -48,7 +48,6 @@ func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
 	allZeroTrustedForwarder := ethcommon.Address{}
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t, allZeroTrustedForwarder))
-	t.Logf("expectedSwapFactoryBytecodeHex: %s", codeHex)
 	require.Equal(t, expectedSwapFactoryBytecodeHex, codeHex,
 		"update expectedSwapFactoryBytecodeHex with above logged value to fix this test")
 }
