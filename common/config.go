@@ -42,7 +42,7 @@ var StagenetConfig = Config{
 	DataDir:          path.Join(baseDir, "stagenet"),
 	MoneroDaemonHost: "node.sethforprivacy.com",
 	MoneroDaemonPort: 38089, // Seth is not using the default stagenet value of 38081 (so don't use our constant)
-	ContractAddress:  ethcommon.HexToAddress("0x5F8Cf66C4c59d398052aA75D46Ce48e7fA09A83E"),
+	ContractAddress:  ethcommon.HexToAddress("0xE304D3a1558E80D80Ad77dB2EAE6A237c7ac1C2f"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
