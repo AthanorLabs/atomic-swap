@@ -55,10 +55,10 @@ github.com/ChainSafe/log15 v1.0.0 h1:vRDVtWtVwIH5uSCBvgTTZh6FA58UBJ6+QiiypaZfBf8
 github.com/ChainSafe/log15 v1.0.0/go.mod h1:5v1+ALHtdW0NfAeeoYyKmzCAMcAeqkdhIg4uxXWIgOg=
 github.com/DataDog/zstd v1.4.1 h1:3oxKN3wbHibqx897utPC2LTQU4J+IHWWJO+glkAkpFM=
 github.com/DataDog/zstd v1.4.1/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
-github.com/MarinX/monerorpc v1.0.3 h1:ZVxOyZn609yp+Xn1I6G38WgsvCxSrWqJ5JE1qtwq5Rw=
-github.com/MarinX/monerorpc v1.0.3/go.mod h1:NohAIf5kJ4pS0sO9mbEQkI1dLHuxd4L0DX2Zou0Yofo=
 github.com/MarinX/monerorpc v1.0.4 h1:p1ui0bD8s7tdC1zbFy3UacwDCyBo5wCMa1aVfDPAgxI=
 github.com/MarinX/monerorpc v1.0.4/go.mod h1:NohAIf5kJ4pS0sO9mbEQkI1dLHuxd4L0DX2Zou0Yofo=
+github.com/MarinX/monerorpc v1.0.5 h1:3brpRWTLngzjlAGprmLWuAY16QCSiwokoaGdpu+/ukc=
+github.com/MarinX/monerorpc v1.0.5/go.mod h1:NohAIf5kJ4pS0sO9mbEQkI1dLHuxd4L0DX2Zou0Yofo=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/VictoriaMetrics/fastcache v1.6.0 h1:C/3Oi3EiBCqufydp1neRZkqcwmEiuRT9c3fqvvgKm5o=
