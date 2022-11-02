@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"sync"
+	//"sync"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
@@ -21,6 +21,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -33,15 +34,19 @@ import (
 
 const revertSwapCompleted = "swap is already completed"
 
-var refundedTopic = common.GetTopic(common.RefundedEventSignature)
+var (
+	readyTopic    = common.GetTopic(common.ReadyEventSignature)
+	refundedTopic = common.GetTopic(common.RefundedEventSignature)
+)
 
 type swapState struct {
 	backend.Backend
 	sender txsender.Sender
 
-	ctx     context.Context
-	cancel  context.CancelFunc
-	stateMu sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	//stateMu sync.Mutex
+	exited bool
 
 	info         *pswap.Info
 	offer        *types.Offer
@@ -71,10 +76,18 @@ type swapState struct {
 	nextExpectedEvent Event
 
 	// channels
+
+	// channel for swap events
+	// the event handler in event.go ensures only one event is being handled at a time
 	eventCh chan Event
+	// channel for `Ready` logs seen on-chain. only used a maximum of once
+	logReadyCh chan []ethtypes.Log
+	// channel for `Refunded` logs seen on-chain. only used a maximum of once
+	logRefundedCh chan []ethtypes.Log
+	// signals the t0 expiration handler to return
 	readyCh chan struct{}
-	done    chan struct{}
-	exited  bool
+	// signals to the creator xmrmaker instance that it can delete this swap
+	done chan struct{}
 
 	// address of reclaimed monero wallet, if the swap is refunded77
 	moneroReclaimAddress mcrypto.Address
@@ -128,7 +141,37 @@ func newSwapState(
 		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
+	ethHeader, err := b.EthClient().HeaderByNumber(b.Ctx(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	logReadyCh := make(chan []ethtypes.Log)
+	logRefundedCh := make(chan []ethtypes.Log)
+
 	ctx, cancel := context.WithCancel(b.Ctx())
+
+	readyWatcher := watcher.NewEventFilterer(
+		ctx,
+		b.EthClient(),
+		b.ContractAddr(),
+		ethHeader.Number,
+		[][]ethcommon.Hash{{readyTopic}},
+		logReadyCh,
+	)
+
+	refundedWatcher := watcher.NewEventFilterer(
+		ctx,
+		b.EthClient(),
+		b.ContractAddr(),
+		ethHeader.Number,
+		[][]ethcommon.Hash{{refundedTopic}},
+		logRefundedCh,
+	)
+
+	readyWatcher.Start()
+	refundedWatcher.Start()
+
 	s := &swapState{
 		ctx:               ctx,
 		cancel:            cancel,
@@ -146,16 +189,17 @@ func newSwapState(
 	}
 
 	go s.runHandleEvents()
+	go s.runContractEventWatcher()
 	return s, nil
 }
 
-func (s *swapState) lockState() {
-	s.stateMu.Lock()
-}
+// func (s *swapState) lockState() {
+// 	s.stateMu.Lock()
+// }
 
-func (s *swapState) unlockState() {
-	s.stateMu.Unlock()
-}
+// func (s *swapState) unlockState() {
+// 	s.stateMu.Unlock()
+// }
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {

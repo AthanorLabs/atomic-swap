@@ -65,6 +65,13 @@ type EventETHRefunded struct {
 	errCh chan error
 }
 
+func newEventETHRefunded(sk *mcrypto.PrivateSpendKey) *EventETHRefunded {
+	return &EventETHRefunded{
+		sk:    sk,
+		errCh: make(chan error),
+	}
+}
+
 // EventExit is sent when the protocol should be stopped, for example
 // if the remote peer closes their connection with us before sending all
 // required messages, or we decide to cancel the swap.
@@ -113,11 +120,15 @@ func (s *swapState) handleEvent(event Event) {
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHRefunded: %w", err)
 		}
+
+		return
 	case *EventExit:
 		err := s.exit()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventExit: %w", err)
 		}
+
+		return
 	default:
 		panic("unhandled event type")
 	}

@@ -289,21 +289,3 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	s.setNextExpectedEvent(&EventETHLocked{})
 	return nil
 }
-
-func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
-	receipt, err := s.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
-	if err != nil {
-		return "", err
-	}
-
-	if len(receipt.Logs) == 0 {
-		return "", errClaimTxHasNoLogs
-	}
-
-	sa, err := contracts.GetSecretFromLog(receipt.Logs[0], "Refunded")
-	if err != nil {
-		return "", err
-	}
-
-	return s.reclaimMonero(sa)
-}
