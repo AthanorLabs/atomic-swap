@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPLv3
 
-pragma solidity ^0.8.5;
+pragma solidity ^0.8.5 .0;
 
 import "hardhat/console.sol";
 
@@ -18,9 +18,7 @@ contract TestUtils {
         uint256 k = length;
         while (i != 0) {
             uint256 curr = (i & mask);
-            bstr[--k] = curr > 9
-                ? bytes1(uint8(55 + curr))
-                : bytes1(uint8(48 + curr)); // 55 = 65 - 10
+            bstr[--k] = curr > 9 ? bytes1(uint8(55 + curr)) : bytes1(uint8(48 + curr)); // 55 = 65 - 10
             i = i >> 4;
         }
         return string(bstr);
