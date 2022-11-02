@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC20/ERC20.sol)
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.0 .0;
 
 import "./IERC20.sol";
 import "./IERC20Metadata.sol";
@@ -375,7 +375,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         address from,
         address to,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable-line
 
     /**
      * @dev Hook that is called after any transfer of tokens. This includes
@@ -395,5 +395,5 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         address from,
         address to,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable-line
 }

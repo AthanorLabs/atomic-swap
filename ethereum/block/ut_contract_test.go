@@ -30,8 +30,8 @@ var (
 
 // UTContractMetaData contains all meta data concerning the UTContract contract.
 var UTContractMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_stamp\",\"type\":\"uint256\"}],\"name\":\"check_stamp\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
-	Bin: "0x608060405234801561001057600080fd5b506101da806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c80631a6bd24714610030575b600080fd5b61004a600480360381019061004591906100d4565b61004c565b005b8042111561008f576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161008690610184565b60405180910390fd5b8060008190555050565b600080fd5b6000819050919050565b6100b18161009e565b81146100bc57600080fd5b50565b6000813590506100ce816100a8565b92915050565b6000602082840312156100ea576100e9610099565b5b60006100f8848285016100bf565b91505092915050565b600082825260208201905092915050565b7f626c6f636b2e74696d657374616d7020776173206e6f74206c6573732074686160008201527f6e207374616d7000000000000000000000000000000000000000000000000000602082015250565b600061016e602783610101565b915061017982610112565b604082019050919050565b6000602082019050818103600083015261019d81610161565b905091905056fea2646970667358221220ab9e302ee348fb331f89c6caad5150e47ce91ba952c3853e02ace19d2a9eaf4964736f6c63430008100033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_stamp\",\"type\":\"uint256\"}],\"name\":\"checkStamp\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x608060405234801561001057600080fd5b506101da806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063d5f7a03a14610030575b600080fd5b61004a600480360381019061004591906100d4565b61004c565b005b8042111561008f576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161008690610184565b60405180910390fd5b8060008190555050565b600080fd5b6000819050919050565b6100b18161009e565b81146100bc57600080fd5b50565b6000813590506100ce816100a8565b92915050565b6000602082840312156100ea576100e9610099565b5b60006100f8848285016100bf565b91505092915050565b600082825260208201905092915050565b7f626c6f636b2e74696d657374616d7020776173206e6f74206c6573732074686160008201527f6e207374616d7000000000000000000000000000000000000000000000000000602082015250565b600061016e602783610101565b915061017982610112565b604082019050919050565b6000602082019050818103600083015261019d81610161565b905091905056fea26469706673582212209a0d4c85b813d8ad048f4a05b0a2840830e60b06e288f80e63e62663416c510c64736f6c63430008100033",
 }
 
 // UTContractABI is the input ABI used to generate the binding from.
@@ -201,23 +201,23 @@ func (_UTContract *UTContractTransactorRaw) Transact(opts *bind.TransactOpts, me
 	return _UTContract.Contract.contract.Transact(opts, method, params...)
 }
 
-// CheckStamp is a paid mutator transaction binding the contract method 0x1a6bd247.
+// CheckStamp is a paid mutator transaction binding the contract method 0xd5f7a03a.
 //
-// Solidity: function check_stamp(uint256 _stamp) returns()
+// Solidity: function checkStamp(uint256 _stamp) returns()
 func (_UTContract *UTContractTransactor) CheckStamp(opts *bind.TransactOpts, _stamp *big.Int) (*types.Transaction, error) {
-	return _UTContract.contract.Transact(opts, "check_stamp", _stamp)
+	return _UTContract.contract.Transact(opts, "checkStamp", _stamp)
 }
 
-// CheckStamp is a paid mutator transaction binding the contract method 0x1a6bd247.
+// CheckStamp is a paid mutator transaction binding the contract method 0xd5f7a03a.
 //
-// Solidity: function check_stamp(uint256 _stamp) returns()
+// Solidity: function checkStamp(uint256 _stamp) returns()
 func (_UTContract *UTContractSession) CheckStamp(_stamp *big.Int) (*types.Transaction, error) {
 	return _UTContract.Contract.CheckStamp(&_UTContract.TransactOpts, _stamp)
 }
 
-// CheckStamp is a paid mutator transaction binding the contract method 0x1a6bd247.
+// CheckStamp is a paid mutator transaction binding the contract method 0xd5f7a03a.
 //
-// Solidity: function check_stamp(uint256 _stamp) returns()
+// Solidity: function checkStamp(uint256 _stamp) returns()
 func (_UTContract *UTContractTransactorSession) CheckStamp(_stamp *big.Int) (*types.Transaction, error) {
 	return _UTContract.Contract.CheckStamp(&_UTContract.TransactOpts, _stamp)
 }
