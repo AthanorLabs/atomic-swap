@@ -14,8 +14,8 @@ func GetStatus(t message.Type) types.Status {
 		return types.KeysExchanged
 	case message.NotifyXMRLockType:
 		return types.ETHLocked
-	case message.NotifyReadyType:
-		return types.XMRLocked
+	// case message.NotifyReadyType:
+	// 	return types.XMRLocked
 	case message.NotifyClaimedType:
 		return types.ContractReady
 	default:

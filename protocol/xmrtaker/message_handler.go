@@ -21,41 +21,40 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 	s.lockState()
 	defer s.unlockState()
 
 	if err := s.checkMessageType(msg); err != nil {
-		return nil, true, err
+		return err
 	}
 
 	switch msg := msg.(type) {
 	case *net.SendKeysMessage:
 		resp, err := s.handleSendKeysMessage(msg)
 		if err != nil {
-			return nil, true, err
+			return err
 		}
 
-		return resp, false, nil
+		return s.SendSwapMessage(resp, s.ID())
 	case *message.NotifyXMRLock:
-		out, err := s.handleNotifyXMRLock(msg)
+		err := s.handleNotifyXMRLock(msg)
 		if err != nil {
-			return nil, true, err
+			return err
 		}
-
-		return out, false, nil
 	case *message.NotifyClaimed:
 		_, err := s.handleNotifyClaimed(msg.TxHash)
 		if err != nil {
-			log.Error("failed to create monero address: err=", err)
-			return nil, true, err
+			return err
 		}
 
 		s.clearNextExpectedMessage(types.CompletedSuccess)
-		return nil, true, nil
+		s.CloseProtocolStream(s.ID())
 	default:
-		return nil, false, errUnexpectedMessageType
+		return errUnexpectedMessageType
 	}
+
+	return nil
 }
 
 func (s *swapState) clearNextExpectedMessage(status types.Status) {
@@ -197,11 +196,11 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 			log.Infof("got our ETH back: tx hash=%s", txhash)
 
-			// send NotifyRefund msg
-			msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
-			if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
-				log.Errorf("failed to send refund message: err=%s", err)
-			}
+			// // send NotifyRefund msg
+			// msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
+			// if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
+			// 	log.Errorf("failed to send refund message: err=%s", err)
+			// }
 		}
 	}()
 
@@ -217,9 +216,9 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	return out, nil
 }
 
-func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message, error) {
+func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	if msg.Address == "" {
-		return nil, errNoLockedXMRAddress
+		return errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
@@ -228,7 +227,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	lockedAddr := mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env())
 
 	if msg.Address != string(lockedAddr) {
-		return nil, fmt.Errorf("address received in message does not match expected address")
+		return fmt.Errorf("address received in message does not match expected address")
 	}
 
 	s.LockClient()
@@ -237,25 +236,25 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
 	if err := s.GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, ""); err != nil {
-		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
+		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
 	if err := s.Refresh(); err != nil {
-		return nil, fmt.Errorf("failed to refresh client: %w", err)
+		return fmt.Errorf("failed to refresh client: %w", err)
 	}
 
 	balance, err := s.GetBalance(0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get accounts: %w", err)
+		return fmt.Errorf("failed to get accounts: %w", err)
 	}
 
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
 	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
-		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
+		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
 			balance.Balance, float64(s.receivedAmountInPiconero()))
 	}
 
@@ -267,25 +266,26 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	// prevent the maker from locking our funds until close to the heat death of the
 	// universe (https://github.com/monero-project/research-lab/issues/78).
 	if balance.BlocksToUnlock > 1 {
-		return nil, fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
+		return fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
 			balance.BlocksToUnlock)
 	}
 
 	if err := s.CloseWallet(); err != nil {
-		return nil, fmt.Errorf("failed to close wallet: %w", err)
+		return fmt.Errorf("failed to close wallet: %w", err)
 	}
 
 	close(s.xmrLockedCh)
 	log.Info("XMR was locked successfully, setting contract to ready...")
 
 	if err := s.ready(); err != nil {
-		return nil, fmt.Errorf("failed to call Ready: %w", err)
+		return fmt.Errorf("failed to call Ready: %w", err)
 	}
 
 	go s.runT1ExpirationHandler()
 
 	s.setNextExpectedMessage(&message.NotifyClaimed{})
-	return &message.NotifyReady{}, nil
+	return nil
+	//return &message.NotifyReady{}, nil
 }
 
 func (s *swapState) runT1ExpirationHandler() {
@@ -336,12 +336,12 @@ func (s *swapState) handleT1Expired() {
 
 	log.Infof("got our ETH back: tx hash=%s", txhash)
 
-	// send NotifyRefund msg
-	if err = s.SendSwapMessage(&message.NotifyRefund{
-		TxHash: txhash.String(),
-	}, s.ID()); err != nil {
-		log.Errorf("failed to send refund message: err=%s", err)
-	}
+	// // send NotifyRefund msg
+	// if err = s.SendSwapMessage(&message.NotifyRefund{
+	// 	TxHash: txhash.String(),
+	// }, s.ID()); err != nil {
+	// 	log.Errorf("failed to send refund message: err=%s", err)
+	// }
 
 	if err = s.exit(); err != nil {
 		log.Errorf("exit failed: err=%s", err)

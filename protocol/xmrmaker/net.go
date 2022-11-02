@@ -4,7 +4,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color" //nolint:misspell
@@ -121,7 +120,6 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	state.setNextExpectedMessage(&message.NotifyETHLocked{})
-
+	state.setNextExpectedEvent(&EventETHLocked{})
 	return state, resp, nil
 }

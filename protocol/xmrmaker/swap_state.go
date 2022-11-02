@@ -67,9 +67,11 @@ type swapState struct {
 	walletScanHeight           uint64 // height of the monero blockchain when the swap is started
 
 	// next expected network message
-	nextExpectedMessage net.Message
+	//nextExpectedMessage net.Message
+	nextExpectedEvent Event
 
 	// channels
+	eventCh chan Event
 	readyCh chan struct{}
 	done    chan struct{}
 	exited  bool
@@ -128,20 +130,22 @@ func newSwapState(
 
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
-		ctx:                 ctx,
-		cancel:              cancel,
-		Backend:             b,
-		sender:              sender,
-		offer:               offer,
-		offerExtra:          offerExtra,
-		offerManager:        om,
-		walletScanHeight:    walletScanHeight,
-		nextExpectedMessage: &net.SendKeysMessage{},
-		readyCh:             make(chan struct{}),
-		info:                info,
-		done:                make(chan struct{}),
+		ctx:               ctx,
+		cancel:            cancel,
+		Backend:           b,
+		sender:            sender,
+		offer:             offer,
+		offerExtra:        offerExtra,
+		offerManager:      om,
+		walletScanHeight:  walletScanHeight,
+		nextExpectedEvent: &EventKeysReceived{},
+		eventCh:           make(chan Event),
+		readyCh:           make(chan struct{}),
+		info:              info,
+		done:              make(chan struct{}),
 	}
 
+	go s.runHandleEvents()
 	return s, nil
 }
 
@@ -188,28 +192,28 @@ func (s *swapState) ID() types.Hash {
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
-	if s == nil {
-		return errNilSwapState
-	}
+	// if s == nil {
+	// 	return errNilSwapState
+	// }
 
-	s.lockState()
-	defer s.unlockState()
-	return s.exit()
+	// s.lockState()
+	// defer s.unlockState()
+	// return s.exit()
+	event := newEventExit()
+	s.eventCh <- event
+	return <-event.errCh
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
-	if s == nil {
-		return errNilSwapState
-	}
-
+	// TODO can this var be removed?
 	if s.exited {
 		return nil
 	}
 
 	s.exited = true
 
-	log.Debugf("attempting to exit swap: nextExpectedMessage=%v", s.nextExpectedMessage)
+	log.Debugf("attempting to exit swap: nextExpectedEvent=%v", s.nextExpectedEvent)
 
 	defer func() {
 		// stop all running goroutines
@@ -239,17 +243,18 @@ func (s *swapState) exit() error {
 		return nil
 	}
 
-	switch s.nextExpectedMessage.(type) {
-	case *net.SendKeysMessage:
+	// TODO update to next expected event
+	switch s.nextExpectedEvent.(type) {
+	case *EventKeysReceived:
 		// we are fine, as we only just initiated the protocol.
-		s.clearNextExpectedMessage(types.CompletedAbort)
+		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *message.NotifyETHLocked:
+	case *EventETHLocked:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
-		s.clearNextExpectedMessage(types.CompletedAbort)
+		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *message.NotifyReady:
+	case *EventContractReady:
 		// we should check if XMRTaker refunded, if so then check contract for secret
 		address, err := s.tryReclaimMonero()
 		if err != nil {
@@ -270,7 +275,7 @@ func (s *swapState) exit() error {
 				log.Errorf("failed to claim funds: err=%s", err)
 			} else {
 				log.Infof("claimed ether! transaction hash=%s", txHash)
-				s.clearNextExpectedMessage(types.CompletedSuccess)
+				s.clearNextExpectedEvent(types.CompletedSuccess)
 				return nil
 			}
 
@@ -278,13 +283,13 @@ func (s *swapState) exit() error {
 			return err
 		}
 
-		s.clearNextExpectedMessage(types.CompletedRefund)
+		s.clearNextExpectedEvent(types.CompletedRefund)
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
 	default:
-		s.clearNextExpectedMessage(types.CompletedAbort)
-		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
+		s.clearNextExpectedEvent(types.CompletedAbort)
+		log.Errorf("unexpected nextExpectedEvent in Exit: type=%T", s.nextExpectedEvent)
 		return errUnexpectedMessageType
 	}
 }

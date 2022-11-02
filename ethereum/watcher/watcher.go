@@ -13,6 +13,8 @@ import (
 
 var checkForBlocksTimeout = time.Second
 
+// EventFilterer filters the chain for specific events (logs).
+// When it finds a desired log, it puts it into its outbound channel.
 type EventFilterer struct {
 	ctx         context.Context
 	ec          *ethclient.Client
@@ -20,6 +22,7 @@ type EventFilterer struct {
 	logCh       chan<- []ethtypes.Log
 }
 
+// NewEventFilterer returns a new *EventFilterer.
 func NewEventFilterer(
 	ctx context.Context,
 	ec *ethclient.Client,
