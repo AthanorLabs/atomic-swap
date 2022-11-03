@@ -27,6 +27,7 @@ var (
 	errLockTxReverted              = errors.New("other party failed to lock ETH asset (transaction reverted)")
 	errInvalidETHLockedTransaction = errors.New("eth locked tx was not to correct contract address")
 	errRelayerCommissionTooHigh    = errors.New("relayer commission must be less than 0.1 (10%)")
+	errLogNotForUs                 = errors.New("found log that isn't for our swap")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

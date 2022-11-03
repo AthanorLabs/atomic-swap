@@ -2,6 +2,7 @@ package xmrmaker
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -11,8 +12,6 @@ import (
 // getStatus returns the status corresponding to an Event.
 func getStatus(t Event) types.Status {
 	switch t.(type) {
-	case *EventKeysReceived:
-		return types.ExpectingKeys
 	case *EventETHLocked:
 		return types.KeysExchanged
 	case *EventContractReady:
@@ -26,20 +25,6 @@ func getStatus(t Event) types.Status {
 
 // Event represents a swap state event.
 type Event interface{}
-
-// EventKeysReceived is the first expected event. It represents the counterparty's
-// swap keys being received.
-type EventKeysReceived struct {
-	message *message.SendKeysMessage
-	errCh   chan error
-}
-
-func newEventKeysSent(msg *message.SendKeysMessage) *EventKeysReceived {
-	return &EventKeysReceived{
-		message: msg,
-		errCh:   make(chan error),
-	}
-}
 
 // EventETHLocked is the second expected event. It represents ETH being locked
 // on-chain.
@@ -110,32 +95,48 @@ func (s *swapState) handleEvent(event Event) {
 
 	// events are only used once, so their error channel can be closed after handling.
 	switch e := event.(type) {
-	case *EventKeysReceived:
-		err := s.handleSendKeysMessage(e.message)
-		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle EventKeysReceived: %w", err)
-		}
-		close(e.errCh)
 	case *EventETHLocked:
+		log.Infof("EventETHLocked")
+
+		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventETHLocked{}) {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+		}
+
 		err := s.handleEventETHLocked(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
 		}
 		close(e.errCh)
+		s.setNextExpectedEvent(&EventContractReady{})
 	case *EventContractReady:
+		log.Infof("EventContractReady")
+
+		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventContractReady{}) {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+		}
+
 		err := s.handleEventContractReady(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventContractReady: %w", err)
 		}
 		close(e.errCh)
+		s.nextExpectedEvent = &EventExit{}
 	case *EventETHRefunded:
+		log.Infof("EventETHRefunded")
 		err := s.handleEventETHRefunded(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHRefunded: %w", err)
 		}
 
 		close(e.errCh)
+		s.nextExpectedEvent = &EventExit{}
 	case *EventExit:
+		log.Infof("EventExit")
+
+		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventExit{}) {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+		}
+
 		err := s.exit()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventExit: %w", err)

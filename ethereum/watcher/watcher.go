@@ -18,6 +18,7 @@ var checkForBlocksTimeout = time.Second
 type EventFilterer struct {
 	ctx         context.Context
 	ec          *ethclient.Client
+	topic       ethcommon.Hash
 	filterQuery eth.FilterQuery
 	logCh       chan<- []ethtypes.Log
 }
@@ -28,18 +29,18 @@ func NewEventFilterer(
 	ec *ethclient.Client,
 	contract ethcommon.Address,
 	fromBlock *big.Int,
-	topics [][]ethcommon.Hash,
+	topic ethcommon.Hash,
 	logCh chan<- []ethtypes.Log,
 ) *EventFilterer {
 	filterQuery := eth.FilterQuery{
 		FromBlock: fromBlock,
 		Addresses: []ethcommon.Address{contract},
-		Topics:    topics,
 	}
 
 	return &EventFilterer{
 		ctx:         ctx,
 		ec:          ec,
+		topic:       topic,
 		filterQuery: filterQuery,
 		logCh:       logCh,
 	}
@@ -76,12 +77,21 @@ func (f *EventFilterer) Start() error {
 				continue
 			}
 
-			if len(logs) != 0 {
-				f.logCh <- logs
+			found := []ethtypes.Log{}
+			for _, l := range logs {
+				if l.Topics[0] != f.topic {
+					continue
+				}
+
+				found = append(found, l)
+			}
+
+			if len(found) != 0 {
+				f.logCh <- found
 			}
 
 			// should this be currHeader + 1? ie. is the filter inclusive of the latest block?
-			f.filterQuery.FromBlock = currHeader.Number
+			f.filterQuery.FromBlock = big.NewInt(0).Add(currHeader.Number, big.NewInt(1))
 			header = currHeader
 		}
 	}()

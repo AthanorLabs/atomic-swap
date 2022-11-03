@@ -165,7 +165,7 @@ func newSwapState(
 		b.EthClient(),
 		b.ContractAddr(),
 		ethHeader.Number,
-		[][]ethcommon.Hash{{readyTopic}},
+		readyTopic,
 		logReadyCh,
 	)
 
@@ -174,7 +174,7 @@ func newSwapState(
 		b.EthClient(),
 		b.ContractAddr(),
 		ethHeader.Number,
-		[][]ethcommon.Hash{{refundedTopic}},
+		refundedTopic,
 		logRefundedCh,
 	)
 
@@ -199,7 +199,9 @@ func newSwapState(
 		offerExtra:        offerExtra,
 		offerManager:      om,
 		walletScanHeight:  walletScanHeight,
-		nextExpectedEvent: &EventKeysReceived{},
+		nextExpectedEvent: &EventETHLocked{},
+		logReadyCh:        logReadyCh,
+		logRefundedCh:     logRefundedCh,
 		eventCh:           make(chan Event),
 		readyCh:           make(chan struct{}),
 		info:              info,
@@ -292,16 +294,17 @@ func (s *swapState) exit() error {
 
 	// TODO update to next expected event
 	switch s.nextExpectedEvent.(type) {
-	case *EventKeysReceived:
-		// we are fine, as we only just initiated the protocol.
-		s.clearNextExpectedEvent(types.CompletedAbort)
-		return nil
 	case *EventETHLocked:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
 	case *EventContractReady:
+		// TODO this case should shutdown the runHandleEvents goroutine
+		// and take control of the event channel.
+		// the next event will either be ContractReady or Refunded and then
+		// we can act accordingly.
+
 		// we should check if XMRTaker refunded, if so then check contract for secret
 		address, err := s.tryReclaimMonero()
 		if err != nil {

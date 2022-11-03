@@ -120,6 +120,5 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	state.setNextExpectedEvent(&EventETHLocked{})
 	return state, resp, nil
 }

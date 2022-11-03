@@ -419,23 +419,13 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedEvent = &EventKeysReceived{}
-	err := s.Exit()
-	require.NoError(t, err)
-	require.Equal(t, types.CompletedAbort, s.info.Status())
-}
-
-func TestSwapState_Exit_Aborted_1(t *testing.T) {
-	_, s, db := newTestInstanceAndDB(t)
-	db.EXPECT().PutOffer(s.offer)
-
 	s.nextExpectedEvent = &EventETHLocked{}
 	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }
 
-func TestSwapState_Exit_Aborted_2(t *testing.T) {
+func TestSwapState_Exit_Aborted_1(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 

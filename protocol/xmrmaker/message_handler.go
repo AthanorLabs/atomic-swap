@@ -30,13 +30,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 	}
 
 	switch msg := msg.(type) {
-	case *net.SendKeysMessage:
-		event := newEventKeysSent(msg)
-		s.eventCh <- event
-		err := <-event.errCh
-		if err != nil {
-			return err
-		}
 	case *message.NotifyETHLocked:
 		event := newEventETHLocked(msg)
 		s.eventCh <- event
@@ -131,8 +124,6 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	go s.runT0ExpirationHandler()
-
-	s.setNextExpectedEvent(&EventContractReady{})
 	return notifyXMRLocked, nil
 }
 
