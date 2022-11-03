@@ -3,6 +3,7 @@ package xmrmaker
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"math/big"
 	"path"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -23,15 +25,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	_             = logging.SetLogLevel("xmrmaker", "debug")
-	testWallet    = "test-wallet"
-	desiredAmount = common.EtherToWei(0.33)
+	_                         = logging.SetLogLevel("xmrmaker", "debug")
+	testWallet                = "test-wallet"
+	desiredAmount             = common.EtherToWei(0.33)
+	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
 )
 
 type mockNet struct {
@@ -52,9 +56,7 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 	return nil
 }
 
-var (
-	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
-)
+func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
 
 func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	pk := tests.GetMakerTestKey(t)
@@ -230,7 +232,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, &message.NotifyETHLocked{}, s.nextExpectedMessage)
+	require.Equal(t, &EventETHLocked{}, s.nextExpectedEvent)
 	require.Equal(t, xmrtakerPubKeys.SpendKey().Hex(), s.xmrtakerPublicKeys.SpendKey().Hex())
 	require.Equal(t, xmrtakerPubKeys.ViewKey().Hex(), s.xmrtakerPublicKeys.ViewKey().Hex())
 	require.True(t, s.info.Status().IsOngoing())
@@ -239,7 +241,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyETHLocked{}
+	s.nextExpectedEvent = &EventETHLocked{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -248,10 +250,8 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
 
 	msg := &message.NotifyETHLocked{}
-	resp, done, err := s.HandleProtocolMessage(msg)
-	require.Equal(t, errMissingAddress, err)
-	require.Nil(t, resp)
-	require.True(t, done)
+	err = s.HandleProtocolMessage(msg)
+	require.True(t, errors.Is(err, errMissingAddress))
 
 	duration, err := time.ParseDuration("2s")
 	require.NoError(t, err)
@@ -266,20 +266,20 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
-	resp, done, err = s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
+	resp := s.Net().(*mockNet).LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
-	require.False(t, done)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
+	require.Equal(t, &EventContractReady{}, s.nextExpectedEvent)
 	require.True(t, s.info.Status().IsOngoing())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyETHLocked{}
+	s.nextExpectedEvent = &EventETHLocked{}
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -288,10 +288,8 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
 
 	msg := &message.NotifyETHLocked{}
-	resp, done, err := s.HandleProtocolMessage(msg)
-	require.Equal(t, errMissingAddress, err)
-	require.Nil(t, resp)
-	require.True(t, done)
+	err = s.HandleProtocolMessage(msg)
+	require.True(t, errors.Is(err, errMissingAddress))
 
 	duration, err := time.ParseDuration("15s")
 	require.NoError(t, err)
@@ -306,13 +304,14 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
-	resp, done, err = s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
+
+	resp := s.Net().(*mockNet).LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
-	require.False(t, done)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, &message.NotifyReady{}, s.nextExpectedMessage)
+	require.Equal(t, &EventContractReady{}, s.nextExpectedEvent)
 
 	for status := range s.offerExtra.StatusCh {
 		if status == types.CompletedSuccess {
@@ -323,33 +322,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	}
 
 	require.NotNil(t, s.Net().(*mockNet).LastSentMessage())
-	require.Equal(t, types.CompletedSuccess, s.info.Status())
-}
-
-func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
-	_, s := newTestInstance(t)
-
-	s.nextExpectedMessage = &message.NotifyReady{}
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
-	duration, err := time.ParseDuration("10m")
-	require.NoError(t, err)
-	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
-
-	txOpts, err := s.TxOpts()
-	require.NoError(t, err)
-	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
-	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
-
-	msg := &message.NotifyReady{}
-
-	resp, done, err := s.HandleProtocolMessage(msg)
-	require.NoError(t, err)
-	require.True(t, done)
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyClaimedType, resp.Type())
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }
 
@@ -370,7 +342,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	lockedXMR, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -382,52 +354,17 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
-
-	addr, err := s.handleRefund(tx.Hash().String())
+	receipt, err := block.WaitForReceipt(s.ctx, s.EthClient(), tx.Hash())
 	require.NoError(t, err)
-	require.Equal(t, lockedXMR.Address, string(addr))
-}
+	require.Equal(t, 1, len(receipt.Logs))
 
-func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
-	_, s := newTestInstance(t)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
-	xmrtakerKeysAndProof, err := generateKeys()
-	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
-
-	duration, err := time.ParseDuration("10m")
-	require.NoError(t, err)
-
-	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
-
-	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
-	require.NoError(t, err)
-
-	// call refund w/ XMRTaker's secret
-	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret[:]))
-
-	txOpts, err := s.TxOpts()
-	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
-	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
-
-	msg := &message.NotifyRefund{
-		TxHash: tx.Hash().String(),
+	logs := []ethtypes.Log{}
+	for _, l := range receipt.Logs {
+		logs = append(logs, *l)
 	}
 
-	resp, done, err := s.HandleProtocolMessage(msg)
+	err = s.handleRefundLogs(logs)
 	require.NoError(t, err)
-	require.True(t, done)
-	require.Nil(t, resp)
 	require.Equal(t, types.CompletedRefund, s.info.Status())
 }
 
@@ -468,7 +405,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
-	s.nextExpectedMessage = &message.NotifyReady{}
+	s.nextExpectedEvent = &EventContractReady{}
 	err = s.Exit()
 	require.NoError(t, err)
 
@@ -482,7 +419,7 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedMessage = &message.SendKeysMessage{}
+	s.nextExpectedEvent = &EventKeysReceived{}
 	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
@@ -492,7 +429,7 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedMessage = &message.NotifyETHLocked{}
+	s.nextExpectedEvent = &EventETHLocked{}
 	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status())
@@ -502,9 +439,9 @@ func TestSwapState_Exit_Aborted_2(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedMessage = nil
+	s.nextExpectedEvent = nil
 	err := s.Exit()
-	require.Equal(t, errUnexpectedMessageType, err)
+	require.True(t, errors.Is(err, errUnexpectedMessageType))
 	require.Equal(t, types.CompletedAbort, s.info.Status())
 }
 

@@ -105,6 +105,18 @@ func (mr *MockBackendMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockBackend)(nil).Close))
 }
 
+// CloseProtocolStream mocks base method.
+func (m *MockBackend) CloseProtocolStream(arg0 types.Hash) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CloseProtocolStream", arg0)
+}
+
+// CloseProtocolStream indicates an expected call of CloseProtocolStream.
+func (mr *MockBackendMockRecorder) CloseProtocolStream(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseProtocolStream", reflect.TypeOf((*MockBackend)(nil).CloseProtocolStream), arg0)
+}
+
 // CloseWallet mocks base method.
 func (m *MockBackend) CloseWallet() error {
 	m.ctrl.T.Helper()

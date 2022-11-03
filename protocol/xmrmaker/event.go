@@ -99,36 +99,40 @@ func (s *swapState) runHandleEvents() {
 func (s *swapState) handleEvent(event Event) {
 	// TODO event type checks, check that event isn't unexpected/out of order
 
+	// events are only used once, so their error channel can be closed after handling.
 	switch e := event.(type) {
 	case *EventKeysReceived:
 		err := s.handleSendKeysMessage(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventKeysReceived: %w", err)
 		}
+		close(e.errCh)
 	case *EventETHLocked:
 		err := s.handleEventETHLocked(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
 		}
+		close(e.errCh)
 	case *EventContractReady:
 		err := s.handleEventContractReady(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventContractReady: %w", err)
 		}
+		close(e.errCh)
 	case *EventETHRefunded:
 		err := s.handleEventETHRefunded(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHRefunded: %w", err)
 		}
 
-		return
+		close(e.errCh)
 	case *EventExit:
 		err := s.exit()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventExit: %w", err)
 		}
 
-		return
+		close(e.errCh)
 	default:
 		panic("unhandled event type")
 	}

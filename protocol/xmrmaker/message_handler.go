@@ -194,8 +194,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 
 	go s.runT0ExpirationHandler()
 
-	// TODO: set next expected event
-	//s.setNextExpectedMessage(&message.NotifyReady{})
+	s.setNextExpectedEvent(&EventContractReady{})
 	return notifyXMRLocked, nil
 }
 
