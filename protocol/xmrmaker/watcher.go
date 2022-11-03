@@ -78,7 +78,6 @@ func (s *swapState) handleRefundLogs(logs []ethtypes.Log) error {
 }
 
 func (s *swapState) checkSwapID(log ethtypes.Log, eventName string) error {
-	// TODO move this check to ethereum/watcher?
 	abiSF, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
 	if err != nil {
 		return err

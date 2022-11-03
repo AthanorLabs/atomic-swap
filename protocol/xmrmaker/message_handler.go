@@ -56,16 +56,14 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedEvent(event Event) {
-	// TODO is event ever nil?
-	if event == nil || s.nextExpectedEvent == nil {
+	if s.nextExpectedEvent == nil {
 		return
 	}
 
-	// TODO test this!!!
 	// alternatively make a Type() method for the Event interface
 	// can also change nextExpectedEvent to EventType
 	if reflect.TypeOf(event) == reflect.TypeOf(s.nextExpectedEvent) {
-		return
+		panic("cannot set next expected event to same as current")
 	}
 
 	s.nextExpectedEvent = event
@@ -191,6 +189,5 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setXMRTakerPublicKeys(kp, secp256k1Pub)
-	s.setNextExpectedEvent(&EventETHLocked{})
 	return nil
 }
