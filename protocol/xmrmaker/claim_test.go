@@ -14,10 +14,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	rcommon "github.com/AthanorLabs/go-relayer/common"
-	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
-	"github.com/AthanorLabs/go-relayer/relayer"
-	rrpc "github.com/AthanorLabs/go-relayer/rpc"
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	"github.com/athanorlabs/go-relayer/relayer"
+	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"

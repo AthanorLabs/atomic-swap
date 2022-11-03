@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
+	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
