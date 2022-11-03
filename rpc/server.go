@@ -134,7 +134,7 @@ func (s *Server) Start() error {
 // graceful shutdown happens where existing connections are serviced until disconnected.
 // If the context is cancelled, the shutdown is immediate.
 func (s *Server) Stop() error {
-	return s.httpServer.Close()
+	return s.httpServer.Shutdown(s.ctx)
 }
 
 // Protocol represents the functions required by the rpc service into the protocol handler.
