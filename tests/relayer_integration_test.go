@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
+	"net/http"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,8 +23,9 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
-var (
-	defaultRelayerEndpoint = "http://127.0.0.1:7799"
+const (
+	relayerBindAddr        = "127.0.0.1:7799"
+	defaultRelayerEndpoint = "http://" + relayerBindAddr
 	relayerCommission      = float64(0.01)
 )
 
@@ -63,6 +66,8 @@ func runRelayer(
 	sk *ecdsa.PrivateKey,
 	chainID *big.Int,
 ) {
+	ctx := context.Background()
+
 	iforwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
 	require.NoError(t, err)
 	fw := gsnforwarder.NewIForwarderWrapped(iforwarder)
@@ -70,7 +75,7 @@ func runRelayer(
 	key := rcommon.NewKeyFromPrivateKey(sk)
 
 	cfg := &relayer.Config{
-		Ctx:                   context.Background(),
+		Ctx:                   ctx,
 		EthClient:             ec,
 		Forwarder:             fw,
 		Key:                   key,
@@ -81,15 +86,22 @@ func runRelayer(
 	r, err := relayer.NewRelayer(cfg)
 	require.NoError(t, err)
 
-	rpcCfg := &rrpc.Config{
-		Port:    7799,
+	server, err := rrpc.NewServer(&rrpc.Config{
+		Ctx:     context.Background(),
+		Address: relayerBindAddr,
 		Relayer: r,
-	}
-	server, err := rrpc.NewServer(rpcCfg)
+	})
 	require.NoError(t, err)
 
-	_ = server.Start()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := server.Start()
+		require.ErrorIs(t, err, http.ErrServerClosed)
+	}()
 	t.Cleanup(func() {
-		// TODO stop server
+		require.NoError(t, server.Stop())
+		wg.Wait()
 	})
 }
