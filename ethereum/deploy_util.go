@@ -14,7 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
-var log = logging.Logger("ethereum")
+var log = logging.Logger("contracts")
 
 // DeploySwapFactoryWithKey deploys the SwapFactory contract using the passed privKey to
 // pay for the gas.

@@ -259,6 +259,7 @@ func setLogLevels(level string) {
 	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("monero", level)
+	_ = logging.SetLogLevel("contracts", level)
 }
 
 func runDaemon(c *cli.Context) error {
