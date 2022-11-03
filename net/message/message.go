@@ -19,9 +19,7 @@ const (
 	SendKeysType
 	NotifyETHLockedType
 	NotifyXMRLockType
-	//NotifyReadyType
 	NotifyClaimedType
-	//NotifyRefundType
 	NilType
 )
 
@@ -35,12 +33,8 @@ func (t Type) String() string {
 		return "NotifyETHLocked"
 	case NotifyXMRLockType:
 		return "NotifyXMRLock"
-	//case NotifyReadyType:
-	//	return "NotifyReady"
-	case NotifyClaimedType:
+	case NotifyClaimedType: // TODO remove
 		return "NotifyClaimed"
-	//case NotifyRefundType:
-	//	return "NotifyRefund"
 	default:
 		return "unknown"
 	}
@@ -84,24 +78,12 @@ func DecodeMessage(b []byte) (Message, error) {
 			return nil, err
 		}
 		return m, nil
-	// case NotifyReadyType:
-	// 	var m *NotifyReady
-	// 	if err := json.Unmarshal(b[1:], &m); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return m, nil
 	case NotifyClaimedType:
 		var m *NotifyClaimed
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
 		return m, nil
-	// case NotifyRefundType:
-	// 	var m *NotifyRefund
-	// 	if err := json.Unmarshal(b[1:], &m); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return m, nil
 	default:
 		return nil, errors.New("invalid message type")
 	}
@@ -251,29 +233,6 @@ func (m *NotifyXMRLock) Type() Type {
 	return NotifyXMRLockType
 }
 
-// // NotifyReady is sent by XMRTaker to XMRMaker after calling Ready() on the contract.
-// type NotifyReady struct{}
-
-// // String ...
-// func (m *NotifyReady) String() string {
-// 	return "NotifyReady"
-// }
-
-// // Encode ...
-// func (m *NotifyReady) Encode() ([]byte, error) {
-// 	b, err := json.Marshal(m)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return append([]byte{byte(NotifyReadyType)}, b...), nil
-// }
-
-// // Type ...
-// func (m *NotifyReady) Type() Type {
-// 	return NotifyReadyType
-// }
-
 // NotifyClaimed is sent by XMRMaker to XMRTaker after claiming his ETH.
 type NotifyClaimed struct {
 	TxHash string
@@ -298,28 +257,3 @@ func (m *NotifyClaimed) Encode() ([]byte, error) {
 func (m *NotifyClaimed) Type() Type {
 	return NotifyClaimedType
 }
-
-// // NotifyRefund is sent by XMRTaker to XMRMaker after calling Refund() on the contract.
-// type NotifyRefund struct {
-// 	TxHash string
-// }
-
-// // String ...
-// func (m *NotifyRefund) String() string {
-// 	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
-// }
-
-// // Encode ...
-// func (m *NotifyRefund) Encode() ([]byte, error) {
-// 	b, err := json.Marshal(m)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return append([]byte{byte(NotifyRefundType)}, b...), nil
-// }
-
-// // Type ...
-// func (m *NotifyRefund) Type() Type {
-// 	return NotifyRefundType
-// }

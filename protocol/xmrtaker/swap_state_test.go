@@ -49,6 +49,8 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 	return nil
 }
 
+func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
+
 func newBackend(t *testing.T) backend.Backend {
 	pk := tests.GetTakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
@@ -133,7 +135,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}
-	_, _, err := s.HandleProtocolMessage(msg)
+	err := s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
 	err = s.generateAndSetKeys()
@@ -141,9 +143,10 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
-	resp, done, err := s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.False(t, done)
+
+	resp := s.Net().(*mockNet).LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, s.SwapTimeout(), s.t1.Sub(s.t0))
 	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.xmrmakerPublicSpendKey.Hex())
@@ -163,27 +166,25 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
-	resp, done, err := s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.False(t, done)
+
+	resp := s.Net().(*mockNet).LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, s.SwapTimeout(), s.t1.Sub(s.t0))
 	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.xmrmakerPublicSpendKey.Hex())
 	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.xmrmakerPrivateViewKey.Hex())
 
+	// ensure we refund before t0
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {
+			// TODO check this is before t0
 			break
 		} else if !status.IsOngoing() {
 			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
 		}
 	}
-
-	// ensure we refund before t0
-	lastMesg := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, lastMesg)
-	require.Equal(t, message.NotifyRefundType, lastMesg.Type())
 
 	// check swap is marked completed
 	stage, err := s.Contract().Swaps(nil, s.contractSwapID)
@@ -215,11 +216,9 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 		Address: string(xmrAddr),
 	}
 
-	resp, done, err := s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.False(t, done)
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyReadyType, resp.Type())
+	require.Equal(t, s.nextExpectedMessage, &message.NotifyClaimed{})
 }
 
 // test the case where the monero is locked, but XMRMaker never claims.
@@ -249,26 +248,18 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 		Address: string(xmrAddr),
 	}
 
-	resp, done, err := s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.False(t, done)
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyReadyType, resp.Type())
-
-	_, ok := resp.(*message.NotifyReady)
-	require.True(t, ok)
+	require.Equal(t, s.nextExpectedMessage, &message.NotifyClaimed{})
 
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {
+			// TODO check this is after t1
 			break
 		} else if !status.IsOngoing() {
 			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
 		}
 	}
-
-	sentMsg := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, sentMsg)
-	require.Equal(t, message.NotifyRefundType, sentMsg.Type())
 
 	// check balance of contract is 0
 	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)
@@ -290,7 +281,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
-	_, _, err = s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
 	err = s.generateAndSetKeys()
@@ -302,10 +293,12 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
 	msg.EthAddress = s.EthAddress().String()
 
-	resp, done, err := s.HandleProtocolMessage(msg)
+	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.False(t, done)
+
+	resp := s.Net().(*mockNet).LastSentMessage()
 	require.NotNil(t, resp)
+	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
 	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
 	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
@@ -337,11 +330,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 		TxID:    transfer.TxID,
 	}
 
-	resp, done, err = s.HandleProtocolMessage(lmsg)
+	// TODO assert ready was called
+	err = s.HandleProtocolMessage(lmsg)
 	require.NoError(t, err)
-	require.False(t, done)
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyReadyType, resp.Type())
+	require.Equal(t, s.info.Status(), types.ContractReady)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
@@ -360,10 +352,8 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 		TxHash: tx.Hash().String(),
 	}
 
-	resp, done, err = s.HandleProtocolMessage(cmsg)
+	err = s.HandleProtocolMessage(cmsg)
 	require.NoError(t, err)
-	require.True(t, done)
-	require.Nil(t, resp)
 }
 
 func TestExit_afterSendKeysMessage(t *testing.T) {

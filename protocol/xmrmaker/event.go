@@ -24,8 +24,11 @@ func getStatus(t Event) types.Status {
 	}
 }
 
+// Event represents a swap state event.
 type Event interface{}
 
+// EventKeysReceived is the first expected event. It represents the counterparty's
+// swap keys being received.
 type EventKeysReceived struct {
 	message *message.SendKeysMessage
 	errCh   chan error
@@ -38,6 +41,8 @@ func newEventKeysSent(msg *message.SendKeysMessage) *EventKeysReceived {
 	}
 }
 
+// EventETHLocked is the second expected event. It represents ETH being locked
+// on-chain.
 type EventETHLocked struct {
 	message *message.NotifyETHLocked
 	errCh   chan error
@@ -50,6 +55,8 @@ func newEventETHLocked(msg *message.NotifyETHLocked) *EventETHLocked {
 	}
 }
 
+// EventContractReady is the third expected event. It represents the contract being
+// ready for us to claim the ETH.
 type EventContractReady struct {
 	errCh chan error
 }
@@ -60,6 +67,8 @@ func newEventContractReady() *EventContractReady {
 	}
 }
 
+// EventETHRefunded is an optional event. It represents the ETH being refunded back
+// to the counterparty, and thus we also must refund.
 type EventETHRefunded struct {
 	sk    *mcrypto.PrivateSpendKey
 	errCh chan error
@@ -72,8 +81,8 @@ func newEventETHRefunded(sk *mcrypto.PrivateSpendKey) *EventETHRefunded {
 	}
 }
 
-// EventExit is sent when the protocol should be stopped, for example
-// if the remote peer closes their connection with us before sending all
+// EventExit is an optional event. It is sent when the protocol should be stopped,
+// for example if the remote peer closes their connection with us before sending all
 // required messages, or we decide to cancel the swap.
 type EventExit struct {
 	errCh chan error
@@ -147,7 +156,7 @@ func (s *swapState) handleEventETHLocked(e *EventETHLocked) error {
 	return s.SendSwapMessage(resp, s.ID())
 }
 
-func (s *swapState) handleEventContractReady(e *EventContractReady) error {
+func (s *swapState) handleEventContractReady(_ *EventContractReady) error {
 	log.Debug("contract ready, attempting to claim funds...")
 	close(s.readyCh)
 

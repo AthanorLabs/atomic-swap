@@ -10,8 +10,12 @@ func (s *swapState) runContractEventWatcher() {
 	select {
 	case <-s.ctx.Done():
 		return
-	case <-s.logReadyCh:
+	case logs := <-s.logReadyCh:
 		// contract was set to ready, send EventReady
+		err := s.handleReadyLogs(logs)
+		if err != nil {
+			log.Errorf("failed to handle ready logs: %s", err)
+		}
 	case logs := <-s.logRefundedCh:
 		// swap was refunded, send EventRefunded
 		err := s.handleRefundLogs(logs)

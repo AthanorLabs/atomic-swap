@@ -18,8 +18,6 @@ var (
 	errClaimInvalid                = errors.New("can not claim, swap does not exist")
 	errClaimSwapComplete           = fmt.Errorf("can not claim, %w", errSwapCompleted)
 	errNilSwapState                = errors.New("swap state is nil")
-	errNilMessage                  = errors.New("message is nil")
-	errIncorrectMessageType        = errors.New("received unexpected message")
 	errNilContractSwapID           = errors.New("expected swapID in NotifyETHLocked message")
 	errNoReadyLogs                 = errors.New("got Ready event from watcher with no logs")
 	errNoRefundLogs                = errors.New("got Refund event from watcher with no logs")

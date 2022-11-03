@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	//"sync"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
@@ -169,8 +168,17 @@ func newSwapState(
 		logRefundedCh,
 	)
 
-	readyWatcher.Start()
-	refundedWatcher.Start()
+	err = readyWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	err = refundedWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 
 	s := &swapState{
 		ctx:               ctx,
@@ -192,14 +200,6 @@ func newSwapState(
 	go s.runContractEventWatcher()
 	return s, nil
 }
-
-// func (s *swapState) lockState() {
-// 	s.stateMu.Lock()
-// }
-
-// func (s *swapState) unlockState() {
-// 	s.stateMu.Unlock()
-// }
 
 // SendKeysMessage ...
 func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {

@@ -45,6 +45,7 @@ func NewEventFilterer(
 	}
 }
 
+// Start starts the EventFilterer. It watches the chain for logs.
 func (f *EventFilterer) Start() error {
 	header, err := f.ec.HeaderByNumber(f.ctx, nil)
 	if err != nil {
