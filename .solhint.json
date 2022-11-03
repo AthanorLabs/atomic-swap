@@ -1,0 +1,9 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "func-visibility": ["warn",{"ignoreConstructors":true}],
+    "reason-string": ["warn",{"maxLength":64}],
+    "no-inline-assembly": "off",
+    "not-rely-on-time": "off"
+  }
+}

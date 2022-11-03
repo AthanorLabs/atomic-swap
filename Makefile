@@ -21,8 +21,12 @@ lint-go: init
 lint-shell: init
 	shellcheck --source-path=.:scripts scripts/*.sh
 
+.PHONY: lint-solidity
+lint-solidity: init
+	"$$(npm config get prefix)/bin/solhint" $$(find ethereum -name '*.sol')
+
 .PHONY: lint
-lint: lint-go lint-shell
+lint: lint-go lint-shell lint-solidity
 
 .PHONY: format-go
 format-go:
@@ -32,8 +36,12 @@ format-go:
 format-shell:
 	shfmt -w scripts/*.sh
 
+.PHONY: format-solidity
+format-solidity:
+	"$$(npm config get prefix)/bin/prettier" --print-width 100 --write $$(find ethereum -name '*.sol')
+
 .PHONY: format
-format: format-go format-shell
+format: format-go format-shell format-solidity
 
 .PHONY: test
 test: init

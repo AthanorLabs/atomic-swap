@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPLv3
-pragma solidity ^0.8.5;
+pragma solidity ^0.8.5 .0;
 
 //
 // Unit test contract. Our goal is a transaction that is easy to make fail, but only when it is
@@ -12,7 +12,7 @@ pragma solidity ^0.8.5;
 contract UTContract {
     uint256 private stamp;
 
-    function check_stamp(uint256 _stamp) external {
+    function checkStamp(uint256 _stamp) external {
         require(block.timestamp <= _stamp, "block.timestamp was not less than stamp");
         stamp = _stamp; // Prevent the function from being view-only
     }
