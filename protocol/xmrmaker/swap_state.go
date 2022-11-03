@@ -105,7 +105,7 @@ func newSwapState(
 	if offerExtra.StatusCh == nil {
 		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
-	//offerExtra.StatusCh <- stage
+	offerExtra.StatusCh <- stage
 
 	info := pswap.NewInfo(
 		offer.GetID(),

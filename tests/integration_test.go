@@ -642,9 +642,6 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 			select {
 			case status := <-statusCh:
 				s.T().Log("> XMRMaker got status:", status)
-				if status != types.KeysExchanged {
-					continue
-				}
 				s.T().Log("> XMRMaker cancelled swap!")
 				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
 				if err != nil {

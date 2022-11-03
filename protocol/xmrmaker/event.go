@@ -129,11 +129,8 @@ func (s *swapState) handleEvent(event Event) {
 		close(e.errCh)
 		s.setNextExpectedEvent(&EventExit{})
 	case *EventExit:
+		// this can happen at any stage.
 		log.Infof("EventExit")
-
-		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventExit{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
-		}
 
 		err := s.exit()
 		if err != nil {
