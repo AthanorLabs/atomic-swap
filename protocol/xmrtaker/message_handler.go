@@ -336,13 +336,6 @@ func (s *swapState) handleT1Expired() {
 
 	log.Infof("got our ETH back: tx hash=%s", txhash)
 
-	// // send NotifyRefund msg
-	// if err = s.SendSwapMessage(&message.NotifyRefund{
-	// 	TxHash: txhash.String(),
-	// }, s.ID()); err != nil {
-	// 	log.Errorf("failed to send refund message: err=%s", err)
-	// }
-
 	if err = s.exit(); err != nil {
 		log.Errorf("exit failed: err=%s", err)
 	}

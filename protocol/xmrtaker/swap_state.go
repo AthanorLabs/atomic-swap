@@ -341,14 +341,6 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 
 		s.clearNextExpectedMessage(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
-
-		// // send NotifyRefund msg
-		// if err = s.SendSwapMessage(&message.NotifyRefund{
-		// 	TxHash: txHash.String(),
-		// }, s.ID()); err != nil {
-		// 	return ethcommon.Hash{}, fmt.Errorf("failed to send refund message: err=%w", err)
-		// }
-
 		return txHash, nil
 	default:
 		return ethcommon.Hash{}, errCannotRefund
