@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -42,17 +41,16 @@ func newServer(t *testing.T) *Server {
 
 	go func() {
 		err := s.Start()
-		require.ErrorIs(t, err, http.ErrServerClosed)
+		require.ErrorIs(t, err, context.Canceled)
 		wg.Done()
 	}()
 	time.Sleep(time.Millisecond * 300) // let server start up
 
 	t.Cleanup(func() {
+		// ctx is local to this function, but we don't want to shut down the server
+		// by canceling it until the end of the test.
 		cancel()
-		// Using non-cancelled context, so shutdown waits for clients to disconnect before unblocking
-		err := s.httpServer.Shutdown(context.Background())
-		require.NoError(t, err)
-		wg.Wait() // unblocks when server exits
+		wg.Wait() // wait for the server to exit
 	})
 
 	return s
