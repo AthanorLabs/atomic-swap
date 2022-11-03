@@ -316,7 +316,7 @@ func (d *daemon) stop() error {
 	// skip closing it if errors happen when stopping other services. We also want to
 	// close services that may modify the database before closing the database. Lastly, if
 	// we get multiple errors and need to chose which one to propagate upwards, a database
-	// error should be prioritized first.
+	// error should be prioritised first.
 	switch {
 	case dbErr != nil:
 		return dbErr

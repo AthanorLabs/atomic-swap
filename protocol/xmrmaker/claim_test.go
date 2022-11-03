@@ -34,7 +34,7 @@ var (
 // runRelayer starts the relayer and returns the endpoint URL
 func runRelayer(
 	t *testing.T,
-	ctx context.Context,
+	ctx context.Context, //nolint:revive // context should be 1st param to function
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
 	sk *ecdsa.PrivateKey,
