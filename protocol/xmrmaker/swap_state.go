@@ -44,7 +44,6 @@ type swapState struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-	//stateMu sync.Mutex
 	exited bool
 
 	info         *pswap.Info
@@ -101,13 +100,23 @@ func newSwapState(
 	desiredAmount common.EtherAmount,
 ) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+
 	stage := types.ExpectingKeys
 	if offerExtra.StatusCh == nil {
 		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
 	offerExtra.StatusCh <- stage
-	info := pswap.NewInfo(offer.GetID(), types.ProvidesXMR, providesAmount.AsMonero(), desiredAmount.AsEther(),
-		exchangeRate, offer.EthAsset, stage, offerExtra.StatusCh)
+
+	info := pswap.NewInfo(
+		offer.GetID(),
+		types.ProvidesXMR,
+		providesAmount.AsMonero(),
+		desiredAmount.AsEther(),
+		exchangeRate,
+		offer.EthAsset,
+		stage,
+		offerExtra.StatusCh,
+	)
 	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -145,6 +154,7 @@ func newSwapState(
 		return nil, err
 	}
 
+	// set up ethereum event watchers
 	logReadyCh := make(chan []ethtypes.Log)
 	logRefundedCh := make(chan []ethtypes.Log)
 
@@ -236,13 +246,6 @@ func (s *swapState) ID() types.Hash {
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
-	// if s == nil {
-	// 	return errNilSwapState
-	// }
-
-	// s.lockState()
-	// defer s.unlockState()
-	// return s.exit()
 	event := newEventExit()
 	s.eventCh <- event
 	return <-event.errCh

@@ -6,10 +6,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
-type (
-	Status = types.Status //nolint:revive
-)
-
 // Info contains the details of the swap as well as its status.
 type Info struct {
 	id             types.Hash // swap offer ID
@@ -18,13 +14,20 @@ type Info struct {
 	receivedAmount float64
 	exchangeRate   types.ExchangeRate
 	ethAsset       types.EthAsset
-	status         Status
+	status         types.Status
 	statusCh       <-chan types.Status
 }
 
 // NewInfo ...
-func NewInfo(id types.Hash, provides types.ProvidesCoin, providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, status Status, statusCh <-chan types.Status) *Info {
+func NewInfo(
+	id types.Hash,
+	provides types.ProvidesCoin,
+	providedAmount, receivedAmount float64,
+	exchangeRate types.ExchangeRate,
+	ethAsset types.EthAsset,
+	status types.Status,
+	statusCh <-chan types.Status,
+) *Info {
 	info := &Info{
 		id:             id,
 		provides:       provides,
@@ -75,7 +78,7 @@ func (i *Info) EthAsset() types.EthAsset {
 }
 
 // Status returns the swap's status.
-func (i *Info) Status() Status {
+func (i *Info) Status() types.Status {
 	return i.status
 }
 
@@ -85,7 +88,7 @@ func (i *Info) StatusCh() <-chan types.Status {
 }
 
 // SetStatus ...
-func (i *Info) SetStatus(s Status) {
+func (i *Info) SetStatus(s types.Status) {
 	i.status = s
 }
 

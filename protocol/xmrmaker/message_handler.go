@@ -25,16 +25,9 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 		return errNilSwapState
 	}
 
-	// s.lockState()
-	// defer s.unlockState()
-
 	if s.ctx.Err() != nil {
 		return fmt.Errorf("protocol exited: %w", s.ctx.Err())
 	}
-
-	// if err := s.checkMessageType(msg); err != nil {
-	// 	return err
-	// }
 
 	switch msg := msg.(type) {
 	case *net.SendKeysMessage:
@@ -54,35 +47,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 
 		// TODO we can actually close the network stream after sending the
 		// XMRLocked message
-
-	// case *message.NotifyReady:
-	// 	log.Debug("contract ready, attempting to claim funds...")
-	// 	close(s.readyCh)
-
-	// 	// contract ready, let's claim our ether
-	// 	txHash, err := s.claimFunds()
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to redeem ether: %w", err)
-	// 	}
-
-	// 	log.Debug("funds claimed!!")
-	// 	resp := &message.NotifyClaimed{
-	// 		TxHash: txHash.String(),
-	// 	}
-
-	// 	s.clearNextExpectedMessage(types.CompletedSuccess)
-	// 	return s.SendSwapMessage(resp, s.ID())
-	// case *message.NotifyRefund:
-	// 	// generate monero wallet, regaining control over locked funds
-	// 	addr, err := s.handleRefund(msg.TxHash)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	s.clearNextExpectedMessage(types.CompletedRefund)
-	// 	log.Infof("regained control over monero account %s", addr)
-	// 	s.CloseProtocolStream(s.ID())
-	// 	return nil
 	default:
 		return errUnexpectedMessageType
 	}
@@ -99,10 +63,6 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 }
 
 func (s *swapState) setNextExpectedEvent(event Event) {
-	// if s == nil {
-	// 	return
-	// }
-
 	// TODO is event ever nil?
 	if event == nil || s.nextExpectedEvent == nil {
 		return
@@ -121,28 +81,6 @@ func (s *swapState) setNextExpectedEvent(event Event) {
 		s.offerExtra.StatusCh <- status
 	}
 }
-
-// func (s *swapState) checkMessageType(msg net.Message) error {
-// 	if msg == nil {
-// 		return errNilMessage
-// 	}
-
-// 	if s == nil || s.nextExpectedEvent == nil {
-// 		return nil
-// 	}
-
-// 	// TODO
-// 	// // XMRTaker might refund anytime before t0 or after t1, so we should allow this.
-// 	// if _, ok := msg.(*message.NotifyRefund); ok {
-// 	// 	return nil
-// 	// }
-
-// 	if msg.Type() != s.nextExpectedMessage.Type() {
-// 		return errIncorrectMessageType
-// 	}
-
-// 	return nil
-// }
 
 func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Message, error) {
 	if msg.Address == "" {
@@ -230,9 +168,6 @@ func (s *swapState) runT0ExpirationHandler() {
 }
 
 func (s *swapState) handleT0Expired() {
-	// s.lockState()
-	// defer s.unlockState()
-
 	// TODO this probably shouldn't happen anymore since we're event-driven
 	if !s.info.Status().IsOngoing() {
 		// swap was already completed, just return
@@ -246,26 +181,6 @@ func (s *swapState) handleT0Expired() {
 		// TODO this is quite bad?
 		log.Errorf("failed to handle t0 expiration: %s", err)
 	}
-
-	// // we can now call Claim()
-	// txHash, err := s.claimFunds()
-	// if err != nil {
-	// 	log.Errorf("failed to claim: err=%s", err)
-	// 	// TODO: retry claim, depending on error (#162)
-	// 	if err = s.exit(); err != nil {
-	// 		log.Errorf("exit failed: err=%s", err)
-	// 	}
-	// 	return
-	// }
-
-	// log.Debug("funds claimed!")
-	// s.clearNextExpectedEvent(types.CompletedSuccess)
-
-	// // send *message.NotifyClaimed
-	// notifyClaimed := &message.NotifyClaimed{TxHash: txHash.String()}
-	// if err := s.SendSwapMessage(notifyClaimed, s.ID()); err != nil {
-	// 	log.Errorf("failed to send NotifyClaimed message: err=%s", err)
-	// }
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {

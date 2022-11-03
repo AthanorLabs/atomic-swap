@@ -76,9 +76,10 @@ func (s *swapState) setNextExpectedMessage(msg net.Message) {
 
 	s.nextExpectedMessage = msg
 
-	stage := pcommon.GetStatus(msg.Type())
-	if s.statusCh != nil && stage != types.UnknownStatus {
-		s.statusCh <- stage
+	status := pcommon.GetStatus(msg.Type())
+	if s.statusCh != nil && status != types.UnknownStatus {
+		s.info.SetStatus(status)
+		s.statusCh <- status
 	}
 }
 
@@ -285,7 +286,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	s.setNextExpectedMessage(&message.NotifyClaimed{})
 	return nil
-	//return &message.NotifyReady{}, nil
 }
 
 func (s *swapState) runT1ExpirationHandler() {
