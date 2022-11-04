@@ -115,7 +115,7 @@ func TestGoerliContract(t *testing.T) {
 	// comment out the next line to test the default goerli contract
 	t.Skip("requires access to non-vetted external goerli node")
 	const goerliEndpoint = "https://ethereum-goerli-rpc.allthatnode.com"
-	// you can temporarily put a funded goerli key below to deploy the test contract
+	// temporarily place a funded goerli private key below to deploy the test contract
 	const goerliKey = ""
 	ec, err := ethclient.Dial(goerliEndpoint)
 	require.NoError(t, err)

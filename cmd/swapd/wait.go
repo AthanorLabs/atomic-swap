@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,9 +14,9 @@ func signalHandler(ctx context.Context, cancel context.CancelFunc) {
 
 	select {
 	case <-sigc:
-		fmt.Println("signal interrupt, shutting down...")
+		log.Info("Signal interrupt, shutting down...")
 		cancel()
 	case <-ctx.Done():
-		fmt.Println("protocol complete, shutting down...")
+		log.Info("Protocol complete, shutting down...")
 	}
 }
