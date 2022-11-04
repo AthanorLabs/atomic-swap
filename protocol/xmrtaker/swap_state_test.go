@@ -3,6 +3,7 @@ package xmrtaker
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"math/big"
 	"os"
 	"sync"
@@ -136,7 +137,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 
 	msg := &net.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
-	require.Equal(t, errMissingKeys, err)
+	require.True(t, errors.Is(err, errMissingKeys))
 
 	err = s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -226,7 +227,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &message.NotifyXMRLock{}
+	s.nextExpectedEvent = &EventXMRLocked{}
 	s.SetSwapTimeout(time.Second * 3)
 
 	err := s.generateAndSetKeys()
@@ -270,7 +271,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 func TestExit_afterSendKeysMessage(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &message.SendKeysMessage{}
+	s.nextExpectedEvent = &EventKeysReceived{}
 	err := s.Exit()
 	require.NoError(t, err)
 	info := s.SwapManager().GetPastSwap(s.info.ID())
@@ -280,7 +281,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &message.NotifyXMRLock{}
+	s.nextExpectedEvent = &EventXMRLocked{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -327,7 +328,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &message.NotifyETHLocked{}
+	s.nextExpectedEvent = &EventExit{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -342,7 +343,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	require.NoError(t, err)
 
 	err = s.Exit()
-	require.Equal(t, errUnexpectedMessageType, err)
+	require.True(t, errors.Is(err, errUnexpectedEventType))
 	info := s.SwapManager().GetPastSwap(s.info.ID())
 	require.Equal(t, types.CompletedAbort, info.Status())
 }

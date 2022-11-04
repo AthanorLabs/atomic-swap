@@ -329,7 +329,7 @@ func (s *swapState) exit() error {
 	default:
 		log.Errorf("unexpected nextExpectedEvent: %T", s.nextExpectedEvent)
 		s.clearNextExpectedEvent(types.CompletedAbort)
-		return errUnexpectedMessageType
+		return errUnexpectedEventType
 	}
 
 	return nil

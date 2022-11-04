@@ -118,7 +118,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.handleEventContractReady(e)
+		err := s.handleEventContractReady()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventContractReady: %w", err)
 			return
@@ -159,7 +159,7 @@ func (s *swapState) handleEventETHLocked(e *EventETHLocked) error {
 	return s.SendSwapMessage(resp, s.ID())
 }
 
-func (s *swapState) handleEventContractReady(_ *EventContractReady) error {
+func (s *swapState) handleEventContractReady() error {
 	log.Debug("contract ready, attempting to claim funds...")
 	close(s.readyCh)
 

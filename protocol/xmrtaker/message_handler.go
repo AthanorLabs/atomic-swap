@@ -9,7 +9,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	//contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -22,13 +21,6 @@ import (
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) error {
-	// s.lockState()
-	// defer s.unlockState()
-
-	// if err := s.checkMessageType(msg); err != nil {
-	// 	return err
-	// }
-
 	switch msg := msg.(type) {
 	case *net.SendKeysMessage:
 		event := newEventKeysReceived(msg)
@@ -44,14 +36,6 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 		if err != nil {
 			return err
 		}
-	// case *message.NotifyClaimed:
-	// 	_, err := s.handleNotifyClaimed(msg.TxHash)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	s.clearNextExpectedMessage(types.CompletedSuccess)
-	// 	s.CloseProtocolStream(s.ID())
 	default:
 		return errUnexpectedMessageType
 	}
@@ -80,26 +64,14 @@ func (s *swapState) setNextExpectedEvent(event Event) {
 
 	s.nextExpectedEvent = event
 	status := getStatus(event)
+	if status != types.UnknownStatus {
+		s.info.SetStatus(status)
+	}
+
 	if s.statusCh != nil && status != types.UnknownStatus {
 		s.statusCh <- status
 	}
 }
-
-// func (s *swapState) checkMessageType(msg net.Message) error {
-// 	if msg == nil {
-// 		return errNilMessage
-// 	}
-
-// 	if s.nextExpectedMessage == nil {
-// 		return nil
-// 	}
-
-// 	if msg.Type() != s.nextExpectedMessage.Type() {
-// 		return errIncorrectMessageType
-// 	}
-
-// 	return nil
-// }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.ProvidedAmount < s.info.ReceivedAmount() {
@@ -157,60 +129,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
 
 	// start goroutine to check that XMRMaker locks before t_0
-	go func() {
-		// TODO: this variable is so that we definitely refund before t0.
-		// Current algorithm is to trigger the timeout when only 15% of the allotted
-		// time is remaining. If the block interval is 1 second on a test network and
-		// and T0 is 7 seconds after swap creation, we need the refund to trigger more
-		// than one second before the block with a timestamp exactly equal to T0 to
-		// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
-		// may be reasonable even with large timeouts on production networks, but more
-		// research is needed.
-		t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
-		deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
-		deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
-		giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
-		defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
-		log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
-
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-s.xmrLockedCh:
-			return
-		case <-giveUpAndRefundTimer.C:
-			event := newEventShouldRefund()
-			s.eventCh <- event
-			err := <-event.errCh
-			if err != nil {
-				// TODO what should we do here? this would be bad
-				log.Errorf("failed to refund: %s", err)
-			}
-
-			// if !s.info.Status().IsOngoing() {
-			// 	return
-			// }
-
-			// // XMRMaker hasn't locked yet, let's call refund
-			// txhash, err := s.refund()
-			// if err != nil {
-			// 	if !strings.Contains(err.Error(), revertSwapCompleted) {
-			// 		log.Errorf("failed to refund: err=%s", err)
-			// 	} else {
-			// 		log.Debugf("failed to refund (okay): err=%s", err)
-			// 	}
-			// 	return
-			// }
-
-			// log.Infof("got our ETH back: tx hash=%s", txhash)
-
-			// // // send NotifyRefund msg
-			// // msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
-			// // if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
-			// // 	log.Errorf("failed to send refund message: err=%s", err)
-			// // }
-		}
-	}()
+	go s.runT0ExpirationHandler()
 
 	out := &message.NotifyETHLocked{
 		Address:        s.ContractAddr().String(),
@@ -220,6 +139,38 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	return out, nil
+}
+
+func (s *swapState) runT0ExpirationHandler() {
+	// TODO: this variable is so that we definitely refund before t0.
+	// Current algorithm is to trigger the timeout when only 15% of the allotted
+	// time is remaining. If the block interval is 1 second on a test network and
+	// and T0 is 7 seconds after swap creation, we need the refund to trigger more
+	// than one second before the block with a timestamp exactly equal to T0 to
+	// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
+	// may be reasonable even with large timeouts on production networks, but more
+	// research is needed.
+	t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
+	deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
+	deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
+	giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
+	defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
+	log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
+
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-s.xmrLockedCh:
+		return
+	case <-giveUpAndRefundTimer.C:
+		event := newEventShouldRefund()
+		s.eventCh <- event
+		err := <-event.errCh
+		if err != nil {
+			// TODO what should we do here? this would be bad
+			log.Errorf("failed to refund: %s", err)
+		}
+	}
 }
 
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
@@ -323,26 +274,6 @@ func (s *swapState) runT1ExpirationHandler() {
 }
 
 func (s *swapState) handleT1Expired() {
-	// s.lockState()
-	// defer s.unlockState()
-
-	// if !s.info.Status().IsOngoing() {
-	// 	return
-	// }
-
-	// // XMRMaker hasn't claimed, and we're after t_1. let's call Refund
-	// txhash, err := s.refund()
-	// if err != nil {
-	// 	log.Errorf("failed to refund: err=%s", err)
-	// 	return
-	// }
-
-	// log.Infof("got our ETH back: tx hash=%s", txhash)
-
-	// if err = s.exit(); err != nil {
-	// 	log.Errorf("exit failed: err=%s", err)
-	// }
-
 	event := newEventShouldRefund()
 	s.eventCh <- event
 	err := <-event.errCh
@@ -351,26 +282,3 @@ func (s *swapState) handleT1Expired() {
 		log.Errorf("failed to refund: %s", err)
 	}
 }
-
-// // handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
-// // it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
-// func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-// 	log.Debugf("got NotifyClaimed, txHash=%s", txHash)
-// 	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
-// 	}
-
-// 	if len(receipt.Logs) == 0 {
-// 		return "", errClaimTxHasNoLogs
-// 	}
-
-// 	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
-
-// 	skB, err := contracts.GetSecretFromLog(receipt.Logs[0], "Claimed")
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to get secret from log: %w", err)
-// 	}
-
-// 	return s.claimMonero(skB)
-// }

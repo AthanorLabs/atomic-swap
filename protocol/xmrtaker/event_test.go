@@ -1,6 +1,7 @@
 package xmrtaker
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -29,7 +30,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
 	err = s.HandleProtocolMessage(msg)
-	require.Equal(t, errMissingKeys, err)
+	require.True(t, errors.Is(err, errMissingKeys))
 
 	err = s.generateAndSetKeys()
 	require.NoError(t, err)

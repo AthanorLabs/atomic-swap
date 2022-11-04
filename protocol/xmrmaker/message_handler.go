@@ -68,6 +68,10 @@ func (s *swapState) setNextExpectedEvent(event Event) {
 
 	s.nextExpectedEvent = event
 	status := getStatus(event)
+	if status != types.UnknownStatus {
+		s.info.SetStatus(status)
+	}
+
 	if s.offerExtra.StatusCh != nil && status != types.UnknownStatus {
 		s.offerExtra.StatusCh <- status
 	}

@@ -163,7 +163,7 @@ func (s *swapState) handleEvent(event Event) {
 		// 	e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
 		// }
 
-		err := s.handleEventShouldRefund(e)
+		err := s.handleEventShouldRefund()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %T: %w", e, err)
 		}
@@ -205,7 +205,7 @@ func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
 	return nil
 }
 
-func (s *swapState) handleEventShouldRefund(event *EventShouldRefund) error {
+func (s *swapState) handleEventShouldRefund() error {
 	// TODO could this happen still?
 	if !s.info.Status().IsOngoing() {
 		return nil
