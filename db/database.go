@@ -19,14 +19,14 @@ const (
 type Database struct {
 	// offerTable is a key-value store where all the keys are prefixed by offerPrefix
 	// in the underlying database.
-	// the key is the 32-byte offer ID and the value is a JSON-marshaled *types.Offer.
+	// the key is the 32-byte offer ID and the value is a JSON-marshalled *types.Offer.
 	// offerTable entries are stored when offers are made by swapd.
 	// they are removed when the offer is taken.
 	offerTable chaindb.Database
 	// swapTable is a key-value store where all the keys are prefixed by swapPrefix
-	// in the underlying database. the value is a JSON-marshaled *swap.Info.
+	// in the underlying database.
 	// the key is the 32-byte swap ID (which is the same as the ID of the offer taken
-	// to start the swap) and the value is a JSON-marshaled *swap.Info.
+	// to start the swap) and the value is a JSON-marshalled *swap.Info.
 	// swapTable entries are added when a swap begins, and they are never deleted;
 	// only their `Status` field within *swap.Info may be updated.
 	swapTable chaindb.Database
