@@ -285,27 +285,15 @@ func (s *swapState) exit() error {
 		// we are fine, as we only just initiated the protocol.
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *EventXMRLocked:
-		// we already deployed the contract, so we should call Refund().
-		txHash, err := s.tryRefund()
-		if err != nil {
-			if strings.Contains(err.Error(), revertSwapCompleted) {
-				return s.tryClaim()
-			}
-
-			s.clearNextExpectedEvent(types.CompletedAbort)
-			log.Errorf("failed to refund: err=%s", err)
-			return err
-		}
-
-		s.clearNextExpectedEvent(types.CompletedRefund)
-		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case *EventETHClaimed:
-		// the XMR has been locked, but the ETH hasn't been claimed.
+	case *EventXMRLocked, *EventETHClaimed:
+		// for EventXMRLocked, we already deployed the contract,
+		// so we should call Refund().
+		//
+		// for EventETHClaimed, the XMR has been locked, but the
+		// ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
-			// seems like XMRMaker claimed already - try to claim monero
 			if strings.Contains(err.Error(), revertSwapCompleted) {
 				return s.tryClaim()
 			}
@@ -318,6 +306,8 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case nil:
+		// the swap completed already
+		// TODO should we just return here?
 		return s.tryClaim()
 	default:
 		log.Errorf("unexpected nextExpectedEvent: %T", s.nextExpectedEvent)
@@ -372,6 +362,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
+
 	switch stage {
 	case contracts.StageInvalid:
 		return ethcommon.Hash{}, errRefundInvalid
@@ -382,6 +373,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	default:
 		panic("Unhandled stage value")
 	}
+
 	isReady := stage == contracts.StageReady
 
 	ts, err := s.LatestBlockTimestamp(s.ctx)
@@ -393,7 +385,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
 	if ts.Before(s.t0) && !isReady {
-		txHash, err := s.refund() //nolint:govet
+		txHash, err := s.refund()
 		// TODO: Have refund() return errors that we can use errors.Is to check against
 		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
 			return txHash, err
@@ -405,15 +397,30 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		log.Warnf("First refund attempt failed: err=%s", err)
 	}
 
-	if ts.Before(s.t1) {
-		// we've passed t0 but aren't past t1 yet, so wait until t1
-		log.Infof("Waiting until time %s to refund", s.t1)
-		err = s.WaitForTimestamp(s.ctx, s.t1)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
+	if ts.After(s.t1) {
+		return s.refund()
 	}
-	return s.refund()
+
+	// the contract is "ready", so we can't do anything until
+	// the counterparty claims or until t1 passes.
+	//
+	// we let the runT1ExpirationHandler() routine continue to run and read
+	// from s.eventCh for EventShouldRefund or EventETHClaimed.
+	// (since this function is called from inside the event handler routine,
+	// it won't handle those events while this function is executing.)
+	log.Infof("waiting until time %s to refund", s.t1)
+
+	event := <-s.eventCh
+	switch event.(type) {
+	case *EventShouldRefund:
+		return s.refund()
+	case *EventETHClaimed:
+		// we should claim
+		// this causes the caling function to claim
+		return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
+	default:
+		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %T", event))
+	}
 }
 
 func (s *swapState) setTimeouts(t0, t1 *big.Int) {

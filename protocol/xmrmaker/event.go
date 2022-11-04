@@ -9,15 +9,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
-// getStatus returns the status corresponding to an Event.
+// getStatus returns the status corresponding to the next expected event.
 func getStatus(t Event) types.Status {
 	switch t.(type) {
 	case *EventETHLocked:
 		return types.KeysExchanged
 	case *EventContractReady:
 		return types.XMRLocked
-	case *EventETHRefunded:
-		return types.ContractReady
 	default:
 		return types.UnknownStatus
 	}

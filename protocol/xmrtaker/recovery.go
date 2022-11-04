@@ -108,6 +108,8 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 	}
 
 	// otherwise, let's try to refund
+	// TODO: also run runContractEventWatcher to watch for Claimed
+	go rs.ss.runT1ExpirationHandler()
 	txHash, err := rs.ss.tryRefund()
 	if err != nil {
 		return nil, err
