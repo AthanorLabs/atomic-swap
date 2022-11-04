@@ -12,12 +12,24 @@ import (
 const (
 	offerPrefix = "offer"
 	swapPrefix  = "swap"
+	idLength    = 32
 )
 
 // Database is the persistent datastore used by swapd.
 type Database struct {
+	// offerTable is a key-value store where all the keys are prefixed by offerPrefix
+	// in the underlying database.
+	// the key is the 32-byte offer ID and the value is a JSON-marshaled *types.Offer.
+	// offerTable entries are stored when offers are made by swapd.
+	// they are removed when the offer is taken.
 	offerTable chaindb.Database
-	swapTable  chaindb.Database
+	// swapTable is a key-value store where all the keys are prefixed by swapPrefix
+	// in the underlying database. the value is a JSON-marshaled *swap.Info.
+	// the key is the 32-byte swap ID (which is the same as the ID of the offer taken
+	// to start the swap) and the value is a JSON-marshaled *swap.Info.
+	// swapTable entries are added when a swap begins, and they are never deleted;
+	// only their `Status` field within *swap.Info may be updated.
+	swapTable chaindb.Database
 }
 
 // NewDatabase returns a new *Database.
@@ -27,18 +39,20 @@ func NewDatabase(cfg *chaindb.Config) (*Database, error) {
 		return nil, err
 	}
 
-	offerTable := chaindb.NewTable(db, offerPrefix)
-	swapTable := chaindb.NewTable(db, swapPrefix)
-
 	return &Database{
-		offerTable: offerTable,
-		swapTable:  swapTable,
+		offerTable: chaindb.NewTable(db, offerPrefix),
+		swapTable:  chaindb.NewTable(db, swapPrefix),
 	}, nil
 }
 
 // Close flushes and closes the database.
 func (db *Database) Close() error {
 	err := db.offerTable.Close()
+	if err != nil {
+		return err
+	}
+
+	err = db.swapTable.Close()
 	if err != nil {
 		return err
 	}
@@ -67,12 +81,12 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 	iter := db.offerTable.NewIterator()
 	defer iter.Release()
 
-	offers := []*types.Offer{}
+	var offers []*types.Offer
 	for iter.Valid() {
 		key := iter.Key()
 
 		// if the key becomes longer than 32, we're not iterating over offers
-		if len(key) > 32 {
+		if len(key) > idLength {
 			break
 		}
 
@@ -98,9 +112,8 @@ func (db *Database) ClearAllOffers() error {
 	defer iter.Release()
 
 	for iter.Valid() {
-		// key is the offer ID
-		key := iter.Key()
-		err := db.offerTable.Del(key)
+		offerID := iter.Key()
+		err := db.offerTable.Del(offerID)
 		if err != nil {
 			return err
 		}
@@ -111,6 +124,7 @@ func (db *Database) ClearAllOffers() error {
 }
 
 // PutSwap puts the given swap in the database.
+// If a swap with the same ID is already in the database, it overwrites it.
 func (db *Database) PutSwap(s *swap.Info) error {
 	val, err := json.Marshal(s)
 	if err != nil {
@@ -147,12 +161,12 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 	iter := db.swapTable.NewIterator()
 	defer iter.Release()
 
-	swaps := []*swap.Info{}
+	var swaps []*swap.Info
 	for iter.Valid() {
 		key := iter.Key()
 
 		// if the key becomes longer than 32, we're not iterating over swaps
-		if len(key) > 32 {
+		if len(key) > idLength {
 			break
 		}
 

@@ -97,3 +97,32 @@ func TestDatabase_SwapTable(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(swaps))
 }
+
+func TestDatabase_SwapTable_Update(t *testing.T) {
+	cfg := &chaindb.Config{
+		DataDir:  t.TempDir(),
+		InMemory: true,
+	}
+
+	db, err := NewDatabase(cfg)
+	require.NoError(t, err)
+
+	id := types.Hash{0x1}
+	infoA := &swap.Info{
+		ID: id,
+	}
+	err = db.PutSwap(infoA)
+	require.NoError(t, err)
+
+	infoB := &swap.Info{
+		ID:     id,
+		Status: types.CompletedSuccess,
+	}
+
+	err = db.PutSwap(infoB)
+	require.NoError(t, err)
+
+	res, err := db.GetSwap(id)
+	require.NoError(t, err)
+	require.Equal(t, infoB, res)
+}
