@@ -19,7 +19,6 @@ const (
 	SendKeysType
 	NotifyETHLockedType
 	NotifyXMRLockType
-	NotifyClaimedType
 	NilType
 )
 
@@ -33,8 +32,6 @@ func (t Type) String() string {
 		return "NotifyETHLocked"
 	case NotifyXMRLockType:
 		return "NotifyXMRLock"
-	case NotifyClaimedType: // TODO remove
-		return "NotifyClaimed"
 	default:
 		return "unknown"
 	}
@@ -74,12 +71,6 @@ func DecodeMessage(b []byte) (Message, error) {
 		return m, nil
 	case NotifyXMRLockType:
 		var m *NotifyXMRLock
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
-	case NotifyClaimedType:
-		var m *NotifyClaimed
 		if err := json.Unmarshal(b[1:], &m); err != nil {
 			return nil, err
 		}
@@ -231,29 +222,4 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 // Type ...
 func (m *NotifyXMRLock) Type() Type {
 	return NotifyXMRLockType
-}
-
-// NotifyClaimed is sent by XMRMaker to XMRTaker after claiming his ETH.
-type NotifyClaimed struct {
-	TxHash string
-}
-
-// String ...
-func (m *NotifyClaimed) String() string {
-	return fmt.Sprintf("NotifyClaimed %s", m.TxHash)
-}
-
-// Encode ...
-func (m *NotifyClaimed) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return append([]byte{byte(NotifyClaimedType)}, b...), nil
-}
-
-// Type ...
-func (m *NotifyClaimed) Type() Type {
-	return NotifyClaimedType
 }

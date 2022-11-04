@@ -195,7 +195,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyXMRLock{}
+	s.nextExpectedEvent = &EventXMRLocked{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedMessage, &message.NotifyClaimed{})
+	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
 }
 
 // test the case where the monero is locked, but XMRMaker never claims.
@@ -226,7 +226,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyXMRLock{}
+	s.nextExpectedEvent = &message.NotifyXMRLock{}
 	s.SetSwapTimeout(time.Second * 3)
 
 	err := s.generateAndSetKeys()
@@ -250,7 +250,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedMessage, &message.NotifyClaimed{})
+	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
 
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {
@@ -267,100 +267,10 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, uint64(0), balance.Uint64())
 }
 
-func TestSwapState_NotifyClaimed(t *testing.T) {
-	s := newTestInstance(t)
-	defer s.cancel()
-	s.SetSwapTimeout(time.Minute * 2)
-
-	// close swap-deposit-wallet
-	backend := newBackend(t)
-	err := backend.CreateWallet("test-wallet", "")
-	require.NoError(t, err)
-
-	monero.MineMinXMRBalance(t, backend, common.MoneroToPiconero(1))
-
-	// invalid SendKeysMessage should result in an error
-	msg := &net.SendKeysMessage{}
-	err = s.HandleProtocolMessage(msg)
-	require.Equal(t, errMissingKeys, err)
-
-	err = s.generateAndSetKeys()
-	require.NoError(t, err)
-
-	// handle valid SendKeysMessage
-	msg, err = s.SendKeysMessage()
-	require.NoError(t, err)
-	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = s.EthAddress().String()
-
-	err = s.HandleProtocolMessage(msg)
-	require.NoError(t, err)
-
-	resp := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyETHLockedType, resp.Type())
-	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
-	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
-	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
-
-	// simulate xmrmaker locking xmr
-	amt := common.MoneroAmount(1000000000)
-	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
-
-	// lock xmr
-	tResp, err := backend.Transfer(xmrAddr, 0, uint64(amt))
-	require.NoError(t, err)
-	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, uint64(amt), tResp.Amount)
-
-	transfer, err := backend.WaitForTransReceipt(&monero.WaitForReceiptRequest{
-		Ctx:              s.ctx,
-		TxID:             tResp.TxHash,
-		DestAddr:         xmrAddr,
-		NumConfirmations: monero.MinSpendConfirmations,
-		AccountIdx:       0,
-	})
-	require.NoError(t, err)
-	t.Logf("Transfer mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
-
-	// send notification that monero was locked
-	lmsg := &message.NotifyXMRLock{
-		Address: string(xmrAddr),
-		TxID:    transfer.TxID,
-	}
-
-	// TODO assert ready was called
-	err = s.HandleProtocolMessage(lmsg)
-	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedMessage, &message.NotifyClaimed{})
-	require.Equal(t, types.ContractReady, s.info.Status())
-
-	// simulate xmrmaker calling claim
-	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
-	secret := s.privkeys.SpendKeyBytes()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret))
-
-	txOpts, err := s.TxOpts()
-	require.NoError(t, err)
-	tx, err := s.Contract().Claim(txOpts, s.contractSwap, sc)
-	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
-
-	// handled the claimed message should result in the monero wallet being created
-	cmsg := &message.NotifyClaimed{
-		TxHash: tx.Hash().String(),
-	}
-
-	err = s.HandleProtocolMessage(cmsg)
-	require.NoError(t, err)
-}
-
 func TestExit_afterSendKeysMessage(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.SendKeysMessage{}
+	s.nextExpectedEvent = &message.SendKeysMessage{}
 	err := s.Exit()
 	require.NoError(t, err)
 	info := s.SwapManager().GetPastSwap(s.info.ID())
@@ -370,7 +280,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyXMRLock{}
+	s.nextExpectedEvent = &message.NotifyXMRLock{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -393,7 +303,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 func TestExit_afterNotifyClaimed(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyClaimed{}
+	s.nextExpectedEvent = &EventETHClaimed{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -417,7 +327,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedMessage = &message.NotifyETHLocked{}
+	s.nextExpectedEvent = &message.NotifyETHLocked{}
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)

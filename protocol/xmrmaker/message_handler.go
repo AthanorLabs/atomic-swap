@@ -134,6 +134,8 @@ func (s *swapState) runT0ExpirationHandler() {
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
 
+	// note: this will cause unit tests to hang if not running ganache
+	// with --miner.blockTime!!!
 	waitCh := make(chan error)
 	go func() {
 		waitCh <- s.WaitForTimestamp(waitCtx, s.t0)
@@ -144,6 +146,7 @@ func (s *swapState) runT0ExpirationHandler() {
 	case <-s.ctx.Done():
 		return
 	case <-s.readyCh:
+		log.Debugf("returning from runT0ExpirationHandler as contract was set to ready")
 		return
 	case err := <-waitCh:
 		if err != nil {
@@ -152,6 +155,7 @@ func (s *swapState) runT0ExpirationHandler() {
 			log.Errorf("Failure waiting for T0 timeout: err=%s", err)
 			return
 		}
+		log.Debugf("reached t0, time to claim")
 		s.handleT0Expired()
 	}
 }

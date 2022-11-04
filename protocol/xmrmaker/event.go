@@ -26,7 +26,7 @@ func getStatus(t Event) types.Status {
 // Event represents a swap state event.
 type Event interface{}
 
-// EventETHLocked is the second expected event. It represents ETH being locked
+// EventETHLocked is the first expected event. It represents ETH being locked
 // on-chain.
 type EventETHLocked struct {
 	message *message.NotifyETHLocked
@@ -40,7 +40,7 @@ func newEventETHLocked(msg *message.NotifyETHLocked) *EventETHLocked {
 	}
 }
 
-// EventContractReady is the third expected event. It represents the contract being
+// EventContractReady is the second expected event. It represents the contract being
 // ready for us to claim the ETH.
 type EventContractReady struct {
 	errCh chan error
@@ -95,49 +95,56 @@ func (s *swapState) handleEvent(event Event) {
 	switch e := event.(type) {
 	case *EventETHLocked:
 		log.Infof("EventETHLocked")
+		defer close(e.errCh)
 
 		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventETHLocked{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+			return
 		}
 
 		err := s.handleEventETHLocked(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
+			return
 		}
-		close(e.errCh)
+
 		s.setNextExpectedEvent(&EventContractReady{})
 	case *EventContractReady:
 		log.Infof("EventContractReady")
+		defer close(e.errCh)
 
 		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventContractReady{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+			return
 		}
 
 		err := s.handleEventContractReady(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventContractReady: %w", err)
+			return
 		}
-		close(e.errCh)
+
 		s.setNextExpectedEvent(&EventExit{})
 	case *EventETHRefunded:
 		log.Infof("EventETHRefunded")
+		defer close(e.errCh)
+
 		err := s.handleEventETHRefunded(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHRefunded: %w", err)
+			return
 		}
 
-		close(e.errCh)
 		s.setNextExpectedEvent(&EventExit{})
 	case *EventExit:
 		// this can happen at any stage.
 		log.Infof("EventExit")
+		defer close(e.errCh)
 
 		err := s.exit()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventExit: %w", err)
 		}
-
-		close(e.errCh)
 	default:
 		panic("unhandled event type")
 	}
@@ -166,13 +173,9 @@ func (s *swapState) handleEventContractReady(_ *EventContractReady) error {
 		return fmt.Errorf("failed to claim: %w", err)
 	}
 
-	log.Debug("funds claimed, tx=%s", txHash)
-	out := &message.NotifyClaimed{
-		TxHash: txHash.String(),
-	}
-
+	log.Debug("funds claimed, tx: %s", txHash)
 	s.clearNextExpectedEvent(types.CompletedSuccess)
-	return s.SendSwapMessage(out, s.ID())
+	return nil
 }
 
 func (s *swapState) handleEventETHRefunded(e *EventETHRefunded) error {

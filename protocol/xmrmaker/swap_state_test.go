@@ -326,7 +326,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		}
 	}
 
-	require.NotNil(t, s.Net().(*mockNet).LastSentMessage())
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }
 

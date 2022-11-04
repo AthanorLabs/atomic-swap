@@ -7,7 +7,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
@@ -34,10 +33,6 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	s.eventCh <- event
 	err = <-event.errCh
 	require.NoError(t, err)
-
-	resp := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyClaimedType, resp.Type())
 	require.Equal(t, types.CompletedSuccess, s.info.Status())
 }
 

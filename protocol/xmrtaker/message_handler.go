@@ -3,13 +3,13 @@ package xmrtaker
 import (
 	"context"
 	"fmt"
-	"strings"
+	"reflect"
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	//contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -22,34 +22,36 @@ import (
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
 func (s *swapState) HandleProtocolMessage(msg net.Message) error {
-	s.lockState()
-	defer s.unlockState()
+	// s.lockState()
+	// defer s.unlockState()
 
-	if err := s.checkMessageType(msg); err != nil {
-		return err
-	}
+	// if err := s.checkMessageType(msg); err != nil {
+	// 	return err
+	// }
 
 	switch msg := msg.(type) {
 	case *net.SendKeysMessage:
-		resp, err := s.handleSendKeysMessage(msg)
+		event := newEventKeysReceived(msg)
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
 			return err
 		}
-
-		return s.SendSwapMessage(resp, s.ID())
 	case *message.NotifyXMRLock:
-		err := s.handleNotifyXMRLock(msg)
+		event := newEventXMRLocked(msg)
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
 			return err
 		}
-	case *message.NotifyClaimed:
-		_, err := s.handleNotifyClaimed(msg.TxHash)
-		if err != nil {
-			return err
-		}
+	// case *message.NotifyClaimed:
+	// 	_, err := s.handleNotifyClaimed(msg.TxHash)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		s.clearNextExpectedMessage(types.CompletedSuccess)
-		s.CloseProtocolStream(s.ID())
+	// 	s.clearNextExpectedMessage(types.CompletedSuccess)
+	// 	s.CloseProtocolStream(s.ID())
 	default:
 		return errUnexpectedMessageType
 	}
@@ -57,47 +59,47 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 	return nil
 }
 
-func (s *swapState) clearNextExpectedMessage(status types.Status) {
-	s.nextExpectedMessage = nil
+func (s *swapState) clearNextExpectedEvent(status types.Status) {
+	s.nextExpectedEvent = nil
 	s.info.SetStatus(status)
 	if s.statusCh != nil {
 		s.statusCh <- status
 	}
 }
 
-func (s *swapState) setNextExpectedMessage(msg net.Message) {
-	if s == nil || s.nextExpectedMessage == nil {
+func (s *swapState) setNextExpectedEvent(event Event) {
+	if s.nextExpectedEvent == nil {
 		return
 	}
 
-	if msg.Type() == s.nextExpectedMessage.Type() {
-		return
+	// alternatively make a Type() method for the Event interface
+	// can also change nextExpectedEvent to EventType
+	if reflect.TypeOf(event) == reflect.TypeOf(s.nextExpectedEvent) {
+		panic("cannot set next expected event to same as current")
 	}
 
-	s.nextExpectedMessage = msg
-
-	status := pcommon.GetStatus(msg.Type())
+	s.nextExpectedEvent = event
+	status := getStatus(event)
 	if s.statusCh != nil && status != types.UnknownStatus {
-		s.info.SetStatus(status)
 		s.statusCh <- status
 	}
 }
 
-func (s *swapState) checkMessageType(msg net.Message) error {
-	if msg == nil {
-		return errNilMessage
-	}
+// func (s *swapState) checkMessageType(msg net.Message) error {
+// 	if msg == nil {
+// 		return errNilMessage
+// 	}
 
-	if s.nextExpectedMessage == nil {
-		return nil
-	}
+// 	if s.nextExpectedMessage == nil {
+// 		return nil
+// 	}
 
-	if msg.Type() != s.nextExpectedMessage.Type() {
-		return errIncorrectMessageType
-	}
+// 	if msg.Type() != s.nextExpectedMessage.Type() {
+// 		return errIncorrectMessageType
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
 	if msg.ProvidedAmount < s.info.ReceivedAmount() {
@@ -177,35 +179,38 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		case <-s.xmrLockedCh:
 			return
 		case <-giveUpAndRefundTimer.C:
-			s.lockState()
-			defer s.unlockState()
-
-			if !s.info.Status().IsOngoing() {
-				return
-			}
-
-			// XMRMaker hasn't locked yet, let's call refund
-			txhash, err := s.refund()
+			event := newEventShouldRefund()
+			s.eventCh <- event
+			err := <-event.errCh
 			if err != nil {
-				if !strings.Contains(err.Error(), revertSwapCompleted) {
-					log.Errorf("failed to refund: err=%s", err)
-				} else {
-					log.Debugf("failed to refund (okay): err=%s", err)
-				}
-				return
+				// TODO what should we do here? this would be bad
+				log.Errorf("failed to refund: %s", err)
 			}
 
-			log.Infof("got our ETH back: tx hash=%s", txhash)
-
-			// // send NotifyRefund msg
-			// msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
-			// if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
-			// 	log.Errorf("failed to send refund message: err=%s", err)
+			// if !s.info.Status().IsOngoing() {
+			// 	return
 			// }
+
+			// // XMRMaker hasn't locked yet, let's call refund
+			// txhash, err := s.refund()
+			// if err != nil {
+			// 	if !strings.Contains(err.Error(), revertSwapCompleted) {
+			// 		log.Errorf("failed to refund: err=%s", err)
+			// 	} else {
+			// 		log.Debugf("failed to refund (okay): err=%s", err)
+			// 	}
+			// 	return
+			// }
+
+			// log.Infof("got our ETH back: tx hash=%s", txhash)
+
+			// // // send NotifyRefund msg
+			// // msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
+			// // if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
+			// // 	log.Errorf("failed to send refund message: err=%s", err)
+			// // }
 		}
 	}()
-
-	s.setNextExpectedMessage(&message.NotifyXMRLock{})
 
 	out := &message.NotifyETHLocked{
 		Address:        s.ContractAddr().String(),
@@ -283,8 +288,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	}
 
 	go s.runT1ExpirationHandler()
-
-	s.setNextExpectedMessage(&message.NotifyClaimed{})
 	return nil
 }
 
@@ -320,46 +323,54 @@ func (s *swapState) runT1ExpirationHandler() {
 }
 
 func (s *swapState) handleT1Expired() {
-	s.lockState()
-	defer s.unlockState()
+	// s.lockState()
+	// defer s.unlockState()
 
-	if !s.info.Status().IsOngoing() {
-		return
-	}
+	// if !s.info.Status().IsOngoing() {
+	// 	return
+	// }
 
-	// XMRMaker hasn't claimed, and we're after t_1. let's call Refund
-	txhash, err := s.refund()
+	// // XMRMaker hasn't claimed, and we're after t_1. let's call Refund
+	// txhash, err := s.refund()
+	// if err != nil {
+	// 	log.Errorf("failed to refund: err=%s", err)
+	// 	return
+	// }
+
+	// log.Infof("got our ETH back: tx hash=%s", txhash)
+
+	// if err = s.exit(); err != nil {
+	// 	log.Errorf("exit failed: err=%s", err)
+	// }
+
+	event := newEventShouldRefund()
+	s.eventCh <- event
+	err := <-event.errCh
 	if err != nil {
-		log.Errorf("failed to refund: err=%s", err)
-		return
-	}
-
-	log.Infof("got our ETH back: tx hash=%s", txhash)
-
-	if err = s.exit(); err != nil {
-		log.Errorf("exit failed: err=%s", err)
+		// TODO what should we do here? this would be bad
+		log.Errorf("failed to refund: %s", err)
 	}
 }
 
-// handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
-// it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
-func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-	log.Debugf("got NotifyClaimed, txHash=%s", txHash)
-	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
-	if err != nil {
-		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
-	}
+// // handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
+// // it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
+// func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
+// 	log.Debugf("got NotifyClaimed, txHash=%s", txHash)
+// 	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
+// 	}
 
-	if len(receipt.Logs) == 0 {
-		return "", errClaimTxHasNoLogs
-	}
+// 	if len(receipt.Logs) == 0 {
+// 		return "", errClaimTxHasNoLogs
+// 	}
 
-	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
+// 	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
 
-	skB, err := contracts.GetSecretFromLog(receipt.Logs[0], "Claimed")
-	if err != nil {
-		return "", fmt.Errorf("failed to get secret from log: %w", err)
-	}
+// 	skB, err := contracts.GetSecretFromLog(receipt.Logs[0], "Claimed")
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to get secret from log: %w", err)
+// 	}
 
-	return s.claimMonero(skB)
-}
+// 	return s.claimMonero(skB)
+// }

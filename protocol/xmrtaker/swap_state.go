@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -16,15 +16,16 @@ import (
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
 )
 
@@ -37,9 +38,9 @@ type swapState struct {
 	backend.Backend
 	sender txsender.Sender
 
-	ctx          context.Context
-	cancel       context.CancelFunc
-	stateMu      sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	//stateMu      sync.Mutex
 	infoFile     string
 	transferBack bool
 
@@ -69,14 +70,15 @@ type swapState struct {
 	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
 
-	// next expected network message
-	nextExpectedMessage net.Message
+	nextExpectedEvent Event
 
 	// channels
-	xmrLockedCh chan struct{}
-	claimedCh   chan struct{}
-	done        chan struct{}
-	exited      bool
+	eventCh      chan Event
+	logClaimedCh chan []ethtypes.Log
+	xmrLockedCh  chan struct{}
+	claimedCh    chan struct{}
+	done         chan struct{}
+	exited       bool
 }
 
 func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
@@ -131,22 +133,48 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
+	ethHeader, err := b.EthClient().HeaderByNumber(b.Ctx(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// set up ethereum event watchers
+	logClaimedCh := make(chan []ethtypes.Log)
+
 	ctx, cancel := context.WithCancel(b.Ctx())
+
+	claimedWatcher := watcher.NewEventFilterer(
+		ctx,
+		b.EthClient(),
+		b.ContractAddr(),
+		ethHeader.Number,
+		claimedTopic,
+		logClaimedCh,
+	)
+
+	err = claimedWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
 	s := &swapState{
-		ctx:                 ctx,
-		cancel:              cancel,
-		Backend:             b,
-		sender:              sender,
-		infoFile:            infofile,
-		transferBack:        transferBack,
-		walletScanHeight:    walletScanHeight,
-		nextExpectedMessage: &net.SendKeysMessage{},
-		xmrLockedCh:         make(chan struct{}),
-		claimedCh:           make(chan struct{}),
-		done:                make(chan struct{}),
-		info:                info,
-		statusCh:            statusCh,
-		ethAsset:            ethAsset,
+		ctx:               ctx,
+		cancel:            cancel,
+		Backend:           b,
+		sender:            sender,
+		infoFile:          infofile,
+		transferBack:      transferBack,
+		walletScanHeight:  walletScanHeight,
+		nextExpectedEvent: &EventKeysReceived{},
+		eventCh:           make(chan Event),
+		logClaimedCh:      logClaimedCh,
+		xmrLockedCh:       make(chan struct{}),
+		claimedCh:         make(chan struct{}),
+		done:              make(chan struct{}),
+		info:              info,
+		statusCh:          statusCh,
+		ethAsset:          ethAsset,
 	}
 
 	if err := pcommon.WriteContractAddressToFile(s.infoFile, b.ContractAddr().String()); err != nil {
@@ -154,16 +182,18 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	}
 
 	go s.waitForSendKeysMessage()
+	go s.runHandleEvents()
+	go s.runContractEventWatcher()
 	return s, nil
 }
 
-func (s *swapState) lockState() {
-	s.stateMu.Lock()
-}
+// func (s *swapState) lockState() {
+// 	s.stateMu.Lock()
+// }
 
-func (s *swapState) unlockState() {
-	s.stateMu.Unlock()
-}
+// func (s *swapState) unlockState() {
+// 	s.stateMu.Unlock()
+// }
 
 func (s *swapState) waitForSendKeysMessage() {
 	waitDuration := time.Minute
@@ -175,7 +205,7 @@ func (s *swapState) waitForSendKeysMessage() {
 	}
 
 	// check if we've received a response from the counterparty yet
-	if s.nextExpectedMessage != (&net.SendKeysMessage{}) {
+	if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventKeysReceived{}) {
 		return
 	}
 
@@ -224,9 +254,9 @@ func (s *swapState) ID() types.Hash {
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
-	s.lockState()
-	defer s.unlockState()
-	return s.exit()
+	event := newEventExit()
+	s.eventCh <- event
+	return <-event.errCh
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
@@ -255,14 +285,14 @@ func (s *swapState) exit() error {
 		}
 	}()
 
-	log.Debugf("attempting to exit swap: nextExpectedMessage=%s", s.nextExpectedMessage)
+	log.Debugf("attempting to exit swap: nextExpectedEvent=%T", s.nextExpectedEvent)
 
-	switch s.nextExpectedMessage.(type) {
-	case *net.SendKeysMessage:
+	switch s.nextExpectedEvent.(type) {
+	case *EventKeysReceived:
 		// we are fine, as we only just initiated the protocol.
-		s.clearNextExpectedMessage(types.CompletedAbort)
+		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *message.NotifyXMRLock:
+	case *EventXMRLocked:
 		// we already deployed the contract, so we should call Refund().
 		txHash, err := s.tryRefund()
 		if err != nil {
@@ -270,14 +300,14 @@ func (s *swapState) exit() error {
 				return s.tryClaim()
 			}
 
-			s.clearNextExpectedMessage(types.CompletedAbort)
+			s.clearNextExpectedEvent(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
-		s.clearNextExpectedMessage(types.CompletedRefund)
+		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case *message.NotifyClaimed:
+	case *EventETHClaimed:
 		// the XMR has been locked, but the ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
@@ -287,18 +317,18 @@ func (s *swapState) exit() error {
 				return s.tryClaim()
 			}
 
-			s.clearNextExpectedMessage(types.CompletedAbort)
+			s.clearNextExpectedEvent(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
-		s.clearNextExpectedMessage(types.CompletedRefund)
+		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case nil:
 		return s.tryClaim()
 	default:
-		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
-		s.clearNextExpectedMessage(types.CompletedAbort)
+		log.Errorf("unexpected nextExpectedEvent: %T", s.nextExpectedEvent)
+		s.clearNextExpectedEvent(types.CompletedAbort)
 		return errUnexpectedMessageType
 	}
 
@@ -321,27 +351,24 @@ func (s *swapState) tryClaim() error {
 	}
 
 	log.Infof("claimed monero: address=%s", addr)
-	s.clearNextExpectedMessage(types.CompletedSuccess)
+	s.clearNextExpectedEvent(types.CompletedSuccess)
 	return nil
 }
 
 // doRefund is called by the RPC function swap_refund.
 // If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
 func (s *swapState) doRefund() (ethcommon.Hash, error) {
-	switch s.nextExpectedMessage.(type) {
-	case *message.NotifyXMRLock, *message.NotifyClaimed:
-		// the XMR has been locked, but the ETH hasn't been claimed.
-		// we can refund in this case.
-		txHash, err := s.tryRefund()
+	switch s.nextExpectedEvent.(type) {
+	case *EventXMRLocked, *EventETHClaimed:
+		event := newEventShouldRefund()
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
-			s.clearNextExpectedMessage(types.CompletedAbort)
-			log.Errorf("failed to refund: err=%s", err)
 			return ethcommon.Hash{}, err
 		}
 
-		s.clearNextExpectedMessage(types.CompletedRefund)
-		log.Infof("refunded ether: transaction hash=%s", txHash)
-		return txHash, nil
+		// TODO get tx hash, also from a channel?
+		return ethcommon.Hash{}, nil
 	default:
 		return ethcommon.Hash{}, errCannotRefund
 	}
@@ -581,7 +608,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	s.clearNextExpectedMessage(types.CompletedRefund)
+	s.clearNextExpectedEvent(types.CompletedRefund)
 	return txHash, nil
 }
 

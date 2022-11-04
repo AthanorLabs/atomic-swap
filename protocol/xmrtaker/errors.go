@@ -24,6 +24,8 @@ var (
 	errCounterpartyKeysNotSet  = errors.New("counterparty's keys aren't set")
 	errSwapInstantiationNoLogs = errors.New("expected 1 log, got 0")
 	errSwapCompleted           = errors.New("swap is already completed")
+	errNoClaimedLogs           = errors.New("got Claimed event from watcher with no logs")
+	errLogNotForUs             = errors.New("found log that isn't for our swap")
 
 	// inititation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
