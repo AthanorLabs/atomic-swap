@@ -394,7 +394,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
 		// even though the current block is before T0. In this case, the transaction will be reverted, the
 		// gas fee is lost, but we can wait until T1 and try again.
-		log.Warnf("First refund attempt failed: err=%s", err)
+		log.Warnf("first refund attempt failed: err=%s", err)
 	}
 
 	if ts.After(s.t1) {
@@ -411,6 +411,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	log.Infof("waiting until time %s to refund", s.t1)
 
 	event := <-s.eventCh
+	log.Debugf("got event %T", event)
 	switch event.(type) {
 	case *EventShouldRefund:
 		return s.refund()

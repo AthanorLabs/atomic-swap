@@ -248,6 +248,8 @@ func (s *swapState) runT1ExpirationHandler() {
 		time.Until(s.t1).Seconds(),
 	)
 
+	defer log.Debugf("returning from runT1ExpirationHandler")
+
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
 
@@ -274,6 +276,7 @@ func (s *swapState) runT1ExpirationHandler() {
 }
 
 func (s *swapState) handleT1Expired() {
+	log.Debugf("handling T1")
 	event := newEventShouldRefund()
 	s.eventCh <- event
 	err := <-event.errCh
