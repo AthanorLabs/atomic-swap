@@ -1,22 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-func (d *daemon) wait() {
+func signalHandler(ctx context.Context, cancel context.CancelFunc) {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigc)
 
 	select {
 	case <-sigc:
-		fmt.Println("signal interrupt, shutting down...")
-		d.cancel()
-	case <-d.ctx.Done():
-		fmt.Println("protocol complete, shutting down...")
+		log.Info("Signal interrupt, shutting down...")
+		cancel()
+	case <-ctx.Done():
+		log.Info("Protocol complete, shutting down...")
 	}
 }

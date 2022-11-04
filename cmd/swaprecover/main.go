@@ -50,6 +50,7 @@ var (
 	_   = logging.SetLogLevel("net", "debug")
 	_   = logging.SetLogLevel("rpc", "debug")
 	_   = logging.SetLogLevel("monero", "debug")
+	_   = logging.SetLogLevel("contracts", "debug")
 )
 
 var (

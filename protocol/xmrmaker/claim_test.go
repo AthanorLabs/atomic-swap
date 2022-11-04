@@ -3,9 +3,8 @@ package xmrmaker
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/rand"
-	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -14,10 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	rcommon "github.com/AthanorLabs/go-relayer/common"
-	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
-	"github.com/AthanorLabs/go-relayer/relayer"
-	rrpc "github.com/AthanorLabs/go-relayer/rpc"
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	"github.com/athanorlabs/go-relayer/relayer"
+	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -32,14 +31,15 @@ var (
 	relayerCommission          = float64(0.01)
 )
 
+// runRelayer starts the relayer and returns the endpoint URL
 func runRelayer(
 	t *testing.T,
+	ctx context.Context, //nolint:revive // context should be 1st param to function
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
 	sk *ecdsa.PrivateKey,
 	chainID *big.Int,
-	port uint16,
-) {
+) string {
 	iforwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
 	require.NoError(t, err)
 	fw := gsnforwarder.NewIForwarderWrapped(iforwarder)
@@ -47,7 +47,7 @@ func runRelayer(
 	key := rcommon.NewKeyFromPrivateKey(sk)
 
 	cfg := &relayer.Config{
-		Ctx:                   context.Background(),
+		Ctx:                   ctx,
 		EthClient:             ec,
 		Forwarder:             fw,
 		Key:                   key,
@@ -58,24 +58,27 @@ func runRelayer(
 	r, err := relayer.NewRelayer(cfg)
 	require.NoError(t, err)
 
-	rpcCfg := &rrpc.Config{
-		Port:    port,
+	server, err := rrpc.NewServer(&rrpc.Config{
+		Ctx:     ctx,
+		Address: "127.0.0.1:0",
 		Relayer: r,
-	}
-	server, err := rrpc.NewServer(rpcCfg)
+	})
 	require.NoError(t, err)
 
-	errCh := server.Start()
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		err = <-errCh
-		if err != nil {
-			fmt.Printf("relayer server error: %s\n", err)
-		}
+		defer wg.Done()
+		err := server.Start()
+		require.ErrorIs(t, err, context.Canceled)
 	}()
 
 	t.Cleanup(func() {
-		// TODO stop server
+		// We could call server.Shutdown() but the context cancellation would beat us to
+		// it. Just make sure the test hangs if the server didn't exit.
+		wg.Wait()
 	})
+	return server.HttpURL()
 }
 
 func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
@@ -111,6 +114,9 @@ func TestSwapState_ClaimRelayer_ETH(t *testing.T) {
 }
 
 func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.EthAsset) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	relayerSk := tests.GetTestKeyByIndex(t, 1)
 	require.NotEqual(t, sk, relayerSk)
 	conn, chainID := tests.NewEthClient(t)
@@ -134,26 +140,23 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	// deploy forwarder
 	forwarderAddress, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, conn)
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	receipt, err := block.WaitForReceipt(ctx, conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy Forwarder.sol: %d", receipt.GasUsed)
 
 	tx, err = forwarderContract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// start relayer
-	p, err := rand.Int(rand.Reader, big.NewInt(64312))
-	require.NoError(t, err)
-	port := uint16(p.Uint64() + 1024)
-	runRelayer(t, conn, forwarderAddress, relayerSk, chainID, port)
+	relayerEndpoint := runRelayer(t, ctx, conn, forwarderAddress, relayerSk, chainID)
 
 	// deploy swap contract with claim key hash
 	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
@@ -167,7 +170,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		tx, err = token.Approve(txOpts, contractAddr, balance)
 		require.NoError(t, err)
 
-		_, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+		_, err = block.WaitForReceipt(ctx, conn, tx.Hash())
 		require.NoError(t, err)
 	}
 
@@ -178,7 +181,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	tx, err = contract.NewSwap(txOpts, cmt, [32]byte{}, addr,
 		defaultTestTimeoutDuration, asset.Address(), value, nonce)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 	txOpts.Value = big.NewInt(0)
@@ -210,7 +213,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	// set contract to Ready
 	tx, err = contract.SetReady(txOpts, swap)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
 	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
 	require.NoError(t, err)
 
@@ -218,8 +221,6 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	var s [32]byte
 	secret := proof.Secret()
 	copy(s[:], common.Reverse(secret[:]))
-
-	relayerEndpoint := fmt.Sprintf("http://127.0.0.1:%d", port)
 
 	txHash, err := claimRelayer(
 		context.Background(),

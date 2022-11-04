@@ -107,6 +107,7 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("rpcclient", level)
 	_ = logging.SetLogLevel("wsclient", level)
 	_ = logging.SetLogLevel("monero", level)
+	_ = logging.SetLogLevel("contracts", level)
 	return nil
 }
 

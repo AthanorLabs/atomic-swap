@@ -3,40 +3,46 @@ package contracts
 import (
 	"bytes"
 	"context"
-	"math/big"
+	"crypto/ecdsa"
+	"errors"
 	"testing"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/tests"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
 // deployContract is a test helper that deploys the SwapFactory contract and returns the
 // deployed address
-func deployContract(t *testing.T, ec *ethclient.Client, trustedForwarder ethcommon.Address) ethcommon.Address {
-	pk := tests.GetMakerTestKey(t)
+func deployContract(
+	t *testing.T,
+	ec *ethclient.Client,
+	pk *ecdsa.PrivateKey,
+	trustedForwarder ethcommon.Address,
+) ethcommon.Address {
 	ctx := context.Background()
-	chainID, err := ec.ChainID(ctx)
-	require.NoError(t, err)
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
-	_, tx, _, err := DeploySwapFactory(txOpts, ec, trustedForwarder)
-	require.NoError(t, err)
-	contractAddr, err := bind.WaitDeployed(ctx, ec, tx)
+	contractAddr, _, err := DeploySwapFactoryWithKey(ctx, ec, pk, trustedForwarder)
 	require.NoError(t, err)
 	return contractAddr
 }
 
-// getContractCode is a test helper that returns the contract bytecode at a given ethereum
-// address.
+func deployForwarder(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) ethcommon.Address {
+	addr, err := DeployGSNForwarderWithKey(context.Background(), ec, pk)
+	require.NoError(t, err)
+	return addr
+}
+
+// getContractCode is a test helper that deploys the swap factory contract to read back
+// and return the finalised byte code post deployment.
 func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 	ec, _ := tests.NewEthClient(t)
-	contractAddr := deployContract(t, ec, trustedForwarder)
+	pk := tests.GetMakerTestKey(t)
+	contractAddr := deployContract(t, ec, pk, trustedForwarder)
 	code, err := ec.CodeAt(context.Background(), contractAddr, nil)
 	require.NoError(t, err)
 	return code
@@ -56,8 +62,9 @@ func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
 // forwarderAddressIndexes slice of trusted forwarder locations is not updated. Use this
 // test to update the slice.
 func TestForwarderAddressIndexes(t *testing.T) {
-	// arbitrary sentinel address that we search for in the contract byte code
-	trustedForwarder := ethcommon.HexToAddress("0x64e902cD8A29bBAefb9D4e2e3A24d8250C606ee7")
+	ec, _ := tests.NewEthClient(t)
+	pk := tests.GetMakerTestKey(t)
+	trustedForwarder := deployForwarder(t, ec, pk)
 	contactBytes := getContractCode(t, trustedForwarder)
 
 	addressLocations := make([]int, 0) // at the current time, there should always be 2
@@ -76,15 +83,17 @@ func TestForwarderAddressIndexes(t *testing.T) {
 // Ensure that we correctly verify the SwapFactory contract when initialised with
 // different trusted forwarder addresses.
 func TestCheckSwapFactoryContractCode(t *testing.T) {
-	trustedForwarderAddresses := []string{
-		"0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa",
-		"0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
-		"0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
-	}
 	ec, _ := tests.NewEthClient(t)
+	pk := tests.GetMakerTestKey(t)
+	trustedForwarderAddresses := []string{
+		deployForwarder(t, ec, pk).Hex(),
+		deployForwarder(t, ec, pk).Hex(),
+		deployForwarder(t, ec, pk).Hex(),
+	}
+
 	for _, addrHex := range trustedForwarderAddresses {
 		tfAddr := ethcommon.HexToAddress(addrHex)
-		contractAddr := deployContract(t, ec, tfAddr)
+		contractAddr := deployContract(t, ec, pk, tfAddr)
 		parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, contractAddr)
 		require.NoError(t, err)
 		require.Equal(t, addrHex, parsedTFAddr.Hex())
@@ -93,18 +102,36 @@ func TestCheckSwapFactoryContractCode(t *testing.T) {
 
 // Tests that we fail when the wrong contract byte code is found
 func TestCheckSwapFactoryContractCode_fail(t *testing.T) {
-	ec, chainID := tests.NewEthClient(t)
+	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
 
-	// Deploying an arbitrary contract that won't match the swap factory contract
-	contractAddr, tx, _, err :=
-		DeployERC20Mock(txOpts, ec, "ERC20Mock", "MOCK", ethcommon.Address{0x1}, big.NewInt(9999))
-	require.NoError(t, err)
-	_, err = block.WaitForReceipt(context.Background(), ec, tx.Hash())
-	require.NoError(t, err)
-
-	_, err = CheckSwapFactoryContractCode(context.Background(), ec, contractAddr)
+	// Deploy a forwarder contract and then try to verify it as SwapFactory contract
+	contractAddr := deployForwarder(t, ec, pk)
+	_, err := CheckSwapFactoryContractCode(context.Background(), ec, contractAddr)
 	require.ErrorIs(t, err, errInvalidSwapContract)
+}
+
+func TestGoerliContract(t *testing.T) {
+	// comment out the next line to test the default goerli contract
+	t.Skip("requires access to non-vetted external goerli node")
+	const goerliEndpoint = "https://ethereum-goerli-rpc.allthatnode.com"
+	// temporarily place a funded goerli private key below to deploy the test contract
+	const goerliKey = ""
+	ec, err := ethclient.Dial(goerliEndpoint)
+	require.NoError(t, err)
+	defer ec.Close()
+
+	parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, common.StagenetConfig.ContractAddress)
+	if errors.Is(err, errInvalidSwapContract) && goerliKey != "" {
+		pk, err := ethcrypto.HexToECDSA(goerliKey) //nolint:govet // shadow declaration of err
+		require.NoError(t, err)
+		forwarderAddr := deployForwarder(t, ec, pk)
+		sfAddr, _, err := DeploySwapFactoryWithKey(context.Background(), ec, pk, forwarderAddr)
+		require.NoError(t, err)
+		t.Logf("New Goerli SwapFactory deployed with TrustedForwarder=%s", forwarderAddr)
+		t.Fatalf("Update common.StagenetConfig.ContractAddress with %s", sfAddr.Hex())
+	} else {
+		require.NoError(t, err)
+		t.Logf("Goerli SwapFactory deployed with TrustedForwarder=%s", parsedTFAddr.Hex())
+	}
 }
