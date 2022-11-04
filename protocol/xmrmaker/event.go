@@ -139,6 +139,7 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventExit")
 		defer close(e.errCh)
 
+		// TODO move this check to start of function?
 		if !s.info.Status().IsOngoing() {
 			return
 		}

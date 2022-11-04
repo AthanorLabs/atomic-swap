@@ -29,7 +29,9 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	require.NoError(t, err)
 	tests.MineTransaction(t, s, tx)
 
-	event := newEventContractReady()
+	// runContractEventWatcher will trigger EventContractReady,
+	// which will then set the next expected event to EventExit.
+	event := newEventExit()
 	s.eventCh <- event
 	err = <-event.errCh
 	require.NoError(t, err)
