@@ -259,31 +259,25 @@ func setLogLevels(level string) {
 	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("monero", level)
+	_ = logging.SetLogLevel("contracts", level)
 }
 
 func runDaemon(c *cli.Context) error {
+	ctx, cancel := context.WithCancel(c.Context)
+	defer cancel()
+	go signalHandler(ctx, cancel)
+
 	if err := setLogLevelsFromContext(c); err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	d := newEmptyDaemon(ctx, cancel)
-
-	go func() {
-		err := d.make(c)
-		if err != nil {
-			log.Errorf("failed to make daemon: %s", err)
-			cancel()
-		}
-	}()
-
-	d.wait()
-
-	err := d.stop()
-	if err != nil {
-		log.Warnf("failed to gracefully stop daemon: %s", err)
+	if err := d.make(c); err != nil {
+		log.Errorf("RPC/Websocket server exited: %s", err)
+		cancel()
+	}
+	if err := d.stop(); err != nil {
+		log.Warnf("Cleanup error: %s", err)
 	}
 
 	return nil
@@ -298,30 +292,42 @@ func newEmptyDaemon(ctx context.Context, cancel context.CancelFunc) *daemon {
 }
 
 func (d *daemon) stop() error {
-	if d.database != nil {
-		err := d.database.Close()
-		if err != nil {
-			return err
-		}
-	}
+	var hostErr, rpcErr, dbErr error
+	d.cancel()
 
 	if d.host != nil {
-		err := d.host.Stop()
-		if err != nil {
-			return err
+		if hostErr = d.host.Stop(); hostErr != nil {
+			hostErr = fmt.Errorf("shutting down peer-to-peer services: %w", hostErr)
 		}
 	}
 
-	if d.rpcServer == nil {
+	if d.rpcServer != nil {
+		if rpcErr = d.rpcServer.Stop(); rpcErr != nil {
+			rpcErr = fmt.Errorf("shutting down RPC/Websockets service: %s", rpcErr)
+		}
+	}
+
+	if d.database != nil {
+		if dbErr = d.database.Close(); dbErr != nil {
+			dbErr = fmt.Errorf("syncing database: %s", dbErr)
+		}
+	}
+
+	// Making sure the database is synced is the most important task, so we don't want to
+	// skip closing it if errors happen when stopping other services. We also want to
+	// close services that may modify the database before closing the database. Lastly, if
+	// we get multiple errors and need to chose which one to propagate upwards, a database
+	// error should be prioritised first.
+	switch {
+	case dbErr != nil:
+		return dbErr
+	case rpcErr != nil:
+		return rpcErr
+	case hostErr != nil:
+		return hostErr
+	default:
 		return nil
 	}
-
-	err := d.rpcServer.Stop()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // expandBootnodes expands the boot nodes passed on the command line that
@@ -423,23 +429,23 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		DataDir: path.Join(cfg.DataDir, "db"),
 	}
 
-	db, err := db.NewDatabase(dbCfg)
+	sdb, err := db.NewDatabase(dbCfg)
 	if err != nil {
 		return err
 	}
-	d.database = db
+	d.database = sdb
 
 	sm := swap.NewManager()
-	backend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
+	swapBackend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
 	if err != nil {
 		return err
 	}
 
 	// this closes the monero.WalletClient
-	defer backend.Close()
-	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", backend.Endpoint(), ethEndpoint)
+	defer swapBackend.Close()
+	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", swapBackend.Endpoint(), ethEndpoint)
 
-	a, b, err := getProtocolInstances(c, cfg, backend, db, host)
+	a, b, err := getProtocolInstances(c, cfg, swapBackend, sdb, host)
 	if err != nil {
 		return err
 	}
@@ -469,7 +475,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		Net:             host,
 		XMRTaker:        a,
 		XMRMaker:        b,
-		ProtocolBackend: backend,
+		ProtocolBackend: swapBackend,
 	}
 
 	s, err := rpc.NewServer(rpcCfg)
@@ -478,7 +484,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	}
 	d.rpcServer = s
 
-	err = maybeBackgroundMine(d.ctx, devXMRMaker, backend)
+	err = maybeBackgroundMine(d.ctx, devXMRMaker, swapBackend)
 	if err != nil {
 		return err
 	}
@@ -681,12 +687,12 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 		TransferBack: c.Bool(flagTransferBack),
 	}
 
-	xmrtaker, err := xmrtaker.NewInstance(xmrtakerCfg)
+	xmrTaker, err := xmrtaker.NewInstance(xmrtakerCfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	xmrmakerCfg := &xmrmaker.Config{
+	xmrMakerCfg := &xmrmaker.Config{
 		Backend:        b,
 		DataDir:        cfg.DataDir,
 		Database:       db,
@@ -695,10 +701,10 @@ func getProtocolInstances(c *cli.Context, cfg common.Config,
 		Network:        host,
 	}
 
-	xmrmaker, err := xmrmaker.NewInstance(xmrmakerCfg)
+	xmrMaker, err := xmrmaker.NewInstance(xmrMakerCfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return xmrtaker, xmrmaker, nil
+	return xmrTaker, xmrMaker, nil
 }

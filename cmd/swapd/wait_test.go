@@ -5,14 +5,8 @@ import (
 	"testing"
 )
 
-func TestDaemon_Wait(_ *testing.T) {
+func TestDaemon_signalHandler(_ *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	d := &daemon{
-		ctx:    ctx,
-		cancel: cancel,
-	}
-
-	go d.wait()
+	go signalHandler(ctx, cancel)
 }

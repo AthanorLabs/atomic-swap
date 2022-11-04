@@ -7,14 +7,10 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
-
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -74,52 +70,24 @@ func deploySwapFactory(
 	forwarderAddress ethcommon.Address,
 	dataDir string,
 ) (ethcommon.Address, *contracts.SwapFactory, error) {
+
 	if privkey == nil {
 		return ethcommon.Address{}, nil, errNoEthereumPrivateKey
 	}
 
-	chainID, err := ec.ChainID(ctx)
-	if err != nil {
-		return ethcommon.Address{}, nil, err
-	}
-	txOpts, err := bind.NewKeyedTransactorWithChainID(privkey, chainID)
-	if err != nil {
-		return ethcommon.Address{}, nil, fmt.Errorf("failed to make transactor: %w", err)
-	}
-
 	if (forwarderAddress == ethcommon.Address{}) {
 		// deploy forwarder contract as well
-		address, err := deployForwarder(ctx, ec, txOpts) //nolint:govet
+		address, err := contracts.DeployGSNForwarderWithKey(ctx, ec, privkey)
 		if err != nil {
 			return ethcommon.Address{}, nil, err
 		}
-
 		forwarderAddress = address
-	} else {
-		// ensure domain separator is registered
-		forwarder, err := gsnforwarder.NewForwarder(forwarderAddress, ec) //nolint:govet
-		if err != nil {
-			return ethcommon.Address{}, nil, err
-		}
-
-		err = registerDomainSeparator(ctx, ec, txOpts, forwarderAddress, forwarder)
-		if err != nil {
-			return ethcommon.Address{}, nil, err
-		}
 	}
 
-	// deploy contracts.sol
-	address, tx, sf, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
-	if err != nil {
-		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap factory: %w", err)
-	}
-
-	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	address, sf, err := contracts.DeploySwapFactoryWithKey(ctx, ec, privkey, forwarderAddress)
 	if err != nil {
 		return ethcommon.Address{}, nil, err
 	}
-
-	log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
 
 	// store the contract address on disk
 	fp := path.Join(dataDir, "contract-address.json")
@@ -128,52 +96,4 @@ func deploySwapFactory(
 	}
 
 	return address, sf, nil
-}
-
-func deployForwarder(
-	ctx context.Context,
-	ec *ethclient.Client,
-	txOpts *bind.TransactOpts,
-) (ethcommon.Address, error) {
-	address, tx, contract, err := gsnforwarder.DeployForwarder(txOpts, ec)
-	if err != nil {
-		return ethcommon.Address{}, fmt.Errorf("failed to deploy Forwarder.sol: %w", err)
-	}
-
-	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
-	if err != nil {
-		return ethcommon.Address{}, err
-	}
-
-	err = registerDomainSeparator(ctx, ec, txOpts, address, contract)
-	if err != nil {
-		return ethcommon.Address{}, err
-	}
-
-	return address, nil
-}
-
-func registerDomainSeparator(
-	ctx context.Context,
-	ec *ethclient.Client,
-	txOpts *bind.TransactOpts,
-	address ethcommon.Address,
-	contract *gsnforwarder.Forwarder,
-) error {
-	tx, err := contract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
-	if err != nil {
-		return fmt.Errorf("failed to register domain separator: %w", err)
-	}
-
-	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("registered domain separator in forwarder at %s: name=%s version=%s",
-		address,
-		gsnforwarder.DefaultName,
-		gsnforwarder.DefaultVersion,
-	)
-	return nil
 }

@@ -138,11 +138,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
 
     // Bob can claim if:
     // - Alice has set the swap to `ready` or it's past t_0 but before t_1
-    function claimRelayer(
-        Swap memory _swap,
-        bytes32 _s,
-        uint256 fee
-    ) public {
+    function claimRelayer(Swap memory _swap, bytes32 _s, uint256 fee) public {
         require(
             isTrustedForwarder(msg.sender),
             "claimRelayer can only be called by a trusted forwarder"

@@ -107,13 +107,34 @@ func (s *Server) Start() error {
 	log.Infof("Starting RPC server on %s", s.HttpURL())
 	log.Infof("Starting websockets server on %s", s.WsURL())
 
-	err := s.httpServer.Serve(s.listener) // Serve never returns nil
-	return fmt.Errorf("RPC server failed: %w", err)
+	serverErr := make(chan error, 1)
+	go func() {
+		// Serve never returns nil. It returns http.ErrServerClosed if it was terminated
+		// by the Shutdown.
+		err := s.httpServer.Serve(s.listener)
+		serverErr <- fmt.Errorf("RPC server failed: %w", err)
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		// Shutdown below is passed a closed context, which means it will shut down
+		// immediately without servicing already connected clients.
+		if err := s.httpServer.Shutdown(s.ctx); err != nil {
+			log.Warnf("http server shutdown errored: %s", err)
+		}
+		// We shut down because the context was cancelled, so that's the error to return
+		return s.ctx.Err()
+	case err := <-serverErr:
+		log.Errorf("RPC server failed: %s", err)
+		return err
+	}
 }
 
-// Stop stops the JSON-RPC and websockets server.
+// Stop the JSON-RPC and websockets server. If server's context is not cancelled, a
+// graceful shutdown happens where existing connections are serviced until disconnected.
+// If the context is cancelled, the shutdown is immediate.
 func (s *Server) Stop() error {
-	return s.httpServer.Close()
+	return s.httpServer.Shutdown(s.ctx)
 }
 
 // Protocol represents the functions required by the rpc service into the protocol handler.
