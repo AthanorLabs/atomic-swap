@@ -141,6 +141,10 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventExit")
 		defer close(e.errCh)
 
+		if !s.info.Status().IsOngoing() {
+			return
+		}
+
 		err := s.exit()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventExit: %w", err)

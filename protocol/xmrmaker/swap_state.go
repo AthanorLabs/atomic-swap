@@ -44,7 +44,6 @@ type swapState struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-	exited bool
 
 	info         *pswap.Info
 	offer        *types.Offer
@@ -69,8 +68,7 @@ type swapState struct {
 	xmrtakerSecp256K1PublicKey *secp256k1.PublicKey
 	walletScanHeight           uint64 // height of the monero blockchain when the swap is started
 
-	// next expected network message
-	//nextExpectedMessage net.Message
+	// tracks the state of the swap
 	nextExpectedEvent Event
 
 	// channels
@@ -78,9 +76,9 @@ type swapState struct {
 	// channel for swap events
 	// the event handler in event.go ensures only one event is being handled at a time
 	eventCh chan Event
-	// channel for `Ready` logs seen on-chain. only used a maximum of once
+	// channel for `Ready` logs seen on-chain
 	logReadyCh chan []ethtypes.Log
-	// channel for `Refunded` logs seen on-chain. only used a maximum of once
+	// channel for `Refunded` logs seen on-chain
 	logRefundedCh chan []ethtypes.Log
 	// signals the t0 expiration handler to return
 	readyCh chan struct{}
@@ -255,13 +253,6 @@ func (s *swapState) Exit() error {
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
-	// TODO can this var be removed?
-	if s.exited {
-		return nil
-	}
-
-	s.exited = true
-
 	log.Debugf("attempting to exit swap: nextExpectedEvent=%v", s.nextExpectedEvent)
 
 	defer func() {

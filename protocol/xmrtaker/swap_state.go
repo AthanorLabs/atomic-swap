@@ -38,9 +38,8 @@ type swapState struct {
 	backend.Backend
 	sender txsender.Sender
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	//stateMu      sync.Mutex
+	ctx          context.Context
+	cancel       context.CancelFunc
 	infoFile     string
 	transferBack bool
 
@@ -70,15 +69,22 @@ type swapState struct {
 	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
 
+	// tracks the state of the swap
 	nextExpectedEvent Event
 
 	// channels
-	eventCh      chan Event
+
+	// channel for swap events
+	// the event handler in event.go ensures only one event is being handled at a time
+	eventCh chan Event
+	// channel for `Claimed` logs seen on-chain
 	logClaimedCh chan []ethtypes.Log
-	xmrLockedCh  chan struct{}
-	claimedCh    chan struct{}
-	done         chan struct{}
-	exited       bool
+	// signals the t0 expiration handler to return
+	xmrLockedCh chan struct{}
+	// signals the t1 expiration handler to return
+	claimedCh chan struct{}
+	// signals to the creator xmrmaker instance that it can delete this swap
+	done chan struct{}
 }
 
 func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
@@ -187,14 +193,6 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	return s, nil
 }
 
-// func (s *swapState) lockState() {
-// 	s.stateMu.Lock()
-// }
-
-// func (s *swapState) unlockState() {
-// 	s.stateMu.Unlock()
-// }
-
 func (s *swapState) waitForSendKeysMessage() {
 	waitDuration := time.Minute
 	timer := time.After(waitDuration)
@@ -261,11 +259,6 @@ func (s *swapState) Exit() error {
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
-	if s.exited {
-		return nil
-	}
-	s.exited = true
-
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
