@@ -119,9 +119,14 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockData
 		InfoFile: infoFile,
 	}
 
-	swapState, err := newSwapState(xmrmaker.backend,
-		types.NewOffer("", 0, 0, 0, types.EthAssetETH), oe, xmrmaker.offerManager,
-		common.MoneroAmount(33), desiredAmount)
+	swapState, err := newSwapState(
+		xmrmaker.backend,
+		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
+		oe,
+		xmrmaker.offerManager,
+		common.MoneroAmount(33),
+		desiredAmount,
+	)
 	require.NoError(t, err)
 	return xmrmaker, swapState, db
 }

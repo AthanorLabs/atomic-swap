@@ -31,7 +31,7 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	tests.MineTransaction(t, s, tx)
 
 	event := newEventContractReady()
-	s.handleEvent(event)
+	s.eventCh <- event
 	err = <-event.errCh
 	require.NoError(t, err)
 
