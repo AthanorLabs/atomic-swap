@@ -10,9 +10,9 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	client "github.com/AthanorLabs/go-relayer-client"
-	rcommon "github.com/AthanorLabs/go-relayer/common"
-	"github.com/AthanorLabs/go-relayer/impls/gsnforwarder"
+	client "github.com/athanorlabs/go-relayer-client"
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 )
 
 // Client is a client that can submit transactions to an Ethereum meta-transaction relayer.

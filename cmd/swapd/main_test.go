@@ -170,9 +170,12 @@ func TestDaemon_PersistOffers(t *testing.T) {
 
 	d := newEmptyDaemon(ctx, cancel)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := d.make(c) // blocks on RPC server start
-		require.NoError(t, err)
+		require.ErrorIs(t, err, context.Canceled)
 	}()
 
 	<-d.startedCh
@@ -189,7 +192,10 @@ func TestDaemon_PersistOffers(t *testing.T) {
 
 	// shut down daemon
 	cancel()
-	_ = d.stop()
+	wg.Wait()
+
+	err = d.stop()
+	require.NoError(t, err)
 
 	// restart daemon
 	t.Log("restarting daemon")
@@ -197,15 +203,15 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	defer cancel()
 
 	d = newEmptyDaemon(ctx, cancel)
-
-	go func() {
-		err = d.make(c) // blocks on RPC server start
-		require.NoError(t, err)
+	defer func() {
+		require.NoError(t, d.stop())
 	}()
 
-	defer func() {
-		cancel()
-		_ = d.stop()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = d.make(c) // blocks on RPC server start
+		require.ErrorIs(t, err, context.Canceled)
 	}()
 
 	<-d.startedCh

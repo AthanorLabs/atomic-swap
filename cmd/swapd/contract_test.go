@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/tests"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
@@ -17,12 +17,7 @@ func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	tmpDir := t.TempDir()
 
-	chainID, err := ec.ChainID(context.Background())
-	require.NoError(t, err)
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
-
-	forwarder, err := deployForwarder(context.Background(), ec, txOpts)
+	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec, pk)
 	require.NoError(t, err)
 
 	_, _, err = getOrDeploySwapFactory(
@@ -59,12 +54,7 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	tmpDir := t.TempDir()
 
-	chainID, err := ec.ChainID(context.Background())
-	require.NoError(t, err)
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
-
-	forwarder, err := deployForwarder(context.Background(), ec, txOpts)
+	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec, pk)
 	require.NoError(t, err)
 	t.Log(forwarder)
 
