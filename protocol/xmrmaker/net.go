@@ -85,7 +85,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	if err != nil {
 		return nil, nil, err
 	}
-	if id.IsZero() {
+	if types.IsHashZero(id) {
 		return nil, nil, errOfferIDNotSet
 	}
 

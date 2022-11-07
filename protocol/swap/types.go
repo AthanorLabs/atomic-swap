@@ -1,8 +1,13 @@
 package swap
 
 import (
+	"github.com/Masterminds/semver/v3"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
+
+// CurInfoVersion is the latest supported version of a serialised Info struct
+var CurInfoVersion, _ = semver.NewVersion("v0.1.0")
 
 type (
 	Status = types.Status //nolint:revive
@@ -10,13 +15,14 @@ type (
 
 // Info contains the details of the swap as well as its status.
 type Info struct {
-	ID             types.Hash // swap offer ID
-	Provides       types.ProvidesCoin
-	ProvidedAmount float64
-	ReceivedAmount float64
-	ExchangeRate   types.ExchangeRate
-	EthAsset       types.EthAsset
-	Status         Status
+	Version        *semver.Version     `json:"version"`
+	ID             types.Hash          `json:"offer_id"` // swap offer ID
+	Provides       types.ProvidesCoin  `json:"provides"`
+	ProvidedAmount float64             `json:"provided_amount"`
+	ReceivedAmount float64             `json:"received_amount"`
+	ExchangeRate   types.ExchangeRate  `json:"exchange_rate"`
+	EthAsset       types.EthAsset      `json:"eth_asset"`
+	Status         Status              `json:"status"`
 	statusCh       <-chan types.Status `json:"-"`
 }
 
@@ -32,6 +38,7 @@ func NewInfo(
 	statusCh <-chan types.Status,
 ) *Info {
 	info := &Info{
+		Version:        CurInfoVersion,
 		ID:             id,
 		Provides:       provides,
 		ProvidedAmount: providedAmount,
