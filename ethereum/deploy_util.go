@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
+	"github.com/athanorlabs/go-relayer/common"
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -21,29 +22,22 @@ var log = logging.Logger("contracts")
 func DeploySwapFactoryWithKey(
 	ctx context.Context,
 	ec *ethclient.Client,
-	privkey *ecdsa.PrivateKey,
-	forwarderAddress ethcommon.Address,
+	privKey *ecdsa.PrivateKey,
+	forwarderAddr ethcommon.Address,
 ) (ethcommon.Address, *SwapFactory, error) {
 
-	txOpts, err := newTXOpts(ctx, ec, privkey)
+	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return ethcommon.Address{}, nil, err
 	}
 
-	if (forwarderAddress != ethcommon.Address{}) {
-		// ensure domain separator is registered
-		forwarder, err := gsnforwarder.NewForwarder(forwarderAddress, ec) //nolint:govet // shadow declaration of err
-		if err != nil {
-			return ethcommon.Address{}, nil, err
-		}
-
-		err = registerDomainSeparator(ctx, ec, privkey, forwarderAddress, forwarder)
-		if err != nil {
-			return ethcommon.Address{}, nil, err
+	if (forwarderAddr != ethcommon.Address{}) {
+		if err = registerDomainSeparatorIfNeeded(ctx, ec, privKey, forwarderAddr); err != nil {
+			return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap factory: %w", err)
 		}
 	}
 
-	address, tx, sf, err := DeploySwapFactory(txOpts, ec, forwarderAddress)
+	address, tx, sf, err := DeploySwapFactory(txOpts, ec, forwarderAddr)
 	if err != nil {
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap factory: %w", err)
 	}
@@ -63,10 +57,10 @@ func DeploySwapFactoryWithKey(
 func DeployGSNForwarderWithKey(
 	ctx context.Context,
 	ec *ethclient.Client,
-	privkey *ecdsa.PrivateKey,
+	privKey *ecdsa.PrivateKey,
 ) (ethcommon.Address, error) {
 
-	txOpts, err := newTXOpts(ctx, ec, privkey)
+	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
@@ -81,7 +75,7 @@ func DeployGSNForwarderWithKey(
 		return ethcommon.Address{}, err
 	}
 
-	err = registerDomainSeparator(ctx, ec, privkey, address, contract)
+	err = registerDomainSeparator(ctx, ec, privKey, address, contract)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
@@ -89,20 +83,62 @@ func DeployGSNForwarderWithKey(
 	return address, nil
 }
 
-func registerDomainSeparator(
+func isDomainSeparatorRegistered(
 	ctx context.Context,
 	ec *ethclient.Client,
-	privkey *ecdsa.PrivateKey,
-	address ethcommon.Address,
-	contract *gsnforwarder.Forwarder,
-) error {
+	forwarderAddr ethcommon.Address,
+	forwarder *gsnforwarder.Forwarder,
+) (isRegistered bool, err error) {
+	chainID, err := ec.ChainID(ctx)
+	if err != nil {
+		return false, err
+	}
+	name := gsnforwarder.DefaultName
+	version := gsnforwarder.DefaultVersion
+	ds, err := common.GetEIP712DomainSeparator(name, version, chainID, forwarderAddr)
+	if err != nil {
+		return false, err
+	}
+	opts := &bind.CallOpts{Context: ctx}
+	return forwarder.Domains(opts, ds)
+}
 
-	txOpts, err := newTXOpts(ctx, ec, privkey)
+func registerDomainSeparatorIfNeeded(
+	ctx context.Context,
+	ec *ethclient.Client,
+	privKey *ecdsa.PrivateKey,
+	forwarderAddr ethcommon.Address,
+) error {
+	forwarder, err := gsnforwarder.NewForwarder(forwarderAddr, ec)
 	if err != nil {
 		return err
 	}
 
-	tx, err := contract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
+	isRegistered, err := isDomainSeparatorRegistered(ctx, ec, forwarderAddr, forwarder)
+	if err != nil {
+		return err
+	}
+	if isRegistered {
+		return nil
+	}
+
+	return registerDomainSeparator(ctx, ec, privKey, forwarderAddr, forwarder)
+}
+
+func registerDomainSeparator(
+	ctx context.Context,
+	ec *ethclient.Client,
+	privKey *ecdsa.PrivateKey,
+	forwarderAddr ethcommon.Address,
+	forwarder *gsnforwarder.Forwarder,
+) error {
+
+	txOpts, err := newTXOpts(ctx, ec, privKey)
+	if err != nil {
+		return err
+	}
+
+	tx, err := forwarder.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
 	if err != nil {
 		return fmt.Errorf("failed to register domain separator: %w", err)
 	}
@@ -113,7 +149,7 @@ func registerDomainSeparator(
 	}
 
 	log.Debugf("registered domain separator in forwarder at %s: name=%s version=%s",
-		address,
+		forwarderAddr,
 		gsnforwarder.DefaultName,
 		gsnforwarder.DefaultVersion,
 	)
