@@ -90,16 +90,13 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 			break
 		}
 
-		// value is the encoded offer
-		value := iter.Value()
-
-		var offer types.Offer
-		err := json.Unmarshal(value, &offer)
+		encodedOffer := iter.Value()
+		offer, err := types.UnmarshalOffer(encodedOffer)
 		if err != nil {
 			return nil, err
 		}
 
-		offers = append(offers, &offer)
+		offers = append(offers, offer)
 		iter.Next()
 	}
 
@@ -172,15 +169,13 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 		}
 
 		// value is the encoded swap
-		value := iter.Value()
-
-		var s swap.Info
-		err := json.Unmarshal(value, &s)
+		encodedSwap := iter.Value()
+		s, err := swap.UnmarshalInfo(encodedSwap)
 		if err != nil {
 			return nil, err
 		}
 
-		swaps = append(swaps, &s)
+		swaps = append(swaps, s)
 		iter.Next()
 	}
 

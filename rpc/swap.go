@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net/http"
 
@@ -251,12 +250,5 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 }
 
 func offerIDStringToHash(s string) (types.Hash, error) {
-	offerIDBytes, err := hex.DecodeString(s)
-	if err != nil {
-		return types.Hash{}, err
-	}
-
-	var offerID types.Hash
-	copy(offerID[:], offerIDBytes)
-	return offerID, nil
+	return types.HexToHash(s)
 }

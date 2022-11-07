@@ -7,7 +7,7 @@ package swap
 import (
 	reflect "reflect"
 
-	types "github.com/athanorlabs/atomic-swap/common/types"
+	common "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -34,20 +34,6 @@ func (m *MockDatabase) EXPECT() *MockDatabaseMockRecorder {
 	return m.recorder
 }
 
-// DeleteSwap mocks base method.
-func (m *MockDatabase) DeleteSwap(arg0 types.Hash) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteSwap", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteSwap indicates an expected call of DeleteSwap.
-func (mr *MockDatabaseMockRecorder) DeleteSwap(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSwap", reflect.TypeOf((*MockDatabase)(nil).DeleteSwap), arg0)
-}
-
 // GetAllSwaps mocks base method.
 func (m *MockDatabase) GetAllSwaps() ([]*Info, error) {
 	m.ctrl.T.Helper()
@@ -64,7 +50,7 @@ func (mr *MockDatabaseMockRecorder) GetAllSwaps() *gomock.Call {
 }
 
 // GetSwap mocks base method.
-func (m *MockDatabase) GetSwap(arg0 types.Hash) (*Info, error) {
+func (m *MockDatabase) GetSwap(arg0 common.Hash) (*Info, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSwap", arg0)
 	ret0, _ := ret[0].(*Info)
@@ -79,7 +65,7 @@ func (mr *MockDatabaseMockRecorder) GetSwap(arg0 interface{}) *gomock.Call {
 }
 
 // HasSwap mocks base method.
-func (m *MockDatabase) HasSwap(arg0 types.Hash) (bool, error) {
+func (m *MockDatabase) HasSwap(arg0 common.Hash) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasSwap", arg0)
 	ret0, _ := ret[0].(bool)

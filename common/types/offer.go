@@ -2,89 +2,40 @@ package types
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 
-	//ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/Masterminds/semver/v3"
 	"golang.org/x/crypto/sha3"
 )
 
-var errInvalidHashString = errors.New("hash string length is not 64")
+var (
+	// CurOfferVersion is the latest supported version of a serialised Offer struct
+	CurOfferVersion, _ = semver.NewVersion("0.1.0")
 
-// Hash represents a 32-byte hash
-type Hash [32]byte
-
-// EmptyHash is an empty Hash
-var EmptyHash = Hash{}
-
-// String returns the hex-encoded hash
-func (h Hash) String() string {
-	return hex.EncodeToString(h[:])
-}
-
-// IsZero returns true if the hash is all zeros, otherwise false
-func (h Hash) IsZero() bool {
-	return h == [32]byte{}
-}
-
-// MarshalJSON marshals a Hash into a hex string
-func (h Hash) MarshalJSON() ([]byte, error) {
-	return json.Marshal(h.String())
-}
-
-// UnmarshalJSON unmarshals a hex string into a Hash
-func (h *Hash) UnmarshalJSON(data []byte) error {
-	var hexStr string
-	err := json.Unmarshal(data, &hexStr)
-	if err != nil {
-		return err
-	}
-
-	if len(hexStr) != 64 {
-		return errInvalidHashString
-	}
-
-	d, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return err
-	}
-
-	copy(h[:], d[:])
-	return nil
-}
-
-// HexToHash decodes a hex-encoded string into a hash
-func HexToHash(s string) (Hash, error) {
-	h, err := hex.DecodeString(s)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	var hash [32]byte
-	copy(hash[:], h)
-	return hash, nil
-}
+	errOfferVersionMissing = errors.New("required 'version' field missing in offer")
+)
 
 // Offer represents a swap offer
 type Offer struct {
-	ID            Hash
-	Provides      ProvidesCoin
-	MinimumAmount float64
-	MaximumAmount float64
-	ExchangeRate  ExchangeRate
-	EthAsset      EthAsset
+	Version       semver.Version `json:"version"`
+	ID            Hash           `json:"offer_id"`
+	Provides      ProvidesCoin   `json:"provides"`
+	MinimumAmount float64        `json:"min_amount"`
+	MaximumAmount float64        `json:"max_amount"`
+	ExchangeRate  ExchangeRate   `json:"exchange_rate"`
+	EthAsset      EthAsset       `json:"eth_asset"`
 }
 
-// NewOffer creates and returns an Offer with an initialised id field
+// NewOffer creates and returns an Offer with an initialised ID and Version fields
 func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate ExchangeRate, ethAsset EthAsset) *Offer {
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
 		panic(err)
 	}
-
 	return &Offer{
+		Version:       *CurOfferVersion,
 		ID:            sha3.Sum256(buf[:]),
 		Provides:      coin,
 		MinimumAmount: minAmount,
@@ -92,6 +43,14 @@ func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate Ex
 		ExchangeRate:  exRate,
 		EthAsset:      ethAsset,
 	}
+}
+
+// GetID returns the ID of the offer
+func (o *Offer) GetID() Hash {
+	if IsHashZero(o.ID) {
+		panic("offer was improperly initialised")
+	}
+	return o.ID
 }
 
 // String ...
@@ -112,4 +71,26 @@ type OfferExtra struct {
 	InfoFile          string
 	RelayerEndpoint   string
 	RelayerCommission float64
+}
+
+// UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before
+// attempting to deserialize the whole blob.
+func UnmarshalOffer(jsonData []byte) (*Offer, error) {
+	ov := struct {
+		Version *semver.Version `json:"version"`
+	}{}
+	if err := json.Unmarshal(jsonData, &ov); err != nil {
+		return nil, err
+	}
+	if ov.Version == nil {
+		return nil, errOfferVersionMissing
+	}
+	if ov.Version.GreaterThan(CurOfferVersion) {
+		return nil, fmt.Errorf("offer version %q not supported, latest is %q", ov.Version, CurOfferVersion)
+	}
+	o := &Offer{}
+	if err := json.Unmarshal(jsonData, o); err != nil {
+		return nil, err
+	}
+	return o, nil
 }
