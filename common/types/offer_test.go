@@ -12,18 +12,17 @@ import (
 
 func TestOffer_MarshalJSON(t *testing.T) {
 	offer := NewOffer(ProvidesXMR, 100.0, 200.0, 1.5, EthAssetETH)
-	id := offer.GetID()
-	require.False(t, IsHashZero(id))
+	require.False(t, IsHashZero(offer.ID))
 
 	expected := fmt.Sprintf(`{
 		"version": "0.1.0",
-		"offer_id": "%s",
+		"offerId": "%s",
 		"provides": "XMR",
-		"min_amount": 100,
-		"max_amount": 200,
-		"exchange_rate": 1.5,
-		"eth_asset": "ETH"
-	}`, id)
+		"minAmount": 100,
+		"maxAmount": 200,
+		"exchangeRate": 1.5,
+		"ethAsset": "ETH"
+	}`, offer.ID)
 	jsonData, err := json.Marshal(offer)
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(jsonData))
@@ -33,12 +32,12 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
 	offerJSON := fmt.Sprintf(`{
 		"version": "0.1.0",
-		"offer_id": "%s",
+		"offerId": "%s",
 		"provides": "XMR",
-		"min_amount": 100,
-		"max_amount": 200,
-		"exchange_rate": 1.5,
-		"eth_asset":"0x0000000000000000000000000000000000000001"
+		"minAmount": 100,
+		"maxAmount": 200,
+		"exchangeRate": 1.5,
+		"ethAsset":"0x0000000000000000000000000000000000000001"
 	}`, idStr)
 	var offer Offer
 	err := json.Unmarshal([]byte(offerJSON), &offer)
@@ -55,11 +54,11 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
 	offerJSON := fmt.Sprintf(`{
 		"version": "0.1.0",
-		"offer_id": "%s",
+		"offerId": "%s",
 		"provides": "XMR",
-		"min_amount": 100,
-		"max_amount": 200,
-		"exchange_rate": 1.5
+		"minAmount": 100,
+		"maxAmount": 200,
+		"exchangeRate": 1.5
 	}`, idStr)
 	var offer Offer
 	err := json.Unmarshal([]byte(offerJSON), &offer)
@@ -88,12 +87,12 @@ func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
 func TestOffer_UnmarshalJSON_BadID(t *testing.T) {
 	offerJSON := []byte(`{
 		"version": "0.1.0",
-		"offer_id": "",
+		"offerId": "",
 		"provides": "XMR",
-		"min_Amount": 100,
-		"max_Amount": 200,
-		"exchange_rate": 1.5,
-		"eth_asset": "ETH"
+		"minAmount": 100,
+		"maxAmount": 200,
+		"exchangeRate": 1.5,
+		"ethAsset": "ETH"
 	}`)
 	_, err := UnmarshalOffer(offerJSON)
 	require.Error(t, err)

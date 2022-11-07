@@ -20,12 +20,12 @@ var (
 // Offer represents a swap offer
 type Offer struct {
 	Version       semver.Version `json:"version"`
-	ID            Hash           `json:"offer_id"`
+	ID            Hash           `json:"offerId"`
 	Provides      ProvidesCoin   `json:"provides"`
-	MinimumAmount float64        `json:"min_amount"`
-	MaximumAmount float64        `json:"max_amount"`
-	ExchangeRate  ExchangeRate   `json:"exchange_rate"`
-	EthAsset      EthAsset       `json:"eth_asset"`
+	MinimumAmount float64        `json:"minAmount"`
+	MaximumAmount float64        `json:"maxAmount"`
+	ExchangeRate  ExchangeRate   `json:"exchangeRate"`
+	EthAsset      EthAsset       `json:"ethAsset"`
 }
 
 // NewOffer creates and returns an Offer with an initialised ID and Version fields
@@ -43,14 +43,6 @@ func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate Ex
 		ExchangeRate:  exRate,
 		EthAsset:      ethAsset,
 	}
-}
-
-// GetID returns the ID of the offer
-func (o *Offer) GetID() Hash {
-	if IsHashZero(o.ID) {
-		panic("offer was improperly initialised")
-	}
-	return o.ID
 }
 
 // String ...
