@@ -19,7 +19,7 @@ func (a *Instance) Provides() types.ProvidesCoin {
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
 	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
-		offer.ExchangeRate, offer.EthAsset, offer.GetID())
+		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		delete(a.swapStates, offerID)
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	a.swapStates[offerID] = s
 	return s, nil

@@ -57,6 +57,18 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 
 func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
 
+func newSwapManager(t *testing.T) pswap.Manager {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	db := pswap.NewMockDatabase(ctrl)
+	db.EXPECT().GetAllSwaps()
+	db.EXPECT().PutSwap(gomock.Any()).AnyTimes()
+
+	sm, err := pswap.NewManager(db)
+	require.NoError(t, err)
+	return sm
+}
+
 func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
@@ -79,7 +91,7 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 		Environment:         common.Development,
 		SwapContract:        contract,
 		SwapContractAddress: addr,
-		SwapManager:         pswap.NewManager(),
+		SwapManager:         newSwapManager(t),
 		Net:                 new(mockNet),
 	}
 
@@ -152,7 +164,7 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount *big.Int,
 	timeout time.Duration) ethcommon.Hash {
 	tm := big.NewInt(int64(timeout.Seconds()))
-	if claimKey.IsZero() {
+	if types.IsHashZero(claimKey) {
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
@@ -221,7 +233,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
 	require.NotEqual(t, "", txHash)
-	require.True(t, swapState.info.Status().IsOngoing())
+	require.True(t, swapState.info.Status.IsOngoing())
 }
 
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
@@ -239,7 +251,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	require.Equal(t, &EventETHLocked{}, s.nextExpectedEvent)
 	require.Equal(t, xmrtakerPubKeys.SpendKey().Hex(), s.xmrtakerPublicKeys.SpendKey().Hex())
 	require.Equal(t, xmrtakerPubKeys.ViewKey().Hex(), s.xmrtakerPublicKeys.ViewKey().Hex())
-	require.True(t, s.info.Status().IsOngoing())
+	require.True(t, s.info.Status.IsOngoing())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
@@ -277,7 +289,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, &EventContractReady{}, s.nextExpectedEvent)
-	require.True(t, s.info.Status().IsOngoing())
+	require.True(t, s.info.Status.IsOngoing())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
@@ -325,7 +337,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		}
 	}
 
-	require.Equal(t, types.CompletedSuccess, s.info.Status())
+	require.Equal(t, types.CompletedSuccess, s.info.Status)
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
@@ -346,7 +358,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -370,7 +382,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 		}
 	}
 
-	require.Equal(t, types.CompletedRefund, s.info.Status())
+	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
 
 // test that if the protocol exits early, and XMRTaker refunds, XMRMaker can reclaim his monero
@@ -392,7 +404,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's secret
@@ -416,8 +428,8 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	balance, err := s.GetBalance(0)
 	require.NoError(t, err)
-	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount()).Uint64(), balance.Balance)
-	require.Equal(t, types.CompletedRefund, s.info.Status())
+	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
+	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
 
 func TestSwapState_Exit_Aborted(t *testing.T) {
@@ -427,7 +439,7 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	s.nextExpectedEvent = &EventETHLocked{}
 	err := s.Exit()
 	require.NoError(t, err)
-	require.Equal(t, types.CompletedAbort, s.info.Status())
+	require.Equal(t, types.CompletedAbort, s.info.Status)
 }
 
 func TestSwapState_Exit_Aborted_1(t *testing.T) {
@@ -437,7 +449,7 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 	s.nextExpectedEvent = nil
 	err := s.Exit()
 	require.True(t, errors.Is(err, errUnexpectedMessageType))
-	require.Equal(t, types.CompletedAbort, s.info.Status())
+	require.Equal(t, types.CompletedAbort, s.info.Status)
 }
 
 func TestSwapState_Exit_Success(t *testing.T) {
@@ -448,7 +460,7 @@ func TestSwapState_Exit_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// since the swap was successful, the offer should be removed.
-	o, oe, _ := b.offerManager.GetOffer(s.offer.GetID())
+	o, oe, _ := b.offerManager.GetOffer(s.offer.ID)
 	require.Nil(t, o)
 	require.Nil(t, oe)
 }
@@ -467,7 +479,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	require.NoError(t, err)
 
 	// since the swap was not successful, the offer should be re-added to the offer manager.
-	o, oe, err := b.offerManager.GetOffer(s.offer.GetID())
+	o, oe, err := b.offerManager.GetOffer(s.offer.ID)
 	require.NoError(t, err)
 	require.NotNil(t, o)
 	require.NotNil(t, oe)

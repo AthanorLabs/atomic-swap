@@ -72,6 +72,7 @@ func runRelayer(
 		err := server.Start()
 		require.ErrorIs(t, err, context.Canceled)
 	}()
+
 	t.Cleanup(func() {
 		// We could call server.Shutdown() but the context cancellation would beat us to
 		// it. Just make sure the test hangs if the server didn't exit.
@@ -107,7 +108,7 @@ func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
 	testSwapStateClaimRelayer(t, sk, types.EthAsset(contractAddr))
 }
 
-func TestSwapState_ClaimRelayer(t *testing.T) {
+func TestSwapState_ClaimRelayer_ETH(t *testing.T) {
 	sk := tests.GetMakerTestKey(t)
 	testSwapStateClaimRelayer(t, sk, types.EthAssetETH)
 }

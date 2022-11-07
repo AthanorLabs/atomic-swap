@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"os"
 	"time"
@@ -38,12 +36,7 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 }
 
 func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
-	var offer types.Offer
-	offerJSON := fmt.Sprintf(`{"ID":%q}`, testSwapID.String())
-	if err := json.Unmarshal([]byte(offerJSON), &offer); err != nil {
-		panic(err)
-	}
-	return &net.QueryResponse{Offers: []*types.Offer{&offer}}, nil
+	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
 func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error {
@@ -56,15 +49,15 @@ func (*mockNet) CloseProtocolStream(types.Hash) {
 
 type mockSwapManager struct{}
 
-func (*mockSwapManager) GetPastIDs() []types.Hash {
+func (*mockSwapManager) GetPastIDs() ([]types.Hash, error) {
 	panic("not implemented")
 }
 
-func (*mockSwapManager) GetPastSwap(id types.Hash) *swap.Info {
-	return &swap.Info{}
+func (*mockSwapManager) GetPastSwap(id types.Hash) (*swap.Info, error) {
+	return &swap.Info{}, nil
 }
 
-func (*mockSwapManager) GetOngoingSwap(id types.Hash) *swap.Info {
+func (*mockSwapManager) GetOngoingSwap(id types.Hash) (*swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
@@ -77,14 +70,14 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) *swap.Info {
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		statusCh,
-	)
+	), nil
 }
 
 func (*mockSwapManager) AddSwap(*swap.Info) error {
 	panic("not implemented")
 }
 
-func (*mockSwapManager) CompleteOngoingSwap(types.Hash) {
+func (*mockSwapManager) CompleteOngoingSwap(types.Hash) error {
 	panic("not implemented")
 }
 

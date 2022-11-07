@@ -168,7 +168,7 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventExit")
 		defer close(e.errCh)
 
-		if !s.info.Status().IsOngoing() {
+		if !s.info.Status.IsOngoing() {
 			return
 		}
 
@@ -207,7 +207,7 @@ func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
 
 func (s *swapState) handleEventShouldRefund() error {
 	// TODO could this happen still?
-	if !s.info.Status().IsOngoing() {
+	if !s.info.Status.IsOngoing() {
 		return nil
 	}
 

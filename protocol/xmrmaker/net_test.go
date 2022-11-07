@@ -14,7 +14,7 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 
 	offer := types.NewOffer(types.ProvidesXMR, 0.001, 0.002, 0.1, types.EthAssetETH)
 	db.EXPECT().PutOffer(offer)
-	db.EXPECT().DeleteOffer(offer.GetID())
+	db.EXPECT().DeleteOffer(offer.ID)
 
 	b.net.(*MockHost).EXPECT().Advertise()
 
@@ -22,11 +22,11 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 	require.NoError(t, err)
 
 	msg, _ := newTestXMRTakerSendKeysMessage(t)
-	msg.OfferID = offer.GetID().String()
+	msg.OfferID = offer.ID.String()
 	msg.ProvidedAmount = offer.MinimumAmount * float64(offer.ExchangeRate)
 
 	_, resp, err := b.HandleInitiateMessage(msg)
 	require.NoError(t, err)
 	require.Equal(t, message.SendKeysType, resp.Type())
-	require.NotNil(t, b.swapStates[offer.GetID()])
+	require.NotNil(t, b.swapStates[offer.ID])
 }

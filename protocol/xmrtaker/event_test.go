@@ -82,7 +82,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	err = s.HandleProtocolMessage(lmsg)
 	require.NoError(t, err)
 	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
-	require.Equal(t, types.ContractReady, s.info.Status())
+	require.Equal(t, types.ContractReady, s.info.Status)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
@@ -95,5 +95,5 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	s.eventCh <- event
 	err = <-event.errCh
 	require.NoError(t, err)
-	require.Equal(t, types.CompletedSuccess, s.info.Status())
+	require.Equal(t, types.CompletedSuccess, s.info.Status)
 }

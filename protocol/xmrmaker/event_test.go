@@ -37,7 +37,7 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 		}
 	}
 
-	require.Equal(t, types.CompletedSuccess, s.info.Status())
+	require.Equal(t, types.CompletedSuccess, s.info.Status)
 }
 
 func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
@@ -58,7 +58,7 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's secret
@@ -70,5 +70,5 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 	s.handleEvent(event)
 	err = <-event.errCh
 	require.NoError(t, err)
-	require.Equal(t, types.CompletedRefund, s.info.Status())
+	require.Equal(t, types.CompletedRefund, s.info.Status)
 }

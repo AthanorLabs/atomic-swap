@@ -294,7 +294,9 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 // when the swap completes, it writes the final status then closes the connection.
 // example: `{"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}`
 func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id types.Hash) error {
-	info := s.sm.GetOngoingSwap(id)
+	// we can ignore the error here, since the error will only be if the swap cannot be found
+	// as ongoing, in which case `writeSwapExitStatus` will look for it in the past swaps.
+	info, _ := s.sm.GetOngoingSwap(id)
 	if info == nil {
 		return s.writeSwapExitStatus(conn, id)
 	}
@@ -325,13 +327,13 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 }
 
 func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) error {
-	info := s.sm.GetPastSwap(id)
-	if info == nil {
-		return errNoSwapWithID
+	info, err := s.sm.GetPastSwap(id)
+	if err != nil {
+		return err
 	}
 
 	resp := &rpctypes.SubscribeSwapStatusResponse{
-		Status: info.Status().String(),
+		Status: info.Status.String(),
 	}
 
 	if err := writeResponse(conn, resp); err != nil {

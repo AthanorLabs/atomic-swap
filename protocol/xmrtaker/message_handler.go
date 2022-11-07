@@ -74,10 +74,10 @@ func (s *swapState) setNextExpectedEvent(event Event) {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	if msg.ProvidedAmount < s.info.ReceivedAmount() {
+	if msg.ProvidedAmount < s.info.ReceivedAmount {
 		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
 			msg.ProvidedAmount,
-			s.info.ReceivedAmount(),
+			s.info.ReceivedAmount,
 		)
 	}
 
@@ -116,7 +116,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v XMR for %v %s",
 		msg.ProvidedAmount,
-		s.info.ProvidedAmount(),
+		s.info.ProvidedAmount,
 		symbol,
 	))
 

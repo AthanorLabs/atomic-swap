@@ -1,6 +1,9 @@
 package types
 
 import (
+	"fmt"
+	"strings"
+
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -12,8 +15,29 @@ func (asset EthAsset) String() string {
 	if ethcommon.Address(asset).Hex() == "0x0000000000000000000000000000000000000000" {
 		return "ETH"
 	}
+
 	// TODO: get name of asset from contract?
 	return ethcommon.Address(asset).Hex()
+}
+
+// MarshalText returns the hex representation of the EthAsset
+func (asset EthAsset) MarshalText() ([]byte, error) {
+	return []byte(asset.String()), nil
+}
+
+// UnmarshalText assigns the EthAsset from the input text
+func (asset *EthAsset) UnmarshalText(input []byte) error {
+	inputStr := string(input)
+	switch {
+	case strings.EqualFold(inputStr, "ETH"):
+		*asset = EthAsset{}
+		return nil
+	case ethcommon.IsHexAddress(inputStr):
+		*asset = EthAsset(ethcommon.HexToAddress(inputStr))
+		return nil
+	default:
+		return fmt.Errorf("invalid asset value %q", inputStr)
+	}
 }
 
 // Address ...

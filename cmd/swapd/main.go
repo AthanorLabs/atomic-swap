@@ -435,7 +435,11 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	}
 	d.database = sdb
 
-	sm := swap.NewManager()
+	sm, err := swap.NewManager(sdb)
+	if err != nil {
+		return err
+	}
+
 	swapBackend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
 	if err != nil {
 		return err

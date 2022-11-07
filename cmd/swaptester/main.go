@@ -336,10 +336,10 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	providesAmount := offer.ExchangeRate.ToETH(amount)
 
 	start := time.Now()
-	log.Infof("node %d taking offer %s", d.idx, offer.GetID().String())
+	log.Infof("node %d taking offer %s", d.idx, offer.ID.String())
 
 	takerStatusCh, err := wsc.TakeOfferAndSubscribe(peer,
-		offer.GetID().String(), providesAmount)
+		offer.ID.String(), providesAmount)
 	if err != nil {
 		d.errCh <- err
 		return

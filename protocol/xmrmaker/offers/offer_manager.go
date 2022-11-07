@@ -46,15 +46,15 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 	for _, offer := range savedOffers {
 		extra := &types.OfferExtra{
 			StatusCh: make(chan types.Status, statusChSize),
-			InfoFile: pcommon.GetSwapInfoFilepath(dataDir, offer.GetID().String()),
+			InfoFile: pcommon.GetSwapInfoFilepath(dataDir, offer.ID.String()),
 		}
 
-		offers[offer.GetID()] = &offerWithExtra{
+		offers[offer.ID] = &offerWithExtra{
 			offer: offer,
 			extra: extra,
 		}
 
-		log.Infof("loaded offer %s from database", offer.GetID())
+		log.Infof("loaded offer %s from database", offer.ID)
 	}
 
 	return &Manager{
@@ -79,20 +79,20 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
 func (m *Manager) AddOffer(
-	o *types.Offer,
+	offer *types.Offer,
 	relayerEndpoint string,
 	relayerCommission float64,
 ) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	id := o.GetID()
-	offer, has := m.offers[id]
+	id := offer.ID
+	oe, has := m.offers[id]
 	if has {
-		return offer.extra, nil
+		return oe.extra, nil
 	}
 
-	err := m.db.PutOffer(o)
+	err := m.db.PutOffer(offer)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (m *Manager) AddOffer(
 	}
 
 	m.offers[id] = &offerWithExtra{
-		offer: o,
+		offer: offer,
 		extra: extra,
 	}
 
