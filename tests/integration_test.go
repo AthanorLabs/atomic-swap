@@ -365,6 +365,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	default:
 	}
 
+	time.Sleep(time.Second)
 	offersAfter, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(offersBefore), len(offersAfter))

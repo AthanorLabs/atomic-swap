@@ -200,7 +200,7 @@ func newSwapState(
 		nextExpectedEvent: &EventETHLocked{},
 		logReadyCh:        logReadyCh,
 		logRefundedCh:     logRefundedCh,
-		eventCh:           make(chan Event, 1),
+		eventCh:           make(chan Event, 2),
 		readyCh:           make(chan struct{}),
 		info:              info,
 		done:              make(chan struct{}),

@@ -25,7 +25,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -330,7 +329,8 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, db := newTestInstanceAndDB(t)
+	db.EXPECT().PutOffer(s.offer)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -362,12 +362,11 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 
-	logs := []ethtypes.Log{}
-	for _, l := range receipt.Logs {
-		logs = append(logs, *l)
-	}
-
-	err = s.handleRefundLogs(logs)
+	// runContractEventWatcher will trigger EventETHRefunded,
+	// which will then set the next expected event to EventExit.
+	event := newEventExit()
+	s.eventCh <- event
+	err = <-event.errCh
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedRefund, s.info.Status())
 }
