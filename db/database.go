@@ -67,7 +67,7 @@ func (db *Database) PutOffer(offer *types.Offer) error {
 		return err
 	}
 
-	key := offer.GetID()
+	key := offer.ID
 	return db.offerTable.Put(key[:], val)
 }
 
@@ -141,6 +141,7 @@ func (db *Database) HasSwap(id types.Hash) (bool, error) {
 }
 
 // GetSwap returns a swap with the given ID, if it exists.
+// It returns an error if it doesn't exist.
 func (db *Database) GetSwap(id types.Hash) (*swap.Info, error) {
 	value, err := db.swapTable.Get(id[:])
 	if err != nil {

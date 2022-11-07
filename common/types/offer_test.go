@@ -1,7 +1,9 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -12,12 +14,12 @@ import (
 
 func TestOffer_MarshalJSON(t *testing.T) {
 	offer := NewOffer(ProvidesXMR, 100.0, 200.0, 1.5, EthAssetETH)
-	id := offer.GetID()
-	require.False(t, id.IsZero())
+	//id := offer.ID
+	require.False(t, offer.ID.IsZero())
 
 	expected := fmt.Sprintf(
 		`{"ID":"%s","Provides":"XMR","MinimumAmount":100,"MaximumAmount":200,"ExchangeRate":1.5,`+
-			`"EthAsset":"0x0000000000000000000000000000000000000000"}`, id)
+			`"EthAsset":"0x0000000000000000000000000000000000000000"}`, offer.ID)
 	jsonData, err := json.Marshal(offer)
 	require.NoError(t, err)
 	require.Equal(t, expected, string(jsonData))
@@ -31,12 +33,12 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	var offer Offer
 	err := json.Unmarshal([]byte(offerJSON), &offer)
 	require.NoError(t, err)
-	assert.Equal(t, idStr, offer.id.String())
+	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, ProvidesXMR)
 	assert.Equal(t, offer.MinimumAmount, float64(100))
 	assert.Equal(t, offer.MaximumAmount, float64(200))
 	assert.Equal(t, offer.ExchangeRate, ExchangeRate(1.5))
-	assert.Equal(t, ethcommon.Address(offer.EthAsset).Hex(), "0x0000000000000000000000000000000000000001")
+	assert.Equal(t, "0x0000000000000000000000000000000000000001", ethcommon.Address(offer.EthAsset).Hex())
 }
 
 func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
@@ -46,7 +48,7 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	var offer Offer
 	err := json.Unmarshal([]byte(offerJSON), &offer)
 	require.NoError(t, err)
-	assert.Equal(t, idStr, offer.id.String())
+	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, ProvidesXMR)
 	assert.Equal(t, offer.MinimumAmount, float64(100))
 	assert.Equal(t, offer.MaximumAmount, float64(200))
@@ -70,5 +72,23 @@ func TestOffer_UnmarshalJSON_BadID(t *testing.T) {
 	var offer Offer
 	err := json.Unmarshal(offerJSON, &offer)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "offer ID has invalid length=0")
+	require.True(t, errors.Is(errInvalidHashString, err))
+}
+
+func TestHash_JSON(t *testing.T) {
+	hashStr := "6ea4b13eb0b4f48bfbff416f78d817e43226a215ccaddc1ce90fb3cea893e0f3"
+	b, err := hex.DecodeString(hashStr)
+	require.NoError(t, err)
+
+	var hash Hash
+	copy(hash[:], b[:])
+
+	enc, err := json.Marshal(hash)
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("\"%s\"", hashStr), string(enc))
+
+	var res Hash
+	err = json.Unmarshal(enc, &res)
+	require.NoError(t, err)
+	require.Equal(t, hash, res)
 }

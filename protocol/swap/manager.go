@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
+
+	"github.com/ChainSafe/chaindb"
 )
 
 var _ Manager = &manager{}
@@ -20,6 +22,10 @@ type Manager interface {
 	CompleteOngoingSwap(types.Hash) error
 }
 
+// manager implements Manager.
+// Note that ongoing swaps are fully populated, but past swaps
+// are only stored in memory if they've completed during
+// this swapd run, or if they've recently been retrieved.
 type manager struct {
 	db Database
 	sync.RWMutex
@@ -110,8 +116,14 @@ func (m *manager) GetPastSwap(id types.Hash) (*Info, error) {
 		return s, nil
 	}
 
-	// TODO: do we want to cache this swap?
-	return m.getSwapFromDB(id)
+	s, err := m.getSwapFromDB(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// cache the swap, since it's recently accessed
+	m.past[s.ID] = s
+	return s, nil
 }
 
 // GetOngoingSwap returns the ongoing swap's *Info, if there is one.
@@ -132,7 +144,7 @@ func (m *manager) CompleteOngoingSwap(id types.Hash) error {
 	defer m.Unlock()
 	s, has := m.ongoing[id]
 	if !has {
-		return nil
+		return errNoSwapWithID
 	}
 
 	m.past[id] = s
@@ -143,14 +155,13 @@ func (m *manager) CompleteOngoingSwap(id types.Hash) error {
 }
 
 func (m *manager) getSwapFromDB(id types.Hash) (*Info, error) {
-	has, err := m.db.HasSwap(id)
+	s, err := m.db.GetSwap(id)
+	if errors.Is(chaindb.ErrKeyNotFound, err) {
+		return nil, errNoSwapWithID
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if !has {
-		return nil, errNoSwapWithID
-	}
-
-	return m.db.GetSwap(id)
+	return s, nil
 }

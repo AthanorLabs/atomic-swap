@@ -153,7 +153,7 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 	require.GreaterOrEqual(s.T(), len(resp.Offers), 1)
 	var respOffer *types.Offer
 	for _, offer := range resp.Offers {
-		if offerID == offer.GetID().String() {
+		if offerID == offer.ID.String() {
 			respOffer = offer
 		}
 	}
