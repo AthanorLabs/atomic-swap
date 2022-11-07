@@ -79,13 +79,15 @@ func TestDatabase_SwapTable(t *testing.T) {
 	require.NoError(t, err)
 
 	infoA := &swap.Info{
-		ID: types.Hash{0x1},
+		ID:      types.Hash{0x1},
+		Version: swap.CurInfoVersion,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		ID: types.Hash{0x2},
+		ID:      types.Hash{0x2},
+		Version: swap.CurInfoVersion,
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
