@@ -88,7 +88,7 @@ func isDomainSeparatorRegistered(
 	ec *ethclient.Client,
 	forwarderAddr ethcommon.Address,
 	forwarder *gsnforwarder.Forwarder,
-) (bool, error) {
+) (isRegistered bool, err error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return false, err
@@ -99,7 +99,8 @@ func isDomainSeparatorRegistered(
 	if err != nil {
 		return false, err
 	}
-	return forwarder.Domains(nil, ds) // isRegistered, error
+	opts := &bind.CallOpts{Context: ctx}
+	return forwarder.Domains(opts, ds)
 }
 
 func registerDomainSeparatorIfNeeded(
@@ -117,15 +118,11 @@ func registerDomainSeparatorIfNeeded(
 	if err != nil {
 		return err
 	}
-
-	if !isRegistered {
-		err = registerDomainSeparator(ctx, ec, privKey, forwarderAddr, forwarder)
-		if err != nil {
-			return err
-		}
+	if isRegistered {
+		return nil
 	}
 
-	return nil
+	return registerDomainSeparator(ctx, ec, privKey, forwarderAddr, forwarder)
 }
 
 func registerDomainSeparator(
