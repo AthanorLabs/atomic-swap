@@ -90,7 +90,7 @@ func (f *EventFilterer) Start() error {
 				f.logCh <- found
 			}
 
-			// should this be currHeader + 1? ie. is the filter inclusive of the latest block?
+			// the filter inclusive of the latest block when `ToBlock` is nil, so we add 1
 			f.filterQuery.FromBlock = big.NewInt(0).Add(currHeader.Number, big.NewInt(1))
 			header = currHeader
 		}
