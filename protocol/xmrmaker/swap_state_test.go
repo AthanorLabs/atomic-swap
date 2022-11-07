@@ -370,7 +370,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(s.ctx, s.EthClient(), tx.Hash())
+	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.EthClient(), tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 
