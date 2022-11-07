@@ -459,12 +459,6 @@ func (s *swapState) generateAndSetKeys() error {
 	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
 }
 
-// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
-// and a DLEq proof proving that the two keys correspond.
-func generateKeys() (*pcommon.KeysAndProof, error) {
-	return pcommon.GenerateKeysAndProof()
-}
-
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
 func (s *swapState) getSecret() [32]byte {
 	secret := s.dleqProof.Secret()
@@ -699,6 +693,12 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
 		}
 	}
+}
+
+// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// and a DLEq proof proving that the two keys correspond.
+func generateKeys() (*pcommon.KeysAndProof, error) {
+	return pcommon.GenerateKeysAndProof()
 }
 
 func generateNonce() *big.Int {
