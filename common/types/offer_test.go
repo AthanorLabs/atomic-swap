@@ -16,7 +16,7 @@ func TestOffer_MarshalJSON(t *testing.T) {
 	require.False(t, IsHashZero(id))
 
 	expected := fmt.Sprintf(`{
-        "version": "0.1.0",
+		"version": "0.1.0",
 		"offer_id": "%s",
 		"provides": "XMR",
 		"min_amount": 100,
