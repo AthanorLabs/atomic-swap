@@ -64,7 +64,7 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	var offer Offer
 	err := json.Unmarshal([]byte(offerJSON), &offer)
 	require.NoError(t, err)
-	assert.True(t, CurOfferVersion.Equal(offer.Version))
+	assert.Equal(t, *CurOfferVersion, offer.Version)
 	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, ProvidesXMR)
 	assert.Equal(t, offer.MinimumAmount, float64(100))
@@ -95,22 +95,22 @@ func TestOffer_UnmarshalJSON_BadID(t *testing.T) {
 		"exchange_rate": 1.5,
 		"eth_asset": "ETH"
 	}`)
-	var offer Offer
-	err := json.Unmarshal(offerJSON, &offer)
+	_, err := UnmarshalOffer(offerJSON)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "hex string has length 0, want 64")
 }
 
-func TestHash_JSON(t *testing.T) {
-	hashStr := "6ea4b13eb0b4f48bfbff416f78d817e43226a215ccaddc1ce90fb3cea893e0f3"
+func TestUnmarshalOffer_missingVersion(t *testing.T) {
+	_, err := UnmarshalOffer([]byte(`{}`))
+	require.ErrorIs(t, err, errOfferVersionMissing)
+}
 
-	hash := Hash(ethcommon.HexToHash(hashStr))
-	enc, err := json.Marshal(hash)
-	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(`"0x%s"`, hashStr), string(enc))
-
-	var res Hash
-	err = json.Unmarshal(enc, &res)
-	require.NoError(t, err)
-	require.Equal(t, hash, res)
+func TestUnmarshalOffer_versionTooNew(t *testing.T) {
+	unsupportedVersion := CurOfferVersion.IncMajor()
+	offerJSON := fmt.Sprintf(`{
+		"version": "%s",
+		"some_unsupported_field": ""
+	}`, unsupportedVersion)
+	_, err := UnmarshalOffer([]byte(offerJSON))
+	require.ErrorContains(t, err, fmt.Sprintf("offer version %q not supported", unsupportedVersion))
 }
