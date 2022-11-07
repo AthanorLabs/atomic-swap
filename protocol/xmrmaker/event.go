@@ -181,7 +181,7 @@ func (s *swapState) handleEventContractReady() error {
 		return fmt.Errorf("failed to claim: %w", err)
 	}
 
-	log.Debug("funds claimed, tx: %s", txHash)
+	log.Debugf("funds claimed, tx: %s", txHash)
 	s.clearNextExpectedEvent(types.CompletedSuccess)
 	return nil
 }
