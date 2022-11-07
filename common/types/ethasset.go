@@ -15,6 +15,7 @@ func (asset EthAsset) String() string {
 	if ethcommon.Address(asset).Hex() == "0x0000000000000000000000000000000000000000" {
 		return "ETH"
 	}
+
 	// TODO: get name of asset from contract?
 	return ethcommon.Address(asset).Hex()
 }

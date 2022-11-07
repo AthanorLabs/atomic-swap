@@ -24,7 +24,7 @@ func (b *Instance) initiate(
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
-	if b.swapStates[offer.GetID()] != nil {
+	if b.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
 	}
 
@@ -42,7 +42,7 @@ func (b *Instance) initiate(
 	}
 
 	// checks passed, delete offer for now
-	b.offerManager.DeleteOffer(offer.GetID())
+	b.offerManager.DeleteOffer(offer.ID)
 
 	s, err := newSwapState(b.backend, offer, offerExtra, b.offerManager, providesAmount, desiredAmount)
 	if err != nil {
@@ -53,7 +53,7 @@ func (b *Instance) initiate(
 		<-s.done
 		b.swapMu.Lock()
 		defer b.swapMu.Unlock()
-		delete(b.swapStates, offer.GetID())
+		delete(b.swapStates, offer.ID)
 	}()
 
 	symbol, err := pcommon.AssetSymbol(b.backend, offer.EthAsset)
@@ -68,7 +68,7 @@ func (b *Instance) initiate(
 		symbol,
 		s.info.ProvidedAmount),
 	)
-	b.swapStates[offer.GetID()] = s
+	b.swapStates[offer.ID] = s
 	return s, nil
 }
 

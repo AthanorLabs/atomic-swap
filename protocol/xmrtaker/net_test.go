@@ -26,5 +26,5 @@ func TestXMRTaker_InitiateProtocol(t *testing.T) {
 	offer := types.NewOffer(types.ProvidesETH, 0, 0, 1, types.EthAssetETH)
 	s, err := a.InitiateProtocol(3.33, offer)
 	require.NoError(t, err)
-	require.Equal(t, a.swapStates[offer.GetID()], s)
+	require.Equal(t, a.swapStates[offer.ID], s)
 }

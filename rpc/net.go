@@ -176,7 +176,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 
 	var offer *types.Offer
 	for _, maybeOffer := range queryResp.Offers {
-		if offerID == maybeOffer.GetID().String() {
+		if offerID == maybeOffer.ID.String() {
 			offer = maybeOffer
 			break
 		}
@@ -288,7 +288,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.O
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(req.EthAsset))
 	}
 
-	o := types.NewOffer(
+	offer := types.NewOffer(
 		types.ProvidesXMR,
 		req.MinimumAmount,
 		req.MaximumAmount,
@@ -296,10 +296,10 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.O
 		ethAsset,
 	)
 
-	offerExtra, err := s.xmrmaker.MakeOffer(o, req.RelayerEndpoint, req.RelayerCommission)
+	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerCommission)
 	if err != nil {
 		return "", nil, err
 	}
 
-	return o.GetID().String(), offerExtra, nil
+	return offer.ID.String(), offerExtra, nil
 }

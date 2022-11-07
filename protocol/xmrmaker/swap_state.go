@@ -94,7 +94,7 @@ func newSwapState(
 
 	offerExtra.StatusCh <- stage
 	info := pswap.NewInfo(
-		offer.GetID(),
+		offer.ID,
 		types.ProvidesXMR,
 		providesAmount.AsMonero(),
 		desiredAmount.AsEther(),
@@ -222,9 +222,9 @@ func (s *swapState) exit() error {
 	log.Debugf("attempting to exit swap: nextExpectedMessage=%v", s.nextExpectedMessage)
 
 	defer func() {
-		err := s.SwapManager().CompleteOngoingSwap(s.offer.GetID())
+		err := s.SwapManager().CompleteOngoingSwap(s.offer.ID)
 		if err != nil {
-			log.Warnf("failed to mark swap %s as completed: %s", s.offer.GetID(), err)
+			log.Warnf("failed to mark swap %s as completed: %s", s.offer.ID, err)
 			return
 		}
 
@@ -232,10 +232,10 @@ func (s *swapState) exit() error {
 			// re-add offer, as it wasn't taken successfully
 			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
 			if err != nil {
-				log.Warnf("failed to re-add offer %s: %s", s.offer.GetID(), err)
+				log.Warnf("failed to re-add offer %s: %s", s.offer.ID, err)
 			}
 
-			log.Debugf("re-added offer %s", s.offer.GetID())
+			log.Debugf("re-added offer %s", s.offer.ID)
 		}
 
 		// stop all running goroutines

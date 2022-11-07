@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -125,4 +126,17 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 	res, err := db.GetSwap(id)
 	require.NoError(t, err)
 	require.Equal(t, infoB, res)
+}
+
+func TestDatabase_SwapTable_GetSwap_err(t *testing.T) {
+	cfg := &chaindb.Config{
+		DataDir:  t.TempDir(),
+		InMemory: true,
+	}
+
+	db, err := NewDatabase(cfg)
+	require.NoError(t, err)
+
+	_, err = db.GetSwap(types.Hash{0x1})
+	require.True(t, errors.Is(chaindb.ErrKeyNotFound, err))
 }
