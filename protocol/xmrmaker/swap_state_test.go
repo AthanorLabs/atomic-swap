@@ -446,7 +446,7 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedEvent = nil
+	s.nextExpectedEvent = &EventETHRefunded{}
 	err := s.Exit()
 	require.True(t, errors.Is(err, errUnexpectedMessageType))
 	require.Equal(t, types.CompletedAbort, s.info.Status)
