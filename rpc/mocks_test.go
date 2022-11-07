@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"os"
 	"time"
@@ -38,12 +36,7 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 }
 
 func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
-	var offer types.Offer
-	offerJSON := fmt.Sprintf(`{"ID":%q}`, testSwapID.String())
-	if err := json.Unmarshal([]byte(offerJSON), &offer); err != nil {
-		panic(err)
-	}
-	return &net.QueryResponse{Offers: []*types.Offer{&offer}}, nil
+	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
 func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error {
