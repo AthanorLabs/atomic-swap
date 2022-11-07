@@ -194,7 +194,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 }
 
 func (s *swapState) waitForSendKeysMessage() {
-	waitDuration := time.Minute
+	waitDuration := time.Minute * 3
 	timer := time.After(waitDuration)
 	select {
 	case <-s.ctx.Done():

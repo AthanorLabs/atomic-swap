@@ -172,6 +172,8 @@ func (s *swapState) handleEventContractReady() error {
 	// contract ready, let's claim our ether
 	txHash, err := s.claimFunds()
 	if err != nil {
+		log.Warnf("failed to claim funds from contract, attempting to safely exit: %s", err)
+
 		// TODO: retry claim, depending on error (#162)
 		if err = s.exit(); err != nil {
 			return fmt.Errorf("failed to exit after failing to claim: %w", err)

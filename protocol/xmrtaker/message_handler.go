@@ -142,6 +142,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 }
 
 func (s *swapState) runT0ExpirationHandler() {
+	defer log.Debugf("returning from runT0ExpirationHandler")
+
 	// TODO: this variable is so that we definitely refund before t0.
 	// Current algorithm is to trigger the timeout when only 15% of the allotted
 	// time is remaining. If the block interval is 1 second on a test network and
@@ -163,6 +165,7 @@ func (s *swapState) runT0ExpirationHandler() {
 	case <-s.xmrLockedCh:
 		return
 	case <-giveUpAndRefundTimer.C:
+		log.Infof("approaching T0, attempting to refund ETH")
 		event := newEventShouldRefund()
 		s.eventCh <- event
 		err := <-event.errCh

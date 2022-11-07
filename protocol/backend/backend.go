@@ -136,7 +136,7 @@ type Config struct {
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
 	if cfg.Environment == common.Development {
-		defaultTimeoutDuration = 90 * time.Second
+		defaultTimeoutDuration = 2 * time.Minute
 	} else if cfg.Environment == common.Stagenet {
 		defaultTimeoutDuration = time.Hour
 	}
