@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	types "github.com/athanorlabs/atomic-swap/common/types"
+	common "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -49,7 +50,7 @@ func (mr *MockDatabaseMockRecorder) ClearAllOffers() *gomock.Call {
 }
 
 // DeleteOffer mocks base method.
-func (m *MockDatabase) DeleteOffer(arg0 types.Hash) error {
+func (m *MockDatabase) DeleteOffer(arg0 common.Hash) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteOffer", arg0)
 	ret0, _ := ret[0].(error)
