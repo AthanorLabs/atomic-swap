@@ -39,7 +39,9 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 }
 
 func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, db := newTestInstanceAndDB(t)
+
+	db.EXPECT().PutOffer(s.offer)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)

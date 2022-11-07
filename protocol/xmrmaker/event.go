@@ -123,6 +123,10 @@ func (s *swapState) handleEvent(event Event) {
 		}
 
 		s.setNextExpectedEvent(&EventExit{})
+		err = s.Exit()
+		if err != nil {
+			log.Warnf("failed to exit swap: %s", err)
+		}
 	case *EventETHRefunded:
 		log.Infof("EventETHRefunded")
 		defer close(e.errCh)
@@ -134,15 +138,14 @@ func (s *swapState) handleEvent(event Event) {
 		}
 
 		s.setNextExpectedEvent(&EventExit{})
+		err = s.Exit()
+		if err != nil {
+			log.Warnf("failed to exit swap: %s", err)
+		}
 	case *EventExit:
 		// this can happen at any stage.
 		log.Infof("EventExit")
 		defer close(e.errCh)
-
-		// TODO move this check to start of function?
-		if !s.info.Status().IsOngoing() {
-			return
-		}
 
 		err := s.exit()
 		if err != nil {

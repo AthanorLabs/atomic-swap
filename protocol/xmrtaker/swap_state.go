@@ -306,9 +306,8 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
 	case nil:
-		// the swap completed already
-		// TODO should we just return here?
-		return s.tryClaim()
+		// the swap completed already, do nothing
+		return nil
 	default:
 		log.Errorf("unexpected nextExpectedEvent: %T", s.nextExpectedEvent)
 		s.clearNextExpectedEvent(types.CompletedAbort)

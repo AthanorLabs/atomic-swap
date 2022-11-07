@@ -200,7 +200,7 @@ func newSwapState(
 		nextExpectedEvent: &EventETHLocked{},
 		logReadyCh:        logReadyCh,
 		logRefundedCh:     logRefundedCh,
-		eventCh:           make(chan Event),
+		eventCh:           make(chan Event, 1),
 		readyCh:           make(chan struct{}),
 		info:              info,
 		done:              make(chan struct{}),
@@ -327,6 +327,9 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedRefund)
 		s.moneroReclaimAddress = address
 		log.Infof("regained private key to monero wallet, address=%s", address)
+		return nil
+	case nil:
+		// we already completed the swap, do nothing
 		return nil
 	default:
 		s.clearNextExpectedEvent(types.CompletedAbort)
