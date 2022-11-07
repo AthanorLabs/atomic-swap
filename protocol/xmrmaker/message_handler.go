@@ -38,8 +38,10 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 			return err
 		}
 
-		// TODO we can actually close the network stream after sending the
-		// XMRLocked message
+		// TODO: we can actually close the network stream after
+		// sending the XMRLocked message, but since the network
+		// calls Exit() when the stream closes, it needs to not
+		// do that in this case.
 	default:
 		return errUnexpectedMessageType
 	}
@@ -165,17 +167,11 @@ func (s *swapState) runT0ExpirationHandler() {
 }
 
 func (s *swapState) handleT0Expired() {
-	// TODO this probably shouldn't happen anymore since we're event-driven
-	if !s.info.Status.IsOngoing() {
-		// swap was already completed, just return
-		return
-	}
-
 	event := newEventContractReady()
 	s.eventCh <- event
 	err := <-event.errCh
 	if err != nil {
-		// TODO this is quite bad?
+		// TODO: this is quite bad, how should this be handled? (#162)
 		log.Errorf("failed to handle t0 expiration: %s", err)
 	}
 }

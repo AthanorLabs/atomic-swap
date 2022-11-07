@@ -122,8 +122,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(&EventExit{})
-		err = s.Exit()
+		err = s.exit()
 		if err != nil {
 			log.Warnf("failed to exit swap: %s", err)
 		}
@@ -137,8 +136,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(&EventExit{})
-		err = s.Exit()
+		err = s.exit()
 		if err != nil {
 			log.Warnf("failed to exit swap: %s", err)
 		}

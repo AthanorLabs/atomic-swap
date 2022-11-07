@@ -8,6 +8,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // getStatus returns the status corresponding to the next expected event.
@@ -69,12 +71,14 @@ func newEventETHClaimed(sk *mcrypto.PrivateSpendKey) *EventETHClaimed {
 // EventShouldRefund is an optional event. It occurs when the XMR-maker doesn't
 // lock before t0, so we should refund the ETH.
 type EventShouldRefund struct {
-	errCh chan error
+	errCh    chan error
+	txHashCh chan ethcommon.Hash // contains the refund tx hash, if successful
 }
 
 func newEventShouldRefund() *EventShouldRefund {
 	return &EventShouldRefund{
-		errCh: make(chan error),
+		errCh:    make(chan error),
+		txHashCh: make(chan ethcommon.Hash, 1),
 	}
 }
 
@@ -153,13 +157,15 @@ func (s *swapState) handleEvent(event Event) {
 	case *EventShouldRefund:
 		log.Infof("EventShouldRefund")
 		defer close(e.errCh)
+		defer close(e.txHashCh)
 
 		// either EventXMRLocked or EventETHClaimed next is ok
-		// if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventXMRLocked{}) {
-		// 	e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
-		// }
+		if (reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventXMRLocked{}) &&
+			reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventETHClaimed{})) {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+		}
 
-		err := s.handleEventShouldRefund()
+		err := s.handleEventShouldRefund(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %T: %w", e, err)
 		}
@@ -167,10 +173,6 @@ func (s *swapState) handleEvent(event Event) {
 		// this can happen at any stage.
 		log.Infof("EventExit")
 		defer close(e.errCh)
-
-		if !s.info.Status.IsOngoing() {
-			return
-		}
 
 		err := s.exit()
 		if err != nil {
@@ -205,15 +207,14 @@ func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
 	return nil
 }
 
-func (s *swapState) handleEventShouldRefund() error {
-	// TODO could this happen still?
+func (s *swapState) handleEventShouldRefund(event *EventShouldRefund) error {
 	if !s.info.Status.IsOngoing() {
 		return nil
 	}
 
-	txhash, err := s.refund()
+	txHash, err := s.refund()
 	if err != nil {
-		// TODO could this happen either?
+		// TODO: could this ever happen anymore?
 		if !strings.Contains(err.Error(), revertSwapCompleted) {
 			return err
 		}
@@ -222,6 +223,7 @@ func (s *swapState) handleEventShouldRefund() error {
 		return nil
 	}
 
-	log.Infof("got our ETH back: tx hash=%s", txhash)
+	log.Infof("got our ETH back: tx hash=%s", txHash)
+	event.txHashCh <- txHash
 	return nil
 }

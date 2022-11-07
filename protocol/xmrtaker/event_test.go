@@ -5,14 +5,17 @@ import (
 	"testing"
 	"time"
 
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
 func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
@@ -20,11 +23,10 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
-	// close swap-deposit-wallet
+	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
 	err := backend.CreateWallet("test-wallet", "")
 	require.NoError(t, err)
-
 	monero.MineMinXMRBalance(t, backend, common.MoneroToPiconero(1))
 
 	// invalid SendKeysMessage should result in an error
@@ -78,11 +80,37 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 		TxID:    transfer.TxID,
 	}
 
-	// TODO assert ready was called
+	// assert that ready() is called, setup contract watcher
+	ethHeader, err := backend.EthClient().HeaderByNumber(backend.Ctx(), nil)
+	require.NoError(t, err)
+	logReadyCh := make(chan []ethtypes.Log)
+
+	readyTopic := common.GetTopic(common.ReadyEventSignature)
+	readyWatcher := watcher.NewEventFilterer(
+		s.Backend.Ctx(),
+		s.Backend.EthClient(),
+		s.Backend.ContractAddr(),
+		ethHeader.Number,
+		readyTopic,
+		logReadyCh,
+	)
+	err = readyWatcher.Start()
+	require.NoError(t, err)
+
+	// now handle the NotifyXMRLock message
 	err = s.HandleProtocolMessage(lmsg)
 	require.NoError(t, err)
 	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
 	require.Equal(t, types.ContractReady, s.info.Status)
+
+	select {
+	case logs := <-logReadyCh:
+		require.Equal(t, 1, len(logs))
+		err = pcommon.CheckSwapID(logs[0], "Ready", s.contractSwapID)
+		require.NoError(t, err)
+	case <-time.After(time.Second * 2):
+		t.Fatalf("didn't get ready logs in time")
+	}
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key

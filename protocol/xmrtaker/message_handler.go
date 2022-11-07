@@ -170,7 +170,7 @@ func (s *swapState) runT0ExpirationHandler() {
 		s.eventCh <- event
 		err := <-event.errCh
 		if err != nil {
-			// TODO what should we do here? this would be bad
+			// TODO: what should we do here? this would be bad. (#162)
 			log.Errorf("failed to refund: %s", err)
 		}
 	}
@@ -284,7 +284,7 @@ func (s *swapState) handleT1Expired() {
 	s.eventCh <- event
 	err := <-event.errCh
 	if err != nil {
-		// TODO what should we do here? this would be bad
+		// TODO: what should we do here? this would be bad. (#162)
 		log.Errorf("failed to refund: %s", err)
 	}
 }

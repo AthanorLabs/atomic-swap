@@ -2,11 +2,10 @@ package xmrmaker
 
 import (
 	"errors"
-	"strings"
 
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -25,9 +24,9 @@ func (s *swapState) runContractEventWatcher() {
 			// swap was refunded, send EventRefunded
 			err := s.handleRefundLogs(logs)
 			if err != nil {
-				// TODO what should we actually do here? this shouldn't happen ever
 				log.Errorf("failed to handle refund logs: %s", err)
 			}
+
 			// there won't be any more events after this
 			return
 		}
@@ -39,8 +38,8 @@ func (s *swapState) handleReadyLogs(logs []ethtypes.Log) error {
 		return errNoReadyLogs
 	}
 
-	err := s.checkSwapID(logs[0], "Ready")
-	if err == errLogNotForUs {
+	err := pcommon.CheckSwapID(logs[0], "Ready", s.contractSwapID)
+	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
 	if err != nil {
@@ -58,8 +57,8 @@ func (s *swapState) handleRefundLogs(logs []ethtypes.Log) error {
 		return errNoRefundLogs
 	}
 
-	err := s.checkSwapID(logs[0], "Refunded")
-	if err == errLogNotForUs {
+	err := pcommon.CheckSwapID(logs[0], "Refunded", s.contractSwapID)
+	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
 	if err != nil {
@@ -75,28 +74,4 @@ func (s *swapState) handleRefundLogs(logs []ethtypes.Log) error {
 	event := newEventETHRefunded(sk)
 	s.eventCh <- event
 	return <-event.errCh
-}
-
-func (s *swapState) checkSwapID(log ethtypes.Log, eventName string) error {
-	abiSF, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
-	if err != nil {
-		return err
-	}
-
-	data := log.Data
-	res, err := abiSF.Unpack(eventName, data)
-	if err != nil {
-		return err
-	}
-
-	if len(res) < 1 {
-		return errors.New("log had not enough parameters")
-	}
-
-	swapID := res[0].([32]byte)
-	if swapID != s.contractSwapID {
-		return errLogNotForUs
-	}
-
-	return nil
 }

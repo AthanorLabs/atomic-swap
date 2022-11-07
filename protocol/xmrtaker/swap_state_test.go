@@ -172,8 +172,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-
-	s.SetSwapTimeout(time.Second * 15)
+	s.SetSwapTimeout(time.Second * 30)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -193,7 +192,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	// ensure we refund before t0
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {
-			// TODO check this is before t0
+			// check this is before t0
+			require.Greater(t, s.t0, time.Now())
 			break
 		} else if !status.IsOngoing() {
 			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)
@@ -268,7 +268,8 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {
-			// TODO check this is after t1
+			// check this is after t1
+			require.Less(t, s.t1, time.Now())
 			break
 		} else if !status.IsOngoing() {
 			t.Fatalf("got wrong exit status %s, expected CompletedRefund", status)

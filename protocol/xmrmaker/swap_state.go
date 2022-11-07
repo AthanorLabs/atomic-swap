@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	eth "github.com/ethereum/go-ethereum"
@@ -30,8 +29,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 )
-
-const revertSwapCompleted = "swap is already completed"
 
 var (
 	readyTopic    = common.GetTopic(common.ReadyEventSignature)
@@ -84,9 +81,6 @@ type swapState struct {
 	readyCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
 	done chan struct{}
-
-	// address of reclaimed monero wallet, if the swap is refunded77
-	moneroReclaimAddress mcrypto.Address
 }
 
 func newSwapState(
@@ -291,7 +285,6 @@ func (s *swapState) exit() error {
 		return nil
 	}
 
-	// TODO update to next expected event
 	switch s.nextExpectedEvent.(type) {
 	case *EventETHLocked:
 		// we were waiting for the contract to be deployed, but haven't
@@ -299,42 +292,21 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
 	case *EventContractReady:
-		// TODO this case should shutdown the runHandleEvents goroutine
-		// and take control of the event channel.
-		// the next event will either be ContractReady or Refunded and then
-		// we can act accordingly.
+		// this case takes control of the event channel.
+		// the next event will either be EventContractReady or EventETHRefunded.
 
-		// we should check if XMRTaker refunded, if so then check contract for secret
-		address, err := s.tryReclaimMonero()
+		var err error
+		event := <-s.eventCh
+		switch e := event.(type) {
+		case *EventETHRefunded:
+			err = s.handleEventETHRefunded(e)
+		case *EventContractReady:
+			err = s.handleEventContractReady()
+		}
 		if err != nil {
-			log.Errorf("failed to check for refund: err=%s", err)
-
-			// TODO: depending on the error, we should either retry to refund or try to claim.
-			// we should wait for both events in the contract and proceed accordingly. (#162)
-			//
-			// we already locked our funds - need to wait until we can claim
-			// the funds (ie. wait until after t0)
-			txHash, err := s.tryClaim()
-			if err != nil {
-				// note: this shouldn't happen, as it means we had a race condition somewhere
-				if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status.IsOngoing() {
-					return nil
-				}
-
-				log.Errorf("failed to claim funds: err=%s", err)
-			} else {
-				log.Infof("claimed ether! transaction hash=%s", txHash)
-				s.clearNextExpectedEvent(types.CompletedSuccess)
-				return nil
-			}
-
-			// TODO: keep retrying until success (#162)
 			return err
 		}
 
-		s.clearNextExpectedEvent(types.CompletedRefund)
-		s.moneroReclaimAddress = address
-		log.Infof("regained private key to monero wallet, address=%s", address)
 		return nil
 	case nil:
 		// we already completed the swap, do nothing
@@ -344,15 +316,6 @@ func (s *swapState) exit() error {
 		log.Errorf("unexpected nextExpectedEvent in Exit: type=%T", s.nextExpectedEvent)
 		return errUnexpectedMessageType
 	}
-}
-
-func (s *swapState) tryReclaimMonero() (mcrypto.Address, error) {
-	skA, err := s.filterForRefund()
-	if err != nil {
-		return "", err
-	}
-
-	return s.reclaimMonero(skA)
 }
 
 func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {

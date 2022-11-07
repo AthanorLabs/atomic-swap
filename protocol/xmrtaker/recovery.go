@@ -109,7 +109,8 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 	}
 
 	// otherwise, let's try to refund
-	// TODO: also run runContractEventWatcher to watch for Claimed?
+	// TODO: also run runContractEventWatcher to watch for Claimed logs?
+	// will address in recovery refactor (#212)
 	go rs.ss.runT1ExpirationHandler()
 
 	txHash, err := rs.ss.tryRefund()

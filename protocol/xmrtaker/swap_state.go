@@ -362,8 +362,8 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 			return ethcommon.Hash{}, err
 		}
 
-		// TODO get tx hash, also from a channel?
-		return ethcommon.Hash{}, nil
+		txHash := <-event.txHashCh
+		return txHash, nil
 	default:
 		return ethcommon.Hash{}, errCannotRefund
 	}
@@ -601,7 +601,6 @@ func (s *swapState) ready() error {
 	}
 
 	log.Debugf("contract set to ready in block %d", receipt.BlockNumber)
-	fmt.Println(receipt.Logs)
 	return nil
 }
 
