@@ -6,7 +6,10 @@ require (
 	filippo.io/edwards25519 v1.0.0
 	github.com/ChainSafe/chaindb v0.1.5-0.20221010190531-f900218c88f8
 	github.com/MarinX/monerorpc v1.0.5
+	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/athanorlabs/cgo-dleq v0.0.0-20220929204103-ca62cc9baa28
+	github.com/athanorlabs/go-relayer v0.0.0-20221103034307-cde70ecbb543
+	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
 	github.com/ethereum/go-ethereum v1.10.25
@@ -31,8 +34,6 @@ require (
 require (
 	github.com/ChainSafe/log15 v1.0.0 // indirect
 	github.com/DataDog/zstd v1.4.1 // indirect
-	github.com/athanorlabs/go-relayer v0.0.0-20221103034307-cde70ecbb543 // indirect
-	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.0 // indirect

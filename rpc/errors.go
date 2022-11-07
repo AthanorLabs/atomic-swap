@@ -11,9 +11,7 @@ var (
 	errEthAssetIncorrectFormat = errors.New("ethAsset must be formatted as an address")
 
 	// swap_ errors
-	errNoSwapWithID  = errors.New("unable to find swap with given ID")
-	errNoOngoingSwap = errors.New("no current ongoing swap")
-	errCannotRefund  = errors.New("cannot refund if not the ETH provider")
+	errCannotRefund = errors.New("cannot refund if not the ETH provider")
 
 	// ws errors
 	errUnimplemented = errors.New("unimplemented")

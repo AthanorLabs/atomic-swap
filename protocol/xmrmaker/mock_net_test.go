@@ -11,6 +11,7 @@ import (
 	common "github.com/athanorlabs/atomic-swap/common"
 	types "github.com/athanorlabs/atomic-swap/common/types"
 	message "github.com/athanorlabs/atomic-swap/net/message"
+	common0 "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 )
@@ -95,7 +96,7 @@ func (mr *MockHostMockRecorder) Query(arg0 interface{}) *gomock.Call {
 }
 
 // SendSwapMessage mocks base method.
-func (m *MockHost) SendSwapMessage(arg0 message.Message, arg1 types.Hash) error {
+func (m *MockHost) SendSwapMessage(arg0 message.Message, arg1 common0.Hash) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendSwapMessage", arg0, arg1)
 	ret0, _ := ret[0].(error)

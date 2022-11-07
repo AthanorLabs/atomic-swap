@@ -37,7 +37,7 @@ func Test_Manager(t *testing.T) {
 	offers := mgr.GetOffers()
 	require.Len(t, offers, numAdd)
 	for i := 0; i < numTake; i++ {
-		id := offers[i].GetID()
+		id := offers[i].ID
 		db.EXPECT().DeleteOffer(id)
 		offer, offerExtra, err := mgr.TakeOffer(id)
 		require.NoError(t, err)
@@ -49,9 +49,9 @@ func Test_Manager(t *testing.T) {
 	offers = mgr.GetOffers()
 	require.Len(t, offers, numAdd-numTake)
 
-	removeIDs := []types.Hash{offers[0].GetID(), offers[2].GetID()}
-	db.EXPECT().DeleteOffer(offers[0].GetID())
-	db.EXPECT().DeleteOffer(offers[2].GetID())
+	removeIDs := []types.Hash{offers[0].ID, offers[2].ID}
+	db.EXPECT().DeleteOffer(offers[0].ID)
+	db.EXPECT().DeleteOffer(offers[2].ID)
 	mgr.ClearOfferIDs(removeIDs)
 	offers = mgr.GetOffers()
 	require.Len(t, offers, numAdd-numTake-2)

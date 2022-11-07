@@ -153,7 +153,7 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 	require.GreaterOrEqual(s.T(), len(resp.Offers), 1)
 	var respOffer *types.Offer
 	for _, offer := range resp.Offers {
-		if offerID == offer.GetID().String() {
+		if offerID == offer.ID.String() {
 			respOffer = offer
 		}
 	}
@@ -365,6 +365,8 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	default:
 	}
 
+	// wait for offer to be re-added
+	time.Sleep(time.Second)
 	offersAfter, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(offersBefore), len(offersAfter))
@@ -596,6 +598,8 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	default:
 	}
 
+	// wait for offer to be re-added
+	time.Sleep(time.Second)
 	offersAfter, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(offersBefore), len(offersAfter))

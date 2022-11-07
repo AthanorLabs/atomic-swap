@@ -13,7 +13,6 @@ import (
 
 	wallet "github.com/MarinX/monerorpc/wallet"
 	common "github.com/athanorlabs/atomic-swap/common"
-	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	monero "github.com/athanorlabs/atomic-swap/monero"
@@ -24,7 +23,7 @@ import (
 	ethereum "github.com/ethereum/go-ethereum"
 	bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	common0 "github.com/ethereum/go-ethereum/common"
-	types0 "github.com/ethereum/go-ethereum/core/types"
+	types "github.com/ethereum/go-ethereum/core/types"
 	ethclient "github.com/ethereum/go-ethereum/ethclient"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -82,7 +81,7 @@ func (mr *MockBackendMockRecorder) CallOpts() *gomock.Call {
 }
 
 // ClearXMRDepositAddress mocks base method.
-func (m *MockBackend) ClearXMRDepositAddress(arg0 types.Hash) {
+func (m *MockBackend) ClearXMRDepositAddress(arg0 common0.Hash) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "ClearXMRDepositAddress", arg0)
 }
@@ -309,10 +308,10 @@ func (mr *MockBackendMockRecorder) EthPrivateKey() *gomock.Call {
 }
 
 // FilterLogs mocks base method.
-func (m *MockBackend) FilterLogs(arg0 context.Context, arg1 ethereum.FilterQuery) ([]types0.Log, error) {
+func (m *MockBackend) FilterLogs(arg0 context.Context, arg1 ethereum.FilterQuery) ([]types.Log, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FilterLogs", arg0, arg1)
-	ret0, _ := ret[0].([]types0.Log)
+	ret0, _ := ret[0].([]types.Log)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -554,7 +553,7 @@ func (mr *MockBackendMockRecorder) Refresh() *gomock.Call {
 }
 
 // SendSwapMessage mocks base method.
-func (m *MockBackend) SendSwapMessage(arg0 message.Message, arg1 types.Hash) error {
+func (m *MockBackend) SendSwapMessage(arg0 message.Message, arg1 common0.Hash) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendSwapMessage", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -616,7 +615,7 @@ func (mr *MockBackendMockRecorder) SetSwapTimeout(arg0 interface{}) *gomock.Call
 }
 
 // SetXMRDepositAddress mocks base method.
-func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 types.Hash) {
+func (m *MockBackend) SetXMRDepositAddress(arg0 mcrypto.Address, arg1 common0.Hash) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetXMRDepositAddress", arg0, arg1)
 }
@@ -671,10 +670,10 @@ func (mr *MockBackendMockRecorder) SweepAll(arg0, arg1 interface{}) *gomock.Call
 }
 
 // TransactionByHash mocks base method.
-func (m *MockBackend) TransactionByHash(arg0 context.Context, arg1 common0.Hash) (*types0.Transaction, bool, error) {
+func (m *MockBackend) TransactionByHash(arg0 context.Context, arg1 common0.Hash) (*types.Transaction, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TransactionByHash", arg0, arg1)
-	ret0, _ := ret[0].(*types0.Transaction)
+	ret0, _ := ret[0].(*types.Transaction)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -687,10 +686,10 @@ func (mr *MockBackendMockRecorder) TransactionByHash(arg0, arg1 interface{}) *go
 }
 
 // TransactionReceipt mocks base method.
-func (m *MockBackend) TransactionReceipt(arg0 context.Context, arg1 common0.Hash) (*types0.Receipt, error) {
+func (m *MockBackend) TransactionReceipt(arg0 context.Context, arg1 common0.Hash) (*types.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TransactionReceipt", arg0, arg1)
-	ret0, _ := ret[0].(*types0.Receipt)
+	ret0, _ := ret[0].(*types.Receipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -744,10 +743,10 @@ func (mr *MockBackendMockRecorder) UnlockClient() *gomock.Call {
 }
 
 // WaitForReceipt mocks base method.
-func (m *MockBackend) WaitForReceipt(arg0 context.Context, arg1 common0.Hash) (*types0.Receipt, error) {
+func (m *MockBackend) WaitForReceipt(arg0 context.Context, arg1 common0.Hash) (*types.Receipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WaitForReceipt", arg0, arg1)
-	ret0, _ := ret[0].(*types0.Receipt)
+	ret0, _ := ret[0].(*types.Receipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -788,7 +787,7 @@ func (mr *MockBackendMockRecorder) WaitForTransReceipt(arg0 interface{}) *gomock
 }
 
 // XMRDepositAddress mocks base method.
-func (m *MockBackend) XMRDepositAddress(arg0 *types.Hash) (mcrypto.Address, error) {
+func (m *MockBackend) XMRDepositAddress(arg0 *common0.Hash) (mcrypto.Address, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "XMRDepositAddress", arg0)
 	ret0, _ := ret[0].(mcrypto.Address)

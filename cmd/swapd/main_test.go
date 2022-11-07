@@ -220,5 +220,5 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	offers, err := client.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(offers))
-	require.Equal(t, offerID, offers[0].GetID().String())
+	require.Equal(t, offerID, offers[0].ID.String())
 }

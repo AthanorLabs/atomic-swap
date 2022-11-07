@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
@@ -49,6 +50,18 @@ func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
 	return nil
 }
 
+func newSwapManager(t *testing.T) pswap.Manager {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	db := pswap.NewMockDatabase(ctrl)
+	db.EXPECT().GetAllSwaps()
+	db.EXPECT().PutSwap(gomock.Any()).AnyTimes()
+
+	sm, err := pswap.NewManager(db)
+	require.NoError(t, err)
+	return sm
+}
+
 func newBackend(t *testing.T) backend.Backend {
 	pk := tests.GetTakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
@@ -70,7 +83,7 @@ func newBackend(t *testing.T) backend.Backend {
 		EthereumClient:      ec,
 		EthereumPrivateKey:  pk,
 		Environment:         common.Development,
-		SwapManager:         pswap.NewManager(),
+		SwapManager:         newSwapManager(t),
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		Net:                 new(mockNet),
@@ -372,8 +385,9 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 	s.nextExpectedMessage = &message.SendKeysMessage{}
 	err := s.Exit()
 	require.NoError(t, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedAbort, info.Status())
+	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	require.NoError(t, err)
+	require.Equal(t, types.CompletedAbort, info.Status)
 }
 
 func TestExit_afterNotifyXMRLock(t *testing.T) {
@@ -395,8 +409,10 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 
 	err = s.Exit()
 	require.NoError(t, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedRefund, info.Status())
+
+	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	require.NoError(t, err)
+	require.Equal(t, types.CompletedRefund, info.Status)
 }
 
 func TestExit_afterNotifyClaimed(t *testing.T) {
@@ -418,8 +434,10 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 
 	err = s.Exit()
 	require.NoError(t, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedRefund, info.Status())
+
+	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	require.NoError(t, err)
+	require.Equal(t, types.CompletedRefund, info.Status)
 }
 
 func TestExit_invalidNextMessageType(t *testing.T) {
@@ -442,8 +460,10 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 
 	err = s.Exit()
 	require.Equal(t, errUnexpectedMessageType, err)
-	info := s.SwapManager().GetPastSwap(s.info.ID())
-	require.Equal(t, types.CompletedAbort, info.Status())
+
+	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	require.NoError(t, err)
+	require.Equal(t, types.CompletedAbort, info.Status)
 }
 
 func TestSwapState_ApproveToken(t *testing.T) {

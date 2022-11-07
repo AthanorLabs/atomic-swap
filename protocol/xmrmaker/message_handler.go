@@ -135,7 +135,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, errMissingAddress
 	}
 
-	if msg.ContractSwapID.IsZero() {
+	if types.IsHashZero(msg.ContractSwapID) {
 		return nil, errNilContractSwapID
 	}
 
@@ -173,7 +173,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	// TODO: check these (in checkContract) (#161)
 	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 
-	notifyXMRLocked, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount()))
+	notifyXMRLocked, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
@@ -219,7 +219,7 @@ func (s *swapState) handleT0Expired() {
 	s.lockState()
 	defer s.unlockState()
 
-	if !s.info.Status().IsOngoing() {
+	if !s.info.Status.IsOngoing() {
 		// swap was already completed, just return
 		return
 	}

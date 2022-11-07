@@ -24,7 +24,7 @@ func (b *Instance) initiate(
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 
-	if b.swapStates[offer.GetID()] != nil {
+	if b.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
 	}
 
@@ -42,7 +42,7 @@ func (b *Instance) initiate(
 	}
 
 	// checks passed, delete offer for now
-	b.offerManager.DeleteOffer(offer.GetID())
+	b.offerManager.DeleteOffer(offer.ID)
 
 	s, err := newSwapState(b.backend, offer, offerExtra, b.offerManager, providesAmount, desiredAmount)
 	if err != nil {
@@ -53,7 +53,7 @@ func (b *Instance) initiate(
 		<-s.done
 		b.swapMu.Lock()
 		defer b.swapMu.Unlock()
-		delete(b.swapStates, offer.GetID())
+		delete(b.swapStates, offer.ID)
 	}()
 
 	symbol, err := pcommon.AssetSymbol(b.backend, offer.EthAsset)
@@ -61,14 +61,14 @@ func (b *Instance) initiate(
 		return nil, err
 	}
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.ID()))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
-		s.info.ReceivedAmount(),
+		s.info.ReceivedAmount,
 		symbol,
-		s.info.ProvidedAmount()),
+		s.info.ProvidedAmount),
 	)
-	b.swapStates[offer.GetID()] = s
+	b.swapStates[offer.ID] = s
 	return s, nil
 }
 
@@ -85,7 +85,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	if err != nil {
 		return nil, nil, err
 	}
-	if id.IsZero() {
+	if types.IsHashZero(id) {
 		return nil, nil, errOfferIDNotSet
 	}
 

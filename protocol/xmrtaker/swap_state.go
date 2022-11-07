@@ -94,8 +94,16 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
-	info := pswap.NewInfo(offerID, types.ProvidesETH, providesAmount.AsEther(), receivedAmount.AsMonero(),
-		exchangeRate, ethAsset, stage, statusCh)
+	info := pswap.NewInfo(
+		offerID,
+		types.ProvidesETH,
+		providesAmount.AsEther(),
+		receivedAmount.AsMonero(),
+		exchangeRate,
+		ethAsset,
+		stage,
+		statusCh,
+	)
 	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
@@ -204,20 +212,20 @@ func (s *swapState) InfoFile() string {
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
-	return s.info.ReceivedAmount()
+	return s.info.ReceivedAmount
 }
 
 func (s *swapState) providedAmountInWei() common.EtherAmount {
-	return common.EtherToWei(s.info.ProvidedAmount())
+	return common.EtherToWei(s.info.ProvidedAmount)
 }
 
 func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
-	return common.MoneroToPiconero(s.info.ReceivedAmount())
+	return common.MoneroToPiconero(s.info.ReceivedAmount)
 }
 
 // ID returns the ID of the swap
 func (s *swapState) ID() types.Hash {
-	return s.info.ID()
+	return s.info.ID
 }
 
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
@@ -239,17 +247,22 @@ func (s *swapState) exit() error {
 	defer func() {
 		// stop all running goroutines
 		s.cancel()
-		s.SwapManager().CompleteOngoingSwap(s.info.ID())
 		close(s.done)
 
-		if s.info.Status() == types.CompletedSuccess {
-			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID())
+		err := s.SwapManager().CompleteOngoingSwap(s.info.ID)
+		if err != nil {
+			log.Warnf("failed to mark swap %s as completed: %s", s.info.ID, err)
+			return
+		}
+
+		if s.info.Status == types.CompletedSuccess {
+			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID)
 			log.Info(str)
 			return
 		}
 
-		if s.info.Status() == types.CompletedRefund {
-			str := color.New(color.Bold).Sprintf("**swap refunded successfully! id=%s**", s.info.ID())
+		if s.info.Status == types.CompletedRefund {
+			str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.info.ID)
 			log.Info(str)
 			return
 		}
@@ -306,7 +319,7 @@ func (s *swapState) exit() error {
 }
 
 func (s *swapState) tryClaim() error {
-	if !s.info.Status().IsOngoing() {
+	if !s.info.Status.IsOngoing() {
 		return nil
 	}
 
@@ -562,7 +575,7 @@ func (s *swapState) ready() error {
 	}
 	_, _, err = s.sender.SetReady(s.contractSwap)
 	if err != nil {
-		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status().IsOngoing() {
+		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status.IsOngoing() {
 			return nil
 		}
 		return err
@@ -592,7 +605,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
-	if !s.info.Status().IsOngoing() {
+	if !s.info.Status.IsOngoing() {
 		return "", errSwapCompleted
 	}
 
