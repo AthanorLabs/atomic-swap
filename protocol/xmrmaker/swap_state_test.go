@@ -116,8 +116,8 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, b, 5.0)
-	err = b.Refresh()
+	monero.MineMinXMRBalance(t, b.MoneroClient(), 5.0)
+	err = b.MoneroClient().Refresh()
 	require.NoError(t, err)
 	return xmrmaker, db
 }
@@ -484,7 +484,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	balance, err := s.GetBalance(0)
+	balance, err := s.MoneroClient().GetBalance(0)
 	require.NoError(t, err)
 	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)

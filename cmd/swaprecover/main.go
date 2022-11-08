@@ -205,7 +205,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer b.Close()
+	defer b.MoneroClient().Close()
 
 	dataDir := filepath.Dir(filepath.Clean(infofilePath))
 

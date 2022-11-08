@@ -32,15 +32,15 @@ const (
 
 // WalletClient represents a monero-wallet-rpc client.
 type WalletClient interface {
-	LockClient() // can't use Lock/Unlock due to name conflict
-	UnlockClient()
+	Lock()
+	Unlock()
 	GetAccounts() (*wallet.GetAccountsResponse, error)
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
 	PrimaryWalletAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
 	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
-	WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
+	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
 	GenerateFromKeys(
 		kp *mcrypto.PrivateKeyPair,
 		restoreHeight uint64,
@@ -77,7 +77,7 @@ type WalletClientConf struct {
 	LogPath             string             // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
 }
 
-// WaitForReceiptRequest wraps the input parameters for WaitForTransReceipt
+// WaitForReceiptRequest wraps the input parameters for WaitForReceipt
 type WaitForReceiptRequest struct {
 	Ctx              context.Context
 	TxID             string
@@ -154,11 +154,11 @@ func NewThinWalletClient(monerodHost string, monerodPort uint, walletPort uint) 
 	}
 }
 
-func (c *walletClient) LockClient() {
+func (c *walletClient) Lock() {
 	c.mu.Lock()
 }
 
-func (c *walletClient) UnlockClient() {
+func (c *walletClient) Unlock() {
 	c.mu.Unlock()
 }
 
@@ -177,7 +177,7 @@ func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error
 // wait for the transaction to leave the mem-pool even if zero confirmations are
 // requested, it is the caller's responsibility to request enough confirmations that the
 // returned transfer information will not be invalidated by a block reorg.
-func (c *walletClient) WaitForTransReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
+func (c *walletClient) WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
 	height, err := c.GetHeight()
 	if err != nil {
 		return nil, err
@@ -362,8 +362,8 @@ func (c *walletClient) Endpoint() string {
 }
 
 func (c *walletClient) Close() {
-	c.LockClient()
-	defer c.UnlockClient()
+	c.Lock()
+	defer c.Unlock()
 	if c.rpcProcess != nil {
 		p := c.rpcProcess
 		c.rpcProcess = nil

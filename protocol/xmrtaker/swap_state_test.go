@@ -296,10 +296,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// close swap-deposit-wallet
 	backend := newBackend(t)
-	err := backend.CreateWallet("test-wallet", "")
+	err := backend.MoneroClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, backend, common.MoneroToPiconero(1))
+	monero.MineMinXMRBalance(t, backend.MoneroClient(), common.MoneroToPiconero(1))
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
@@ -329,12 +329,12 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	tResp, err := backend.Transfer(xmrAddr, 0, uint64(amt))
+	tResp, err := backend.MoneroClient().Transfer(xmrAddr, 0, uint64(amt))
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
 	require.Equal(t, uint64(amt), tResp.Amount)
 
-	transfer, err := backend.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+	transfer, err := backend.MoneroClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             tResp.TxHash,
 		DestAddr:         xmrAddr,

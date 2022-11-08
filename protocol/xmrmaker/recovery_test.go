@@ -54,7 +54,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, rs.ss, common.MoneroToPiconero(1))
+	monero.MineMinXMRBalance(t, rs.ss.MoneroClient(), common.MoneroToPiconero(1))
 
 	// lock XMR
 	rs.ss.setXMRTakerPublicKeys(rs.ss.pubkeys, nil)

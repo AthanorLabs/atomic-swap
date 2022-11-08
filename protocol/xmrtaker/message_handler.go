@@ -231,22 +231,23 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("address received in message does not match expected address")
 	}
 
-	s.LockClient()
-	defer s.UnlockClient()
+	s.MoneroClient().Lock()
+	defer s.MoneroClient().Unlock()
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	if err := s.GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, ""); err != nil {
+	err := s.MoneroClient().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
+	if err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
-	if err := s.Refresh(); err != nil {
+	if err = s.MoneroClient().Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh client: %w", err)
 	}
 
-	balance, err := s.GetBalance(0)
+	balance, err := s.MoneroClient().GetBalance(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %w", err)
 	}
@@ -271,14 +272,14 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			balance.BlocksToUnlock)
 	}
 
-	if err := s.CloseWallet(); err != nil {
+	if err = s.MoneroClient().CloseWallet(); err != nil {
 		return nil, fmt.Errorf("failed to close wallet: %w", err)
 	}
 
 	close(s.xmrLockedCh)
 	log.Info("XMR was locked successfully, setting contract to ready...")
 
-	if err := s.ready(); err != nil {
+	if err = s.ready(); err != nil {
 		return nil, fmt.Errorf("failed to call Ready: %w", err)
 	}
 

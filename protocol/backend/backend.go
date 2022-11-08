@@ -34,7 +34,7 @@ var (
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
 // It also interfaces with the network layer.
 type Backend interface {
-	monero.WalletClient
+	MoneroClient() monero.WalletClient
 	net.MessageSender
 
 	// NewTxSender creates a new transaction sender, called per-swap
@@ -89,7 +89,7 @@ type backend struct {
 	swapManager swap.Manager
 
 	// monero endpoints
-	monero.WalletClient
+	moneroWallet monero.WalletClient
 
 	// monero deposit address (used if xmrtaker has transferBack set to true)
 	sync.RWMutex
@@ -166,7 +166,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 	return &backend{
 		ctx:          cfg.Ctx,
 		env:          cfg.Environment,
-		WalletClient: cfg.MoneroClient,
+		moneroWallet: cfg.MoneroClient,
 		ethClient:    cfg.EthereumClient,
 		ethPrivKey:   cfg.EthereumPrivateKey,
 		callOpts: &bind.CallOpts{
@@ -184,6 +184,10 @@ func NewBackend(cfg *Config) (Backend, error) {
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 	}, nil
+}
+
+func (b *backend) MoneroClient() monero.WalletClient {
+	return b.moneroWallet
 }
 
 func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error) {

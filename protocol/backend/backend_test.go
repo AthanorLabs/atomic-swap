@@ -18,12 +18,15 @@ func TestWaitForReceipt(t *testing.T) {
 	ec, chainID := tests.NewEthClient(t)
 	privKey := tests.GetTakerTestKey(t)
 
+	gasPrice, err := ec.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+
 	to := ethcommon.Address{}
 	txInner := &ethtypes.LegacyTx{
 		To:       &to,
 		Value:    big.NewInt(99),
 		Gas:      21000,
-		GasPrice: big.NewInt(2000000000),
+		GasPrice: gasPrice,
 	}
 
 	tx, err := ethtypes.SignNewTx(privKey,
