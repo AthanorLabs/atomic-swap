@@ -8,13 +8,14 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 )
 
-func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
-	inst, s := newTestInstance(t)
+func newTestRecoveryState(t *testing.T, timeout time.Duration) (*recoveryState, *offers.MockDatabase) {
+	inst, s, db := newTestInstanceAndDB(t)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -28,12 +29,12 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 		s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 
-	return rs
+	return rs, db
 }
 
 func TestClaimOrRecover_Claim(t *testing.T) {
 	// test case where XMRMaker is able to claim ether from the contract
-	rs := newTestRecoveryState(t, 24*time.Hour)
+	rs, _ := newTestRecoveryState(t, 24*time.Hour)
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
@@ -49,8 +50,8 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 }
 
 func TestClaimOrRecover_Recover(t *testing.T) {
-	// test case where XMRMaker is able to reclaim his monero, after XMRTaker refunds
-	rs := newTestRecoveryState(t, 24*time.Hour)
+	// test case where XMRMaker is able to reclaim their monero, after XMRTaker refunds
+	rs, db := newTestRecoveryState(t, 24*time.Hour)
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
@@ -67,7 +68,9 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	require.NoError(t, err)
 	tests.MineTransaction(t, rs.ss, tx)
 
-	// assert XMRMaker can reclaim his monero
+	db.EXPECT().PutOffer(rs.ss.offer)
+
+	// assert XMRMaker can reclaim their monero
 	res, err := rs.ClaimOrRecover()
 	require.NoError(t, err)
 	require.True(t, res.Recovered)
