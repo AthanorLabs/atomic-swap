@@ -125,7 +125,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	require.NoError(t, err)
 
 	// generate claim secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)

@@ -61,6 +61,16 @@ install: init
 build: init
 	./scripts/build.sh
 
+.PHONY: build-go
+build-go: 
+	go build ./cmd/swapd
+	go build ./cmd/swapcli
+
+.PHONY: build-go-darwin
+build-go-darwin:
+	export GOOS=darwin GOARCH=arm64
+	make build-go
+
 # Same as build, but also includes some lesser used binaries
 .PHONY: build-all
 build-all: init
@@ -76,7 +86,6 @@ bindings:
 .PHONY: mock
 mock:
 	go generate -run mockgen ./...
-
 
 # Deletes all executables matching the directory names in cmd/
 .PHONY: clean-go

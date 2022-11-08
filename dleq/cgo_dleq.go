@@ -1,3 +1,5 @@
+//go:build cgodleq
+
 package dleq
 
 import (
@@ -8,6 +10,9 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
+
+// DefaultDLEq is CGODLEq
+type DefaultDLEq = CGODLEq
 
 // CGODLEq is a wrapper around the CGO bindings to dleq-rs
 type CGODLEq struct{}

@@ -496,7 +496,7 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 	cmd.Env = append(os.Environ(), "LANG=C", "LC_ALL=C", "TERM=dumb")
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGTERM,
+		//Pdeathsig: syscall.SIGTERM,
 	}
 
 	err = cmd.Start()

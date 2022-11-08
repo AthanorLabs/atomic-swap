@@ -20,7 +20,7 @@ type KeysAndProof struct {
 // GenerateKeysAndProof generates keys on the secp256k1 and ed25519 curves as well as
 // a DLEq proof between the two.
 func GenerateKeysAndProof() (*KeysAndProof, error) {
-	d := &dleq.CGODLEq{}
+	d := &dleq.DefaultDLEq{}
 	proof, err := d.Prove()
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicK
 		return nil, err
 	}
 
-	d := &dleq.CGODLEq{}
+	d := &dleq.DefaultDLEq{}
 	proof := dleq.NewProofWithoutSecret(pb)
 	res, err := d.Verify(proof)
 	if err != nil {

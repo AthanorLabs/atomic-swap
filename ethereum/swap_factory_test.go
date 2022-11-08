@@ -137,7 +137,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *big.Int, erc20Contract *ERC20Mock) {
 	// generate claim secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -226,7 +226,7 @@ func TestSwapFactory_Claim_random(t *testing.T) {
 
 func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// generate refund secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -294,7 +294,7 @@ func TestSwapFactory_Refund_beforeT0(t *testing.T) {
 
 func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// generate refund secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -403,7 +403,7 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 		sc.index = i
 
 		// generate claim secret and public key
-		dleq := &dleq.CGODLEq{}
+		dleq := &dleq.DefaultDLEq{}
 		proof, err := dleq.Prove()
 		require.NoError(t, err)
 		res, err := dleq.Verify(proof)
