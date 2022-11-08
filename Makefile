@@ -68,8 +68,8 @@ build-go:
 
 .PHONY: build-go-darwin
 build-go-darwin:
-	export GOOS=darwin GOARCH=arm64
-	make build-go
+	GOOS=darwin GOARCH=arm64 go build ./cmd/swapd
+	GOOS=darwin GOARCH=arm64 go build ./cmd/swapcli
 
 # Same as build, but also includes some lesser used binaries
 .PHONY: build-all
