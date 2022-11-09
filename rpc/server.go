@@ -53,11 +53,13 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := rpcServer.RegisterService(NewPersonalService(cfg.XMRMaker, cfg.ProtocolBackend), "personal"); err != nil {
+	err := rpcServer.RegisterService(NewPersonalService(cfg.Ctx, cfg.XMRMaker, cfg.ProtocolBackend), "personal")
+	if err != nil {
 		return nil, err
 	}
 
-	if err := rpcServer.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil { //nolint:lll
+	swapService := NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net)
+	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
 		return nil, err
 	}
 

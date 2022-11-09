@@ -105,7 +105,7 @@ func newTestInstance(t *testing.T) *swapState {
 func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
 	b := newBackend(t)
 
-	txOpts, err := b.ETH().TxOpts()
+	txOpts, err := b.ETH().TxOpts(b.Ctx())
 	require.NoError(t, err)
 
 	_, tx, contract, err := contracts.DeployERC20Mock(
@@ -362,7 +362,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	txOpts, err := s.ETH().TxOpts()
+	txOpts, err := s.ETH().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Claim(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)

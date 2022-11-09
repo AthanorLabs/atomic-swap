@@ -34,7 +34,7 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 func TestClaimOrRecover_Claim(t *testing.T) {
 	// test case where XMRMaker is able to claim ether from the contract
 	rs := newTestRecoveryState(t, 24*time.Hour)
-	txOpts, err := rs.ss.ETH().TxOpts()
+	txOpts, err := rs.ss.ETH().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	// set contract to Ready
@@ -51,7 +51,7 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 func TestClaimOrRecover_Recover(t *testing.T) {
 	// test case where XMRMaker is able to reclaim his monero, after XMRTaker refunds
 	rs := newTestRecoveryState(t, 24*time.Hour)
-	txOpts, err := rs.ss.ETH().TxOpts()
+	txOpts, err := rs.ss.ETH().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	monero.MineMinXMRBalance(t, rs.ss.XMR(), common.MoneroToPiconero(1))

@@ -36,7 +36,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	_, balance, err := a.backend.ETH().Balance()
+	_, balance, err := a.backend.ETH().Balance(a.backend.Ctx())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 			return nil, err
 		}
 
-		balance, err := erc20Contract.BalanceOf(a.backend.ETH().CallOpts(), a.backend.ETH().Address())
+		balance, err := erc20Contract.BalanceOf(a.backend.ETH().CallOpts(a.backend.Ctx()), a.backend.ETH().Address())
 		if err != nil {
 			return nil, err
 		}

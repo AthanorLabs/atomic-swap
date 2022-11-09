@@ -21,19 +21,19 @@ import (
 type EthClient interface {
 	Address() ethcommon.Address
 	SetAddress(addr ethcommon.Address)
-	EthPrivateKey() *ecdsa.PrivateKey
+	PrivateKey() *ecdsa.PrivateKey
 	HasPrivateKey() bool
 
 	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
-	Balance() (ethcommon.Address, *big.Int, error)
+	Balance(ctx context.Context) (ethcommon.Address, *big.Int, error)
 	ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
 		blockNumber *big.Int) (*big.Int, error)
 
 	ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string, decimals uint8, err error)
 
 	SetGasPrice(uint64)
-	CallOpts() *bind.CallOpts
-	TxOpts() (*bind.TransactOpts, error)
+	CallOpts(ctx context.Context) *bind.CallOpts
+	TxOpts(ctx context.Context) (*bind.TransactOpts, error)
 	ChainID() *big.Int
 	TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error)
 	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
@@ -48,7 +48,6 @@ type EthClient interface {
 }
 
 type swapEthClient struct {
-	ctx        context.Context
 	ec         *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
 	ethAddress ethcommon.Address
@@ -69,7 +68,6 @@ func newSwapEthClient(ctx context.Context, ec *ethclient.Client, privKey *ecdsa.
 	}
 
 	return &swapEthClient{
-		ctx:        ctx,
 		ec:         ec,
 		ethPrivKey: privKey,
 		ethAddress: addr,
@@ -90,7 +88,7 @@ func (c *swapEthClient) SetAddress(addr ethcommon.Address) {
 	c.ethAddress = addr
 }
 
-func (c *swapEthClient) EthPrivateKey() *ecdsa.PrivateKey {
+func (c *swapEthClient) PrivateKey() *ecdsa.PrivateKey {
 	return c.ethPrivKey
 }
 
@@ -102,9 +100,9 @@ func (c *swapEthClient) BalanceAt(ctx context.Context, account ethcommon.Address
 	return c.ec.BalanceAt(ctx, account, blockNum)
 }
 
-func (c *swapEthClient) Balance() (ethcommon.Address, *big.Int, error) {
+func (c *swapEthClient) Balance(ctx context.Context) (ethcommon.Address, *big.Int, error) {
 	addr := c.Address()
-	bal, err := c.ec.BalanceAt(c.ctx, addr, nil)
+	bal, err := c.ec.BalanceAt(ctx, addr, nil)
 	if err != nil {
 		return ethcommon.Address{}, nil, err
 	}
@@ -112,7 +110,7 @@ func (c *swapEthClient) Balance() (ethcommon.Address, *big.Int, error) {
 }
 
 func (c *swapEthClient) ERC20BalanceAt(
-	ctx context.Context, // TODO: Do we need this unused parameter?
+	ctx context.Context,
 	token ethcommon.Address,
 	account ethcommon.Address,
 	blockNumber *big.Int, // TODO: Do we need this unused parameter?
@@ -121,10 +119,10 @@ func (c *swapEthClient) ERC20BalanceAt(
 	if err != nil {
 		return big.NewInt(0), err
 	}
-	return tokenContract.BalanceOf(c.CallOpts(), account)
+	return tokenContract.BalanceOf(c.CallOpts(ctx), account)
 }
 
-func (c *swapEthClient) ERC20Info(ctx context.Context, token ethcommon.Address) ( // TODO: context not used
+func (c *swapEthClient) ERC20Info(ctx context.Context, token ethcommon.Address) (
 	name string,
 	symbol string,
 	decimals uint8,
@@ -134,15 +132,15 @@ func (c *swapEthClient) ERC20Info(ctx context.Context, token ethcommon.Address) 
 	if err != nil {
 		return "", "", 18, err
 	}
-	name, err = tokenContract.Name(c.CallOpts())
+	name, err = tokenContract.Name(c.CallOpts(ctx))
 	if err != nil {
 		return "", "", 18, err
 	}
-	symbol, err = tokenContract.Symbol(c.CallOpts())
+	symbol, err = tokenContract.Symbol(c.CallOpts(ctx))
 	if err != nil {
 		return "", "", 18, err
 	}
-	decimals, err = tokenContract.Decimals(c.CallOpts())
+	decimals, err = tokenContract.Decimals(c.CallOpts(ctx))
 	if err != nil {
 		return "", "", 18, err
 	}
@@ -154,16 +152,16 @@ func (c *swapEthClient) SetGasPrice(gasPrice uint64) {
 	c.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
 
-func (c *swapEthClient) CallOpts() *bind.CallOpts {
+func (c *swapEthClient) CallOpts(ctx context.Context) *bind.CallOpts {
 	return &bind.CallOpts{
 		Pending:     false,
 		From:        c.ethAddress, // might be all zeros if using external signer
 		BlockNumber: nil,
-		Context:     c.ctx,
+		Context:     ctx,
 	}
 }
 
-func (c *swapEthClient) TxOpts() (*bind.TransactOpts, error) {
+func (c *swapEthClient) TxOpts(ctx context.Context) (*bind.TransactOpts, error) {
 	if !c.HasPrivateKey() {
 		panic("TxOpts() should not have been invoked when using an external signer")
 	}
@@ -172,11 +170,12 @@ func (c *swapEthClient) TxOpts() (*bind.TransactOpts, error) {
 	if err != nil {
 		return nil, err
 	}
+	txOpts.Context = ctx
 
 	// TODO: set gas limit + price based on network (#153)
 	txOpts.GasPrice = c.gasPrice
 	if txOpts.GasPrice == nil {
-		txOpts.GasPrice, err = c.ec.SuggestGasPrice(c.ctx)
+		txOpts.GasPrice, err = c.ec.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
 		}

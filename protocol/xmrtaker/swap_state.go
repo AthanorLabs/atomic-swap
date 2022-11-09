@@ -369,7 +369,7 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) tryRefund() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.ETH().CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.ETH().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -469,7 +469,7 @@ func (s *swapState) approveToken() error {
 		return fmt.Errorf("failed to instantiate IERC20: %w", err)
 	}
 
-	balance, err := token.BalanceOf(s.ETH().CallOpts(), s.ETH().Address())
+	balance, err := token.BalanceOf(s.ETH().CallOpts(s.ctx), s.ETH().Address())
 	if err != nil {
 		return fmt.Errorf("failed to get balance for token: %w", err)
 	}
@@ -566,7 +566,7 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	stage, err := s.Contract().Swaps(s.ETH().CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.ETH().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return err
 	}

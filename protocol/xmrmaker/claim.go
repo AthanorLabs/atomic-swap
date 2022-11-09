@@ -24,7 +24,7 @@ import (
 var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
 
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.ETH().CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.ETH().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -141,7 +141,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 	return claimRelayer(
 		s.Ctx(),
-		s.ETH().EthPrivateKey(),
+		s.ETH().PrivateKey(),
 		s.Contract(),
 		s.contractAddr,
 		s.ETH().RawClient(),

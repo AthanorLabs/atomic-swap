@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -9,13 +10,15 @@ import (
 
 // PersonalService handles private keys and wallets.
 type PersonalService struct {
+	ctx      context.Context
 	xmrmaker XMRMaker
 	pb       ProtocolBackend
 }
 
 // NewPersonalService ...
-func NewPersonalService(xmrmaker XMRMaker, pb ProtocolBackend) *PersonalService {
+func NewPersonalService(ctx context.Context, xmrmaker XMRMaker, pb ProtocolBackend) *PersonalService {
 	return &PersonalService{
+		ctx:      ctx,
 		xmrmaker: xmrmaker,
 		pb:       pb,
 	}
@@ -52,7 +55,7 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 		return err
 	}
 
-	eAddr, eBal, err := s.pb.ETH().Balance()
+	eAddr, eBal, err := s.pb.ETH().Balance(s.ctx)
 	if err != nil {
 		return err
 	}

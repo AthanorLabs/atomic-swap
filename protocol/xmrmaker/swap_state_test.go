@@ -162,7 +162,7 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
-	txOpts, err := ss.ETH().TxOpts()
+	txOpts, err := ss.ETH().TxOpts(ss.ctx)
 	require.NoError(t, err)
 
 	// TODO: this is sus, update this when signing interfaces are updated
@@ -218,7 +218,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
-	txOpts, err := swapState.ETH().TxOpts()
+	txOpts, err := swapState.ETH().TxOpts(swapState.ctx)
 	require.NoError(t, err)
 	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
@@ -349,7 +349,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
 
-	txOpts, err := s.ETH().TxOpts()
+	txOpts, err := s.ETH().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
 	require.NoError(t, err)
@@ -390,7 +390,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	txOpts, err := s.ETH().TxOpts()
+	txOpts, err := s.ETH().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
@@ -426,7 +426,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	txOpts, err := s.ETH().TxOpts()
+	txOpts, err := s.ETH().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
@@ -470,7 +470,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	txOpts, err := s.ETH().TxOpts()
+	txOpts, err := s.ETH().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)

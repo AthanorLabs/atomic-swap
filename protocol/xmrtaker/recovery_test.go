@@ -45,7 +45,7 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	txOpts, err := rs.ss.ETH().TxOpts()
+	txOpts, err := rs.ss.ETH().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	tx, err := rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)

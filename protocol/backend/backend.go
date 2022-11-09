@@ -144,7 +144,7 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.
 		return txsender.NewExternalSender(b.ctx, b.env, ec, b.contractAddr, asset)
 	}
 
-	wrappedTxOpts, err := txsender.NewTxOpts(b.ethClient.EthPrivateKey(), b.ethClient.ChainID())
+	wrappedTxOpts, err := txsender.NewTxOpts(b.ethClient.PrivateKey(), b.ethClient.ChainID())
 	if err != nil {
 		return nil, err
 	}
