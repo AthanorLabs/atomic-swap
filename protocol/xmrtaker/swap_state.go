@@ -108,13 +108,13 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		return nil, err
 	}
 
-	if !b.HasEthereumPrivateKey() {
+	if !b.ETH().HasPrivateKey() {
 		transferBack = true // front-end must set final deposit address
 	}
 
 	var sender txsender.Sender
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), b.EthClient()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), b.ETH().RawClient()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +130,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		}
 	}
 
-	walletScanHeight, err := b.MoneroClient().GetChainHeight()
+	walletScanHeight, err := b.XMR().GetChainHeight()
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +369,7 @@ func (s *swapState) doRefund() (ethcommon.Hash, error) {
 }
 
 func (s *swapState) tryRefund() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.ETH().CallOpts(), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -385,7 +385,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	}
 	isReady := stage == contracts.StageReady
 
-	ts, err := s.LatestBlockTimestamp(s.ctx)
+	ts, err := s.ETH().LatestBlockTimestamp(s.ctx)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -409,7 +409,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	if ts.Before(s.t1) {
 		// we've passed t0 but aren't past t1 yet, so wait until t1
 		log.Infof("Waiting until time %s to refund", s.t1)
-		err = s.WaitForTimestamp(s.ctx, s.t1)
+		err = s.ETH().WaitForTimestamp(s.ctx, s.t1)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -464,12 +464,12 @@ func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateVi
 }
 
 func (s *swapState) approveToken() error {
-	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.EthClient())
+	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.ETH().RawClient())
 	if err != nil {
 		return fmt.Errorf("failed to instantiate IERC20: %w", err)
 	}
 
-	balance, err := token.BalanceOf(s.CallOpts(), s.EthAddress())
+	balance, err := token.BalanceOf(s.ETH().CallOpts(), s.ETH().Address())
 	if err != nil {
 		return fmt.Errorf("failed to get balance for token: %w", err)
 	}
@@ -544,7 +544,7 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 	s.setTimeouts(t0, t1)
 
 	s.contractSwap = contracts.SwapFactorySwap{
-		Owner:        s.EthAddress(),
+		Owner:        s.ETH().Address(),
 		Claimer:      s.xmrmakerAddress,
 		PubKeyClaim:  cmtXMRMaker,
 		PubKeyRefund: cmtXMRTaker,
@@ -566,7 +566,7 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.ETH().CallOpts(), s.contractSwapID)
 	if err != nil {
 		return err
 	}
@@ -618,10 +618,10 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
-	s.MoneroClient().Lock()
-	defer s.MoneroClient().Unlock()
+	s.XMR().Lock()
+	defer s.XMR().Unlock()
 
-	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend.MoneroClient(), kpAB, s.walletScanHeight)
+	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend.XMR(), kpAB, s.walletScanHeight)
 	if err != nil {
 		return "", err
 	}
@@ -651,7 +651,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	_, err = s.MoneroClient().SweepAll(depositAddr, 0)
+	_, err = s.XMR().SweepAll(depositAddr, 0)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -667,7 +667,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		}
 
 		log.Infof("checking if balance unlocked...")
-		balance, err := s.MoneroClient().GetBalance(0)
+		balance, err := s.XMR().GetBalance(0)
 		if err != nil {
 			return fmt.Errorf("failed to get balance: %w", err)
 		}
@@ -675,7 +675,7 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 		if balance.Balance == balance.UnlockedBalance {
 			return nil
 		}
-		if _, err = monero.WaitForBlocks(s.ctx, s.MoneroClient(), int(balance.BlocksToUnlock)); err != nil {
+		if _, err = monero.WaitForBlocks(s.ctx, s.XMR(), int(balance.BlocksToUnlock)); err != nil {
 			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
 		}
 	}

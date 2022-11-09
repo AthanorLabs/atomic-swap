@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"net"
 	"net/http"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
@@ -146,13 +146,11 @@ type Protocol interface {
 // ProtocolBackend represents protocol/backend.Backend
 type ProtocolBackend interface {
 	Env() common.Environment
-	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
-	SetEthAddress(ethcommon.Address)
-	EthBalance() (ethcommon.Address, *big.Int, error)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
+	ETH() backend.EthClient
 }
 
 // XMRTaker ...

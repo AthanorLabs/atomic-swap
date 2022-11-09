@@ -116,8 +116,8 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, b.MoneroClient(), 5.0)
-	err = b.MoneroClient().Refresh()
+	monero.MineMinXMRBalance(t, b.XMR(), 5.0)
+	err = b.XMR().Refresh()
 	require.NoError(t, err)
 	return xmrmaker, db
 }
@@ -162,19 +162,19 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
-	txOpts, err := ss.TxOpts()
+	txOpts, err := ss.ETH().TxOpts()
 	require.NoError(t, err)
 
 	// TODO: this is sus, update this when signing interfaces are updated
 	txOpts.Value = amount
 
-	ethAddr := ss.EthAddress()
+	ethAddr := ss.ETH().Address()
 	nonce := big.NewInt(0)
 	asset := types.EthAssetETH
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
 		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, ss, tx)
+	receipt := tests.MineTransaction(t, ss.ETH(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = contracts.GetIDFromLog(receipt.Logs[0])
@@ -218,11 +218,11 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
-	txOpts, err := swapState.TxOpts()
+	txOpts, err := swapState.ETH().TxOpts()
 	require.NoError(t, err)
 	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, swapState, tx)
+	tests.MineTransaction(t, swapState.ETH(), tx)
 
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
@@ -349,11 +349,11 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETH().TxOpts()
 	require.NoError(t, err)
 	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
+	tests.MineTransaction(t, s.ETH(), tx)
 
 	msg := &message.NotifyReady{}
 
@@ -390,11 +390,11 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETH().TxOpts()
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
+	tests.MineTransaction(t, s.ETH(), tx)
 
 	addr, err := s.handleRefund(tx.Hash().String())
 	require.NoError(t, err)
@@ -426,11 +426,11 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETH().TxOpts()
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
+	tests.MineTransaction(t, s.ETH(), tx)
 
 	msg := &message.NotifyRefund{
 		TxHash: tx.Hash().String(),
@@ -470,11 +470,11 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETH().TxOpts()
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, s, tx)
+	receipt := tests.MineTransaction(t, s.ETH(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
@@ -484,7 +484,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	balance, err := s.MoneroClient().GetBalance(0)
+	balance, err := s.XMR().GetBalance(0)
 	require.NoError(t, err)
 	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)

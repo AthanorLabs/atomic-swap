@@ -166,7 +166,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 		return err
 	}
 
-	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
+	s.backend.ETH().SetAddress(ethcommon.HexToAddress(ethAddress))
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
 	defer s.backend.ClearXMRDepositAddress(offerID)
 

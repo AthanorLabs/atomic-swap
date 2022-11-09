@@ -13,11 +13,11 @@ func (b *Instance) MakeOffer(
 	relayerEndpoint string,
 	relayerCommission float64,
 ) (*types.OfferExtra, error) {
-	b.backend.MoneroClient().Lock()
-	defer b.backend.MoneroClient().Unlock()
+	b.backend.XMR().Lock()
+	defer b.backend.XMR().Unlock()
 
 	// get monero balance
-	balance, err := b.backend.MoneroClient().GetBalance(0)
+	balance, err := b.backend.XMR().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}

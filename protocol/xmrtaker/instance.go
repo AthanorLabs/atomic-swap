@@ -44,7 +44,7 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	// if this is set, it transfers all xmr received during swaps back to the given wallet.
 	if cfg.TransferBack {
-		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.MoneroClient().PrimaryWalletAddress())
+		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMR().PrimaryWalletAddress())
 	}
 
 	return &Instance{

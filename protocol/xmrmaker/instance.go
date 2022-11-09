@@ -79,14 +79,14 @@ func (b *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
 // GetMoneroBalance returns the primary wallet address, and current balance of the user's monero
 // wallet.
 func (b *Instance) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
-	addr, err := b.backend.MoneroClient().GetAddress(0)
+	addr, err := b.backend.XMR().GetAddress(0)
 	if err != nil {
 		return "", nil, err
 	}
-	if err = b.backend.MoneroClient().Refresh(); err != nil {
+	if err = b.backend.XMR().Refresh(); err != nil {
 		return "", nil, err
 	}
-	balance, err := b.backend.MoneroClient().GetBalance(0)
+	balance, err := b.backend.XMR().GetBalance(0)
 	if err != nil {
 		return "", nil, err
 	}

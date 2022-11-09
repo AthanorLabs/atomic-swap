@@ -154,19 +154,20 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if _, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.EthClient(), contractAddr); err != nil {
+	_, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETH().RawClient(), contractAddr)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := s.setContract(contractAddr); err != nil {
+	if err = s.setContract(contractAddr); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
+	if err = pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
+	if err = s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
 
@@ -195,7 +196,7 @@ func (s *swapState) runT0ExpirationHandler() {
 
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.WaitForTimestamp(waitCtx, s.t0)
+		waitCh <- s.ETH().WaitForTimestamp(waitCtx, s.t0)
 		close(waitCh)
 	}()
 
@@ -267,7 +268,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 }
 
 func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
-	receipt, err := s.TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
+	receipt, err := s.ETH().TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err
 	}

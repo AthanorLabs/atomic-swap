@@ -445,9 +445,9 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	defer swapBackend.MoneroClient().Close()
+	defer swapBackend.XMR().Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
-		swapBackend.MoneroClient().Endpoint(), ethEndpoint)
+		swapBackend.XMR().Endpoint(), ethEndpoint)
 
 	a, b, err := getProtocolInstances(c, cfg, swapBackend, sdb, host)
 	if err != nil {
@@ -511,7 +511,7 @@ func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, b backend.Backen
 		return nil
 	}
 
-	addr, err := b.MoneroClient().GetAddress(0)
+	addr, err := b.XMR().GetAddress(0)
 	if err != nil {
 		return err
 	}

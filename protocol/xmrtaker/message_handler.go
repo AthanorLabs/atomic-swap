@@ -231,23 +231,23 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 		return nil, fmt.Errorf("address received in message does not match expected address")
 	}
 
-	s.MoneroClient().Lock()
-	defer s.MoneroClient().Unlock()
+	s.XMR().Lock()
+	defer s.XMR().Unlock()
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	err := s.MoneroClient().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
+	err := s.XMR().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
-	if err = s.MoneroClient().Refresh(); err != nil {
+	if err = s.XMR().Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh client: %w", err)
 	}
 
-	balance, err := s.MoneroClient().GetBalance(0)
+	balance, err := s.XMR().GetBalance(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %w", err)
 	}
@@ -272,7 +272,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 			balance.BlocksToUnlock)
 	}
 
-	if err = s.MoneroClient().CloseWallet(); err != nil {
+	if err = s.XMR().CloseWallet(); err != nil {
 		return nil, fmt.Errorf("failed to close wallet: %w", err)
 	}
 
@@ -300,7 +300,7 @@ func (s *swapState) runT1ExpirationHandler() {
 
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.WaitForTimestamp(waitCtx, s.t1)
+		waitCh <- s.ETH().WaitForTimestamp(waitCtx, s.t1)
 		close(waitCh)
 	}()
 
@@ -353,7 +353,7 @@ func (s *swapState) handleT1Expired() {
 // it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
 func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
 	log.Debugf("got NotifyClaimed, txHash=%s", txHash)
-	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
+	receipt, err := s.ETH().WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
 	}

@@ -105,19 +105,19 @@ func newTestInstance(t *testing.T) *swapState {
 func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
 	b := newBackend(t)
 
-	txOpts, err := b.TxOpts()
+	txOpts, err := b.ETH().TxOpts()
 	require.NoError(t, err)
 
 	_, tx, contract, err := contracts.DeployERC20Mock(
 		txOpts,
-		b.EthClient(),
+		b.ETH().RawClient(),
 		"Mock",
 		"MOCK",
-		b.EthAddress(),
+		b.ETH().Address(),
 		initialBalance,
 	)
 	require.NoError(t, err)
-	addr, err := bind.WaitDeployed(b.Ctx(), b.EthClient(), tx)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.ETH(), tx)
 	require.NoError(t, err)
 
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
@@ -284,7 +284,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, message.NotifyRefundType, sentMsg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.ETH().BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -296,10 +296,10 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 
 	// close swap-deposit-wallet
 	backend := newBackend(t)
-	err := backend.MoneroClient().CreateWallet("test-wallet", "")
+	err := backend.XMR().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, backend.MoneroClient(), common.MoneroToPiconero(1))
+	monero.MineMinXMRBalance(t, backend.XMR(), common.MoneroToPiconero(1))
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
@@ -313,7 +313,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	msg, err = s.SendKeysMessage()
 	require.NoError(t, err)
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = s.EthAddress().String()
+	msg.EthAddress = s.ETH().Address().String()
 
 	resp, done, err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
@@ -329,12 +329,12 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	tResp, err := backend.MoneroClient().Transfer(xmrAddr, 0, uint64(amt))
+	tResp, err := backend.XMR().Transfer(xmrAddr, 0, uint64(amt))
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
 	require.Equal(t, uint64(amt), tResp.Amount)
 
-	transfer, err := backend.MoneroClient().WaitForReceipt(&monero.WaitForReceiptRequest{
+	transfer, err := backend.XMR().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             tResp.TxHash,
 		DestAddr:         xmrAddr,
@@ -362,11 +362,11 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETH().TxOpts()
 	require.NoError(t, err)
 	tx, err := s.Contract().Claim(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
+	tests.MineTransaction(t, s.ETH(), tx)
 
 	// handled the claimed message should result in the monero wallet being created
 	cmsg := &message.NotifyClaimed{
@@ -471,7 +471,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 	s, contract := newTestInstanceWithERC20(t, initialBalance)
 	err := s.approveToken()
 	require.NoError(t, err)
-	allowance, err := contract.Allowance(&bind.CallOpts{}, s.EthAddress(), s.ContractAddr())
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETH().Address(), s.ContractAddr())
 	require.NoError(t, err)
 	require.Equal(t, initialBalance, allowance)
 }

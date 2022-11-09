@@ -39,10 +39,10 @@ func TestWaitForReceipt(t *testing.T) {
 	require.NoError(t, err)
 
 	b := &backend{
-		ethClient: ec,
+		ethClient: &swapEthClient{ec: ec},
 	}
 
-	receipt, err := b.WaitForReceipt(ctx, tx.Hash())
+	receipt, err := b.ETH().WaitForReceipt(ctx, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, tx.Hash(), receipt.TxHash)
 }

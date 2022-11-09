@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"math/big"
 	"os"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
@@ -84,10 +84,6 @@ func (*mockSwapManager) CompleteOngoingSwap(types.Hash) error {
 type mockXMRTaker struct{}
 
 func (*mockXMRTaker) Provides() types.ProvidesCoin {
-	panic("not implemented")
-}
-
-func (*mockXMRTaker) SetGasPrice(gasPrice uint64) {
 	panic("not implemented")
 }
 
@@ -178,10 +174,6 @@ func (*mockProtocolBackend) Env() common.Environment {
 	return common.Development
 }
 
-func (*mockProtocolBackend) SetGasPrice(uint64) {
-	panic("not implemented")
-}
-
 func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {
 	panic("not implemented")
 }
@@ -190,18 +182,14 @@ func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }
 
-func (*mockProtocolBackend) SetEthAddress(ethcommon.Address) {
-	panic("not implemented")
-}
-
-func (*mockProtocolBackend) EthBalance() (ethcommon.Address, *big.Int, error) {
-	panic("not implemented")
-}
-
 func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {
 	panic("not implemented")
 }
 
 func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) ETH() backend.EthClient {
 	panic("not implemented")
 }
