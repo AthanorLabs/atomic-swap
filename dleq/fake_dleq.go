@@ -4,7 +4,9 @@ package dleq
 
 import (
 	"crypto/rand"
+	"fmt"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 
 	ed25519 "filippo.io/edwards25519"
@@ -34,7 +36,8 @@ func (d *FakeDLEq) Prove() (*Proof, error) {
 	}
 
 	var secret [32]byte
-	copy(secret[:], s)
+	// TODO: reverse CGODLEq's secret instead, and remove reversals everywhere else?
+	copy(secret[:], common.Reverse(s))
 
 	return &Proof{
 		secret: secret,
@@ -45,16 +48,15 @@ func (d *FakeDLEq) Prove() (*Proof, error) {
 // It only fails if it's unable to generate the public keys.
 func (d *FakeDLEq) Verify(proof *Proof) (*VerifyResult, error) {
 	// generate secp256k1 public key
-	scalar := &dsecp256k1.ModNScalar{}
-	scalar.PutBytes(&proof.secret)
-	sk := dsecp256k1.NewPrivateKey(scalar)
-	pk := sk.PubKey()
-	secp256k1Pub := secp256k1.NewPublicKeyFromBigInt(pk.X(), pk.Y())
+	s := common.Reverse(proof.secret[:])
+	curve := dsecp256k1.S256()
+	x, y := curve.ScalarBaseMult(s)
+	secp256k1Pub := secp256k1.NewPublicKeyFromBigInt(x, y)
 
 	// generate ed25519 public key
-	ed25519Sk, err := ed25519.NewScalar().SetCanonicalBytes(proof.secret[:])
+	ed25519Sk, err := ed25519.NewScalar().SetCanonicalBytes(s)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to convert secret to ed25519 pubkey: %w", err)
 	}
 
 	ed25519Pk := ed25519.NewIdentityPoint().ScalarBaseMult(ed25519Sk)
