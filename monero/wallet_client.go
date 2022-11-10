@@ -479,9 +479,9 @@ func getMoneroWalletRPCBin() (string, error) {
 	return exec.LookPath(execName)
 }
 
-// getSysProcArgs returns SysProcAttr values that will work on all platforms, but this
+// getSysProcAttr returns SysProcAttr values that will work on all platforms, but this
 // function is overwritten on Linux and FreeBSD.
-var getSysProcArgs = func() *syscall.SysProcAttr {
+var getSysProcAttr = func() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{}
 }
 
@@ -501,7 +501,7 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 	// remove ansi colour escapes, but setting TERM=dumb succeeded.
 	cmd.Env = append(os.Environ(), "LANG=C", "LC_ALL=C", "TERM=dumb")
 
-	cmd.SysProcAttr = getSysProcArgs()
+	cmd.SysProcAttr = getSysProcAttr()
 
 	err = cmd.Start()
 	// The writing side of the pipe will remain open in the child process after we close it

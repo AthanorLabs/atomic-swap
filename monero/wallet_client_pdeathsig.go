@@ -11,7 +11,7 @@ func init() {
 	// without shutting down the child process, instruct the OS to send
 	// monero-wallet-rpc SIGTERM. Unfortunately, the syscall to support this only
 	// exists on Linux and FreeBSD.
-	getSysProcArgs = func() *syscall.SysProcAttr {
+	getSysProcAttr = func() *syscall.SysProcAttr {
 		return &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGTERM,
 		}
