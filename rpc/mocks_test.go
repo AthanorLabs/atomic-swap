@@ -11,9 +11,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
@@ -190,6 +190,6 @@ func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash) {
 	panic("not implemented")
 }
 
-func (*mockProtocolBackend) ETH() backend.EthClient {
+func (*mockProtocolBackend) ETH() extethclient.EthClient {
 	panic("not implemented")
 }

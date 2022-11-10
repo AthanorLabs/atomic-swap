@@ -12,6 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -82,11 +83,13 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
+	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	require.NoError(t, err)
+
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      ec,
-		EthereumPrivateKey:  pk,
+		EthereumClient:      extendedEC,
 		Environment:         common.Development,
 		SwapContract:        contract,
 		SwapContractAddress: addr,

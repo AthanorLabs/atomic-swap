@@ -12,7 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
@@ -152,7 +152,7 @@ type ProtocolBackend interface {
 	SwapManager() swap.Manager
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
-	ETH() backend.EthClient
+	ETH() extethclient.EthClient
 }
 
 // XMRTaker ...

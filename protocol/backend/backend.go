@@ -2,19 +2,16 @@ package backend
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"math/big"
 	"sync"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -22,7 +19,6 @@ import (
 )
 
 var (
-	log                    = logging.Logger("protocol/backend")
 	defaultTimeoutDuration = time.Hour * 24
 )
 
@@ -30,7 +26,7 @@ var (
 // It also interfaces with the network layer.
 type Backend interface {
 	XMR() monero.WalletClient
-	ETH() EthClient
+	ETH() extethclient.EthClient
 	net.MessageSender
 
 	// NewTxSender creates a new transaction sender, called per-swap
@@ -63,7 +59,7 @@ type backend struct {
 
 	// monero endpoints
 	moneroWallet monero.WalletClient
-	ethClient    EthClient
+	ethClient    extethclient.EthClient
 
 	// monero deposit address (used if xmrtaker has transferBack set to true)
 	sync.RWMutex
@@ -81,13 +77,10 @@ type backend struct {
 
 // Config is the config for the Backend
 type Config struct {
-	Ctx                context.Context
-	MoneroClient       monero.WalletClient
-	EthereumClient     *ethclient.Client
-	EthereumPrivateKey *ecdsa.PrivateKey
-	Environment        common.Environment
-	GasPrice           *big.Int
-	GasLimit           uint64
+	Ctx            context.Context
+	MoneroClient   monero.WalletClient
+	EthereumClient extethclient.EthClient
+	Environment    common.Environment
 
 	SwapContract        *contracts.SwapFactory
 	SwapContractAddress ethcommon.Address
@@ -109,17 +102,11 @@ func NewBackend(cfg *Config) (Backend, error) {
 		return nil, errNilSwapContractOrAddress
 	}
 
-	swapEthClient, err := newSwapEthClient(cfg.Ctx, cfg.EthereumClient, cfg.EthereumPrivateKey)
-	if err != nil {
-		return nil, err
-	}
-
 	return &backend{
-		ctx:          cfg.Ctx,
-		env:          cfg.Environment,
-		moneroWallet: cfg.MoneroClient,
-		ethClient:    swapEthClient,
-
+		ctx:             cfg.Ctx,
+		env:             cfg.Environment,
+		moneroWallet:    cfg.MoneroClient,
+		ethClient:       cfg.EthereumClient,
 		contract:        cfg.SwapContract,
 		contractAddr:    cfg.SwapContractAddress,
 		swapManager:     cfg.SwapManager,
@@ -133,7 +120,7 @@ func (b *backend) XMR() monero.WalletClient {
 	return b.moneroWallet
 }
 
-func (b *backend) ETH() EthClient {
+func (b *backend) ETH() extethclient.EthClient {
 	return b.ethClient
 }
 

@@ -5,21 +5,22 @@
 package xmrmaker
 
 import (
-	context "context"
-	reflect "reflect"
-	time "time"
+	"context"
+	"reflect"
+	"time"
 
-	common "github.com/athanorlabs/atomic-swap/common"
+	common0 "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/mock/gomock"
+
+	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	monero "github.com/athanorlabs/atomic-swap/monero"
-	net "github.com/athanorlabs/atomic-swap/net"
-	message "github.com/athanorlabs/atomic-swap/net/message"
-	backend "github.com/athanorlabs/atomic-swap/protocol/backend"
-	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
-	txsender "github.com/athanorlabs/atomic-swap/protocol/txsender"
-	common0 "github.com/ethereum/go-ethereum/common"
-	gomock "github.com/golang/mock/gomock"
+	backend "github.com/athanorlabs/atomic-swap/ethereum/extethclient"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
 
 // MockBackend is a mock of Backend interface.

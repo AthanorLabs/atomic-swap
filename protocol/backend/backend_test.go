@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -38,8 +39,11 @@ func TestWaitForReceipt(t *testing.T) {
 	err = ec.SendTransaction(ctx, tx)
 	require.NoError(t, err)
 
+	extendedEC, err := extethclient.NewEthClient(ctx, ec, privKey)
+	require.NoError(t, err)
+
 	b := &backend{
-		ethClient: &swapEthClient{ec: ec},
+		ethClient: extendedEC,
 	}
 
 	receipt, err := b.ETH().WaitForReceipt(ctx, tx.Hash())

@@ -1,4 +1,4 @@
-package backend
+package extethclient
 
 import (
 	"context"
@@ -10,13 +10,18 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
-// EthClient is the lower level ethereum network and wallet operations used by the protocol backend
+var log = logging.Logger("extethclient")
+
+// EthClient provides management of a private key and other convenience functions layered
+// on top of the go-ethereum client. You can still access the raw go-ethereum client via
+// the Raw() method.
 type EthClient interface {
 	Address() ethcommon.Address
 	SetAddress(addr ethcommon.Address)
@@ -30,6 +35,7 @@ type EthClient interface {
 	ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string, decimals uint8, err error)
 
 	SetGasPrice(uint64)
+	SetGasLimit(uint64)
 	CallOpts(ctx context.Context) *bind.CallOpts
 	TxOpts(ctx context.Context) (*bind.TransactOpts, error)
 	ChainID() *big.Int
@@ -41,7 +47,7 @@ type EthClient interface {
 	Raw() *ethclient.Client
 }
 
-type swapEthClient struct {
+type ethClient struct {
 	ec         *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
 	ethAddress ethcommon.Address
@@ -50,7 +56,9 @@ type swapEthClient struct {
 	chainID    *big.Int
 }
 
-func newSwapEthClient(ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
+// NewEthClient creates and returns our extended ethereum client/wallet. The passed context
+// is only used for creation.
+func NewEthClient(ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return nil, err
@@ -61,36 +69,34 @@ func newSwapEthClient(ctx context.Context, ec *ethclient.Client, privKey *ecdsa.
 		addr = common.EthereumPrivateKeyToAddress(privKey)
 	}
 
-	return &swapEthClient{
+	return &ethClient{
 		ec:         ec,
 		ethPrivKey: privKey,
 		ethAddress: addr,
-		gasPrice:   nil,
-		gasLimit:   0,
 		chainID:    chainID,
 	}, nil
 }
 
-func (c *swapEthClient) Address() ethcommon.Address {
+func (c *ethClient) Address() ethcommon.Address {
 	return c.ethAddress
 }
 
-func (c *swapEthClient) SetAddress(addr ethcommon.Address) {
+func (c *ethClient) SetAddress(addr ethcommon.Address) {
 	if c.HasPrivateKey() {
 		panic("SetAddress should not have been invoked when using an external signer")
 	}
 	c.ethAddress = addr
 }
 
-func (c *swapEthClient) PrivateKey() *ecdsa.PrivateKey {
+func (c *ethClient) PrivateKey() *ecdsa.PrivateKey {
 	return c.ethPrivKey
 }
 
-func (c *swapEthClient) HasPrivateKey() bool {
+func (c *ethClient) HasPrivateKey() bool {
 	return c.ethPrivKey != nil
 }
 
-func (c *swapEthClient) Balance(ctx context.Context) (ethcommon.Address, *big.Int, error) {
+func (c *ethClient) Balance(ctx context.Context) (ethcommon.Address, *big.Int, error) {
 	addr := c.Address()
 	bal, err := c.ec.BalanceAt(ctx, addr, nil)
 	if err != nil {
@@ -99,7 +105,7 @@ func (c *swapEthClient) Balance(ctx context.Context) (ethcommon.Address, *big.In
 	return addr, bal, nil
 }
 
-func (c *swapEthClient) ERC20BalanceAt(
+func (c *ethClient) ERC20BalanceAt(
 	ctx context.Context,
 	token ethcommon.Address,
 	account ethcommon.Address,
@@ -112,7 +118,7 @@ func (c *swapEthClient) ERC20BalanceAt(
 	return tokenContract.BalanceOf(c.CallOpts(ctx), account)
 }
 
-func (c *swapEthClient) ERC20Info(ctx context.Context, token ethcommon.Address) (
+func (c *ethClient) ERC20Info(ctx context.Context, token ethcommon.Address) (
 	name string,
 	symbol string,
 	decimals uint8,
@@ -137,12 +143,26 @@ func (c *swapEthClient) ERC20Info(ctx context.Context, token ethcommon.Address) 
 	return name, symbol, decimals, nil
 }
 
-// SetGasPrice sets the ethereum gas price for the instance to use (in wei).
-func (c *swapEthClient) SetGasPrice(gasPrice uint64) {
+// SetGasPrice sets the ethereum gas price (in wei) for use in transactions. In most
+// cases, you should not use this function and let the ethereum client determine the
+// suggested gas price at the current time. Setting a value of zero reverts to using
+// the raw ethereum client's suggested price.
+func (c *ethClient) SetGasPrice(gasPrice uint64) {
+	if gasPrice == 0 {
+		c.gasPrice = nil
+		return
+	}
 	c.gasPrice = big.NewInt(0).SetUint64(gasPrice)
 }
 
-func (c *swapEthClient) CallOpts(ctx context.Context) *bind.CallOpts {
+// SetGasLimit sets the ethereum gas limit to use (in wei). In most cases you should not
+// use this function and let the ethereum client dynamically determine the gas limit based
+// on a simulation of the contract transaction.
+func (c *ethClient) SetGasLimit(gasLimit uint64) {
+	c.gasLimit = gasLimit
+}
+
+func (c *ethClient) CallOpts(ctx context.Context) *bind.CallOpts {
 	return &bind.CallOpts{
 		Pending:     false,
 		From:        c.ethAddress, // might be all zeros if using external signer
@@ -151,7 +171,7 @@ func (c *swapEthClient) CallOpts(ctx context.Context) *bind.CallOpts {
 	}
 }
 
-func (c *swapEthClient) TxOpts(ctx context.Context) (*bind.TransactOpts, error) {
+func (c *ethClient) TxOpts(ctx context.Context) (*bind.TransactOpts, error) {
 	if !c.HasPrivateKey() {
 		panic("TxOpts() should not have been invoked when using an external signer")
 	}
@@ -164,35 +184,21 @@ func (c *swapEthClient) TxOpts(ctx context.Context) (*bind.TransactOpts, error) 
 
 	// TODO: set gas limit + price based on network (#153)
 	txOpts.GasPrice = c.gasPrice
-	if txOpts.GasPrice == nil {
-		txOpts.GasPrice, err = c.ec.SuggestGasPrice(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
 	txOpts.GasLimit = c.gasLimit
 
 	return txOpts, nil
 }
 
-func (c *swapEthClient) ChainID() *big.Int {
+func (c *ethClient) ChainID() *big.Int {
 	return c.chainID
 }
 
-func (c *swapEthClient) TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error) { //nolint:lll
-	return c.ec.TransactionByHash(ctx, hash)
-}
-
-func (c *swapEthClient) TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
-	return c.ec.TransactionReceipt(ctx, txHash)
-}
-
 // WaitForReceipt waits for the receipt for the given transaction to be available and returns it.
-func (c *swapEthClient) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
+func (c *ethClient) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
 	return block.WaitForReceipt(ctx, c.ec, txHash)
 }
 
-func (c *swapEthClient) WaitForTimestamp(ctx context.Context, ts time.Time) error {
+func (c *ethClient) WaitForTimestamp(ctx context.Context, ts time.Time) error {
 	hdr, err := block.WaitForEthBlockAfterTimestamp(ctx, c.ec, ts.Unix())
 	if err != nil {
 		return err
@@ -205,7 +211,7 @@ func (c *swapEthClient) WaitForTimestamp(ctx context.Context, ts time.Time) erro
 	return nil
 }
 
-func (c *swapEthClient) LatestBlockTimestamp(ctx context.Context) (time.Time, error) {
+func (c *ethClient) LatestBlockTimestamp(ctx context.Context) (time.Time, error) {
 	hdr, err := c.ec.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return time.Time{}, err
@@ -213,6 +219,6 @@ func (c *swapEthClient) LatestBlockTimestamp(ctx context.Context) (time.Time, er
 	return time.Unix(int64(hdr.Time), 0), nil
 }
 
-func (c *swapEthClient) Raw() *ethclient.Client {
+func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
