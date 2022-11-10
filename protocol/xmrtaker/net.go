@@ -36,7 +36,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	_, balance, err := a.backend.ETH().Balance(a.backend.Ctx())
+	balance, err := a.backend.ETH().Balance(a.backend.Ctx())
 	if err != nil {
 		return nil, err
 	}

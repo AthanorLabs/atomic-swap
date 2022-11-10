@@ -55,7 +55,7 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 		return err
 	}
 
-	eAddr, eBal, err := s.pb.ETH().Balance(s.ctx)
+	eBal, err := s.pb.ETH().Balance(s.ctx)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 		PiconeroBalance:         mBal.Balance,
 		PiconeroUnlockedBalance: mBal.UnlockedBalance,
 		BlocksToUnlock:          mBal.BlocksToUnlock,
-		EthAddress:              eAddr.String(),
+		EthAddress:              s.pb.ETH().Address().String(),
 		WeiBalance:              eBal,
 	}
 	return nil

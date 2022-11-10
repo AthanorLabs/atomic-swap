@@ -28,9 +28,8 @@ type EthClient interface {
 	PrivateKey() *ecdsa.PrivateKey
 	HasPrivateKey() bool
 
-	Balance(ctx context.Context) (ethcommon.Address, *big.Int, error)
-	ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
-		blockNumber *big.Int) (*big.Int, error)
+	Balance(ctx context.Context) (*big.Int, error)
+	ERC20Balance(ctx context.Context, token ethcommon.Address) (*big.Int, error)
 
 	ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string, decimals uint8, err error)
 
@@ -96,26 +95,21 @@ func (c *ethClient) HasPrivateKey() bool {
 	return c.ethPrivKey != nil
 }
 
-func (c *ethClient) Balance(ctx context.Context) (ethcommon.Address, *big.Int, error) {
+func (c *ethClient) Balance(ctx context.Context) (*big.Int, error) {
 	addr := c.Address()
 	bal, err := c.ec.BalanceAt(ctx, addr, nil)
 	if err != nil {
-		return ethcommon.Address{}, nil, err
+		return nil, err
 	}
-	return addr, bal, nil
+	return bal, nil
 }
 
-func (c *ethClient) ERC20BalanceAt(
-	ctx context.Context,
-	token ethcommon.Address,
-	account ethcommon.Address,
-	blockNumber *big.Int, // TODO: Do we need this unused parameter?
-) (*big.Int, error) {
+func (c *ethClient) ERC20Balance(ctx context.Context, token ethcommon.Address) (*big.Int, error) {
 	tokenContract, err := contracts.NewIERC20(token, c.ec)
 	if err != nil {
 		return big.NewInt(0), err
 	}
-	return tokenContract.BalanceOf(c.CallOpts(ctx), account)
+	return tokenContract.BalanceOf(c.CallOpts(ctx), c.Address())
 }
 
 func (c *ethClient) ERC20Info(ctx context.Context, token ethcommon.Address) (

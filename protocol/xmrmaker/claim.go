@@ -69,8 +69,6 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
-	addr := s.ETH().Address()
-
 	var (
 		symbol   string
 		decimals uint8
@@ -84,13 +82,13 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.ETH().Raw().BalanceAt(s.ctx, addr, nil) //nolint:govet
+		balance, err := s.ETH().Balance(s.ctx) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
-		balance, err := s.ETH().ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil) //nolint:govet
+		balance, err := s.ETH().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -121,13 +119,13 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	log.Infof("sent claim transaction, tx hash=%s", txHash)
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.ETH().Raw().BalanceAt(s.ctx, addr, nil)
+		balance, err := s.ETH().Balance(s.ctx)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
-		balance, err := s.ETH().ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		balance, err := s.ETH().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
