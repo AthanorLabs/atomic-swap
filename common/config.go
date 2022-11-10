@@ -64,7 +64,7 @@ var DevelopmentConfig = Config{
 // MoneroWalletPath returns the path to the wallet file, whose default value
 // depends on current value of the data dir.
 func (c Config) MoneroWalletPath() string {
-	return path.Join(c.DataDir, "extethclient", DefaultMoneroWalletName)
+	return path.Join(c.DataDir, "wallet", DefaultMoneroWalletName)
 }
 
 // LibP2PKeyFile returns the path to the libp2p key file, whose default value
