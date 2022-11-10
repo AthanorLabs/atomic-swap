@@ -110,7 +110,7 @@ func newSwapState(
 
 	var sender txsender.Sender
 	if offer.EthAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETH().RawClient())
+		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETH().Raw())
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +338,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	const refundedEvent = "Refunded"
 
-	logs, err := s.ETH().FilterLogs(s.ctx, eth.FilterQuery{
+	logs, err := s.ETH().Raw().FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
 	})
@@ -447,7 +447,7 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
-	tx, _, err := s.ETH().TransactionByHash(s.ctx, txHash)
+	tx, _, err := s.ETH().Raw().TransactionByHash(s.ctx, txHash)
 	if err != nil {
 		return err
 	}

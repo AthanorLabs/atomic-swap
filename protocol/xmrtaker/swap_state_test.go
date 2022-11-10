@@ -110,14 +110,14 @@ func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState
 
 	_, tx, contract, err := contracts.DeployERC20Mock(
 		txOpts,
-		b.ETH().RawClient(),
+		b.ETH().Raw(),
 		"Mock",
 		"MOCK",
 		b.ETH().Address(),
 		initialBalance,
 	)
 	require.NoError(t, err)
-	addr, err := bind.WaitDeployed(b.Ctx(), b.ETH(), tx)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.ETH().Raw(), tx)
 	require.NoError(t, err)
 
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
@@ -284,7 +284,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.Equal(t, message.NotifyRefundType, sentMsg.Type())
 
 	// check balance of contract is 0
-	balance, err := s.ETH().BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.ETH().Raw().BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -366,7 +366,7 @@ func TestSwapState_NotifyClaimed(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Claim(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s.ETH(), tx)
+	tests.MineTransaction(t, s.ETH().Raw(), tx)
 
 	// handled the claimed message should result in the monero wallet being created
 	cmsg := &message.NotifyClaimed{

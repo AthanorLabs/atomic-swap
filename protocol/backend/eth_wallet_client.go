@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -24,7 +23,6 @@ type EthClient interface {
 	PrivateKey() *ecdsa.PrivateKey
 	HasPrivateKey() bool
 
-	BalanceAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) (*big.Int, error)
 	Balance(ctx context.Context) (ethcommon.Address, *big.Int, error)
 	ERC20BalanceAt(ctx context.Context, token ethcommon.Address, account ethcommon.Address,
 		blockNumber *big.Int) (*big.Int, error)
@@ -35,16 +33,12 @@ type EthClient interface {
 	CallOpts(ctx context.Context) *bind.CallOpts
 	TxOpts(ctx context.Context) (*bind.TransactOpts, error)
 	ChainID() *big.Int
-	TransactionByHash(ctx context.Context, hash ethcommon.Hash) (tx *ethtypes.Transaction, isPending bool, err error)
-	TransactionReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
-	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 
+	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
-	CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error)
-	FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error)
 
-	RawClient() *ethclient.Client
+	Raw() *ethclient.Client
 }
 
 type swapEthClient struct {
@@ -94,10 +88,6 @@ func (c *swapEthClient) PrivateKey() *ecdsa.PrivateKey {
 
 func (c *swapEthClient) HasPrivateKey() bool {
 	return c.ethPrivKey != nil
-}
-
-func (c *swapEthClient) BalanceAt(ctx context.Context, account ethcommon.Address, blockNum *big.Int) (*big.Int, error) {
-	return c.ec.BalanceAt(ctx, account, blockNum)
 }
 
 func (c *swapEthClient) Balance(ctx context.Context) (ethcommon.Address, *big.Int, error) {
@@ -223,14 +213,6 @@ func (c *swapEthClient) LatestBlockTimestamp(ctx context.Context) (time.Time, er
 	return time.Unix(int64(hdr.Time), 0), nil
 }
 
-func (c *swapEthClient) CodeAt(ctx context.Context, account ethcommon.Address, blockNumber *big.Int) ([]byte, error) {
-	return c.ec.CodeAt(ctx, account, blockNumber)
-}
-
-func (c *swapEthClient) FilterLogs(ctx context.Context, q eth.FilterQuery) ([]ethtypes.Log, error) {
-	return c.ec.FilterLogs(ctx, q)
-}
-
-func (c *swapEthClient) RawClient() *ethclient.Client {
+func (c *swapEthClient) Raw() *ethclient.Client {
 	return c.ec
 }

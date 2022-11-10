@@ -122,7 +122,7 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	const claimedEvent = "Claimed"
 
-	logs, err := s.ETH().FilterLogs(s.ctx, eth.FilterQuery{
+	logs, err := s.ETH().Raw().FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
 	})

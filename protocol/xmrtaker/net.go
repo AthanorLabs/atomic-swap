@@ -48,7 +48,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 	}
 
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), a.backend.ETH().RawClient()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), a.backend.ETH().Raw()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}

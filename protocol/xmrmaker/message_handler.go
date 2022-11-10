@@ -154,7 +154,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	_, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETH().RawClient(), contractAddr)
+	_, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETH().Raw(), contractAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 }
 
 func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
-	receipt, err := s.ETH().TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
+	receipt, err := s.ETH().Raw().TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
 	if err != nil {
 		return "", err
 	}

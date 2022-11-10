@@ -84,7 +84,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.ETH().BalanceAt(s.ctx, addr, nil) //nolint:govet
+		balance, err := s.ETH().Raw().BalanceAt(s.ctx, addr, nil) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -121,7 +121,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	log.Infof("sent claim transaction, tx hash=%s", txHash)
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.ETH().BalanceAt(s.ctx, addr, nil)
+		balance, err := s.ETH().Raw().BalanceAt(s.ctx, addr, nil)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -144,7 +144,7 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 		s.ETH().PrivateKey(),
 		s.Contract(),
 		s.contractAddr,
-		s.ETH().RawClient(),
+		s.ETH().Raw(),
 		s.offerExtra.RelayerEndpoint,
 		s.offerExtra.RelayerCommission,
 		&s.contractSwap,

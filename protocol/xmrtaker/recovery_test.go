@@ -50,7 +50,7 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	tx, err := rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss.ETH(), tx)
+	tests.MineTransaction(t, rs.ss.ETH().Raw(), tx)
 	t.Log("XMRMaker claimed ETH...")
 
 	// assert we can claim the monero

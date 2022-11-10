@@ -174,7 +174,7 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
 		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, ss.ETH(), tx)
+	receipt := tests.MineTransaction(t, ss.ETH().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = contracts.GetIDFromLog(receipt.Logs[0])
@@ -222,7 +222,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, swapState.ETH(), tx)
+	tests.MineTransaction(t, swapState.ETH().Raw(), tx)
 
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
@@ -353,7 +353,7 @@ func TestSwapState_HandleProtocolMessage_NotifyReady(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s.ETH(), tx)
+	tests.MineTransaction(t, s.ETH().Raw(), tx)
 
 	msg := &message.NotifyReady{}
 
@@ -394,7 +394,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s.ETH(), tx)
+	tests.MineTransaction(t, s.ETH().Raw(), tx)
 
 	addr, err := s.handleRefund(tx.Hash().String())
 	require.NoError(t, err)
@@ -430,7 +430,7 @@ func TestSwapState_HandleProtocolMessage_NotifyRefund(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s.ETH(), tx)
+	tests.MineTransaction(t, s.ETH().Raw(), tx)
 
 	msg := &message.NotifyRefund{
 		TxHash: tx.Hash().String(),
@@ -474,7 +474,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, s.ETH(), tx)
+	receipt := tests.MineTransaction(t, s.ETH().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))

@@ -114,7 +114,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 
 	var sender txsender.Sender
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), b.ETH().RawClient()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), b.ETH().Raw()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
@@ -464,7 +464,7 @@ func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateVi
 }
 
 func (s *swapState) approveToken() error {
-	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.ETH().RawClient())
+	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.ETH().Raw())
 	if err != nil {
 		return fmt.Errorf("failed to instantiate IERC20: %w", err)
 	}

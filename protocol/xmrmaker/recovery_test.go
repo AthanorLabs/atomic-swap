@@ -40,7 +40,7 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 	// set contract to Ready
 	tx, err := rs.ss.Contract().SetReady(txOpts, rs.ss.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss.ETH(), tx)
+	tests.MineTransaction(t, rs.ss.ETH().Raw(), tx)
 
 	// assert we can claim ether
 	res, err := rs.ClaimOrRecover()
@@ -65,7 +65,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	sc := rs.ss.getSecret()
 	tx, err := rs.ss.Contract().Refund(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss.ETH(), tx)
+	tests.MineTransaction(t, rs.ss.ETH().Raw(), tx)
 
 	// assert XMRMaker can reclaim his monero
 	res, err := rs.ClaimOrRecover()

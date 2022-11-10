@@ -138,7 +138,7 @@ func (b *backend) ETH() EthClient {
 }
 
 func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error) {
-	ec := b.ethClient.RawClient()
+	ec := b.ethClient.Raw()
 
 	if !b.ethClient.HasPrivateKey() {
 		return txsender.NewExternalSender(b.ctx, b.env, ec, b.contractAddr, asset)
@@ -206,7 +206,7 @@ func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
 }
 
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error) {
-	return contracts.NewSwapFactory(addr, b.ethClient.RawClient())
+	return contracts.NewSwapFactory(addr, b.ethClient.Raw())
 }
 
 func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {
