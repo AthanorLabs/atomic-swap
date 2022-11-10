@@ -83,10 +83,10 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	// assert that ready() is called, setup contract watcher
 	ethHeader, err := backend.EthClient().HeaderByNumber(backend.Ctx(), nil)
 	require.NoError(t, err)
-	logReadyCh := make(chan []ethtypes.Log)
+	logReadyCh := make(chan ethtypes.Log)
 
 	readyTopic := common.GetTopic(common.ReadyEventSignature)
-	readyWatcher := watcher.NewEventFilterer(
+	readyWatcher := watcher.NewEventFilter(
 		s.Backend.Ctx(),
 		s.Backend.EthClient(),
 		s.Backend.ContractAddr(),
@@ -104,9 +104,8 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	require.Equal(t, types.ContractReady, s.info.Status)
 
 	select {
-	case logs := <-logReadyCh:
-		require.Equal(t, 1, len(logs))
-		err = pcommon.CheckSwapID(logs[0], "Ready", s.contractSwapID)
+	case log := <-logReadyCh:
+		err = pcommon.CheckSwapID(&log, "Ready", s.contractSwapID)
 		require.NoError(t, err)
 	case <-time.After(time.Second * 2):
 		t.Fatalf("didn't get ready logs in time")

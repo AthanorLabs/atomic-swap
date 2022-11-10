@@ -78,7 +78,7 @@ type swapState struct {
 	// the event handler in event.go ensures only one event is being handled at a time
 	eventCh chan Event
 	// channel for `Claimed` logs seen on-chain
-	logClaimedCh chan []ethtypes.Log
+	logClaimedCh chan ethtypes.Log
 	// signals the t0 expiration handler to return
 	xmrLockedCh chan struct{}
 	// signals the t1 expiration handler to return
@@ -153,11 +153,12 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	}
 
 	// set up ethereum event watchers
-	logClaimedCh := make(chan []ethtypes.Log)
+	const logChSize = 16
+	logClaimedCh := make(chan ethtypes.Log, logChSize)
 
 	ctx, cancel := context.WithCancel(b.Ctx())
 
-	claimedWatcher := watcher.NewEventFilterer(
+	claimedWatcher := watcher.NewEventFilter(
 		ctx,
 		b.EthClient(),
 		b.ContractAddr(),

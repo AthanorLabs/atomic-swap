@@ -60,7 +60,7 @@ func AssetSymbol(b backend.Backend, asset types.EthAsset) (string, error) {
 }
 
 // CheckSwapID checks if the given log is for the given swap ID.
-func CheckSwapID(log ethtypes.Log, eventName string, contractSwapID types.Hash) error {
+func CheckSwapID(log *ethtypes.Log, eventName string, contractSwapID types.Hash) error {
 	abiSF, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
 	if err != nil {
 		return err

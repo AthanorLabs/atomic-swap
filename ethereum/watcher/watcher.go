@@ -13,31 +13,31 @@ import (
 
 var checkForBlocksTimeout = time.Second
 
-// EventFilterer filters the chain for specific events (logs).
+// EventFilter filters the chain for specific events (logs).
 // When it finds a desired log, it puts it into its outbound channel.
-type EventFilterer struct {
+type EventFilter struct {
 	ctx         context.Context
 	ec          *ethclient.Client
 	topic       ethcommon.Hash
 	filterQuery eth.FilterQuery
-	logCh       chan<- []ethtypes.Log
+	logCh       chan<- ethtypes.Log
 }
 
-// NewEventFilterer returns a new *EventFilterer.
-func NewEventFilterer(
+// NewEventFilter returns a new *EventFilter.
+func NewEventFilter(
 	ctx context.Context,
 	ec *ethclient.Client,
 	contract ethcommon.Address,
 	fromBlock *big.Int,
 	topic ethcommon.Hash,
-	logCh chan<- []ethtypes.Log,
-) *EventFilterer {
+	logCh chan<- ethtypes.Log,
+) *EventFilter {
 	filterQuery := eth.FilterQuery{
 		FromBlock: fromBlock,
 		Addresses: []ethcommon.Address{contract},
 	}
 
-	return &EventFilterer{
+	return &EventFilter{
 		ctx:         ctx,
 		ec:          ec,
 		topic:       topic,
@@ -46,8 +46,8 @@ func NewEventFilterer(
 	}
 }
 
-// Start starts the EventFilterer. It watches the chain for logs.
-func (f *EventFilterer) Start() error {
+// Start starts the EventFilter. It watches the chain for logs.
+func (f *EventFilter) Start() error {
 	header, err := f.ec.HeaderByNumber(f.ctx, nil)
 	if err != nil {
 		return err
@@ -77,17 +77,16 @@ func (f *EventFilterer) Start() error {
 				continue
 			}
 
-			found := []ethtypes.Log{}
 			for _, l := range logs {
 				if l.Topics[0] != f.topic {
 					continue
 				}
 
-				found = append(found, l)
-			}
+				if l.Removed {
+					continue
+				}
 
-			if len(found) != 0 {
-				f.logCh <- found
+				f.logCh <- l
 			}
 
 			// the filter inclusive of the latest block when `ToBlock` is nil, so we add 1

@@ -19,8 +19,6 @@ var (
 	errClaimSwapComplete           = fmt.Errorf("can not claim, %w", errSwapCompleted)
 	errNilSwapState                = errors.New("swap state is nil")
 	errNilContractSwapID           = errors.New("expected swapID in NotifyETHLocked message")
-	errNoReadyLogs                 = errors.New("got Ready event from watcher with no logs")
-	errNoRefundLogs                = errors.New("got Refund event from watcher with no logs")
 	errCannotFindNewLog            = errors.New("cannot find New log")
 	errUnexpectedSwapID            = errors.New("unexpected swap ID was emitted by New log")
 	errSwapIDMismatch              = errors.New("hash of swap struct does not match swap ID")

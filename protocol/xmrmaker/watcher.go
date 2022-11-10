@@ -14,15 +14,13 @@ func (s *swapState) runContractEventWatcher() {
 		select {
 		case <-s.ctx.Done():
 			return
-		case logs := <-s.logReadyCh:
-			// contract was set to ready, send EventReady
-			err := s.handleReadyLogs(logs)
+		case l := <-s.logReadyCh:
+			err := s.handleReadyLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle ready logs: %s", err)
 			}
-		case logs := <-s.logRefundedCh:
-			// swap was refunded, send EventRefunded
-			err := s.handleRefundLogs(logs)
+		case l := <-s.logRefundedCh:
+			err := s.handleRefundLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle refund logs: %s", err)
 			}
@@ -33,12 +31,8 @@ func (s *swapState) runContractEventWatcher() {
 	}
 }
 
-func (s *swapState) handleReadyLogs(logs []ethtypes.Log) error {
-	if len(logs) == 0 {
-		return errNoReadyLogs
-	}
-
-	err := pcommon.CheckSwapID(logs[0], "Ready", s.contractSwapID)
+func (s *swapState) handleReadyLogs(log *ethtypes.Log) error {
+	err := pcommon.CheckSwapID(log, "Ready", s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
@@ -46,18 +40,14 @@ func (s *swapState) handleReadyLogs(logs []ethtypes.Log) error {
 		return err
 	}
 
-	log.Debugf("got Ready log: %v", logs[0])
+	// contract was set to ready, send EventReady
 	event := newEventContractReady()
 	s.eventCh <- event
 	return <-event.errCh
 }
 
-func (s *swapState) handleRefundLogs(logs []ethtypes.Log) error {
-	if len(logs) == 0 {
-		return errNoRefundLogs
-	}
-
-	err := pcommon.CheckSwapID(logs[0], "Refunded", s.contractSwapID)
+func (s *swapState) handleRefundLogs(log *ethtypes.Log) error {
+	err := pcommon.CheckSwapID(log, "Refunded", s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
@@ -65,12 +55,12 @@ func (s *swapState) handleRefundLogs(logs []ethtypes.Log) error {
 		return err
 	}
 
-	sk, err := contracts.GetSecretFromLog(&logs[0], "Refunded")
+	sk, err := contracts.GetSecretFromLog(log, "Refunded")
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("got Refunded log: %v", logs[0])
+	// swap was refunded, send EventRefunded
 	event := newEventETHRefunded(sk)
 	s.eventCh <- event
 	return <-event.errCh

@@ -74,9 +74,9 @@ type swapState struct {
 	// the event handler in event.go ensures only one event is being handled at a time
 	eventCh chan Event
 	// channel for `Ready` logs seen on-chain
-	logReadyCh chan []ethtypes.Log
+	logReadyCh chan ethtypes.Log
 	// channel for `Refunded` logs seen on-chain
-	logRefundedCh chan []ethtypes.Log
+	logRefundedCh chan ethtypes.Log
 	// signals the t0 expiration handler to return
 	readyCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
@@ -148,12 +148,13 @@ func newSwapState(
 	}
 
 	// set up ethereum event watchers
-	logReadyCh := make(chan []ethtypes.Log)
-	logRefundedCh := make(chan []ethtypes.Log)
+	const logChSize = 16 // arbitrary, we just don't want the watcher to block on writing
+	logReadyCh := make(chan ethtypes.Log, logChSize)
+	logRefundedCh := make(chan ethtypes.Log, logChSize)
 
 	ctx, cancel := context.WithCancel(b.Ctx())
 
-	readyWatcher := watcher.NewEventFilterer(
+	readyWatcher := watcher.NewEventFilter(
 		ctx,
 		b.EthClient(),
 		b.ContractAddr(),
@@ -162,7 +163,7 @@ func newSwapState(
 		logReadyCh,
 	)
 
-	refundedWatcher := watcher.NewEventFilterer(
+	refundedWatcher := watcher.NewEventFilter(
 		ctx,
 		b.EthClient(),
 		b.ContractAddr(),

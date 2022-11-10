@@ -14,9 +14,8 @@ func (s *swapState) runContractEventWatcher() {
 		select {
 		case <-s.ctx.Done():
 			return
-		case logs := <-s.logClaimedCh:
-			// contract was set to ready, send EventReady
-			err := s.handleClaimedLogs(logs)
+		case l := <-s.logClaimedCh:
+			err := s.handleClaimedLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle ready logs: %s", err)
 			}
@@ -24,12 +23,8 @@ func (s *swapState) runContractEventWatcher() {
 	}
 }
 
-func (s *swapState) handleClaimedLogs(logs []ethtypes.Log) error {
-	if len(logs) == 0 {
-		return errNoClaimedLogs
-	}
-
-	err := pcommon.CheckSwapID(logs[0], "Claimed", s.contractSwapID)
+func (s *swapState) handleClaimedLogs(l *ethtypes.Log) error {
+	err := pcommon.CheckSwapID(l, "Claimed", s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
@@ -37,12 +32,12 @@ func (s *swapState) handleClaimedLogs(logs []ethtypes.Log) error {
 		return err
 	}
 
-	sk, err := contracts.GetSecretFromLog(&logs[0], "Claimed")
+	sk, err := contracts.GetSecretFromLog(l, "Claimed")
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("got Claimed log: %v", logs[0])
+	// contract was set to ready, send EventReady
 	event := newEventETHClaimed(sk)
 	s.eventCh <- event
 	return <-event.errCh
