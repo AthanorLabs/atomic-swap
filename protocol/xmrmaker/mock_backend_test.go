@@ -5,22 +5,21 @@
 package xmrmaker
 
 import (
-	"context"
-	"reflect"
-	"time"
+	context "context"
+	reflect "reflect"
+	time "time"
 
-	common0 "github.com/ethereum/go-ethereum/common"
-	"github.com/golang/mock/gomock"
-
-	"github.com/athanorlabs/atomic-swap/common"
+	common "github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	backend "github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/net/message"
-	"github.com/athanorlabs/atomic-swap/protocol/swap"
-	"github.com/athanorlabs/atomic-swap/protocol/txsender"
+	extethclient "github.com/athanorlabs/atomic-swap/ethereum/extethclient"
+	monero "github.com/athanorlabs/atomic-swap/monero"
+	net "github.com/athanorlabs/atomic-swap/net"
+	message "github.com/athanorlabs/atomic-swap/net/message"
+	swap "github.com/athanorlabs/atomic-swap/protocol/swap"
+	txsender "github.com/athanorlabs/atomic-swap/protocol/txsender"
+	common0 "github.com/ethereum/go-ethereum/common"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockBackend is a mock of Backend interface.
@@ -101,10 +100,10 @@ func (mr *MockBackendMockRecorder) Ctx() *gomock.Call {
 }
 
 // ETH mocks base method.
-func (m *MockBackend) ETH() backend.EthClient {
+func (m *MockBackend) ETH() extethclient.EthClient {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ETH")
-	ret0, _ := ret[0].(backend.EthClient)
+	ret0, _ := ret[0].(extethclient.EthClient)
 	return ret0
 }
 
