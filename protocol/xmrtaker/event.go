@@ -2,7 +2,6 @@ package xmrtaker
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -24,8 +23,27 @@ const (
 	EventNoneType
 )
 
+func (t EventType) String() string {
+	switch t {
+	case EventKeysReceivedType:
+		return "EventKeysReceivedType"
+	case EventXMRLockedType:
+		return "EventXMRLockedType"
+	case EventETHClaimedType:
+		return "EventETHClaimedType"
+	case EventShouldRefundType:
+		return "EventShouldRefundType"
+	case EventExitType:
+		return "EventExitType"
+	case EventNoneType:
+		return "EventNoneType"
+	default:
+		panic("invalid EventType")
+	}
+}
+
 // getStatus returns the status corresponding to the next expected event.
-func getStatus(t EventType) types.Status {
+func (t EventType) getStatus() types.Status {
 	switch t {
 	case EventXMRLockedType:
 		return types.ETHLocked
@@ -153,7 +171,7 @@ func (s *swapState) handleEvent(event Event) {
 		defer close(e.errCh)
 
 		if s.nextExpectedEvent != EventKeysReceivedType {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e.Type())
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %s, not %s", s.nextExpectedEvent, e.Type())
 			return
 		}
 
@@ -168,8 +186,8 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventXMRLocked")
 		defer close(e.errCh)
 
-		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventXMRLocked{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+		if s.nextExpectedEvent != EventXMRLockedType {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %s, not %s", s.nextExpectedEvent, e.Type())
 			return
 		}
 
@@ -184,8 +202,8 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventETHClaimed")
 		defer close(e.errCh)
 
-		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventETHClaimed{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+		if s.nextExpectedEvent != EventETHClaimedType {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %s, not %s", s.nextExpectedEvent, e.Type())
 			return
 		}
 
@@ -199,9 +217,9 @@ func (s *swapState) handleEvent(event Event) {
 		defer close(e.txHashCh)
 
 		// either EventXMRLocked or EventETHClaimed next is ok
-		if (reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventXMRLocked{}) &&
-			reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventETHClaimed{})) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was not %T", e)
+		if s.nextExpectedEvent != EventXMRLockedType &&
+			s.nextExpectedEvent != EventETHClaimedType {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %s", e.Type())
 		}
 
 		err := s.handleEventShouldRefund(e)

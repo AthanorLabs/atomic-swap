@@ -236,7 +236,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
+	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 }
 
 // test the case where the monero is locked, but XMRMaker never claims.
@@ -268,7 +268,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
+	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 
 	for status := range s.statusCh {
 		if status == types.CompletedRefund {

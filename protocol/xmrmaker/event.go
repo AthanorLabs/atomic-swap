@@ -2,7 +2,6 @@ package xmrmaker
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -20,8 +19,25 @@ const (
 	EventNoneType
 )
 
+func (t EventType) String() string {
+	switch t {
+	case EventETHLockedType:
+		return "EventETHLockedType"
+	case EventContractReadyType:
+		return "EventContractReadyType"
+	case EventETHRefundedType:
+		return "EventETHRefundedType"
+	case EventExitType:
+		return "EventExitType"
+	case EventNoneType:
+		return "EventNoneType"
+	default:
+		panic("invalid EventType")
+	}
+}
+
 // getStatus returns the status corresponding to the next expected event.
-func getStatus(t EventType) types.Status {
+func (t EventType) getStatus() types.Status {
 	switch t {
 	case EventETHLockedType:
 		return types.KeysExchanged
@@ -128,8 +144,8 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventETHLocked")
 		defer close(e.errCh)
 
-		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventETHLocked{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+		if s.nextExpectedEvent != EventETHLockedType {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %s, not %s", s.nextExpectedEvent, e.Type())
 			return
 		}
 
@@ -144,8 +160,8 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventContractReady")
 		defer close(e.errCh)
 
-		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventContractReady{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+		if s.nextExpectedEvent != EventContractReadyType {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %s, not %s", s.nextExpectedEvent, e.Type())
 			return
 		}
 

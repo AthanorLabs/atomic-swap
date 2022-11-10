@@ -248,7 +248,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
-	require.Equal(t, &EventETHLocked{}, s.nextExpectedEvent)
+	require.Equal(t, EventETHLockedType, s.nextExpectedEvent)
 	require.Equal(t, xmrtakerPubKeys.SpendKey().Hex(), s.xmrtakerPublicKeys.SpendKey().Hex())
 	require.Equal(t, xmrtakerPubKeys.ViewKey().Hex(), s.xmrtakerPublicKeys.ViewKey().Hex())
 	require.True(t, s.info.Status.IsOngoing())
@@ -288,7 +288,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, &EventContractReady{}, s.nextExpectedEvent)
+	require.Equal(t, EventContractReadyType, s.nextExpectedEvent)
 	require.True(t, s.info.Status.IsOngoing())
 }
 
@@ -327,7 +327,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, &EventContractReady{}, s.nextExpectedEvent)
+	require.Equal(t, EventContractReadyType, s.nextExpectedEvent)
 
 	for status := range s.offerExtra.StatusCh {
 		if status == types.CompletedSuccess {
