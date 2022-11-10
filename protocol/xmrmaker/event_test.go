@@ -15,7 +15,7 @@ import (
 func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	_, s := newTestInstance(t)
 
-	s.nextExpectedEvent = &EventContractReady{}
+	s.nextExpectedEvent = EventContractReadyType
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 

@@ -70,7 +70,7 @@ type swapState struct {
 	t0, t1         time.Time
 
 	// tracks the state of the swap
-	nextExpectedEvent Event
+	nextExpectedEvent EventType
 
 	// channels
 
@@ -181,7 +181,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		infoFile:          infofile,
 		transferBack:      transferBack,
 		walletScanHeight:  walletScanHeight,
-		nextExpectedEvent: &EventKeysReceived{},
+		nextExpectedEvent: EventKeysReceivedType,
 		eventCh:           make(chan Event),
 		logClaimedCh:      logClaimedCh,
 		xmrLockedCh:       make(chan struct{}),
@@ -294,12 +294,12 @@ func (s *swapState) exit() error {
 
 	log.Debugf("attempting to exit swap: nextExpectedEvent=%T", s.nextExpectedEvent)
 
-	switch s.nextExpectedEvent.(type) {
-	case *EventKeysReceived:
+	switch s.nextExpectedEvent {
+	case EventKeysReceivedType:
 		// we are fine, as we only just initiated the protocol.
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *EventXMRLocked, *EventETHClaimed:
+	case EventXMRLockedType, EventETHClaimedType:
 		// for EventXMRLocked, we already deployed the contract,
 		// so we should call Refund().
 		//
@@ -319,7 +319,7 @@ func (s *swapState) exit() error {
 
 		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case nil:
+	case EventNoneType:
 		// the swap completed already, do nothing
 		return nil
 	default:
@@ -354,8 +354,8 @@ func (s *swapState) tryClaim() error {
 // doRefund is called by the RPC function swap_refund.
 // If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
 func (s *swapState) doRefund() (ethcommon.Hash, error) {
-	switch s.nextExpectedEvent.(type) {
-	case *EventXMRLocked, *EventETHClaimed:
+	switch s.nextExpectedEvent {
+	case EventXMRLockedType, EventETHClaimedType:
 		event := newEventShouldRefund()
 		s.eventCh <- event
 		err := <-event.errCh

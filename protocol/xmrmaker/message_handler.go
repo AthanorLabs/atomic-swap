@@ -50,15 +50,15 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 }
 
 func (s *swapState) clearNextExpectedEvent(status types.Status) {
-	s.nextExpectedEvent = nil
+	s.nextExpectedEvent = EventNoneType
 	s.info.SetStatus(status)
 	if s.offerExtra.StatusCh != nil {
 		s.offerExtra.StatusCh <- status
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event Event) {
-	if s.nextExpectedEvent == nil {
+func (s *swapState) setNextExpectedEvent(event EventType) {
+	if s.nextExpectedEvent == EventNoneType {
 		return
 	}
 

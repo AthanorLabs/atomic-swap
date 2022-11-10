@@ -213,7 +213,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventXMRLocked{}
+	s.nextExpectedEvent = EventXMRLockedType
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -244,7 +244,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventXMRLocked{}
+	s.nextExpectedEvent = EventXMRLockedType
 	s.SetSwapTimeout(time.Second * 3)
 
 	err := s.generateAndSetKeys()
@@ -289,7 +289,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 func TestExit_afterSendKeysMessage(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventKeysReceived{}
+	s.nextExpectedEvent = EventKeysReceivedType
 	err := s.Exit()
 	require.NoError(t, err)
 	info, err := s.SwapManager().GetPastSwap(s.info.ID)
@@ -300,7 +300,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventXMRLocked{}
+	s.nextExpectedEvent = EventXMRLockedType
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -325,7 +325,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 func TestExit_afterNotifyClaimed(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventETHClaimed{}
+	s.nextExpectedEvent = EventETHClaimedType
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -351,7 +351,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
 	s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventExit{}
+	s.nextExpectedEvent = EventExitType
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)

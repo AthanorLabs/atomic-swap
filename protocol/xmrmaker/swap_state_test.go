@@ -257,7 +257,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventETHLocked{}
+	s.nextExpectedEvent = EventETHLockedType
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -295,7 +295,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	_, s := newTestInstance(t)
 	defer s.cancel()
-	s.nextExpectedEvent = &EventETHLocked{}
+	s.nextExpectedEvent = EventETHLockedType
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
 
@@ -422,7 +422,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
-	s.nextExpectedEvent = &EventContractReady{}
+	s.nextExpectedEvent = EventContractReadyType
 	err = s.Exit()
 	require.NoError(t, err)
 
@@ -436,7 +436,7 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedEvent = &EventETHLocked{}
+	s.nextExpectedEvent = EventETHLockedType
 	err := s.Exit()
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, s.info.Status)
@@ -446,7 +446,7 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 	_, s, db := newTestInstanceAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	s.nextExpectedEvent = &EventETHRefunded{}
+	s.nextExpectedEvent = EventETHRefundedType
 	err := s.Exit()
 	require.True(t, errors.Is(err, errUnexpectedMessageType))
 	require.Equal(t, types.CompletedAbort, s.info.Status)

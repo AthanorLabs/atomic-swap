@@ -9,12 +9,23 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
+// EventType ...
+type EventType byte
+
+const (
+	EventETHLockedType EventType = iota //nolint:revive
+	EventContractReadyType
+	EventETHRefundedType
+	EventExitType
+	EventNoneType
+)
+
 // getStatus returns the status corresponding to the next expected event.
-func getStatus(t Event) types.Status {
-	switch t.(type) {
-	case *EventETHLocked:
+func getStatus(t EventType) types.Status {
+	switch t {
+	case EventETHLockedType:
 		return types.KeysExchanged
-	case *EventContractReady:
+	case EventContractReadyType:
 		return types.XMRLocked
 	default:
 		return types.UnknownStatus
@@ -22,13 +33,20 @@ func getStatus(t Event) types.Status {
 }
 
 // Event represents a swap state event.
-type Event interface{}
+type Event interface {
+	Type() EventType
+}
 
 // EventETHLocked is the first expected event. It represents ETH being locked
 // on-chain.
 type EventETHLocked struct {
 	message *message.NotifyETHLocked
 	errCh   chan error
+}
+
+// Type ...
+func (*EventETHLocked) Type() EventType {
+	return EventETHLockedType
 }
 
 func newEventETHLocked(msg *message.NotifyETHLocked) *EventETHLocked {
@@ -44,6 +62,11 @@ type EventContractReady struct {
 	errCh chan error
 }
 
+// Type ...
+func (*EventContractReady) Type() EventType {
+	return EventContractReadyType
+}
+
 func newEventContractReady() *EventContractReady {
 	return &EventContractReady{
 		errCh: make(chan error),
@@ -55,6 +78,11 @@ func newEventContractReady() *EventContractReady {
 type EventETHRefunded struct {
 	sk    *mcrypto.PrivateSpendKey
 	errCh chan error
+}
+
+// Type ...
+func (*EventETHRefunded) Type() EventType {
+	return EventETHRefundedType
 }
 
 func newEventETHRefunded(sk *mcrypto.PrivateSpendKey) *EventETHRefunded {
@@ -69,6 +97,11 @@ func newEventETHRefunded(sk *mcrypto.PrivateSpendKey) *EventETHRefunded {
 // required messages, or we decide to cancel the swap.
 type EventExit struct {
 	errCh chan error
+}
+
+// Type ...
+func (*EventExit) Type() EventType {
+	return EventExitType
 }
 
 func newEventExit() *EventExit {
@@ -106,7 +139,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(&EventContractReady{})
+		s.setNextExpectedEvent(EventContractReadyType)
 	case *EventContractReady:
 		log.Infof("EventContractReady")
 		defer close(e.errCh)

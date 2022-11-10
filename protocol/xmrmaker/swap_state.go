@@ -66,7 +66,7 @@ type swapState struct {
 	walletScanHeight           uint64 // height of the monero blockchain when the swap is started
 
 	// tracks the state of the swap
-	nextExpectedEvent Event
+	nextExpectedEvent EventType
 
 	// channels
 
@@ -193,7 +193,7 @@ func newSwapState(
 		offerExtra:        offerExtra,
 		offerManager:      om,
 		walletScanHeight:  walletScanHeight,
-		nextExpectedEvent: &EventETHLocked{},
+		nextExpectedEvent: EventETHLockedType,
 		logReadyCh:        logReadyCh,
 		logRefundedCh:     logRefundedCh,
 		eventCh:           make(chan Event, 1),
@@ -286,13 +286,13 @@ func (s *swapState) exit() error {
 		return nil
 	}
 
-	switch s.nextExpectedEvent.(type) {
-	case *EventETHLocked:
+	switch s.nextExpectedEvent {
+	case EventETHLockedType:
 		// we were waiting for the contract to be deployed, but haven't
 		// locked out funds yet, so we're fine.
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *EventContractReady:
+	case EventContractReadyType:
 		// this case takes control of the event channel.
 		// the next event will either be EventContractReady or EventETHRefunded.
 
@@ -309,7 +309,7 @@ func (s *swapState) exit() error {
 		}
 
 		return nil
-	case nil:
+	case EventNoneType:
 		// we already completed the swap, do nothing
 		return nil
 	default:

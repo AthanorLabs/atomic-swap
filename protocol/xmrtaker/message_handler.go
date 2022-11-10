@@ -3,7 +3,6 @@ package xmrtaker
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -44,21 +43,19 @@ func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 }
 
 func (s *swapState) clearNextExpectedEvent(status types.Status) {
-	s.nextExpectedEvent = nil
+	s.nextExpectedEvent = EventNoneType
 	s.info.SetStatus(status)
 	if s.statusCh != nil {
 		s.statusCh <- status
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event Event) {
-	if s.nextExpectedEvent == nil {
+func (s *swapState) setNextExpectedEvent(event EventType) {
+	if s.nextExpectedEvent == EventNoneType {
 		return
 	}
 
-	// alternatively make a Type() method for the Event interface
-	// can also change nextExpectedEvent to EventType
-	if reflect.TypeOf(event) == reflect.TypeOf(s.nextExpectedEvent) {
+	if event == s.nextExpectedEvent {
 		panic("cannot set next expected event to same as current")
 	}
 

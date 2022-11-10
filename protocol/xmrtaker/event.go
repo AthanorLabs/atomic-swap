@@ -12,12 +12,24 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+// EventType ...
+type EventType byte
+
+const (
+	EventKeysReceivedType EventType = iota //nolint:revive
+	EventXMRLockedType
+	EventETHClaimedType
+	EventShouldRefundType
+	EventExitType
+	EventNoneType
+)
+
 // getStatus returns the status corresponding to the next expected event.
-func getStatus(t Event) types.Status {
-	switch t.(type) {
-	case *EventXMRLocked:
+func getStatus(t EventType) types.Status {
+	switch t {
+	case EventXMRLockedType:
 		return types.ETHLocked
-	case *EventETHClaimed:
+	case EventETHClaimedType:
 		return types.ContractReady
 	default:
 		return types.UnknownStatus
@@ -25,12 +37,19 @@ func getStatus(t Event) types.Status {
 }
 
 // Event represents a swap state event.
-type Event interface{}
+type Event interface {
+	Type() EventType
+}
 
 // EventKeysReceived is the first expected event.
 type EventKeysReceived struct {
 	message *message.SendKeysMessage
 	errCh   chan error
+}
+
+// Type ...
+func (*EventKeysReceived) Type() EventType {
+	return EventKeysReceivedType
 }
 
 func newEventKeysReceived(msg *message.SendKeysMessage) *EventKeysReceived {
@@ -47,6 +66,11 @@ type EventXMRLocked struct {
 	errCh   chan error
 }
 
+// Type ...
+func (*EventXMRLocked) Type() EventType {
+	return EventXMRLockedType
+}
+
 func newEventXMRLocked(msg *message.NotifyXMRLock) *EventXMRLocked {
 	return &EventXMRLocked{
 		message: msg,
@@ -59,6 +83,11 @@ func newEventXMRLocked(msg *message.NotifyXMRLock) *EventXMRLocked {
 type EventETHClaimed struct {
 	sk    *mcrypto.PrivateSpendKey
 	errCh chan error
+}
+
+// Type ...
+func (*EventETHClaimed) Type() EventType {
+	return EventETHClaimedType
 }
 
 func newEventETHClaimed(sk *mcrypto.PrivateSpendKey) *EventETHClaimed {
@@ -75,6 +104,11 @@ type EventShouldRefund struct {
 	txHashCh chan ethcommon.Hash // contains the refund tx hash, if successful
 }
 
+// Type ...
+func (*EventShouldRefund) Type() EventType {
+	return EventShouldRefundType
+}
+
 func newEventShouldRefund() *EventShouldRefund {
 	return &EventShouldRefund{
 		errCh:    make(chan error),
@@ -87,6 +121,11 @@ func newEventShouldRefund() *EventShouldRefund {
 // required messages, or we decide to cancel the swap.
 type EventExit struct {
 	errCh chan error
+}
+
+// Type ...
+func (*EventExit) Type() EventType {
+	return EventExitType
 }
 
 func newEventExit() *EventExit {
@@ -113,8 +152,8 @@ func (s *swapState) handleEvent(event Event) {
 		log.Infof("EventKeysReceived")
 		defer close(e.errCh)
 
-		if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventKeysReceived{}) {
-			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e)
+		if s.nextExpectedEvent != EventKeysReceivedType {
+			e.errCh <- fmt.Errorf("nextExpectedEvent was %T, not %T", s.nextExpectedEvent, e.Type())
 			return
 		}
 
@@ -124,7 +163,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(&EventXMRLocked{})
+		s.setNextExpectedEvent(EventXMRLockedType)
 	case *EventXMRLocked:
 		log.Infof("EventXMRLocked")
 		defer close(e.errCh)
@@ -140,7 +179,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(&EventETHClaimed{})
+		s.setNextExpectedEvent(EventETHClaimedType)
 	case *EventETHClaimed:
 		log.Infof("EventETHClaimed")
 		defer close(e.errCh)
