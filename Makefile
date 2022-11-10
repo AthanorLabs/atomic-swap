@@ -62,14 +62,13 @@ build: init
 	./scripts/build.sh
 
 .PHONY: build-go
-build-go: 
+build-go:
 	go build ./cmd/swapd
 	go build ./cmd/swapcli
 
 .PHONY: build-go-darwin
 build-go-darwin:
-	GOOS=darwin GOARCH=arm64 go build ./cmd/swapd
-	GOOS=darwin GOARCH=arm64 go build ./cmd/swapcli
+	GOOS=darwin GOARCH=arm64 $(MAKE) build-go
 
 # Same as build, but also includes some lesser used binaries
 .PHONY: build-all
