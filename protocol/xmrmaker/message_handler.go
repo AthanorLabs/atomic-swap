@@ -3,7 +3,6 @@ package xmrmaker
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -62,9 +61,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 		return
 	}
 
-	// alternatively make a Type() method for the Event interface
-	// can also change nextExpectedEvent to EventType
-	if reflect.TypeOf(event) == reflect.TypeOf(s.nextExpectedEvent) {
+	if event == s.nextExpectedEvent {
 		panic("cannot set next expected event to same as current")
 	}
 

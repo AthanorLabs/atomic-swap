@@ -100,7 +100,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	// now handle the NotifyXMRLock message
 	err = s.HandleProtocolMessage(lmsg)
 	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedEvent, &EventETHClaimed{})
+	require.Equal(t, s.nextExpectedEvent, EventETHClaimedType)
 	require.Equal(t, types.ContractReady, s.info.Status)
 
 	select {
