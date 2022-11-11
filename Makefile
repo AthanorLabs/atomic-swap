@@ -63,8 +63,8 @@ build: init
 
 .PHONY: build-go
 build-go:
-	go build ./cmd/swapd
-	go build ./cmd/swapcli
+	go build -tags=fakedleq ./cmd/swapd
+	go build -tags=fakedleq ./cmd/swapcli
 
 .PHONY: build-go-darwin
 build-go-darwin:

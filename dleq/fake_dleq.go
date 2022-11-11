@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	//"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 
 	ed25519 "filippo.io/edwards25519"
@@ -37,7 +37,7 @@ func (d *FakeDLEq) Prove() (*Proof, error) {
 
 	var secret [32]byte
 	// TODO: reverse CGODLEq's secret instead, and remove reversals everywhere else?
-	copy(secret[:], common.Reverse(s))
+	copy(secret[:], s)
 
 	return &Proof{
 		secret: secret,
@@ -48,10 +48,12 @@ func (d *FakeDLEq) Prove() (*Proof, error) {
 // It only fails if it's unable to generate the public keys.
 func (d *FakeDLEq) Verify(proof *Proof) (*VerifyResult, error) {
 	// generate secp256k1 public key
-	s := common.Reverse(proof.secret[:])
+	s := proof.secret[:]
+	fmt.Println("Verify s", s)
 	curve := dsecp256k1.S256()
 	x, y := curve.ScalarBaseMult(s)
 	secp256k1Pub := secp256k1.NewPublicKeyFromBigInt(x, y)
+	fmt.Println("Verify", secp256k1Pub)
 
 	// generate ed25519 public key
 	ed25519Sk, err := ed25519.NewScalar().SetCanonicalBytes(s)

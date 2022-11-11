@@ -60,8 +60,8 @@ func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 
 		// The ETH library needs the secret in big-endian format, while the monero library wants it
 		// in little endian format.
-		secretLE := proof.secret[:]
-		secretBE := common.Reverse(secretLE)
+		secretBE := proof.secret[:]
+		secretLE := common.Reverse(secretBE)
 
 		// Secp256k1 check
 		ethCurve := ethsecp256k1.S256()

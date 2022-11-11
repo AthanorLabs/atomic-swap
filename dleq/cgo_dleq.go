@@ -8,6 +8,7 @@ import (
 	dleq "github.com/athanorlabs/cgo-dleq"
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
 
@@ -25,7 +26,7 @@ func (d *CGODLEq) Prove() (*Proof, error) {
 	}
 
 	var secret [32]byte
-	copy(secret[:], pk)
+	copy(secret[:], common.Reverse(pk))
 
 	return &Proof{
 		secret: secret,
