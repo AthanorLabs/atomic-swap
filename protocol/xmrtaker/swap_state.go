@@ -269,30 +269,30 @@ func (s *swapState) Exit() error {
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
 	defer func() {
-		// stop all running goroutines
-		s.cancel()
-		close(s.done)
-
 		err := s.SwapManager().CompleteOngoingSwap(s.info.ID)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.ID, err)
 			return
 		}
 
-		if s.info.Status == types.CompletedSuccess {
-			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID)
-			log.Info(str)
-			return
+		// Stop all per-swap goroutines
+		s.cancel()
+		close(s.done)
+
+		var exitLog string
+		switch s.info.Status {
+		case types.CompletedSuccess:
+			exitLog = color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
+		case types.CompletedRefund:
+			exitLog = color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
+		case types.CompletedAbort:
+			exitLog = color.New(color.Bold).Sprintf("**swap aborted: id=%s**", s.ID())
 		}
 
-		if s.info.Status == types.CompletedRefund {
-			str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.info.ID)
-			log.Info(str)
-			return
-		}
+		log.Info(exitLog)
 	}()
 
-	log.Debugf("attempting to exit swap: nextExpectedEvent=%T", s.nextExpectedEvent)
+	log.Debugf("attempting to exit swap: nextExpectedEvent=%s", s.nextExpectedEvent)
 
 	switch s.nextExpectedEvent {
 	case EventKeysReceivedType:
@@ -323,7 +323,7 @@ func (s *swapState) exit() error {
 		// the swap completed already, do nothing
 		return nil
 	default:
-		log.Errorf("unexpected nextExpectedEvent: %T", s.nextExpectedEvent)
+		log.Errorf("unexpected nextExpectedEvent: %s", s.nextExpectedEvent)
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return errUnexpectedEventType
 	}
@@ -424,7 +424,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	log.Infof("waiting until time %s to refund", s.t1)
 
 	event := <-s.eventCh
-	log.Debugf("got event %T", event)
+	log.Debugf("got event %s while waiting for T1", event)
 	switch event.(type) {
 	case *EventShouldRefund:
 		return s.refund()
@@ -433,7 +433,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		// this causes the caling function to claim
 		return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
 	default:
-		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %T", event))
+		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
 	}
 }
 

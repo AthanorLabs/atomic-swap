@@ -177,7 +177,7 @@ func (s *swapState) handleEvent(event Event) {
 
 		err := s.handleEventKeysReceived(e)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle %T: %w", e, err)
+			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 			return
 		}
 
@@ -193,7 +193,7 @@ func (s *swapState) handleEvent(event Event) {
 
 		err := s.handleEventXMRLocked(e)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle %T: %w", e, err)
+			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 			return
 		}
 
@@ -209,7 +209,7 @@ func (s *swapState) handleEvent(event Event) {
 
 		err := s.handleEventETHClaimed(e)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle %T: %w", e, err)
+			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 		}
 	case *EventShouldRefund:
 		log.Infof("EventShouldRefund")
@@ -224,7 +224,7 @@ func (s *swapState) handleEvent(event Event) {
 
 		err := s.handleEventShouldRefund(e)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle %T: %w", e, err)
+			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 		}
 	case *EventExit:
 		// this can happen at any stage.

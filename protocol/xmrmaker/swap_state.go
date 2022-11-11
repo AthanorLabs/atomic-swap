@@ -152,6 +152,7 @@ func newSwapState(
 	logReadyCh := make(chan ethtypes.Log, logChSize)
 	logRefundedCh := make(chan ethtypes.Log, logChSize)
 
+	// Create per swap context that is canceled when the swap completes
 	ctx, cancel := context.WithCancel(b.Ctx())
 
 	readyWatcher := watcher.NewEventFilter(
@@ -268,23 +269,22 @@ func (s *swapState) exit() error {
 			log.Debugf("re-added offer %s", s.offer.ID)
 		}
 
-		// stop all running goroutines
+		// Stop all per-swap goroutines
 		s.cancel()
-
 		close(s.done)
+
+		var exitLog string
+		switch s.info.Status {
+		case types.CompletedSuccess:
+			exitLog = color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
+		case types.CompletedRefund:
+			exitLog = color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
+		case types.CompletedAbort:
+			exitLog = color.New(color.Bold).Sprintf("**swap aborted: id=%s**", s.ID())
+		}
+
+		log.Info(exitLog)
 	}()
-
-	if s.info.Status == types.CompletedSuccess {
-		str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
-		log.Info(str)
-		return nil
-	}
-
-	if s.info.Status == types.CompletedRefund {
-		str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
-		log.Info(str)
-		return nil
-	}
 
 	switch s.nextExpectedEvent {
 	case EventETHLockedType:
@@ -314,7 +314,7 @@ func (s *swapState) exit() error {
 		return nil
 	default:
 		s.clearNextExpectedEvent(types.CompletedAbort)
-		log.Errorf("unexpected nextExpectedEvent in Exit: type=%T", s.nextExpectedEvent)
+		log.Errorf("unexpected nextExpectedEvent in Exit: type=%s", s.nextExpectedEvent)
 		return errUnexpectedMessageType
 	}
 }
