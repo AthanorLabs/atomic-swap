@@ -51,10 +51,12 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 
 func TestClaimOrRecover_Recover(t *testing.T) {
 	// test case where XMRMaker is able to reclaim their monero, after XMRTaker refunds
-	rs, db := newTestRecoveryState(t, 24*time.Hour)
+	rs, _ := newTestRecoveryState(t, 24*time.Hour)
 	txOpts, err := rs.ss.TxOpts()
 	require.NoError(t, err)
 
+	// TODO: when recovery from disk is implemented, re-add this
+	// db.EXPECT().PutOffer(rs.ss.offer)
 	monero.MineMinXMRBalance(t, rs.ss, common.MoneroToPiconero(1))
 
 	// lock XMR
@@ -67,8 +69,6 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	tx, err := rs.ss.Contract().Refund(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
 	tests.MineTransaction(t, rs.ss, tx)
-
-	db.EXPECT().PutOffer(rs.ss.offer)
 
 	// assert XMRMaker can reclaim their monero
 	res, err := rs.ClaimOrRecover()

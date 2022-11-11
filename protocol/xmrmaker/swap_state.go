@@ -259,7 +259,9 @@ func (s *swapState) exit() error {
 			return
 		}
 
-		if s.info.Status != types.CompletedSuccess {
+		// TODO: when recovery from disk is implemented, remove s.offer != nil as
+		// it should always be set
+		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
 			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
 			if err != nil {
