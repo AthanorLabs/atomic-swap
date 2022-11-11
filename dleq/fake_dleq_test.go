@@ -1,3 +1,5 @@
+//go:build fakedleq
+
 package dleq
 
 import (

@@ -1,4 +1,4 @@
-//go:build cgodleq
+//go:build !fakedleq
 
 package dleq
 
