@@ -2,7 +2,9 @@ package protocol
 
 import (
 	"encoding/hex"
+	"fmt"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
@@ -32,9 +34,9 @@ func GenerateKeysAndProof() (*KeysAndProof, error) {
 	}
 
 	secret := proof.Secret()
-	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
+	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(secret[:]))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create private spend key: %w", err)
 	}
 
 	kp, err := sk.AsPrivateKeyPair()
