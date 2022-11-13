@@ -610,6 +610,7 @@ func newBackend(
 		ctx,
 		cfg.ContractAddress,
 		env,
+		cfg.DataDir,
 		ethPrivKey,
 		ec,
 		forwarderAddress,

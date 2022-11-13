@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -21,6 +25,7 @@ func getOrDeploySwapFactory(
 	ctx context.Context,
 	address ethcommon.Address,
 	env common.Environment,
+	dataDir string,
 	privkey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
@@ -33,7 +38,7 @@ func getOrDeploySwapFactory(
 	if env != common.Mainnet && (address == ethcommon.Address{}) {
 		// we're on a development or testnet environment and we have no deployed contract,
 		// so let's deploy one
-		address, sf, err = deploySwapFactory(ctx, ec, privkey, forwarderAddress)
+		address, sf, err = deploySwapFactory(ctx, ec, privkey, forwarderAddress, dataDir)
 		if err != nil {
 			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w", err)
 		}
@@ -65,7 +70,9 @@ func deploySwapFactory(
 	ec *ethclient.Client,
 	privkey *ecdsa.PrivateKey,
 	forwarderAddress ethcommon.Address,
+	dataDir string,
 ) (ethcommon.Address, *contracts.SwapFactory, error) {
+
 	if privkey == nil {
 		return ethcommon.Address{}, nil, errNoEthereumPrivateKey
 	}
@@ -84,5 +91,25 @@ func deploySwapFactory(
 		return ethcommon.Address{}, nil, err
 	}
 
+	// store the contract address on disk
+	fp := path.Join(dataDir, "contract-address.json")
+	if err = writeContractAddressToFile(fp, address.String()); err != nil {
+		return ethcommon.Address{}, nil, fmt.Errorf("failed to write contract address to file: %w", err)
+	}
+
 	return address, sf, nil
+}
+
+// writeContractAddressToFile writes the contract address to the given file
+func writeContractAddressToFile(fp, addr string) error {
+	bz, err := json.MarshalIndent(&struct {
+		ContractAddress string
+	}{
+		ContractAddress: addr,
+	}, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Clean(fp), bz, 0600)
 }
