@@ -19,6 +19,8 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/tests"
+
+	logging "github.com/ipfs/go-log"
 )
 
 var defaultTimeout int64 = 9 // timeout in seconds
@@ -163,6 +165,8 @@ func TestRecoverer_RecoverFromXMRMakerSecretAndContract_Claim_afterTimeout(t *te
 }
 
 func TestRecoverer_RecoverFromXMRTakerSecretAndContract_Refund(t *testing.T) {
+	_ = logging.SetLogLevel("xmrtaker", "debug")
+
 	keys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 

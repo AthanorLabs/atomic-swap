@@ -60,6 +60,7 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		infoFile:         pcommon.GetSwapRecoveryFilepath(dataDir),
 		claimedCh:        make(chan struct{}),
 		info:             pswap.NewEmptyInfo(),
+		eventCh:          make(chan Event),
 	}
 
 	rs := &recoveryState{
@@ -108,6 +109,10 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 	}
 
 	// otherwise, let's try to refund
+	// TODO: also run runContractEventWatcher to watch for Claimed logs?
+	// will address in recovery refactor (#212)
+	go rs.ss.runT1ExpirationHandler()
+
 	txHash, err := rs.ss.tryRefund()
 	if err != nil {
 		return nil, err

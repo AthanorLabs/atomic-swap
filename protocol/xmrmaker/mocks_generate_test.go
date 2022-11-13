@@ -1,5 +1,3 @@
 package xmrmaker
 
-//nolint:lll
-//go:generate mockgen -destination=mock_backend_test.go -package $GOPACKAGE github.com/athanorlabs/atomic-swap/protocol/backend Backend
 //go:generate mockgen -destination=mock_net_test.go -package $GOPACKAGE github.com/athanorlabs/atomic-swap/net Host

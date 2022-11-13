@@ -155,23 +155,9 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
 		)
 
-		resp, done, err := s.HandleProtocolMessage(msg)
+		err = s.HandleProtocolMessage(msg)
 		if err != nil {
 			log.Warnf("failed to handle protocol message: err=%s", err)
-			return
-		}
-
-		if resp == nil {
-			continue
-		}
-
-		if err := h.writeToStream(stream, resp); err != nil {
-			log.Warnf("failed to send response to peer: err=%s", err)
-			return
-		}
-
-		if done {
-			log.Debug("protocol complete!")
 			return
 		}
 	}

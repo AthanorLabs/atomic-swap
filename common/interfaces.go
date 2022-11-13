@@ -14,7 +14,7 @@ type SwapState interface {
 // SwapStateNet handles incoming protocol messages for an initiated protocol.
 // It is implemented by *xmrtaker.swapState and *xmrmaker.swapState
 type SwapStateNet interface {
-	HandleProtocolMessage(msg message.Message) (resp message.Message, done bool, err error)
+	HandleProtocolMessage(msg message.Message) error
 	ID() types.Hash
 	Exit() error
 }
