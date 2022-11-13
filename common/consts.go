@@ -17,6 +17,7 @@ const (
 
 	// SwapFactory.sol function and event signatures
 
+	ReadyEventSignature    = "Ready(bytes32)"
 	ClaimedEventSignature  = "Claimed(bytes32,bytes32)"
 	RefundedEventSignature = "Refunded(bytes32,bytes32)"
 )

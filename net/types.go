@@ -19,6 +19,7 @@ type (
 // MessageSender is implemented by a Host
 type MessageSender interface {
 	SendSwapMessage(Message, types.Hash) error
+	CloseProtocolStream(id types.Hash)
 }
 
 // Handler handles swap initiation messages.
