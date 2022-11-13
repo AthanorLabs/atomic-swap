@@ -31,11 +31,22 @@ var (
 	defaultTimeoutDuration = time.Hour * 24
 )
 
+// RecoveryDB is implemented by *db.RecoveryDB
+type RecoveryDB interface {
+	PutContractAddress(id types.Hash, addr ethcommon.Address) error
+	PutContractSwapInfo(id types.Hash, swapID [32]byte, swap contracts.SwapFactorySwap) error
+	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
+	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
+}
+
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
 // It also interfaces with the network layer.
 type Backend interface {
 	monero.WalletClient
 	net.MessageSender
+
+	// RecoveryDB ...
+	RecoveryDB() RecoveryDB
 
 	// NewTxSender creates a new transaction sender, called per-swap
 	NewTxSender(asset ethcommon.Address,
@@ -87,6 +98,7 @@ type backend struct {
 	ctx         context.Context
 	env         common.Environment
 	swapManager swap.Manager
+	recoveryDB  RecoveryDB
 
 	// monero endpoints
 	monero.WalletClient
@@ -129,6 +141,8 @@ type Config struct {
 	SwapContractAddress ethcommon.Address
 
 	SwapManager swap.Manager
+
+	RecoveryDB RecoveryDB
 
 	Net net.MessageSender
 }
@@ -183,6 +197,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		swapTimeout:     defaultTimeoutDuration,
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
+		recoveryDB:      cfg.RecoveryDB,
 	}, nil
 }
 
@@ -193,6 +208,10 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.
 
 	sender := txsender.NewSenderWithPrivateKey(b.ctx, b.ethClient, b.contract, erc20Contract, b.txOpts)
 	return sender, nil
+}
+
+func (b *backend) RecoveryDB() RecoveryDB {
+	return b.recoveryDB
 }
 
 func (b *backend) HasEthereumPrivateKey() bool {

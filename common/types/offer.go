@@ -68,8 +68,8 @@ func (o *Offer) IsSet() bool {
 
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
-	StatusCh          chan Status
-	InfoFile          string
+	StatusCh chan Status
+	//InfoFile          string
 	RelayerEndpoint   string
 	RelayerCommission float64
 }

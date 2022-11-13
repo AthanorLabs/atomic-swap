@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"math/big"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -28,8 +27,6 @@ import (
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
-
-var infofile = os.TempDir() + "/test.keys"
 
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
@@ -99,7 +96,7 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
+	swapState, err := newSwapState(b, types.Hash{}, false,
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
@@ -123,7 +120,7 @@ func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState
 	addr, err := bind.WaitDeployed(b.Ctx(), b.EthClient(), tx)
 	require.NoError(t, err)
 
-	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
+	swapState, err := newSwapState(b, types.Hash{}, false,
 		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract

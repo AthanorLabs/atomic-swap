@@ -1,7 +1,6 @@
 package xmrtaker
 
 import (
-	"path"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
-	dataDir := path.Join(t.TempDir(), "test-infoFile")
+	dataDir := t.TempDir()
 	rs, err := NewRecoveryState(s, dataDir, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)
 	return rs

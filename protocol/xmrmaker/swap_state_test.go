@@ -125,15 +125,15 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 
 func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
 	xmrmaker, db := newTestXMRMakerAndDB(t)
-	infoFile := path.Join(t.TempDir(), "test.keys")
-	oe := &types.OfferExtra{
-		InfoFile: infoFile,
-	}
+	// infoFile := path.Join(t.TempDir(), "test.keys")
+	// oe := &types.OfferExtra{
+	// 	InfoFile: infoFile,
+	// }
 
 	swapState, err := newSwapState(
 		xmrmaker.backend,
 		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
-		oe,
+		&types.OfferExtra{},
 		xmrmaker.offerManager,
 		common.MoneroAmount(33),
 		desiredAmount,

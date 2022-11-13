@@ -65,6 +65,11 @@ func (db *Database) Close() error {
 	return db.recoveryDB.close()
 }
 
+// RecoveryDB ...
+func (db *Database) RecoveryDB() *RecoveryDB {
+	return db.recoveryDB
+}
+
 // PutOffer puts an offer in the database.
 func (db *Database) PutOffer(offer *types.Offer) error {
 	val, err := json.Marshal(offer)

@@ -10,7 +10,6 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 )
 
@@ -50,9 +49,9 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		dleqProof:      dleq.NewProofWithSecret(sc),
 		contractSwapID: contractSwapID,
 		contractSwap:   contractSwap,
-		offerExtra: &types.OfferExtra{
-			InfoFile: pcommon.GetSwapRecoveryFilepath(dataDir),
-		},
+		// offerExtra: &types.OfferExtra{
+		// 	InfoFile: pcommon.GetSwapRecoveryFilepath(dataDir),
+		// },
 		walletScanHeight: 0, // could optimise this if we start recording it in the swap recovery info
 	}
 

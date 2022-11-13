@@ -40,7 +40,6 @@ type swapState struct {
 
 	ctx          context.Context
 	cancel       context.CancelFunc
-	infoFile     string
 	transferBack bool
 
 	info     *pswap.Info
@@ -87,9 +86,15 @@ type swapState struct {
 	done chan struct{}
 }
 
-func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
-	providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
-	exchangeRate types.ExchangeRate, ethAsset types.EthAsset) (*swapState, error) {
+func newSwapState(
+	b backend.Backend,
+	offerID types.Hash,
+	transferBack bool,
+	providesAmount common.EtherAmount,
+	receivedAmount common.MoneroAmount,
+	exchangeRate types.ExchangeRate,
+	ethAsset types.EthAsset,
+) (*swapState, error) {
 	if b.Contract() == nil {
 		return nil, errNoSwapContractSet
 	}
@@ -178,7 +183,6 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		cancel:            cancel,
 		Backend:           b,
 		sender:            sender,
-		infoFile:          infofile,
 		transferBack:      transferBack,
 		walletScanHeight:  walletScanHeight,
 		nextExpectedEvent: EventKeysReceivedType,
@@ -192,7 +196,7 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		ethAsset:          ethAsset,
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.infoFile, b.ContractAddr().String()); err != nil {
+	if err := s.Backend.RecoveryDB().PutContractAddress(s.ID(), b.ContractAddr()); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
@@ -232,11 +236,6 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
 	}, nil
-}
-
-// InfoFile returns the swap's infoFile path
-func (s *swapState) InfoFile() string {
-	return s.infoFile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -457,7 +456,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys, s.Env())
 }
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
@@ -569,7 +568,7 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 		Nonce:        nonce,
 	}
 
-	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
+	if err := s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), s.contractSwapID, s.contractSwap); err != nil {
 		return ethcommon.Hash{}, err
 	}
 
@@ -629,7 +628,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infoFile, kpAB, s.Env()); err != nil {
+	if err := s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB, s.Env()); err != nil {
 		return "", err
 	}
 

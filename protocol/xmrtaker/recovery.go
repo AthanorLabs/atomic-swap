@@ -14,7 +14,6 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 )
@@ -57,10 +56,10 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		walletScanHeight: 0, // TODO: Can we optimise this?
 		contractSwapID:   contractSwapID,
 		contractSwap:     contractSwap,
-		infoFile:         pcommon.GetSwapRecoveryFilepath(dataDir),
-		claimedCh:        make(chan struct{}),
-		info:             pswap.NewEmptyInfo(),
-		eventCh:          make(chan Event),
+		//infoFile:         pcommon.GetSwapRecoveryFilepath(dataDir),
+		claimedCh: make(chan struct{}),
+		info:      pswap.NewEmptyInfo(),
+		eventCh:   make(chan Event),
 	}
 
 	rs := &recoveryState{

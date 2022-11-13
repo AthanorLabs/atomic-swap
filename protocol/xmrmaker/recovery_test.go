@@ -2,7 +2,6 @@ package xmrmaker
 
 import (
 	"math/big"
-	"path"
 	"testing"
 	"time"
 
@@ -24,7 +23,7 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) (*recoveryState, 
 
 	newSwap(t, s, [32]byte{}, sr, big.NewInt(1), timeout)
 
-	dataDir := path.Join(t.TempDir(), "test-infofile")
+	dataDir := t.TempDir()
 	rs, err := NewRecoveryState(inst.backend, dataDir, s.privkeys.SpendKey(), s.ContractAddr(),
 		s.contractSwapID, s.contractSwap)
 	require.NoError(t, err)

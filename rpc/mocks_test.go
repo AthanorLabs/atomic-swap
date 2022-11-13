@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"math/big"
-	"os"
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
@@ -124,7 +123,6 @@ func (m *mockXMRMaker) GetOngoingSwapState(hash types.Hash) common.SwapState {
 func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ float64) (*types.OfferExtra, error) {
 	offerExtra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, 1),
-		InfoFile: "/dev/null",
 	}
 	offerExtra.StatusCh <- types.CompletedSuccess
 	return offerExtra, nil
@@ -158,10 +156,6 @@ func (*mockSwapState) SendKeysMessage() (*message.SendKeysMessage, error) {
 
 func (*mockSwapState) ID() types.Hash {
 	return testSwapID
-}
-
-func (*mockSwapState) InfoFile() string {
-	return os.TempDir() + "test.infofile"
 }
 
 type mockProtocolBackend struct {

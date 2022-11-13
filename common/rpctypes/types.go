@@ -66,10 +66,10 @@ type TakeOfferRequest struct {
 	ProvidesAmount float64 `json:"providesAmount"`
 }
 
-// TakeOfferResponse ...
-type TakeOfferResponse struct {
-	InfoFile string `json:"infoFile"`
-}
+// // TakeOfferResponse ...
+// type TakeOfferResponse struct {
+// 	//InfoFile string `json:"infoFile"`
+// }
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
@@ -83,8 +83,8 @@ type MakeOfferRequest struct {
 
 // MakeOfferResponse ...
 type MakeOfferResponse struct {
-	ID       string `json:"offerID"`
-	InfoFile string `json:"infoFile"`
+	ID string `json:"offerID"`
+	//InfoFile string `json:"infoFile"`
 }
 
 // SignerRequest initiates the signer_subscribe handler from the front-end

@@ -15,7 +15,6 @@ import (
 func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
-	tmpDir := t.TempDir()
 
 	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec, pk)
 	require.NoError(t, err)
@@ -24,7 +23,6 @@ func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
-		tmpDir,
 		pk,
 		ec,
 		forwarder,
@@ -35,13 +33,11 @@ func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 func TestGetOrDeploySwapFactory_DeployForwarderAlso(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
-	tmpDir := t.TempDir()
 
 	_, _, err := getOrDeploySwapFactory(
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
-		tmpDir,
 		pk,
 		ec,
 		ethcommon.Address{},
@@ -52,7 +48,6 @@ func TestGetOrDeploySwapFactory_DeployForwarderAlso(t *testing.T) {
 func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
-	tmpDir := t.TempDir()
 
 	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec, pk)
 	require.NoError(t, err)
@@ -63,7 +58,6 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
-		tmpDir,
 		pk,
 		ec,
 		forwarder,
@@ -74,7 +68,6 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 		context.Background(),
 		address,
 		common.Development,
-		tmpDir,
 		pk,
 		ec,
 		ethcommon.Address{},

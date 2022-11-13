@@ -1,5 +1,7 @@
 # Recovery
 
+TODO: probably remove all this
+
 In the case that the swap process crashes in the middle of the swap while funds are still locked, you can use the built-in recovery module to recover your funds manually.
 
 ## Building

@@ -440,7 +440,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	swapBackend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
+	swapBackend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec, sdb.RecoveryDB())
 	if err != nil {
 		return err
 	}
@@ -539,6 +539,7 @@ func newBackend(
 	sm swap.Manager,
 	net net.Host,
 	ec *ethclient.Client,
+	rdb *db.RecoveryDB,
 ) (backend.Backend, error) {
 	var (
 		ethPrivKey *ecdsa.PrivateKey
@@ -609,7 +610,6 @@ func newBackend(
 		ctx,
 		cfg.ContractAddress,
 		env,
-		cfg.DataDir,
 		ethPrivKey,
 		ec,
 		forwarderAddress,
@@ -661,6 +661,7 @@ func newBackend(
 		SwapContract:        contract,
 		SwapContractAddress: contractAddr,
 		Net:                 net,
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)

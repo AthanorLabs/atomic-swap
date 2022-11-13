@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -59,7 +60,7 @@ func (db *RecoveryDB) PutContractAddress(id types.Hash, addr ethcommon.Address) 
 	return db.db.Put(key[:], val)
 }
 
-// PutContractAddress stores the given contract swap ID (which is not the same as the daemon
+// PutContractSwapInfo stores the given contract swap ID (which is not the same as the daemon
 // swap ID, but is instead a hash of the `SwapFactorySwap` structure)
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, swapID [32]byte, swap contracts.SwapFactorySwap) error {
@@ -79,7 +80,8 @@ func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, swapID [32]byte, swap c
 }
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
-func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, k *mcrypto.PrivateKeyInfo) error {
+func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error {
+	k := keys.Info(env)
 	val, err := json.Marshal(k)
 	if err != nil {
 		return err
@@ -90,7 +92,12 @@ func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, k *mcrypto.PrivateKeyInfo
 }
 
 // PutSharedSwapPrivateKey stores the shared swap private key for the given swap ID.
-func (db *RecoveryDB) PutSharedSwapPrivateKey(id types.Hash, k *mcrypto.PrivateKeyInfo) error {
+func (db *RecoveryDB) PutSharedSwapPrivateKey(
+	id types.Hash,
+	keys *mcrypto.PrivateKeyPair,
+	env common.Environment,
+) error {
+	k := keys.Info(env)
 	val, err := json.Marshal(k)
 	if err != nil {
 		return err

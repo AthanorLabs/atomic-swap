@@ -4,7 +4,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color" //nolint:misspell
 )
@@ -66,7 +65,7 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 	s, err := newSwapState(
 		a.backend,
 		offerID,
-		pcommon.GetSwapInfoFilepath(a.dataDir, offerID.String()),
+		//pcommon.GetSwapInfoFilepath(a.dataDir, offerID.String()),
 		a.transferBack,
 		providesAmount,
 		receivedAmount,

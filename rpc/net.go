@@ -152,26 +152,28 @@ func (s *NetService) QueryPeer(_ *http.Request, req *rpctypes.QueryPeerRequest,
 }
 
 // TakeOffer initiates a swap with the given peer by taking an offer they've made.
-func (s *NetService) TakeOffer(_ *http.Request, req *rpctypes.TakeOfferRequest,
-	resp *rpctypes.TakeOfferResponse) error {
-	_, infofile, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
+func (s *NetService) TakeOffer(
+	_ *http.Request,
+	req *rpctypes.TakeOfferRequest,
+	_ *interface{},
+) error {
+	_, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
 	}
 
-	resp.InfoFile = infofile
 	return nil
 }
 
-func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64) (<-chan types.Status, string, error) {
+func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64) (<-chan types.Status, error) {
 	who, err := net.StringToAddrInfo(multiaddr)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	queryResp, err := s.net.Query(who)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	var offer *types.Offer
@@ -182,17 +184,17 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 		}
 	}
 	if offer == nil {
-		return nil, "", errNoOfferWithID
+		return nil, errNoOfferWithID
 	}
 
 	swapState, err := s.xmrtaker.InitiateProtocol(providesAmount, offer)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to initiate protocol: %w", err)
+		return nil, fmt.Errorf("failed to initiate protocol: %w", err)
 	}
 
 	skm, err := swapState.SendKeysMessage()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	skm.OfferID = offerID
@@ -200,47 +202,47 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 
 	if err = s.net.Initiate(who, skm, swapState); err != nil {
 		_ = swapState.Exit()
-		return nil, "", err
+		return nil, err
 	}
 
 	id, err := offerIDStringToHash(offerID)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	info, err := s.sm.GetOngoingSwap(id)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	if info == nil {
-		return nil, "", errFailedToGetSwapInfo
+		return nil, errFailedToGetSwapInfo
 	}
 
-	return info.StatusCh(), swapState.InfoFile(), nil
+	return info.StatusCh(), nil
 }
 
 // TakeOfferSyncResponse ...
 type TakeOfferSyncResponse struct {
-	InfoFile string `json:"infoFile"`
-	Status   string `json:"status"`
+	Status string `json:"status"`
 }
 
 // TakeOfferSync initiates a swap with the given peer by taking an offer they've made.
 // It synchronously waits until the swap is completed before returning its status.
-func (s *NetService) TakeOfferSync(_ *http.Request, req *rpctypes.TakeOfferRequest,
-	resp *TakeOfferSyncResponse) error {
+func (s *NetService) TakeOfferSync(
+	_ *http.Request,
+	req *rpctypes.TakeOfferRequest,
+	resp *TakeOfferSyncResponse,
+) error {
 	offerID, err := offerIDStringToHash(req.OfferID)
 	if err != nil {
 		return err
 	}
 
-	_, infofile, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
+	_, err = s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
 	}
-
-	resp.InfoFile = infofile
 
 	const checkSwapSleepDuration = time.Millisecond * 100
 
@@ -269,13 +271,12 @@ func (s *NetService) MakeOffer(
 	req *rpctypes.MakeOfferRequest,
 	resp *rpctypes.MakeOfferResponse,
 ) error {
-	id, extra, err := s.makeOffer(req)
+	id, _, err := s.makeOffer(req)
 	if err != nil {
 		return err
 	}
 
 	resp.ID = id
-	resp.InfoFile = extra.InfoFile
 	return nil
 }
 
