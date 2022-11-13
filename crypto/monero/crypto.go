@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	//"strings"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto"
@@ -113,9 +112,6 @@ func NewPrivateSpendKey(b []byte) (*PrivateSpendKey, error) {
 	}
 
 	sk, err := ed25519.NewScalar().SetCanonicalBytes(b)
-	// if err != nil && strings.Contains(err.Error(), "invalid scalar encoding") {
-	// 	sk, err = ed25519.NewScalar().SetCanonicalBytes(common.Reverse(b))
-	// }
 	if err != nil {
 		return nil, err
 	}

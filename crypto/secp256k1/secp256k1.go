@@ -55,7 +55,7 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 	return NewPublicKeyFromBytes(k)
 }
 
-// NewPublicKeyFromHex returns a public key from a 64-byte encoded public key
+// NewPublicKeyFromBytes returns a public key from a 64-byte encoded public key
 func NewPublicKeyFromBytes(k []byte) (*PublicKey, error) {
 	if len(k) != 64 {
 		return nil, errInvalidPubkeyLength
