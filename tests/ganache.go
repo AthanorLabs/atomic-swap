@@ -38,10 +38,10 @@ var testPackages = []struct {
 	{"net", 2},
 	{"protocol", 1},
 	{"protocol/backend", 2},
-	{"protocol/xmrmaker", 2},
-	{"protocol/xmrtaker", 2},
+	{"protocol/xmrmaker", 3},
+	{"protocol/xmrtaker", 3},
 	{"recover", 2},
-	{"tests", 2},
+	{"tests", 3},
 }
 
 const (
@@ -171,6 +171,12 @@ func GetMakerTestKey(t *testing.T) *ecdsa.PrivateKey {
 func GetTakerTestKey(t *testing.T) *ecdsa.PrivateKey {
 	pkgName := getCallingPackageName(t)
 	return getPackageTestKey(t, pkgName, 1)
+}
+
+// GetRelayerTestKey returns the third ganache test key allocated to a package
+func GetRelayerTestKey(t *testing.T) *ecdsa.PrivateKey {
+	pkgName := getCallingPackageName(t)
+	return getPackageTestKey(t, pkgName, 2)
 }
 
 // NewEthClient returns a connection to the local ganache instance for unit tests along
