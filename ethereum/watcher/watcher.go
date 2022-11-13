@@ -9,9 +9,13 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log"
 )
 
-var checkForBlocksTimeout = time.Second
+var (
+	log                   = logging.Logger("ethereum/watcher")
+	checkForBlocksTimeout = time.Second
+)
 
 // EventFilter filters the chain for specific events (logs).
 // When it finds a desired log, it puts it into its outbound channel.
@@ -83,13 +87,14 @@ func (f *EventFilter) Start() error {
 				}
 
 				if l.Removed {
+					log.Debugf("found removed log: tx hash %s", l.TxHash)
 					continue
 				}
 
 				f.logCh <- l
 			}
 
-			// the filter inclusive of the latest block when `ToBlock` is nil, so we add 1
+			// the filter is inclusive of the latest block when `ToBlock` is nil, so we add 1
 			f.filterQuery.FromBlock = big.NewInt(0).Add(currHeader.Number, big.NewInt(1))
 			header = currHeader
 		}
