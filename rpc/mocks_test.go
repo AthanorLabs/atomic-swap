@@ -140,8 +140,8 @@ func (*mockXMRMaker) GetMoneroBalance() (string, *wallet.GetBalanceResponse, err
 
 type mockSwapState struct{}
 
-func (*mockSwapState) HandleProtocolMessage(msg message.Message) (resp message.Message, done bool, err error) {
-	return nil, true, nil
+func (*mockSwapState) HandleProtocolMessage(msg message.Message) error {
+	return nil
 }
 
 func (*mockSwapState) Exit() error {

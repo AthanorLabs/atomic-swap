@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -16,15 +16,16 @@ import (
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
 )
 
@@ -39,7 +40,6 @@ type swapState struct {
 
 	ctx          context.Context
 	cancel       context.CancelFunc
-	stateMu      sync.Mutex
 	infoFile     string
 	transferBack bool
 
@@ -69,14 +69,22 @@ type swapState struct {
 	contractSwap   contracts.SwapFactorySwap
 	t0, t1         time.Time
 
-	// next expected network message
-	nextExpectedMessage net.Message
+	// tracks the state of the swap
+	nextExpectedEvent EventType
 
 	// channels
+
+	// channel for swap events
+	// the event handler in event.go ensures only one event is being handled at a time
+	eventCh chan Event
+	// channel for `Claimed` logs seen on-chain
+	logClaimedCh chan ethtypes.Log
+	// signals the t0 expiration handler to return
 	xmrLockedCh chan struct{}
-	claimedCh   chan struct{}
-	done        chan struct{}
-	exited      bool
+	// signals the t1 expiration handler to return
+	claimedCh chan struct{}
+	// signals to the creator xmrmaker instance that it can delete this swap
+	done chan struct{}
 }
 
 func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transferBack bool,
@@ -139,22 +147,49 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
+	ethHeader, err := b.ETH().Raw().HeaderByNumber(b.Ctx(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// set up ethereum event watchers
+	const logChSize = 16
+	logClaimedCh := make(chan ethtypes.Log, logChSize)
+
 	ctx, cancel := context.WithCancel(b.Ctx())
+
+	claimedWatcher := watcher.NewEventFilter(
+		ctx,
+		b.ETH().Raw(),
+		b.ContractAddr(),
+		ethHeader.Number,
+		claimedTopic,
+		logClaimedCh,
+	)
+
+	err = claimedWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
 	s := &swapState{
-		ctx:                 ctx,
-		cancel:              cancel,
-		Backend:             b,
-		sender:              sender,
-		infoFile:            infofile,
-		transferBack:        transferBack,
-		walletScanHeight:    walletScanHeight,
-		nextExpectedMessage: &net.SendKeysMessage{},
-		xmrLockedCh:         make(chan struct{}),
-		claimedCh:           make(chan struct{}),
-		done:                make(chan struct{}),
-		info:                info,
-		statusCh:            statusCh,
-		ethAsset:            ethAsset,
+		ctx:               ctx,
+		cancel:            cancel,
+		Backend:           b,
+		sender:            sender,
+		infoFile:          infofile,
+		transferBack:      transferBack,
+		walletScanHeight:  walletScanHeight,
+		nextExpectedEvent: EventKeysReceivedType,
+		eventCh:           make(chan Event),
+		logClaimedCh:      logClaimedCh,
+		xmrLockedCh:       make(chan struct{}),
+		claimedCh:         make(chan struct{}),
+		done:              make(chan struct{}),
+		info:              info,
+		statusCh:          statusCh,
+		ethAsset:          ethAsset,
 	}
 
 	if err := pcommon.WriteContractAddressToFile(s.infoFile, b.ContractAddr().String()); err != nil {
@@ -162,19 +197,13 @@ func newSwapState(b backend.Backend, offerID types.Hash, infofile string, transf
 	}
 
 	go s.waitForSendKeysMessage()
+	go s.runHandleEvents()
+	go s.runContractEventWatcher()
 	return s, nil
 }
 
-func (s *swapState) lockState() {
-	s.stateMu.Lock()
-}
-
-func (s *swapState) unlockState() {
-	s.stateMu.Unlock()
-}
-
 func (s *swapState) waitForSendKeysMessage() {
-	waitDuration := time.Minute
+	waitDuration := time.Minute * 5
 	timer := time.After(waitDuration)
 	select {
 	case <-s.ctx.Done():
@@ -183,7 +212,7 @@ func (s *swapState) waitForSendKeysMessage() {
 	}
 
 	// check if we've received a response from the counterparty yet
-	if s.nextExpectedMessage != (&net.SendKeysMessage{}) {
+	if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventKeysReceived{}) {
 		return
 	}
 
@@ -232,87 +261,71 @@ func (s *swapState) ID() types.Hash {
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
-	s.lockState()
-	defer s.unlockState()
-	return s.exit()
+	event := newEventExit()
+	s.eventCh <- event
+	return <-event.errCh
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
-	if s.exited {
-		return nil
-	}
-	s.exited = true
-
 	defer func() {
-		// stop all running goroutines
-		s.cancel()
-		close(s.done)
-
 		err := s.SwapManager().CompleteOngoingSwap(s.info.ID)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.ID, err)
 			return
 		}
 
-		if s.info.Status == types.CompletedSuccess {
-			str := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.info.ID)
-			log.Info(str)
-			return
+		// Stop all per-swap goroutines
+		s.cancel()
+		close(s.done)
+
+		var exitLog string
+		switch s.info.Status {
+		case types.CompletedSuccess:
+			exitLog = color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
+		case types.CompletedRefund:
+			exitLog = color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
+		case types.CompletedAbort:
+			exitLog = color.New(color.Bold).Sprintf("**swap aborted: id=%s**", s.ID())
 		}
 
-		if s.info.Status == types.CompletedRefund {
-			str := color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.info.ID)
-			log.Info(str)
-			return
-		}
+		log.Info(exitLog)
 	}()
 
-	log.Debugf("attempting to exit swap: nextExpectedMessage=%s", s.nextExpectedMessage)
+	log.Debugf("attempting to exit swap: nextExpectedEvent=%s", s.nextExpectedEvent)
 
-	switch s.nextExpectedMessage.(type) {
-	case *net.SendKeysMessage:
+	switch s.nextExpectedEvent {
+	case EventKeysReceivedType:
 		// we are fine, as we only just initiated the protocol.
-		s.clearNextExpectedMessage(types.CompletedAbort)
+		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
-	case *message.NotifyXMRLock:
-		// we already deployed the contract, so we should call Refund().
-		txHash, err := s.tryRefund()
-		if err != nil {
-			if strings.Contains(err.Error(), revertSwapCompleted) {
-				return s.tryClaim()
-			}
-
-			s.clearNextExpectedMessage(types.CompletedAbort)
-			log.Errorf("failed to refund: err=%s", err)
-			return err
-		}
-
-		s.clearNextExpectedMessage(types.CompletedRefund)
-		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case *message.NotifyClaimed:
-		// the XMR has been locked, but the ETH hasn't been claimed.
+	case EventXMRLockedType, EventETHClaimedType:
+		// for EventXMRLocked, we already deployed the contract,
+		// so we should call Refund().
+		//
+		// for EventETHClaimed, the XMR has been locked, but the
+		// ETH hasn't been claimed.
 		// we should also refund in this case.
 		txHash, err := s.tryRefund()
 		if err != nil {
-			// seems like XMRMaker claimed already - try to claim monero
 			if strings.Contains(err.Error(), revertSwapCompleted) {
 				return s.tryClaim()
 			}
 
-			s.clearNextExpectedMessage(types.CompletedAbort)
+			s.clearNextExpectedEvent(types.CompletedAbort)
 			log.Errorf("failed to refund: err=%s", err)
 			return err
 		}
 
-		s.clearNextExpectedMessage(types.CompletedRefund)
+		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
-	case nil:
-		return s.tryClaim()
+	case EventNoneType:
+		// the swap completed already, do nothing
+		return nil
 	default:
-		log.Errorf("unexpected nextExpectedMessage in Exit: type=%T", s.nextExpectedMessage)
-		s.clearNextExpectedMessage(types.CompletedAbort)
-		return errUnexpectedMessageType
+		log.Errorf("unexpected nextExpectedEvent: %s", s.nextExpectedEvent)
+		s.clearNextExpectedEvent(types.CompletedAbort)
+		return errUnexpectedEventType
 	}
 
 	return nil
@@ -334,34 +347,23 @@ func (s *swapState) tryClaim() error {
 	}
 
 	log.Infof("claimed monero: address=%s", addr)
-	s.clearNextExpectedMessage(types.CompletedSuccess)
+	s.clearNextExpectedEvent(types.CompletedSuccess)
 	return nil
 }
 
 // doRefund is called by the RPC function swap_refund.
 // If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
 func (s *swapState) doRefund() (ethcommon.Hash, error) {
-	switch s.nextExpectedMessage.(type) {
-	case *message.NotifyXMRLock, *message.NotifyClaimed:
-		// the XMR has been locked, but the ETH hasn't been claimed.
-		// we can refund in this case.
-		txHash, err := s.tryRefund()
+	switch s.nextExpectedEvent {
+	case EventXMRLockedType, EventETHClaimedType:
+		event := newEventShouldRefund()
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
-			s.clearNextExpectedMessage(types.CompletedAbort)
-			log.Errorf("failed to refund: err=%s", err)
 			return ethcommon.Hash{}, err
 		}
 
-		s.clearNextExpectedMessage(types.CompletedRefund)
-		log.Infof("refunded ether: transaction hash=%s", txHash)
-
-		// send NotifyRefund msg
-		if err = s.SendSwapMessage(&message.NotifyRefund{
-			TxHash: txHash.String(),
-		}, s.ID()); err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to send refund message: err=%w", err)
-		}
-
+		txHash := <-event.txHashCh
 		return txHash, nil
 	default:
 		return ethcommon.Hash{}, errCannotRefund
@@ -373,6 +375,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
+
 	switch stage {
 	case contracts.StageInvalid:
 		return ethcommon.Hash{}, errRefundInvalid
@@ -383,6 +386,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	default:
 		panic("Unhandled stage value")
 	}
+
 	isReady := stage == contracts.StageReady
 
 	ts, err := s.ETH().LatestBlockTimestamp(s.ctx)
@@ -394,7 +398,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
 	if ts.Before(s.t0) && !isReady {
-		txHash, err := s.refund() //nolint:govet
+		txHash, err := s.refund()
 		// TODO: Have refund() return errors that we can use errors.Is to check against
 		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
 			return txHash, err
@@ -403,18 +407,34 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
 		// even though the current block is before T0. In this case, the transaction will be reverted, the
 		// gas fee is lost, but we can wait until T1 and try again.
-		log.Warnf("First refund attempt failed: err=%s", err)
+		log.Warnf("first refund attempt failed: err=%s", err)
 	}
 
-	if ts.Before(s.t1) {
-		// we've passed t0 but aren't past t1 yet, so wait until t1
-		log.Infof("Waiting until time %s to refund", s.t1)
-		err = s.ETH().WaitForTimestamp(s.ctx, s.t1)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
+	if ts.After(s.t1) {
+		return s.refund()
 	}
-	return s.refund()
+
+	// the contract is "ready", so we can't do anything until
+	// the counterparty claims or until t1 passes.
+	//
+	// we let the runT1ExpirationHandler() routine continue to run and read
+	// from s.eventCh for EventShouldRefund or EventETHClaimed.
+	// (since this function is called from inside the event handler routine,
+	// it won't handle those events while this function is executing.)
+	log.Infof("waiting until time %s to refund", s.t1)
+
+	event := <-s.eventCh
+	log.Debugf("got event %s while waiting for T1", event)
+	switch event.(type) {
+	case *EventShouldRefund:
+		return s.refund()
+	case *EventETHClaimed:
+		// we should claim
+		// this causes the caling function to claim
+		return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
+	default:
+		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
+	}
 }
 
 func (s *swapState) setTimeouts(t0, t1 *big.Int) {
@@ -438,12 +458,6 @@ func (s *swapState) generateAndSetKeys() error {
 	s.pubkeys = keysAndProof.PublicKeyPair
 
 	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
-}
-
-// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
-// and a DLEq proof proving that the two keys correspond.
-func generateKeys() (*pcommon.KeysAndProof, error) {
-	return pcommon.GenerateKeysAndProof()
 }
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
@@ -573,7 +587,7 @@ func (s *swapState) ready() error {
 	if stage != contracts.StagePending {
 		return fmt.Errorf("can not set contract to ready when swap stage is %s", contracts.StageToString(stage))
 	}
-	_, _, err = s.sender.SetReady(s.contractSwap)
+	_, receipt, err := s.sender.SetReady(s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status.IsOngoing() {
 			return nil
@@ -581,6 +595,7 @@ func (s *swapState) ready() error {
 		return err
 	}
 
+	log.Debugf("contract set to ready in block %d", receipt.BlockNumber)
 	return nil
 }
 
@@ -600,7 +615,7 @@ func (s *swapState) refund() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	s.clearNextExpectedMessage(types.CompletedRefund)
+	s.clearNextExpectedEvent(types.CompletedRefund)
 	return txHash, nil
 }
 
@@ -679,6 +694,12 @@ func (s *swapState) waitUntilBalanceUnlocks() error {
 			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
 		}
 	}
+}
+
+// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// and a DLEq proof proving that the two keys correspond.
+func generateKeys() (*pcommon.KeysAndProof, error) {
+	return pcommon.GenerateKeysAndProof()
 }
 
 func generateNonce() *big.Int {

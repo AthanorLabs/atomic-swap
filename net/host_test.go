@@ -51,8 +51,8 @@ func (s *mockSwapState) ID() types.Hash {
 	return testID
 }
 
-func (s *mockSwapState) HandleProtocolMessage(msg Message) (resp Message, done bool, err error) {
-	return nil, false, nil
+func (s *mockSwapState) HandleProtocolMessage(msg Message) error {
+	return nil
 }
 
 func (s *mockSwapState) Exit() error {

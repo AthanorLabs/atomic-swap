@@ -57,6 +57,15 @@ func (o *Offer) String() string {
 	)
 }
 
+// IsSet returns true if the offer's fields are all set.
+func (o *Offer) IsSet() bool {
+	return !IsHashZero(o.ID) &&
+		o.Provides != "" &&
+		o.MinimumAmount != 0 &&
+		o.MaximumAmount != 0 &&
+		o.ExchangeRate != 0
+}
+
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
 	StatusCh          chan Status

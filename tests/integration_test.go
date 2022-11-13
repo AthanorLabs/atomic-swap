@@ -366,7 +366,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	}
 
 	// wait for offer to be re-added
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 	offersAfter, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(offersBefore), len(offersAfter))
@@ -646,9 +646,6 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 			select {
 			case status := <-statusCh:
 				s.T().Log("> XMRMaker got status:", status)
-				if status != types.KeysExchanged {
-					continue
-				}
 				s.T().Log("> XMRMaker cancelled swap!")
 				exitStatus, err := bcli.Cancel(offerID) //nolint:govet
 				if err != nil {

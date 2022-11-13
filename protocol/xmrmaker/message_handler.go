@@ -19,115 +19,61 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
+func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 	if s == nil {
-		return nil, true, errNilSwapState
+		return errNilSwapState
 	}
-
-	s.lockState()
-	defer s.unlockState()
 
 	if s.ctx.Err() != nil {
-		return nil, true, fmt.Errorf("protocol exited: %w", s.ctx.Err())
-	}
-
-	if err := s.checkMessageType(msg); err != nil {
-		return nil, true, err
+		return fmt.Errorf("protocol exited: %w", s.ctx.Err())
 	}
 
 	switch msg := msg.(type) {
-	case *net.SendKeysMessage:
-		if err := s.handleSendKeysMessage(msg); err != nil {
-			return nil, true, err
-		}
-
-		return nil, false, nil
 	case *message.NotifyETHLocked:
-		out, err := s.handleNotifyETHLocked(msg)
+		event := newEventETHLocked(msg)
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
-			return nil, true, err
+			return err
 		}
 
-		return out, false, nil
-	case *message.NotifyReady:
-		log.Debug("contract ready, attempting to claim funds...")
-		close(s.readyCh)
-
-		// contract ready, let's claim our ether
-		txHash, err := s.claimFunds()
-		if err != nil {
-			return nil, true, fmt.Errorf("failed to redeem ether: %w", err)
-		}
-
-		log.Debug("funds claimed!!")
-		out := &message.NotifyClaimed{
-			TxHash: txHash.String(),
-		}
-
-		s.clearNextExpectedMessage(types.CompletedSuccess)
-		return out, true, nil
-	case *message.NotifyRefund:
-		// generate monero wallet, regaining control over locked funds
-		addr, err := s.handleRefund(msg.TxHash)
-		if err != nil {
-			return nil, false, err
-		}
-
-		s.clearNextExpectedMessage(types.CompletedRefund)
-		log.Infof("regained control over monero account %s", addr)
-		return nil, true, nil
+		// TODO: we can actually close the network stream after
+		// sending the XMRLocked message, but since the network
+		// calls Exit() when the stream closes, it needs to not
+		// do that in this case.
 	default:
-		return nil, true, errUnexpectedMessageType
+		return errUnexpectedMessageType
 	}
+
+	return nil
 }
 
-func (s *swapState) clearNextExpectedMessage(status types.Status) {
-	s.nextExpectedMessage = nil
+func (s *swapState) clearNextExpectedEvent(status types.Status) {
+	s.nextExpectedEvent = EventNoneType
 	s.info.SetStatus(status)
 	if s.offerExtra.StatusCh != nil {
 		s.offerExtra.StatusCh <- status
 	}
 }
 
-func (s *swapState) setNextExpectedMessage(msg net.Message) {
-	if s == nil {
+func (s *swapState) setNextExpectedEvent(event EventType) {
+	if s.nextExpectedEvent == EventNoneType {
 		return
 	}
 
-	if msg == nil || s.nextExpectedMessage == nil {
-		return
+	if event == s.nextExpectedEvent {
+		panic("cannot set next expected event to same as current")
 	}
 
-	if msg.Type() == s.nextExpectedMessage.Type() {
-		return
+	s.nextExpectedEvent = event
+	status := event.getStatus()
+	if status != types.UnknownStatus {
+		s.info.SetStatus(status)
 	}
 
-	s.nextExpectedMessage = msg
-	stage := pcommon.GetStatus(msg.Type())
-	if s.offerExtra.StatusCh != nil && stage != types.UnknownStatus {
-		s.offerExtra.StatusCh <- stage
+	if s.offerExtra.StatusCh != nil && status != types.UnknownStatus {
+		s.offerExtra.StatusCh <- status
 	}
-}
-
-func (s *swapState) checkMessageType(msg net.Message) error {
-	if msg == nil {
-		return errNilMessage
-	}
-
-	if s == nil || s.nextExpectedMessage == nil {
-		return nil
-	}
-
-	// XMRTaker might refund anytime before t0 or after t1, so we should allow this.
-	if _, ok := msg.(*message.NotifyRefund); ok {
-		return nil
-	}
-
-	if msg.Type() != s.nextExpectedMessage.Type() {
-		return errIncorrectMessageType
-	}
-
-	return nil
 }
 
 func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Message, error) {
@@ -154,20 +100,19 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	_, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETH().Raw(), contractAddr)
-	if err != nil {
+	if _, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETH().Raw(), contractAddr); err != nil {
 		return nil, err
 	}
 
-	if err = s.setContract(contractAddr); err != nil {
+	if err := s.setContract(contractAddr); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	if err = pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
+	if err := pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
 		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	if err = s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
+	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
 
@@ -180,8 +125,6 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	go s.runT0ExpirationHandler()
-
-	s.setNextExpectedMessage(&message.NotifyReady{})
 	return notifyXMRLocked, nil
 }
 
@@ -194,6 +137,8 @@ func (s *swapState) runT0ExpirationHandler() {
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
 
+	// note: this will cause unit tests to hang if not running ganache
+	// with --miner.blockTime!!!
 	waitCh := make(chan error)
 	go func() {
 		waitCh <- s.ETH().WaitForTimestamp(waitCtx, s.t0)
@@ -204,6 +149,7 @@ func (s *swapState) runT0ExpirationHandler() {
 	case <-s.ctx.Done():
 		return
 	case <-s.readyCh:
+		log.Debugf("returning from runT0ExpirationHandler as contract was set to ready")
 		return
 	case err := <-waitCh:
 		if err != nil {
@@ -212,37 +158,18 @@ func (s *swapState) runT0ExpirationHandler() {
 			log.Errorf("Failure waiting for T0 timeout: err=%s", err)
 			return
 		}
+		log.Debugf("reached t0, time to claim")
 		s.handleT0Expired()
 	}
 }
 
 func (s *swapState) handleT0Expired() {
-	s.lockState()
-	defer s.unlockState()
-
-	if !s.info.Status.IsOngoing() {
-		// swap was already completed, just return
-		return
-	}
-
-	// we can now call Claim()
-	txHash, err := s.claimFunds()
+	event := newEventContractReady()
+	s.eventCh <- event
+	err := <-event.errCh
 	if err != nil {
-		log.Errorf("failed to claim: err=%s", err)
-		// TODO: retry claim, depending on error (#162)
-		if err = s.exit(); err != nil {
-			log.Errorf("exit failed: err=%s", err)
-		}
-		return
-	}
-
-	log.Debug("funds claimed!")
-	s.clearNextExpectedMessage(types.CompletedSuccess)
-
-	// send *message.NotifyClaimed
-	notifyClaimed := &message.NotifyClaimed{TxHash: txHash.String()}
-	if err := s.SendSwapMessage(notifyClaimed, s.ID()); err != nil {
-		log.Errorf("failed to send NotifyClaimed message: err=%s", err)
+		// TODO: this is quite bad, how should this be handled? (#162)
+		log.Errorf("failed to handle t0 expiration: %s", err)
 	}
 }
 
@@ -263,24 +190,5 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 	}
 
 	s.setXMRTakerPublicKeys(kp, secp256k1Pub)
-	s.setNextExpectedMessage(&message.NotifyETHLocked{})
 	return nil
-}
-
-func (s *swapState) handleRefund(txHash string) (mcrypto.Address, error) {
-	receipt, err := s.ETH().Raw().TransactionReceipt(s.ctx, ethcommon.HexToHash(txHash))
-	if err != nil {
-		return "", err
-	}
-
-	if len(receipt.Logs) == 0 {
-		return "", errClaimTxHasNoLogs
-	}
-
-	sa, err := contracts.GetSecretFromLog(receipt.Logs[0], "Refunded")
-	if err != nil {
-		return "", err
-	}
-
-	return s.reclaimMonero(sa)
 }
