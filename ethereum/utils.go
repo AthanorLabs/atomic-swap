@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
@@ -62,7 +63,7 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 		return nil, errors.New("got zero secret key from contract")
 	}
 
-	sk, err := mcrypto.NewPrivateSpendKey(s[:])
+	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(s[:]))
 	if err != nil {
 		return nil, err
 	}

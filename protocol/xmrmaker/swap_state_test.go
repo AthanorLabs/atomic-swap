@@ -364,7 +364,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	// call refund w/ XMRTaker's spend key
 	secret := xmrtakerKeysAndProof.PrivateKeyPair.SpendKeyBytes()
 	var sc [32]byte
-	copy(sc[:], secret)
+	copy(sc[:], common.Reverse(secret))
 
 	txOpts, err := s.TxOpts()
 	require.NoError(t, err)

@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	//"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 
 	ed25519 "filippo.io/edwards25519"
@@ -40,7 +40,8 @@ func (d *FakeDLEq) Prove() (*Proof, error) {
 
 	// generate secp256k1 public key
 	curve := dsecp256k1.S256()
-	x, y := curve.ScalarBaseMult(s)
+	// ScalarBaseMult param is BE
+	x, y := curve.ScalarBaseMult(common.Reverse(s))
 	secp256k1Pub := secp256k1.NewPublicKeyFromBigInt(x, y)
 
 	// generate ed25519 public key
