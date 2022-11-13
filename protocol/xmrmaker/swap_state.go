@@ -224,11 +224,6 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-// // InfoFile returns the swap's infoFile path
-// func (s *swapState) InfoFile() string {
-// 	return s.offerExtra.InfoFile
-// }
-
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount

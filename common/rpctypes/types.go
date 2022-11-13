@@ -66,11 +66,6 @@ type TakeOfferRequest struct {
 	ProvidesAmount float64 `json:"providesAmount"`
 }
 
-// // TakeOfferResponse ...
-// type TakeOfferResponse struct {
-// 	//InfoFile string `json:"infoFile"`
-// }
-
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
 	MinimumAmount     float64            `json:"minimumAmount"`

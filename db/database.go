@@ -23,6 +23,7 @@ type Database struct {
 	// offerTable entries are stored when offers are made by swapd.
 	// they are removed when the offer is taken.
 	offerTable chaindb.Database
+
 	// swapTable is a key-value store where all the keys are prefixed by swapPrefix
 	// in the underlying database.
 	// the key is the 32-byte swap ID (which is the same as the ID of the offer taken
@@ -31,6 +32,9 @@ type Database struct {
 	// only their `Status` field within *swap.Info may be updated.
 	swapTable chaindb.Database
 
+	// recoveryDB contains a db table prefixed by recoveryPrefix.
+	// it contains information about ongoing swaps required to recover funds
+	// in case of a node crash, or any other problem.
 	recoveryDB *RecoveryDB
 }
 

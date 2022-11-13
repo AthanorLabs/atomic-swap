@@ -23,6 +23,5 @@ type SwapStateNet interface {
 type SwapStateRPC interface {
 	SendKeysMessage() (*message.SendKeysMessage, error)
 	ID() types.Hash
-	//InfoFile() string
 	Exit() error
 }

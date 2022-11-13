@@ -65,7 +65,6 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 	s, err := newSwapState(
 		a.backend,
 		offerID,
-		//pcommon.GetSwapInfoFilepath(a.dataDir, offerID.String()),
 		a.transferBack,
 		providesAmount,
 		receivedAmount,

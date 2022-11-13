@@ -40,18 +40,15 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
-		ctx:            ctx,
-		cancel:         cancel,
-		Backend:        b,
-		sender:         sender,
-		privkeys:       kp,
-		pubkeys:        pubkp,
-		dleqProof:      dleq.NewProofWithSecret(sc),
-		contractSwapID: contractSwapID,
-		contractSwap:   contractSwap,
-		// offerExtra: &types.OfferExtra{
-		// 	InfoFile: pcommon.GetSwapRecoveryFilepath(dataDir),
-		// },
+		ctx:              ctx,
+		cancel:           cancel,
+		Backend:          b,
+		sender:           sender,
+		privkeys:         kp,
+		pubkeys:          pubkp,
+		dleqProof:        dleq.NewProofWithSecret(sc),
+		contractSwapID:   contractSwapID,
+		contractSwap:     contractSwap,
 		walletScanHeight: 0, // could optimise this if we start recording it in the swap recovery info
 	}
 

@@ -45,7 +45,6 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 	for _, offer := range savedOffers {
 		extra := &types.OfferExtra{
 			StatusCh: make(chan types.Status, statusChSize),
-			//InfoFile: pcommon.GetSwapInfoFilepath(dataDir, offer.ID.String()),
 		}
 
 		offers[offer.ID] = &offerWithExtra{
@@ -97,8 +96,7 @@ func (m *Manager) AddOffer(
 	}
 
 	extra := &types.OfferExtra{
-		StatusCh: make(chan types.Status, statusChSize),
-		//InfoFile:          pcommon.GetSwapInfoFilepath(m.dataDir, id.String()),
+		StatusCh:          make(chan types.Status, statusChSize),
 		RelayerEndpoint:   relayerEndpoint,
 		RelayerCommission: relayerCommission,
 	}

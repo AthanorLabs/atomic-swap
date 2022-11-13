@@ -56,10 +56,9 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		walletScanHeight: 0, // TODO: Can we optimise this?
 		contractSwapID:   contractSwapID,
 		contractSwap:     contractSwap,
-		//infoFile:         pcommon.GetSwapRecoveryFilepath(dataDir),
-		claimedCh: make(chan struct{}),
-		info:      pswap.NewEmptyInfo(),
-		eventCh:   make(chan Event),
+		claimedCh:        make(chan struct{}),
+		info:             pswap.NewEmptyInfo(),
+		eventCh:          make(chan Event),
 	}
 
 	rs := &recoveryState{

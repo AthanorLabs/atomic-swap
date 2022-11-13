@@ -125,10 +125,6 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 
 func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
 	xmrmaker, db := newTestXMRMakerAndDB(t)
-	// infoFile := path.Join(t.TempDir(), "test.keys")
-	// oe := &types.OfferExtra{
-	// 	InfoFile: infoFile,
-	// }
 
 	swapState, err := newSwapState(
 		xmrmaker.backend,
