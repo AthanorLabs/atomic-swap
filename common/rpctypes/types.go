@@ -79,7 +79,6 @@ type MakeOfferRequest struct {
 // MakeOfferResponse ...
 type MakeOfferResponse struct {
 	ID string `json:"offerID"`
-	//InfoFile string `json:"infoFile"`
 }
 
 // SignerRequest initiates the signer_subscribe handler from the front-end
