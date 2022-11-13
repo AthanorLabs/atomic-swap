@@ -3,13 +3,11 @@ package xmrtaker
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -21,82 +19,55 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) (net.Message, bool, error) {
-	s.lockState()
-	defer s.unlockState()
-
-	if err := s.checkMessageType(msg); err != nil {
-		return nil, true, err
-	}
-
+func (s *swapState) HandleProtocolMessage(msg net.Message) error {
 	switch msg := msg.(type) {
 	case *net.SendKeysMessage:
-		resp, err := s.handleSendKeysMessage(msg)
+		event := newEventKeysReceived(msg)
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
-			return nil, true, err
+			return err
 		}
-
-		return resp, false, nil
 	case *message.NotifyXMRLock:
-		out, err := s.handleNotifyXMRLock(msg)
+		event := newEventXMRLocked(msg)
+		s.eventCh <- event
+		err := <-event.errCh
 		if err != nil {
-			return nil, true, err
+			return err
 		}
-
-		return out, false, nil
-	case *message.NotifyClaimed:
-		_, err := s.handleNotifyClaimed(msg.TxHash)
-		if err != nil {
-			log.Error("failed to create monero address: err=", err)
-			return nil, true, err
-		}
-
-		s.clearNextExpectedMessage(types.CompletedSuccess)
-		return nil, true, nil
 	default:
-		return nil, false, errUnexpectedMessageType
+		return errUnexpectedMessageType
 	}
+
+	return nil
 }
 
-func (s *swapState) clearNextExpectedMessage(status types.Status) {
-	s.nextExpectedMessage = nil
+func (s *swapState) clearNextExpectedEvent(status types.Status) {
+	s.nextExpectedEvent = EventNoneType
 	s.info.SetStatus(status)
 	if s.statusCh != nil {
 		s.statusCh <- status
 	}
 }
 
-func (s *swapState) setNextExpectedMessage(msg net.Message) {
-	if s == nil || s.nextExpectedMessage == nil {
+func (s *swapState) setNextExpectedEvent(event EventType) {
+	if s.nextExpectedEvent == EventNoneType {
 		return
 	}
 
-	if msg.Type() == s.nextExpectedMessage.Type() {
-		return
+	if event == s.nextExpectedEvent {
+		panic("cannot set next expected event to same as current")
 	}
 
-	s.nextExpectedMessage = msg
-
-	stage := pcommon.GetStatus(msg.Type())
-	if s.statusCh != nil && stage != types.UnknownStatus {
-		s.statusCh <- stage
-	}
-}
-
-func (s *swapState) checkMessageType(msg net.Message) error {
-	if msg == nil {
-		return errNilMessage
+	s.nextExpectedEvent = event
+	status := event.getStatus()
+	if status != types.UnknownStatus {
+		s.info.SetStatus(status)
 	}
 
-	if s.nextExpectedMessage == nil {
-		return nil
+	if s.statusCh != nil && status != types.UnknownStatus {
+		s.statusCh <- status
 	}
-
-	if msg.Type() != s.nextExpectedMessage.Type() {
-		return errIncorrectMessageType
-	}
-
-	return nil
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
@@ -155,57 +126,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
 
 	// start goroutine to check that XMRMaker locks before t_0
-	go func() {
-		// TODO: this variable is so that we definitely refund before t0.
-		// Current algorithm is to trigger the timeout when only 15% of the allotted
-		// time is remaining. If the block interval is 1 second on a test network and
-		// and T0 is 7 seconds after swap creation, we need the refund to trigger more
-		// than one second before the block with a timestamp exactly equal to T0 to
-		// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
-		// may be reasonable even with large timeouts on production networks, but more
-		// research is needed.
-		t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
-		deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
-		deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
-		giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
-		defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
-		log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
-
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-s.xmrLockedCh:
-			return
-		case <-giveUpAndRefundTimer.C:
-			s.lockState()
-			defer s.unlockState()
-
-			if !s.info.Status.IsOngoing() {
-				return
-			}
-
-			// XMRMaker hasn't locked yet, let's call refund
-			txhash, err := s.refund()
-			if err != nil {
-				if !strings.Contains(err.Error(), revertSwapCompleted) {
-					log.Errorf("failed to refund: err=%s", err)
-				} else {
-					log.Debugf("failed to refund (okay): err=%s", err)
-				}
-				return
-			}
-
-			log.Infof("got our ETH back: tx hash=%s", txhash)
-
-			// send NotifyRefund msg
-			msgRefund := &message.NotifyRefund{TxHash: txhash.String()}
-			if err := s.SendSwapMessage(msgRefund, s.ID()); err != nil {
-				log.Errorf("failed to send refund message: err=%s", err)
-			}
-		}
-	}()
-
-	s.setNextExpectedMessage(&message.NotifyXMRLock{})
+	go s.runT0ExpirationHandler()
 
 	out := &message.NotifyETHLocked{
 		Address:        s.ContractAddr().String(),
@@ -217,9 +138,44 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	return out, nil
 }
 
-func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message, error) {
+func (s *swapState) runT0ExpirationHandler() {
+	defer log.Debugf("returning from runT0ExpirationHandler")
+
+	// TODO: this variable is so that we definitely refund before t0.
+	// Current algorithm is to trigger the timeout when only 15% of the allotted
+	// time is remaining. If the block interval is 1 second on a test network and
+	// and T0 is 7 seconds after swap creation, we need the refund to trigger more
+	// than one second before the block with a timestamp exactly equal to T0 to
+	// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
+	// may be reasonable even with large timeouts on production networks, but more
+	// research is needed.
+	t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
+	deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
+	deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
+	giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
+	defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
+	log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
+
+	select {
+	case <-s.ctx.Done():
+		return
+	case <-s.xmrLockedCh:
+		return
+	case <-giveUpAndRefundTimer.C:
+		log.Infof("approaching T0, attempting to refund ETH")
+		event := newEventShouldRefund()
+		s.eventCh <- event
+		err := <-event.errCh
+		if err != nil {
+			// TODO: what should we do here? this would be bad. (#162)
+			log.Errorf("failed to refund: %s", err)
+		}
+	}
+}
+
+func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	if msg.Address == "" {
-		return nil, errNoLockedXMRAddress
+		return errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
@@ -228,7 +184,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	lockedAddr := mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env())
 
 	if msg.Address != string(lockedAddr) {
-		return nil, fmt.Errorf("address received in message does not match expected address")
+		return fmt.Errorf("address received in message does not match expected address")
 	}
 
 	s.LockClient()
@@ -237,25 +193,25 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
 	if err := s.GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, ""); err != nil {
-		return nil, fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
+		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
 	if err := s.Refresh(); err != nil {
-		return nil, fmt.Errorf("failed to refresh client: %w", err)
+		return fmt.Errorf("failed to refresh client: %w", err)
 	}
 
 	balance, err := s.GetBalance(0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get accounts: %w", err)
+		return fmt.Errorf("failed to get accounts: %w", err)
 	}
 
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
 	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
-		return nil, fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
+		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
 			balance.Balance, float64(s.receivedAmountInPiconero()))
 	}
 
@@ -267,25 +223,23 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) (net.Message
 	// prevent the maker from locking our funds until close to the heat death of the
 	// universe (https://github.com/monero-project/research-lab/issues/78).
 	if balance.BlocksToUnlock > 1 {
-		return nil, fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
+		return fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
 			balance.BlocksToUnlock)
 	}
 
 	if err := s.CloseWallet(); err != nil {
-		return nil, fmt.Errorf("failed to close wallet: %w", err)
+		return fmt.Errorf("failed to close wallet: %w", err)
 	}
 
 	close(s.xmrLockedCh)
 	log.Info("XMR was locked successfully, setting contract to ready...")
 
 	if err := s.ready(); err != nil {
-		return nil, fmt.Errorf("failed to call Ready: %w", err)
+		return fmt.Errorf("failed to call Ready: %w", err)
 	}
 
 	go s.runT1ExpirationHandler()
-
-	s.setNextExpectedMessage(&message.NotifyClaimed{})
-	return &message.NotifyReady{}, nil
+	return nil
 }
 
 func (s *swapState) runT1ExpirationHandler() {
@@ -293,6 +247,8 @@ func (s *swapState) runT1ExpirationHandler() {
 		s.t0.Format(common.TimeFmtSecs),
 		time.Until(s.t1).Seconds(),
 	)
+
+	defer log.Debugf("returning from runT1ExpirationHandler")
 
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
@@ -320,53 +276,12 @@ func (s *swapState) runT1ExpirationHandler() {
 }
 
 func (s *swapState) handleT1Expired() {
-	s.lockState()
-	defer s.unlockState()
-
-	if !s.info.Status.IsOngoing() {
-		return
-	}
-
-	// XMRMaker hasn't claimed, and we're after t_1. let's call Refund
-	txhash, err := s.refund()
+	log.Debugf("handling T1")
+	event := newEventShouldRefund()
+	s.eventCh <- event
+	err := <-event.errCh
 	if err != nil {
-		log.Errorf("failed to refund: err=%s", err)
-		return
+		// TODO: what should we do here? this would be bad. (#162)
+		log.Errorf("failed to refund: %s", err)
 	}
-
-	log.Infof("got our ETH back: tx hash=%s", txhash)
-
-	// send NotifyRefund msg
-	if err = s.SendSwapMessage(&message.NotifyRefund{
-		TxHash: txhash.String(),
-	}, s.ID()); err != nil {
-		log.Errorf("failed to send refund message: err=%s", err)
-	}
-
-	if err = s.exit(); err != nil {
-		log.Errorf("exit failed: err=%s", err)
-	}
-}
-
-// handleNotifyClaimed handles XMRMaker's reveal after he calls Claim().
-// it calls `createMoneroWallet` to create XMRTaker's wallet, allowing her to own the XMR.
-func (s *swapState) handleNotifyClaimed(txHash string) (mcrypto.Address, error) {
-	log.Debugf("got NotifyClaimed, txHash=%s", txHash)
-	receipt, err := s.WaitForReceipt(s.ctx, ethcommon.HexToHash(txHash))
-	if err != nil {
-		return "", fmt.Errorf("failed check claim transaction receipt: %w", err)
-	}
-
-	if len(receipt.Logs) == 0 {
-		return "", errClaimTxHasNoLogs
-	}
-
-	log.Infof("counterparty claimed ETH; tx hash=%s", txHash)
-
-	skB, err := contracts.GetSecretFromLog(receipt.Logs[0], "Claimed")
-	if err != nil {
-		return "", fmt.Errorf("failed to get secret from log: %w", err)
-	}
-
-	return s.claimMonero(skB)
 }
