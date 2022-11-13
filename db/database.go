@@ -30,6 +30,8 @@ type Database struct {
 	// swapTable entries are added when a swap begins, and they are never deleted;
 	// only their `Status` field within *swap.Info may be updated.
 	swapTable chaindb.Database
+
+	recoveryDB *RecoveryDB
 }
 
 // NewDatabase returns a new *Database.
@@ -39,9 +41,12 @@ func NewDatabase(cfg *chaindb.Config) (*Database, error) {
 		return nil, err
 	}
 
+	recoveryDB := newRecoveryDB(chaindb.NewTable(db, recoveryPrefix))
+
 	return &Database{
 		offerTable: chaindb.NewTable(db, offerPrefix),
 		swapTable:  chaindb.NewTable(db, swapPrefix),
+		recoveryDB: recoveryDB,
 	}, nil
 }
 
@@ -57,7 +62,7 @@ func (db *Database) Close() error {
 		return err
 	}
 
-	return nil
+	return db.recoveryDB.close()
 }
 
 // PutOffer puts an offer in the database.
