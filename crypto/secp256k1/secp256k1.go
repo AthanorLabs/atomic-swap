@@ -52,6 +52,11 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 		return nil, err
 	}
 
+	return NewPublicKeyFromBytes(k)
+}
+
+// NewPublicKeyFromHex returns a public key from a 64-byte encoded public key
+func NewPublicKeyFromBytes(k []byte) (*PublicKey, error) {
 	if len(k) != 64 {
 		return nil, errInvalidPubkeyLength
 	}
@@ -77,9 +82,14 @@ func (k *PublicKey) Y() [32]byte {
 	return k.y
 }
 
+// Bytes returns the uncompressed 64-byte public key
+func (k *PublicKey) Bytes() []byte {
+	return append(k.x[:], k.y[:]...)
+}
+
 // String returns the key as a 64-byte hex encoded string
 func (k *PublicKey) String() string {
-	return hex.EncodeToString(append(k.x[:], k.y[:]...))
+	return hex.EncodeToString(k.Bytes())
 }
 
 // Compress returns the 33-byte compressed public key

@@ -61,14 +61,11 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicK
 
 	d := &dleq.DefaultDLEq{}
 	proof := dleq.NewProofWithoutSecret(pb)
-	// TOOD fakedleq fails here cause there's no secret :( embed pubkeys in the proof for it??
 	res, err := d.Verify(proof)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(res.Secp256k1PublicKey().String())
-	fmt.Println(secp256k1PubString)
 	if res.Secp256k1PublicKey().String() != secp256k1PubString {
 		return nil, errInvalidSecp256k1Key
 	}

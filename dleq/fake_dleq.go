@@ -36,24 +36,12 @@ func (d *FakeDLEq) Prove() (*Proof, error) {
 	}
 
 	var secret [32]byte
-	// TODO: reverse CGODLEq's secret instead, and remove reversals everywhere else?
 	copy(secret[:], s)
 
-	return &Proof{
-		secret: secret,
-	}, nil
-}
-
-// Verify returns the public keys corresponding to the secret key.
-// It only fails if it's unable to generate the public keys.
-func (d *FakeDLEq) Verify(proof *Proof) (*VerifyResult, error) {
 	// generate secp256k1 public key
-	s := proof.secret[:]
-	fmt.Println("Verify s", s)
 	curve := dsecp256k1.S256()
 	x, y := curve.ScalarBaseMult(s)
 	secp256k1Pub := secp256k1.NewPublicKeyFromBigInt(x, y)
-	fmt.Println("Verify", secp256k1Pub)
 
 	// generate ed25519 public key
 	ed25519Sk, err := ed25519.NewScalar().SetCanonicalBytes(s)
@@ -64,6 +52,25 @@ func (d *FakeDLEq) Verify(proof *Proof) (*VerifyResult, error) {
 	ed25519Pk := ed25519.NewIdentityPoint().ScalarBaseMult(ed25519Sk)
 	var ed25519Pub [32]byte
 	copy(ed25519Pub[:], ed25519Pk.Bytes())
+
+	return &Proof{
+		secret: secret,
+		// embed the public keys as the "proof" for when the counterparty "verifies"
+		proof: append(secp256k1Pub.Bytes(), ed25519Pub[:]...),
+	}, nil
+}
+
+// Verify returns the public keys corresponding to the secret key.
+// It only fails if it's unable to generate the public keys.
+func (d *FakeDLEq) Verify(proof *Proof) (*VerifyResult, error) {
+	// generate secp256k1 public key
+	secp256k1Pub, err := secp256k1.NewPublicKeyFromBytes(proof.proof[:64])
+	if err != nil {
+		return nil, err
+	}
+
+	var ed25519Pub [32]byte
+	copy(ed25519Pub[:], proof.proof[64:96])
 
 	return &VerifyResult{
 		secp256k1Pub: secp256k1Pub,

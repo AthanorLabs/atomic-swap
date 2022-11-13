@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
@@ -63,7 +62,7 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 		return nil, errors.New("got zero secret key from contract")
 	}
 
-	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(s[:]))
+	sk, err := mcrypto.NewPrivateSpendKey(s[:])
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +101,6 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, err
 
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
-
 	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return [32]byte{}, err
