@@ -125,17 +125,10 @@ func (b *backend) ETH() extethclient.EthClient {
 }
 
 func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error) {
-	ec := b.ethClient.Raw()
-
 	if !b.ethClient.HasPrivateKey() {
-		return txsender.NewExternalSender(b.ctx, b.env, ec, b.contractAddr, asset)
+		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient.Raw(), b.contractAddr, asset)
 	}
-
-	wrappedTxOpts, err := txsender.NewTxOpts(b.ethClient.PrivateKey(), b.ethClient.ChainID())
-	if err != nil {
-		return nil, err
-	}
-	return txsender.NewSenderWithPrivateKey(b.ctx, ec, b.contract, erc20Contract, wrappedTxOpts), nil
+	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETH(), b.contract, erc20Contract), nil
 }
 
 func (b *backend) Contract() *contracts.SwapFactory {

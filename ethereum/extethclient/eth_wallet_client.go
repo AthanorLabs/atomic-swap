@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -38,6 +39,8 @@ type EthClient interface {
 	CallOpts(ctx context.Context) *bind.CallOpts
 	TxOpts(ctx context.Context) (*bind.TransactOpts, error)
 	ChainID() *big.Int
+	Lock()   // Lock the wallet so only one transaction runs at at time
+	Unlock() // Unlock the wallet after a transaction is complete
 
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
@@ -53,6 +56,7 @@ type ethClient struct {
 	gasPrice   *big.Int
 	gasLimit   uint64
 	chainID    *big.Int
+	mu         sync.Mutex
 }
 
 // NewEthClient creates and returns our extended ethereum client/wallet. The passed context
@@ -211,6 +215,14 @@ func (c *ethClient) LatestBlockTimestamp(ctx context.Context) (time.Time, error)
 		return time.Time{}, err
 	}
 	return time.Unix(int64(hdr.Time), 0), nil
+}
+
+func (c *ethClient) Lock() {
+	c.mu.Lock()
+}
+
+func (c *ethClient) Unlock() {
+	c.mu.Unlock()
 }
 
 func (c *ethClient) Raw() *ethclient.Client {
