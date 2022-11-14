@@ -29,7 +29,6 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
 
 	// check decimals if ERC20
-	// note: this is our counterparty's provided amount, ie. how much we're receiving
 	var providedAmount EthereumAssetAmount
 	if offer.EthAsset != types.EthAssetETH {
 		_, _, decimals, err := a.backend.ERC20Info(a.backend.Ctx(), offer.EthAsset.Address())
