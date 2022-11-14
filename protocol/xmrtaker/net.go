@@ -18,6 +18,7 @@ func (a *Instance) Provides() types.ProvidesCoin {
 // The input units are ether that we will provide.
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
+	// TODO: check decimals if ERC20
 	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {

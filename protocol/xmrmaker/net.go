@@ -104,6 +104,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	}
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)
+	// TODO: check decimals if ERC20
 	providedWei := common.EtherToWei(msg.ProvidedAmount)
 
 	state, err := b.initiate(offer, offerExtra, providedPicoXMR, providedWei)

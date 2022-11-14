@@ -61,15 +61,6 @@ func (a EtherAmount) AsEther() float64 {
 	return res
 }
 
-// ToDecimals returns the amount rounded to a fixed number of decimal places
-func (a EtherAmount) ToDecimals(decimals uint8) float64 {
-	decimalsValue := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
-	wei := big.NewFloat(0).SetInt(a.BigInt())
-	ether := big.NewFloat(0).Quo(wei, big.NewFloat(0).SetInt(decimalsValue))
-	res, _ := ether.Float64()
-	return res
-}
-
 // String ...
 func (a EtherAmount) String() string {
 	return a.BigInt().String()
@@ -79,4 +70,57 @@ func (a EtherAmount) String() string {
 // does not use exponent notation, and has no trailing zeros after the decimal point.
 func FmtFloat(f float64) string {
 	return strconv.FormatFloat(f, 'f', -1, 64)
+}
+
+// ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
+type ERC20TokenAmount struct {
+	amount *big.Int
+	numUnits float64 // 10^decimals
+}
+
+func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals float64) *ERC20TokenAmount {
+	return &ERC20TokenAmount{
+		amount: amount,
+		numUnits: math.Pow(10, decimals),
+	}
+}
+
+// NewERC20TokenAmount converts some amount of wei into an EtherAmount.
+func NewERC20TokenAmount(amount int64, decimals float64) *ERC20TokenAmount {
+	return &ERC20TokenAmount{
+		amount: big.NewInt(amount),
+		numUnits: math.Pow(10, decimals),
+	}
+}
+
+// NewERC20TokenAmountFromDecimals converts some amount of standard token in standard format
+// to its smaller denomination.
+func NewERC20TokenAmountFromDecimals(amount float64, decimals float64) *ERC20TokenAmount {
+	numUnits := math.Pow(10, decimals)
+	amt := big.NewFloat(amount)
+	mult := big.NewFloat(numUnits)
+	res, _ := big.NewFloat(0).Mul(amt, mult).Int(nil)
+	return &ERC20TokenAmount{
+		amount: res,
+		numUnits: numUnits,
+	}
+}
+
+// BigInt returns the given EtherAmount as a *big.Int
+func (a *ERC20TokenAmount) BigInt() *big.Int {
+	return a.amount
+}
+
+// AsStandard returns the amount in standard form
+func (a *ERC20TokenAmount) AsStandard() float64 {
+	wei := big.NewFloat(0).SetInt(a.BigInt())
+	mult := big.NewFloat(a.numUnits)
+	ether := big.NewFloat(0).Quo(wei, mult)
+	res, _ := ether.Float64()
+	return res
+}
+
+// String ...
+func (a *ERC20TokenAmount) String() string {
+	return a.BigInt().String()
 }
