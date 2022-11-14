@@ -126,7 +126,8 @@ func NewHost(cfg *Config) (*host, error) {
 		libp2p.ListenAddrs(addr),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
-		libp2p.EnableAutoRelay(), // TODO: pass our bootnodes as static relays to this call?
+		// TODO: When our bootnodes have relaying enabled, we can add them as static relays
+		//       using libp2p.EnableAutoRelay(...bootnodes...).
 		libp2p.EnableNATService(),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(ps),
