@@ -6,8 +6,13 @@ import (
 	"math/big"
 
 	"github.com/athanorlabs/atomic-swap/crypto"
+)
 
-	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
+const (
+	//nolint:revive
+	// https://github.com/bitcoin-core/secp256k1/blob/44c2452fd387f7ca604ab42d73746e7d3a44d8a2/include/secp256k1.h#L208
+	Secp256k1TagPubkeyEven = byte(2)
+	Secp256k1TagPubkeyOdd  = byte(3) //nolint:revive
 )
 
 var (
@@ -47,6 +52,11 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 		return nil, err
 	}
 
+	return NewPublicKeyFromBytes(k)
+}
+
+// NewPublicKeyFromBytes returns a public key from a 64-byte encoded public key
+func NewPublicKeyFromBytes(k []byte) (*PublicKey, error) {
 	if len(k) != 64 {
 		return nil, errInvalidPubkeyLength
 	}
@@ -72,17 +82,29 @@ func (k *PublicKey) Y() [32]byte {
 	return k.y
 }
 
+// Bytes returns the uncompressed 64-byte public key
+func (k *PublicKey) Bytes() []byte {
+	return append(k.x[:], k.y[:]...)
+}
+
 // String returns the key as a 64-byte hex encoded string
 func (k *PublicKey) String() string {
-	return hex.EncodeToString(append(k.x[:], k.y[:]...))
+	return hex.EncodeToString(k.Bytes())
 }
 
 // Compress returns the 33-byte compressed public key
 func (k *PublicKey) Compress() [33]byte {
-	x := big.NewInt(0).SetBytes(k.x[:])
-	y := big.NewInt(0).SetBytes(k.y[:])
-	cpk := ethsecp256k1.CompressPubkey(x, y)
-	var pk [33]byte
-	copy(pk[:], cpk)
-	return pk
+	cpk := [33]byte{}
+	copy(cpk[1:33], k.x[:]) // pad x to the left if <32 bytes
+
+	// check if y is odd
+	// https://github.com/bitcoin-core/secp256k1/blob/1253a27756540d2ca526b2061d98d54868e9177c/src/field_10x26_impl.h#L315
+	isOdd := k.y[31]&1 != 0
+	if isOdd {
+		cpk[0] = Secp256k1TagPubkeyOdd
+	} else {
+		cpk[0] = Secp256k1TagPubkeyEven
+	}
+
+	return cpk
 }
