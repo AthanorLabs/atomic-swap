@@ -46,7 +46,7 @@ func TestWaitForReceipt(t *testing.T) {
 		ethClient: extendedEC,
 	}
 
-	receipt, err := b.ETH().WaitForReceipt(ctx, tx.Hash())
+	receipt, err := b.ETHClient().WaitForReceipt(ctx, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, tx.Hash(), receipt.TxHash)
 }

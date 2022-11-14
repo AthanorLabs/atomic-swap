@@ -120,8 +120,8 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, b.XMR(), 5.0)
-	err = b.XMR().Refresh()
+	monero.MineMinXMRBalance(t, b.XMRClient(), 5.0)
+	err = b.XMRClient().Refresh()
 	require.NoError(t, err)
 	return xmrmaker, db
 }
@@ -171,19 +171,19 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
-	txOpts, err := ss.ETH().TxOpts(ss.ctx)
+	txOpts, err := ss.ETHClient().TxOpts(ss.ctx)
 	require.NoError(t, err)
 
 	// TODO: this is sus, update this when signing interfaces are updated
 	txOpts.Value = amount
 
-	ethAddr := ss.ETH().Address()
+	ethAddr := ss.ETHClient().Address()
 	nonce := big.NewInt(0)
 	asset := types.EthAssetETH
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
 		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, ss.ETH().Raw(), tx)
+	receipt := tests.MineTransaction(t, ss.ETHClient().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = contracts.GetIDFromLog(receipt.Logs[0])
@@ -227,11 +227,11 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
-	txOpts, err := swapState.ETH().TxOpts(swapState.ctx)
+	txOpts, err := swapState.ETHClient().TxOpts(swapState.ctx)
 	require.NoError(t, err)
 	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, swapState.ETH().Raw(), tx)
+	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
@@ -369,11 +369,11 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	txOpts, err := s.ETH().TxOpts(s.ctx)
+	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.ETH().Raw(), tx.Hash())
+	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.ETHClient().Raw(), tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 
@@ -415,11 +415,11 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret[:]))
 
-	txOpts, err := s.ETH().TxOpts(s.ctx)
+	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, s.ETH().Raw(), tx)
+	receipt := tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
@@ -429,7 +429,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	balance, err := s.XMR().GetBalance(0)
+	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
 	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)

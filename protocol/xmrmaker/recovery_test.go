@@ -35,13 +35,13 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) (*recoveryState, 
 func TestClaimOrRecover_Claim(t *testing.T) {
 	// test case where XMRMaker is able to claim ether from the contract
 	rs, _ := newTestRecoveryState(t, 24*time.Hour)
-	txOpts, err := rs.ss.ETH().TxOpts(rs.ss.ctx)
+	txOpts, err := rs.ss.ETHClient().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	// set contract to Ready
 	tx, err := rs.ss.Contract().SetReady(txOpts, rs.ss.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss.ETH().Raw(), tx)
+	tests.MineTransaction(t, rs.ss.ETHClient().Raw(), tx)
 
 	// assert we can claim ether
 	res, err := rs.ClaimOrRecover()
@@ -52,12 +52,12 @@ func TestClaimOrRecover_Claim(t *testing.T) {
 func TestClaimOrRecover_Recover(t *testing.T) {
 	// test case where XMRMaker is able to reclaim their monero, after XMRTaker refunds
 	rs, _ := newTestRecoveryState(t, 24*time.Hour)
-	txOpts, err := rs.ss.ETH().TxOpts(rs.ss.ctx)
+	txOpts, err := rs.ss.ETHClient().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	// TODO: when recovery from disk is implemented, re-add this
 	// db.EXPECT().PutOffer(rs.ss.offer)
-	monero.MineMinXMRBalance(t, rs.ss.XMR(), common.MoneroToPiconero(1))
+	monero.MineMinXMRBalance(t, rs.ss.XMRClient(), common.MoneroToPiconero(1))
 
 	// lock XMR
 	rs.ss.setXMRTakerPublicKeys(rs.ss.pubkeys, nil)
@@ -68,7 +68,7 @@ func TestClaimOrRecover_Recover(t *testing.T) {
 	sc := rs.ss.getSecret()
 	tx, err := rs.ss.Contract().Refund(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss.ETH().Raw(), tx)
+	tests.MineTransaction(t, rs.ss.ETHClient().Raw(), tx)
 
 	// assert XMRMaker can reclaim their monero
 	res, err := rs.ClaimOrRecover()

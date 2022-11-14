@@ -206,7 +206,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer b.XMR().Close()
+	defer b.XMRClient().Close()
 
 	dataDir := filepath.Dir(filepath.Clean(infofilePath))
 

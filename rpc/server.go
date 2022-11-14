@@ -156,7 +156,7 @@ type ProtocolBackend interface {
 	SwapManager() swap.Manager
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
-	ETH() extethclient.EthClient
+	ETHClient() extethclient.EthClient
 }
 
 // XMRTaker ...
