@@ -255,6 +255,22 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		return nil, err
 	}
 
+	// read resp from connection
+	message, err := c.read()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read websockets message: %s", err)
+	}
+
+	var resp *rpctypes.Response
+	err = json.Unmarshal(message, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+	}
+
 	respCh := make(chan types.Status)
 
 	go func() {
