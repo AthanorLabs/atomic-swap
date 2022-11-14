@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
+// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthereumAssetAmount interface {
 	BigInt() *big.Int
 	AsStandard() float64

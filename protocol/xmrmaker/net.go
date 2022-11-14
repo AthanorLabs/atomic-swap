@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color" //nolint:misspell
 )
 
+// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthereumAssetAmount interface {
 	BigInt() *big.Int
 	AsStandard() float64
@@ -117,7 +118,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
 	var receivedAmount EthereumAssetAmount
 	if offer.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := b.backend.ERC20Info(b.backend.Ctx(), offer.EthAsset.Address())
+		_, _, decimals, err := b.backend.ERC20Info(b.backend.Ctx(), offer.EthAsset.Address()) //nolint:govet
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}

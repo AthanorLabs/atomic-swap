@@ -26,10 +26,3 @@ func TestEtherAmount(t *testing.T) {
 	etherAmount := NewEtherAmount(amountUint)
 	require.Equal(t, amountUint, etherAmount.BigInt().Int64())
 }
-
-func TestToDecimals(t *testing.T) {
-	val := NewEtherAmount(123456)
-	require.Equal(t, "1.23456", FmtFloat(val.ToDecimals(5)))
-	val = NewEtherAmount(1234567890)
-	require.Equal(t, "1234.56789", FmtFloat(val.ToDecimals(6)))
-}

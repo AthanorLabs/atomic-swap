@@ -253,10 +253,6 @@ func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount
 }
 
-func (s *swapState) providedAmountInWei() common.EtherAmount {
-	return common.EtherToWei(s.info.ProvidedAmount)
-}
-
 func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
 	return common.MoneroToPiconero(s.info.ReceivedAmount)
 }

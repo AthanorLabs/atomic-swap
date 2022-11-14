@@ -83,6 +83,7 @@ type ERC20TokenAmount struct {
 	numUnits float64 // 10^decimals
 }
 
+// NewERC20TokenAmountFromBigInt converts some amount in the smallest token denomination into an ERC20TokenAmount.
 func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals float64) *ERC20TokenAmount {
 	return &ERC20TokenAmount{
 		amount:   amount,
@@ -90,7 +91,7 @@ func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals float64) *ERC20Toke
 	}
 }
 
-// NewERC20TokenAmount converts some amount of wei into an EtherAmount.
+// NewERC20TokenAmount converts some amount in the smallest token denomination into an ERC20TokenAmount.
 func NewERC20TokenAmount(amount int64, decimals float64) *ERC20TokenAmount {
 	return &ERC20TokenAmount{
 		amount:   big.NewInt(amount),
@@ -111,7 +112,7 @@ func NewERC20TokenAmountFromDecimals(amount float64, decimals float64) *ERC20Tok
 	}
 }
 
-// BigInt returns the given EtherAmount as a *big.Int
+// BigInt returns the given ERC20TokenAmount as a *big.Int
 func (a *ERC20TokenAmount) BigInt() *big.Int {
 	return a.amount
 }
