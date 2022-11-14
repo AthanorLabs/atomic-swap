@@ -20,9 +20,6 @@ func (b *Instance) initiate(
 	providesAmount common.MoneroAmount,
 	desiredAmount common.EtherAmount,
 ) (*swapState, error) {
-	b.swapMu.Lock()
-	defer b.swapMu.Unlock()
-
 	if b.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
 	}
@@ -73,6 +70,9 @@ func (b *Instance) initiate(
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
 func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+
 	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
 		msg.OfferID,
 		msg.ProvidedAmount,
