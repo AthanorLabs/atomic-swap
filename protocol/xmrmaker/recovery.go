@@ -49,6 +49,7 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		dleqProof:        dleq.NewProofWithSecret(sc),
 		contractSwapID:   contractSwapID,
 		contractSwap:     contractSwap,
+		offerExtra:       &types.OfferExtra{},
 		walletScanHeight: 0, // could optimise this if we start recording it in the swap recovery info
 	}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -101,6 +102,11 @@ func newBackend(
 	pk := privkey
 	ec, _ := tests.NewEthClient(t)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	rdb := backend.NewMockRecoveryDB(ctrl)
+	rdb.EXPECT().PutContractAddress(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 	cfg := &backend.Config{
 		Ctx:                 context.Background(),
 		Environment:         common.Development,
@@ -109,6 +115,7 @@ func newBackend(
 		MoneroClient:        monero.CreateWalletClient(t),
 		SwapContract:        contract,
 		SwapContractAddress: addr,
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(cfg)

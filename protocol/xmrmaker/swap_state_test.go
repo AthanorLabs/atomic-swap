@@ -83,6 +83,14 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	rdb := backend.NewMockRecoveryDB(ctrl)
+	rdb.EXPECT().PutContractAddress(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
@@ -93,13 +101,12 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 		SwapContractAddress: addr,
 		SwapManager:         newSwapManager(t),
 		Net:                 new(mockNet),
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	db := offers.NewMockDatabase(ctrl)
 	db.EXPECT().GetAllOffers()
 

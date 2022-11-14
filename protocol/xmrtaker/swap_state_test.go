@@ -77,6 +77,14 @@ func newBackend(t *testing.T) backend.Backend {
 	addr, err := bind.WaitDeployed(ctx, ec, tx)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	rdb := backend.NewMockRecoveryDB(ctrl)
+	rdb.EXPECT().PutContractAddress(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
@@ -87,6 +95,7 @@ func newBackend(t *testing.T) backend.Backend {
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		Net:                 new(mockNet),
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
