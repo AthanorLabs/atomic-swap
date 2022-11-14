@@ -160,6 +160,7 @@ var (
 				Name:    flagBootnodes,
 				Aliases: []string{"bn"},
 				Usage:   "libp2p bootnode, comma separated if passing multiple to a single flag",
+				EnvVars: []string{"SWAPD_BOOTNODES"},
 			},
 			&cli.UintFlag{
 				Name:  flagGasPrice,
