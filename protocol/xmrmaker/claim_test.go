@@ -18,7 +18,7 @@ import (
 	"github.com/athanorlabs/go-relayer/relayer"
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	//"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -125,7 +125,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	require.NoError(t, err)
 
 	// generate claim secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -220,7 +220,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	// now let's try to claim
 	var s [32]byte
 	secret := proof.Secret()
-	copy(s[:], common.Reverse(secret[:]))
+	copy(s[:], secret[:])
 
 	txHash, err := claimRelayer(
 		context.Background(),

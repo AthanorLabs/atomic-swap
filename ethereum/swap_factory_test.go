@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
@@ -137,7 +136,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 
 func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *big.Int, erc20Contract *ERC20Mock) {
 	// generate claim secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -208,7 +207,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	// now let's try to claim
 	var s [32]byte
 	secret := proof.Secret()
-	copy(s[:], common.Reverse(secret[:]))
+	copy(s[:], secret[:])
 	tx, err = contract.Claim(auth, swap, s)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -226,7 +225,7 @@ func TestSwapFactory_Claim_random(t *testing.T) {
 
 func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// generate refund secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -276,7 +275,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	// now let's try to refund
 	var s [32]byte
 	secret := proof.Secret()
-	copy(s[:], common.Reverse(secret[:]))
+	copy(s[:], secret[:])
 	tx, err = contract.Refund(auth, swap, s)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -294,7 +293,7 @@ func TestSwapFactory_Refund_beforeT0(t *testing.T) {
 
 func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// generate refund secret and public key
-	dleq := &dleq.CGODLEq{}
+	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
 	require.NoError(t, err)
 	res, err := dleq.Verify(proof)
@@ -345,7 +344,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	// now let's try to refund
 	var s [32]byte
 	secret := proof.Secret()
-	copy(s[:], common.Reverse(secret[:]))
+	copy(s[:], secret[:])
 	tx, err = contract.Refund(auth, swap, s)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -403,14 +402,14 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 		sc.index = i
 
 		// generate claim secret and public key
-		dleq := &dleq.CGODLEq{}
+		dleq := &dleq.DefaultDLEq{}
 		proof, err := dleq.Prove()
 		require.NoError(t, err)
 		res, err := dleq.Verify(proof)
 		require.NoError(t, err)
 
 		secret := proof.Secret()
-		copy(sc.secret[:], common.Reverse(secret[:]))
+		copy(sc.secret[:], secret[:])
 
 		sc.walletKey = tests.GetTestKeyByIndex(t, i)
 		addrSwap := crypto.PubkeyToAddress(*sc.walletKey.Public().(*ecdsa.PublicKey))
