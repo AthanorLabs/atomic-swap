@@ -124,9 +124,11 @@ func NewHost(cfg *Config) (*host, error) {
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(addr),
-		libp2p.DisableRelay(),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
+		libp2p.EnableAutoRelay(), // TODO: pass our bootnodes as static relays to this call?
+		libp2p.EnableNATService(),
+		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(ps),
 		libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
 			if cfg.Environment == common.Development {
