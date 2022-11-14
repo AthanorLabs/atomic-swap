@@ -1,6 +1,7 @@
 package dleq
 
 import (
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
 
@@ -33,7 +34,9 @@ func NewProofWithSecret(s [32]byte) *Proof {
 
 // Secret returns the proof's 32-byte secret
 func (p *Proof) Secret() [32]byte {
-	return p.secret
+	var s [32]byte
+	copy(s[:], common.Reverse(p.secret[:]))
+	return s
 }
 
 // Proof returns the encoded DLEq proof

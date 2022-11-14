@@ -61,6 +61,17 @@ install: init
 build: init
 	./scripts/build.sh
 
+# WARNING: this should not be used in production, as the DLEq prover has been stubbed out and now proves nothing.
+.PHONY: build-go
+build-go:
+	go build -tags=fakedleq ./cmd/swapd
+	go build -tags=fakedleq ./cmd/swapcli
+
+# WARNING: this should not be used in production, as the DLEq prover has been stubbed out and now proves nothing.
+.PHONY: build-go-darwin
+build-go-darwin:
+	GOOS=darwin GOARCH=arm64 $(MAKE) build-go
+
 # Same as build, but also includes some lesser used binaries
 .PHONY: build-all
 build-all: init
@@ -76,7 +87,6 @@ bindings:
 .PHONY: mock
 mock:
 	go generate -run mockgen ./...
-
 
 # Deletes all executables matching the directory names in cmd/
 .PHONY: clean-go

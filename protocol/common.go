@@ -2,7 +2,9 @@ package protocol
 
 import (
 	"encoding/hex"
+	"fmt"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
@@ -20,7 +22,7 @@ type KeysAndProof struct {
 // GenerateKeysAndProof generates keys on the secp256k1 and ed25519 curves as well as
 // a DLEq proof between the two.
 func GenerateKeysAndProof() (*KeysAndProof, error) {
-	d := &dleq.CGODLEq{}
+	d := &dleq.DefaultDLEq{}
 	proof, err := d.Prove()
 	if err != nil {
 		return nil, err
@@ -32,9 +34,9 @@ func GenerateKeysAndProof() (*KeysAndProof, error) {
 	}
 
 	secret := proof.Secret()
-	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
+	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(secret[:]))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create private spend key: %w", err)
 	}
 
 	kp, err := sk.AsPrivateKeyPair()
@@ -58,7 +60,7 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicK
 		return nil, err
 	}
 
-	d := &dleq.CGODLEq{}
+	d := &dleq.DefaultDLEq{}
 	proof := dleq.NewProofWithoutSecret(pb)
 	res, err := d.Verify(proof)
 	if err != nil {

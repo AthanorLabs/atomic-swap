@@ -1,3 +1,5 @@
+//go:build !fakedleq
+
 package dleq
 
 import (
@@ -58,12 +60,12 @@ func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 
 		// The ETH library needs the secret in big-endian format, while the monero library wants it
 		// in little endian format.
-		secretLE := proof.secret[:]
-		secretBE := common.Reverse(secretLE)
+		secretBE := proof.secret[:]
+		secretLE := common.Reverse(secretBE)
 
 		// Secp256k1 check
 		ethCurve := ethsecp256k1.S256()
-		xPub, yPub := ethCurve.ScalarBaseMult(secretBE)
+		xPub, yPub := ethCurve.ScalarBaseMult(secretLE)
 		ethPubFromSecret := &ecdsa.PublicKey{Curve: ethCurve, X: xPub, Y: yPub}
 		ethPubFromVerify := &ecdsa.PublicKey{Curve: ethCurve,
 			X: toBigInt(res.Secp256k1PublicKey().X()), Y: toBigInt(res.Secp256k1PublicKey().Y()),
@@ -71,7 +73,7 @@ func TestProofSecretComputesVerifyPubKeys(t *testing.T) {
 		require.True(t, ethPubFromSecret.Equal(ethPubFromVerify))
 
 		// ED25519 Check
-		sk, err := mcrypto.NewPrivateSpendKey(secretLE)
+		sk, err := mcrypto.NewPrivateSpendKey(secretBE)
 		require.NoError(t, err)
 		xmrPubFromSecret := sk.Public().Bytes()
 		xmrPubFromVerify := res.ed25519Pub[:]
