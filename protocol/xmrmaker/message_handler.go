@@ -100,7 +100,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if _, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETH().Raw(), contractAddr); err != nil {
+	if _, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr); err != nil {
 		return nil, err
 	}
 
@@ -141,7 +141,7 @@ func (s *swapState) runT0ExpirationHandler() {
 	// with --miner.blockTime!!!
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.ETH().WaitForTimestamp(waitCtx, s.t0)
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t0)
 		close(waitCh)
 	}()
 

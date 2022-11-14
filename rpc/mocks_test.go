@@ -190,6 +190,6 @@ func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash) {
 	panic("not implemented")
 }
 
-func (*mockProtocolBackend) ETH() extethclient.EthClient {
+func (*mockProtocolBackend) ETHClient() extethclient.EthClient {
 	panic("not implemented")
 }

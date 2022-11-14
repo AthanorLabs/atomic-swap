@@ -111,19 +111,19 @@ func newTestInstance(t *testing.T) *swapState {
 func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
 	b := newBackend(t)
 
-	txOpts, err := b.ETH().TxOpts(b.Ctx())
+	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
 	require.NoError(t, err)
 
 	_, tx, contract, err := contracts.DeployERC20Mock(
 		txOpts,
-		b.ETH().Raw(),
+		b.ETHClient().Raw(),
 		"Mock",
 		"MOCK",
-		b.ETH().Address(),
+		b.ETHClient().Address(),
 		initialBalance,
 	)
 	require.NoError(t, err)
-	addr, err := bind.WaitDeployed(b.Ctx(), b.ETH().Raw(), tx)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
@@ -284,7 +284,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	}
 
 	// check balance of contract is 0
-	balance, err := s.ETH().Raw().BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.ETHClient().Raw().BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -381,7 +381,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 	s, contract := newTestInstanceWithERC20(t, initialBalance)
 	err := s.approveToken()
 	require.NoError(t, err)
-	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETH().Address(), s.ContractAddr())
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.ContractAddr())
 	require.NoError(t, err)
 	require.Equal(t, initialBalance, allowance)
 }

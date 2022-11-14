@@ -43,7 +43,7 @@ type SetGasPriceRequest struct {
 
 // SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
 func (s *PersonalService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
-	s.pb.ETH().SetGasPrice(req.GasPrice)
+	s.pb.ETHClient().SetGasPrice(req.GasPrice)
 	return nil
 }
 
@@ -55,7 +55,7 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 		return err
 	}
 
-	eBal, err := s.pb.ETH().Balance(s.ctx)
+	eBal, err := s.pb.ETHClient().Balance(s.ctx)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 		PiconeroBalance:         mBal.Balance,
 		PiconeroUnlockedBalance: mBal.UnlockedBalance,
 		BlocksToUnlock:          mBal.BlocksToUnlock,
-		EthAddress:              s.pb.ETH().Address().String(),
+		EthAddress:              s.pb.ETHClient().Address().String(),
 		WeiBalance:              eBal,
 	}
 	return nil
