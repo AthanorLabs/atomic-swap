@@ -118,7 +118,8 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	))
 
 	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
-	txHash, err := s.lockAsset(s.providedAmountInWei())
+	// todo update for erc20
+	txHash, err := s.lockAsset()
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock ETH in contract: %w", err)
 	}

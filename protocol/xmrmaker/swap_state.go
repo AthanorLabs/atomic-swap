@@ -89,9 +89,9 @@ func newSwapState(
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
 	providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount,
+	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
-	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
 
 	stage := types.ExpectingKeys
 	if offerExtra.StatusCh == nil {
@@ -103,7 +103,7 @@ func newSwapState(
 		offer.ID,
 		types.ProvidesXMR,
 		providesAmount.AsMonero(),
-		desiredAmount.AsEther(),
+		desiredAmount.AsStandard(),
 		exchangeRate,
 		offer.EthAsset,
 		stage,
@@ -517,7 +517,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	}
 
 	var receivedAmount *big.Int
-	if s.info.EthAsset != types.EthAssetETH {		
+	if s.info.EthAsset != types.EthAssetETH {
 		_, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return fmt.Errorf("failed to get ERC20 info: %w", err)

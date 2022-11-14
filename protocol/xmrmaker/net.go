@@ -1,6 +1,9 @@
 package xmrmaker
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
@@ -8,6 +11,11 @@ import (
 
 	"github.com/fatih/color" //nolint:misspell
 )
+
+type EthereumAssetAmount interface {
+	BigInt() *big.Int
+	AsStandard() float64
+}
 
 // Provides returns types.ProvidesXMR
 func (b *Instance) Provides() types.ProvidesCoin {
@@ -18,7 +26,7 @@ func (b *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount,
+	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
@@ -104,10 +112,22 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	}
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)
-	// TODO: check decimals if ERC20
-	providedWei := common.EtherToWei(msg.ProvidedAmount)
 
-	state, err := b.initiate(offer, offerExtra, providedPicoXMR, providedWei)
+	// check decimals if ERC20
+	// note: this is our counterparty's provided amount, ie. how much we're receiving
+	var receivedAmount EthereumAssetAmount
+	if offer.EthAsset != types.EthAssetETH {
+		_, _, decimals, err := b.backend.ERC20Info(b.backend.Ctx(), offer.EthAsset.Address())
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get ERC20 info: %w", err)
+		}
+
+		receivedAmount = common.NewERC20TokenAmountFromDecimals(msg.ProvidedAmount, float64(decimals))
+	} else {
+		receivedAmount = common.EtherToWei(msg.ProvidedAmount)
+	}
+
+	state, err := b.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -61,6 +61,11 @@ func (a EtherAmount) AsEther() float64 {
 	return res
 }
 
+// AsStandard returns the wei amount as ether
+func (a EtherAmount) AsStandard() float64 {
+	return a.AsEther()
+}
+
 // String ...
 func (a EtherAmount) String() string {
 	return a.BigInt().String()
@@ -74,13 +79,13 @@ func FmtFloat(f float64) string {
 
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
 type ERC20TokenAmount struct {
-	amount *big.Int
+	amount   *big.Int
 	numUnits float64 // 10^decimals
 }
 
 func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals float64) *ERC20TokenAmount {
 	return &ERC20TokenAmount{
-		amount: amount,
+		amount:   amount,
 		numUnits: math.Pow(10, decimals),
 	}
 }
@@ -88,7 +93,7 @@ func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals float64) *ERC20Toke
 // NewERC20TokenAmount converts some amount of wei into an EtherAmount.
 func NewERC20TokenAmount(amount int64, decimals float64) *ERC20TokenAmount {
 	return &ERC20TokenAmount{
-		amount: big.NewInt(amount),
+		amount:   big.NewInt(amount),
 		numUnits: math.Pow(10, decimals),
 	}
 }
@@ -101,7 +106,7 @@ func NewERC20TokenAmountFromDecimals(amount float64, decimals float64) *ERC20Tok
 	mult := big.NewFloat(numUnits)
 	res, _ := big.NewFloat(0).Mul(amt, mult).Int(nil)
 	return &ERC20TokenAmount{
-		amount: res,
+		amount:   res,
 		numUnits: numUnits,
 	}
 }

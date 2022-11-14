@@ -1,6 +1,9 @@
 package xmrtaker
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -8,6 +11,11 @@ import (
 
 	"github.com/fatih/color" //nolint:misspell
 )
+
+type EthereumAssetAmount interface {
+	BigInt() *big.Int
+	AsStandard() float64
+}
 
 // Provides returns types.ProvidesETH
 func (a *Instance) Provides() types.ProvidesCoin {
@@ -18,8 +26,22 @@ func (a *Instance) Provides() types.ProvidesCoin {
 // The input units are ether that we will provide.
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
-	// TODO: check decimals if ERC20
-	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
+
+	// check decimals if ERC20
+	// note: this is our counterparty's provided amount, ie. how much we're receiving
+	var providedAmount EthereumAssetAmount
+	if offer.EthAsset != types.EthAssetETH {
+		_, _, decimals, err := a.backend.ERC20Info(a.backend.Ctx(), offer.EthAsset.Address())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
+		}
+
+		providedAmount = common.NewERC20TokenAmountFromDecimals(providesAmount, float64(decimals))
+	} else {
+		providedAmount = common.EtherToWei(providesAmount)
+	}
+
+	state, err := a.initiate(providedAmount, common.MoneroToPiconero(receivedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -28,7 +50,7 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 	return state, nil
 }
 
-func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
+func (a *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount common.MoneroAmount,
 	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
