@@ -124,7 +124,7 @@ type SendKeysMessage struct {
 
 // String ...
 func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s Address=%s", //nolint:lll
+	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
 		m.OfferID,
 		m.ProvidedAmount,
 		m.PublicSpendKey,

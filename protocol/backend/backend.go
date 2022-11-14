@@ -57,7 +57,7 @@ type backend struct {
 	env         common.Environment
 	swapManager swap.Manager
 
-	// monero endpoints
+	// wallet/node endpoints
 	moneroWallet monero.WalletClient
 	ethClient    extethclient.EthClient
 
