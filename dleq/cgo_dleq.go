@@ -8,6 +8,7 @@ import (
 	dleq "github.com/athanorlabs/cgo-dleq"
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 
+	//"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
 

@@ -63,7 +63,7 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 
 	// call refund w/ XMRTaker's secret
 	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
-	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
+	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(secret[:]))
 	require.NoError(t, err)
 
 	event := newEventETHRefunded(sk)
