@@ -11,6 +11,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 type recoveryState struct {
@@ -49,6 +50,7 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		dleqProof:        dleq.NewProofWithSecret(sc),
 		contractSwapID:   contractSwapID,
 		contractSwap:     contractSwap,
+		info:             &pswap.Info{},
 		offerExtra:       &types.OfferExtra{},
 		walletScanHeight: 0, // could optimise this if we start recording it in the swap recovery info
 	}
