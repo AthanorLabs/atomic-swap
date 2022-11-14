@@ -255,20 +255,35 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		return nil, err
 	}
 
-	// read resp from connection
-	message, err := c.read()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read websockets message: %s", err)
+	readMessageFn := func() (string, error) {
+		// read resp from connection to see if there's an immediate error
+		message, err := c.read() //nolint:govet
+		if err != nil {
+			return "", fmt.Errorf("failed to read websockets message: %s", err)
+		}
+
+		var resp *rpctypes.Response
+		err = json.Unmarshal(message, &resp)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal response: %w", err)
+		}
+
+		if resp.Error != nil {
+			return "", fmt.Errorf("websocket server returned error: %w", resp.Error)
+		}
+
+		log.Debugf("received message over websockets: %s", message)
+		var status *rpctypes.SubscribeSwapStatusResponse
+		if err := json.Unmarshal(resp.Result, &status); err != nil {
+			return "", fmt.Errorf("failed to unmarshal swap status response: %w", err)
+		}
+
+		return status.Status, nil
 	}
 
-	var resp *rpctypes.Response
-	err = json.Unmarshal(message, &resp)
+	status, err := readMessageFn()
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if resp.Error != nil {
-		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return nil, err
 	}
 
 	respCh := make(chan types.Status)
@@ -277,35 +292,16 @@ func (c *wsClient) TakeOfferAndSubscribe(multiaddr, offerID string,
 		defer close(respCh)
 
 		for {
-			message, err := c.read()
-			if err != nil {
-				log.Warnf("failed to read websockets message: %s", err)
-				break
-			}
-
-			var resp *rpctypes.Response
-			err = json.Unmarshal(message, &resp)
-			if err != nil {
-				log.Warnf("failed to unmarshal response: %s", err)
-				break
-			}
-
-			if resp.Error != nil {
-				log.Warnf("websocket server returned error: %s", resp.Error)
-				break
-			}
-
-			log.Debugf("received message over websockets: %s", message)
-			var status *rpctypes.SubscribeSwapStatusResponse
-			if err := json.Unmarshal(resp.Result, &status); err != nil {
-				log.Warnf("failed to unmarshal swap status response: %s", err)
-				break
-			}
-
-			s := types.NewStatus(status.Status)
+			s := types.NewStatus(status)
 			respCh <- s
 			if !s.IsOngoing() {
 				return
+			}
+
+			status, err = readMessageFn()
+			if err != nil {
+				log.Warnf("%s", err)
+				break
 			}
 		}
 	}()
