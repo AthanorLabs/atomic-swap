@@ -412,10 +412,7 @@ func generateKeys() (*pcommon.KeysAndProof, error) {
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
 func (s *swapState) getSecret() [32]byte {
-	secret := s.dleqProof.Secret()
-	var sc [32]byte
-	copy(sc[:], common.Reverse(secret[:]))
-	return sc
+	return s.dleqProof.Secret()
 }
 
 // setXMRTakerPublicKeys sets XMRTaker's public spend and view keys

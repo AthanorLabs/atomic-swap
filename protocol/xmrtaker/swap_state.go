@@ -463,7 +463,7 @@ func (s *swapState) generateAndSetKeys() error {
 func (s *swapState) getSecret() [32]byte {
 	secret := s.dleqProof.Secret()
 	var sc [32]byte
-	copy(sc[:], common.Reverse(secret[:]))
+	copy(sc[:], secret[:])
 	return sc
 }
 

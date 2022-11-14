@@ -413,7 +413,9 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	// call refund w/ XMRTaker's secret
 	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
 	var sc [32]byte
-	copy(sc[:], common.Reverse(secret[:]))
+	copy(sc[:], secret[:])
+
+	s.nextExpectedEvent = EventContractReadyType
 
 	txOpts, err := s.TxOpts()
 	require.NoError(t, err)
@@ -425,9 +427,13 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
-	s.nextExpectedEvent = EventContractReadyType
-	err = s.Exit()
-	require.NoError(t, err)
+	// runContractEventWatcher will trigger EventETHRefunded,
+	// which will then set the next expected event to EventExit.
+	for status := range s.info.StatusCh() {
+		if !status.IsOngoing() {
+			break
+		}
+	}
 
 	balance, err := s.GetBalance(0)
 	require.NoError(t, err)
