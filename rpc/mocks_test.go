@@ -5,7 +5,7 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"

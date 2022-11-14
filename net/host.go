@@ -9,11 +9,11 @@ import (
 
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
-	libp2phost "github.com/libp2p/go-libp2p-core/host"
-	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	libp2phost "github.com/libp2p/go-libp2p/core/host"
+	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/chyeh/pubip"
@@ -123,9 +123,12 @@ func NewHost(cfg *Config) (*host, error) {
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(addr),
-		libp2p.DisableRelay(),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
+		// TODO: When our bootnodes have relaying enabled, we can add them as static relays
+		//       using libp2p.EnableAutoRelay(...bootnodes...).
+		libp2p.EnableNATService(),
+		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(ps),
 		libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
 			if cfg.Environment == common.Development {

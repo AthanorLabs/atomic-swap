@@ -13,7 +13,7 @@ import (
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	common0 "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
 // MockHost is a mock of Host interface.
