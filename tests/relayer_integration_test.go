@@ -42,7 +42,7 @@ func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 }
 
 func setupRelayer(t *testing.T) {
-	relayerSk := GetTestKeyByIndex(t, 1)
+	relayerSk := GetRelayerTestKey(t)
 	ec, chainID := NewEthClient(t)
 
 	swapContractAddrStr := os.Getenv(contractAddrEnv)

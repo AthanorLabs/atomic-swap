@@ -117,7 +117,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	relayerSk := tests.GetTestKeyByIndex(t, 1)
+	relayerSk := tests.GetRelayerTestKey(t)
 	require.NotEqual(t, sk, relayerSk)
 	conn, chainID := tests.NewEthClient(t)
 

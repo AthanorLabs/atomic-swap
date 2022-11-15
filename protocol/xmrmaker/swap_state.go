@@ -116,7 +116,7 @@ func newSwapState(
 
 	var sender txsender.Sender
 	if offer.EthAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.EthClient())
+		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETHClient().Raw())
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +133,7 @@ func newSwapState(
 		}
 	}
 
-	walletScanHeight, err := b.GetChainHeight()
+	walletScanHeight, err := b.XMRClient().GetChainHeight()
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func newSwapState(
 		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
-	ethHeader, err := b.EthClient().HeaderByNumber(b.Ctx(), nil)
+	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func newSwapState(
 
 	readyWatcher := watcher.NewEventFilter(
 		ctx,
-		b.EthClient(),
+		b.ETHClient().Raw(),
 		b.ContractAddr(),
 		ethHeader.Number,
 		readyTopic,
@@ -166,7 +166,7 @@ func newSwapState(
 
 	refundedWatcher := watcher.NewEventFilter(
 		ctx,
-		b.EthClient(),
+		b.ETHClient().Raw(),
 		b.ContractAddr(),
 		ethHeader.Number,
 		refundedTopic,
@@ -220,7 +220,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
-		EthAddress:         s.EthAddress().String(),
+		EthAddress:         s.ETHClient().Address().String(),
 	}, nil
 }
 
@@ -336,15 +336,15 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 		return "", err
 	}
 
-	s.LockClient()
-	defer s.UnlockClient()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s, kpAB, s.walletScanHeight)
+	s.XMRClient().Lock()
+	defer s.XMRClient().Unlock()
+	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.walletScanHeight)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 	const refundedEvent = "Refunded"
 
-	logs, err := s.FilterLogs(s.ctx, eth.FilterQuery{
+	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
 	})
@@ -450,7 +450,7 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
 // aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
-	tx, _, err := s.TransactionByHash(s.ctx, txHash)
+	tx, _, err := s.ETHClient().Raw().TransactionByHash(s.ctx, txHash)
 	if err != nil {
 		return err
 	}
@@ -459,7 +459,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return errInvalidETHLockedTransaction
 	}
 
-	receipt, err := s.WaitForReceipt(s.ctx, txHash)
+	receipt, err := s.ETHClient().WaitForReceipt(s.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("failed to get receipt for New transaction: %w", err)
 	}
@@ -522,10 +522,10 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
-	s.LockClient()
-	defer s.UnlockClient()
+	s.XMRClient().Lock()
+	defer s.XMRClient().Unlock()
 
-	balance, err := s.GetBalance(0)
+	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +533,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 	log.Debug("total XMR balance: ", balance.Balance)
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
-	transResp, err := s.Transfer(swapDestAddr, 0, uint64(amount))
+	transResp, err := s.XMRClient().Transfer(swapDestAddr, 0, uint64(amount))
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +545,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 	//       separate monero-wallet-rpc instance for A+B wallets or carefully releasing the
 	//       lock between confirmations and re-opening the A+B wallet after grabbing the
 	//       lock again.
-	transfer, err := s.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+	transfer, err := s.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             transResp.TxHash,
 		DestAddr:         swapDestAddr,

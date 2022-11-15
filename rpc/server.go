@@ -2,8 +2,8 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math/big"
 	"net"
 	"net/http"
 	"time"
@@ -13,6 +13,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
@@ -53,11 +54,13 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if err := rpcServer.RegisterService(NewPersonalService(cfg.XMRMaker, cfg.ProtocolBackend), "personal"); err != nil {
+	err := rpcServer.RegisterService(NewPersonalService(cfg.Ctx, cfg.XMRMaker, cfg.ProtocolBackend), "personal")
+	if err != nil {
 		return nil, err
 	}
 
-	if err := rpcServer.RegisterService(NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net), "swap"); err != nil { //nolint:lll
+	swapService := NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net)
+	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
 		return nil, err
 	}
 
@@ -111,8 +114,7 @@ func (s *Server) Start() error {
 	go func() {
 		// Serve never returns nil. It returns http.ErrServerClosed if it was terminated
 		// by the Shutdown.
-		err := s.httpServer.Serve(s.listener)
-		serverErr <- fmt.Errorf("RPC server failed: %w", err)
+		serverErr <- s.httpServer.Serve(s.listener)
 	}()
 
 	select {
@@ -125,7 +127,11 @@ func (s *Server) Start() error {
 		// We shut down because the context was cancelled, so that's the error to return
 		return s.ctx.Err()
 	case err := <-serverErr:
-		log.Errorf("RPC server failed: %s", err)
+		if !errors.Is(err, http.ErrServerClosed) {
+			log.Errorf("RPC server failed: %s", err)
+		} else {
+			log.Info("RPC server shut down")
+		}
 		return err
 	}
 }
@@ -146,13 +152,11 @@ type Protocol interface {
 // ProtocolBackend represents protocol/backend.Backend
 type ProtocolBackend interface {
 	Env() common.Environment
-	SetGasPrice(uint64)
 	SetSwapTimeout(timeout time.Duration)
 	SwapManager() swap.Manager
-	SetEthAddress(ethcommon.Address)
-	EthBalance() (ethcommon.Address, *big.Int, error)
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
+	ETHClient() extethclient.EthClient
 }
 
 // XMRTaker ...

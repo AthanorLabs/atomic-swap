@@ -36,24 +36,24 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := a.backend.BalanceAt(a.backend.Ctx(), a.backend.EthAddress(), nil)
+	balance, err := a.backend.ETHClient().Balance(a.backend.Ctx())
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
 	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
-		log.Warnf("Account %s needs additional funds for this transaction", a.backend.EthAddress())
+		log.Warnf("Account %s needs additional funds for this transaction", a.backend.ETHClient().Address())
 		return nil, errBalanceTooLow
 	}
 
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), a.backend.EthClient()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), a.backend.ETHClient().Raw()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
-		balance, err := erc20Contract.BalanceOf(a.backend.CallOpts(), a.backend.EthAddress())
+		balance, err := erc20Contract.BalanceOf(a.backend.ETHClient().CallOpts(a.backend.Ctx()), a.backend.ETHClient().Address()) //nolint:lll
 		if err != nil {
 			return nil, err
 		}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -50,6 +50,7 @@ var (
 	_   = logging.SetLogLevel("net", "debug")
 	_   = logging.SetLogLevel("rpc", "debug")
 	_   = logging.SetLogLevel("monero", "debug")
+	_   = logging.SetLogLevel("extethclient", "debug")
 	_   = logging.SetLogLevel("contracts", "debug")
 )
 
@@ -205,7 +206,7 @@ func (inst *instance) recover(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer b.Close()
+	defer b.XMRClient().Close()
 
 	dataDir := filepath.Dir(filepath.Clean(infofilePath))
 
@@ -310,12 +311,6 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		return nil, err
 	}
 
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
-	var gasPrice *big.Int
-	if c.Uint(flagGasPrice) != 0 {
-		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
-	}
-
 	ec, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
 		return nil, err
@@ -349,14 +344,19 @@ func createBackend(ctx context.Context, c *cli.Context, env common.Environment,
 		return nil, err
 	}
 
+	extendedEC, err := extethclient.NewEthClient(ctx, ec, ethPrivKey)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
+	extendedEC.SetGasPrice(uint64(c.Uint(flagGasPrice)))
+	extendedEC.SetGasLimit(uint64(c.Uint(flagGasLimit)))
+
 	bcfg := &backend.Config{
 		Ctx:                 ctx,
 		MoneroClient:        mc,
-		EthereumClient:      ec,
-		EthereumPrivateKey:  ethPrivKey,
+		EthereumClient:      extendedEC,
 		Environment:         env,
-		GasPrice:            gasPrice,
-		GasLimit:            uint64(c.Uint(flagGasLimit)),
 		SwapContract:        contract,
 		SwapContractAddress: contractAddr,
 	}
