@@ -12,12 +12,14 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
@@ -57,14 +59,67 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 	if ts.Before(s.t0) && stage != contracts.StageReady {
 		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically? (#163)
 		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
-		err = s.WaitForTimestamp(s.ctx, s.t0)
+		err = s.waitUntilReady()
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 	}
 
 	return s.claimFunds()
+}
+
+func (s *swapState) waitUntilReady() error {
+	log.Debugf("time until t0 (%s): %vs",
+		s.t0.Format(common.TimeFmtSecs),
+		time.Until(s.t0).Seconds(),
+	)
+
+	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
+	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+
+	logReadyCh := make(chan ethtypes.Log, 16)
+	readyWatcher := watcher.NewEventFilter(
+		s.ctx,
+		s.Backend.EthClient(),
+		s.Backend.ContractAddr(),
+		big.NewInt(1), // TODO: store start block of swap in database
+		readyTopic,
+		logReadyCh,
+	)
+
+	err := readyWatcher.Start()
+	if err != nil {
+		waitCtxCancel()
+		return err
+	}
+
+	go s.runContractEventWatcher()
+
+	// note: this will cause unit tests to hang if not running ganache
+	// with --miner.blockTime!!!
+	waitCh := make(chan error)
+	go func() {
+		waitCh <- s.WaitForTimestamp(waitCtx, s.t0)
+		close(waitCh)
+	}()
+
+	select {
+	case <-s.ctx.Done():
+	case event := <-s.eventCh:
+		if event.Type() != EventContractReadyType {
+			panic("this shouldn't happen")
+		}
+
+		log.Debugf("returning from runT0ExpirationHandler as contract was set to ready")
+	case err := <-waitCh:
+		if err != nil {
+			return fmt.Errorf("failed to wait until T0: %w", err)
+		}
+
+		log.Debugf("reached t0, time to claim")
+	}
+
+	return nil
 }
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
