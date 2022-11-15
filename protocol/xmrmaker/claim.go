@@ -24,7 +24,7 @@ import (
 var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
 
 func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.CallOpts(), s.contractSwapID)
+	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -39,7 +39,7 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 		panic("Unhandled stage value")
 	}
 
-	ts, err := s.LatestBlockTimestamp(s.ctx)
+	ts, err := s.ETHClient().LatestBlockTimestamp(s.ctx)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -58,7 +58,7 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically? (#163)
 		// we need to wait until t0 to claim
 		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
-		err = s.WaitForTimestamp(s.ctx, s.t0)
+		err = s.ETHClient().WaitForTimestamp(s.ctx, s.t0)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -69,28 +69,26 @@ func (s *swapState) tryClaim() (ethcommon.Hash, error) {
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
-	addr := s.EthAddress()
-
 	var (
 		symbol   string
 		decimals uint8
 		err      error
 	)
 	if types.EthAsset(s.contractSwap.Asset) != types.EthAssetETH {
-		_, symbol, decimals, err = s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		_, symbol, decimals, err = s.ETHClient().ERC20Info(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.BalanceAt(s.ctx, addr, nil) //nolint:govet
+		balance, err := s.ETHClient().Balance(s.ctx) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
-		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil) //nolint:govet
+		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -121,13 +119,13 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	log.Infof("sent claim transaction, tx hash=%s", txHash)
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.BalanceAt(s.ctx, addr, nil)
+		balance, err := s.ETHClient().Balance(s.ctx)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
 	} else {
-		balance, err := s.ERC20BalanceAt(s.ctx, s.contractSwap.Asset, addr, nil)
+		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -141,10 +139,10 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 	return claimRelayer(
 		s.Ctx(),
-		s.EthPrivateKey(),
+		s.ETHClient().PrivateKey(),
 		s.Contract(),
 		s.contractAddr,
-		s.EthClient(),
+		s.ETHClient().Raw(),
 		s.offerExtra.RelayerEndpoint,
 		s.offerExtra.RelayerCommission,
 		&s.contractSwap,

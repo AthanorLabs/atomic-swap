@@ -23,11 +23,11 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	require.NoError(t, err)
 	newSwap(t, s, [32]byte{}, [32]byte{}, desiredAmount.BigInt(), duration)
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, s, tx)
+	tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
 	// runContractEventWatcher will trigger EventContractReady,
 	// which will then set the next expected event to EventExit.
@@ -63,7 +63,7 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 
 	// call refund w/ XMRTaker's secret
 	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
-	sk, err := mcrypto.NewPrivateSpendKey(secret[:])
+	sk, err := mcrypto.NewPrivateSpendKey(common.Reverse(secret[:]))
 	require.NoError(t, err)
 
 	event := newEventETHRefunded(sk)

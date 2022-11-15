@@ -102,7 +102,6 @@ func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, err
 
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
-
 	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
 	if err != nil {
 		return [32]byte{}, err

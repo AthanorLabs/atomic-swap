@@ -44,7 +44,7 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	// if this is set, it transfers all xmr received during swaps back to the given wallet.
 	if cfg.TransferBack {
-		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.PrimaryWalletAddress())
+		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryWalletAddress())
 	}
 
 	return &Instance{

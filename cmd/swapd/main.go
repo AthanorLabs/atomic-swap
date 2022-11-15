@@ -6,7 +6,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"os"
 	"path"
@@ -20,6 +19,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/db"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -260,6 +260,7 @@ func setLogLevels(level string) {
 	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("monero", level)
+	_ = logging.SetLogLevel("extethclient", level)
 	_ = logging.SetLogLevel("contracts", level)
 }
 
@@ -446,9 +447,9 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	// this closes the monero.WalletClient
-	defer swapBackend.Close()
-	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s", swapBackend.Endpoint(), ethEndpoint)
+	defer swapBackend.XMRClient().Close()
+	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
+		swapBackend.XMRClient().Endpoint(), ethEndpoint)
 
 	a, b, err := getProtocolInstances(c, cfg, swapBackend, sdb, host)
 	if err != nil {
@@ -512,7 +513,7 @@ func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, b backend.Backen
 		return nil
 	}
 
-	addr, err := b.GetAddress(0)
+	addr, err := b.XMRClient().GetAddress(0)
 	if err != nil {
 		return err
 	}
@@ -562,12 +563,6 @@ func newBackend(
 		if ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
 			return nil, err
 		}
-	}
-
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
-	var gasPrice *big.Int
-	if c.Uint(flagGasPrice) != 0 {
-		gasPrice = big.NewInt(int64(c.Uint(flagGasPrice)))
 	}
 
 	deploy := c.Bool(flagDeploy)
@@ -650,14 +645,19 @@ func newBackend(
 		return nil, err
 	}
 
+	extendedEC, err := extethclient.NewEthClient(ctx, ec, ethPrivKey)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
+	extendedEC.SetGasPrice(uint64(c.Uint(flagGasPrice)))
+	extendedEC.SetGasLimit(uint64(c.Uint(flagGasLimit)))
+
 	bcfg := &backend.Config{
 		Ctx:                 ctx,
 		MoneroClient:        mc,
-		EthereumClient:      ec,
-		EthereumPrivateKey:  ethPrivKey,
+		EthereumClient:      extendedEC,
 		Environment:         env,
-		GasPrice:            gasPrice,
-		GasLimit:            uint64(c.Uint(flagGasLimit)),
 		SwapManager:         sm,
 		SwapContract:        contract,
 		SwapContractAddress: contractAddr,

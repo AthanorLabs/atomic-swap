@@ -12,6 +12,7 @@ require (
 	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/fatih/color v1.13.0
 	github.com/golang/mock v1.6.0
@@ -42,7 +43,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.4 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
