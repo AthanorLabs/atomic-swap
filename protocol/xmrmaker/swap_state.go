@@ -515,7 +515,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 
 	var receivedAmount *big.Int
 	if s.info.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := s.ERC20Info(s.ctx, s.contractSwap.Asset)
+		_, _, decimals, err := s.ETHClient().ERC20Info(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return fmt.Errorf("failed to get ERC20 info: %w", err)
 		}

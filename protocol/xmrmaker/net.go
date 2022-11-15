@@ -118,7 +118,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
 	var receivedAmount EthereumAssetAmount
 	if offer.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := b.backend.ERC20Info(b.backend.Ctx(), offer.EthAsset.Address()) //nolint:govet
+		_, _, decimals, err := b.backend.ETHClient().ERC20Info(b.backend.Ctx(), offer.EthAsset.Address()) //nolint:govet
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}

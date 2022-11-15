@@ -31,7 +31,7 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 	// check decimals if ERC20
 	var providedAmount EthereumAssetAmount
 	if offer.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := a.backend.ERC20Info(a.backend.Ctx(), offer.EthAsset.Address())
+		_, _, decimals, err := a.backend.ETHClient().ERC20Info(a.backend.Ctx(), offer.EthAsset.Address())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
