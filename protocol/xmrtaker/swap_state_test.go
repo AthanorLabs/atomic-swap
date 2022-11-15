@@ -19,6 +19,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -85,11 +86,13 @@ func newBackend(t *testing.T) backend.Backend {
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 
+	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	require.NoError(t, err)
+
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      ec,
-		EthereumPrivateKey:  pk,
+		EthereumClient:      extendedEC,
 		Environment:         common.Development,
 		SwapManager:         newSwapManager(t),
 		SwapContract:        contract,
@@ -114,19 +117,19 @@ func newTestInstance(t *testing.T) *swapState {
 func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
 	b := newBackend(t)
 
-	txOpts, err := b.TxOpts()
+	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
 	require.NoError(t, err)
 
 	_, tx, contract, err := contracts.DeployERC20Mock(
 		txOpts,
-		b.EthClient(),
+		b.ETHClient().Raw(),
 		"Mock",
 		"MOCK",
-		b.EthAddress(),
+		b.ETHClient().Address(),
 		initialBalance,
 	)
 	require.NoError(t, err)
-	addr, err := bind.WaitDeployed(b.Ctx(), b.EthClient(), tx)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
 	swapState, err := newSwapState(b, types.Hash{}, false,
@@ -287,7 +290,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	}
 
 	// check balance of contract is 0
-	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.ETHClient().Raw().BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -384,7 +387,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 	s, contract := newTestInstanceWithERC20(t, initialBalance)
 	err := s.approveToken()
 	require.NoError(t, err)
-	allowance, err := contract.Allowance(&bind.CallOpts{}, s.EthAddress(), s.ContractAddr())
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.ContractAddr())
 	require.NoError(t, err)
 	require.Equal(t, initialBalance, allowance)
 }

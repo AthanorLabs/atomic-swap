@@ -25,9 +25,9 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
-	err := backend.CreateWallet("test-wallet", "")
+	err := backend.XMRClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
-	monero.MineMinXMRBalance(t, backend, common.MoneroToPiconero(1))
+	monero.MineMinXMRBalance(t, backend.XMRClient(), common.MoneroToPiconero(1))
 
 	// invalid SendKeysMessage should result in an error
 	msg := &net.SendKeysMessage{}
@@ -41,7 +41,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	msg, err = s.SendKeysMessage()
 	require.NoError(t, err)
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = s.EthAddress().String()
+	msg.EthAddress = s.ETHClient().Address().String()
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
@@ -59,12 +59,12 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	xmrAddr := kp.Address(common.Mainnet)
 
 	// lock xmr
-	tResp, err := backend.Transfer(xmrAddr, 0, uint64(amt))
+	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, uint64(amt))
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
 	require.Equal(t, uint64(amt), tResp.Amount)
 
-	transfer, err := backend.WaitForTransReceipt(&monero.WaitForReceiptRequest{
+	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             tResp.TxHash,
 		DestAddr:         xmrAddr,
@@ -81,14 +81,14 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	}
 
 	// assert that ready() is called, setup contract watcher
-	ethHeader, err := backend.EthClient().HeaderByNumber(backend.Ctx(), nil)
+	ethHeader, err := backend.ETHClient().Raw().HeaderByNumber(backend.Ctx(), nil)
 	require.NoError(t, err)
 	logReadyCh := make(chan ethtypes.Log)
 
 	readyTopic := common.GetTopic(common.ReadyEventSignature)
 	readyWatcher := watcher.NewEventFilter(
 		s.Backend.Ctx(),
-		s.Backend.EthClient(),
+		s.Backend.ETHClient().Raw(),
 		s.Backend.ContractAddr(),
 		ethHeader.Number,
 		readyTopic,

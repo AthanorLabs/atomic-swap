@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -91,11 +92,13 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 
+	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	require.NoError(t, err)
+
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      ec,
-		EthereumPrivateKey:  pk,
+		EthereumClient:      extendedEC,
 		Environment:         common.Development,
 		SwapContract:        contract,
 		SwapContractAddress: addr,
@@ -124,8 +127,8 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, b, 5.0)
-	err = b.Refresh()
+	monero.MineMinXMRBalance(t, b.XMRClient(), 5.0)
+	err = b.XMRClient().Refresh()
 	require.NoError(t, err)
 	return xmrmaker, db
 }
@@ -171,19 +174,19 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 		claimKey = ss.secp256k1Pub.Keccak256()
 	}
 
-	txOpts, err := ss.TxOpts()
+	txOpts, err := ss.ETHClient().TxOpts(ss.ctx)
 	require.NoError(t, err)
 
 	// TODO: this is sus, update this when signing interfaces are updated
 	txOpts.Value = amount
 
-	ethAddr := ss.EthAddress()
+	ethAddr := ss.ETHClient().Address()
 	nonce := big.NewInt(0)
 	asset := types.EthAssetETH
 	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
 		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, ss, tx)
+	receipt := tests.MineTransaction(t, ss.ETHClient().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	ss.contractSwapID, err = contracts.GetIDFromLog(receipt.Logs[0])
@@ -227,11 +230,11 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
 
-	txOpts, err := swapState.TxOpts()
+	txOpts, err := swapState.ETHClient().TxOpts(swapState.ctx)
 	require.NoError(t, err)
 	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
 	require.NoError(t, err)
-	tests.MineTransaction(t, swapState, tx)
+	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
 	txHash, err := swapState.claimFunds()
 	require.NoError(t, err)
@@ -369,11 +372,11 @@ func TestSwapState_handleRefund(t *testing.T) {
 	var sc [32]byte
 	copy(sc[:], common.Reverse(secret))
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.EthClient(), tx.Hash())
+	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.ETHClient().Raw(), tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, 1, len(receipt.Logs))
 
@@ -417,11 +420,11 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	s.nextExpectedEvent = EventContractReadyType
 
-	txOpts, err := s.TxOpts()
+	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
 	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, s, tx)
+	receipt := tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
 	require.Equal(t, 1, len(receipt.Logs[0].Topics))
@@ -435,7 +438,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 		}
 	}
 
-	balance, err := s.GetBalance(0)
+	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
 	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)

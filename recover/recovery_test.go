@@ -16,6 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -107,11 +108,13 @@ func newBackend(
 	rdb := backend.NewMockRecoveryDB(ctrl)
 	rdb.EXPECT().PutContractAddress(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
+	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	require.NoError(t, err)
+
 	cfg := &backend.Config{
 		Ctx:                 context.Background(),
 		Environment:         common.Development,
-		EthereumPrivateKey:  pk,
-		EthereumClient:      ec,
+		EthereumClient:      extendedEC,
 		MoneroClient:        monero.CreateWalletClient(t),
 		SwapContract:        contract,
 		SwapContractAddress: addr,

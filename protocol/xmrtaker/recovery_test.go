@@ -22,7 +22,7 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	s.dleqProof = akp.DLEqProof
 
 	s.setXMRMakerKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
-	s.xmrmakerAddress = s.EthAddress()
+	s.xmrmakerAddress = s.ETHClient().Address()
 
 	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
@@ -44,12 +44,12 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	txOpts, err := rs.ss.TxOpts()
+	txOpts, err := rs.ss.ETHClient().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	tx, err := rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss, tx)
+	tests.MineTransaction(t, rs.ss.ETHClient().Raw(), tx)
 	t.Log("XMRMaker claimed ETH...")
 
 	// assert we can claim the monero
