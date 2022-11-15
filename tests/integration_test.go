@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -744,7 +745,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 		defer wg.Done()
 		wsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05) //nolint:govet
 		if err != nil {
 			errCh <- err
 			return
@@ -771,7 +772,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 		defer wg.Done()
 		wsc := s.newSwapdWSClient(ctx, defaultCharlieSwapdWSEndpoint)
 
-		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05) //nolint:govet
 		if err != nil {
 			errCh <- err
 			return
@@ -796,16 +797,20 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 	wg.Wait()
 
 	select {
-	case err := <-errCh:
+	case err = <-errCh:
 		require.NotNil(s.T(), err)
 		s.T().Log("got expected error:", err)
 	case <-ctx.Done():
-		s.T().Fatalf("did not get error from XMRTaker or Charlie")
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			s.Fail("Test timed out")
+		} else {
+			s.Fail("Did not get error from XMRTaker or Charlie")
+		}
 	}
 
 	select {
-	case err := <-errCh:
-		s.T().Fatalf("should only have one error! also got %s", err)
+	case err = <-errCh:
+		s.Failf("Should only have one error!", "Second error: %s", err)
 	default:
 	}
 }
