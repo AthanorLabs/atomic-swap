@@ -36,7 +36,7 @@ func (b *Instance) initiate(
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := b.backend.GetBalance(0)
+	balance, err := b.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}

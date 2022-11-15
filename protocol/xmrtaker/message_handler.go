@@ -188,24 +188,25 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
 
-	s.LockClient()
-	defer s.UnlockClient()
+	s.XMRClient().Lock()
+	defer s.XMRClient().Unlock()
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	if err := s.GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, ""); err != nil {
+	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
+	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
 
 	log.Debugf("generated view-only wallet to check funds: %s", walletName)
 
-	if err := s.Refresh(); err != nil {
+	if err = s.XMRClient().Refresh(); err != nil {
 		return fmt.Errorf("failed to refresh client: %w", err)
 	}
 
-	balance, err := s.GetBalance(0)
+	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
-		return fmt.Errorf("failed to get accounts: %w", err)
+		return fmt.Errorf("failed to get balance: %w", err)
 	}
 
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
@@ -228,7 +229,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 			balance.BlocksToUnlock)
 	}
 
-	if err := s.CloseWallet(); err != nil {
+	if err = s.XMRClient().CloseWallet(); err != nil {
 		return fmt.Errorf("failed to close wallet: %w", err)
 	}
 
@@ -256,7 +257,7 @@ func (s *swapState) runT1ExpirationHandler() {
 
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.WaitForTimestamp(waitCtx, s.t1)
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t1)
 		close(waitCh)
 	}()
 

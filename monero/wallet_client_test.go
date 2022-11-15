@@ -41,7 +41,7 @@ func TestClient_Transfer(t *testing.T) {
 		common.MoneroAmount(transResp.Amount).AsMonero(), common.MoneroAmount(transResp.Fee).AsMonero(),
 		transResp.TxHash)
 	require.NoError(t, err)
-	transfer, err := cXMRMaker.WaitForTransReceipt(&WaitForReceiptRequest{
+	transfer, err := cXMRMaker.WaitForReceipt(&WaitForReceiptRequest{
 		Ctx:              context.Background(),
 		TxID:             transResp.TxHash,
 		DestAddr:         abAddress,
@@ -110,7 +110,7 @@ func TestClient_Transfer(t *testing.T) {
 		sweepAmount, sweepFee)
 	require.Equal(t, uint64(amount), sweepAmount+sweepFee)
 
-	transfer, err = cXMRTaker.WaitForTransReceipt(&WaitForReceiptRequest{
+	transfer, err = cXMRTaker.WaitForReceipt(&WaitForReceiptRequest{
 		Ctx:              context.Background(),
 		TxID:             sweepTxID,
 		DestAddr:         alicePrimaryAddr,
@@ -288,7 +288,7 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err = c.WaitForTransReceipt(&WaitForReceiptRequest{
+	_, err = c.WaitForReceipt(&WaitForReceiptRequest{
 		Ctx:              ctx,
 		TxID:             transResp.TxHash,
 		DestAddr:         destAddr,
