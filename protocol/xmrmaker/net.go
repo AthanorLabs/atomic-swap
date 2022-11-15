@@ -1,7 +1,6 @@
 package xmrmaker
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -116,16 +115,14 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	var receivedAmount EthereumAssetAmount
-	if offer.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := b.backend.ETHClient().ERC20Info(b.backend.Ctx(), offer.EthAsset.Address()) //nolint:govet
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-
-		receivedAmount = common.NewERC20TokenAmountFromDecimals(msg.ProvidedAmount, float64(decimals))
-	} else {
-		receivedAmount = common.EtherToWei(msg.ProvidedAmount)
+	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+		b.backend.Ctx(),
+		b.backend.ETHClient(),
+		msg.ProvidedAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	state, err := b.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)

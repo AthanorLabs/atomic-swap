@@ -1,7 +1,6 @@
 package xmrtaker
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -28,17 +27,14 @@ func (a *Instance) Provides() types.ProvidesCoin {
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
 
-	// check decimals if ERC20
-	var providedAmount EthereumAssetAmount
-	if offer.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := a.backend.ETHClient().ERC20Info(a.backend.Ctx(), offer.EthAsset.Address())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-
-		providedAmount = common.NewERC20TokenAmountFromDecimals(providesAmount, float64(decimals))
-	} else {
-		providedAmount = common.EtherToWei(providesAmount)
+	providedAmount, err := pcommon.GetEthereumAssetAmount(
+		a.backend.Ctx(),
+		a.backend.ETHClient(),
+		providesAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	state, err := a.initiate(providedAmount, common.MoneroToPiconero(receivedAmount),

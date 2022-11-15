@@ -513,19 +513,21 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("swap value and event value don't match: got %v, expected %v", event.Value, s.contractSwap.Value)
 	}
 
-	var receivedAmount *big.Int
-	if s.info.EthAsset != types.EthAssetETH {
-		_, _, decimals, err := s.ETHClient().ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err != nil {
-			return fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-
-		receivedAmount = common.NewERC20TokenAmountFromDecimals(s.info.ReceivedAmount, float64(decimals)).BigInt()
-	} else {
-		receivedAmount = common.EtherToWei(s.info.ReceivedAmount).BigInt()
+	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+		s.ctx,
+		s.ETHClient(),
+		s.info.ReceivedAmount,
+		types.EthAsset(s.contractSwap.Asset),
+	)
+	if err != nil {
+		return err
 	}
-	if s.contractSwap.Value.Cmp(receivedAmount) != 0 {
-		return fmt.Errorf("swap value is not expected: got %v, expected %v", s.contractSwap.Value, receivedAmount)
+
+	if s.contractSwap.Value.Cmp(receivedAmount.BigInt()) != 0 {
+		return fmt.Errorf("swap value is not expected: got %v, expected %v",
+			s.contractSwap.Value,
+			receivedAmount.BigInt(),
+		)
 	}
 
 	return nil
