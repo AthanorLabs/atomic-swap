@@ -21,4 +21,5 @@ else
 	go install -tags=prod ./cmd/swapd ./cmd/swapcli
 fi
 
-go install github.com/athanorlabs/go-relayer/cmd/relayer@latest
+# Will change the suffix below to @latest before merging
+go install github.com/athanorlabs/go-relayer/cmd/relayer@95cca1a2b8b2b16a78f9a0d8fa367cf2e9c95a4f

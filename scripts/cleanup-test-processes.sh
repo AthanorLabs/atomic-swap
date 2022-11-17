@@ -4,6 +4,7 @@
 
 pkill --echo --uid "${UID}" --full '/monerod .* --regtest '
 pkill --echo --uid "${UID}" --full '/ganache.* --deterministic '
+pkill --echo --uid "${UID}" --full '/relayer'
 
 # If you have monero-wallet-rpc or swapd processes owned by the current user
 # that you don't want to kill, don't use this script!
