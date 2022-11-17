@@ -91,7 +91,7 @@ mock:
 # Deletes all executables matching the directory names in cmd/
 .PHONY: clean-go
 clean-go:
-	rm -f $$(find cmd/ -mindepth 1 -maxdepth 1 -type d -exec basename '{}' \;)
+	rm -f bin/
 
 .PHONY: clean
 clean: clean-go

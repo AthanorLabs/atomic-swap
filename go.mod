@@ -8,7 +8,7 @@ require (
 	github.com/MarinX/monerorpc v1.0.5
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/athanorlabs/cgo-dleq v0.0.0-20220929204103-ca62cc9baa28
-	github.com/athanorlabs/go-relayer v0.0.0-20221103034307-cde70ecbb543
+	github.com/athanorlabs/go-relayer v0.0.3
 	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/chyeh/pubip v0.0.0-20170203095919-b7e679cf541c

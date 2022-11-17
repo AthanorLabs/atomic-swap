@@ -23,7 +23,7 @@ start-swapd() {
 	local swapd_flags=("${@:2}")
 	local log_file="${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 	echo "Starting ${swapd_user^}'s swapd, logs in ${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
-	./swapd "${swapd_flags[@]}" &>"${log_file}" &
+	./bin/swapd "${swapd_flags[@]}" &>"${log_file}" &
 	local swapd_pid="${!}"
 	echo "${swapd_pid}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
 	sleep 1
