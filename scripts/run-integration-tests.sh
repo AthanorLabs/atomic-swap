@@ -27,7 +27,7 @@ KEY_USERS=(
 )
 
 create-eth-keys() {
-  local i
+	local i
 	for i in "${!KEY_USERS[@]}"; do
 		local key_file="${SWAP_TEST_DATA_DIR}/${KEY_USERS[${i}]}/eth.key"
 		mkdir -p "$(dirname "${key_file}")"
@@ -41,7 +41,7 @@ ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 LOG_LEVEL=debug
 
 start-relayer() {
-  local log_file="${SWAP_TEST_DATA_DIR}/relayer.log"
+	local log_file="${SWAP_TEST_DATA_DIR}/relayer.log"
 	./bin/relayer \
 		--deploy \
 		--endpoint="http://localhost:${GANACHE_PORT}" \
