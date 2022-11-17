@@ -4,7 +4,7 @@
 # deleting the monero-bin symlink or the version specific folder that it links to. This
 # script changes directories and should be executed, not sourced.
 #
-arch=linux64
+arch=macarm8
 
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
 cd "${PROJECT_ROOT}"

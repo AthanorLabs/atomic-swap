@@ -62,7 +62,7 @@ mine-monero-for-swapd() {
 
 check-set-swap-test-data-dir() {
 	if [[ -z "${SWAP_TEST_DATA_DIR}" ]]; then
-		SWAP_TEST_DATA_DIR="$(mktemp --tmpdir -d atomic-swap-test-data-XXXXXXXXXX)"
+		SWAP_TEST_DATA_DIR="$(mktemp -d atomic-swap-test-data-XXXXXXXXXX)"
 		echo "Swap test data dir is ${SWAP_TEST_DATA_DIR}"
 	else
 		mkdir -p "${SWAP_TEST_DATA_DIR}" # make sure it exists if the variable was already set
@@ -111,6 +111,8 @@ start-monerod-regtest() {
 	fi
 	check-set-swap-test-data-dir
 	echo "starting monerod..."
+	echo $MONERO_BIN_DIR
+	echo $SWAP_TEST_DATA_DIR
 	"${MONERO_BIN_DIR}/monerod" \
 		--detach \
 		--regtest \
@@ -144,12 +146,13 @@ install-ganache() {
 		return 0 # ganache already installed
 	fi
 	echo "installing ganache"
+	echo $npm_install_dir
 	if [[ -d "${npm_install_dir}/bin" ]] && [[ ! -w "${npm_install_dir}/bin" ]]; then
 		echo "${npm_install_dir}[/bin] is not writable"
 		echo "You can use 'npm config set prefix DIRNAME' to pick a different install directory"
 		return 1
 	fi
-	npm install --location=global ganache
+	npm install --global ganache
 }
 
 start-ganache() {
