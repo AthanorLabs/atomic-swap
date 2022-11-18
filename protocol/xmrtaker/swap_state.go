@@ -94,7 +94,7 @@ func newSwapState(
 	infofile string,
 	transferBack bool,
 	providedAmount EthereumAssetAmount,
-	receivedAmount common.MoneroAmount,
+	receivedAmount common.PiconeroAmount,
 	exchangeRate types.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
@@ -253,7 +253,7 @@ func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount
 }
 
-func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
+func (s *swapState) receivedAmountInPiconero() common.PiconeroAmount {
 	return common.MoneroToPiconero(s.info.ReceivedAmount)
 }
 
@@ -504,7 +504,7 @@ func (s *swapState) approveToken() error {
 }
 
 // lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
-// TODO: update units to not necessarily be an EtherAmount
+// TODO: update units to not necessarily be an WeiAmount
 func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
 		return ethcommon.Hash{}, errNoPublicKeysSet

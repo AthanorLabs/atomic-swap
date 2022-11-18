@@ -54,7 +54,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
 
 	// simulate xmrmaker locking xmr
-	amt := common.MoneroAmount(1000000000)
+	amt := common.PiconeroAmount(1000000000)
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 

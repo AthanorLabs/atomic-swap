@@ -88,7 +88,7 @@ func newSwapState(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	providesAmount common.MoneroAmount,
+	providesAmount common.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
@@ -536,7 +536,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLock, error) {
+func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 

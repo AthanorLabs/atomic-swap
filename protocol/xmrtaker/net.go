@@ -46,7 +46,7 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 	return state, nil
 }
 
-func (a *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount common.MoneroAmount,
+func (a *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount common.PiconeroAmount,
 	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()

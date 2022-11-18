@@ -103,7 +103,7 @@ func newBackend(t *testing.T) backend.Backend {
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
-		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAssetETH)
+		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
 }
@@ -127,7 +127,7 @@ func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState
 	require.NoError(t, err)
 
 	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
-		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAsset(addr))
+		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }

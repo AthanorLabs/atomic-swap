@@ -86,14 +86,14 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+		log.Infof("balance before claim: %v ETH", common.WeiAmount(*balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v %s",
-			common.NewERC20TokenAmountFromBigInt(balance, float64(decimals)).AsStandard(),
+			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
 			symbol,
 		)
 	}
@@ -126,7 +126,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
+		log.Infof("balance after claim: %v ETH", common.WeiAmount(*balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
@@ -134,7 +134,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 
 		log.Infof("balance after claim: %v %s",
-			common.NewERC20TokenAmountFromBigInt(balance, float64(decimals)).AsStandard(),
+			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
 			symbol,
 		)
 	}

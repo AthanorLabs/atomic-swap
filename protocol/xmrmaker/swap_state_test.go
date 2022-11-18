@@ -138,7 +138,7 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockData
 		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
 		oe,
 		xmrmaker.offerManager,
-		common.MoneroAmount(33),
+		common.PiconeroAmount(33),
 		desiredAmount,
 	)
 	require.NoError(t, err)

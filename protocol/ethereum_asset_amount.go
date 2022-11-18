@@ -16,7 +16,7 @@ type EthereumAssetAmount interface {
 	AsStandard() float64
 }
 
-// GetEthereumAssetAmount returns an EthereumAssetAmount (ie EtherAmount or ERC20TokenAmount)
+// GetEthereumAssetAmount returns an EthereumAssetAmount (ie WeiAmount or ERC20TokenAmount)
 func GetEthereumAssetAmount(
 	ctx context.Context,
 	ec extethclient.EthClient,
@@ -29,7 +29,7 @@ func GetEthereumAssetAmount(
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return common.NewERC20TokenAmountFromDecimals(amt, float64(decimals)), nil
+		return common.NewERC20TokenAmountFromDecimals(amt, int(decimals)), nil
 	}
 
 	return common.EtherToWei(amt), nil

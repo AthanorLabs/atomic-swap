@@ -25,7 +25,7 @@ func (b *Instance) Provides() types.ProvidesCoin {
 func (b *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
-	providesAmount common.MoneroAmount,
+	providesAmount common.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	b.swapMu.Lock()
@@ -43,7 +43,7 @@ func (b *Instance) initiate(
 	// check user's balance and that they actually have what they will provide
 	if balance.UnlockedBalance <= uint64(providesAmount) {
 		return nil, errBalanceTooLow{
-			unlockedBalance: common.MoneroAmount(balance.UnlockedBalance).AsMonero(),
+			unlockedBalance: common.PiconeroAmount(balance.UnlockedBalance).AsMonero(),
 			providedAmount:  providesAmount.AsMonero(),
 		}
 	}
