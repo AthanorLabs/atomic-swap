@@ -42,7 +42,7 @@ LOG_LEVEL=debug
 
 start-relayer() {
 	local log_file="${SWAP_TEST_DATA_DIR}/relayer.log"
-		echo "Starting relayer with logs in ${log_file}"
+	echo "Starting relayer with logs in ${log_file}"
 	./bin/relayer \
 		--deploy \
 		--endpoint="http://localhost:${GANACHE_PORT}" \
@@ -62,16 +62,16 @@ start-relayer() {
 	fi
 	local matched_line=""
 	for _ in {1..60}; do
-		if matched_line=$(grep --max-count=1 'deployed Forwarder' "${log_file}" ); then
+		if matched_line=$(grep --max-count=1 'deployed Forwarder' "${log_file}"); then
 			break
 		fi
 		sleep 1
 	done
 	if [[ -z "${matched_line}" ]]; then
-	  echo "Failed to parse deployed forwarder address from ${log_file}"
-	  exit 1
+		echo "Failed to parse deployed forwarder address from ${log_file}"
+		exit 1
 	fi
-	FORWARDER_ADDR=${matched_line/* 0x}
+	FORWARDER_ADDR=${matched_line/* 0x/}
 	echo "Relayer has forwarder address 0x${FORWARDER_ADDR}"
 }
 
