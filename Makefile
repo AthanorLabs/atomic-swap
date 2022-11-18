@@ -64,8 +64,8 @@ build: init
 # WARNING: this should not be used in production, as the DLEq prover has been stubbed out and now proves nothing.
 .PHONY: build-go
 build-go:
-	go build -tags=fakedleq ./cmd/swapd
-	go build -tags=fakedleq ./cmd/swapcli
+	GOBIN="$(CURDIR)/bin" go build -tags=fakedleq ./cmd/swapd
+	GOBIN="$(CURDIR)/bin" go build -tags=fakedleq ./cmd/swapcli
 
 # WARNING: this should not be used in production, as the DLEq prover has been stubbed out and now proves nothing.
 .PHONY: build-go-darwin
@@ -91,7 +91,7 @@ mock:
 # Deletes all executables matching the directory names in cmd/
 .PHONY: clean-go
 clean-go:
-	rm -f $$(find cmd/ -mindepth 1 -maxdepth 1 -type d -exec basename '{}' \;)
+	rm -f bin/
 
 .PHONY: clean
 clean: clean-go
