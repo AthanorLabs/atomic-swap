@@ -21,5 +21,7 @@ else
 	go install -tags=prod ./cmd/swapd ./cmd/swapcli
 fi
 
-# Will change the suffix below to @latest before merging
-go install github.com/athanorlabs/go-relayer/cmd/relayer@95cca1a2b8b2b16a78f9a0d8fa367cf2e9c95a4f
+# Since we located inside a project using go modules when performing this
+# install, the version installed will match the go-relayer dependency in
+# our go.mod file. To override, add a @version suffix on the end.
+go install github.com/athanorlabs/go-relayer/cmd/relayer
