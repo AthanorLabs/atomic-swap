@@ -72,7 +72,7 @@ func (s *IntegrationTestSuite) setSwapTimeout(timeoutSeconds uint64) {
 // mineMinXMRMakerBalance is similar to monero.MineMinXMRBalance(...), but this version
 // uses the swapd RPC Balances method to get the wallet address and balance from a
 // running swapd instance instead of interacting with a wallet.
-func mineMinXMRMakerBalance(t *testing.T, minBalance common.MoneroAmount) {
+func mineMinXMRMakerBalance(t *testing.T, minBalance common.PiconeroAmount) {
 	daemonCli := monerorpc.New(monero.MonerodRegtestEndpoint, nil).Daemon
 	for {
 		balances, err := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint).Balances()

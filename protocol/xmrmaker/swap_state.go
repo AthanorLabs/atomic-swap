@@ -88,10 +88,10 @@ func newSwapState(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount,
+	providesAmount common.PiconeroAmount,
+	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
-	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsEther())
+	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
 
 	stage := types.ExpectingKeys
 	if offerExtra.StatusCh == nil {
@@ -103,7 +103,7 @@ func newSwapState(
 		offer.ID,
 		types.ProvidesXMR,
 		providesAmount.AsMonero(),
-		desiredAmount.AsEther(),
+		desiredAmount.AsStandard(),
 		exchangeRate,
 		offer.EthAsset,
 		stage,
@@ -509,7 +509,25 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 
 	// check value of created swap
 	if s.contractSwap.Value.Cmp(event.Value) != 0 {
-		return fmt.Errorf("swap value is not expected: got %v, expected %v", event.Value, s.contractSwap.Value)
+		// this should never happen
+		return fmt.Errorf("swap value and event value don't match: got %v, expected %v", event.Value, s.contractSwap.Value)
+	}
+
+	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+		s.ctx,
+		s.ETHClient(),
+		s.info.ReceivedAmount,
+		types.EthAsset(s.contractSwap.Asset),
+	)
+	if err != nil {
+		return err
+	}
+
+	if s.contractSwap.Value.Cmp(receivedAmount.BigInt()) != 0 {
+		return fmt.Errorf("swap value is not expected: got %v, expected %v",
+			s.contractSwap.Value,
+			receivedAmount.BigInt(),
+		)
 	}
 
 	return nil
@@ -518,7 +536,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLock, error) {
+func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 

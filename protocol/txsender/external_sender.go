@@ -113,7 +113,7 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  fmt.Sprintf("0x%x", input),
-		Value: fmt.Sprintf("%v", common.EtherAmount(*value).AsEther()),
+		Value: fmt.Sprintf("%v", common.WeiAmount(*value).AsEther()),
 	}
 
 	s.Lock()

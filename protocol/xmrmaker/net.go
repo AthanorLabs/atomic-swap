@@ -1,6 +1,8 @@
 package xmrmaker
 
 import (
+	"math/big"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
@@ -8,6 +10,12 @@ import (
 
 	"github.com/fatih/color" //nolint:misspell
 )
+
+// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
+type EthereumAssetAmount interface {
+	BigInt() *big.Int
+	AsStandard() float64
+}
 
 // Provides returns types.ProvidesXMR
 func (b *Instance) Provides() types.ProvidesCoin {
@@ -17,8 +25,8 @@ func (b *Instance) Provides() types.ProvidesCoin {
 func (b *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
-	providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount,
+	providesAmount common.PiconeroAmount,
+	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	if b.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
@@ -32,7 +40,7 @@ func (b *Instance) initiate(
 	// check user's balance and that they actually have what they will provide
 	if balance.UnlockedBalance <= uint64(providesAmount) {
 		return nil, errBalanceTooLow{
-			unlockedBalance: common.MoneroAmount(balance.UnlockedBalance).AsMonero(),
+			unlockedBalance: common.PiconeroAmount(balance.UnlockedBalance).AsMonero(),
 			providedAmount:  providesAmount.AsMonero(),
 		}
 	}
@@ -104,9 +112,20 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	}
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)
-	providedWei := common.EtherToWei(msg.ProvidedAmount)
 
-	state, err := b.initiate(offer, offerExtra, providedPicoXMR, providedWei)
+	// check decimals if ERC20
+	// note: this is our counterparty's provided amount, ie. how much we're receiving
+	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+		b.backend.Ctx(),
+		b.backend.ETHClient(),
+		msg.ProvidedAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	state, err := b.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)
 	if err != nil {
 		return nil, nil, err
 	}

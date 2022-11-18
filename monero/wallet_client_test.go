@@ -38,7 +38,7 @@ func TestClient_Transfer(t *testing.T) {
 	transResp, err := cXMRMaker.Transfer(abAddress, 0, uint64(amount))
 	require.NoError(t, err)
 	t.Logf("Bob sent %f (+fee %f) XMR to A+B address with TX ID %s",
-		common.MoneroAmount(transResp.Amount).AsMonero(), common.MoneroAmount(transResp.Fee).AsMonero(),
+		common.PiconeroAmount(transResp.Amount).AsMonero(), common.PiconeroAmount(transResp.Fee).AsMonero(),
 		transResp.TxHash)
 	require.NoError(t, err)
 	transfer, err := cXMRMaker.WaitForReceipt(&WaitForReceiptRequest{

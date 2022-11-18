@@ -1,6 +1,8 @@
 package xmrtaker
 
 import (
+	"math/big"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -8,6 +10,12 @@ import (
 
 	"github.com/fatih/color" //nolint:misspell
 )
+
+// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
+type EthereumAssetAmount interface {
+	BigInt() *big.Int
+	AsStandard() float64
+}
 
 // Provides returns types.ProvidesETH
 func (a *Instance) Provides() types.ProvidesCoin {
@@ -18,7 +26,18 @@ func (a *Instance) Provides() types.ProvidesCoin {
 // The input units are ether that we will provide.
 func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
 	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
-	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
+
+	providedAmount, err := pcommon.GetEthereumAssetAmount(
+		a.backend.Ctx(),
+		a.backend.ETHClient(),
+		providesAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := a.initiate(providedAmount, common.MoneroToPiconero(receivedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -27,7 +46,7 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 	return state, nil
 }
 
-func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
+func (a *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount common.PiconeroAmount,
 	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	a.swapMu.Lock()
 	defer a.swapMu.Unlock()
