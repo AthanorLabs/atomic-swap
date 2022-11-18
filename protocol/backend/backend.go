@@ -25,8 +25,9 @@ var (
 
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
-	//PutContractAddress(id types.Hash, addr ethcommon.Address) error
 	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
+	PutMoneroStartHeight(id types.Hash, height uint64) error
+	GetMoneroStartHeight(id types.Hash) (uint64, error)
 	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
 	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
 }

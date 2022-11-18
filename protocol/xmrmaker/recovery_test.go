@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -14,7 +16,7 @@ import (
 )
 
 func newTestRecoveryState(t *testing.T, timeout time.Duration) (*recoveryState, *offers.MockDatabase) {
-	inst, s, db := newTestInstanceAndDB(t)
+	inst, s, tdb := newTestInstanceAndDB(t)
 
 	err := s.generateAndSetKeys()
 	require.NoError(t, err)
@@ -23,12 +25,24 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) (*recoveryState, 
 
 	newSwap(t, s, [32]byte{}, sr, big.NewInt(1), timeout)
 
+	ethSwapInfo := &db.EthereumSwapInfo{
+		ContractAddress: s.ContractAddr(),
+		SwapID:          s.contractSwapID,
+		Swap:            s.contractSwap,
+		StartNumber:     big.NewInt(1),
+	}
+
 	dataDir := t.TempDir()
-	rs, err := NewRecoveryState(inst.backend, dataDir, s.privkeys.SpendKey(), s.ContractAddr(),
-		s.contractSwapID, s.contractSwap)
+	rs, err := NewRecoveryState(
+		inst.backend,
+		types.Hash{},
+		dataDir,
+		s.privkeys.SpendKey(),
+		ethSwapInfo,
+	)
 	require.NoError(t, err)
 
-	return rs, db
+	return rs, tdb
 }
 
 func TestClaimOrRecover_Claim(t *testing.T) {

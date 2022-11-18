@@ -1,12 +1,15 @@
 package xmrtaker
 
 import (
+	"math/big"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -27,8 +30,14 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	_, err = s.lockAsset(common.NewEtherAmount(1))
 	require.NoError(t, err)
 
+	ethSwapInfo := &db.EthereumSwapInfo{
+		SwapID:      s.contractSwapID,
+		Swap:        s.contractSwap,
+		StartNumber: big.NewInt(1),
+	}
+
 	dataDir := t.TempDir()
-	rs, err := NewRecoveryState(s, dataDir, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
+	rs, err := NewRecoveryState(s, types.Hash{}, dataDir, s.privkeys.SpendKey(), ethSwapInfo)
 	require.NoError(t, err)
 	return rs
 }

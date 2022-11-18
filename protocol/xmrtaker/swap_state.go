@@ -148,9 +148,15 @@ func newSwapState(
 	if err != nil {
 		return nil, err
 	}
+
 	// reduce the scan height a little in case there is a block reorg
 	if walletScanHeight >= monero.MinSpendConfirmations {
 		walletScanHeight -= monero.MinSpendConfirmations
+	}
+
+	err = b.RecoveryDB().PutMoneroStartHeight(offerID, walletScanHeight)
+	if err != nil {
+		return nil, err
 	}
 
 	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)

@@ -84,6 +84,7 @@ func newBackend(t *testing.T) backend.Backend {
 	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().GetMoneroStartHeight(gomock.Any()).Return(uint64(1), nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)

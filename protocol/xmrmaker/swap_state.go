@@ -520,6 +520,16 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 	s.XMRClient().Lock()
 	defer s.XMRClient().Unlock()
 
+	height, err := s.XMRClient().GetHeight()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Backend.RecoveryDB().PutMoneroStartHeight(s.ID(), height)
+	if err != nil {
+		return nil, err
+	}
+
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
@@ -550,6 +560,7 @@ func (s *swapState) lockFunds(amount common.MoneroAmount) (*message.NotifyXMRLoc
 	if err != nil {
 		return nil, err
 	}
+
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
 	return &message.NotifyXMRLock{
