@@ -52,7 +52,7 @@ func (mr *MockHostMockRecorder) Advertise() *gomock.Call {
 }
 
 // CloseProtocolStream mocks base method.
-func (m *MockHost) CloseProtocolStream(arg0 types.Hash) {
+func (m *MockHost) CloseProtocolStream(arg0 common0.Hash) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "CloseProtocolStream", arg0)
 }

@@ -49,12 +49,16 @@ const (
 )
 
 // `ganache --deterministic --accounts=50` provides the following keys with
-// 100 ETH on startup. The first 2 keys can be found in const.go and reserved
-// for use in non-test files (files without the _test.go suffix).
+// 1000 ETH on startup. The first 5 are reserved for integration tests and
+// should not be referenced directly in any *_test.go file.
 var ganacheTestKeys = []string{
-	"6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c", // ganache key #2
-	"646f1ce2fdad0e6deeeb5c7e8e5543bdde65e86029e2fd9fc169899c440a7913", // ganache key #3
-	"add53f9a7e588d003326d1cbf9e4a43c061aadd9bc938c843a79e7b4fd2ad743", // ganache key #4
+	/* RESERVED KEYS:
+	 *  "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d", // ganache key #0
+	 *  "6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1", // ganache key #1
+	 *  "6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c", // ganache key #2
+	 *  "646f1ce2fdad0e6deeeb5c7e8e5543bdde65e86029e2fd9fc169899c440a7913", // ganache key #3
+	 *  "add53f9a7e588d003326d1cbf9e4a43c061aadd9bc938c843a79e7b4fd2ad743", // ganache key #4
+	 */
 	"395df67f0c2d2d9fe1ad08d1bc8b6627011959b79c53d7dd6a3536a33ab8a4fd", // ganache key #5
 	"e485d098507f54e7733a205420dfddbe58db035fa577fc294ebd14db90767a52", // ganache key #6
 	"a453611d9419d0e56f499079478fd72c37b251a94bfde4d19872c44cf65386e3", // ganache key #7
