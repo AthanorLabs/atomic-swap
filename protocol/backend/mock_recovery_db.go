@@ -9,7 +9,7 @@ import (
 
 	common "github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	db "github.com/athanorlabs/atomic-swap/db"
 	common0 "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -37,32 +37,18 @@ func (m *MockRecoveryDB) EXPECT() *MockRecoveryDBMockRecorder {
 	return m.recorder
 }
 
-// PutContractAddress mocks base method.
-func (m *MockRecoveryDB) PutContractAddress(arg0 common0.Hash, arg1 common0.Address) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutContractAddress", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// PutContractAddress indicates an expected call of PutContractAddress.
-func (mr *MockRecoveryDBMockRecorder) PutContractAddress(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutContractAddress", reflect.TypeOf((*MockRecoveryDB)(nil).PutContractAddress), arg0, arg1)
-}
-
 // PutContractSwapInfo mocks base method.
-func (m *MockRecoveryDB) PutContractSwapInfo(arg0 common0.Hash, arg1 [32]byte, arg2 contracts.SwapFactorySwap) error {
+func (m *MockRecoveryDB) PutContractSwapInfo(arg0 common0.Hash, arg1 *db.EthereumSwapInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutContractSwapInfo", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "PutContractSwapInfo", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PutContractSwapInfo indicates an expected call of PutContractSwapInfo.
-func (mr *MockRecoveryDBMockRecorder) PutContractSwapInfo(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRecoveryDBMockRecorder) PutContractSwapInfo(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).PutContractSwapInfo), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).PutContractSwapInfo), arg0, arg1)
 }
 
 // PutSharedSwapPrivateKey mocks base method.

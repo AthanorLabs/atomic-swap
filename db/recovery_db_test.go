@@ -24,26 +24,28 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 	rdb := db.recoveryDB
 
 	offerID := types.Hash{5, 6, 7, 8}
-	si := &swapInfo{
-		SwapID: types.Hash{1, 2, 3, 4},
-		Swap: &contracts.SwapFactorySwap{
+	si := &EthereumSwapInfo{
+		StartNumber: big.NewInt(12345),
+		SwapID:      types.Hash{1, 2, 3, 4},
+		Swap: contracts.SwapFactorySwap{
 			Owner:   [20]byte{9, 0xa, 0xb, 0xc},
 			Claimer: [20]byte{0xd, 0xe, 0xf, 0},
 			Value:   big.NewInt(999),
 			Nonce:   big.NewInt(888),
 		},
+		ContractAddress: [20]byte{0xf, 0xf, 0xf, 0xf},
 	}
 
-	expectedStr := `{"swapID":"0x0102030400000000000000000000000000000000000000000000000000000000","swap":{"Owner":"0x090a0b0c00000000000000000000000000000000","Claimer":"0x0d0e0f0000000000000000000000000000000000","PubKeyClaim":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"PubKeyRefund":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Timeout0":null,"Timeout1":null,"Asset":"0x0000000000000000000000000000000000000000","Value":999,"Nonce":888}}`
+	//nolint:lll
+	expectedStr := `{"startNumber":12345,"swapID":"0x0102030400000000000000000000000000000000000000000000000000000000","swap":{"Owner":"0x090a0b0c00000000000000000000000000000000","Claimer":"0x0d0e0f0000000000000000000000000000000000","PubKeyClaim":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"PubKeyRefund":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"Timeout0":null,"Timeout1":null,"Asset":"0x0000000000000000000000000000000000000000","Value":999,"Nonce":888},"contractAddress":"0x0f0f0f0f00000000000000000000000000000000"}`
 	val, err := json.Marshal(si)
 	require.NoError(t, err)
 	require.Equal(t, expectedStr, string(val))
 
-	err = rdb.PutContractSwapInfo(offerID, si.SwapID, si.Swap)
+	err = rdb.PutContractSwapInfo(offerID, si)
 	require.NoError(t, err)
 
-	resSwapID, resSwap, err := rdb.GetContractSwapInfo(offerID)
+	res, err := rdb.GetContractSwapInfo(offerID)
 	require.NoError(t, err)
-	require.Equal(t, [32]byte(si.SwapID), resSwapID)
-	require.Equal(t, si.Swap, resSwap)
+	require.Equal(t, si, res)
 }

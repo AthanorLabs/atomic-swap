@@ -81,8 +81,7 @@ func newBackend(t *testing.T) backend.Backend {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	rdb := backend.NewMockRecoveryDB(ctrl)
-	rdb.EXPECT().PutContractAddress(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 

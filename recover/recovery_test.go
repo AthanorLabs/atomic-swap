@@ -106,7 +106,6 @@ func newBackend(
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	rdb := backend.NewMockRecoveryDB(ctrl)
-	rdb.EXPECT().PutContractAddress(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)

@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
@@ -194,10 +195,6 @@ func newSwapState(
 		info:              info,
 		statusCh:          statusCh,
 		ethAsset:          ethAsset,
-	}
-
-	if err := s.Backend.RecoveryDB().PutContractAddress(s.ID(), b.ContractAddr()); err != nil {
-		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
 	go s.waitForSendKeysMessage()
@@ -519,9 +516,15 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
 	nonce := generateNonce()
-	txHash, receipt, err := s.sender.NewSwap(cmtXMRMaker, cmtXMRTaker,
-		s.xmrmakerAddress, big.NewInt(int64(s.SwapTimeout().Seconds())), nonce,
-		s.ethAsset, amount.BigInt())
+	txHash, receipt, err := s.sender.NewSwap(
+		cmtXMRMaker,
+		cmtXMRTaker,
+		s.xmrmakerAddress,
+		big.NewInt(int64(s.SwapTimeout().Seconds())),
+		nonce,
+		s.ethAsset,
+		amount.BigInt(),
+	)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
@@ -568,7 +571,14 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 		Nonce:        nonce,
 	}
 
-	if err := s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), s.contractSwapID, s.contractSwap); err != nil {
+	ethInfo := &db.EthereumSwapInfo{
+		StartNumber:     receipt.BlockNumber,
+		SwapID:          s.contractSwapID,
+		Swap:            s.contractSwap,
+		ContractAddress: s.Backend.ContractAddr(),
+	}
+
+	if err := s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
 		return ethcommon.Hash{}, err
 	}
 

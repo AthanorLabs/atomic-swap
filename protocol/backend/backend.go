@@ -10,6 +10,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -24,8 +25,8 @@ var (
 
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
-	PutContractAddress(id types.Hash, addr ethcommon.Address) error
-	PutContractSwapInfo(id types.Hash, swapID [32]byte, swap contracts.SwapFactorySwap) error
+	//PutContractAddress(id types.Hash, addr ethcommon.Address) error
+	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
 	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
 	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
 }
