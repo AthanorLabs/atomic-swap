@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.19.x]
-        platform: [macos-latest]
+        platform: [macOS-12]
     runs-on: ${{ matrix.platform }}
     steps:
       - id: go-cache-paths
