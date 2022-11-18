@@ -64,8 +64,8 @@ build: init
 # WARNING: this should not be used in production, as the DLEq prover has been stubbed out and now proves nothing.
 .PHONY: build-go
 build-go:
-	go build -tags=fakedleq ./cmd/swapd
-	go build -tags=fakedleq ./cmd/swapcli
+	GOBIN="$(CURDIR)/bin" go build -tags=fakedleq ./cmd/swapd
+	GOBIN="$(CURDIR)/bin" go build -tags=fakedleq ./cmd/swapcli
 
 # WARNING: this should not be used in production, as the DLEq prover has been stubbed out and now proves nothing.
 .PHONY: build-go-darwin
