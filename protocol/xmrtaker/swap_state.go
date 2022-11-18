@@ -504,7 +504,6 @@ func (s *swapState) approveToken() error {
 }
 
 // lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
-// TODO: update units to not necessarily be an WeiAmount
 func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
 		return ethcommon.Hash{}, errNoPublicKeysSet
