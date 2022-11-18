@@ -122,10 +122,6 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, err
 	}
 
-	// if err := s.Backend.RecoveryDB().PutContractAddress(s.ID(), contractAddr); err != nil {
-	// 	return nil, fmt.Errorf("failed to write contract address to file: %w", err)
-	// }
-
 	if err = s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
