@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -27,7 +26,7 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	s.setXMRMakerKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
 	s.xmrmakerAddress = s.ETHClient().Address()
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
 	ethSwapInfo := &db.EthereumSwapInfo{

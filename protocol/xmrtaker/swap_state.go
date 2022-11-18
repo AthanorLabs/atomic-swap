@@ -43,8 +43,9 @@ type swapState struct {
 	cancel       context.CancelFunc
 	transferBack bool
 
-	info     *pswap.Info
-	statusCh chan types.Status
+	info           *pswap.Info
+	statusCh       chan types.Status
+	providedAmount EthereumAssetAmount
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -91,8 +92,8 @@ func newSwapState(
 	b backend.Backend,
 	offerID types.Hash,
 	transferBack bool,
-	providesAmount common.EtherAmount,
-	receivedAmount common.MoneroAmount,
+	providedAmount EthereumAssetAmount,
+	receivedAmount common.PiconeroAmount,
 	exchangeRate types.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
@@ -111,7 +112,7 @@ func newSwapState(
 	info := pswap.NewInfo(
 		offerID,
 		types.ProvidesETH,
-		providesAmount.AsEther(),
+		providedAmount.AsStandard(),
 		receivedAmount.AsMonero(),
 		exchangeRate,
 		ethAsset,
@@ -199,6 +200,7 @@ func newSwapState(
 		claimedCh:         make(chan struct{}),
 		done:              make(chan struct{}),
 		info:              info,
+		providedAmount:    providedAmount,
 		statusCh:          statusCh,
 		ethAsset:          ethAsset,
 	}
@@ -246,11 +248,7 @@ func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount
 }
 
-func (s *swapState) providedAmountInWei() common.EtherAmount {
-	return common.EtherToWei(s.info.ProvidedAmount)
-}
-
-func (s *swapState) receivedAmountInPiconero() common.MoneroAmount {
+func (s *swapState) receivedAmountInPiconero() common.PiconeroAmount {
 	return common.MoneroToPiconero(s.info.ReceivedAmount)
 }
 
@@ -501,8 +499,7 @@ func (s *swapState) approveToken() error {
 }
 
 // lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
-// TODO: update units to not necessarily be an EtherAmount
-func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error) {
+func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 	if s.pubkeys == nil {
 		return ethcommon.Hash{}, errNoPublicKeysSet
 	}
@@ -529,13 +526,13 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 		big.NewInt(int64(s.SwapTimeout().Seconds())),
 		nonce,
 		s.ethAsset,
-		amount.BigInt(),
+		s.providedAmount.BigInt(),
 	)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
-	log.Debugf("instantiated swap on-chain: amount=%s asset=%s txHash=%s", amount, s.ethAsset, txHash)
+	log.Debugf("instantiated swap on-chain: amount=%s asset=%s txHash=%s", s.providedAmount, s.ethAsset, txHash)
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
@@ -573,7 +570,7 @@ func (s *swapState) lockAsset(amount common.EtherAmount) (ethcommon.Hash, error)
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Asset:        ethcommon.Address(s.ethAsset),
-		Value:        amount.BigInt(),
+		Value:        s.providedAmount.BigInt(),
 		Nonce:        nonce,
 	}
 

@@ -22,7 +22,7 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	unlockedBalance := common.MoneroAmount(balance.UnlockedBalance)
+	unlockedBalance := common.PiconeroAmount(balance.UnlockedBalance)
 	if unlockedBalance < common.MoneroToPiconero(o.MaximumAmount) {
 		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
 	}
