@@ -129,7 +129,7 @@ func (b *Instance) createOngoingSwap(s *swap.Info) error {
 		offer,
 		&types.OfferExtra{}, // TODO: store relayer info in db also
 		b.offerManager,
-		ethSwapInfo.StartNumber,
+		ethSwapInfo,
 		moneroStartHeight,
 		s,
 		sk,
@@ -139,6 +139,14 @@ func (b *Instance) createOngoingSwap(s *swap.Info) error {
 	}
 
 	b.swapStates[s.ID] = ss
+
+	go func() {
+		<-ss.done
+		b.swapMu.Lock()
+		defer b.swapMu.Unlock()
+		delete(b.swapStates, offer.ID)
+	}()
+
 	return nil
 }
 

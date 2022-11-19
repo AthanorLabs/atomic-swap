@@ -16,6 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
@@ -82,6 +83,63 @@ type swapState struct {
 	done chan struct{}
 }
 
+// newSwapStateFromStart returns a new *swapState for a fresh swap.
+func newSwapStateFromStart(
+	b backend.Backend,
+	offer *types.Offer,
+	offerExtra *types.OfferExtra,
+	om *offers.Manager,
+	providesAmount common.PiconeroAmount,
+	desiredAmount EthereumAssetAmount,
+) (*swapState, error) {
+	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
+
+	stage := types.ExpectingKeys
+	if offerExtra.StatusCh == nil {
+		offerExtra.StatusCh = make(chan types.Status, 7)
+	}
+
+	offerExtra.StatusCh <- stage
+	info := pswap.NewInfo(
+		offer.ID,
+		types.ProvidesXMR,
+		providesAmount.AsMonero(),
+		desiredAmount.AsStandard(),
+		exchangeRate,
+		offer.EthAsset,
+		stage,
+		offerExtra.StatusCh,
+	)
+
+	if err := b.SwapManager().AddSwap(info); err != nil {
+		return nil, err
+	}
+
+	moneroStartHeight, err := b.XMRClient().GetChainHeight()
+	if err != nil {
+		return nil, err
+	}
+	// reduce the scan height a little in case there is a block reorg
+	if moneroStartHeight >= monero.MinSpendConfirmations {
+		moneroStartHeight -= monero.MinSpendConfirmations
+	}
+
+	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return newSwapState(
+		b,
+		offer,
+		offerExtra,
+		om,
+		ethHeader.Number,
+		moneroStartHeight,
+		info,
+	)
+}
+
 // newSwapStateFromOngoing returns a new *swapState given information about a swap
 // that's ongoing, but not yet completed.
 func newSwapStateFromOngoing(
@@ -89,7 +147,7 @@ func newSwapStateFromOngoing(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	ethStartNumber *big.Int,
+	ethSwapInfo *db.EthereumSwapInfo,
 	moneroStartNumber uint64,
 	info *pswap.Info,
 	sk *mcrypto.PrivateKeyPair,
@@ -101,12 +159,18 @@ func newSwapStateFromOngoing(
 	}
 
 	s, err := newSwapState(
-		b, offer, offerExtra, om, ethStartNumber, moneroStartNumber, info,
+		b, offer, offerExtra, om, ethSwapInfo.StartNumber, moneroStartNumber, info,
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	err = s.setContract(ethSwapInfo.ContractAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
 	s.privkeys = sk
 	s.pubkeys = sk.PublicKeyPair()
 	return s, nil
@@ -209,63 +273,6 @@ func newSwapState(
 	go s.runHandleEvents()
 	go s.runContractEventWatcher()
 	return s, nil
-}
-
-// newSwapStateFromStart returns a new *swapState for a fresh swap.
-func newSwapStateFromStart(
-	b backend.Backend,
-	offer *types.Offer,
-	offerExtra *types.OfferExtra,
-	om *offers.Manager,
-	providesAmount common.PiconeroAmount,
-	desiredAmount EthereumAssetAmount,
-) (*swapState, error) {
-	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
-
-	stage := types.ExpectingKeys
-	if offerExtra.StatusCh == nil {
-		offerExtra.StatusCh = make(chan types.Status, 7)
-	}
-
-	offerExtra.StatusCh <- stage
-	info := pswap.NewInfo(
-		offer.ID,
-		types.ProvidesXMR,
-		providesAmount.AsMonero(),
-		desiredAmount.AsStandard(),
-		exchangeRate,
-		offer.EthAsset,
-		stage,
-		offerExtra.StatusCh,
-	)
-
-	if err := b.SwapManager().AddSwap(info); err != nil {
-		return nil, err
-	}
-
-	moneroStartHeight, err := b.XMRClient().GetChainHeight()
-	if err != nil {
-		return nil, err
-	}
-	// reduce the scan height a little in case there is a block reorg
-	if moneroStartHeight >= monero.MinSpendConfirmations {
-		moneroStartHeight -= monero.MinSpendConfirmations
-	}
-
-	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return newSwapState(
-		b,
-		offer,
-		offerExtra,
-		om,
-		ethHeader.Number,
-		moneroStartHeight,
-		info,
-	)
 }
 
 // SendKeysMessage ...
