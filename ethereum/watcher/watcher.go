@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -75,6 +76,8 @@ func (f *EventFilter) Start() error {
 				continue
 			}
 
+			fmt.Printf("filtering for logs from %d to %d\n", f.filterQuery.FromBlock, f.filterQuery.ToBlock)
+
 			// let's see if we have logs
 			logs, err := f.ec.FilterLogs(f.ctx, f.filterQuery)
 			if err != nil {
@@ -91,6 +94,7 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
+				fmt.Printf("found log: %v\n", l)
 				f.logCh <- l
 			}
 

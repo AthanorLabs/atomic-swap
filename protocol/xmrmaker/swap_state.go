@@ -173,6 +173,8 @@ func newSwapStateFromOngoing(
 	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
 	s.privkeys = sk
 	s.pubkeys = sk.PublicKeyPair()
+	s.contractSwapID = ethSwapInfo.SwapID
+	s.contractSwap = ethSwapInfo.Swap
 	return s, nil
 }
 
@@ -315,14 +317,14 @@ func (s *swapState) exit() error {
 	log.Debugf("attempting to exit swap: nextExpectedEvent=%v", s.nextExpectedEvent)
 
 	defer func() {
+		// TODO: also remove swap info from RecoveryDB
+
 		err := s.SwapManager().CompleteOngoingSwap(s.offer.ID)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.offer.ID, err)
 			return
 		}
 
-		// TODO: when recovery from disk is implemented, remove s.offer != nil as
-		// it should always be set
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
 			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
@@ -403,51 +405,6 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.moneroStartHeight)
 }
 
-// func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
-// 	const refundedEvent = "Refunded"
-
-// 	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
-// 		Addresses: []ethcommon.Address{s.ContractAddr()},
-// 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
-// 	})
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to filter logs: %w", err)
-// 	}
-
-// 	if len(logs) == 0 {
-// 		return nil, errNoRefundLogsFound
-// 	}
-
-// 	var (
-// 		foundLog ethtypes.Log
-// 		found    bool
-// 	)
-
-// 	for _, log := range logs {
-// 		matches, err := contracts.CheckIfLogIDMatches(log, refundedEvent, s.contractSwapID) //nolint:govet
-// 		if err != nil {
-// 			continue
-// 		}
-
-// 		if matches {
-// 			foundLog = log
-// 			found = true
-// 			break
-// 		}
-// 	}
-
-// 	if !found {
-// 		return nil, errNoRefundLogsFound
-// 	}
-
-// 	sa, err := contracts.GetSecretFromLog(&foundLog, refundedEvent)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
-// 	}
-
-// 	return sa, nil
-// }
-
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
 // if the funds are locked.
@@ -471,7 +428,13 @@ func generateKeys() (*pcommon.KeysAndProof, error) {
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
 func (s *swapState) getSecret() [32]byte {
-	return s.dleqProof.Secret()
+	if s.dleqProof != nil {
+		return s.dleqProof.Secret()
+	}
+
+	var secret [32]byte
+	copy(secret[:], common.Reverse(s.privkeys.SpendKey().Bytes()))
+	return secret
 }
 
 // setXMRTakerPublicKeys sets XMRTaker's public spend and view keys

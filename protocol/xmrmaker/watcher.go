@@ -31,9 +31,12 @@ func (s *swapState) runContractEventWatcher() {
 	}
 }
 
-func (s *swapState) handleReadyLogs(log *ethtypes.Log) error {
-	err := pcommon.CheckSwapID(log, "Ready", s.contractSwapID)
+func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
+	log.Infof("got ready log %v", l)
+
+	err := pcommon.CheckSwapID(l, "Ready", s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
+		log.Infof("log not for us")
 		return nil
 	}
 	if err != nil {

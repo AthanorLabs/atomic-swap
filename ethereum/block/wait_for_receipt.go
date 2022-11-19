@@ -16,8 +16,9 @@ import (
 
 const (
 	// in total, we will wait up to 1 hour for a transaction to be included
-	maxRetries           = 360
-	receiptSleepDuration = time.Second * 10
+	maxRetries = 360
+	// TODO: this should vary based on environment, can increase to 12s for mainnet.
+	receiptSleepDuration = time.Second * 2
 )
 
 var (
@@ -29,6 +30,10 @@ var (
 // we return an error describing why.
 func WaitForReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Hash) (*ethtypes.Receipt, error) {
 	for i := 0; i < maxRetries; i++ {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
 		receipt, err := ec.TransactionReceipt(ctx, txHash)
 		if err != nil {
 			log.Infof("waiting for transaction to be included in chain: txHash=%s", txHash)
