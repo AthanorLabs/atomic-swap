@@ -130,7 +130,6 @@ func (m *Manager) DeleteOfferFromDB(id types.Hash) error {
 }
 
 // GetOfferFromDB returns an offer from memory or the database, if it exists.
-// TODO: make rename better (or rename other func)
 func (m *Manager) GetOfferFromDB(id types.Hash) (*types.Offer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
