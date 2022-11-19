@@ -113,7 +113,7 @@ func (b *Instance) createOngoingSwap(s *swap.Info) error {
 		defer b.backend.XMRClient().Unlock()
 
 		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet(
+		addr, err := monero.CreateWallet( //nolint:govet
 			"xmrmaker-swap-wallet",
 			b.backend.Env(),
 			b.backend.XMRClient(),
