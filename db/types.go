@@ -20,5 +20,5 @@ type EthereumSwapInfo struct {
 	SwapID types.Hash `json:"swap_id"`
 	// Swap is the `Swap` structure inside SwapFactory.sol.
 	Swap            contracts.SwapFactorySwap `json:"swap"`
-	ContractAddress ethcommon.Address         `json:"contractSwap_address"`
+	ContractAddress ethcommon.Address         `json:"contract_address"`
 }
