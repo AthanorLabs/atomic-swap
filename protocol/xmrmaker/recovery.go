@@ -8,10 +8,10 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 type recoveryState struct {
@@ -20,9 +20,13 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.PrivateSpendKey,
-	contractAddr ethcommon.Address,
-	contractSwapID [32]byte, contractSwap contracts.SwapFactorySwap) (*recoveryState, error) {
+func NewRecoveryState(
+	b backend.Backend,
+	swapID types.Hash,
+	dataDir string,
+	secret *mcrypto.PrivateSpendKey,
+	ethSwapInfo *db.EthereumSwapInfo,
+) (*recoveryState, error) {
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
 		return nil, err
@@ -39,28 +43,34 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(b.Ctx())
-	s := &swapState{
-		ctx:            ctx,
-		cancel:         cancel,
-		Backend:        b,
-		sender:         sender,
-		privkeys:       kp,
-		pubkeys:        pubkp,
-		dleqProof:      dleq.NewProofWithSecret(sc),
-		contractSwapID: contractSwapID,
-		contractSwap:   contractSwap,
-		offerExtra: &types.OfferExtra{
-			InfoFile: pcommon.GetSwapRecoveryFilepath(dataDir),
-		},
-		walletScanHeight: 0, // could optimise this if we start recording it in the swap recovery info
-	}
-
-	if err := s.setContract(contractAddr); err != nil {
+	moneroHeight, err := b.RecoveryDB().GetMoneroStartHeight(swapID)
+	if err != nil {
 		return nil, err
 	}
 
-	s.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
+	ctx, cancel := context.WithCancel(b.Ctx())
+	s := &swapState{
+		ctx:              ctx,
+		cancel:           cancel,
+		Backend:          b,
+		sender:           sender,
+		privkeys:         kp,
+		pubkeys:          pubkp,
+		dleqProof:        dleq.NewProofWithSecret(sc),
+		contractSwapID:   ethSwapInfo.SwapID,
+		contractSwap:     ethSwapInfo.Swap,
+		info:             &pswap.Info{},
+		offerExtra:       &types.OfferExtra{},
+		walletScanHeight: moneroHeight,
+	}
+
+	if err := s.setContract(ethSwapInfo.ContractAddress); err != nil {
+		return nil, err
+	}
+
+	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
+
+	// TODO: scan for events only starting from ethSwapInfo.StartHeight
 	return &recoveryState{
 		ss: s,
 	}, nil

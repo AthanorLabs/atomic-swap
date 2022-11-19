@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"math/big"
-	"os"
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
@@ -12,6 +10,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -87,10 +86,6 @@ func (*mockXMRTaker) Provides() types.ProvidesCoin {
 	panic("not implemented")
 }
 
-func (*mockXMRTaker) SetGasPrice(gasPrice uint64) {
-	panic("not implemented")
-}
-
 func (*mockXMRTaker) GetOngoingSwapState(types.Hash) common.SwapState {
 	return new(mockSwapState)
 }
@@ -124,7 +119,6 @@ func (m *mockXMRMaker) GetOngoingSwapState(hash types.Hash) common.SwapState {
 func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ float64) (*types.OfferExtra, error) {
 	offerExtra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, 1),
-		InfoFile: "/dev/null",
 	}
 	offerExtra.StatusCh <- types.CompletedSuccess
 	return offerExtra, nil
@@ -160,10 +154,6 @@ func (*mockSwapState) ID() types.Hash {
 	return testSwapID
 }
 
-func (*mockSwapState) InfoFile() string {
-	return os.TempDir() + "test.infofile"
-}
-
 type mockProtocolBackend struct {
 	sm *mockSwapManager
 }
@@ -178,10 +168,6 @@ func (*mockProtocolBackend) Env() common.Environment {
 	return common.Development
 }
 
-func (*mockProtocolBackend) SetGasPrice(uint64) {
-	panic("not implemented")
-}
-
 func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {
 	panic("not implemented")
 }
@@ -190,18 +176,14 @@ func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }
 
-func (*mockProtocolBackend) SetEthAddress(ethcommon.Address) {
-	panic("not implemented")
-}
-
-func (*mockProtocolBackend) EthBalance() (ethcommon.Address, *big.Int, error) {
-	panic("not implemented")
-}
-
 func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {
 	panic("not implemented")
 }
 
 func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) ETHClient() extethclient.EthClient {
 	panic("not implemented")
 }

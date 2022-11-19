@@ -12,9 +12,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 )
@@ -27,8 +27,13 @@ type recoveryState struct {
 
 // NewRecoveryState returns a new *xmrmaker.recoveryState,
 // which has methods to either claim ether or reclaim monero from an initiated swap.
-func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.PrivateSpendKey,
-	contractSwapID [32]byte, contractSwap contracts.SwapFactorySwap) (*recoveryState, error) {
+func NewRecoveryState(
+	b backend.Backend,
+	swapID types.Hash,
+	dataDir string,
+	secret *mcrypto.PrivateSpendKey,
+	ethSwapInfo *db.EthereumSwapInfo,
+) (*recoveryState, error) {
 	kp, err := secret.AsPrivateKeyPair()
 	if err != nil {
 		return nil, err
@@ -45,6 +50,11 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		return nil, err
 	}
 
+	moneroHeight, err := b.RecoveryDB().GetMoneroStartHeight(swapID)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:              ctx,
@@ -54,10 +64,9 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		privkeys:         kp,
 		pubkeys:          pubkp,
 		dleqProof:        dleq.NewProofWithSecret(sc),
-		walletScanHeight: 0, // TODO: Can we optimise this?
-		contractSwapID:   contractSwapID,
-		contractSwap:     contractSwap,
-		infoFile:         pcommon.GetSwapRecoveryFilepath(dataDir),
+		walletScanHeight: moneroHeight,
+		contractSwapID:   ethSwapInfo.SwapID,
+		contractSwap:     ethSwapInfo.Swap,
 		claimedCh:        make(chan struct{}),
 		info:             pswap.NewEmptyInfo(),
 		eventCh:          make(chan Event),
@@ -67,7 +76,9 @@ func NewRecoveryState(b backend.Backend, dataDir string, secret *mcrypto.Private
 		ss: s,
 	}
 
-	rs.ss.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
+	rs.ss.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
+
+	// TODO: scan for events only starting from ethSwapInfo.StartHeight
 	return rs, nil
 }
 
@@ -127,7 +138,7 @@ func (rs *recoveryState) ClaimOrRefund() (*RecoveryResult, error) {
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	const claimedEvent = "Claimed"
 
-	logs, err := s.FilterLogs(s.ctx, eth.FilterQuery{
+	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
 	})

@@ -1,7 +1,6 @@
 package offers
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -43,7 +42,6 @@ func Test_Manager(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, offer)
 		require.NotNil(t, offerExtra)
-		require.True(t, strings.HasPrefix(offerExtra.InfoFile, infoDir))
 	}
 
 	offers = mgr.GetOffers()

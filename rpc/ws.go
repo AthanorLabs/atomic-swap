@@ -127,12 +127,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		ch, infofile, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
+		ch, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, ch, infofile)
+		return s.subscribeTakeOffer(s.ctx, conn, ch)
 	case rpctypes.SubscribeMakeOffer:
 		var params *rpctypes.MakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -166,7 +166,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 		return err
 	}
 
-	s.backend.SetEthAddress(ethcommon.HexToAddress(ethAddress))
+	s.backend.ETHClient().SetAddress(ethcommon.HexToAddress(ethAddress))
 	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
 	defer s.backend.ClearXMRDepositAddress(offerID)
 
@@ -222,15 +222,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 }
 
 func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	statusCh <-chan types.Status, infofile string) error {
-	resp := &rpctypes.TakeOfferResponse{
-		InfoFile: infofile,
-	}
-
-	if err := writeResponse(conn, resp); err != nil {
-		return err
-	}
-
+	statusCh <-chan types.Status) error {
 	for {
 		select {
 		case status, ok := <-statusCh:
@@ -258,8 +250,7 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 	offerID string, offerExtra *types.OfferExtra) error {
 	resp := &rpctypes.MakeOfferResponse{
-		ID:       offerID,
-		InfoFile: offerExtra.InfoFile,
+		ID: offerID,
 	}
 
 	if err := writeResponse(conn, resp); err != nil {

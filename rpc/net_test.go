@@ -45,9 +45,7 @@ func TestNet_TakeOffer(t *testing.T) {
 		ProvidesAmount: 1,
 	}
 
-	resp := new(rpctypes.TakeOfferResponse)
-
-	err := ns.TakeOffer(nil, req, resp)
+	err := ns.TakeOffer(nil, req, nil)
 	require.NoError(t, err)
 }
 

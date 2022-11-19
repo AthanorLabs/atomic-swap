@@ -13,16 +13,16 @@ func (b *Instance) MakeOffer(
 	relayerEndpoint string,
 	relayerCommission float64,
 ) (*types.OfferExtra, error) {
-	b.backend.LockClient()
-	defer b.backend.UnlockClient()
+	b.backend.XMRClient().Lock()
+	defer b.backend.XMRClient().Unlock()
 
 	// get monero balance
-	balance, err := b.backend.GetBalance(0)
+	balance, err := b.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
 
-	unlockedBalance := common.MoneroAmount(balance.UnlockedBalance)
+	unlockedBalance := common.PiconeroAmount(balance.UnlockedBalance)
 	if unlockedBalance < common.MoneroToPiconero(o.MaximumAmount) {
 		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
 	}

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -27,7 +28,6 @@ const (
 	integrationMode   = "integration"
 	generateBlocksEnv = "GENERATEBLOCKS"
 	falseStr          = "false"
-	contractAddrEnv   = "CONTRACT_ADDR"
 
 	defaultXMRTakerSwapdEndpoint   = "http://localhost:5001"
 	defaultXMRTakerSwapdWSEndpoint = "ws://localhost:5001/ws"
@@ -51,10 +51,6 @@ func TestRunIntegrationTests(t *testing.T) {
 	if testing.Short() || os.Getenv(testsEnv) != integrationMode {
 		t.Skip()
 	}
-
-	// setup transaction relayer
-	setupRelayer(t)
-
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
@@ -76,7 +72,7 @@ func (s *IntegrationTestSuite) setSwapTimeout(timeoutSeconds uint64) {
 // mineMinXMRMakerBalance is similar to monero.MineMinXMRBalance(...), but this version
 // uses the swapd RPC Balances method to get the wallet address and balance from a
 // running swapd instance instead of interacting with a wallet.
-func mineMinXMRMakerBalance(t *testing.T, minBalance common.MoneroAmount) {
+func mineMinXMRMakerBalance(t *testing.T, minBalance common.PiconeroAmount) {
 	daemonCli := monerorpc.New(monero.MonerodRegtestEndpoint, nil).Daemon
 	for {
 		balances, err := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint).Balances()
@@ -174,7 +170,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	relayerEndpoint string,
 	relayerCommission float64,
 ) {
-	const testTimeout = time.Second * 75
+	const testTimeout = time.Second * 90
 
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
@@ -211,7 +207,11 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 				}
 				return
 			case <-ctx.Done():
-				errCh <- fmt.Errorf("make offer context canceled: %w", ctx.Err())
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					errCh <- fmt.Errorf("test timed out")
+				} else {
+					errCh <- fmt.Errorf("make offer context canceled")
+				}
 				return
 			}
 		}
@@ -744,7 +744,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 		defer wg.Done()
 		wsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05) //nolint:govet
 		if err != nil {
 			errCh <- err
 			return
@@ -771,7 +771,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 		defer wg.Done()
 		wsc := s.newSwapdWSClient(ctx, defaultCharlieSwapdWSEndpoint)
 
-		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
+		takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05) //nolint:govet
 		if err != nil {
 			errCh <- err
 			return
@@ -796,16 +796,20 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 	wg.Wait()
 
 	select {
-	case err := <-errCh:
+	case err = <-errCh:
 		require.NotNil(s.T(), err)
 		s.T().Log("got expected error:", err)
 	case <-ctx.Done():
-		s.T().Fatalf("did not get error from XMRTaker or Charlie")
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			s.Fail("Test timed out")
+		} else {
+			s.Fail("Did not get error from XMRTaker or Charlie")
+		}
 	}
 
 	select {
-	case err := <-errCh:
-		s.T().Fatalf("should only have one error! also got %s", err)
+	case err = <-errCh:
+		s.Failf("Should only have one error!", "Second error: %s", err)
 	default:
 	}
 }

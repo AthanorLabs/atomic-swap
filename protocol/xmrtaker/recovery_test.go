@@ -1,13 +1,14 @@
 package xmrtaker
 
 import (
-	"path"
+	"math/big"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -23,13 +24,19 @@ func newTestRecoveryState(t *testing.T, timeout time.Duration) *recoveryState {
 	s.dleqProof = akp.DLEqProof
 
 	s.setXMRMakerKeys(s.pubkeys.SpendKey(), s.privkeys.ViewKey(), akp.Secp256k1PublicKey)
-	s.xmrmakerAddress = s.EthAddress()
+	s.xmrmakerAddress = s.ETHClient().Address()
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
-	dataDir := path.Join(t.TempDir(), "test-infoFile")
-	rs, err := NewRecoveryState(s, dataDir, s.privkeys.SpendKey(), s.contractSwapID, s.contractSwap)
+	ethSwapInfo := &db.EthereumSwapInfo{
+		SwapID:      s.contractSwapID,
+		Swap:        s.contractSwap,
+		StartNumber: big.NewInt(1),
+	}
+
+	dataDir := t.TempDir()
+	rs, err := NewRecoveryState(s, types.Hash{}, dataDir, s.privkeys.SpendKey(), ethSwapInfo)
 	require.NoError(t, err)
 	return rs
 }
@@ -45,12 +52,12 @@ func TestClaimOrRefund_Claim(t *testing.T) {
 
 	// call swap.Claim()
 	sc := rs.ss.getSecret()
-	txOpts, err := rs.ss.TxOpts()
+	txOpts, err := rs.ss.ETHClient().TxOpts(rs.ss.ctx)
 	require.NoError(t, err)
 
 	tx, err := rs.ss.Contract().Claim(txOpts, rs.ss.contractSwap, sc)
 	require.NoError(t, err)
-	tests.MineTransaction(t, rs.ss, tx)
+	tests.MineTransaction(t, rs.ss.ETHClient().Raw(), tx)
 	t.Log("XMRMaker claimed ETH...")
 
 	// assert we can claim the monero

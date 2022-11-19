@@ -116,7 +116,7 @@ func TestBackgroundMineBlocks(t *testing.T) {
 
 // MineMinXMRBalance enables mining for the passed wc wallet until it has an unlocked balance greater
 // than or equal to minBalance.
-func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.MoneroAmount) {
+func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.PiconeroAmount) {
 	daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 	addr, err := wc.GetAddress(0)
 	require.NoError(t, err)

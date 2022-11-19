@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"math/big"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -28,8 +28,6 @@ import (
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
-
-var infofile = os.TempDir() + "/test.keys"
 
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
@@ -80,16 +78,28 @@ func newBackend(t *testing.T) backend.Backend {
 	addr, err := bind.WaitDeployed(ctx, ec, tx)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	rdb := backend.NewMockRecoveryDB(ctrl)
+	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutMoneroStartHeight(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().GetMoneroStartHeight(gomock.Any()).Return(uint64(1), nil).AnyTimes()
+
+	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	require.NoError(t, err)
+
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      ec,
-		EthereumPrivateKey:  pk,
+		EthereumClient:      extendedEC,
 		Environment:         common.Development,
 		SwapManager:         newSwapManager(t),
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		Net:                 new(mockNet),
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -99,8 +109,8 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
-		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAssetETH)
+	swapState, err := newSwapState(b, types.Hash{}, false,
+		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
 }
@@ -108,23 +118,23 @@ func newTestInstance(t *testing.T) *swapState {
 func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
 	b := newBackend(t)
 
-	txOpts, err := b.TxOpts()
+	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
 	require.NoError(t, err)
 
 	_, tx, contract, err := contracts.DeployERC20Mock(
 		txOpts,
-		b.EthClient(),
+		b.ETHClient().Raw(),
 		"Mock",
 		"MOCK",
-		b.EthAddress(),
+		b.ETHClient().Address(),
 		initialBalance,
 	)
 	require.NoError(t, err)
-	addr, err := bind.WaitDeployed(b.Ctx(), b.EthClient(), tx)
+	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
-	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
-		common.NewEtherAmount(1), common.MoneroAmount(0), 1, types.EthAsset(addr))
+	swapState, err := newSwapState(b, types.Hash{}, false,
+		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }
@@ -224,7 +234,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -256,7 +266,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
@@ -281,7 +291,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	}
 
 	// check balance of contract is 0
-	balance, err := s.BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.ETHClient().Raw().BalanceAt(context.Background(), s.ContractAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -311,7 +321,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -336,7 +346,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -362,7 +372,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		xmrmakerKeysAndProof.Secp256k1PublicKey)
 
-	_, err = s.lockAsset(common.NewEtherAmount(1))
+	_, err = s.lockAsset()
 	require.NoError(t, err)
 
 	err = s.Exit()
@@ -378,7 +388,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 	s, contract := newTestInstanceWithERC20(t, initialBalance)
 	err := s.approveToken()
 	require.NoError(t, err)
-	allowance, err := contract.Allowance(&bind.CallOpts{}, s.EthAddress(), s.ContractAddr())
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.ContractAddr())
 	require.NoError(t, err)
 	require.Equal(t, initialBalance, allowance)
 }
