@@ -57,6 +57,8 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
+// NewPrivateKeyPairFromHex returns a PrivateKeyPair from the given hex-encoded byte
+// representation of a private spend and view key.
 func NewPrivateKeyPairFromHex(skHex, vkHex string) (*PrivateKeyPair, error) {
 	skBytes, err := hex.DecodeString(skHex)
 	if err != nil {

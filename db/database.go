@@ -90,6 +90,7 @@ func (db *Database) DeleteOffer(id types.Hash) error {
 	return db.offerTable.Del(id[:])
 }
 
+// GetOffer returns the given offer from the db, if it exists.
 func (db *Database) GetOffer(id types.Hash) (*types.Offer, error) {
 	val, err := db.offerTable.Get(id[:])
 	if err != nil {

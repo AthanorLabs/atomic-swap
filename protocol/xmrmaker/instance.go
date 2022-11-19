@@ -99,9 +99,8 @@ func (b *Instance) checkForOngoingSwaps() error {
 }
 
 func (b *Instance) createOngoingSwap(s *swap.Info) error {
-	// TODO
-	// 1. check if have shared secret key in db; if so, recover
-	// 2. create new swap state from recovery info
+	// TODO: check if we have shared secret key in db; if so, recover XMR from that
+	// otherwise, create new swap state from recovery info
 
 	offer, err := b.offerManager.GetOfferFromDB(s.ID)
 	if err != nil {

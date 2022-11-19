@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	eth "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
@@ -258,7 +257,7 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	return newSwapStateFromOngoing(
+	return newSwapState(
 		b,
 		offer,
 		offerExtra,
@@ -266,7 +265,6 @@ func newSwapStateFromStart(
 		ethHeader.Number,
 		moneroStartHeight,
 		info,
-		nil,
 	)
 }
 
@@ -398,50 +396,50 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.moneroStartHeight)
 }
 
-func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
-	const refundedEvent = "Refunded"
+// func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
+// 	const refundedEvent = "Refunded"
 
-	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{s.ContractAddr()},
-		Topics:    [][]ethcommon.Hash{{refundedTopic}},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to filter logs: %w", err)
-	}
+// 	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
+// 		Addresses: []ethcommon.Address{s.ContractAddr()},
+// 		Topics:    [][]ethcommon.Hash{{refundedTopic}},
+// 	})
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to filter logs: %w", err)
+// 	}
 
-	if len(logs) == 0 {
-		return nil, errNoRefundLogsFound
-	}
+// 	if len(logs) == 0 {
+// 		return nil, errNoRefundLogsFound
+// 	}
 
-	var (
-		foundLog ethtypes.Log
-		found    bool
-	)
+// 	var (
+// 		foundLog ethtypes.Log
+// 		found    bool
+// 	)
 
-	for _, log := range logs {
-		matches, err := contracts.CheckIfLogIDMatches(log, refundedEvent, s.contractSwapID) //nolint:govet
-		if err != nil {
-			continue
-		}
+// 	for _, log := range logs {
+// 		matches, err := contracts.CheckIfLogIDMatches(log, refundedEvent, s.contractSwapID) //nolint:govet
+// 		if err != nil {
+// 			continue
+// 		}
 
-		if matches {
-			foundLog = log
-			found = true
-			break
-		}
-	}
+// 		if matches {
+// 			foundLog = log
+// 			found = true
+// 			break
+// 		}
+// 	}
 
-	if !found {
-		return nil, errNoRefundLogsFound
-	}
+// 	if !found {
+// 		return nil, errNoRefundLogsFound
+// 	}
 
-	sa, err := contracts.GetSecretFromLog(&foundLog, refundedEvent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret from log: %w", err)
-	}
+// 	sa, err := contracts.GetSecretFromLog(&foundLog, refundedEvent)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
+// 	}
 
-	return sa, nil
-}
+// 	return sa, nil
+// }
 
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
