@@ -16,6 +16,7 @@ var errNoSwapWithID = errors.New("unable to find swap with given ID")
 // Manager tracks current and past swaps.
 type Manager interface {
 	AddSwap(info *Info) error
+	WriteSwapToDB(info *Info) error
 	GetPastIDs() ([]types.Hash, error)
 	GetPastSwap(types.Hash) (*Info, error)
 	GetOngoingSwap(types.Hash) (*Info, error)
@@ -72,6 +73,11 @@ func (m *manager) AddSwap(info *Info) error {
 		m.past[info.ID] = info
 	}
 
+	return m.db.PutSwap(info)
+}
+
+// WriteSwapToDB writes the swap to the database.
+func (m *manager) WriteSwapToDB(info *Info) error {
 	return m.db.PutSwap(info)
 }
 

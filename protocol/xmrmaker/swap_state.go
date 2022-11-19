@@ -92,7 +92,10 @@ func newSwapStateFromStart(
 ) (*swapState, error) {
 	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
 
-	stage := types.ExpectingKeys
+	// at this point, we've received the counterparty's keys,
+	// and will send our own after this function returns.
+	// see HandleInitiateMessage().
+	stage := types.KeysExchanged
 	if offerExtra.StatusCh == nil {
 		offerExtra.StatusCh = make(chan types.Status, 7)
 	}

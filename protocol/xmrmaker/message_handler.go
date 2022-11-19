@@ -57,9 +57,10 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event EventType) {
+func (s *swapState) setNextExpectedEvent(event EventType) error {
 	if s.nextExpectedEvent == EventNoneType {
-		return
+		// should have called clearNextExpectedEvent instead
+		panic("cannot set next expected event to EventNoneType")
 	}
 
 	if event == s.nextExpectedEvent {
@@ -68,14 +69,22 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 
 	s.nextExpectedEvent = event
 	status := event.getStatus()
-	// TODO: we need to write this to the db also
-	if status != types.UnknownStatus {
-		s.info.SetStatus(status)
+
+	if status == types.UnknownStatus {
+		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
-	if s.offerExtra.StatusCh != nil && status != types.UnknownStatus {
+	s.info.SetStatus(status)
+	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
+	if err != nil {
+		return err
+	}
+
+	if s.offerExtra.StatusCh != nil {
 		s.offerExtra.StatusCh <- status
 	}
+
+	return nil
 }
 
 func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Message, error) {

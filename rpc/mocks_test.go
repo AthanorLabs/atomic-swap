@@ -48,6 +48,10 @@ func (*mockNet) CloseProtocolStream(types.Hash) {
 
 type mockSwapManager struct{}
 
+func (*mockSwapManager) WriteSwapToDB(_ *swap.Info) error {
+	return nil
+}
+
 func (*mockSwapManager) GetPastIDs() ([]types.Hash, error) {
 	panic("not implemented")
 }
