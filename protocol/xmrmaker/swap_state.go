@@ -63,7 +63,7 @@ type swapState struct {
 	// XMRTaker's keys for this session
 	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
 	xmrtakerSecp256K1PublicKey *secp256k1.PublicKey
-	walletScanHeight           uint64 // height of the monero blockchain when the swap is started
+	moneroStartHeight          uint64 // height of the monero blockchain when the swap is started
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
@@ -83,7 +83,137 @@ type swapState struct {
 	done chan struct{}
 }
 
+// newSwapStateFromOngoing returns a new *swapState given information about a swap
+// that's ongoing, but not yet completed.
+func newSwapStateFromOngoing(
+	b backend.Backend,
+	offer *types.Offer,
+	offerExtra *types.OfferExtra,
+	om *offers.Manager,
+	ethStartNumber *big.Int,
+	moneroStartNumber uint64,
+	info *pswap.Info,
+	sk *mcrypto.PrivateKeyPair,
+) (*swapState, error) {
+	// TODO: do we want to support the case where the ETH has been locked,
+	// but we haven't locked yet?
+	if info.Status != types.XMRLocked {
+		return nil, errInvalidStageForRecovery
+	}
+
+	s, err := newSwapState(
+		b, offer, offerExtra, om, ethStartNumber, moneroStartNumber, info,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	s.privkeys = sk
+	s.pubkeys = sk.PublicKeyPair()
+	return s, nil
+}
+
 func newSwapState(
+	b backend.Backend,
+	offer *types.Offer,
+	offerExtra *types.OfferExtra,
+	om *offers.Manager,
+	ethStartNumber *big.Int,
+	moneroStartNumber uint64,
+	info *pswap.Info,
+) (*swapState, error) {
+	var sender txsender.Sender
+	if offer.EthAsset != types.EthAssetETH {
+		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETHClient().Raw())
+		if err != nil {
+			return nil, err
+		}
+
+		sender, err = b.NewTxSender(offer.EthAsset.Address(), erc20Contract)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		sender, err = b.NewTxSender(offer.EthAsset.Address(), nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// set up ethereum event watchers
+	const logChSize = 16 // arbitrary, we just don't want the watcher to block on writing
+	logReadyCh := make(chan ethtypes.Log, logChSize)
+	logRefundedCh := make(chan ethtypes.Log, logChSize)
+
+	// Create per swap context that is canceled when the swap completes
+	ctx, cancel := context.WithCancel(b.Ctx())
+
+	readyWatcher := watcher.NewEventFilter(
+		ctx,
+		b.ETHClient().Raw(),
+		b.ContractAddr(),
+		ethStartNumber,
+		readyTopic,
+		logReadyCh,
+	)
+
+	refundedWatcher := watcher.NewEventFilter(
+		ctx,
+		b.ETHClient().Raw(),
+		b.ContractAddr(),
+		ethStartNumber,
+		refundedTopic,
+		logRefundedCh,
+	)
+
+	err := readyWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	err = refundedWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	// note: if this is recovering an ongoing swap, this will only
+	// be invoked if our status is XMRLocked; ie. we've locked XMR,
+	// but not yet claimed or refunded.
+	//
+	// dleqProof and secp256k1Pub are never set, as they are only used
+	// in the swap steps before XMR is locked.
+	//
+	// similarly, xmrtakerPublicKeys and xmrtakerSecp256K1PublicKey are
+	// also never set, as they're only used to check the contract
+	// before we lock XMR.
+	s := &swapState{
+		ctx:               ctx,
+		cancel:            cancel,
+		Backend:           b,
+		sender:            sender,
+		offer:             offer,
+		offerExtra:        offerExtra,
+		offerManager:      om,
+		moneroStartHeight: moneroStartNumber,
+		nextExpectedEvent: nextExpectedEventFromStatus(info.Status),
+		logReadyCh:        logReadyCh,
+		logRefundedCh:     logRefundedCh,
+		eventCh:           make(chan Event, 1),
+		readyCh:           make(chan struct{}),
+		info:              info,
+		done:              make(chan struct{}),
+	}
+
+	go s.runHandleEvents()
+	go s.runContractEventWatcher()
+	return s, nil
+}
+
+// newSwapStateFromStart returns a new *swapState for a fresh swap.
+func newSwapStateFromStart(
 	b backend.Backend,
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
@@ -114,32 +244,13 @@ func newSwapState(
 		return nil, err
 	}
 
-	var sender txsender.Sender
-	if offer.EthAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETHClient().Raw())
-		if err != nil {
-			return nil, err
-		}
-
-		sender, err = b.NewTxSender(offer.EthAsset.Address(), erc20Contract)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		var err error
-		sender, err = b.NewTxSender(offer.EthAsset.Address(), nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	walletScanHeight, err := b.XMRClient().GetChainHeight()
+	moneroStartHeight, err := b.XMRClient().GetChainHeight()
 	if err != nil {
 		return nil, err
 	}
 	// reduce the scan height a little in case there is a block reorg
-	if walletScanHeight >= monero.MinSpendConfirmations {
-		walletScanHeight -= monero.MinSpendConfirmations
+	if moneroStartHeight >= monero.MinSpendConfirmations {
+		moneroStartHeight -= monero.MinSpendConfirmations
 	}
 
 	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
@@ -147,65 +258,16 @@ func newSwapState(
 		return nil, err
 	}
 
-	// set up ethereum event watchers
-	const logChSize = 16 // arbitrary, we just don't want the watcher to block on writing
-	logReadyCh := make(chan ethtypes.Log, logChSize)
-	logRefundedCh := make(chan ethtypes.Log, logChSize)
-
-	// Create per swap context that is canceled when the swap completes
-	ctx, cancel := context.WithCancel(b.Ctx())
-
-	readyWatcher := watcher.NewEventFilter(
-		ctx,
-		b.ETHClient().Raw(),
-		b.ContractAddr(),
+	return newSwapStateFromOngoing(
+		b,
+		offer,
+		offerExtra,
+		om,
 		ethHeader.Number,
-		readyTopic,
-		logReadyCh,
+		moneroStartHeight,
+		info,
+		nil,
 	)
-
-	refundedWatcher := watcher.NewEventFilter(
-		ctx,
-		b.ETHClient().Raw(),
-		b.ContractAddr(),
-		ethHeader.Number,
-		refundedTopic,
-		logRefundedCh,
-	)
-
-	err = readyWatcher.Start()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
-	err = refundedWatcher.Start()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
-	s := &swapState{
-		ctx:               ctx,
-		cancel:            cancel,
-		Backend:           b,
-		sender:            sender,
-		offer:             offer,
-		offerExtra:        offerExtra,
-		offerManager:      om,
-		walletScanHeight:  walletScanHeight,
-		nextExpectedEvent: EventETHLockedType,
-		logReadyCh:        logReadyCh,
-		logRefundedCh:     logRefundedCh,
-		eventCh:           make(chan Event, 1),
-		readyCh:           make(chan struct{}),
-		info:              info,
-		done:              make(chan struct{}),
-	}
-
-	go s.runHandleEvents()
-	go s.runContractEventWatcher()
-	return s, nil
 }
 
 // SendKeysMessage ...
@@ -333,7 +395,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 
 	s.XMRClient().Lock()
 	defer s.XMRClient().Unlock()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.walletScanHeight)
+	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.moneroStartHeight)
 }
 
 func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
@@ -385,14 +447,6 @@ func (s *swapState) filterForRefund() (*mcrypto.PrivateSpendKey, error) {
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
 // if the funds are locked.
 func (s *swapState) generateAndSetKeys() error {
-	if s == nil {
-		return errNilSwapState
-	}
-
-	if s.privkeys != nil {
-		return nil
-	}
-
 	keysAndProof, err := generateKeys()
 	if err != nil {
 		return err

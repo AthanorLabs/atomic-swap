@@ -57,6 +57,20 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
+func NewPrivateKeyPairFromHex(skHex, vkHex string) (*PrivateKeyPair, error) {
+	skBytes, err := hex.DecodeString(skHex)
+	if err != nil {
+		return nil, err
+	}
+
+	vkBytes, err := hex.DecodeString(vkHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewPrivateKeyPairFromBytes(skBytes, vkBytes)
+}
+
 // SpendKeyBytes returns the canonical byte encoding of the private spend key.
 func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()

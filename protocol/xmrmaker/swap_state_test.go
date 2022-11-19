@@ -137,7 +137,7 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
 	xmrmaker, db := newTestXMRMakerAndDB(t)
 
-	swapState, err := newSwapState(
+	swapState, err := newSwapStateFromStart(
 		xmrmaker.backend,
 		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
 		&types.OfferExtra{},

@@ -7,118 +7,115 @@ import (
 	"math"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
-	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
 
-func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-	switch stage {
-	case contracts.StageInvalid:
-		return ethcommon.Hash{}, errClaimInvalid
-	case contracts.StageCompleted:
-		return ethcommon.Hash{}, errClaimSwapComplete
-	case contracts.StagePending, contracts.StageReady:
-		// do nothing
-	default:
-		panic("Unhandled stage value")
-	}
+// func (s *swapState) tryClaim() (ethcommon.Hash, error) {
+// 	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
+// 	if err != nil {
+// 		return ethcommon.Hash{}, err
+// 	}
+// 	switch stage {
+// 	case contracts.StageInvalid:
+// 		return ethcommon.Hash{}, errClaimInvalid
+// 	case contracts.StageCompleted:
+// 		return ethcommon.Hash{}, errClaimSwapComplete
+// 	case contracts.StagePending, contracts.StageReady:
+// 		// do nothing
+// 	default:
+// 		panic("Unhandled stage value")
+// 	}
 
-	ts, err := s.ETHClient().LatestBlockTimestamp(s.ctx)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
+// 	ts, err := s.ETHClient().LatestBlockTimestamp(s.ctx)
+// 	if err != nil {
+// 		return ethcommon.Hash{}, err
+// 	}
 
-	// The block that our claim transaction goes into needs a timestamp that is strictly less
-	// than T1. Since the minimum interval between blocks is 1 second, the current block must
-	// be at least 2 seconds before T1 for a non-zero chance of the next block having a
-	// timestamp that is strictly less than T1.
-	if ts.After(s.t1.Add(-2 * time.Second)) {
-		// We've passed t1, so the only way we can regain control of the locked XMR is for
-		// XMRTaker to call refund on the contract.
-		return ethcommon.Hash{}, errClaimPastTime
-	}
+// 	// The block that our claim transaction goes into needs a timestamp that is strictly less
+// 	// than T1. Since the minimum interval between blocks is 1 second, the current block must
+// 	// be at least 2 seconds before T1 for a non-zero chance of the next block having a
+// 	// timestamp that is strictly less than T1.
+// 	if ts.After(s.t1.Add(-2 * time.Second)) {
+// 		// We've passed t1, so the only way we can regain control of the locked XMR is for
+// 		// XMRTaker to call refund on the contract.
+// 		return ethcommon.Hash{}, errClaimPastTime
+// 	}
 
-	if ts.Before(s.t0) && stage != contracts.StageReady {
-		err = s.waitUntilReady()
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-	}
+// 	if ts.Before(s.t0) && stage != contracts.StageReady {
+// 		err = s.waitUntilReady()
+// 		if err != nil {
+// 			return ethcommon.Hash{}, err
+// 		}
+// 	}
 
-	return s.claimFunds()
-}
+// 	return s.claimFunds()
+// }
 
-func (s *swapState) waitUntilReady() error {
-	log.Debugf("time until t0 (%s): %vs",
-		s.t0.Format(common.TimeFmtSecs),
-		time.Until(s.t0).Seconds(),
-	)
+// func (s *swapState) waitUntilReady() error {
+// 	log.Debugf("time until t0 (%s): %vs",
+// 		s.t0.Format(common.TimeFmtSecs),
+// 		time.Until(s.t0).Seconds(),
+// 	)
 
-	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
-	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+// 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
+// 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
 
-	logReadyCh := make(chan ethtypes.Log, 16)
-	readyWatcher := watcher.NewEventFilter(
-		s.ctx,
-		s.ETHClient().Raw(),
-		s.ContractAddr(),
-		big.NewInt(1), // TODO: store start block of swap in database
-		readyTopic,
-		logReadyCh,
-	)
+// 	logReadyCh := make(chan ethtypes.Log, 16)
+// 	readyWatcher := watcher.NewEventFilter(
+// 		s.ctx,
+// 		s.ETHClient().Raw(),
+// 		s.ContractAddr(),
+// 		big.NewInt(1), // TODO: store start block of swap in database
+// 		readyTopic,
+// 		logReadyCh,
+// 	)
 
-	err := readyWatcher.Start()
-	if err != nil {
-		waitCtxCancel()
-		return err
-	}
+// 	err := readyWatcher.Start()
+// 	if err != nil {
+// 		waitCtxCancel()
+// 		return err
+// 	}
 
-	go s.runContractEventWatcher()
+// 	go s.runContractEventWatcher()
 
-	// note: this will cause unit tests to hang if not running ganache
-	// with --miner.blockTime!!!
-	waitCh := make(chan error)
-	go func() {
-		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t0)
-		close(waitCh)
-	}()
+// 	// note: this will cause unit tests to hang if not running ganache
+// 	// with --miner.blockTime!!!
+// 	waitCh := make(chan error)
+// 	go func() {
+// 		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t0)
+// 		close(waitCh)
+// 	}()
 
-	select {
-	case <-s.ctx.Done():
-	case event := <-s.eventCh:
-		if event.Type() != EventContractReadyType {
-			panic("this shouldn't happen")
-		}
+// 	select {
+// 	case <-s.ctx.Done():
+// 	case event := <-s.eventCh:
+// 		if event.Type() != EventContractReadyType {
+// 			panic("this shouldn't happen")
+// 		}
 
-		log.Debugf("returning from runT0ExpirationHandler as contract was set to ready")
-	case err := <-waitCh:
-		if err != nil {
-			return fmt.Errorf("failed to wait until T0: %w", err)
-		}
+// 		log.Debugf("returning from runT0ExpirationHandler as contract was set to ready")
+// 	case err := <-waitCh:
+// 		if err != nil {
+// 			return fmt.Errorf("failed to wait until T0: %w", err)
+// 		}
 
-		log.Debugf("reached t0, time to claim")
-	}
+// 		log.Debugf("reached t0, time to claim")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {

@@ -68,6 +68,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 
 	s.nextExpectedEvent = event
 	status := event.getStatus()
+	// TODO: we need to write this to the db also
 	if status != types.UnknownStatus {
 		s.info.SetStatus(status)
 	}

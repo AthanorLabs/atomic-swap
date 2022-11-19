@@ -1,6 +1,7 @@
 package xmrmaker
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/MarinX/monerorpc/wallet"
@@ -9,6 +10,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 
 	logging "github.com/ipfs/go-log"
@@ -57,7 +59,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		go cfg.Network.Advertise()
 	}
 
-	return &Instance{
+	inst := &Instance{
 		backend:        cfg.Backend,
 		dataDir:        cfg.DataDir,
 		walletFile:     cfg.WalletFile,
@@ -65,7 +67,80 @@ func NewInstance(cfg *Config) (*Instance, error) {
 		offerManager:   om,
 		swapStates:     make(map[types.Hash]*swapState),
 		net:            cfg.Network,
-	}, nil
+	}
+
+	err = inst.checkForOngoingSwaps()
+	if err != nil {
+		return nil, err
+	}
+
+	return inst, nil
+}
+
+func (b *Instance) checkForOngoingSwaps() error {
+	swaps, err := b.backend.SwapManager().GetOngoingSwaps()
+	if err != nil {
+		return err
+	}
+
+	for _, s := range swaps {
+		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
+			// TODO: set status to aborted, delete info from recovery db
+			continue
+		}
+
+		err = b.createOngoingSwap(s)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (b *Instance) createOngoingSwap(s *swap.Info) error {
+	// TODO
+	// 1. check if have shared secret key in db; if so, recover
+	// 2. create new swap state from recovery info
+
+	offer, err := b.offerManager.GetOfferFromDB(s.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
+	}
+
+	ethSwapInfo, err := b.backend.RecoveryDB().GetContractSwapInfo(s.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
+	}
+
+	moneroStartHeight, err := b.backend.RecoveryDB().GetMoneroStartHeight(s.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get monero start height for ongoing swap, id %s: %s", s.ID, err)
+	}
+
+	sk, err := b.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.ID, err)
+	}
+
+	b.swapMu.Lock()
+	defer b.swapMu.Unlock()
+	ss, err := newSwapStateFromOngoing(
+		b.backend,
+		offer,
+		&types.OfferExtra{}, // TODO: store relayer info in db also
+		b.offerManager,
+		ethSwapInfo.StartNumber,
+		moneroStartHeight,
+		s,
+		sk,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %s", s.ID, err)
+	}
+
+	b.swapStates[s.ID] = ss
+	return nil
 }
 
 // GetOngoingSwapState ...

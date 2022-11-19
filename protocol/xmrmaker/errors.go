@@ -30,6 +30,7 @@ var (
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
 	errOfferIDNotSet             = errors.New("offer ID was not set")
 	errSwapCompleted             = errors.New("swap is already completed")
+	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not XMRLocked")
 )
 
 type errBalanceTooLow struct {

@@ -37,6 +37,21 @@ func (m *MockRecoveryDB) EXPECT() *MockRecoveryDBMockRecorder {
 	return m.recorder
 }
 
+// GetContractSwapInfo mocks base method.
+func (m *MockRecoveryDB) GetContractSwapInfo(arg0 common0.Hash) (*db.EthereumSwapInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContractSwapInfo", arg0)
+	ret0, _ := ret[0].(*db.EthereumSwapInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContractSwapInfo indicates an expected call of GetContractSwapInfo.
+func (mr *MockRecoveryDBMockRecorder) GetContractSwapInfo(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).GetContractSwapInfo), arg0)
+}
+
 // GetMoneroStartHeight mocks base method.
 func (m *MockRecoveryDB) GetMoneroStartHeight(arg0 common0.Hash) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -50,6 +65,21 @@ func (m *MockRecoveryDB) GetMoneroStartHeight(arg0 common0.Hash) (uint64, error)
 func (mr *MockRecoveryDBMockRecorder) GetMoneroStartHeight(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoneroStartHeight", reflect.TypeOf((*MockRecoveryDB)(nil).GetMoneroStartHeight), arg0)
+}
+
+// GetSwapPrivateKey mocks base method.
+func (m *MockRecoveryDB) GetSwapPrivateKey(arg0 common0.Hash) (*mcrypto.PrivateKeyPair, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSwapPrivateKey", arg0)
+	ret0, _ := ret[0].(*mcrypto.PrivateKeyPair)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSwapPrivateKey indicates an expected call of GetSwapPrivateKey.
+func (mr *MockRecoveryDBMockRecorder) GetSwapPrivateKey(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).GetSwapPrivateKey), arg0)
 }
 
 // PutContractSwapInfo mocks base method.

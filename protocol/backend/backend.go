@@ -26,9 +26,11 @@ var (
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
 	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
+	GetContractSwapInfo(id types.Hash) (*db.EthereumSwapInfo, error)
 	PutMoneroStartHeight(id types.Hash, height uint64) error
 	GetMoneroStartHeight(id types.Hash) (uint64, error)
 	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
+	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error)
 	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
 }
 
@@ -39,8 +41,8 @@ type Backend interface {
 	ETHClient() extethclient.EthClient
 	net.MessageSender
 
-	// RecoveryDB ...
 	RecoveryDB() RecoveryDB
+	SwapDB() swap.Database
 
 	// NewTxSender creates a new transaction sender, called per-swap
 	NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error)
@@ -70,6 +72,7 @@ type backend struct {
 	env         common.Environment
 	swapManager swap.Manager
 	recoveryDB  RecoveryDB
+	swapDB      swap.Database
 
 	// wallet/node endpoints
 	moneroWallet monero.WalletClient
@@ -102,6 +105,7 @@ type Config struct {
 	SwapManager swap.Manager
 
 	RecoveryDB RecoveryDB
+	SwapDB     swap.Database
 
 	Net net.MessageSender
 }
@@ -130,6 +134,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 		recoveryDB:      cfg.RecoveryDB,
+		swapDB:          cfg.SwapDB,
 	}, nil
 }
 
@@ -151,6 +156,10 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.
 
 func (b *backend) RecoveryDB() RecoveryDB {
 	return b.recoveryDB
+}
+
+func (b *backend) SwapDB() swap.Database {
+	return b.swapDB
 }
 
 func (b *backend) Contract() *contracts.SwapFactory {

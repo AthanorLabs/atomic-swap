@@ -56,6 +56,10 @@ func (*mockSwapManager) GetPastSwap(id types.Hash) (*swap.Info, error) {
 	return &swap.Info{}, nil
 }
 
+func (*mockSwapManager) GetOngoingSwaps() ([]*swap.Info, error) {
+	return nil, nil
+}
+
 func (*mockSwapManager) GetOngoingSwap(id types.Hash) (*swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
