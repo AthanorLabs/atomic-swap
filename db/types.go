@@ -11,8 +11,8 @@ import (
 
 // EthereumSwapInfo represents information required on the Ethereum side in case of recovery
 type EthereumSwapInfo struct {
-	StartNumber     *big.Int                  `json:"startNumber"`
-	SwapID          types.Hash                `json:"swapID"`
+	StartNumber     *big.Int                  `json:"start_number"`
+	SwapID          types.Hash                `json:"swap_id"`
 	Swap            contracts.SwapFactorySwap `json:"swap"`
-	ContractAddress ethcommon.Address         `json:"contractAddress"`
+	ContractAddress ethcommon.Address         `json:"contract_address"`
 }
