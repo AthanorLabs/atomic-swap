@@ -33,6 +33,7 @@ type RecoveryDB interface {
 	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error)
 	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
 	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error)
+	DeleteSwap(id types.Hash) error
 }
 
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.

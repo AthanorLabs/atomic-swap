@@ -315,8 +315,6 @@ func (s *swapState) exit() error {
 	log.Debugf("attempting to exit swap: nextExpectedEvent=%v", s.nextExpectedEvent)
 
 	defer func() {
-		// TODO: also remove swap info from RecoveryDB
-
 		err := s.SwapManager().CompleteOngoingSwap(s.offer.ID)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.offer.ID, err)
@@ -325,12 +323,22 @@ func (s *swapState) exit() error {
 
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
-			_, err := s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
+			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.ID, err)
 			}
 
 			log.Debugf("re-added offer %s", s.offer.ID)
+		} else if s.info.Status == types.CompletedSuccess {
+			err = s.offerManager.DeleteOfferFromDB(s.offer.ID)
+			if err != nil {
+				log.Warnf("failed to delete offer %s from db: %s", s.offer.ID, err)
+			}
+		}
+
+		err = s.Backend.RecoveryDB().DeleteSwap(s.offer.ID)
+		if err != nil {
+			log.Warnf("failed to delete temporary swap info %s from db: %s", s.offer.ID, err)
 		}
 
 		// Stop all per-swap goroutines

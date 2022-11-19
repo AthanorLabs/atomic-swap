@@ -48,14 +48,14 @@ func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo)
 	}
 
 	key := getRecoveryDBKey(id, contractSwapInfoPrefix)
-	return db.db.Put(key[:], val)
+	return db.db.Put(key, val)
 }
 
 // GetContractSwapInfo returns the contract swap ID (a hash of the `SwapFactorySwap` structure) and
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, error) {
 	key := getRecoveryDBKey(id, contractSwapInfoPrefix)
-	value, err := db.db.Get(key[:])
+	value, err := db.db.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -77,13 +77,13 @@ func (db *RecoveryDB) PutMoneroStartHeight(id types.Hash, height uint64) error {
 	}
 
 	key := getRecoveryDBKey(id, moneroHeightPrefix)
-	return db.db.Put(key[:], val)
+	return db.db.Put(key, val)
 }
 
 // GetMoneroStartHeight ...
 func (db *RecoveryDB) GetMoneroStartHeight(id types.Hash) (uint64, error) {
 	key := getRecoveryDBKey(id, moneroHeightPrefix)
-	value, err := db.db.Get(key[:])
+	value, err := db.db.Get(key)
 	if err != nil {
 		return 0, err
 	}
@@ -157,4 +157,23 @@ func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKe
 	}
 
 	return mcrypto.NewPrivateKeyPairFromHex(info.PrivateSpendKey, info.PrivateViewKey)
+}
+
+// DeleteSwap deletes all recovery info from the db for the given swap.
+func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
+	keys := [][]byte{
+		getRecoveryDBKey(id, contractSwapInfoPrefix),
+		getRecoveryDBKey(id, moneroHeightPrefix),
+		getRecoveryDBKey(id, swapPrivateKeyPrefix),
+		getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix),
+	}
+
+	for _, key := range keys {
+		err := db.db.Del(key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

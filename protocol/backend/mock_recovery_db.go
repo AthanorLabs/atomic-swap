@@ -37,6 +37,20 @@ func (m *MockRecoveryDB) EXPECT() *MockRecoveryDBMockRecorder {
 	return m.recorder
 }
 
+// DeleteSwap mocks base method.
+func (m *MockRecoveryDB) DeleteSwap(arg0 common0.Hash) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSwap", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSwap indicates an expected call of DeleteSwap.
+func (mr *MockRecoveryDBMockRecorder) DeleteSwap(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSwap", reflect.TypeOf((*MockRecoveryDB)(nil).DeleteSwap), arg0)
+}
+
 // GetContractSwapInfo mocks base method.
 func (m *MockRecoveryDB) GetContractSwapInfo(arg0 common0.Hash) (*db.EthereumSwapInfo, error) {
 	m.ctrl.T.Helper()

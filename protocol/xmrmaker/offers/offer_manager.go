@@ -120,14 +120,13 @@ func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, err
 		return nil, nil, errOfferDoesNotExist
 	}
 
-	// TODO: delete this from the db when the swap actually completes
-	// err := m.db.DeleteOffer(id)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
-
 	delete(m.offers, id)
 	return offer.offer, offer.extra, nil
+}
+
+// DeleteOfferFromDB deletes the offer from the database.
+func (m *Manager) DeleteOfferFromDB(id types.Hash) error {
+	return m.db.DeleteOffer(id)
 }
 
 // GetOfferFromDB returns an offer from memory or the database, if it exists.
