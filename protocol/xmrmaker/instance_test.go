@@ -2,6 +2,7 @@ package xmrmaker
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"path"
 	"sync"
@@ -159,6 +160,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	sk, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
+	rdb.EXPECT().GetSharedSwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
 	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),

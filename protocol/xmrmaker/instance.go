@@ -8,6 +8,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -99,8 +100,33 @@ func (b *Instance) checkForOngoingSwaps() error {
 }
 
 func (b *Instance) createOngoingSwap(s *swap.Info) error {
-	// TODO: check if we have shared secret key in db; if so, recover XMR from that
+	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
+	moneroStartHeight, err := b.backend.RecoveryDB().GetMoneroStartHeight(s.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get monero start height for ongoing swap, id %s: %s", s.ID, err)
+	}
+
+	sharedKey, err := b.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
+	if err == nil {
+		b.backend.XMRClient().Lock()
+		defer b.backend.XMRClient().Unlock()
+
+		// TODO: do we want to transfer this back to the original account?
+		addr, err := monero.CreateWallet(
+			"xmrmaker-swap-wallet",
+			b.backend.Env(),
+			b.backend.XMRClient(),
+			sharedKey,
+			moneroStartHeight,
+		)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, addr)
+		return nil
+	}
 
 	offer, err := b.offerManager.GetOfferFromDB(s.ID)
 	if err != nil {
@@ -110,11 +136,6 @@ func (b *Instance) createOngoingSwap(s *swap.Info) error {
 	ethSwapInfo, err := b.backend.RecoveryDB().GetContractSwapInfo(s.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
-	}
-
-	moneroStartHeight, err := b.backend.RecoveryDB().GetMoneroStartHeight(s.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get monero start height for ongoing swap, id %s: %s", s.ID, err)
 	}
 
 	sk, err := b.backend.RecoveryDB().GetSwapPrivateKey(s.ID)

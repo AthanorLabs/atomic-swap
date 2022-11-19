@@ -141,3 +141,20 @@ func (db *RecoveryDB) PutSharedSwapPrivateKey(
 	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
 	return db.db.Put(key[:], val)
 }
+
+// GetSharedSwapPrivateKey returns the shared swap private key, if it exists.
+func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error) {
+	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
+	value, err := db.db.Get(key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	var info mcrypto.PrivateKeyInfo
+	err = json.Unmarshal(value, &info)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcrypto.NewPrivateKeyPairFromHex(info.PrivateSpendKey, info.PrivateViewKey)
+}
