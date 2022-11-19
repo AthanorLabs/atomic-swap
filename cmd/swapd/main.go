@@ -451,7 +451,6 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		sm,
 		host,
 		ec,
-		sdb,
 		sdb.RecoveryDB(),
 	)
 	if err != nil {
@@ -552,7 +551,6 @@ func newBackend(
 	sm swap.Manager,
 	net net.Host,
 	ec *ethclient.Client,
-	sdb swap.Database,
 	rdb *db.RecoveryDB,
 ) (backend.Backend, error) {
 	var (
@@ -676,7 +674,6 @@ func newBackend(
 		SwapContractAddress: contractAddr,
 		Net:                 net,
 		RecoveryDB:          rdb,
-		SwapDB:              sdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
