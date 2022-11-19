@@ -97,6 +97,13 @@ func newSwapStateFromStart(
 		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
 
+	if offerExtra.RelayerEndpoint != "" {
+		err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	offerExtra.StatusCh <- stage
 	info := pswap.NewInfo(
 		offer.ID,

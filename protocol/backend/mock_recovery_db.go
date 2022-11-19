@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	common "github.com/athanorlabs/atomic-swap/common"
+	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	db "github.com/athanorlabs/atomic-swap/db"
 	common0 "github.com/ethereum/go-ethereum/common"
@@ -111,6 +112,21 @@ func (mr *MockRecoveryDBMockRecorder) GetSwapPrivateKey(arg0 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).GetSwapPrivateKey), arg0)
 }
 
+// GetSwapRelayerInfo mocks base method.
+func (m *MockRecoveryDB) GetSwapRelayerInfo(arg0 common0.Hash) (*types.OfferExtra, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSwapRelayerInfo", arg0)
+	ret0, _ := ret[0].(*types.OfferExtra)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSwapRelayerInfo indicates an expected call of GetSwapRelayerInfo.
+func (mr *MockRecoveryDBMockRecorder) GetSwapRelayerInfo(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSwapRelayerInfo", reflect.TypeOf((*MockRecoveryDB)(nil).GetSwapRelayerInfo), arg0)
+}
+
 // PutContractSwapInfo mocks base method.
 func (m *MockRecoveryDB) PutContractSwapInfo(arg0 common0.Hash, arg1 *db.EthereumSwapInfo) error {
 	m.ctrl.T.Helper()
@@ -165,4 +181,18 @@ func (m *MockRecoveryDB) PutSwapPrivateKey(arg0 common0.Hash, arg1 *mcrypto.Priv
 func (mr *MockRecoveryDBMockRecorder) PutSwapPrivateKey(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutSwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).PutSwapPrivateKey), arg0, arg1, arg2)
+}
+
+// PutSwapRelayerInfo mocks base method.
+func (m *MockRecoveryDB) PutSwapRelayerInfo(arg0 common0.Hash, arg1 *types.OfferExtra) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutSwapRelayerInfo", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PutSwapRelayerInfo indicates an expected call of PutSwapRelayerInfo.
+func (mr *MockRecoveryDBMockRecorder) PutSwapRelayerInfo(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutSwapRelayerInfo", reflect.TypeOf((*MockRecoveryDB)(nil).PutSwapRelayerInfo), arg0, arg1)
 }

@@ -68,9 +68,9 @@ func (o *Offer) IsSet() bool {
 
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
-	StatusCh          chan Status
-	RelayerEndpoint   string
-	RelayerCommission float64
+	StatusCh          chan Status `json:"-"`
+	RelayerEndpoint   string      `json:"relayerEndpoint"`
+	RelayerCommission float64     `json:"relayerCommission"`
 }
 
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before

@@ -16,6 +16,7 @@ const (
 	moneroHeightPrefix         = "xmrheight"
 	swapPrivateKeyPrefix       = "privkey"
 	sharedSwapPrivateKeyPrefix = "sprivkey"
+	relayerInfoPrefix          = "relayer"
 )
 
 // RecoveryDB contains information about ongoing swaps requires for recovery
@@ -36,6 +37,34 @@ func getRecoveryDBKey(id types.Hash, additional string) []byte {
 
 func (db *RecoveryDB) close() error {
 	return db.db.Close()
+}
+
+// PutSwapRelayerInfo ...
+func (db *RecoveryDB) PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error {
+	val, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	key := getRecoveryDBKey(id, relayerInfoPrefix)
+	return db.db.Put(key, val)
+}
+
+// GetSwapRelayerInfo ...
+func (db *RecoveryDB) GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error) {
+	key := getRecoveryDBKey(id, relayerInfoPrefix)
+	value, err := db.db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var s types.OfferExtra
+	err = json.Unmarshal(value, &s)
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
 }
 
 // PutContractSwapInfo stores the given contract swap ID (which is not the same as the daemon

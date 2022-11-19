@@ -143,12 +143,19 @@ func (b *Instance) createOngoingSwap(s *swap.Info) error {
 		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.ID, err)
 	}
 
+	relayerInfo, err := b.backend.RecoveryDB().GetSwapRelayerInfo(s.ID)
+	if err != nil {
+		// we can ignore the error; if the key doesn't exist,
+		// then no relayer was set for this swap.
+		relayerInfo = &types.OfferExtra{}
+	}
+
 	b.swapMu.Lock()
 	defer b.swapMu.Unlock()
 	ss, err := newSwapStateFromOngoing(
 		b.backend,
 		offer,
-		&types.OfferExtra{}, // TODO: store relayer info in db also
+		relayerInfo, // TODO: store relayer info in db also
 		b.offerManager,
 		ethSwapInfo,
 		moneroStartHeight,
