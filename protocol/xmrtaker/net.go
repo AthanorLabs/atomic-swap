@@ -85,7 +85,6 @@ func (a *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount c
 	s, err := newSwapState(
 		a.backend,
 		offerID,
-		pcommon.GetSwapInfoFilepath(a.dataDir, offerID.String()),
 		a.transferBack,
 		providesAmount,
 		receivedAmount,

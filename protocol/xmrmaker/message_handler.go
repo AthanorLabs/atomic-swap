@@ -10,6 +10,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -95,24 +96,33 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
-	if err := pcommon.WriteContractSwapToFile(s.offerExtra.InfoFile, s.contractSwapID, s.contractSwap); err != nil {
+	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, ethcommon.HexToHash(msg.TxHash))
+	if err != nil {
 		return nil, err
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if _, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr); err != nil {
+	_, err = contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := s.setContract(contractAddr); err != nil {
+	if err = s.setContract(contractAddr); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
-		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
+	ethInfo := &db.EthereumSwapInfo{
+		StartNumber:     receipt.BlockNumber,
+		SwapID:          s.contractSwapID,
+		Swap:            s.contractSwap,
+		ContractAddress: contractAddr,
 	}
 
-	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
+	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
+		return nil, err
+	}
+
+	if err = s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
 		return nil, err
 	}
 

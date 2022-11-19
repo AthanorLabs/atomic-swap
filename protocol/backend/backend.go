@@ -10,6 +10,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -22,12 +23,24 @@ var (
 	defaultTimeoutDuration = time.Hour * 24
 )
 
+// RecoveryDB is implemented by *db.RecoveryDB
+type RecoveryDB interface {
+	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
+	PutMoneroStartHeight(id types.Hash, height uint64) error
+	GetMoneroStartHeight(id types.Hash) (uint64, error)
+	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
+	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
+}
+
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
 // It also interfaces with the network layer.
 type Backend interface {
 	XMRClient() monero.WalletClient
 	ETHClient() extethclient.EthClient
 	net.MessageSender
+
+	// RecoveryDB ...
+	RecoveryDB() RecoveryDB
 
 	// NewTxSender creates a new transaction sender, called per-swap
 	NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error)
@@ -56,6 +69,7 @@ type backend struct {
 	ctx         context.Context
 	env         common.Environment
 	swapManager swap.Manager
+	recoveryDB  RecoveryDB
 
 	// wallet/node endpoints
 	moneroWallet monero.WalletClient
@@ -87,6 +101,8 @@ type Config struct {
 
 	SwapManager swap.Manager
 
+	RecoveryDB RecoveryDB
+
 	Net net.MessageSender
 }
 
@@ -113,6 +129,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		swapTimeout:     defaultTimeoutDuration,
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
+		recoveryDB:      cfg.RecoveryDB,
 	}, nil
 }
 
@@ -128,7 +145,12 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.
 	if !b.ethClient.HasPrivateKey() {
 		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient.Raw(), b.contractAddr, asset)
 	}
+
 	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETHClient(), b.contract, erc20Contract), nil
+}
+
+func (b *backend) RecoveryDB() RecoveryDB {
+	return b.recoveryDB
 }
 
 func (b *backend) Contract() *contracts.SwapFactory {

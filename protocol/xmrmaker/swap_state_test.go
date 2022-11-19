@@ -84,6 +84,15 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	rdb := backend.NewMockRecoveryDB(ctrl)
+	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutMoneroStartHeight(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().GetMoneroStartHeight(gomock.Any()).Return(uint64(1), nil).AnyTimes()
+
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)
 
@@ -96,13 +105,12 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 		SwapContractAddress: addr,
 		SwapManager:         newSwapManager(t),
 		Net:                 new(mockNet),
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	db := offers.NewMockDatabase(ctrl)
 	db.EXPECT().GetAllOffers()
 
@@ -128,15 +136,11 @@ func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 
 func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
 	xmrmaker, db := newTestXMRMakerAndDB(t)
-	infoFile := path.Join(t.TempDir(), "test.keys")
-	oe := &types.OfferExtra{
-		InfoFile: infoFile,
-	}
 
 	swapState, err := newSwapState(
 		xmrmaker.backend,
 		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
-		oe,
+		&types.OfferExtra{},
 		xmrmaker.offerManager,
 		common.PiconeroAmount(33),
 		desiredAmount,

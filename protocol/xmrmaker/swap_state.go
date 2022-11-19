@@ -224,11 +224,6 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 	}, nil
 }
 
-// InfoFile returns the swap's infoFile path
-func (s *swapState) InfoFile() string {
-	return s.offerExtra.InfoFile
-}
-
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
 func (s *swapState) ReceivedAmount() float64 {
 	return s.info.ReceivedAmount
@@ -332,7 +327,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = pcommon.WriteSharedSwapKeyPairToFile(s.offerExtra.InfoFile, kpAB, s.Env()); err != nil {
+	if err = s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB, s.Env()); err != nil {
 		return "", err
 	}
 
@@ -408,7 +403,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.offerExtra.InfoFile, s.privkeys, s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys, s.Env())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {
@@ -543,6 +538,16 @@ func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRL
 	s.XMRClient().Lock()
 	defer s.XMRClient().Unlock()
 
+	height, err := s.XMRClient().GetHeight()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Backend.RecoveryDB().PutMoneroStartHeight(s.ID(), height)
+	if err != nil {
+		return nil, err
+	}
+
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
@@ -573,6 +578,7 @@ func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRL
 	if err != nil {
 		return nil, err
 	}
+
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
 	return &message.NotifyXMRLock{

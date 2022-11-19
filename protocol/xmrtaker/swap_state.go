@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
@@ -40,7 +41,6 @@ type swapState struct {
 
 	ctx          context.Context
 	cancel       context.CancelFunc
-	infoFile     string
 	transferBack bool
 
 	info           *pswap.Info
@@ -91,7 +91,6 @@ type swapState struct {
 func newSwapState(
 	b backend.Backend,
 	offerID types.Hash,
-	infofile string,
 	transferBack bool,
 	providedAmount EthereumAssetAmount,
 	receivedAmount common.PiconeroAmount,
@@ -150,9 +149,15 @@ func newSwapState(
 	if err != nil {
 		return nil, err
 	}
+
 	// reduce the scan height a little in case there is a block reorg
 	if walletScanHeight >= monero.MinSpendConfirmations {
 		walletScanHeight -= monero.MinSpendConfirmations
+	}
+
+	err = b.RecoveryDB().PutMoneroStartHeight(offerID, walletScanHeight)
+	if err != nil {
+		return nil, err
 	}
 
 	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
@@ -186,7 +191,6 @@ func newSwapState(
 		cancel:            cancel,
 		Backend:           b,
 		sender:            sender,
-		infoFile:          infofile,
 		transferBack:      transferBack,
 		walletScanHeight:  walletScanHeight,
 		nextExpectedEvent: EventKeysReceivedType,
@@ -199,10 +203,6 @@ func newSwapState(
 		providedAmount:    providedAmount,
 		statusCh:          statusCh,
 		ethAsset:          ethAsset,
-	}
-
-	if err := pcommon.WriteContractAddressToFile(s.infoFile, b.ContractAddr().String()); err != nil {
-		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
 	go s.waitForSendKeysMessage()
@@ -241,11 +241,6 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
 	}, nil
-}
-
-// InfoFile returns the swap's infoFile path
-func (s *swapState) InfoFile() string {
-	return s.infoFile
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -462,7 +457,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return pcommon.WriteKeysToFile(s.infoFile, s.privkeys, s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys, s.Env())
 }
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
@@ -579,7 +574,14 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		Nonce:        nonce,
 	}
 
-	if err := pcommon.WriteContractSwapToFile(s.infoFile, s.contractSwapID, s.contractSwap); err != nil {
+	ethInfo := &db.EthereumSwapInfo{
+		StartNumber:     receipt.BlockNumber,
+		SwapID:          s.contractSwapID,
+		Swap:            s.contractSwap,
+		ContractAddress: s.Backend.ContractAddr(),
+	}
+
+	if err := s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
 		return ethcommon.Hash{}, err
 	}
 
@@ -639,7 +641,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err := pcommon.WriteSharedSwapKeyPairToFile(s.infoFile, kpAB, s.Env()); err != nil {
+	if err := s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB, s.Env()); err != nil {
 		return "", err
 	}
 

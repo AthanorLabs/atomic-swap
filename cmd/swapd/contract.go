@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -91,9 +93,23 @@ func deploySwapFactory(
 
 	// store the contract address on disk
 	fp := path.Join(dataDir, "contract-address.json")
-	if err = pcommon.WriteContractAddressToFile(fp, address.String()); err != nil {
+	if err = writeContractAddressToFile(fp, address.String()); err != nil {
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
 	return address, sf, nil
+}
+
+// writeContractAddressToFile writes the contract address to the given file
+func writeContractAddressToFile(fp, addr string) error {
+	bz, err := json.MarshalIndent(&struct {
+		ContractAddress string
+	}{
+		ContractAddress: addr,
+	}, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Clean(fp), bz, 0600)
 }

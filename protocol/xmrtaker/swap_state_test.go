@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"math/big"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -29,8 +28,6 @@ import (
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
-
-var infofile = os.TempDir() + "/test.keys"
 
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
@@ -81,6 +78,15 @@ func newBackend(t *testing.T) backend.Backend {
 	addr, err := bind.WaitDeployed(ctx, ec, tx)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	rdb := backend.NewMockRecoveryDB(ctrl)
+	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutMoneroStartHeight(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().GetMoneroStartHeight(gomock.Any()).Return(uint64(1), nil).AnyTimes()
+
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)
 
@@ -93,6 +99,7 @@ func newBackend(t *testing.T) backend.Backend {
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		Net:                 new(mockNet),
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -102,7 +109,7 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestInstance(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
+	swapState, err := newSwapState(b, types.Hash{}, false,
 		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
@@ -126,7 +133,7 @@ func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState
 	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
-	swapState, err := newSwapState(b, types.Hash{}, infofile, false,
+	swapState, err := newSwapState(b, types.Hash{}, false,
 		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract

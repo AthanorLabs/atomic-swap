@@ -33,10 +33,5 @@ func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64)
 		return fmt.Errorf("failed to call %s: %w", method, resp.Error)
 	}
 
-	var res *rpctypes.TakeOfferResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
-		return err
-	}
-
 	return nil
 }
