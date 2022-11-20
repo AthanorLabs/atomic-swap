@@ -50,9 +50,10 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event EventType) {
+func (s *swapState) setNextExpectedEvent(event EventType) error {
 	if s.nextExpectedEvent == EventNoneType {
-		return
+		// should have called clearNextExpectedEvent instead
+		panic("cannot set next expected event to EventNoneType")
 	}
 
 	if event == s.nextExpectedEvent {
@@ -61,13 +62,22 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 
 	s.nextExpectedEvent = event
 	status := event.getStatus()
-	if status != types.UnknownStatus {
-		s.info.SetStatus(status)
+
+	if status == types.UnknownStatus {
+		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
-	if s.statusCh != nil && status != types.UnknownStatus {
-		s.statusCh <- status
+	s.info.SetStatus(status)
+	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
+	if err != nil {
+		return err
 	}
+
+	if s.info.StatusCh() != nil {
+		s.info.StatusCh() <- status
+	}
+
+	return nil
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {

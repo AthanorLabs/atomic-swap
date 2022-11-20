@@ -19,7 +19,7 @@ import (
 )
 
 func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 

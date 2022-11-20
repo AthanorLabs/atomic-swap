@@ -194,7 +194,11 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(EventXMRLockedType)
+		err = s.setNextExpectedEvent(EventXMRLockedType)
+		if err != nil {
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventXMRLockedType: %w", err)
+			return
+		}
 	case *EventXMRLocked:
 		log.Infof("EventXMRLocked")
 		defer close(e.errCh)
@@ -210,7 +214,11 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(EventETHClaimedType)
+		err = s.setNextExpectedEvent(EventETHClaimedType)
+		if err != nil {
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventETHClaimedType: %w", err)
+			return
+		}
 	case *EventETHClaimed:
 		log.Infof("EventETHClaimed")
 		defer close(e.errCh)
