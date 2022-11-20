@@ -35,6 +35,8 @@ type RecoveryDB interface {
 	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error)
 	PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error
 	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
+	PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error
+	GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error)
 	DeleteSwap(id types.Hash) error
 }
 

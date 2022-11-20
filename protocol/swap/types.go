@@ -23,15 +23,15 @@ type (
 
 // Info contains the details of the swap as well as its status.
 type Info struct {
-	Version        *semver.Version     `json:"version"`
-	ID             types.Hash          `json:"offer_id"` // swap offer ID
-	Provides       types.ProvidesCoin  `json:"provides"`
-	ProvidedAmount float64             `json:"provided_amount"`
-	ReceivedAmount float64             `json:"received_amount"`
-	ExchangeRate   types.ExchangeRate  `json:"exchange_rate"`
-	EthAsset       types.EthAsset      `json:"eth_asset"`
-	Status         Status              `json:"status"`
-	statusCh       <-chan types.Status `json:"-"`
+	Version        *semver.Version    `json:"version"`
+	ID             types.Hash         `json:"offer_id"` // swap offer ID
+	Provides       types.ProvidesCoin `json:"provides"`
+	ProvidedAmount float64            `json:"provided_amount"`
+	ReceivedAmount float64            `json:"received_amount"`
+	ExchangeRate   types.ExchangeRate `json:"exchange_rate"`
+	EthAsset       types.EthAsset     `json:"eth_asset"`
+	Status         Status             `json:"status"`
+	statusCh       chan types.Status  `json:"-"`
 }
 
 // NewInfo creates a new *Info from the given parameters.
@@ -43,7 +43,7 @@ func NewInfo(
 	exchangeRate types.ExchangeRate,
 	ethAsset types.EthAsset,
 	status Status,
-	statusCh <-chan types.Status,
+	statusCh chan types.Status,
 ) *Info {
 	info := &Info{
 		Version:        CurInfoVersion,
@@ -65,7 +65,7 @@ func NewEmptyInfo() *Info {
 }
 
 // StatusCh returns the swap's status update channel.
-func (i *Info) StatusCh() <-chan types.Status {
+func (i *Info) StatusCh() chan types.Status {
 	return i.statusCh
 }
 

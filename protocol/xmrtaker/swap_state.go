@@ -25,13 +25,17 @@ import (
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 
+	eth "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color" //nolint:misspell
 )
 
 const revertSwapCompleted = "swap is already completed"
-const revertUnableToRefund = "it's the counterparty's turn, unable to refund, try again later"
+
+// const revertUnableToRefund = "it's the counterparty's turn, unable to refund, try again later"
+
+var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
@@ -62,9 +66,6 @@ type swapState struct {
 	// block height at start of swap used for fast wallet creation
 	walletScanHeight uint64
 
-	// ETH asset being swapped
-	ethAsset types.EthAsset
-
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
 	contractSwap   contracts.SwapFactorySwap
@@ -88,7 +89,49 @@ type swapState struct {
 	done chan struct{}
 }
 
-func newSwapState(
+func newSwapStateFromOngoing(
+	b backend.Backend,
+	info *pswap.Info,
+	transferBack bool,
+	ethSwapInfo *db.EthereumSwapInfo,
+	moneroStartNumber uint64,
+	sk *mcrypto.PrivateKeyPair,
+) (*swapState, error) {
+	if info.Status != types.ETHLocked && info.Status != types.ContractReady {
+		return nil, errInvalidStageForRecovery
+	}
+
+	makerSk, makerVk, err := b.RecoveryDB().GetXMRMakerSwapKeys(info.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get xmrmaker swap keys from db: %w", err)
+	}
+
+	s, err := newSwapState(
+		b,
+		transferBack,
+		info,
+		ethSwapInfo.StartNumber,
+		moneroStartNumber,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if b.ContractAddr() != ethSwapInfo.ContractAddress {
+		return nil, errContractAddrMismatch(ethSwapInfo.ContractAddress.String())
+	}
+
+	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
+	s.privkeys = sk
+	s.pubkeys = sk.PublicKeyPair()
+	s.contractSwapID = ethSwapInfo.SwapID
+	s.contractSwap = ethSwapInfo.Swap
+	s.xmrmakerPublicSpendKey = makerSk
+	s.xmrmakerPrivateViewKey = makerVk
+	return s, nil
+}
+
+func newSwapStateFromStart(
 	b backend.Backend,
 	offerID types.Hash,
 	transferBack bool,
@@ -97,15 +140,6 @@ func newSwapState(
 	exchangeRate types.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
-	if b.Contract() == nil {
-		return nil, errNoSwapContractSet
-	}
-
-	_, err := b.XMRDepositAddress(nil)
-	if transferBack && err != nil {
-		return nil, errMustProvideWalletAddress
-	}
-
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
@@ -119,43 +153,21 @@ func newSwapState(
 		stage,
 		statusCh,
 	)
-	if err = b.SwapManager().AddSwap(info); err != nil {
+	if err := b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 
-	if !b.ETHClient().HasPrivateKey() {
-		transferBack = true // front-end must set final deposit address
-	}
-
-	var sender txsender.Sender
-	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), b.ETHClient().Raw()) //nolint:govet
-		if err != nil {
-			return nil, err
-		}
-
-		sender, err = b.NewTxSender(ethAsset.Address(), erc20Contract)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		sender, err = b.NewTxSender(ethAsset.Address(), nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	walletScanHeight, err := b.XMRClient().GetChainHeight()
+	moneroStartNumber, err := b.XMRClient().GetChainHeight()
 	if err != nil {
 		return nil, err
 	}
 
 	// reduce the scan height a little in case there is a block reorg
-	if walletScanHeight >= monero.MinSpendConfirmations {
-		walletScanHeight -= monero.MinSpendConfirmations
+	if moneroStartNumber >= monero.MinSpendConfirmations {
+		moneroStartNumber -= monero.MinSpendConfirmations
 	}
 
-	err = b.RecoveryDB().PutMoneroStartHeight(offerID, walletScanHeight)
+	err = b.RecoveryDB().PutMoneroStartHeight(offerID, moneroStartNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +175,49 @@ func newSwapState(
 	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return newSwapState(
+		b,
+		transferBack,
+		info,
+		ethHeader.Number,
+		moneroStartNumber,
+	)
+}
+
+func newSwapState(
+	b backend.Backend,
+	transferBack bool,
+	info *pswap.Info,
+	ethStartNumber *big.Int,
+	moneroStartNumber uint64,
+) (*swapState, error) {
+	_, err := b.XMRDepositAddress(nil)
+	if transferBack && err != nil {
+		return nil, errMustProvideWalletAddress
+	}
+
+	if !b.ETHClient().HasPrivateKey() {
+		transferBack = true // front-end must set final deposit address
+	}
+
+	var sender txsender.Sender
+	if info.EthAsset != types.EthAssetETH {
+		erc20Contract, err := contracts.NewIERC20(info.EthAsset.Address(), b.ETHClient().Raw()) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		sender, err = b.NewTxSender(info.EthAsset.Address(), erc20Contract)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sender, err = b.NewTxSender(info.EthAsset.Address(), nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// set up ethereum event watchers
@@ -175,7 +230,7 @@ func newSwapState(
 		ctx,
 		b.ETHClient().Raw(),
 		b.ContractAddr(),
-		ethHeader.Number,
+		ethStartNumber,
 		claimedTopic,
 		logClaimedCh,
 	)
@@ -186,23 +241,31 @@ func newSwapState(
 		return nil, err
 	}
 
+	// note: if this is recovering an ongoing swap, this will only
+	// be invoked if our status is ETHLocked or ContractReady; ie.
+	// we've locked ETH, but not yet claimed or refunded.
+	//
+	// dleqProof and secp256k1Pub are never set, as they are only used
+	// in the swap step before or where ETH is locked.
+	//
+	// similarly, xmrmaker secp256k1 public keys and ETH address are also
+	// never set, as they're only used in the ETH lock step.
 	s := &swapState{
 		ctx:               ctx,
 		cancel:            cancel,
 		Backend:           b,
 		sender:            sender,
 		transferBack:      transferBack,
-		walletScanHeight:  walletScanHeight,
-		nextExpectedEvent: EventKeysReceivedType,
+		walletScanHeight:  moneroStartNumber,
+		nextExpectedEvent: nextExpectedEventFromStatus(info.Status),
 		eventCh:           make(chan Event),
 		logClaimedCh:      logClaimedCh,
 		xmrLockedCh:       make(chan struct{}),
 		claimedCh:         make(chan struct{}),
 		done:              make(chan struct{}),
 		info:              info,
-		providedAmount:    providedAmount,
-		statusCh:          statusCh,
-		ethAsset:          ethAsset,
+		providedAmount:    common.EtherToWei(info.ProvidedAmount),
+		statusCh:          info.StatusCh(),
 	}
 
 	go s.waitForSendKeysMessage()
@@ -304,8 +367,8 @@ func (s *swapState) exit() error {
 		// so we should call Refund().
 		//
 		// for EventETHClaimed, the XMR has been locked, but the
-		// ETH hasn't been claimed.
-		// we should also refund in this case.
+		// ETH hasn't been claimed, but the contract has been set to ready.
+		// we should also refund in this case, since we might be past t1.
 		txHash, err := s.tryRefund()
 		if err != nil {
 			if strings.Contains(err.Error(), revertSwapCompleted) {
@@ -349,6 +412,51 @@ func (s *swapState) tryClaim() error {
 	log.Infof("claimed monero: address=%s", addr)
 	s.clearNextExpectedEvent(types.CompletedSuccess)
 	return nil
+}
+
+func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
+	const claimedEvent = "Claimed"
+
+	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
+		Addresses: []ethcommon.Address{s.ContractAddr()},
+		Topics:    [][]ethcommon.Hash{{claimedTopic}},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to filter logs: %w", err)
+	}
+
+	if len(logs) == 0 {
+		return nil, errNoClaimLogsFound
+	}
+
+	var (
+		foundLog ethtypes.Log
+		found    bool
+	)
+
+	for _, log := range logs {
+		matches, err := contracts.CheckIfLogIDMatches(log, claimedEvent, s.contractSwapID) //nolint:govet
+		if err != nil {
+			continue
+		}
+
+		if matches {
+			foundLog = log
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, errNoClaimLogsFound
+	}
+
+	sa, err := contracts.GetSecretFromLog(&foundLog, claimedEvent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret from log: %w", err)
+	}
+
+	return sa, nil
 }
 
 // doRefund is called by the RPC function swap_refund.
@@ -400,8 +508,8 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	if ts.Before(s.t0) && !isReady {
 		txHash, err := s.refund()
 		// TODO: Have refund() return errors that we can use errors.Is to check against
-		if err == nil || !strings.Contains(err.Error(), revertUnableToRefund) {
-			return txHash, err
+		if err == nil {
+			return txHash, nil
 		}
 
 		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
@@ -429,8 +537,8 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	case *EventShouldRefund:
 		return s.refund()
 	case *EventETHClaimed:
-		// we should claim
-		// this causes the caling function to claim
+		// we should claim; returning this error
+		// causes the calling function to claim
 		return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
 	default:
 		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
@@ -444,7 +552,7 @@ func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 
 func (s *swapState) generateAndSetKeys() error {
 	if s.privkeys != nil {
-		return nil
+		panic("generateAndSetKeys should only be called once")
 	}
 
 	keysAndProof, err := generateKeys()
@@ -470,15 +578,19 @@ func (s *swapState) getSecret() [32]byte {
 
 // setXMRMakerKeys sets XMRMaker's public spend key (to be stored in the contract) and XMRMaker's
 // private view key (used to check XMR balance before calling Ready())
-func (s *swapState) setXMRMakerKeys(sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey,
-	secp256k1Pub *secp256k1.PublicKey) {
+func (s *swapState) setXMRMakerKeys(
+	sk *mcrypto.PublicKey,
+	vk *mcrypto.PrivateViewKey,
+	secp256k1Pub *secp256k1.PublicKey,
+) error {
 	s.xmrmakerPublicSpendKey = sk
 	s.xmrmakerPrivateViewKey = vk
 	s.xmrmakerSecp256k1PublicKey = secp256k1Pub
+	return s.Backend.RecoveryDB().PutXMRMakerSwapKeys(s.info.ID, sk, vk)
 }
 
 func (s *swapState) approveToken() error {
-	token, err := contracts.NewIERC20(s.ethAsset.Address(), s.ETHClient().Raw())
+	token, err := contracts.NewIERC20(s.info.EthAsset.Address(), s.ETHClient().Raw())
 	if err != nil {
 		return fmt.Errorf("failed to instantiate IERC20: %w", err)
 	}
@@ -500,15 +612,11 @@ func (s *swapState) approveToken() error {
 
 // lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
 func (s *swapState) lockAsset() (ethcommon.Hash, error) {
-	if s.pubkeys == nil {
-		return ethcommon.Hash{}, errNoPublicKeysSet
-	}
-
 	if s.xmrmakerPublicSpendKey == nil || s.xmrmakerPrivateViewKey == nil {
-		return ethcommon.Hash{}, errCounterpartyKeysNotSet
+		panic(errCounterpartyKeysNotSet)
 	}
 
-	if s.ethAsset != types.EthAssetETH {
+	if s.info.EthAsset != types.EthAssetETH {
 		err := s.approveToken()
 		if err != nil {
 			return ethcommon.Hash{}, err
@@ -525,14 +633,14 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		s.xmrmakerAddress,
 		big.NewInt(int64(s.SwapTimeout().Seconds())),
 		nonce,
-		s.ethAsset,
+		s.info.EthAsset,
 		s.providedAmount.BigInt(),
 	)
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
 	}
 
-	log.Debugf("instantiated swap on-chain: amount=%s asset=%s txHash=%s", s.providedAmount, s.ethAsset, txHash)
+	log.Debugf("instantiated swap on-chain: amount=%s asset=%s txHash=%s", s.providedAmount, s.info.EthAsset, txHash)
 
 	if len(receipt.Logs) == 0 {
 		return ethcommon.Hash{}, errSwapInstantiationNoLogs
@@ -569,7 +677,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		PubKeyRefund: cmtXMRTaker,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.Address(s.ethAsset),
+		Asset:        ethcommon.Address(s.info.EthAsset),
 		Value:        s.providedAmount.BigInt(),
 		Nonce:        nonce,
 	}
@@ -615,10 +723,6 @@ func (s *swapState) ready() error {
 // and returns to her the ether in the contract.
 // If time t_1 passes and Claim() has not been called, XMRTaker should call Refund().
 func (s *swapState) refund() (ethcommon.Hash, error) {
-	if s.Contract() == nil {
-		return ethcommon.Hash{}, errNoSwapContractSet
-	}
-
 	sc := s.getSecret()
 
 	log.Infof("attempting to call Refund()...")

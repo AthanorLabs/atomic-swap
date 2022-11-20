@@ -17,6 +17,7 @@ const (
 	swapPrivateKeyPrefix       = "privkey"
 	sharedSwapPrivateKeyPrefix = "sprivkey"
 	relayerInfoPrefix          = "relayer"
+	xmrmakerKeysPrefix         = "xmrmaker"
 )
 
 // RecoveryDB contains information about ongoing swaps requires for recovery
@@ -188,6 +189,53 @@ func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKe
 	return mcrypto.NewPrivateKeyPairFromHex(info.PrivateSpendKey, info.PrivateViewKey)
 }
 
+type xmrmakerKeys struct {
+	PublicSpendKey string
+	PrivateViewKey string
+}
+
+// PutXMRMakerSwapKeys is called by the xmrtaker to store the counterparty's swap keys.
+func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
+	val, err := json.Marshal(&xmrmakerKeys{
+		PublicSpendKey: sk.Hex(),
+		PrivateViewKey: vk.Hex(),
+	})
+	if err != nil {
+		return err
+	}
+
+	key := getRecoveryDBKey(id, xmrmakerKeysPrefix)
+	return db.db.Put(key[:], val)
+}
+
+// GetXMRMakerSwapKeys is called by the xmrtaker during recovery to retrieve the counterparty's
+// swap keys.
+func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
+	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
+	value, err := db.db.Get(key[:])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var info xmrmakerKeys
+	err = json.Unmarshal(value, &info)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sk, err := mcrypto.NewPublicKeyFromHex(info.PublicSpendKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	vk, err := mcrypto.NewPrivateViewKeyFromHex(info.PrivateViewKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sk, vk, nil
+}
+
 // DeleteSwap deletes all recovery info from the db for the given swap.
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 	keys := [][]byte{
@@ -195,6 +243,7 @@ func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 		getRecoveryDBKey(id, moneroHeightPrefix),
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
 		getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix),
+		getRecoveryDBKey(id, xmrmakerKeysPrefix),
 	}
 
 	for _, key := range keys {

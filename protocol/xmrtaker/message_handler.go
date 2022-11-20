@@ -106,7 +106,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	symbol, err := pcommon.AssetSymbol(s.Backend, s.ethAsset)
+	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,10 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		symbol,
 	))
 
-	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
+	err = s.setXMRMakerKeys(sk, vk, secp256k1Pub)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
+	}
 
 	txHash, err := s.lockAsset()
 	if err != nil {
@@ -193,7 +196,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
+	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(
+		vk, lockedAddr, s.walletScanHeight, walletName, "",
+	)
 	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}

@@ -23,6 +23,19 @@ const (
 	EventNoneType
 )
 
+func nextExpectedEventFromStatus(s types.Status) EventType {
+	switch s {
+	case types.ExpectingKeys:
+		return EventKeysReceivedType
+	case types.ETHLocked:
+		return EventXMRLockedType
+	case types.ContractReady:
+		return EventETHClaimedType
+	default:
+		return EventExitType
+	}
+}
+
 func (t EventType) String() string {
 	switch t {
 	case EventKeysReceivedType:
