@@ -21,7 +21,7 @@ type SwapStateNet interface {
 
 // SwapStateRPC contains the methods used by the RPC server into the SwapState.
 type SwapStateRPC interface {
-	SendKeysMessage() (*message.SendKeysMessage, error)
+	SendKeysMessage() *message.SendKeysMessage
 	ID() types.Hash
 	Exit() error
 }

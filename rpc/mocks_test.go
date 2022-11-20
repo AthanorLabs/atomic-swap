@@ -154,8 +154,8 @@ func (*mockSwapState) Exit() error {
 	return nil
 }
 
-func (*mockSwapState) SendKeysMessage() (*message.SendKeysMessage, error) {
-	return &message.SendKeysMessage{}, nil
+func (*mockSwapState) SendKeysMessage() *message.SendKeysMessage {
+	return &message.SendKeysMessage{}
 }
 
 func (*mockSwapState) ID() types.Hash {

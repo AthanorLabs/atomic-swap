@@ -86,6 +86,7 @@ func newBackend(t *testing.T) backend.Backend {
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 	rdb.EXPECT().PutMoneroStartHeight(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().GetMoneroStartHeight(gomock.Any()).Return(uint64(1), nil).AnyTimes()
+	rdb.EXPECT().PutXMRMakerSwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)
@@ -162,9 +163,6 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	err := s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
 
-	err = s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
 	err = s.HandleProtocolMessage(msg)
@@ -184,12 +182,9 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	defer s.cancel()
 	s.SetSwapTimeout(time.Second * 15)
 
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
-	err = s.HandleProtocolMessage(msg)
+	err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 
 	resp := s.Net().(*mockNet).LastSentMessage()
@@ -225,9 +220,6 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
 
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
@@ -256,9 +248,6 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
 	s.SetSwapTimeout(time.Second * 3)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -312,9 +301,6 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
 
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
@@ -336,9 +322,6 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHClaimedType
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -362,9 +345,6 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	s := newTestInstance(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventExitType
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)

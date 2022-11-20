@@ -16,8 +16,6 @@ import (
 
 func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 	_, swapState := newTestSwapState(t)
-	err := swapState.generateAndSetKeys()
-	require.NoError(t, err)
 
 	startNum, err := swapState.ETHClient().Raw().BlockNumber(swapState.Backend.Ctx())
 	require.NoError(t, err)
@@ -67,9 +65,6 @@ func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 func TestSwapStateOngoing_Refund(t *testing.T) {
 	_, s, offerDB := newTestSwapStateAndDB(t)
 	offerDB.EXPECT().PutOffer(s.offer)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)

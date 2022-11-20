@@ -280,17 +280,17 @@ func newSwapState(
 		done:              make(chan struct{}),
 	}
 
+	if err := s.generateAndSetKeys(); err != nil {
+		return nil, err
+	}
+
 	go s.runHandleEvents()
 	go s.runContractEventWatcher()
 	return s, nil
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	if err := s.generateAndSetKeys(); err != nil {
-		return nil, err
-	}
-
+func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 	return &net.SendKeysMessage{
 		ProvidedAmount:     s.info.ProvidedAmount,
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
@@ -298,7 +298,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
 		EthAddress:         s.ETHClient().Address().String(),
-	}, nil
+	}
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -425,6 +425,10 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
 // if the funds are locked.
 func (s *swapState) generateAndSetKeys() error {
+	if s.privkeys != nil {
+		panic("generateAndSetKeys should only be called once")
+	}
+
 	keysAndProof, err := generateKeys()
 	if err != nil {
 		return err

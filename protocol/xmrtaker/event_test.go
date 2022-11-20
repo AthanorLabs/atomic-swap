@@ -34,12 +34,8 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
 
-	err = s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	// handle valid SendKeysMessage
-	msg, err = s.SendKeysMessage()
-	require.NoError(t, err)
+	msg = s.SendKeysMessage()
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
 	msg.EthAddress = s.ETHClient().Address().String()
 

@@ -267,6 +267,10 @@ func newSwapState(
 		statusCh:          info.StatusCh(),
 	}
 
+	if err := s.generateAndSetKeys(); err != nil {
+		return nil, err
+	}
+
 	go s.waitForSendKeysMessage()
 	go s.runHandleEvents()
 	go s.runContractEventWatcher()
@@ -292,17 +296,13 @@ func (s *swapState) waitForSendKeysMessage() {
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	if err := s.generateAndSetKeys(); err != nil {
-		return nil, err
-	}
-
+func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 	return &net.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
-	}, nil
+	}
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
