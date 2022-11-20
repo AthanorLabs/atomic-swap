@@ -1,5 +1,5 @@
-// Package main provides the entrypoint swapd, a daemon that manages atomic swaps between
-// monero and ethereum assets.
+// Package main provides the entrypoint of swapd, a daemon that manages atomic swaps
+// between monero and ethereum assets.
 package main
 
 import (
