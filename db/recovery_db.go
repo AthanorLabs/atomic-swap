@@ -19,7 +19,7 @@ const (
 	relayerInfoPrefix          = "relayer"
 )
 
-// RecoveryDB contains information about ongoing swaps requires for recovery
+// RecoveryDB contains information about ongoing swaps required for recovery
 // in case of shutdown.
 type RecoveryDB struct {
 	db chaindb.Database
