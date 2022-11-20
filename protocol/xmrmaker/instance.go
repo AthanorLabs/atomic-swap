@@ -85,6 +85,10 @@ func (b *Instance) checkForOngoingSwaps() error {
 	}
 
 	for _, s := range swaps {
+		if s.Provides != types.ProvidesXMR {
+			continue
+		}
+
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
 			// TODO: set status to aborted, delete info from recovery db
 			continue
