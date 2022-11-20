@@ -1,3 +1,4 @@
+// Package backend provides the top-level management of a swapd instance.
 package backend
 
 import (

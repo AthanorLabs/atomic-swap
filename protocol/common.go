@@ -1,3 +1,7 @@
+// Package protocol has no obvious theme and doesn't have much to do with a protocol. The
+// EthereumAssetAmount seems like it belongs with the coins types in the common package.
+// KeysAndProof seems like it belongs in some crypto package. ConvertContractSwapToMsg
+// seems like it belongs in the net/message package.
 package protocol
 
 import (

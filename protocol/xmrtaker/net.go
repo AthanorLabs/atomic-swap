@@ -8,7 +8,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 )
 
 // EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)

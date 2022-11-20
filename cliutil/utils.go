@@ -1,3 +1,6 @@
+// Package cliutil provides utility functions shared by multiple main packages.
+// TODO: createAndWriteEthKeyFile and GetEthereumPrivateKey are only used by swapd,
+// so we should move them out of here.
 package cliutil
 
 import (

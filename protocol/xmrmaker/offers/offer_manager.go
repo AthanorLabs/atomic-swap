@@ -1,3 +1,4 @@
+// Package offers provides management of the offers being made by a swapd instance.
 package offers
 
 import (

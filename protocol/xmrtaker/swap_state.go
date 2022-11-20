@@ -1,3 +1,5 @@
+// Package xmrtaker manages the swap state of individual swaps where the local swapd
+// instance is offering Ethereum assets and accepting Monero in return.
 package xmrtaker
 
 import (
@@ -27,7 +29,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 )
 
 const revertSwapCompleted = "swap is already completed"

@@ -1,3 +1,4 @@
+// Package db implements the APIs for interacting with our disk persisted key-value store.
 package db
 
 import (

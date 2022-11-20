@@ -1,3 +1,6 @@
+// Package rpc provides the HTTP server for for incoming JSON-RPC and websocket requests
+// to swapd from the local host. It is also providing stuff related to the libp2p
+// interactions. ... and types for both ... Need help describing the common theme here.
 package rpc
 
 import (

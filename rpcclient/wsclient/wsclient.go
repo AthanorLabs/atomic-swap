@@ -1,3 +1,5 @@
+// Package wsclient provides client libraries for interacting with a local swapd instance
+// over web sockets.
 package wsclient
 
 import (

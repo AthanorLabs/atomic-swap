@@ -1,3 +1,5 @@
+// Package main provides the entrypoint of swapcli, an executable for interacting with a
+// local swapd instance from the command line.
 package main
 
 import (

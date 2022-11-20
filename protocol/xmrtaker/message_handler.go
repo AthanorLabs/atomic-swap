@@ -13,7 +13,7 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.

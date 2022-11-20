@@ -1,3 +1,6 @@
+// Package dleq provides and interface named Interface layer on top of the cgo-dleq layer
+// that in turn provides a golang interface to the Distributed Log Equality (DLEQ)
+// algorithm code written in Rust.
 package dleq
 
 import (

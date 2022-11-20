@@ -1,3 +1,5 @@
+// Package swap provides the management layer used by swapd for tracking current and past
+// swaps.
 package swap
 
 import (
