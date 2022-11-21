@@ -108,7 +108,6 @@ func newSwapState(
 
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
-	statusCh <- stage
 
 	if !b.ETHClient().HasPrivateKey() {
 		transferBack = true // front-end must set final deposit address
@@ -183,6 +182,7 @@ func newSwapState(
 		return nil, err
 	}
 
+	statusCh <- stage
 	s := &swapState{
 		ctx:               ctx,
 		cancel:            cancel,

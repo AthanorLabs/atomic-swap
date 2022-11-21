@@ -223,7 +223,7 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 	info, err := s.sm.GetOngoingSwap(offerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get ongoing swap: %w", err)
 	}
 
 	var ss common.SwapState

@@ -107,8 +107,6 @@ func newSwapStateFromStart(
 		}
 	}
 
-	offerExtra.StatusCh <- stage
-
 	moneroStartHeight, err := b.XMRClient().GetChainHeight()
 	if err != nil {
 		return nil, err
@@ -139,6 +137,7 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
+	offerExtra.StatusCh <- stage
 	return newSwapState(
 		b,
 		offer,
