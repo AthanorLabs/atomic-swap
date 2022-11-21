@@ -109,19 +109,6 @@ func newSwapState(
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 	statusCh <- stage
-	info := pswap.NewInfo(
-		offerID,
-		types.ProvidesETH,
-		providedAmount.AsStandard(),
-		receivedAmount.AsMonero(),
-		exchangeRate,
-		ethAsset,
-		stage,
-		statusCh,
-	)
-	if err = b.SwapManager().AddSwap(info); err != nil {
-		return nil, err
-	}
 
 	if !b.ETHClient().HasPrivateKey() {
 		transferBack = true // front-end must set final deposit address
@@ -155,13 +142,23 @@ func newSwapState(
 		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
-	err = b.RecoveryDB().PutMoneroStartHeight(offerID, walletScanHeight)
+	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
-	if err != nil {
+	info := pswap.NewInfo(
+		offerID,
+		types.ProvidesETH,
+		providedAmount.AsStandard(),
+		receivedAmount.AsMonero(),
+		exchangeRate,
+		ethAsset,
+		stage,
+		walletScanHeight,
+		statusCh,
+	)
+	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 

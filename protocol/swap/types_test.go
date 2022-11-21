@@ -22,18 +22,20 @@ func Test_InfoMarshal(t *testing.T) {
 		0.33,
 		types.EthAssetETH,
 		types.CompletedSuccess,
+		200,
 		make(chan types.Status),
 	)
 	infoBytes, err := json.Marshal(info)
 	require.NoError(t, err)
 	expectedJSON := `{
 		"version": "0.1.0",
-		"offer_id": "0x0102030405060708091011121314151617181920212223242526272829303132",
+		"offerId": "0x0102030405060708091011121314151617181920212223242526272829303132",
 		"provides": "XMR",
-		"provided_amount": 1.25,
-		"received_amount": 1,
-		"exchange_rate": 0.33,
-		"eth_asset": "ETH",
+		"providedAmount": 1.25,
+		"receivedAmount": 1,
+		"exchangeRate": 0.33,
+		"ethAsset": "ETH",
+		"moneroStartHeight": 200,
 		"status": 5
 	}`
 	require.JSONEq(t, expectedJSON, string(infoBytes))

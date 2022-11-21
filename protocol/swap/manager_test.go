@@ -21,12 +21,28 @@ func TestNewManager(t *testing.T) {
 	require.NoError(t, err)
 
 	hashA := types.Hash{0x1}
-	infoA := NewInfo(hashA, types.ProvidesXMR, 1, 1, 0.1, types.EthAssetETH, types.ExpectingKeys, nil)
+	infoA := NewInfo(
+		hashA,
+		types.ProvidesXMR,
+		1, 1, 0.1,
+		types.EthAssetETH,
+		types.ExpectingKeys,
+		100,
+		nil,
+	)
 	db.EXPECT().PutSwap(infoA)
 	err = m.AddSwap(infoA)
 	require.NoError(t, err)
 
-	infoB := NewInfo(types.Hash{0x2}, types.ProvidesXMR, 1, 1, 0.1, types.EthAssetETH, types.CompletedSuccess, nil)
+	infoB := NewInfo(
+		types.Hash{2},
+		types.ProvidesXMR,
+		1, 1, 0.1,
+		types.EthAssetETH,
+		types.CompletedSuccess,
+		100,
+		nil,
+	)
 	db.EXPECT().PutSwap(infoB)
 	err = m.AddSwap(infoB)
 	require.NoError(t, err)
@@ -47,7 +63,15 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 
 	m, err := NewManager(db)
 	require.NoError(t, err)
-	info := NewInfo(types.Hash{}, types.ProvidesXMR, 1, 1, 0.1, types.EthAssetETH, types.ExpectingKeys, nil)
+	info := NewInfo(
+		types.Hash{},
+		types.ProvidesXMR,
+		1, 1, 0.1,
+		types.EthAssetETH,
+		types.ExpectingKeys,
+		100,
+		nil,
+	)
 
 	db.EXPECT().PutSwap(info)
 	err = m.AddSwap(info)

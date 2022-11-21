@@ -123,11 +123,6 @@ func (inst *Instance) abortOngoingSwap(s swap.Info) error {
 func (inst *Instance) createOngoingSwap(s swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
-	moneroStartHeight, err := inst.backend.RecoveryDB().GetMoneroStartHeight(s.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get monero start height for ongoing swap, id %s: %s", s.ID, err)
-	}
-
 	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
 	if err == nil {
 		inst.backend.XMRClient().Lock()
@@ -139,7 +134,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 			inst.backend.Env(),
 			inst.backend.XMRClient(),
 			sharedKey,
-			moneroStartHeight,
+			s.MoneroStartHeight,
 		)
 		if err != nil {
 			return err
@@ -177,7 +172,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		relayerInfo,
 		inst.offerManager,
 		ethSwapInfo,
-		moneroStartHeight,
+		s.MoneroStartHeight,
 		&s,
 		sk,
 	)
