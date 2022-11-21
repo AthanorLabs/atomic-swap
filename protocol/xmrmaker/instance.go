@@ -172,7 +172,6 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		relayerInfo,
 		inst.offerManager,
 		ethSwapInfo,
-		s.MoneroStartHeight,
 		&s,
 		sk,
 	)

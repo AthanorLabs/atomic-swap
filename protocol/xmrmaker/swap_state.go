@@ -157,7 +157,6 @@ func newSwapStateFromOngoing(
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
 	ethSwapInfo *db.EthereumSwapInfo,
-	moneroStartNumber uint64,
 	info *pswap.Info,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
@@ -168,7 +167,7 @@ func newSwapStateFromOngoing(
 	}
 
 	s, err := newSwapState(
-		b, offer, offerExtra, om, ethSwapInfo.StartNumber, moneroStartNumber, info,
+		b, offer, offerExtra, om, ethSwapInfo.StartNumber, info.MoneroStartHeight, info,
 	)
 	if err != nil {
 		return nil, err

@@ -47,7 +47,6 @@ func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 		swapState.offerExtra,
 		swapState.offerManager,
 		ethSwapInfo,
-		1,
 		swapState.info,
 		swapState.privkeys,
 	)
@@ -114,7 +113,6 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 		s.offerExtra,
 		s.offerManager,
 		ethSwapInfo,
-		1,
 		s.info,
 		s.privkeys,
 	)
