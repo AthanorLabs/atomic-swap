@@ -349,12 +349,13 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 
 func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestSwapState(t)
+	s.nextExpectedEvent = EventNoneType
 	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
 
-	// since the swap was successful, the offer should be removed.
+	// since the swap was successful, the offer should not have been re-added.
 	o, oe, _ := b.offerManager.GetOffer(s.offer.ID)
 	require.Nil(t, o)
 	require.Nil(t, oe)

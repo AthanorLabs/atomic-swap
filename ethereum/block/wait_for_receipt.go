@@ -16,8 +16,7 @@ import (
 
 const (
 	// in total, we will wait up to 1 hour for a transaction to be included
-	maxRetries = 360
-	// TODO: this should vary based on environment, can increase to 12s for mainnet.
+	maxRetries           = 360
 	receiptSleepDuration = time.Second * 2
 )
 

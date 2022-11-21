@@ -13,14 +13,13 @@ import (
 const (
 	recoveryPrefix             = "recv"
 	contractSwapInfoPrefix     = "ethinfo"
-	moneroHeightPrefix         = "xmrheight"
 	swapPrivateKeyPrefix       = "privkey"
 	sharedSwapPrivateKeyPrefix = "sprivkey"
 	relayerInfoPrefix          = "relayer"
 	xmrmakerKeysPrefix         = "xmrmaker"
 )
 
-// RecoveryDB contains information about ongoing swaps requires for recovery
+// RecoveryDB contains information about ongoing swaps required for recovery
 // in case of shutdown.
 type RecoveryDB struct {
 	db chaindb.Database
@@ -97,34 +96,6 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 	}
 
 	return &s, nil
-}
-
-// PutMoneroStartHeight stores the monero chain height at the start of the given swap.
-func (db *RecoveryDB) PutMoneroStartHeight(id types.Hash, height uint64) error {
-	val, err := json.Marshal(height)
-	if err != nil {
-		return err
-	}
-
-	key := getRecoveryDBKey(id, moneroHeightPrefix)
-	return db.db.Put(key, val)
-}
-
-// GetMoneroStartHeight ...
-func (db *RecoveryDB) GetMoneroStartHeight(id types.Hash) (uint64, error) {
-	key := getRecoveryDBKey(id, moneroHeightPrefix)
-	value, err := db.db.Get(key)
-	if err != nil {
-		return 0, err
-	}
-
-	var s uint64
-	err = json.Unmarshal(value, &s)
-	if err != nil {
-		return 0, err
-	}
-
-	return s, nil
 }
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
@@ -240,7 +211,6 @@ func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *m
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 	keys := [][]byte{
 		getRecoveryDBKey(id, contractSwapInfoPrefix),
-		getRecoveryDBKey(id, moneroHeightPrefix),
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
 		getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix),
 		getRecoveryDBKey(id, xmrmakerKeysPrefix),

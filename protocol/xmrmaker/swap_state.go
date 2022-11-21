@@ -107,22 +107,6 @@ func newSwapStateFromStart(
 		}
 	}
 
-	offerExtra.StatusCh <- stage
-	info := pswap.NewInfo(
-		offer.ID,
-		types.ProvidesXMR,
-		providesAmount.AsMonero(),
-		desiredAmount.AsStandard(),
-		exchangeRate,
-		offer.EthAsset,
-		stage,
-		offerExtra.StatusCh,
-	)
-
-	if err := b.SwapManager().AddSwap(info); err != nil {
-		return nil, err
-	}
-
 	moneroStartHeight, err := b.XMRClient().GetChainHeight()
 	if err != nil {
 		return nil, err
@@ -137,6 +121,23 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
+	info := pswap.NewInfo(
+		offer.ID,
+		types.ProvidesXMR,
+		providesAmount.AsMonero(),
+		desiredAmount.AsStandard(),
+		exchangeRate,
+		offer.EthAsset,
+		stage,
+		moneroStartHeight,
+		offerExtra.StatusCh,
+	)
+
+	if err := b.SwapManager().AddSwap(info); err != nil {
+		return nil, err
+	}
+
+	offerExtra.StatusCh <- stage
 	return newSwapState(
 		b,
 		offer,
@@ -325,11 +326,13 @@ func (s *swapState) exit() error {
 	log.Debugf("attempting to exit swap: nextExpectedEvent=%v", s.nextExpectedEvent)
 
 	defer func() {
-		err := s.SwapManager().CompleteOngoingSwap(s.offer.ID)
+		err := s.SwapManager().CompleteOngoingSwap(s.info)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.offer.ID, err)
 			return
 		}
+
+		log.Infof("exit status %s", s.info.Status)
 
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
@@ -492,16 +495,6 @@ func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRL
 
 	s.XMRClient().Lock()
 	defer s.XMRClient().Unlock()
-
-	height, err := s.XMRClient().GetHeight()
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.Backend.RecoveryDB().PutMoneroStartHeight(s.ID(), height)
-	if err != nil {
-		return nil, err
-	}
 
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {

@@ -79,7 +79,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 		makerKeys.SpendKey().Public(), makerKeys.ViewKey(), nil,
 	)
 
-	err = inst.createOngoingSwap(s)
+	err = inst.createOngoingSwap(*s)
 	require.NoError(t, err)
 
 	inst.swapMu.Lock()

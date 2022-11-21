@@ -211,10 +211,6 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 		return nil, err
 	}
 
-	if info == nil {
-		return nil, errFailedToGetSwapInfo
-	}
-
 	return info.StatusCh(), nil
 }
 

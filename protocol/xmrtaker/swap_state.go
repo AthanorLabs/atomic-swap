@@ -99,20 +99,6 @@ func newSwapStateFromStart(
 ) (*swapState, error) {
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
-	statusCh <- stage
-	info := pswap.NewInfo(
-		offerID,
-		types.ProvidesETH,
-		providedAmount.AsStandard(),
-		receivedAmount.AsMonero(),
-		exchangeRate,
-		ethAsset,
-		stage,
-		statusCh,
-	)
-	if err := b.SwapManager().AddSwap(info); err != nil {
-		return nil, err
-	}
 
 	moneroStartNumber, err := b.XMRClient().GetChainHeight()
 	if err != nil {
@@ -124,16 +110,29 @@ func newSwapStateFromStart(
 		moneroStartNumber -= monero.MinSpendConfirmations
 	}
 
-	err = b.RecoveryDB().PutMoneroStartHeight(offerID, moneroStartNumber)
-	if err != nil {
-		return nil, err
-	}
-
 	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
 	if err != nil {
 		return nil, err
 	}
 
+	info := pswap.NewInfo(
+		offerID,
+		types.ProvidesETH,
+		providedAmount.AsStandard(),
+		receivedAmount.AsMonero(),
+		exchangeRate,
+		ethAsset,
+		stage,
+		moneroStartNumber,
+		statusCh,
+	)
+	if err = b.SwapManager().AddSwap(info); err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		statusCh <- stage
+	}()
 	return newSwapState(
 		b,
 		transferBack,
@@ -148,7 +147,6 @@ func newSwapStateFromOngoing(
 	info *pswap.Info,
 	transferBack bool,
 	ethSwapInfo *db.EthereumSwapInfo,
-	moneroStartNumber uint64,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
 	if info.Status != types.ETHLocked && info.Status != types.ContractReady {
@@ -165,7 +163,7 @@ func newSwapStateFromOngoing(
 		transferBack,
 		info,
 		ethSwapInfo.StartNumber,
-		moneroStartNumber,
+		info.MoneroStartHeight,
 	)
 	if err != nil {
 		return nil, err
@@ -331,7 +329,7 @@ func (s *swapState) Exit() error {
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
 	defer func() {
-		err := s.SwapManager().CompleteOngoingSwap(s.info.ID)
+		err := s.SwapManager().CompleteOngoingSwap(s.info)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.ID, err)
 			return
