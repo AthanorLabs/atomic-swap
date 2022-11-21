@@ -27,10 +27,10 @@ var (
 type RecoveryDB interface {
 	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
 	GetContractSwapInfo(id types.Hash) (*db.EthereumSwapInfo, error)
-	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
-	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error)
-	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
-	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error)
+	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey, env common.Environment) error
+	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
+	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey, env common.Environment) error
+	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
 	PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error
 	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
 	DeleteSwap(id types.Hash) error
