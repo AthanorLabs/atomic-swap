@@ -172,7 +172,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 		},
 	}, nil)
 	rdb.EXPECT().GetSwapPrivateKey(s.ID).Return(
-		sk, nil,
+		sk.SpendKey(), nil,
 	)
 	offerDB.EXPECT().GetOffer(s.ID).Return(offer, nil)
 
