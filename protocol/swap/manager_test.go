@@ -58,11 +58,11 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 
 	s, err := m.GetOngoingSwap(types.Hash{})
 	require.NoError(t, err)
-	require.Equal(t, info, s)
+	require.Equal(t, info, &s)
 	require.NotNil(t, m.ongoing)
 
 	db.EXPECT().PutSwap(info)
-	m.CompleteOngoingSwap(types.Hash{})
+	m.CompleteOngoingSwap(info)
 	require.Equal(t, 0, len(m.ongoing))
 
 	db.EXPECT().GetAllSwaps()
@@ -70,7 +70,7 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []types.Hash{{}}, ids)
 
-	m.CompleteOngoingSwap(types.Hash{})
+	m.CompleteOngoingSwap(info)
 }
 
 func TestManager_AddSwap_Past(t *testing.T) {

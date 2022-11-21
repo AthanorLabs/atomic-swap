@@ -60,15 +60,15 @@ func (*mockSwapManager) GetPastSwap(id types.Hash) (*swap.Info, error) {
 	return &swap.Info{}, nil
 }
 
-func (*mockSwapManager) GetOngoingSwaps() ([]*swap.Info, error) {
+func (*mockSwapManager) GetOngoingSwaps() ([]swap.Info, error) {
 	return nil, nil
 }
 
-func (*mockSwapManager) GetOngoingSwap(id types.Hash) (*swap.Info, error) {
+func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
-	return swap.NewInfo(
+	return *swap.NewInfo(
 		id,
 		types.ProvidesETH,
 		1,
@@ -84,7 +84,7 @@ func (*mockSwapManager) AddSwap(*swap.Info) error {
 	panic("not implemented")
 }
 
-func (*mockSwapManager) CompleteOngoingSwap(types.Hash) error {
+func (*mockSwapManager) CompleteOngoingSwap(*swap.Info) error {
 	panic("not implemented")
 }
 

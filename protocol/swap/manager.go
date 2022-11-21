@@ -19,9 +19,9 @@ type Manager interface {
 	WriteSwapToDB(info *Info) error
 	GetPastIDs() ([]types.Hash, error)
 	GetPastSwap(types.Hash) (*Info, error)
-	GetOngoingSwap(types.Hash) (*Info, error)
-	GetOngoingSwaps() ([]*Info, error)
-	CompleteOngoingSwap(types.Hash) error
+	GetOngoingSwap(types.Hash) (Info, error)
+	GetOngoingSwaps() ([]Info, error)
+	CompleteOngoingSwap(info *Info) error
 }
 
 // manager implements Manager.
@@ -134,44 +134,44 @@ func (m *manager) GetPastSwap(id types.Hash) (*Info, error) {
 }
 
 // GetOngoingSwap returns the ongoing swap's *Info, if there is one.
-func (m *manager) GetOngoingSwap(id types.Hash) (*Info, error) {
+func (m *manager) GetOngoingSwap(id types.Hash) (Info, error) {
 	m.RLock()
 	defer m.RUnlock()
 	s, has := m.ongoing[id]
 	if !has {
-		return nil, errNoSwapWithID
+		return Info{}, errNoSwapWithID
 	}
 
-	return s, nil
+	return *s, nil
 }
 
 // GetOngoingSwaps returns all ongoing swaps.
-func (m *manager) GetOngoingSwaps() ([]*Info, error) {
+func (m *manager) GetOngoingSwaps() ([]Info, error) {
 	m.RLock()
 	defer m.RUnlock()
-	swaps := make([]*Info, len(m.ongoing))
+	swaps := make([]Info, len(m.ongoing))
 	i := 0
 	for _, s := range m.ongoing {
-		swaps[i] = s
+		swaps[i] = *s
 		i++
 	}
 	return swaps, nil
 }
 
 // CompleteOngoingSwap marks the current ongoing swap as completed.
-func (m *manager) CompleteOngoingSwap(id types.Hash) error {
+func (m *manager) CompleteOngoingSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
-	s, has := m.ongoing[id]
+	_, has := m.ongoing[info.ID]
 	if !has {
 		return errNoSwapWithID
 	}
 
-	m.past[id] = s
-	delete(m.ongoing, id)
+	m.past[info.ID] = info
+	delete(m.ongoing, info.ID)
 
 	// re-write to db, as status has changed
-	return m.db.PutSwap(s)
+	return m.db.PutSwap(info)
 }
 
 func (m *manager) getSwapFromDB(id types.Hash) (*Info, error) {

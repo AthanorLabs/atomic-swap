@@ -287,8 +287,8 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id types.Hash) error {
 	// we can ignore the error here, since the error will only be if the swap cannot be found
 	// as ongoing, in which case `writeSwapExitStatus` will look for it in the past swaps.
-	info, _ := s.sm.GetOngoingSwap(id)
-	if info == nil {
+	info, err := s.sm.GetOngoingSwap(id)
+	if err != nil {
 		return s.writeSwapExitStatus(conn, id)
 	}
 

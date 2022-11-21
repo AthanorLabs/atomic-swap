@@ -325,7 +325,7 @@ func (s *swapState) exit() error {
 	log.Debugf("attempting to exit swap: nextExpectedEvent=%v", s.nextExpectedEvent)
 
 	defer func() {
-		err := s.SwapManager().CompleteOngoingSwap(s.offer.ID)
+		err := s.SwapManager().CompleteOngoingSwap(s.info)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.offer.ID, err)
 			return

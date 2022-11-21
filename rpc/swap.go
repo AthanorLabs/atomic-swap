@@ -240,12 +240,12 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 	s.net.CloseProtocolStream(offerID)
 
-	info, err = s.sm.GetPastSwap(info.ID)
+	past, err := s.sm.GetPastSwap(info.ID)
 	if err != nil {
 		return err
 	}
 
-	resp.Status = info.Status
+	resp.Status = past.Status
 	return nil
 }
 

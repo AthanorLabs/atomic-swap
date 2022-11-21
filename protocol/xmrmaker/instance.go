@@ -91,6 +91,11 @@ func (b *Instance) checkForOngoingSwaps() error {
 
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
 			// TODO: set status to aborted, delete info from recovery db
+			err = b.abortOngoingSwap(s)
+			if err != nil {
+				return fmt.Errorf("failed to abort ongoing swap: %w", err)
+			}
+
 			continue
 		}
 
@@ -103,7 +108,17 @@ func (b *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (b *Instance) createOngoingSwap(s *swap.Info) error {
+func (b *Instance) abortOngoingSwap(s swap.Info) error {
+	s.Status = types.CompletedAbort
+	err := b.backend.SwapManager().CompleteOngoingSwap(&s)
+	if err != nil {
+		return err
+	}
+
+	return b.backend.RecoveryDB().DeleteSwap(s.ID)
+}
+
+func (b *Instance) createOngoingSwap(s swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
 	moneroStartHeight, err := b.backend.RecoveryDB().GetMoneroStartHeight(s.ID)
@@ -159,11 +174,11 @@ func (b *Instance) createOngoingSwap(s *swap.Info) error {
 	ss, err := newSwapStateFromOngoing(
 		b.backend,
 		offer,
-		relayerInfo, // TODO: store relayer info in db also
+		relayerInfo,
 		b.offerManager,
 		ethSwapInfo,
 		moneroStartHeight,
-		s,
+		&s,
 		sk,
 	)
 	if err != nil {
