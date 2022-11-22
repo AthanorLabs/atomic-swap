@@ -137,8 +137,10 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	offerExtra.StatusCh <- stage
-	return newSwapState(
+	defer func() {
+		offerExtra.StatusCh <- stage
+	}()
+	s, err := newSwapState(
 		b,
 		offer,
 		offerExtra,
@@ -147,6 +149,16 @@ func newSwapStateFromStart(
 		moneroStartHeight,
 		info,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.generateAndSetKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 // newSwapStateFromOngoing returns a new *swapState given information about a swap
@@ -278,10 +290,6 @@ func newSwapState(
 		readyCh:           make(chan struct{}),
 		info:              info,
 		done:              make(chan struct{}),
-	}
-
-	if err := s.generateAndSetKeys(); err != nil {
-		return nil, err
 	}
 
 	go s.runHandleEvents()

@@ -73,7 +73,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 		},
 	}, nil)
 	rdb.EXPECT().GetSwapPrivateKey(s.ID).Return(
-		sk, nil,
+		sk.SpendKey(), nil,
 	)
 	rdb.EXPECT().GetXMRMakerSwapKeys(s.ID).Return(
 		makerKeys.SpendKey().Public(), makerKeys.ViewKey(), nil,
