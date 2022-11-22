@@ -150,7 +150,11 @@ func (k *PrivateSpendKey) AsPrivateKeyPair() (*PrivateKeyPair, error) {
 // View returns the private view key corresponding to the PrivateSpendKey.
 func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	h := crypto.Keccak256(k.key.Bytes())
-	vk, err := ed25519.NewScalar().SetBytesWithClamping(h[:])
+	// We can't use SetBytesWithClamping below, which would do the sc_reduce32 computation
+	// for us, because standard monero wallets do not modify the first and last byte when
+	// calculating the view key.
+	vkBytes := ScReduce32(h)
+	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes[:])
 	if err != nil {
 		return nil, err
 	}
