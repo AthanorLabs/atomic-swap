@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	//"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto"
 
 	ed25519 "filippo.io/edwards25519"
@@ -103,17 +102,6 @@ type PrivateKeyInfo struct {
 	Address         string
 	Environment     string
 }
-
-// // Info return the private key pair as PrivateKeyInfo, providing its PrivateSpendKey, PrivateViewKey, Address,
-// // and Environment. This is intended to be written to a file, which someone can use to regenerate the wallet.
-// func (kp *PrivateKeyPair) Info(env common.Environment) *PrivateKeyInfo {
-// 	return &PrivateKeyInfo{
-// 		PrivateSpendKey: kp.sk.Hex(),
-// 		PrivateViewKey:  kp.vk.Hex(),
-// 		Address:         string(kp.Address(env)),
-// 		Environment:     env.String(),
-// 	}
-// }
 
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
