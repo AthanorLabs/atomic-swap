@@ -422,7 +422,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey(), s.Env()); err != nil {
+	if err = s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey()); err != nil {
 		return "", err
 	}
 
@@ -449,7 +449,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey(), s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {

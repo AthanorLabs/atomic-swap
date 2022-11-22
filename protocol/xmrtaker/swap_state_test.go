@@ -82,8 +82,8 @@ func newBackend(t *testing.T) backend.Backend {
 	defer ctrl.Finish()
 	rdb := backend.NewMockRecoveryDB(ctrl)
 	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
-	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutXMRMakerSwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)

@@ -3,7 +3,6 @@ package db
 import (
 	"encoding/json"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 
@@ -99,7 +98,7 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 }
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
-func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey, env common.Environment) error {
+func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey) error {
 	val, err := json.Marshal(sk.Hex())
 	if err != nil {
 		return err
@@ -130,7 +129,6 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 func (db *RecoveryDB) PutSharedSwapPrivateKey(
 	id types.Hash,
 	sk *mcrypto.PrivateSpendKey,
-	env common.Environment,
 ) error {
 	val, err := json.Marshal(sk.Hex())
 	if err != nil {
@@ -180,7 +178,7 @@ func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, 
 // GetXMRMakerSwapKeys is called by the xmrtaker during recovery to retrieve the counterparty's
 // swap keys.
 func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
-	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
+	key := getRecoveryDBKey(id, xmrmakerKeysPrefix)
 	value, err := db.db.Get(key[:])
 	if err != nil {
 		return nil, nil, err
@@ -208,6 +206,7 @@ func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *m
 // DeleteSwap deletes all recovery info from the db for the given swap.
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 	keys := [][]byte{
+		getRecoveryDBKey(id, relayerInfoPrefix),
 		getRecoveryDBKey(id, contractSwapInfoPrefix),
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
 		getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix),
