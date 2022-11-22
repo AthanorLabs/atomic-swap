@@ -13,10 +13,6 @@ var (
 	errUnexpectedMessageType       = errors.New("unexpected message type")
 	errMissingKeys                 = errors.New("did not receive XMRTaker's public spend or view key")
 	errMissingAddress              = errors.New("got empty contract address")
-	errNoRefundLogsFound           = errors.New("no refund logs found")
-	errClaimPastTime               = errors.New("past t1, can no longer claim")
-	errClaimInvalid                = errors.New("can not claim, swap does not exist")
-	errClaimSwapComplete           = fmt.Errorf("can not claim, %w", errSwapCompleted)
 	errNilSwapState                = errors.New("swap state is nil")
 	errNilContractSwapID           = errors.New("expected swapID in NotifyETHLocked message")
 	errCannotFindNewLog            = errors.New("cannot find New log")
@@ -29,7 +25,7 @@ var (
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
 	errOfferIDNotSet             = errors.New("offer ID was not set")
-	errSwapCompleted             = errors.New("swap is already completed")
+	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not XMRLocked")
 )
 
 type errBalanceTooLow struct {

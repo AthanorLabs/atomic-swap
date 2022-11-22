@@ -50,11 +50,6 @@ func NewRecoveryState(
 		return nil, err
 	}
 
-	moneroHeight, err := b.RecoveryDB().GetMoneroStartHeight(swapID)
-	if err != nil {
-		return nil, err
-	}
-
 	ctx, cancel := context.WithCancel(b.Ctx())
 	s := &swapState{
 		ctx:              ctx,
@@ -64,7 +59,7 @@ func NewRecoveryState(
 		privkeys:         kp,
 		pubkeys:          pubkp,
 		dleqProof:        dleq.NewProofWithSecret(sc),
-		walletScanHeight: moneroHeight,
+		walletScanHeight: 0,
 		contractSwapID:   ethSwapInfo.SwapID,
 		contractSwap:     ethSwapInfo.Swap,
 		claimedCh:        make(chan struct{}),

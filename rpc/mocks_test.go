@@ -48,6 +48,10 @@ func (*mockNet) CloseProtocolStream(types.Hash) {
 
 type mockSwapManager struct{}
 
+func (*mockSwapManager) WriteSwapToDB(_ *swap.Info) error {
+	return nil
+}
+
 func (*mockSwapManager) GetPastIDs() ([]types.Hash, error) {
 	panic("not implemented")
 }
@@ -56,11 +60,15 @@ func (*mockSwapManager) GetPastSwap(id types.Hash) (*swap.Info, error) {
 	return &swap.Info{}, nil
 }
 
-func (*mockSwapManager) GetOngoingSwap(id types.Hash) (*swap.Info, error) {
+func (*mockSwapManager) GetOngoingSwaps() ([]swap.Info, error) {
+	return nil, nil
+}
+
+func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
-	return swap.NewInfo(
+	return *swap.NewInfo(
 		id,
 		types.ProvidesETH,
 		1,
@@ -68,6 +76,7 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (*swap.Info, error) {
 		1,
 		types.EthAssetETH,
 		types.CompletedSuccess,
+		1,
 		statusCh,
 	), nil
 }
@@ -76,7 +85,7 @@ func (*mockSwapManager) AddSwap(*swap.Info) error {
 	panic("not implemented")
 }
 
-func (*mockSwapManager) CompleteOngoingSwap(types.Hash) error {
+func (*mockSwapManager) CompleteOngoingSwap(*swap.Info) error {
 	panic("not implemented")
 }
 

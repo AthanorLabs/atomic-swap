@@ -120,13 +120,26 @@ func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, err
 		return nil, nil, errOfferDoesNotExist
 	}
 
-	err := m.db.DeleteOffer(id)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	delete(m.offers, id)
 	return offer.offer, offer.extra, nil
+}
+
+// DeleteOfferFromDB deletes the offer from the database.
+func (m *Manager) DeleteOfferFromDB(id types.Hash) error {
+	return m.db.DeleteOffer(id)
+}
+
+// GetOfferFromDB returns an offer from memory or the database, if it exists.
+func (m *Manager) GetOfferFromDB(id types.Hash) (*types.Offer, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	offer, has := m.offers[id]
+	if has {
+		return offer.offer, nil
+	}
+
+	return m.db.GetOffer(id)
 }
 
 // GetOffers returns all current offers. The returned slice is in random order and will not
