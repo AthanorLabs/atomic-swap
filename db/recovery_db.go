@@ -99,9 +99,8 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 }
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
-func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error {
-	k := keys.Info(env)
-	val, err := json.Marshal(k)
+func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey, env common.Environment) error {
+	val, err := json.Marshal(sk.Hex())
 	if err != nil {
 		return err
 	}
@@ -111,30 +110,29 @@ func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyP
 }
 
 // GetSwapPrivateKey returns the swap private key share, if it exists.
-func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error) {
+func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error) {
 	key := getRecoveryDBKey(id, swapPrivateKeyPrefix)
 	value, err := db.db.Get(key[:])
 	if err != nil {
 		return nil, err
 	}
 
-	var info mcrypto.PrivateKeyInfo
-	err = json.Unmarshal(value, &info)
+	var skHex string
+	err = json.Unmarshal(value, &skHex)
 	if err != nil {
 		return nil, err
 	}
 
-	return mcrypto.NewPrivateKeyPairFromHex(info.PrivateSpendKey, info.PrivateViewKey)
+	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
 }
 
 // PutSharedSwapPrivateKey stores the shared swap private key for the given swap ID.
 func (db *RecoveryDB) PutSharedSwapPrivateKey(
 	id types.Hash,
-	keys *mcrypto.PrivateKeyPair,
+	sk *mcrypto.PrivateSpendKey,
 	env common.Environment,
 ) error {
-	k := keys.Info(env)
-	val, err := json.Marshal(k)
+	val, err := json.Marshal(sk.Hex())
 	if err != nil {
 		return err
 	}
@@ -144,20 +142,20 @@ func (db *RecoveryDB) PutSharedSwapPrivateKey(
 }
 
 // GetSharedSwapPrivateKey returns the shared swap private key, if it exists.
-func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateKeyPair, error) {
+func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error) {
 	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
 	value, err := db.db.Get(key[:])
 	if err != nil {
 		return nil, err
 	}
 
-	var info mcrypto.PrivateKeyInfo
-	err = json.Unmarshal(value, &info)
+	var skHex string
+	err = json.Unmarshal(value, &skHex)
 	if err != nil {
 		return nil, err
 	}
 
-	return mcrypto.NewPrivateKeyPairFromHex(info.PrivateSpendKey, info.PrivateViewKey)
+	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
 }
 
 type xmrmakerKeys struct {

@@ -94,15 +94,20 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 	// otherwise, create new swap state from recovery info
 	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
 	if err == nil {
+		kp, err := sharedKey.AsPrivateKeyPair() //nolint:govet
+		if err != nil {
+			return err
+		}
+
 		inst.backend.XMRClient().Lock()
 		defer inst.backend.XMRClient().Unlock()
 
 		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet( //nolint:govet
+		addr, err := monero.CreateWallet(
 			"xmrmaker-swap-wallet",
 			inst.backend.Env(),
 			inst.backend.XMRClient(),
-			sharedKey,
+			kp,
 			s.MoneroStartHeight,
 		)
 		if err != nil {
@@ -123,6 +128,11 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.ID, err)
 	}
 
+	kp, err := sk.AsPrivateKeyPair()
+	if err != nil {
+		return err
+	}
+
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 	ss, err := newSwapStateFromOngoing(
@@ -130,7 +140,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		&s,
 		inst.transferBack,
 		ethSwapInfo,
-		sk,
+		kp,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %s", s.ID, err)

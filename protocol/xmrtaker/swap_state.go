@@ -497,7 +497,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys, s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey(), s.Env())
 }
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.

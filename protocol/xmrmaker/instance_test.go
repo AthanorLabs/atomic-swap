@@ -83,8 +83,6 @@ func newTestBackend(t *testing.T) backend.Backend {
 	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
-	rdb.EXPECT().PutMoneroStartHeight(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().GetMoneroStartHeight(gomock.Any()).Return(uint64(1), nil).AnyTimes()
 	rdb.EXPECT().PutSwapRelayerInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
@@ -174,7 +172,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 		},
 	}, nil)
 	rdb.EXPECT().GetSwapPrivateKey(s.ID).Return(
-		sk, nil,
+		sk.SpendKey(), nil,
 	)
 	offerDB.EXPECT().GetOffer(s.ID).Return(offer, nil)
 

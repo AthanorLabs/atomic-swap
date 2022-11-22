@@ -119,6 +119,7 @@ func TestNewSwapState_generateAndSetKeys(t *testing.T) {
 
 func TestSwapState_ClaimFunds(t *testing.T) {
 	_, swapState := newTestSwapState(t)
+
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
 		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
