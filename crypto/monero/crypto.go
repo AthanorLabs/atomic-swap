@@ -7,10 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	//"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/crypto"
-
 	ed25519 "filippo.io/edwards25519"
+
+	"github.com/athanorlabs/atomic-swap/crypto"
 )
 
 const privateKeySize = 32
@@ -101,8 +100,7 @@ type PrivateKeyInfo struct {
 
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
-	seed [32]byte
-	key  *ed25519.Scalar
+	key *ed25519.Scalar
 }
 
 // NewPrivateSpendKey returns a new PrivateSpendKey from the given canonically-encoded scalar.
@@ -189,6 +187,34 @@ func (k *PrivateSpendKey) HashString() string {
 // Bytes returns the PrivateSpendKey as canonical bytes
 func (k *PrivateSpendKey) Bytes() []byte {
 	return k.key.Bytes()
+}
+
+// MarshalText returns the 64-symbol hex representation of the 32-byte k in little endian.
+// A nil key field will result in the empty string when invoked via json.Marshal(...).
+func (k *PrivateSpendKey) MarshalText() ([]byte, error) {
+	if k.key == nil {
+		return []byte{}, nil
+	}
+	return []byte(hex.EncodeToString(k.Bytes())), nil
+}
+
+// UnmarshalText assigns the PrivateSpendKey from hex input in little endian that is
+// exactly 32 bytes (64 hex symbols). No leading 0x prefix is supported.
+func (k *PrivateSpendKey) UnmarshalText(input []byte) error {
+	inputStr := string(input)
+	if inputStr == "" {
+		k.key = nil
+		return nil
+	}
+	keyBytes, err := hex.DecodeString(inputStr)
+	if err != nil {
+		return err
+	}
+	if len(keyBytes) != privateKeySize {
+		return errInvalidInput
+	}
+	k.key, err = ed25519.NewScalar().SetCanonicalBytes(keyBytes)
+	return err
 }
 
 // PrivateViewKey represents a monero private view key.
@@ -326,10 +352,7 @@ func GenerateKeys() (*PrivateKeyPair, error) {
 		return nil, fmt.Errorf("failed to set bytes: %w", err)
 	}
 
-	sk := &PrivateSpendKey{
-		seed: seed,
-		key:  s,
-	}
+	sk := &PrivateSpendKey{key: s}
 
 	return sk.AsPrivateKeyPair()
 }
