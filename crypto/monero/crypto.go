@@ -164,7 +164,7 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	// We can't use SetBytesWithClamping below, which would do the sc_reduce32 computation
 	// for us, because standard monero wallets do not modify the first and last byte when
 	// calculating the view key.
-	vkBytes := ScReduce32(h)
+	vkBytes := scReduce32(h)
 	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes[:])
 	if err != nil {
 		return nil, err
