@@ -178,12 +178,6 @@ func (k *PrivateSpendKey) Hash() [32]byte {
 	return crypto.Keccak256(k.key.Bytes())
 }
 
-// HashString returns the keccak256 of the secret key bytes as a hex encoded string
-func (k *PrivateSpendKey) HashString() string {
-	h := crypto.Keccak256(k.key.Bytes())
-	return hex.EncodeToString(h[:])
-}
-
 // Bytes returns the PrivateSpendKey as canonical bytes
 func (k *PrivateSpendKey) Bytes() []byte {
 	return k.key.Bytes()
