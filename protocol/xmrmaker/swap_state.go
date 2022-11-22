@@ -133,7 +133,7 @@ func newSwapStateFromStart(
 		offerExtra.StatusCh,
 	)
 
-	if err := b.SwapManager().AddSwap(info); err != nil {
+	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 

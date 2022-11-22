@@ -18,43 +18,15 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
-func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
-	s := newTestSwapState(t)
-	defer s.cancel()
-	s.SetSwapTimeout(time.Minute * 2)
-
+func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Address) {
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
 	err := backend.XMRClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 	monero.MineMinXMRBalance(t, backend.XMRClient(), common.MoneroToPiconero(1))
 
-	// invalid SendKeysMessage should result in an error
-	msg := &net.SendKeysMessage{}
-	err = s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingKeys))
-
-	// handle valid SendKeysMessage
-	msg = s.SendKeysMessage()
-	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = s.ETHClient().Address().String()
-
-	err = s.HandleProtocolMessage(msg)
-	require.NoError(t, err)
-
-	resp := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyETHLockedType, resp.Type())
-	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
-	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
-	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
-
-	// simulate xmrmaker locking xmr
-	amt := common.PiconeroAmount(1000000000)
-	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
-
 	// lock xmr
+	amt := common.PiconeroAmount(1000000000)
 	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, uint64(amt))
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
@@ -106,6 +78,37 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	case <-time.After(time.Second * 2):
 		t.Fatalf("didn't get ready logs in time")
 	}
+}
+
+func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
+	s := newTestSwapState(t)
+	defer s.cancel()
+	s.SetSwapTimeout(time.Minute * 2)
+
+	// invalid SendKeysMessage should result in an error
+	msg := &net.SendKeysMessage{}
+	err := s.HandleProtocolMessage(msg)
+	require.True(t, errors.Is(err, errMissingKeys))
+
+	// handle valid SendKeysMessage
+	msg = s.SendKeysMessage()
+	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
+	msg.EthAddress = s.ETHClient().Address().String()
+
+	err = s.HandleProtocolMessage(msg)
+	require.NoError(t, err)
+
+	resp := s.Net().(*mockNet).LastSentMessage()
+	require.NotNil(t, resp)
+	require.Equal(t, message.NotifyETHLockedType, resp.Type())
+	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
+	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
+	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
+
+	// simulate xmrmaker locking xmr
+	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
+	xmrAddr := kp.Address(common.Mainnet)
+	lockXMRAndCheckForReadyLog(t, s, xmrAddr)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key

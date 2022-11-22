@@ -14,16 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 )
 
-// tests the case where the swap is stopped at the stage where the next
-// expected event is EventXMRLockedType.
-// in this case, an EventXMRLocked should cause the contract to be set to ready.
-func TestSwapStateOngoing_handleEvent_EventXMRLocked(t *testing.T) {
-}
-
-// tests the case where the swap is stopped at the stage where the next
-// expected event is EventETHClaimedType.
-// in this case, an EventETHClaimed should allow the swap to complete successfully.
-func TestSwapStateOngoing_handleEvent_EventETHClaimed(t *testing.T) {
+func setupSwapStateUntilETHLocked(t *testing.T) (*swapState, uint64) {
 	s := newTestSwapState(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
@@ -49,6 +40,20 @@ func TestSwapStateOngoing_handleEvent_EventETHClaimed(t *testing.T) {
 	// shutdown swap state, re-create from ongoing
 	s.cancel()
 
+	rdb.EXPECT().GetXMRMakerSwapKeys(s.info.ID).Return(
+		makerKeys.PublicKeyPair.SpendKey(),
+		makerKeys.PrivateKeyPair.ViewKey(),
+		nil,
+	)
+	return s, startNum
+}
+
+// tests the case where the swap is stopped at the stage where the next
+// expected event is EventXMRLockedType.
+// in this case, an EventXMRLocked should cause the contract to be set to ready.
+func TestSwapStateOngoing_handleEvent_EventXMRLocked(t *testing.T) {
+	s, startNum := setupSwapStateUntilETHLocked(t)
+
 	ethInfo := &db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(int64(startNum)),
 		SwapID:          s.contractSwapID,
@@ -56,11 +61,32 @@ func TestSwapStateOngoing_handleEvent_EventETHClaimed(t *testing.T) {
 		ContractAddress: s.Backend.ContractAddr(),
 	}
 
-	rdb.EXPECT().GetXMRMakerSwapKeys(s.info.ID).Return(
-		makerKeys.PublicKeyPair.SpendKey(),
-		makerKeys.PrivateKeyPair.ViewKey(),
-		nil,
+	ss, err := newSwapStateFromOngoing(
+		s.Backend,
+		s.info,
+		s.transferBack,
+		ethInfo,
+		s.privkeys,
 	)
+	require.NoError(t, err)
+	require.Equal(t, EventXMRLockedType, ss.nextExpectedEvent)
+
+	xmrAddr, _ := ss.expectedXMRLockAccount()
+	lockXMRAndCheckForReadyLog(t, ss, xmrAddr)
+}
+
+// tests the case where the swap is stopped at the stage where the next
+// expected event is EventETHClaimedType.
+// in this case, an EventETHClaimed should allow the swap to complete successfully.
+func TestSwapStateOngoing_handleEvent_EventETHClaimed(t *testing.T) {
+	s, startNum := setupSwapStateUntilETHLocked(t)
+
+	ethInfo := &db.EthereumSwapInfo{
+		StartNumber:     big.NewInt(int64(startNum)),
+		SwapID:          s.contractSwapID,
+		Swap:            s.contractSwap,
+		ContractAddress: s.Backend.ContractAddr(),
+	}
 
 	ss, err := newSwapStateFromOngoing(
 		s.Backend,
