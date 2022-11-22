@@ -38,6 +38,8 @@ func load4(in []byte) int64 {
 //
 //	s[0]+256*s[1]+...+256^31*s[31] = s mod l
 //	where l = 2^252 + 27742317777372353535851937790883648493.
+//
+//nolint:ineffassign
 func scReduce(out *[32]byte, s *[64]byte) {
 	s0 := 2097151 & load3(s[:])
 	s1 := 2097151 & (load4(s[2:]) >> 5)
