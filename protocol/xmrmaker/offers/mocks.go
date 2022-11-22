@@ -78,6 +78,21 @@ func (mr *MockDatabaseMockRecorder) GetAllOffers() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllOffers", reflect.TypeOf((*MockDatabase)(nil).GetAllOffers))
 }
 
+// GetOffer mocks base method.
+func (m *MockDatabase) GetOffer(arg0 common.Hash) (*types.Offer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOffer", arg0)
+	ret0, _ := ret[0].(*types.Offer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOffer indicates an expected call of GetOffer.
+func (mr *MockDatabaseMockRecorder) GetOffer(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOffer", reflect.TypeOf((*MockDatabase)(nil).GetOffer), arg0)
+}
+
 // PutOffer mocks base method.
 func (m *MockDatabase) PutOffer(arg0 *types.Offer) error {
 	m.ctrl.T.Helper()

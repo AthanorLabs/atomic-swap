@@ -37,7 +37,6 @@ func Test_Manager(t *testing.T) {
 	require.Len(t, offers, numAdd)
 	for i := 0; i < numTake; i++ {
 		id := offers[i].ID
-		db.EXPECT().DeleteOffer(id)
 		offer, offerExtra, err := mgr.TakeOffer(id)
 		require.NoError(t, err)
 		require.NotNil(t, offer)

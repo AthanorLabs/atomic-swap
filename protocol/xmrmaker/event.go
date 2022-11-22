@@ -19,6 +19,17 @@ const (
 	EventNoneType
 )
 
+func nextExpectedEventFromStatus(s types.Status) EventType {
+	switch s {
+	case types.ExpectingKeys, types.KeysExchanged:
+		return EventETHLockedType
+	case types.XMRLocked:
+		return EventContractReadyType
+	default:
+		return EventExitType
+	}
+}
+
 func (t EventType) String() string {
 	switch t {
 	case EventETHLockedType:
@@ -155,7 +166,11 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(EventContractReadyType)
+		err = s.setNextExpectedEvent(EventContractReadyType)
+		if err != nil {
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventContractReadyType: %w", err)
+			return
+		}
 	case *EventContractReady:
 		log.Infof("EventContractReady")
 		defer close(e.errCh)

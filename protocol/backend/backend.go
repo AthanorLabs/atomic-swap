@@ -26,10 +26,14 @@ var (
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
 	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
-	PutMoneroStartHeight(id types.Hash, height uint64) error
-	GetMoneroStartHeight(id types.Hash) (uint64, error)
-	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
-	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateKeyPair, env common.Environment) error
+	GetContractSwapInfo(id types.Hash) (*db.EthereumSwapInfo, error)
+	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey, env common.Environment) error
+	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
+	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey, env common.Environment) error
+	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
+	PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error
+	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
+	DeleteSwap(id types.Hash) error
 }
 
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
@@ -39,7 +43,6 @@ type Backend interface {
 	ETHClient() extethclient.EthClient
 	net.MessageSender
 
-	// RecoveryDB ...
 	RecoveryDB() RecoveryDB
 
 	// NewTxSender creates a new transaction sender, called per-swap

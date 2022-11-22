@@ -108,20 +108,6 @@ func newSwapState(
 
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
-	statusCh <- stage
-	info := pswap.NewInfo(
-		offerID,
-		types.ProvidesETH,
-		providedAmount.AsStandard(),
-		receivedAmount.AsMonero(),
-		exchangeRate,
-		ethAsset,
-		stage,
-		statusCh,
-	)
-	if err = b.SwapManager().AddSwap(info); err != nil {
-		return nil, err
-	}
 
 	if !b.ETHClient().HasPrivateKey() {
 		transferBack = true // front-end must set final deposit address
@@ -155,13 +141,23 @@ func newSwapState(
 		walletScanHeight -= monero.MinSpendConfirmations
 	}
 
-	err = b.RecoveryDB().PutMoneroStartHeight(offerID, walletScanHeight)
+	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	ethHeader, err := b.ETHClient().Raw().HeaderByNumber(b.Ctx(), nil)
-	if err != nil {
+	info := pswap.NewInfo(
+		offerID,
+		types.ProvidesETH,
+		providedAmount.AsStandard(),
+		receivedAmount.AsMonero(),
+		exchangeRate,
+		ethAsset,
+		stage,
+		walletScanHeight,
+		statusCh,
+	)
+	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 
@@ -186,6 +182,7 @@ func newSwapState(
 		return nil, err
 	}
 
+	statusCh <- stage
 	s := &swapState{
 		ctx:               ctx,
 		cancel:            cancel,
@@ -269,7 +266,7 @@ func (s *swapState) Exit() error {
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
 	defer func() {
-		err := s.SwapManager().CompleteOngoingSwap(s.info.ID)
+		err := s.SwapManager().CompleteOngoingSwap(s.info)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.ID, err)
 			return
@@ -457,7 +454,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys, s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey(), s.Env())
 }
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
@@ -641,7 +638,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err := s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB, s.Env()); err != nil {
+	if err := s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey(), s.Env()); err != nil {
 		return "", err
 	}
 

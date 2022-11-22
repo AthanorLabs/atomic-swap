@@ -8,6 +8,7 @@ import (
 type Database interface {
 	PutOffer(offer *types.Offer) error
 	DeleteOffer(id types.Hash) error
+	GetOffer(id types.Hash) (*types.Offer, error)
 	GetAllOffers() ([]*types.Offer, error)
 	ClearAllOffers() error
 }

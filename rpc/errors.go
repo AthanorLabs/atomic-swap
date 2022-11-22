@@ -7,7 +7,6 @@ import (
 var (
 	// net_ errors
 	errNoOfferWithID           = errors.New("peer does not have offer with given ID")
-	errFailedToGetSwapInfo     = errors.New("failed to get swap info after initiating")
 	errEthAssetIncorrectFormat = errors.New("ethAsset must be formatted as an address")
 
 	// swap_ errors

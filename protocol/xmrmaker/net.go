@@ -18,21 +18,21 @@ type EthereumAssetAmount interface {
 }
 
 // Provides returns types.ProvidesXMR
-func (b *Instance) Provides() types.ProvidesCoin {
+func (inst *Instance) Provides() types.ProvidesCoin {
 	return types.ProvidesXMR
 }
 
-func (b *Instance) initiate(
+func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	providesAmount common.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
-	if b.swapStates[offer.ID] != nil {
+	if inst.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := b.backend.XMRClient().GetBalance(0)
+	balance, err := inst.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
@@ -46,21 +46,28 @@ func (b *Instance) initiate(
 	}
 
 	// checks passed, delete offer for now
-	b.offerManager.DeleteOffer(offer.ID)
+	inst.offerManager.DeleteOffer(offer.ID)
 
-	s, err := newSwapState(b.backend, offer, offerExtra, b.offerManager, providesAmount, desiredAmount)
+	s, err := newSwapStateFromStart(
+		inst.backend,
+		offer,
+		offerExtra,
+		inst.offerManager,
+		providesAmount,
+		desiredAmount,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
 		<-s.done
-		b.swapMu.Lock()
-		defer b.swapMu.Unlock()
-		delete(b.swapStates, offer.ID)
+		inst.swapMu.Lock()
+		defer inst.swapMu.Unlock()
+		delete(inst.swapStates, offer.ID)
 	}()
 
-	symbol, err := pcommon.AssetSymbol(b.backend, offer.EthAsset)
+	symbol, err := pcommon.AssetSymbol(inst.backend, offer.EthAsset)
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +79,14 @@ func (b *Instance) initiate(
 		symbol,
 		s.info.ProvidedAmount),
 	)
-	b.swapStates[offer.ID] = s
+	inst.swapStates[offer.ID] = s
 	return s, nil
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
-	b.swapMu.Lock()
-	defer b.swapMu.Unlock()
+func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
+	inst.swapMu.Lock()
+	defer inst.swapMu.Unlock()
 
 	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
 		msg.OfferID,
@@ -96,7 +103,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, errOfferIDNotSet
 	}
 
-	offer, offerExtra, err := b.offerManager.GetOffer(id)
+	offer, offerExtra, err := inst.offerManager.GetOffer(id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -116,8 +123,8 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
 	receivedAmount, err := pcommon.GetEthereumAssetAmount(
-		b.backend.Ctx(),
-		b.backend.ETHClient(),
+		inst.backend.Ctx(),
+		inst.backend.ETHClient(),
 		msg.ProvidedAmount,
 		offer.EthAsset,
 	)
@@ -125,7 +132,7 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	state, err := b.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)
+	state, err := inst.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)
 	if err != nil {
 		return nil, nil, err
 	}
