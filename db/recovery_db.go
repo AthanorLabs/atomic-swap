@@ -157,8 +157,8 @@ func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSp
 }
 
 type xmrmakerKeys struct {
-	PublicSpendKey string
-	PrivateViewKey string
+	PublicSpendKey string `json:"publicSpendKey"`
+	PrivateViewKey string `json:"privateViewKey"`
 }
 
 // PutXMRMakerSwapKeys is called by the xmrtaker to store the counterparty's swap keys.

@@ -130,16 +130,19 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	defer func() {
-		statusCh <- stage
-	}()
-	return newSwapState(
+	s, err := newSwapState(
 		b,
 		transferBack,
 		info,
 		ethHeader.Number,
 		moneroStartNumber,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	statusCh <- stage
+	return s, nil
 }
 
 func newSwapStateFromOngoing(
@@ -195,6 +198,10 @@ func newSwapState(
 		return nil, errMustProvideWalletAddress
 	}
 
+	// If the user specified `--external-signer=true` (no private eth key in the client) and
+	// explicitly set `--transfer-back=false` (overriding the default behaviour), we override
+	// their decision and set it back to `true` because an external signer (UI) must be used,
+	// which will prompt the user to set their XMR address for funds to be transferred-back to.
 	if !b.ETHClient().HasPrivateKey() {
 		transferBack = true // front-end must set final deposit address
 	}

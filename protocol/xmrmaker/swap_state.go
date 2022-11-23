@@ -137,9 +137,6 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	defer func() {
-		offerExtra.StatusCh <- stage
-	}()
 	s, err := newSwapState(
 		b,
 		offer,
@@ -158,6 +155,7 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
+	offerExtra.StatusCh <- stage
 	return s, nil
 }
 
