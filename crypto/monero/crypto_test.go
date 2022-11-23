@@ -2,11 +2,8 @@ package mcrypto
 
 import (
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
 	"testing"
 
-	ed25519 "filippo.io/edwards25519"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
@@ -156,50 +153,4 @@ func TestPrivateSpendKey_View(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tt.viewKey, vk.Hex())
 	}
-}
-
-func TestPrivateSpendKey_MarshalText_success(t *testing.T) {
-	// Using a struct and json.Marshal (instead of directly invoking psk.MarshalText()) so
-	// the reader can easily see what the generated JSON looks like.
-	type SomeStruct struct {
-		PrivSpendKey *PrivateSpendKey `json:"privSpendKey"`
-	}
-	keyBytes := [32]byte{0xab}
-	keyBytes[30] = 0xcd // avoiding most significant LE byte so it is "reduced"
-	const expected = `{"privSpendKey": "ab0000000000000000000000000000000000000000000000000000000000cd00"}`
-	key, err := ed25519.NewScalar().SetCanonicalBytes(keyBytes[:])
-	require.NoError(t, err)
-	s := &SomeStruct{PrivSpendKey: &PrivateSpendKey{key}}
-	data, err := json.Marshal(s)
-	require.NoError(t, err)
-	require.JSONEq(t, expected, string(data))
-}
-
-func TestPrivateSpendKey_MarshalText_nil(t *testing.T) {
-	psk := &PrivateSpendKey{} // key inside is nil
-	data, err := psk.MarshalText()
-	require.NoError(t, err)
-	require.Equal(t, "", string(data))
-}
-
-func TestPrivateSpendKey_UnmarshalText(t *testing.T) {
-	const expectedHex = "ab0000000000000000000000000000000000000000000000000000000000cd00"
-
-	// json.Unmarshal requires the value to be quoted
-	psk := &PrivateSpendKey{}
-	err := json.Unmarshal([]byte(fmt.Sprintf("%q", expectedHex)), psk)
-	require.NoError(t, err)
-
-	// Direct invocation should not be quoted
-	psk = &PrivateSpendKey{}
-	err = psk.UnmarshalText([]byte(expectedHex))
-	require.NoError(t, err)
-	require.Equal(t, expectedHex, psk.Hex())
-}
-
-func TestPrivateSpendKey_UnmarshalText_nil(t *testing.T) {
-	psk := &PrivateSpendKey{}
-	err := psk.UnmarshalText([]byte(""))
-	require.NoError(t, err)
-	require.Nil(t, psk.key)
 }

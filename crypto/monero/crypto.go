@@ -183,34 +183,6 @@ func (k *PrivateSpendKey) Bytes() []byte {
 	return k.key.Bytes()
 }
 
-// MarshalText returns the 64-symbol hex representation of the 32-byte k in little endian.
-// A nil key field will result in the empty string when invoked via json.Marshal(...).
-func (k *PrivateSpendKey) MarshalText() ([]byte, error) {
-	if k.key == nil {
-		return []byte{}, nil
-	}
-	return []byte(hex.EncodeToString(k.Bytes())), nil
-}
-
-// UnmarshalText assigns the PrivateSpendKey from hex input in little endian that is
-// exactly 32 bytes (64 hex symbols). No leading 0x prefix is supported.
-func (k *PrivateSpendKey) UnmarshalText(input []byte) error {
-	inputStr := string(input)
-	if inputStr == "" {
-		k.key = nil
-		return nil
-	}
-	keyBytes, err := hex.DecodeString(inputStr)
-	if err != nil {
-		return err
-	}
-	if len(keyBytes) != privateKeySize {
-		return errInvalidInput
-	}
-	k.key, err = ed25519.NewScalar().SetCanonicalBytes(keyBytes)
-	return err
-}
-
 // PrivateViewKey represents a monero private view key.
 type PrivateViewKey struct {
 	key *ed25519.Scalar
