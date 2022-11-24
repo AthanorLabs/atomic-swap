@@ -133,12 +133,11 @@ func newSwapStateFromStart(
 		offerExtra.StatusCh,
 	)
 
-	if err := b.SwapManager().AddSwap(info); err != nil {
+	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
 	}
 
-	offerExtra.StatusCh <- stage
-	return newSwapState(
+	s, err := newSwapState(
 		b,
 		offer,
 		offerExtra,
@@ -147,6 +146,17 @@ func newSwapStateFromStart(
 		moneroStartHeight,
 		info,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.generateAndSetKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	offerExtra.StatusCh <- stage
+	return s, nil
 }
 
 // newSwapStateFromOngoing returns a new *swapState given information about a swap
@@ -286,11 +296,7 @@ func newSwapState(
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
-	if err := s.generateAndSetKeys(); err != nil {
-		return nil, err
-	}
-
+func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 	return &net.SendKeysMessage{
 		ProvidedAmount:     s.info.ProvidedAmount,
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
@@ -298,7 +304,7 @@ func (s *swapState) SendKeysMessage() (*net.SendKeysMessage, error) {
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub.String(),
 		EthAddress:         s.ETHClient().Address().String(),
-	}, nil
+	}
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -414,7 +420,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
 
 	// write keys to file in case something goes wrong
-	if err = s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey(), s.Env()); err != nil {
+	if err = s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey()); err != nil {
 		return "", err
 	}
 
@@ -427,6 +433,10 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
 // if the funds are locked.
 func (s *swapState) generateAndSetKeys() error {
+	if s.privkeys != nil {
+		panic("generateAndSetKeys should only be called once")
+	}
+
 	keysAndProof, err := generateKeys()
 	if err != nil {
 		return err
@@ -437,7 +447,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey(), s.Env())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {

@@ -82,8 +82,9 @@ func newBackend(t *testing.T) backend.Backend {
 	defer ctrl.Finish()
 	rdb := backend.NewMockRecoveryDB(ctrl)
 	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
-	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any(), common.Development).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutXMRMakerSwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)
@@ -105,15 +106,15 @@ func newBackend(t *testing.T) backend.Backend {
 	return b
 }
 
-func newTestInstance(t *testing.T) *swapState {
+func newTestSwapState(t *testing.T) *swapState {
 	b := newBackend(t)
-	swapState, err := newSwapState(b, types.Hash{}, false,
+	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
 		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
 }
 
-func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
+func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
 	b := newBackend(t)
 
 	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
@@ -131,7 +132,7 @@ func newTestInstanceWithERC20(t *testing.T, initialBalance *big.Int) (*swapState
 	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
-	swapState, err := newSwapState(b, types.Hash{}, false,
+	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
 		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
@@ -153,15 +154,12 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 }
 
 func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 
 	msg := &net.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
-
-	err = s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
@@ -178,16 +176,13 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 // test the case where XMRTaker deploys and locks her eth, but XMRMaker never locks his monero.
 // XMRTaker should call refund before the timeout t0.
 func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Second * 15)
 
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
-	err = s.HandleProtocolMessage(msg)
+	err := s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 
 	resp := s.Net().(*mockNet).LastSentMessage()
@@ -219,12 +214,9 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -250,13 +242,10 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 // test the case where the monero is locked, but XMRMaker never claims.
 // XMRTaker should call refund after the timeout t1.
 func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
 	s.SetSwapTimeout(time.Second * 3)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -295,7 +284,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 }
 
 func TestExit_afterSendKeysMessage(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventKeysReceivedType
 	err := s.Exit()
@@ -306,12 +295,9 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 }
 
 func TestExit_afterNotifyXMRLock(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -331,12 +317,9 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 }
 
 func TestExit_afterNotifyClaimed(t *testing.T) {
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHClaimedType
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -357,12 +340,9 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 
 func TestExit_invalidNextMessageType(t *testing.T) {
 	// this case shouldn't ever really happen
-	s := newTestInstance(t)
+	s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventExitType
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -383,7 +363,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 
 func TestSwapState_ApproveToken(t *testing.T) {
 	initialBalance := big.NewInt(999999)
-	s, contract := newTestInstanceWithERC20(t, initialBalance)
+	s, contract := newTestSwapStateWithERC20(t, initialBalance)
 	err := s.approveToken()
 	require.NoError(t, err)
 	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.ContractAddr())

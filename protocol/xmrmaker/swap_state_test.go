@@ -110,11 +110,8 @@ func newSwap(
 	return tx.Hash()
 }
 
-func TestSwapState_GenerateAndSetKeys(t *testing.T) {
+func TestNewSwapState_generateAndSetKeys(t *testing.T) {
 	_, swapState := newTestSwapState(t)
-
-	err := swapState.generateAndSetKeys()
-	require.NoError(t, err)
 	require.NotNil(t, swapState.privkeys)
 	require.NotNil(t, swapState.pubkeys)
 	require.NotNil(t, swapState.dleqProof)
@@ -122,8 +119,6 @@ func TestSwapState_GenerateAndSetKeys(t *testing.T) {
 
 func TestSwapState_ClaimFunds(t *testing.T) {
 	_, swapState := newTestSwapState(t)
-	err := swapState.generateAndSetKeys()
-	require.NoError(t, err)
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
@@ -163,8 +158,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	_, s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -201,8 +194,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	_, s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -249,9 +240,6 @@ func TestSwapState_handleRefund(t *testing.T) {
 	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
-
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
@@ -294,9 +282,6 @@ func TestSwapState_handleRefund(t *testing.T) {
 func TestSwapState_Exit_Reclaim(t *testing.T) {
 	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)

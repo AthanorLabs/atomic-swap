@@ -50,9 +50,10 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event EventType) {
+func (s *swapState) setNextExpectedEvent(event EventType) error {
 	if s.nextExpectedEvent == EventNoneType {
-		return
+		// should have called clearNextExpectedEvent instead
+		panic("cannot set next expected event to EventNoneType")
 	}
 
 	if event == s.nextExpectedEvent {
@@ -61,13 +62,22 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 
 	s.nextExpectedEvent = event
 	status := event.getStatus()
-	if status != types.UnknownStatus {
-		s.info.SetStatus(status)
+
+	if status == types.UnknownStatus {
+		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
-	if s.statusCh != nil && status != types.UnknownStatus {
-		s.statusCh <- status
+	s.info.SetStatus(status)
+	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
+	if err != nil {
+		return err
 	}
+
+	if s.info.StatusCh() != nil {
+		s.info.StatusCh() <- status
+	}
+
+	return nil
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
@@ -106,7 +116,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	symbol, err := pcommon.AssetSymbol(s.Backend, s.ethAsset)
+	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +127,10 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		symbol,
 	))
 
-	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
+	err = s.setXMRMakerKeys(sk, vk, secp256k1Pub)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
+	}
 
 	txHash, err := s.lockAsset()
 	if err != nil {
@@ -174,16 +187,19 @@ func (s *swapState) runT0ExpirationHandler() {
 	}
 }
 
+func (s *swapState) expectedXMRLockAccount() (mcrypto.Address, *mcrypto.PrivateViewKey) {
+	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
+	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
+	return mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env()), vk
+}
+
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	if msg.Address == "" {
 		return errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
-	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
-	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
-	lockedAddr := mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env())
-
+	lockedAddr, vk := s.expectedXMRLockAccount()
 	if msg.Address != string(lockedAddr) {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
@@ -193,7 +209,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
+	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(
+		vk, lockedAddr, s.walletScanHeight, walletName, "",
+	)
 	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}

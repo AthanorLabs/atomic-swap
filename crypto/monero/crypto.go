@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	ed25519 "filippo.io/edwards25519"
-
 	"github.com/athanorlabs/atomic-swap/crypto"
+
+	ed25519 "filippo.io/edwards25519"
 )
 
 const privateKeySize = 32
@@ -56,6 +56,22 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
+// NewPrivateKeyPairFromHex returns a PrivateKeyPair from the given hex-encoded byte
+// representation of a private spend and view key.
+func NewPrivateKeyPairFromHex(skHex, vkHex string) (*PrivateKeyPair, error) {
+	skBytes, err := hex.DecodeString(skHex)
+	if err != nil {
+		return nil, err
+	}
+
+	vkBytes, err := hex.DecodeString(vkHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewPrivateKeyPairFromBytes(skBytes, vkBytes)
+}
+
 // SpendKeyBytes returns the canonical byte encoding of the private spend key.
 func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
@@ -86,17 +102,6 @@ type PrivateKeyInfo struct {
 	Address         string
 	Environment     string
 }
-
-// // Info return the private key pair as PrivateKeyInfo, providing its PrivateSpendKey, PrivateViewKey, Address,
-// // and Environment. This is intended to be written to a file, which someone can use to regenerate the wallet.
-// func (kp *PrivateKeyPair) Info(env common.Environment) *PrivateKeyInfo {
-// 	return &PrivateKeyInfo{
-// 		PrivateSpendKey: kp.sk.Hex(),
-// 		PrivateViewKey:  kp.vk.Hex(),
-// 		Address:         string(kp.Address(env)),
-// 		Environment:     env.String(),
-// 	}
-// }
 
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {

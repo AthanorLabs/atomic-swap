@@ -32,8 +32,8 @@ type Info struct {
 	EthAsset       types.EthAsset     `json:"ethAsset"`
 	Status         Status             `json:"status"`
 	// MoneroStartHeight is the Monero block number when the swap begins.
-	MoneroStartHeight uint64              `json:"moneroStartHeight"`
-	statusCh          <-chan types.Status `json:"-"`
+	MoneroStartHeight uint64            `json:"moneroStartHeight"`
+	statusCh          chan types.Status `json:"-"`
 }
 
 // NewInfo creates a new *Info from the given parameters.
@@ -46,7 +46,7 @@ func NewInfo(
 	ethAsset types.EthAsset,
 	status Status,
 	moneroStartHeight uint64,
-	statusCh <-chan types.Status,
+	statusCh chan types.Status,
 ) *Info {
 	info := &Info{
 		Version:           CurInfoVersion,
@@ -69,7 +69,7 @@ func NewEmptyInfo() *Info {
 }
 
 // StatusCh returns the swap's status update channel.
-func (i *Info) StatusCh() <-chan types.Status {
+func (i *Info) StatusCh() chan types.Status {
 	return i.statusCh
 }
 

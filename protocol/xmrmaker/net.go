@@ -141,10 +141,6 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, err
 	}
 
-	resp, err := state.SendKeysMessage()
-	if err != nil {
-		return nil, nil, err
-	}
-
+	resp := state.SendKeysMessage()
 	return state, resp, nil
 }

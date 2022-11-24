@@ -237,9 +237,10 @@ func (s *swapState) handleEventContractReady() error {
 		log.Warnf("failed to claim funds from contract, attempting to safely exit: %s", err)
 
 		// TODO: retry claim, depending on error (#162)
-		if err = s.exit(); err != nil {
-			return fmt.Errorf("failed to exit after failing to claim: %w", err)
+		if err2 := s.exit(); err2 != nil {
+			return fmt.Errorf("failed to exit after failing to claim: %w", err2)
 		}
+
 		return fmt.Errorf("failed to claim: %w", err)
 	}
 
