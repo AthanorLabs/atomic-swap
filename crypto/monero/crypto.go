@@ -105,8 +105,7 @@ type PrivateKeyInfo struct {
 
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
-	seed [32]byte
-	key  *ed25519.Scalar
+	key *ed25519.Scalar
 }
 
 // NewPrivateSpendKey returns a new PrivateSpendKey from the given canonically-encoded scalar.
@@ -165,7 +164,11 @@ func (k *PrivateSpendKey) AsPrivateKeyPair() (*PrivateKeyPair, error) {
 // View returns the private view key corresponding to the PrivateSpendKey.
 func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	h := crypto.Keccak256(k.key.Bytes())
-	vk, err := ed25519.NewScalar().SetBytesWithClamping(h[:])
+	// We can't use SetBytesWithClamping below, which would do the sc_reduce32 computation
+	// for us, because standard monero wallets do not modify the first and last byte when
+	// calculating the view key.
+	vkBytes := scReduce32(h)
+	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes[:])
 	if err != nil {
 		return nil, err
 	}
@@ -178,12 +181,6 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 // Hash returns the keccak256 of the secret key bytes
 func (k *PrivateSpendKey) Hash() [32]byte {
 	return crypto.Keccak256(k.key.Bytes())
-}
-
-// HashString returns the keccak256 of the secret key bytes as a hex encoded string
-func (k *PrivateSpendKey) HashString() string {
-	h := crypto.Keccak256(k.key.Bytes())
-	return hex.EncodeToString(h[:])
 }
 
 // Bytes returns the PrivateSpendKey as canonical bytes
@@ -326,10 +323,7 @@ func GenerateKeys() (*PrivateKeyPair, error) {
 		return nil, fmt.Errorf("failed to set bytes: %w", err)
 	}
 
-	sk := &PrivateSpendKey{
-		seed: seed,
-		key:  s,
-	}
+	sk := &PrivateSpendKey{key: s}
 
 	return sk.AsPrivateKeyPair()
 }
