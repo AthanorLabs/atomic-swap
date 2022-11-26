@@ -1,4 +1,5 @@
-// Package backend provides the top-level management of a swapd instance.
+// Package backend provides the portion of top-level swapd instance
+// management that is shared by both the maker and the taker.
 package backend
 
 import (
