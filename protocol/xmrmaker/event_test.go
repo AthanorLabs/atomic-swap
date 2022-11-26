@@ -13,11 +13,8 @@ import (
 )
 
 func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
-	_, s := newTestInstance(t)
-
+	_, s := newTestSwapState(t)
 	s.nextExpectedEvent = EventContractReadyType
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
@@ -41,11 +38,8 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 }
 
 func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
-	_, s, db := newTestInstanceAndDB(t)
+	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)

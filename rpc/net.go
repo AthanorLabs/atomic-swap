@@ -192,11 +192,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 		return nil, fmt.Errorf("failed to initiate protocol: %w", err)
 	}
 
-	skm, err := swapState.SendKeysMessage()
-	if err != nil {
-		return nil, err
-	}
-
+	skm := swapState.SendKeysMessage()
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
 
@@ -213,10 +209,6 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 	info, err := s.sm.GetOngoingSwap(id)
 	if err != nil {
 		return nil, err
-	}
-
-	if info == nil {
-		return nil, errFailedToGetSwapInfo
 	}
 
 	return info.StatusCh(), nil

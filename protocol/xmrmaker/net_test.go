@@ -10,7 +10,7 @@ import (
 )
 
 func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
-	b, db := newTestXMRMakerAndDB(t)
+	b, db := newTestInstanceAndDB(t)
 
 	offer := types.NewOffer(types.ProvidesXMR, 0.001, 0.002, 0.1, types.EthAssetETH)
 	db.EXPECT().PutOffer(offer)

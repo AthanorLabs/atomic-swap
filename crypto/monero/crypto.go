@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/crypto"
 
 	ed25519 "filippo.io/edwards25519"
@@ -59,6 +58,22 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 	}, nil
 }
 
+// NewPrivateKeyPairFromHex returns a PrivateKeyPair from the given hex-encoded byte
+// representation of a private spend and view key.
+func NewPrivateKeyPairFromHex(skHex, vkHex string) (*PrivateKeyPair, error) {
+	skBytes, err := hex.DecodeString(skHex)
+	if err != nil {
+		return nil, err
+	}
+
+	vkBytes, err := hex.DecodeString(vkHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewPrivateKeyPairFromBytes(skBytes, vkBytes)
+}
+
 // SpendKeyBytes returns the canonical byte encoding of the private spend key.
 func (kp *PrivateKeyPair) SpendKeyBytes() []byte {
 	return kp.sk.key.Bytes()
@@ -90,21 +105,9 @@ type PrivateKeyInfo struct {
 	Environment     string
 }
 
-// Info return the private key pair as PrivateKeyInfo, providing its PrivateSpendKey, PrivateViewKey, Address,
-// and Environment. This is intended to be written to a file, which someone can use to regenerate the wallet.
-func (kp *PrivateKeyPair) Info(env common.Environment) *PrivateKeyInfo {
-	return &PrivateKeyInfo{
-		PrivateSpendKey: kp.sk.Hex(),
-		PrivateViewKey:  kp.vk.Hex(),
-		Address:         string(kp.Address(env)),
-		Environment:     env.String(),
-	}
-}
-
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
-	seed [32]byte
-	key  *ed25519.Scalar
+	key *ed25519.Scalar
 }
 
 // NewPrivateSpendKey returns a new PrivateSpendKey from the given canonically-encoded scalar.
@@ -121,6 +124,17 @@ func NewPrivateSpendKey(b []byte) (*PrivateSpendKey, error) {
 	return &PrivateSpendKey{
 		key: sk,
 	}, nil
+}
+
+// NewPrivateSpendKeyFromHex returns a PrivateKeyPair from the given hex-encoded byte
+// representation of a private spend key.
+func NewPrivateSpendKeyFromHex(skHex string) (*PrivateSpendKey, error) {
+	skBytes, err := hex.DecodeString(skHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewPrivateSpendKey(skBytes)
 }
 
 // Public returns the public key corresponding to the private key.
@@ -152,7 +166,11 @@ func (k *PrivateSpendKey) AsPrivateKeyPair() (*PrivateKeyPair, error) {
 // View returns the private view key corresponding to the PrivateSpendKey.
 func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	h := crypto.Keccak256(k.key.Bytes())
-	vk, err := ed25519.NewScalar().SetBytesWithClamping(h[:])
+	// We can't use SetBytesWithClamping below, which would do the sc_reduce32 computation
+	// for us, because standard monero wallets do not modify the first and last byte when
+	// calculating the view key.
+	vkBytes := scReduce32(h)
+	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes[:])
 	if err != nil {
 		return nil, err
 	}
@@ -165,12 +183,6 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 // Hash returns the keccak256 of the secret key bytes
 func (k *PrivateSpendKey) Hash() [32]byte {
 	return crypto.Keccak256(k.key.Bytes())
-}
-
-// HashString returns the keccak256 of the secret key bytes as a hex encoded string
-func (k *PrivateSpendKey) HashString() string {
-	h := crypto.Keccak256(k.key.Bytes())
-	return hex.EncodeToString(h[:])
 }
 
 // Bytes returns the PrivateSpendKey as canonical bytes
@@ -313,10 +325,7 @@ func GenerateKeys() (*PrivateKeyPair, error) {
 		return nil, fmt.Errorf("failed to set bytes: %w", err)
 	}
 
-	sk := &PrivateSpendKey{
-		seed: seed,
-		key:  s,
-	}
+	sk := &PrivateSpendKey{key: s}
 
 	return sk.AsPrivateKeyPair()
 }
