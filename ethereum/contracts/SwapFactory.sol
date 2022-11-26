@@ -21,7 +21,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
     struct Swap {
         // individual swap creator, Alice
         address payable owner;
-        // address allowed to claim the swap's ether (Bob's address or Forwarder contract)
+        // address allowed to claim the ether in this contract
         address payable claimer;
         // the keccak256 hash of the expected public key derived from the secret `s_b`.
         // this public key is a point on the secp256k1 curve
