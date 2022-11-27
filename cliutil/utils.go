@@ -1,5 +1,4 @@
 // Package cliutil provides utility functions intended for sharing by the main packages of multiple executables.
-
 package cliutil
 
 import (
