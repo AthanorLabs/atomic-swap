@@ -1,7 +1,6 @@
 package rpcclient
 
 import (
-	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
@@ -17,7 +16,7 @@ func (c *Client) Cancel(id string) (types.Status, error) {
 	}
 	res := &rpc.CancelResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return 0, err
 	}
 

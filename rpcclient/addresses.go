@@ -1,7 +1,6 @@
 package rpcclient
 
 import (
-	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -13,7 +12,7 @@ func (c *Client) Addresses() ([]string, error) {
 
 	res := &rpc.AddressesResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, nil, res); err != nil {
+	if err := c.Post(method, nil, res); err != nil {
 		return nil, err
 	}
 

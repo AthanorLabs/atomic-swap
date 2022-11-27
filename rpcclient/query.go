@@ -15,7 +15,7 @@ func (c *Client) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 	}
 	res := &rpctypes.QueryPeerResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 

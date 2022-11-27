@@ -28,7 +28,7 @@ func (c *Client) MakeOffer(
 	}
 	res := &rpctypes.MakeOfferResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return "", err
 	}
 

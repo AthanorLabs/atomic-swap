@@ -1,7 +1,6 @@
 package rpcclient
 
 import (
-	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
@@ -14,7 +13,7 @@ func (c *Client) GetOffers() ([]*types.Offer, error) {
 
 	res := &rpc.GetOffersResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, nil, res); err != nil {
+	if err := c.Post(method, nil, res); err != nil {
 		return nil, err
 	}
 

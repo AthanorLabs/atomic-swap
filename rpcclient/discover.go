@@ -17,7 +17,7 @@ func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]s
 	}
 	res := &rpctypes.DiscoverResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -36,7 +36,7 @@ func (c *Client) QueryAll(provides types.ProvidesCoin, searchTime uint64) ([]*rp
 	}
 	res := &rpctypes.QueryAllResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 

@@ -15,7 +15,7 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 		Timeout: timeoutSeconds,
 	}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, nil); err != nil {
+	if err := c.Post(method, req, nil); err != nil {
 		return err
 	}
 
@@ -29,7 +29,7 @@ func (c *Client) Balances() (*rpctypes.BalancesResponse, error) {
 	)
 
 	balances := &rpctypes.BalancesResponse{}
-	if err := rpctypes.PostRPC(c.endpoint, method, nil, balances); err != nil {
+	if err := c.Post(method, nil, balances); err != nil {
 		return nil, err
 	}
 

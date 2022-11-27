@@ -16,7 +16,7 @@ func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64)
 		ProvidesAmount: providesAmount,
 	}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, nil); err != nil {
+	if err := c.Post(method, req, nil); err != nil {
 		return err
 	}
 

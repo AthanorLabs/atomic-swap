@@ -3,7 +3,6 @@ package rpcclient
 import (
 	"fmt"
 
-	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -15,7 +14,7 @@ func (c *Client) GetPastSwapIDs() ([]string, error) {
 
 	res := &rpc.GetPastIDsResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, nil, res); err != nil {
+	if err := c.Post(method, nil, res); err != nil {
 		return nil, err
 	}
 
@@ -34,7 +33,7 @@ func (c *Client) GetOngoingSwap(id string) (*rpc.GetOngoingResponse, error) {
 
 	res := &rpc.GetOngoingResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -52,7 +51,7 @@ func (c *Client) GetPastSwap(id string) (*rpc.GetPastResponse, error) {
 
 	res := &rpc.GetPastResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +69,7 @@ func (c *Client) Refund(id string) (*rpc.RefundResponse, error) {
 	}
 	res := &rpc.RefundResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -88,7 +87,7 @@ func (c *Client) GetStage(id string) (*rpc.GetStageResponse, error) {
 	}
 	res := &rpc.GetStageResponse{}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -105,7 +104,7 @@ func (c *Client) ClearOffers(ids []string) error {
 		IDs: ids,
 	}
 
-	if err := rpctypes.PostRPC(c.endpoint, method, req, nil); err != nil {
+	if err := c.Post(method, req, nil); err != nil {
 		return fmt.Errorf("failed to call %s: %w", method, err)
 	}
 
