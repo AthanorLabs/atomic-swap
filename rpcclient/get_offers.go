@@ -1,8 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
@@ -14,17 +12,9 @@ func (c *Client) GetOffers() ([]*types.Offer, error) {
 		method = "swap_getOffers"
 	)
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
-	if err != nil {
-		return nil, err
-	}
+	res := &rpc.GetOffersResponse{}
 
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var res *rpc.GetOffersResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := rpctypes.PostRPC(c.endpoint, method, nil, res); err != nil {
 		return nil, err
 	}
 

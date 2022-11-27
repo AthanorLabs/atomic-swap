@@ -1,9 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-	"fmt"
-
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
@@ -29,23 +26,9 @@ func (c *Client) MakeOffer(
 		RelayerEndpoint:   relayerEndpoint,
 		RelayerCommission: relayerCommission,
 	}
+	res := &rpctypes.MakeOfferResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return "", err
-	}
-
-	if resp.Error != nil {
-		return "", fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpctypes.MakeOfferResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
 		return "", err
 	}
 

@@ -1,8 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
@@ -17,23 +15,9 @@ func (c *Client) Cancel(id string) (types.Status, error) {
 	req := &rpc.CancelRequest{
 		OfferID: id,
 	}
+	res := &rpc.CancelResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return 0, err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return 0, err
-	}
-
-	if resp.Error != nil {
-		return 0, resp.Error
-	}
-
-	var res *rpc.CancelResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
 		return 0, err
 	}
 

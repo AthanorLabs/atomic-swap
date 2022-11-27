@@ -3,12 +3,12 @@ package rpctypes
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/rpc/v2/json2"
 )
 
 var (
@@ -18,9 +18,9 @@ var (
 	callTimeout       = 30 * time.Minute
 
 	transport = &http.Transport{
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout: dialTimeout,
-		}).Dial,
+		}).DialContext,
 	}
 	httpClient = &http.Client{
 		Transport: transport,
@@ -29,42 +29,37 @@ var (
 )
 
 // PostRPC posts a JSON-RPC call to the given endpoint.
-func PostRPC(endpoint, method, params string) (*Response, error) {
-	data := []byte(`{"jsonrpc":"2.0","method":"` + method + `","params":` + params + `,"id":0}`)
-	buf := &bytes.Buffer{}
-	_, err := buf.Write(data)
+func PostRPC(endpoint, method string, request any, response any) error {
+	data, err := json2.EncodeClientRequest(method, request)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	r, err := http.NewRequest("POST", endpoint, buf)
+	httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
-	r.Header.Set("Content-Type", contentTypeJSON)
+	httpReq.Header.Set("Content-Type", contentTypeJSON)
 
+	// TODO: This context should be passed in
 	ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
 	defer cancel()
-	r = r.WithContext(ctx)
+	httpReq = httpReq.WithContext(ctx)
 
-	resp, err := httpClient.Do(r)
+	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to post request: %w", err)
+		return fmt.Errorf("failed to post %q request: %w", method, err)
 	}
 
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer func() { _ = httpResp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+	if response == nil {
+		return nil
 	}
 
-	var sv *Response
-	if err = json.Unmarshal(body, &sv); err != nil {
-		return nil, err
+	if err = json2.DecodeClientResponse(httpResp.Body, response); err != nil {
+		return fmt.Errorf("failed to read %q response: %w", method, err)
 	}
 
-	return sv, nil
+	return nil
 }

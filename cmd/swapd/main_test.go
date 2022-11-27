@@ -182,7 +182,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	time.Sleep(startupTimeout) // let the server start
 
 	// make an offer
-	client := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)
+	client := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
 	balance, err := client.Balances()
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))

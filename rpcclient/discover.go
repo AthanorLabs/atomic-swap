@@ -1,8 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
@@ -17,23 +15,9 @@ func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]s
 		Provides:   provides,
 		SearchTime: searchTime,
 	}
+	res := &rpctypes.DiscoverResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var res *rpctypes.DiscoverResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -50,23 +34,9 @@ func (c *Client) QueryAll(provides types.ProvidesCoin, searchTime uint64) ([]*rp
 		Provides:   provides,
 		SearchTime: searchTime,
 	}
+	res := &rpctypes.QueryAllResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var res rpctypes.QueryAllResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := rpctypes.PostRPC(c.endpoint, method, req, res); err != nil {
 		return nil, err
 	}
 
