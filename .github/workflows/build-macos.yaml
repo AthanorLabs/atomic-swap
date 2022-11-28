@@ -41,4 +41,4 @@ jobs:
           restore-keys: ${{ runner.os }}-go-mod
 
       - name: Run build
-        run: make build-go
+        run: make build-darwin

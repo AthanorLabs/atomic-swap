@@ -10,6 +10,10 @@ import (
 	dsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
+// DefaultDLEq is the default DLEq prover.
+type DefaultDLEq = GoDLEq
+
+// GoDLEq is a wrapper around the go-dleq library prover and verifier.
 type GoDLEq struct{}
 
 var (
@@ -17,6 +21,8 @@ var (
 	curveB = ed25519.NewCurve()
 )
 
+// Prove generates a secret and a corresponding proof that it has a value
+// on the secp256k1 and ed25519 curves.
 func (d *GoDLEq) Prove() (*Proof, error) {
 	x, err := dleq.GenerateSecretForCurves(curveA, curveB)
 	if err != nil {
@@ -39,6 +45,8 @@ func (d *GoDLEq) Prove() (*Proof, error) {
 	}, nil
 }
 
+// Verify verifies the given proof. It returns the secp256k1
+// and ed25519 public keys corresponding to the secret value.
 func (d *GoDLEq) Verify(p *Proof) (*VerifyResult, error) {
 	dleqProof := new(dleq.Proof)
 	err := dleqProof.Deserialize(curveA, curveB, p.proof)

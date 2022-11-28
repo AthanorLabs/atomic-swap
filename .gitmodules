@@ -1,4 +1,0 @@
-[submodule "dleq/cgo-dleq"]
-	path = dleq/cgo-dleq
-	url = https://github.com/athanorlabs/cgo-dleq.git
-	branch = main
