@@ -21,6 +21,8 @@ func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
 		Offers: h.handler.GetOffers(),
 	}
 
+	log.Debug("responding to query; offers: %v", resp.Offers)
+
 	if err := h.writeToStream(stream, resp); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
