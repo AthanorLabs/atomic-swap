@@ -27,6 +27,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.17.0
 	github.com/libp2p/go-libp2p-peerstore v0.7.1
 	github.com/multiformats/go-multiaddr v0.6.0
+	github.com/noot/go-dleq v0.0.0-20221128015644-d29c5a12cbf0
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/crypto v0.1.0
