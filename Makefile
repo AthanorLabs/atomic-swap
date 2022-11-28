@@ -52,6 +52,7 @@ install:
 build: 
 	./scripts/build.sh
 
+# Test macos/arm build from linux. Use "make build" if compiling on macos.
 .PHONY: build-darwin
 build-darwin:
 	mkdir -p bin/
