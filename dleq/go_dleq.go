@@ -17,26 +17,26 @@ type DefaultDLEq = GoDLEq
 type GoDLEq struct{}
 
 var (
-	curveA = secp256k1.NewCurve()
-	curveB = ed25519.NewCurve()
+	curveEthereum = secp256k1.NewCurve()
+	curveMonero   = ed25519.NewCurve()
 )
 
 // Prove generates a secret and a corresponding proof that it has a value
 // on the secp256k1 and ed25519 curves.
 func (d *GoDLEq) Prove() (*Proof, error) {
-	x, err := dleq.GenerateSecretForCurves(curveA, curveB)
+	x, err := dleq.GenerateSecretForCurves(curveEthereum, curveMonero)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	proof, err := dleq.NewProof(curveA, curveB, x)
+	proof, err := dleq.NewProof(curveEthereum, curveMonero, x)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	err = proof.Verify(curveA, curveB)
+	err = proof.Verify(curveEthereum, curveMonero)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &Proof{
@@ -49,12 +49,12 @@ func (d *GoDLEq) Prove() (*Proof, error) {
 // and ed25519 public keys corresponding to the secret value.
 func (d *GoDLEq) Verify(p *Proof) (*VerifyResult, error) {
 	dleqProof := new(dleq.Proof)
-	err := dleqProof.Deserialize(curveA, curveB, p.proof)
+	err := dleqProof.Deserialize(curveEthereum, curveMonero, p.proof)
 	if err != nil {
 		return nil, err
 	}
 
-	err = dleqProof.Verify(curveA, curveB)
+	err = dleqProof.Verify(curveEthereum, curveMonero)
 	if err != nil {
 		return nil, err
 	}

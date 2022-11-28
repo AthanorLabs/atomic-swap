@@ -78,3 +78,4 @@ mock:
 .PHONY: clean
 clean:
 	rm -r bin/
+	
