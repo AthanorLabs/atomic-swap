@@ -21,8 +21,8 @@ var (
 	curveMonero   = ed25519.NewCurve()
 )
 
-// Prove generates a secret and a corresponding proof that it has a value
-// on the secp256k1 and ed25519 curves.
+// Prove generates a secret scalar and a proof that it has a corresponding
+// public key on the secp256k1 and ed25519 curves.
 func (d *GoDLEq) Prove() (*Proof, error) {
 	x, err := dleq.GenerateSecretForCurves(curveEthereum, curveMonero)
 	if err != nil {
