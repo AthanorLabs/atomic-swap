@@ -54,6 +54,7 @@ build:
 
 .PHONY: build-darwin
 build-darwin:
+	mkdir -p bin/
 	GOOS=darwin GOARCH=arm64 go build  -o ./bin ./cmd/...
 
 # Same as build, but also includes some lesser used binaries
