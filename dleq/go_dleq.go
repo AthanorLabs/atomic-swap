@@ -3,9 +3,9 @@ package dleq
 import (
 	csecp256k1 "github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 
-	dleq "github.com/noot/go-dleq"
-	"github.com/noot/go-dleq/ed25519"
-	"github.com/noot/go-dleq/secp256k1"
+	dleq "github.com/athanorlabs/go-dleq"
+	"github.com/athanorlabs/go-dleq/ed25519"
+	"github.com/athanorlabs/go-dleq/secp256k1"
 
 	dsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )

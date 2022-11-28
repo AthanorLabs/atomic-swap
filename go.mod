@@ -7,7 +7,7 @@ require (
 	github.com/ChainSafe/chaindb v0.1.5-0.20221010190531-f900218c88f8
 	github.com/MarinX/monerorpc v1.0.5
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/athanorlabs/cgo-dleq v0.0.0-20220929204103-ca62cc9baa28
+	github.com/athanorlabs/go-dleq v0.0.0-20221128222932-a32f415aaa2d
 	github.com/athanorlabs/go-relayer v0.0.4
 	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
@@ -27,7 +27,6 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.17.0
 	github.com/libp2p/go-libp2p-peerstore v0.7.1
 	github.com/multiformats/go-multiaddr v0.6.0
-	github.com/noot/go-dleq v0.0.0-20221128015644-d29c5a12cbf0
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/crypto v0.1.0
@@ -162,5 +161,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
-
-replace github.com/athanorlabs/cgo-dleq => ./dleq/cgo-dleq
