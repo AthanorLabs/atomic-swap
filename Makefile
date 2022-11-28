@@ -54,7 +54,7 @@ build:
 
 .PHONY: build-darwin
 build-darwin:
-	GOOS=darwin GOARCH=arm64 $(MAKE) build
+	GOOS=darwin GOARCH=arm64 go build  -o ./bin ./cmd/...
 
 # Same as build, but also includes some lesser used binaries
 .PHONY: build-all
