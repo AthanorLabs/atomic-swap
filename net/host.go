@@ -174,7 +174,7 @@ func NewHost(cfg *Config) (*host, error) {
 		swaps:      make(map[types.Hash]*swap),
 	}
 
-	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes)
+	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Handler)
 	if err != nil {
 		return nil, err
 	}

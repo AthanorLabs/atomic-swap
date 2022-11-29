@@ -29,9 +29,15 @@ type discovery struct {
 	rd          *libp2pdiscovery.RoutingDiscovery
 	provides    []types.ProvidesCoin
 	advertiseCh chan struct{}
+	offerAPI    Handler
 }
 
-func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.AddrInfo) (*discovery, error) {
+func newDiscovery(
+	ctx context.Context,
+	h libp2phost.Host,
+	bnsFunc func() []peer.AddrInfo,
+	offerAPI Handler,
+) (*discovery, error) {
 	dhtOpts := []dual.Option{
 		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
 		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
@@ -62,6 +68,7 @@ func newDiscovery(ctx context.Context, h libp2phost.Host, bnsFunc func() []peer.
 		h:           h,
 		rd:          rd,
 		advertiseCh: make(chan struct{}),
+		offerAPI:    offerAPI,
 	}, nil
 }
 
@@ -120,6 +127,11 @@ func (d *discovery) advertise() {
 			d.provides = []types.ProvidesCoin{types.ProvidesXMR}
 			doAdvertise()
 		case <-time.After(ttl):
+			offers := d.offerAPI.GetOffers()
+			if len(offers) == 0 {
+				continue
+			}
+
 			doAdvertise()
 		case <-d.ctx.Done():
 			return
