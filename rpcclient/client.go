@@ -28,17 +28,17 @@ var (
 	}
 )
 
-// Client represents a swap RP
-//
-//	"time"
-//
-//	"github.com/gorilla/rpc/v2/json2"C client, used to interact with a swap daemon via JSON-RPC calls.
+// Client primarily exists to be a JSON-RPC client to swapd instances, but it can be used
+// to POST JSON-RPC requests to any JSON-RPC server. Its current use case assumes swapd is
+// running on the local host of a single use system. TLS and authentication are not
+// currently supported.
 type Client struct {
 	ctx      context.Context
 	endpoint string
 }
 
-// NewClient ...
+// NewClient creates a new JSON-RPC client for the specified endpoint. The passed context
+// is used for the full lifetime of the client.
 func NewClient(ctx context.Context, endpoint string) *Client {
 	return &Client{
 		ctx:      ctx,
