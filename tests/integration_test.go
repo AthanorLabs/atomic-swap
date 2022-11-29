@@ -731,7 +731,6 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 
 			if status != types.CompletedSuccess {
 				errCh <- fmt.Errorf("0th swap did not exit successfully: got %s", status)
-				cancel()
 				return
 			}
 
