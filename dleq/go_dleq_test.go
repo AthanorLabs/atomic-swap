@@ -1,5 +1,3 @@
-//go:build fakedleq
-
 package dleq
 
 import (
@@ -11,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFakeDLEq(t *testing.T) {
-	proof, err := (&FakeDLEq{}).Prove()
+func TestGoDLEq(t *testing.T) {
+	proof, err := (&GoDLEq{}).Prove()
 	require.NoError(t, err)
 
-	res, err := (&FakeDLEq{}).Verify(proof)
+	res, err := (&GoDLEq{}).Verify(proof)
 	require.NoError(t, err)
 
 	cpk := res.secp256k1Pub.Compress()
