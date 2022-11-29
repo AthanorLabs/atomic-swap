@@ -36,7 +36,6 @@ func newDiscovery(
 	ctx context.Context,
 	h libp2phost.Host,
 	bnsFunc func() []peer.AddrInfo,
-	offerAPI Handler,
 ) (*discovery, error) {
 	dhtOpts := []dual.Option{
 		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
@@ -68,11 +67,18 @@ func newDiscovery(
 		h:           h,
 		rd:          rd,
 		advertiseCh: make(chan struct{}),
-		offerAPI:    offerAPI,
 	}, nil
 }
 
+func (d *discovery) setOfferAPI(offerAPI Handler) {
+	d.offerAPI = offerAPI
+}
+
 func (d *discovery) start() error {
+	if d.offerAPI == nil {
+		return errNilOfferAPI
+	}
+
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)

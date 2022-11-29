@@ -76,7 +76,6 @@ type Config struct {
 	Port        uint16
 	KeyFile     string
 	Bootnodes   []string
-	Handler     Handler
 }
 
 // NewHost returns a new host
@@ -167,14 +166,13 @@ func NewHost(cfg *Config) (*host, error) {
 		cancel:     cancel,
 		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID),
 		h:          h,
-		handler:    cfg.Handler,
 		ds:         ds,
 		bootnodes:  bns,
 		queryBuf:   make([]byte, 1024*5),
 		swaps:      make(map[types.Hash]*swap),
 	}
 
-	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes, cfg.Handler)
+	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes)
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +182,7 @@ func NewHost(cfg *Config) (*host, error) {
 
 func (h *host) SetHandler(handler Handler) {
 	h.handler = handler
+	h.discovery.setOfferAPI(handler)
 }
 
 func (h *host) Start() error {
