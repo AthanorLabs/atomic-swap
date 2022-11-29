@@ -11,6 +11,7 @@ import (
 )
 
 // DefaultDLEq is the default DLEq prover.
+// Currently, the only implementation is GoDLEq.
 type DefaultDLEq = GoDLEq
 
 // GoDLEq is a wrapper around the go-dleq library prover and verifier.
