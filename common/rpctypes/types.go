@@ -1,7 +1,5 @@
 // Package rpctypes provides the serialized types for queries and responses shared by
-// swapd's JSON-RPC server and client-side libraries. It also contains a PostRPC method
-// that should maybe be moved to the rpc package? (And probably should be using
-// `github.com/gorilla/rpc/v2/json2` for much of what it does?)
+// swapd's JSON-RPC server and client-side libraries.
 package rpctypes
 
 import (
