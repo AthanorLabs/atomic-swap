@@ -1,7 +1,8 @@
-// Package txsender provides a common Sender interface for swapd instances using an
-// ethereum key that is directly managed by swapd (`privateKeySender`) as well as an
-// external sender (`ExternalSender`), where private key management and transaction
-// signing is done via an external entity like Metamask.
+// Package txsender provides a common Sender interface for swapd instances. Each Sender
+// implementation is responsible for signing and submitting transactions to the network.
+// privateKeySender is the implementation using an ethereum private key directly managed
+// by swapd. ExternalSender provides an API for interacting with an external entity like
+// Metamask.
 package txsender
 
 import (
