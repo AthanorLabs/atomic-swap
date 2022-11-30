@@ -2,6 +2,7 @@ package dleq
 
 import (
 	"github.com/athanorlabs/atomic-swap/common"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
 
@@ -46,11 +47,16 @@ func (p *Proof) Proof() []byte {
 
 // VerifyResult contains the public keys resulting from verifying a DLEq proof
 type VerifyResult struct {
-	ed25519Pub   [32]byte
+	ed25519Pub   *mcrypto.PublicKey
 	secp256k1Pub *secp256k1.PublicKey
 }
 
 // Secp256k1PublicKey returns the secp256k1 public key associated with the DLEq verification
 func (r *VerifyResult) Secp256k1PublicKey() *secp256k1.PublicKey {
 	return r.secp256k1Pub
+}
+
+// Ed25519PublicKey returns the ed25519 public key associated with the DLEq verification
+func (r *VerifyResult) Ed25519PublicKey() *mcrypto.PublicKey {
+	return r.ed25519Pub
 }
