@@ -1,9 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
@@ -19,18 +16,8 @@ func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64)
 		ProvidesAmount: providesAmount,
 	}
 
-	params, err := json.Marshal(req)
-	if err != nil {
+	if err := c.Post(method, req, nil); err != nil {
 		return err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return fmt.Errorf("failed to call %s: %w", method, resp.Error)
 	}
 
 	return nil

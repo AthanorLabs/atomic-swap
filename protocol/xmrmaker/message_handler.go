@@ -198,17 +198,17 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 		return errMissingKeys
 	}
 
+	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
+	verifyResult, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey, msg.PublicSpendKey)
+	if err != nil {
+		return err
+	}
+
 	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
 	if err != nil {
 		return fmt.Errorf("failed to generate XMRTaker's public keys: %w", err)
 	}
 
-	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	secp256k1Pub, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
-	if err != nil {
-		return err
-	}
-
-	s.setXMRTakerPublicKeys(kp, secp256k1Pub)
+	s.setXMRTakerPublicKeys(kp, verifyResult.Secp256k1PublicKey)
 	return nil
 }
