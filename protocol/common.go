@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 
@@ -87,7 +88,7 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString, ed25519PubString string) (
 		return nil, fmt.Errorf("failed to generate XMRMaker's public spend key: %w", err)
 	}
 
-	if res.Ed25519PublicKey().Hex() != ed25519Pub.Hex() {
+	if !bytes.Equal(res.Ed25519PublicKey().Bytes(), ed25519Pub.Bytes()) {
 		return nil, errInvalidEd25519Key
 	}
 
