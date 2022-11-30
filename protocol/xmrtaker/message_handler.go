@@ -111,7 +111,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	}
 
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	secp256k1Pub, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
+	verificationRes, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		symbol,
 	))
 
-	err = s.setXMRMakerKeys(sk, vk, secp256k1Pub)
+	err = s.setXMRMakerKeys(sk, vk, verificationRes.Secp256k1PublicKey())
 	if err != nil {
 		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
 	}
