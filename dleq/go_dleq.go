@@ -1,6 +1,7 @@
 package dleq
 
 import (
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	csecp256k1 "github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 
 	dleq "github.com/athanorlabs/go-dleq"
@@ -67,8 +68,10 @@ func (d *GoDLEq) Verify(p *Proof) (*VerifyResult, error) {
 
 	secp256k1Pub := csecp256k1.NewPublicKeyFromBigInt(secpPub.X(), secpPub.Y())
 
-	var ed25519Pub [32]byte
-	copy(ed25519Pub[:], dleqProof.CommitmentB.Encode())
+	ed25519Pub, err := mcrypto.NewPublicKeyFromBytes(dleqProof.CommitmentB.Encode())
+	if err != nil {
+		return nil, err
+	}
 
 	return &VerifyResult{
 		secp256k1Pub: secp256k1Pub,

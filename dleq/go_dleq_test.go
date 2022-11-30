@@ -23,5 +23,5 @@ func TestGoDLEq(t *testing.T) {
 	sk, err := mcrypto.NewPrivateSpendKey(proof.secret[:])
 	require.NoError(t, err)
 	ed25519Pub := sk.Public().Bytes()
-	require.Equal(t, res.ed25519Pub[:], ed25519Pub)
+	require.Equal(t, res.ed25519Pub.Bytes(), ed25519Pub)
 }
