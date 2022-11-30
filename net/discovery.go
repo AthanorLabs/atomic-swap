@@ -16,10 +16,9 @@ import (
 )
 
 const (
-	initialAdvertisementTimeout = time.Millisecond
-	tryAdvertiseTimeout         = time.Second * 30
-	defaultAdvertiseTTL         = time.Minute * 5
-	defaultMaxPeers             = 50 // TODO: make this configurable
+	tryAdvertiseTimeout = time.Second * 30
+	defaultAdvertiseTTL = time.Minute * 5
+	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
 type discovery struct {
@@ -97,15 +96,13 @@ func (d *discovery) stop() error {
 }
 
 func (d *discovery) advertiseLoop() {
-	ttl := initialAdvertisementTimeout
-
-	ttl = d.advertise(ttl)
+	ttl := d.advertise()
 
 	for {
 		select {
 		case <-d.advertiseCh:
 			d.provides = []types.ProvidesCoin{types.ProvidesXMR}
-			ttl = d.advertise(ttl)
+			ttl = d.advertise()
 		case <-time.After(ttl):
 			// the DHT clears provider records (ie. who is advertising what content)
 			// every 24 hours.
@@ -118,7 +115,7 @@ func (d *discovery) advertiseLoop() {
 				continue
 			}
 
-			ttl = d.advertise(ttl)
+			ttl = d.advertise()
 		case <-d.ctx.Done():
 			return
 		}
@@ -130,23 +127,25 @@ func (d *discovery) advertiseLoop() {
 // advertise our specific offers.
 // to find what our offers are, peers need to send us a QueryRequest
 // over the query subprotocol.
-func (d *discovery) advertise(ttl time.Duration) time.Duration {
+// the return value is the amount of time the caller should wait before
+// trying to advertise again.
+func (d *discovery) advertise() time.Duration {
 	log.Debug("advertising in the DHT...")
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		log.Warnf("failed to bootstrap DHT: err=%s", err)
-		return ttl
+		return tryAdvertiseTimeout
 	}
 
 	for _, provides := range d.provides {
-		ttl, err = d.rd.Advertise(d.ctx, string(provides))
+		_, err = d.rd.Advertise(d.ctx, string(provides))
 		if err != nil {
 			log.Debugf("failed to advertise in the DHT: err=%s", err)
 			return tryAdvertiseTimeout
 		}
 	}
 
-	ttl, err = d.rd.Advertise(d.ctx, "")
+	_, err = d.rd.Advertise(d.ctx, "")
 	if err != nil {
 		log.Debugf("failed to advertise in the DHT: err=%s", err)
 		return tryAdvertiseTimeout
