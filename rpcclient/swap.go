@@ -1,10 +1,8 @@
 package rpcclient
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -14,17 +12,9 @@ func (c *Client) GetPastSwapIDs() ([]string, error) {
 		method = "swap_getPastIDs"
 	)
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
-	if err != nil {
-		return nil, err
-	}
+	res := &rpc.GetPastIDsResponse{}
 
-	if resp.Error != nil {
-		return nil, fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpc.GetPastIDsResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, nil, res); err != nil {
 		return nil, err
 	}
 
@@ -41,25 +31,11 @@ func (c *Client) GetOngoingSwap(id string) (*rpc.GetOngoingResponse, error) {
 		OfferID: id,
 	}
 
-	params, err := json.Marshal(req)
-	if err != nil {
+	res := &rpc.GetOngoingResponse{}
+
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpc.GetOngoingResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
-		return nil, err
-	}
-
 	return res, nil
 }
 
@@ -73,22 +49,9 @@ func (c *Client) GetPastSwap(id string) (*rpc.GetPastResponse, error) {
 		OfferID: id,
 	}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
+	res := &rpc.GetPastResponse{}
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var res *rpc.GetPastResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -104,23 +67,9 @@ func (c *Client) Refund(id string) (*rpc.RefundResponse, error) {
 	req := &rpc.RefundRequest{
 		OfferID: id,
 	}
+	res := &rpc.RefundResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpc.RefundResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -136,23 +85,9 @@ func (c *Client) GetStage(id string) (*rpc.GetStageResponse, error) {
 	req := &rpc.GetStageRequest{
 		OfferID: id,
 	}
+	res := &rpc.GetStageResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpc.GetStageResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -169,18 +104,8 @@ func (c *Client) ClearOffers(ids []string) error {
 		IDs: ids,
 	}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return fmt.Errorf("failed to call %s: %w", method, resp.Error)
+	if err := c.Post(method, req, nil); err != nil {
+		return fmt.Errorf("failed to call %s: %w", method, err)
 	}
 
 	return nil

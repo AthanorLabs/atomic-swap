@@ -293,7 +293,7 @@ func main() {
 func newRRPClient(ctx *cli.Context) *rpcclient.Client {
 	swapdPort := ctx.Uint(flagSwapdPort)
 	endpoint := fmt.Sprintf("http://127.0.0.1:%d", swapdPort)
-	return rpcclient.NewClient(endpoint)
+	return rpcclient.NewClient(ctx.Context, endpoint)
 }
 
 func newWSClient(ctx *cli.Context) (wsclient.WsClient, error) {
