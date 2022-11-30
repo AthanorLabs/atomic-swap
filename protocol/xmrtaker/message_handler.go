@@ -101,20 +101,14 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, fmt.Errorf("failed to generate XMRMaker's private view keys: %w", err)
 	}
 
-	s.xmrmakerAddress = ethcommon.HexToAddress(msg.EthAddress)
-
-	log.Debugf("got XMRMaker's keys and address: address=%s", s.xmrmakerAddress)
-
-	sk, err := mcrypto.NewPublicKeyFromHex(msg.PublicSpendKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate XMRMaker's public spend key: %w", err)
-	}
-
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	verificationRes, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
+	verificationRes, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey, msg.PublicSpendKey)
 	if err != nil {
 		return nil, err
 	}
+
+	s.xmrmakerAddress = ethcommon.HexToAddress(msg.EthAddress)
+	log.Debugf("got XMRMaker's keys and address: address=%s", s.xmrmakerAddress)
 
 	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
 	if err != nil {
@@ -127,7 +121,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		symbol,
 	))
 
-	err = s.setXMRMakerKeys(sk, vk, verificationRes.Secp256k1PublicKey())
+	err = s.setXMRMakerKeys(verificationRes.Ed25519PublicKey, vk, verificationRes.Secp256k1PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
 	}

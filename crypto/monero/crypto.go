@@ -235,6 +235,11 @@ func NewPublicKeyFromHex(s string) (*PublicKey, error) {
 		return nil, err
 	}
 
+	return NewPublicKeyFromBytes(b)
+}
+
+// NewPublicKeyFromBytes returns a new PublicKey from the given canonically-encoded point.
+func NewPublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	k, err := ed25519.NewIdentityPoint().SetBytes(b)
 	if err != nil {
 		return nil, err
