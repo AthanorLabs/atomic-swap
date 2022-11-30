@@ -1,9 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-
-	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -13,17 +10,9 @@ func (c *Client) Addresses() ([]string, error) {
 		method = "net_addresses"
 	)
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
-	if err != nil {
-		return nil, err
-	}
+	res := &rpc.AddressesResponse{}
 
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var res *rpc.AddressesResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, nil, res); err != nil {
 		return nil, err
 	}
 
