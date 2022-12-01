@@ -247,6 +247,14 @@ var (
 				},
 			},
 			{
+				Name:   "get-offers",
+				Usage:  "Get all current offers.",
+				Action: runGetOffers,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
 				Name:   "get-stage",
 				Usage:  "Get the stage of a current swap.",
 				Action: runGetStage,
@@ -625,6 +633,21 @@ func runClearOffers(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Cleared offers successfully: %s\n", ids)
+	return nil
+}
+
+func runGetOffers(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	resp, err := c.GetOffers()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Offers:")
+	for _, offer := range resp {
+		fmt.Printf("\t%v\n", offer)
+	}
+
 	return nil
 }
 
