@@ -95,14 +95,6 @@ func (kp *PrivateKeyPair) ViewKey() *PrivateViewKey {
 	return kp.vk
 }
 
-// PrivateKeyInfo ...
-type PrivateKeyInfo struct {
-	PrivateSpendKey string
-	PrivateViewKey  string
-	Address         string
-	Environment     string
-}
-
 // PrivateSpendKey represents a monero private spend key
 type PrivateSpendKey struct {
 	key *ed25519.Scalar
