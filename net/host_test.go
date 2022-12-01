@@ -69,11 +69,11 @@ func newHost(t *testing.T, port uint16) *host {
 		Port:        port,
 		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
 		Bootnodes:   []string{},
-		Handler:     &mockHandler{},
 	}
 
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
+	h.SetHandler(&mockHandler{})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)
