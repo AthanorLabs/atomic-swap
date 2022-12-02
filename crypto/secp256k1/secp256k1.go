@@ -1,3 +1,5 @@
+// Package secp256k1 contains methods and types for working with Ethereum and possibly other
+// cryptocurrency keys that use the secp256k1 elliptic curve.
 package secp256k1
 
 import (

@@ -1,3 +1,5 @@
+// Package main provides the entrypoint of swaptester, an executable used for
+// automatically testing multiple swaps.
 package main
 
 import (

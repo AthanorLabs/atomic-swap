@@ -1,3 +1,5 @@
+// Package rpctypes provides the serialized types for queries and responses shared by
+// swapd's JSON-RPC server and client-side libraries.
 package rpctypes
 
 import (

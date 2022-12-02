@@ -1,3 +1,5 @@
+// Package main provides the entrypoint of swapd, a daemon that manages atomic swaps
+// between monero and ethereum assets.
 package main
 
 import (
@@ -100,8 +102,8 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  flagDataDir,
-				Usage: "Path to store swap artifacts", //nolint:misspell
-				Value: "{HOME}/.atomicswap/{ENV}",     // For --help only, actual default replaces variables
+				Usage: "Path to store swap artifacts",
+				Value: "{HOME}/.atomicswap/{ENV}", // For --help only, actual default replaces variables
 			},
 			&cli.StringFlag{
 				Name:  flagLibp2pKey,

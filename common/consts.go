@@ -1,3 +1,4 @@
+// Package common is for miscellaneous constants, types and interfaces used by many packages.
 package common
 
 const (

@@ -1,3 +1,5 @@
+// Package contracts is for go bindings generated from Solidity contracts as well as
+// some utility functions for working with the contracts.
 package contracts
 
 import (

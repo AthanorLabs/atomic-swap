@@ -1,3 +1,5 @@
+// Package mcrypto is for types and libraries that deal with Monero keys, addresses and
+// signing.
 package mcrypto
 
 import (

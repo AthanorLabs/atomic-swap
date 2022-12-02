@@ -1,3 +1,4 @@
+// Package message provides the types for messages that are sent between swapd instances.
 package message
 
 import (

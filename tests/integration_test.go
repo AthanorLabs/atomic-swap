@@ -1,3 +1,6 @@
+// Package tests provides integration tests, which exercise fully built swapd instances
+// pre-launched by a script. The non *_test.go files are test helper methods for both
+// unit and integration tests.
 package tests
 
 import (

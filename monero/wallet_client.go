@@ -1,3 +1,6 @@
+// Package monero provides client libraries for working with wallet files and interacting
+// with a monero node. Management of monero-wallet-rpc daemon instances is fully
+// encapsulated by these libraries.
 package monero
 
 import (
@@ -495,7 +498,6 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 	cmd.Stdout = pWrite
 	cmd.Stderr = pWrite
 
-	//nolint:misspell
 	// Last entry wins if an environment variable is in the list multiple times.
 	// We parse some output, so we want to force English. NO_COLOR=1 failed to
 	// remove ansi colour escapes, but setting TERM=dumb succeeded.
