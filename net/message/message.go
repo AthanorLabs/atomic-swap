@@ -50,35 +50,27 @@ func DecodeMessage(b []byte) (Message, error) {
 	if len(b) == 0 {
 		return nil, errors.New("invalid message bytes")
 	}
+	msgType := Type(b[0])
+	msgJSON := b[1:]
+	var msg Message
 
-	switch Type(b[0]) {
+	switch msgType {
 	case QueryResponseType:
-		var m *QueryResponse
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &QueryResponse{}
 	case SendKeysType:
-		var m *SendKeysMessage
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &SendKeysMessage{}
 	case NotifyETHLockedType:
-		var m *NotifyETHLocked
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &NotifyETHLocked{}
 	case NotifyXMRLockType:
-		var m *NotifyXMRLock
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &NotifyXMRLock{}
 	default:
-		return nil, errors.New("invalid message type")
+		return nil, fmt.Errorf("invalid message type=%d", msgType)
 	}
+
+	if err := json.Unmarshal(msgJSON, &msg); err != nil {
+		return nil, fmt.Errorf("failed to decode %s message: %w", msg.Type(), err)
+	}
+	return msg, nil
 }
 
 // QueryResponse ...
