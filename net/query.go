@@ -22,7 +22,7 @@ func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
 		Offers: h.handler.GetOffers(),
 	}
 
-	if err := h.writeToStream(stream, resp); err != nil {
+	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
 
@@ -57,19 +57,9 @@ func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse
 	h.queryMu.Lock()
 	defer h.queryMu.Unlock() // TODO: Do we need this?
 
-	buf, err := readStreamMessage(stream)
+	msg, err := readStreamMessage(stream)
 	if err != nil {
-		return nil, fmt.Errorf("read stream error: %w", err)
-	}
-
-	if len(buf) == 0 {
-		return nil, fmt.Errorf("received empty message")
-	}
-
-	var resp *QueryResponse
-	msg, err := message.DecodeMessage(buf)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
 	}
 
 	resp, ok := msg.(*QueryResponse)

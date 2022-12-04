@@ -2,16 +2,17 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
-
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/net/message"
 
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 const (
@@ -49,7 +50,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		"opened protocol stream, peer=", who.ID,
 	)
 
-	if err := h.writeToStream(stream, msg); err != nil {
+	if err := writeStreamMessage(stream, msg, who.ID); err != nil {
 		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}
@@ -70,17 +71,14 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	buf, err := readStreamMessage(stream)
+	msg, err := readStreamMessage(stream)
 	if err != nil {
-		log.Debug("peer closed stream with us, protocol exited")
-		_ = stream.Close()
-		return
-	}
-
-	// decode message based on message type
-	msg, err := message.DecodeMessage(buf)
-	if err != nil {
-		log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
+		if errors.Is(err, io.EOF) {
+			log.Debug("Peer closed stream with us, protocol exited")
+		} else {
+			log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
+				stream.ID(), stream.Protocol(), err)
+		}
 		_ = stream.Close()
 		return
 	}
@@ -104,7 +102,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	if err := h.writeToStream(stream, resp); err != nil {
+	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send response to peer: err=%s", err)
 		_ = s.Exit()
 		_ = stream.Close()
@@ -137,17 +135,12 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 	}()
 
 	for {
-		buf, err := readStreamMessage(stream)
-		if err != nil {
-			log.Debug("peer closed stream with us, protocol exited")
-			return
-		}
-
-		// decode message based on message type
-		msg, err := message.DecodeMessage(buf)
-		if err != nil {
-			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
-			continue
+		msg, err := readStreamMessage(stream)
+		if errors.Is(err, io.EOF) {
+			log.Debug("Peer closed stream with us, protocol exited")
+		} else {
+			log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
+				stream.ID(), stream.Protocol(), err)
 		}
 
 		log.Debug(

@@ -4,6 +4,7 @@ package net
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
@@ -273,7 +275,7 @@ func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
 		return errNoOngoingSwap
 	}
 
-	return h.writeToStream(swap.stream, msg)
+	return writeStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
 }
 
 func (h *host) getBootnodes() []peer.AddrInfo {
@@ -304,13 +306,13 @@ func (h *host) addrInfo() peer.AddrInfo {
 	}
 }
 
-func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
+func writeStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
 	encMsg, err := msg.Encode()
 	if err != nil {
 		return err
 	}
 
-	err = binary.Write(s, binary.LittleEndian, uint64(len(encMsg)))
+	err = binary.Write(s, binary.LittleEndian, uint32(len(encMsg)))
 	if err != nil {
 		return err
 	}
@@ -320,29 +322,22 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 		return err
 	}
 
-	log.Debug(
-		"Sent message to peer=", s.Conn().RemotePeer(), " type=", msg.Type(),
-	)
+	log.Debugf("Sent message to peer=%s type=%s", peerID, msg.Type())
 
 	return nil
 }
 
 // readStreamMessage reads the 4-byte LE size header and message body returning the
 // message body bytes.
-func readStreamMessage(s libp2pnetwork.Stream) ([]byte, error) {
+func readStreamMessage(s io.Reader) (Message, error) {
 	if s == nil {
 		return nil, errNilStream
 	}
 
-	var msgLen uint64
+	var msgLen uint32
 	err := binary.Read(s, binary.LittleEndian, &msgLen)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read message length: %w", err)
-	}
-
-	if msgLen == 0 {
-		// no message body to read
-		return nil, nil
 	}
 
 	if msgLen > maxMessageSize {
@@ -354,9 +349,13 @@ func readStreamMessage(s libp2pnetwork.Stream) ([]byte, error) {
 	buf := make([]byte, msgLen)
 	_, err = io.ReadFull(s, buf)
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			err = io.ErrUnexpectedEOF
+		}
 		return nil, err
 	}
-	return buf, nil
+
+	return message.DecodeMessage(buf)
 }
 
 // bootstrap connects the host to the configured bootnodes
