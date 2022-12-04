@@ -2,13 +2,14 @@ package net
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
@@ -54,22 +55,26 @@ func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
 
 func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
 	h.queryMu.Lock()
-	defer h.queryMu.Unlock()
+	defer h.queryMu.Unlock() // TODO: Do we need this?
 
-	buf := h.queryBuf
-
-	n, err := readStream(stream, buf)
+	buf, err := readStreamMessage(stream)
 	if err != nil {
 		return nil, fmt.Errorf("read stream error: %w", err)
 	}
 
-	if n == 0 {
+	if len(buf) == 0 {
 		return nil, fmt.Errorf("received empty message")
 	}
 
 	var resp *QueryResponse
-	if err := json.Unmarshal(buf[1:n], &resp); err != nil {
+	msg, err := message.DecodeMessage(buf)
+	if err != nil {
 		return nil, err
+	}
+
+	resp, ok := msg.(*QueryResponse)
+	if !ok {
+		return nil, fmt.Errorf("expected %s message but received %s", message.QueryResponseType, msg.Type())
 	}
 
 	return resp, nil

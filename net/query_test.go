@@ -3,16 +3,16 @@ package net
 import (
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 func TestHost_Query(t *testing.T) {
-	ha := newHost(t, defaultPort)
+	ha := newHost(t, 0) // OS assigned port
 	err := ha.Start()
 	require.NoError(t, err)
-	hb := newHost(t, defaultPort+1)
+	hb := newHost(t, 0)
 	err = hb.Start()
 	require.NoError(t, err)
 

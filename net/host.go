@@ -3,21 +3,25 @@ package net
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"path"
 	"sync"
 	"time"
 
+	"github.com/chyeh/pubip"
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/chyeh/pubip"
+	//"github.com/chyeh/pubip"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -26,7 +30,6 @@ import (
 
 const (
 	protocolID = "/atomic-swap"
-	maxReads   = 128
 )
 
 var log = logging.Logger("net")
@@ -64,19 +67,19 @@ type host struct {
 	swapMu sync.Mutex
 	swaps  map[types.Hash]*swap
 
-	queryMu  sync.Mutex
-	queryBuf []byte
+	queryMu sync.Mutex
 }
 
 // Config is used to configure the network Host.
 type Config struct {
-	Ctx         context.Context
-	Environment common.Environment
-	DataDir     string
-	EthChainID  int64
-	Port        uint16
-	KeyFile     string
-	Bootnodes   []string
+	Ctx           context.Context
+	Environment   common.Environment
+	DataDir       string
+	EthChainID    int64
+	Port          uint16
+	KeyFile       string
+	Bootnodes     []string
+	StaticNATPort bool
 }
 
 // NewHost returns a new host
@@ -94,21 +97,9 @@ func NewHost(cfg *Config) (*host, error) {
 		}
 	}
 
-	addr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", cfg.Port))
+	addr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", cfg.Port))
 	if err != nil {
 		return nil, err
-	}
-
-	var externalAddr ma.Multiaddr
-	ip, err := pubip.Get()
-	if err != nil {
-		log.Warnf("failed to get public IP error: %v", err)
-	} else {
-		log.Debugf("got public IP address %s", ip)
-		externalAddr, err = ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ip, cfg.Port))
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	ds, err := badger.NewDatastore(path.Join(cfg.DataDir, "libp2p-datastore"), &badger.DefaultOptions)
@@ -121,41 +112,46 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
+	// format bootnodes
+	bns, err := stringsToAddrInfos(cfg.Bootnodes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
+	}
+
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(addr),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
-		// TODO: When our bootnodes have relaying enabled, we can add them as static relays
-		//       using libp2p.EnableAutoRelay(...bootnodes...).
+		libp2p.EnableRelayService(),
 		libp2p.EnableNATService(),
 		libp2p.EnableHolePunching(),
 		libp2p.Peerstore(ps),
-		libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
-			if cfg.Environment == common.Development {
-				return as
-			}
+	}
 
-			// only advertize non-local addrs (if not in dev mode)
-			addrs := []ma.Multiaddr{}
+	if len(bns) > 0 {
+		opts = append(opts, libp2p.EnableAutoRelay(autorelay.WithStaticRelays(bns)))
+	}
+	if cfg.StaticNATPort {
+		var externalAddr ma.Multiaddr
+		ip, err := pubip.Get() //nolint:govet
+		if err != nil {
+			return nil, fmt.Errorf("failed to get public IP error: %s", err)
+		}
+		log.Infof("Public IP for static NAT port is %s", ip)
+		externalAddr, err = ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/udp/%d/quic", ip, cfg.Port))
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
+			var addrs []ma.Multiaddr
 			for _, addr := range as {
 				if !privateIPs.AddrBlocked(addr) {
 					addrs = append(addrs, addr)
 				}
 			}
-
-			if externalAddr == nil {
-				return addrs
-			}
-
 			return append(addrs, externalAddr)
-		}),
-	}
-
-	// format bootnodes
-	bns, err := stringsToAddrInfos(cfg.Bootnodes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
+		}))
 	}
 
 	// create libp2p host instance
@@ -172,7 +168,6 @@ func NewHost(cfg *Config) (*host, error) {
 		h:          h,
 		ds:         ds,
 		bootnodes:  bns,
-		queryBuf:   make([]byte, 1024*5),
 		swaps:      make(map[types.Hash]*swap),
 	}
 
@@ -315,9 +310,10 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 		return err
 	}
 
-	msgLen := uint64(len(encMsg))
-	lenBytes := uint64ToLEB128(msgLen)
-	encMsg = append(lenBytes, encMsg...)
+	err = binary.Write(s, binary.LittleEndian, uint64(len(encMsg)))
+	if err != nil {
+		return err
+	}
 
 	_, err = s.Write(encMsg)
 	if err != nil {
@@ -331,49 +327,36 @@ func (h *host) writeToStream(s libp2pnetwork.Stream, msg Message) error {
 	return nil
 }
 
-// readStream reads from the stream into the given buffer, returning the number of bytes read
-func readStream(stream libp2pnetwork.Stream, buf []byte) (int, error) {
-	if stream == nil {
-		return 0, errNilStream
+// readStreamMessage reads the 4-byte LE size header and message body returning the
+// message body bytes.
+func readStreamMessage(s libp2pnetwork.Stream) ([]byte, error) {
+	if s == nil {
+		return nil, errNilStream
 	}
 
-	var (
-		tot int
-	)
-
-	length, bytesRead, err := readLEB128ToUint64(stream, buf[:1])
+	var msgLen uint64
+	err := binary.Read(s, binary.LittleEndian, &msgLen)
 	if err != nil {
-		return bytesRead, fmt.Errorf("failed to read length: %w", err)
+		return nil, fmt.Errorf("failed to read message length: %w", err)
 	}
 
-	if length == 0 {
-		return 0, nil
+	if msgLen == 0 {
+		// no message body to read
+		return nil, nil
 	}
 
-	if length > uint64(len(buf)) {
-		log.Warnf("received message with size greater than allocated message buffer: msg size=%d, buffer size=%d",
-			length, len(buf))
-		return 0, fmt.Errorf("message size greater than allocated message buffer: got %d", length)
+	if msgLen > maxMessageSize {
+		log.Warnf("Received message longer than max allowed size: msg size=%d, max=%d",
+			msgLen, maxMessageSize)
+		return nil, fmt.Errorf("message size %d too large", msgLen)
 	}
 
-	tot = 0
-	for i := 0; i < maxReads; i++ {
-		n, err := stream.Read(buf[tot:])
-		if err != nil {
-			return n + tot, err
-		}
-
-		tot += n
-		if tot == int(length) {
-			break
-		}
+	buf := make([]byte, msgLen)
+	_, err = io.ReadFull(s, buf)
+	if err != nil {
+		return nil, err
 	}
-
-	if tot != int(length) {
-		return tot, fmt.Errorf("failed to read entire message: expected %d bytes, received %d bytes", length, tot)
-	}
-
-	return tot, nil
+	return buf, nil
 }
 
 // bootstrap connects the host to the configured bootnodes

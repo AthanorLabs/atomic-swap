@@ -58,11 +58,12 @@ var (
 )
 
 const (
-	flagRPCPort    = "rpc-port"
-	flagDataDir    = "data-dir"
-	flagLibp2pKey  = "libp2p-key"
-	flagLibp2pPort = "libp2p-port"
-	flagBootnodes  = "bootnodes"
+	flagRPCPort       = "rpc-port"
+	flagDataDir       = "data-dir"
+	flagLibp2pKey     = "libp2p-key"
+	flagLibp2pPort    = "libp2p-port"
+	flagBootnodes     = "bootnodes"
+	flagStaticNATPort = "static-nat-port"
 
 	flagEnv                  = "env"
 	flagMoneroDaemonHost     = "monerod-host"
@@ -114,6 +115,11 @@ var (
 				Name:  flagLibp2pPort,
 				Usage: "libp2p port to listen on",
 				Value: defaultLibp2pPort,
+			},
+			&cli.BoolFlag{
+				Name:  flagStaticNATPort,
+				Usage: "Use when host IP differs from public IP, but the listening libp2p port is identical",
+				Value: false,
 			},
 			&cli.StringFlag{
 				Name:  flagEnv,
@@ -415,13 +421,14 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	}
 
 	netCfg := &net.Config{
-		Ctx:         d.ctx,
-		Environment: env,
-		DataDir:     cfg.DataDir,
-		EthChainID:  chainID.Int64(),
-		Port:        libp2pPort,
-		KeyFile:     libp2pKey,
-		Bootnodes:   cfg.Bootnodes,
+		Ctx:           d.ctx,
+		Environment:   env,
+		DataDir:       cfg.DataDir,
+		EthChainID:    chainID.Int64(),
+		Port:          libp2pPort,
+		KeyFile:       libp2pKey,
+		Bootnodes:     cfg.Bootnodes,
+		StaticNATPort: c.Bool(flagStaticNATPort),
 	}
 	host, err := net.NewHost(netCfg)
 	if err != nil {

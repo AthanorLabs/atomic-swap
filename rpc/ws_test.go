@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	testMultiaddr = "/ip4/192.168.0.102/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"
+	testMultiaddr = "/ip4/192.168.0.102/udp/9933/quic/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"
 )
 
 var (
