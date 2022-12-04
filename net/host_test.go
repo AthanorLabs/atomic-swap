@@ -37,7 +37,7 @@ func (h *mockHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockHandler) HandleInitiateMessage(_ *SendKeysMessage) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
 		return &mockSwapState{h.id}, &SendKeysMessage{}, nil
 	}
@@ -56,7 +56,7 @@ func (s *mockSwapState) ID() types.Hash {
 	return testID
 }
 
-func (s *mockSwapState) HandleProtocolMessage(msg Message) error {
+func (s *mockSwapState) HandleProtocolMessage(_ Message) error {
 	return nil
 }
 

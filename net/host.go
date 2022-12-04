@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"path"
 	"sync"
 	"time"
@@ -327,18 +328,41 @@ func writeStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
 	return nil
 }
 
+func isEOF(err error) bool {
+	switch {
+	case
+		errors.Is(err, io.EOF),
+		errors.Is(err, io.ErrUnexpectedEOF),
+		errors.Is(err, net.ErrClosed),
+		errors.Is(err, io.ErrClosedPipe):
+		return true
+	default:
+		return false
+	}
+}
+
 // readStreamMessage reads the 4-byte LE size header and message body returning the
-// message body bytes.
+// message body bytes. io.EOF is returned if the stream is closed before any bytes
+// are received. If a partial message is received before the stream closes,
+// io.ErrUnexpectedEOF is returned.
 func readStreamMessage(s io.Reader) (Message, error) {
 	if s == nil {
 		return nil, errNilStream
 	}
 
-	var msgLen uint32
-	err := binary.Read(s, binary.LittleEndian, &msgLen)
+	lenBuf := make([]byte, 4)
+	n, err := io.ReadFull(s, lenBuf)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read message length: %w", err)
+		if isEOF(err) {
+			if n > 0 {
+				err = io.ErrUnexpectedEOF
+			} else {
+				err = io.EOF
+			}
+		}
+		return nil, err
 	}
+	msgLen := binary.LittleEndian.Uint32(lenBuf)
 
 	if msgLen > maxMessageSize {
 		log.Warnf("Received message longer than max allowed size: msg size=%d, max=%d",
@@ -346,16 +370,16 @@ func readStreamMessage(s io.Reader) (Message, error) {
 		return nil, fmt.Errorf("message size %d too large", msgLen)
 	}
 
-	buf := make([]byte, msgLen)
-	_, err = io.ReadFull(s, buf)
+	msgBuf := make([]byte, msgLen)
+	_, err = io.ReadFull(s, msgBuf)
 	if err != nil {
-		if errors.Is(err, io.EOF) {
+		if isEOF(err) {
 			err = io.ErrUnexpectedEOF
 		}
 		return nil, err
 	}
 
-	return message.DecodeMessage(buf)
+	return message.DecodeMessage(msgBuf)
 }
 
 // bootstrap connects the host to the configured bootnodes

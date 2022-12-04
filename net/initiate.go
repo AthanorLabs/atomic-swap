@@ -136,11 +136,14 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 
 	for {
 		msg, err := readStreamMessage(stream)
-		if errors.Is(err, io.EOF) {
-			log.Debug("Peer closed stream with us, protocol exited")
-		} else {
-			log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
-				stream.ID(), stream.Protocol(), err)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				log.Debug("Peer closed stream with us, protocol exited")
+			} else {
+				log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
+					stream.ID(), stream.Protocol(), err)
+			}
+			return
 		}
 
 		log.Debug(
