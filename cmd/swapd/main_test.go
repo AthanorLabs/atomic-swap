@@ -71,6 +71,8 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 			flagDeploy:      true,
 			flagDevXMRTaker: true,
 			flagDataDir:     t.TempDir(),
+			flagRPCPort:     uint(0),
+			flagLibp2pPort:  uint(0),
 		},
 	)
 
@@ -103,6 +105,8 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 			flagDevXMRMaker: true,
 			flagDeploy:      true,
 			flagDataDir:     t.TempDir(),
+			flagRPCPort:     uint(0),
+			flagLibp2pPort:  uint(0),
 		},
 	)
 
@@ -160,7 +164,8 @@ func TestDaemon_PersistOffers(t *testing.T) {
 			flagEnv:              "dev",
 			flagDevXMRMaker:      true,
 			flagDeploy:           true,
-			flagRPCPort:          uint(0), // OS assigned port
+			flagRPCPort:          uint(0),
+			flagLibp2pPort:       uint(0),
 			flagDataDir:          dataDir,
 			flagMoneroWalletPath: path.Join(dataDir, "test-wallet"),
 		},
