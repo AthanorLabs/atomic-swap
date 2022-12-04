@@ -14,7 +14,7 @@ func TestP_Marshal_success(t *testing.T) {
 	type SomeStruct struct {
 		PrivSpendKey   *PrivateSpendKey `json:"privSpendKey"`
 		PrivateViewKey *PrivateViewKey  `json:"privViewKey"`
-		PublicSpendKey *PublicKey       `json:"pupSpendKey"`
+		PublicSpendKey *PublicKey       `json:"pubSpendKey"`
 	}
 	ed25519.NewIdentityPoint().Bytes()
 	const (
@@ -24,7 +24,7 @@ func TestP_Marshal_success(t *testing.T) {
 		expectJSON           = `{
 			"privSpendKey": "ab0000000000000000000000000000000000000000000000000000000000cd00",
 			"privViewKey":  "cd0000000000000000000000000000000000000000000000000000000000ef00",
-			"pupSpendKey":  "5866666666666666666666666666666666666666666666666666666666666666"
+			"pubSpendKey":  "5866666666666666666666666666666666666666666666666666666666666666"
 		}`
 	)
 	spendKey, err := NewPrivateSpendKeyFromHex(expectedPrivSpendKey)

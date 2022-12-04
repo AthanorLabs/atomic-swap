@@ -1,3 +1,4 @@
+// Package protocol has functions that are used by both the maker and taker during execution of the swap.
 package protocol
 
 import (

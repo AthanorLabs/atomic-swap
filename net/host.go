@@ -1,3 +1,4 @@
+// Package net provides libraries for direct communication between swapd nodes using libp2p.
 package net
 
 import (

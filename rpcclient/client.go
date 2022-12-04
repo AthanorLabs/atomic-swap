@@ -1,3 +1,5 @@
+// Package rpcclient provides client libraries for interacting with a local swapd instance using
+// the JSON-RPC remote procedure call protocol.
 package rpcclient
 
 import (

@@ -1,3 +1,5 @@
+// Package extethclient provides libraries for interacting with an ethereum node
+// using a specific private key.
 package extethclient
 
 import (

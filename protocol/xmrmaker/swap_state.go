@@ -1,3 +1,5 @@
+// Package xmrmaker manages the swap state of individual swaps where the local swapd
+// instance is offering Monero and accepting Ethereum assets in return.
 package xmrmaker
 
 import (
@@ -8,7 +10,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"

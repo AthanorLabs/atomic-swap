@@ -1,3 +1,5 @@
+// Package crypto is for cryptographic code used by both Monero and Ethereum.
+// Chain specific crypto is in subpackages.
 package crypto
 
 import (

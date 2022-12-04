@@ -1,3 +1,6 @@
+// Package relayer provides client libraries that Bob (an XMR maker) can use to interact
+// with a relay server that will pay the Ethereum gas fees needed to receive an Ethereum
+// asset in exchange for Monero.
 package relayer
 
 import (

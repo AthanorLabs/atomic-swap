@@ -1,3 +1,6 @@
+// Package rpc provides the HTTP server for incoming JSON-RPC and websocket requests to
+// swapd from the local host. The answers to these queries come from 3 subsystems: net,
+// personal and swap.
 package rpc
 
 import (

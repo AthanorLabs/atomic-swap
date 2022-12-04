@@ -19,7 +19,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
     }
 
     struct Swap {
-        // contract creator, Alice
+        // individual swap creator, Alice
         address payable owner;
         // address allowed to claim the ether in this contract
         address payable claimer;
