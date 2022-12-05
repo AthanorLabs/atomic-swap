@@ -12,13 +12,13 @@ import (
 var testAdvertisementSleepDuration = time.Millisecond * 100
 
 func TestHost_Discover(t *testing.T) {
-	ha := newHost(t, defaultPort)
+	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
-	hb := newHost(t, defaultPort+1)
+	hb := newHost(t, basicTestConfig(t))
 	err = hb.Start()
 	require.NoError(t, err)
-	hc := newHost(t, defaultPort+2)
+	hc := newHost(t, basicTestConfig(t))
 	err = hc.Start()
 	require.NoError(t, err)
 

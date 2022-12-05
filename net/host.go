@@ -328,19 +328,6 @@ func writeStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
 	return nil
 }
 
-func isEOF(err error) bool {
-	switch {
-	case
-		errors.Is(err, io.EOF),
-		errors.Is(err, io.ErrUnexpectedEOF),
-		errors.Is(err, net.ErrClosed),
-		errors.Is(err, io.ErrClosedPipe):
-		return true
-	default:
-		return false
-	}
-}
-
 // readStreamMessage reads the 4-byte LE size header and message body returning the
 // message body bytes. io.EOF is returned if the stream is closed before any bytes
 // are received. If a partial message is received before the stream closes,
@@ -350,7 +337,7 @@ func readStreamMessage(s io.Reader) (Message, error) {
 		return nil, errNilStream
 	}
 
-	lenBuf := make([]byte, 4)
+	lenBuf := make([]byte, 4) // uint32 size
 	n, err := io.ReadFull(s, lenBuf)
 	if err != nil {
 		if isEOF(err) {
@@ -380,6 +367,19 @@ func readStreamMessage(s io.Reader) (Message, error) {
 	}
 
 	return message.DecodeMessage(msgBuf)
+}
+
+func isEOF(err error) bool {
+	switch {
+	case
+		errors.Is(err, net.ErrClosed), // what libp2p with QUIC usually generates
+		errors.Is(err, io.EOF),
+		errors.Is(err, io.ErrUnexpectedEOF),
+		errors.Is(err, io.ErrClosedPipe):
+		return true
+	default:
+		return false
+	}
 }
 
 // bootstrap connects the host to the configured bootnodes

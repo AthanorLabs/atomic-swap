@@ -9,10 +9,10 @@ import (
 )
 
 func TestHost_Query(t *testing.T) {
-	ha := newHost(t, 0) // OS assigned port
+	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
-	hb := newHost(t, 0)
+	hb := newHost(t, basicTestConfig(t))
 	err = hb.Start()
 	require.NoError(t, err)
 

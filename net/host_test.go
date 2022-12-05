@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -26,7 +25,6 @@ func TestMain(m *testing.M) {
 	os.Exit(0)
 }
 
-var defaultPort uint16 = 5009
 var testID = types.Hash{99}
 
 type mockHandler struct {
@@ -64,19 +62,23 @@ func (s *mockSwapState) Exit() error {
 	return nil
 }
 
-func newHost(t *testing.T, port uint16) *host {
+func basicTestConfig(t *testing.T) *Config {
 	_, chainID := tests.NewEthClient(t)
-	cfg := &Config{
+	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
+	tmpDir := t.TempDir()
+	return &Config{
 		Ctx:           context.Background(),
 		Environment:   common.Development,
-		DataDir:       t.TempDir(),
+		DataDir:       tmpDir,
 		EthChainID:    chainID.Int64(),
-		Port:          port,
-		KeyFile:       path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
-		Bootnodes:     []string{},
+		Port:          0, // OS randomized libp2p port
+		KeyFile:       path.Join(tmpDir, "node.key"),
+		Bootnodes:     nil,
 		StaticNATPort: false,
 	}
+}
 
+func newHost(t *testing.T, cfg *Config) *host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
 	h.SetHandler(&mockHandler{})
@@ -88,8 +90,18 @@ func newHost(t *testing.T, port uint16) *host {
 }
 
 func TestNewHost(t *testing.T) {
-	h := newHost(t, defaultPort)
+	cfg := basicTestConfig(t)
+	cfg.StaticNATPort = true // get some extra test coverage
+	h := newHost(t, cfg)
 	err := h.Start()
+
+	// only one address currently gets set when setting StaticNATPort
+	addresses := h.Addresses()
+	require.NotEmpty(t, addresses)
+	for _, addr := range h.Addresses() {
+		t.Logf(addr)
+	}
+
 	require.NoError(t, err)
 }
 
@@ -123,6 +135,19 @@ func Test_readStreamMessage_EOF(t *testing.T) {
 	stream = bytes.NewReader(serializedData)
 	_, err = readStreamMessage(stream)
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF) // connection after we read at least one byte
+}
+
+func Test_readStreamMessage_TooLarge(t *testing.T) {
+	buf := make([]byte, 4+maxMessageSize+1)
+	binary.LittleEndian.PutUint32(buf, maxMessageSize+1)
+	_, err := readStreamMessage(bytes.NewReader(buf))
+	require.ErrorContains(t, err, "too large")
+}
+
+func Test_readStreamMessage_NilStream(t *testing.T) {
+	// Can our code actually trigger this error?
+	_, err := readStreamMessage(nil)
+	require.ErrorIs(t, err, errNilStream)
 }
 
 func Test_writeStreamMessage(t *testing.T) {
