@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chyeh/pubip"
 	badger "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
@@ -22,9 +22,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
-
-	//"github.com/chyeh/pubip"
-	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -137,7 +134,7 @@ func NewHost(cfg *Config) (*host, error) {
 	}
 	if cfg.StaticNATPort {
 		var externalAddr ma.Multiaddr
-		ip, err := pubip.Get() //nolint:govet
+		ip, err := getPubIP() //nolint:govet
 		if err != nil {
 			return nil, fmt.Errorf("failed to get public IP error: %s", err)
 		}

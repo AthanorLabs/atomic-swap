@@ -1,8 +1,10 @@
 package net
 
 import (
+	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,4 +22,11 @@ func TestStringToAddrInfo(t *testing.T) {
 	addrInfo, err := StringToAddrInfo(str)
 	require.NoError(t, err)
 	require.Equal(t, "12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv", addrInfo.ID.String())
+}
+
+func Test_getPubIP(t *testing.T) {
+	ip, err := getPubIP()
+	require.NoError(t, err)
+	// simple sanity check regex (not a full-blown validator)
+	assert.Regexp(t, regexp.MustCompile(`^(\d+.){3}\d+$`), ip)
 }

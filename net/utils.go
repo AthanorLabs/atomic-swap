@@ -3,10 +3,15 @@ package net
 import (
 	crand "crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 	mrand "math/rand"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -91,4 +96,23 @@ func saveKey(priv crypto.PrivKey, fp string) (err error) {
 		return err
 	}
 	return f.Close()
+}
+
+func getPubIP() (string, error) {
+	const url = "https://api.ipify.org"
+	timeout := 10 * time.Second
+	client := &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: &http.Transport{DialContext: (&net.Dialer{Timeout: timeout}).DialContext},
+	}
+	res, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to load public IP: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	ip, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err // unlikely error due to small reply
+	}
+	return strings.TrimSpace(string(ip)), nil
 }
