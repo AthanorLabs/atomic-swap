@@ -144,13 +144,13 @@ func NewHost(cfg *Config) (*host, error) {
 			return nil, err
 		}
 		opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
-			var addrs []ma.Multiaddr
+			addrs := []ma.Multiaddr{externalAddr}
 			for _, addr := range as {
-				if !privateIPs.AddrBlocked(addr) {
+				if !privateIPs.AddrBlocked(addr) && !addr.Equal(externalAddr) {
 					addrs = append(addrs, addr)
 				}
 			}
-			return append(addrs, externalAddr)
+			return addrs
 		}))
 	}
 
