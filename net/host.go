@@ -218,7 +218,7 @@ func (h *host) logPeers() {
 		}
 
 		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
-		time.Sleep(time.Minute)
+		time.Sleep(time.Minute * 5)
 	}
 }
 

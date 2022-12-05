@@ -18,6 +18,7 @@ import (
 const (
 	tryAdvertiseTimeout = time.Second * 30
 	defaultAdvertiseTTL = time.Minute * 5
+	defaultMinPeers     = 3  // TODO: make this configurable
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
@@ -86,6 +87,7 @@ func (d *discovery) start() error {
 	// wait to connect to bootstrap peers
 	time.Sleep(time.Second)
 	go d.advertiseLoop()
+	go d.discoverLoop()
 
 	log.Debug("discovery started!")
 	return nil
@@ -154,27 +156,45 @@ func (d *discovery) advertise() time.Duration {
 	return defaultAdvertiseTTL
 }
 
-func (d *discovery) discover(provides types.ProvidesCoin,
-	searchTime time.Duration) ([]peer.AddrInfo, error) {
-	log.Debugf("attempting to find DHT peers that provide [%s] for %vs...",
-		provides,
-		searchTime.Seconds(),
-	)
-
-	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))
-	if err != nil {
-		return nil, err
-	}
-
-	timer := time.NewTicker(searchTime)
-	peers := []peer.AddrInfo{}
+func (d *discovery) discoverLoop() {
+	timer := time.NewTicker(time.Minute)
 
 	for {
 		select {
 		case <-d.ctx.Done():
 			timer.Stop()
-			return peers, d.ctx.Err()
+			return
 		case <-timer.C:
+			if len(d.h.Network().Peers()) >= defaultMinPeers {
+				continue
+			}
+
+			// if our peer count is low, try to find some peers
+			timer := time.NewTimer(time.Minute)
+
+			_, err := d.findPeers("", timer.C)
+			if err != nil {
+				log.Errorf("failed to find peers: %s", err)
+			}
+
+			timer.Stop()
+		}
+	}
+}
+
+func (d *discovery) findPeers(provides string, done <-chan time.Time) ([]peer.AddrInfo, error) {
+	peerCh, err := d.rd.FindPeers(d.ctx, provides)
+	if err != nil {
+		return nil, err
+	}
+
+	peers := []peer.AddrInfo{}
+
+	for {
+		select {
+		case <-d.ctx.Done():
+			return peers, d.ctx.Err()
+		case <-done:
 			return peers, nil
 		case peer := <-peerCh:
 			if peer.ID == d.h.ID() || peer.ID == "" {
@@ -195,4 +215,18 @@ func (d *discovery) discover(provides types.ProvidesCoin,
 			}
 		}
 	}
+}
+
+func (d *discovery) discover(
+	provides types.ProvidesCoin,
+	searchTime time.Duration,
+) ([]peer.AddrInfo, error) {
+	log.Debugf("attempting to find DHT peers that provide [%s] for %vs...",
+		provides,
+		searchTime.Seconds(),
+	)
+
+	timer := time.NewTimer(searchTime)
+	defer timer.Stop()
+	return d.findPeers(string(provides), timer.C)
 }
