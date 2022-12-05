@@ -344,11 +344,16 @@ func (d *daemon) stop() error {
 // can be specified individually with multiple flags, but can also contain
 // multiple boot nodes passed to single flag separated by commas.
 func expandBootnodes(nodesCLI []string) []string {
-	var nodes []string
-	for _, n := range nodesCLI {
-		splitNodes := strings.Split(n, ",")
-		for _, ns := range splitNodes {
-			nodes = append(nodes, strings.TrimSpace(ns))
+	var nodes []string // nodes from all flag values combined
+	for _, flagVal := range nodesCLI {
+		splitNodes := strings.Split(flagVal, ",")
+		for _, n := range splitNodes {
+			n = strings.TrimSpace(n)
+			// Handle the empty string to not use default bootnodes. Doing it here after
+			// the split has the arguably positive side effect of skipping empty entries.
+			if len(n) > 0 {
+				nodes = append(nodes, strings.TrimSpace(n))
+			}
 		}
 	}
 	return nodes
@@ -385,7 +390,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	if len(c.StringSlice(flagBootnodes)) > 0 {
+	if c.IsSet(flagBootnodes) {
 		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
 	}
 

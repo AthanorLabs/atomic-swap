@@ -151,6 +151,14 @@ func Test_expandBootnodes(t *testing.T) {
 	require.EqualValues(t, expected, expandBootnodes(cliNodes))
 }
 
+func Test_expandBootnodes_noNodes(t *testing.T) {
+	// This can happen when the user specifies a single `--bootnodes ""` flag
+	// to not use the default bootnodes for an environment.
+	cliNodes := []string{""}
+	nodes := expandBootnodes(cliNodes)
+	require.Zero(t, len(nodes))
+}
+
 func TestDaemon_PersistOffers(t *testing.T) {
 	startupTimeout := time.Millisecond * 100
 
