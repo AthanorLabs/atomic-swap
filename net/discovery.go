@@ -157,7 +157,8 @@ func (d *discovery) advertise() time.Duration {
 }
 
 func (d *discovery) discoverLoop() {
-	timer := time.NewTicker(time.Minute)
+	const discoverLoopDuration = time.Minute
+	timer := time.NewTicker(discoverLoopDuration)
 
 	for {
 		select {
@@ -170,7 +171,7 @@ func (d *discovery) discoverLoop() {
 			}
 
 			// if our peer count is low, try to find some peers
-			timer := time.NewTimer(time.Minute)
+			timer := time.NewTimer(discoverLoopDuration)
 
 			_, err := d.findPeers("", timer.C)
 			if err != nil {
