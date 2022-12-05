@@ -79,7 +79,7 @@ Note: You probably need additional flags above:
   option, our stagenet default uses `node.sethforprivacy.com:38089`.
 * `--libp2p-port PORT`. The default is `9900`. Use this flag when creating multiple
   swapd instances on the same host.
-* `--rpc-port PORT`. The default is `5005`. Use this flag when creating multiple
+* `--rpc-port PORT`. The default is `5000`. Use this flag when creating multiple
   swapd instances on the same host.
 
 > Note: please also see the [RPC documentation](./rpc.md) for complete documentation on available RPC calls and their parameters.

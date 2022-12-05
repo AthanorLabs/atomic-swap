@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	defaultSwapdPort              = 5001
 	defaultDiscoverSearchTimeSecs = 12
 
 	flagSwapdPort         = "swapd-port"
@@ -288,7 +287,7 @@ var (
 	swapdPortFlag = &cli.UintFlag{
 		Name:    flagSwapdPort,
 		Usage:   "RPC port of swap daemon",
-		Value:   defaultSwapdPort,
+		Value:   common.DefaultSwapdPort,
 		EnvVars: []string{"SWAPD_PORT"},
 	}
 )

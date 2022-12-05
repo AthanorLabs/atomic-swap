@@ -40,9 +40,9 @@ const (
 	defaultXMRMakerLibp2pPort = 9934
 
 	// default RPC port
-	defaultRPCPort         = 5005
-	defaultXMRTakerRPCPort = 5001
-	defaultXMRMakerRPCPort = 5002
+	defaultRPCPort         = common.DefaultSwapdPort
+	defaultXMRTakerRPCPort = defaultRPCPort + 1
+	defaultXMRMakerRPCPort = defaultRPCPort + 2
 )
 
 var (
