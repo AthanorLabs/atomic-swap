@@ -171,14 +171,14 @@ func (d *discovery) discoverLoop() {
 			}
 
 			// if our peer count is low, try to find some peers
-			timer := time.NewTimer(discoverLoopDuration)
+			findPeersTimer := time.NewTimer(discoverLoopDuration)
 
-			_, err := d.findPeers("", timer.C)
+			_, err := d.findPeers("", findPeersTimer.C)
 			if err != nil {
 				log.Errorf("failed to find peers: %s", err)
 			}
 
-			timer.Stop()
+			findPeersTimer.Stop()
 		}
 	}
 }
@@ -189,7 +189,7 @@ func (d *discovery) findPeers(provides string, done <-chan time.Time) ([]peer.Ad
 		return nil, err
 	}
 
-	peers := []peer.AddrInfo{}
+	var peers []peer.AddrInfo
 
 	for {
 		select {
@@ -222,7 +222,7 @@ func (d *discovery) discover(
 	provides types.ProvidesCoin,
 	searchTime time.Duration,
 ) ([]peer.AddrInfo, error) {
-	log.Debugf("attempting to find DHT peers that provide [%s] for %vs...",
+	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",
 		provides,
 		searchTime.Seconds(),
 	)
