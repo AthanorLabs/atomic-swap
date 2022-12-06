@@ -97,9 +97,9 @@ func NewHost(cfg *Config) (*host, error) {
 		}
 	}
 
-	addr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", cfg.Port))
-	if err != nil {
-		return nil, err
+	listenIP := "0.0.0.0"
+	if cfg.Environment == common.Development {
+		listenIP = "127.0.0.1"
 	}
 
 	ds, err := badger.NewDatastore(path.Join(cfg.DataDir, "libp2p-datastore"), &badger.DefaultOptions)
@@ -120,7 +120,10 @@ func NewHost(cfg *Config) (*host, error) {
 
 	// set libp2p host options
 	opts := []libp2p.Option{
-		libp2p.ListenAddrs(addr),
+		libp2p.ListenAddrStrings(
+			fmt.Sprintf("/ip4/%s/udp/%d/quic", listenIP, cfg.Port),
+			fmt.Sprintf("/ip4/%s/tcp/%d", listenIP, cfg.Port),
+		),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelayService(),

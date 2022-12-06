@@ -318,7 +318,10 @@ func runAddresses(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Listening addresses: %v\n", addrs)
+	fmt.Println("Listening addresses:")
+	for i, a := range addrs {
+		fmt.Printf("%d: %s\n", i+1, a)
+	}
 	return nil
 }
 
