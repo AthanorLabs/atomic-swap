@@ -8,7 +8,6 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -31,44 +30,6 @@ type discovery struct {
 	provides    []types.ProvidesCoin
 	advertiseCh chan struct{}
 	offerAPI    Handler
-}
-
-func newDiscovery(
-	ctx context.Context,
-	h libp2phost.Host,
-	bnsFunc func() []peer.AddrInfo,
-) (*discovery, error) {
-	dhtOpts := []dual.Option{
-		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
-		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
-	}
-
-	// There is libp2p bug when calling `dual.New` with a cancelled context creating a panic,
-	// so we added the extra guard below:
-	// Panic:  https://github.com/jbenet/goprocess/blob/v0.1.4/impl-mutex.go#L99
-	// Caller: https://github.com/libp2p/go-libp2p-kad-dht/blob/v0.17.0/dht.go#L222
-	//
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-		// not cancelled, continue on
-	}
-
-	dht, err := dual.New(ctx, h, dhtOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	rd := libp2pdiscovery.NewRoutingDiscovery(dht)
-
-	return &discovery{
-		ctx:         ctx,
-		dht:         dht,
-		h:           h,
-		rd:          rd,
-		advertiseCh: make(chan struct{}),
-	}, nil
 }
 
 func (d *discovery) setOfferAPI(offerAPI Handler) {

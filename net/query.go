@@ -42,9 +42,7 @@ func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
 
-	log.Debug(
-		"opened query stream, peer=", who.ID,
-	)
+	log.Debugf("opened query stream: %s", stream.Conn())
 
 	defer func() {
 		_ = stream.Close()

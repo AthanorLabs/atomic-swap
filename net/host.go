@@ -15,12 +15,16 @@ import (
 	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
+	kaddht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -112,12 +116,6 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
-	// format bootnodes
-	bns, err := stringsToAddrInfos(cfg.Bootnodes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
-	}
-
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(
@@ -132,54 +130,93 @@ func NewHost(cfg *Config) (*host, error) {
 		libp2p.Peerstore(ps),
 	}
 
+	// format bootnodes
+	bns, err := stringsToAddrInfos(cfg.Bootnodes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
+	}
+
 	if len(bns) > 0 {
 		opts = append(opts, libp2p.EnableAutoRelay(autorelay.WithStaticRelays(bns)))
 	}
+
 	if cfg.StaticNATPort {
-		var externalAddr ma.Multiaddr
-		ip, err := getPubIP() //nolint:govet
-		if err != nil {
-			return nil, fmt.Errorf("failed to get public IP error: %s", err)
-		}
-		log.Infof("Public IP for static NAT port is %s", ip)
-		externalAddr, err = ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/udp/%d/quic", ip, cfg.Port))
+		opt, err := getStaticNATPortOption(cfg.Port) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
-			addrs := []ma.Multiaddr{externalAddr}
-			for _, addr := range as {
-				if !privateIPs.AddrBlocked(addr) && !addr.Equal(externalAddr) {
-					addrs = append(addrs, addr)
-				}
-			}
-			return addrs
-		}))
+		opts = append(opts, opt)
 	}
 
 	// create libp2p host instance
-	h, err := libp2p.New(opts...)
+	basicHost, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
 	}
+
+	// There is libp2p bug when calling `dual.New` with a cancelled context creating a panic,
+	// so we need the extra guard below:
+	// Panic:  https://github.com/jbenet/goprocess/blob/v0.1.4/impl-mutex.go#L99
+	// Caller: https://github.com/libp2p/go-libp2p-kad-dht/blob/v0.17.0/dht.go#L222
+	if cfg.Ctx.Err() != nil {
+		return nil, err
+	}
+
+	dht, err := dual.New(cfg.Ctx, basicHost,
+		dual.DHTOption(kaddht.BootstrapPeers(bns...)),
+		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)))
+	if err != nil {
+		return nil, err
+	}
+
+	routedHost := routedhost.Wrap(basicHost, dht)
 
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
 		ctx:        ourCtx,
 		cancel:     cancel,
 		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID),
-		h:          h,
+		h:          routedHost,
 		ds:         ds,
 		bootnodes:  bns,
 		swaps:      make(map[types.Hash]*swap),
-	}
-
-	hst.discovery, err = newDiscovery(ourCtx, h, hst.getBootnodes)
-	if err != nil {
-		return nil, err
+		discovery: &discovery{
+			ctx:         ourCtx,
+			dht:         dht,
+			h:           routedHost,
+			rd:          libp2pdiscovery.NewRoutingDiscovery(dht),
+			provides:    nil,
+			advertiseCh: make(chan struct{}),
+			offerAPI:    nil,
+		},
 	}
 
 	return hst, nil
+}
+
+func getStaticNATPortOption(p2pPort uint16) (libp2p.Option, error) {
+	ip, err := getPubIP()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public IP error: %s", err)
+	}
+	log.Infof("Public IP for static NAT port is %s", ip)
+	externalUDPAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/udp/%d/quic", ip, p2pPort))
+	if err != nil {
+		return nil, err
+	}
+	externalTCPAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/udp/%d/quic", ip, p2pPort))
+	if err != nil {
+		return nil, err
+	}
+	return libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
+		addrs := []ma.Multiaddr{externalUDPAddr, externalTCPAddr}
+		for _, addr := range as {
+			if !privateIPs.AddrBlocked(addr) && !addr.Equal(externalUDPAddr) && !addr.Equal(externalTCPAddr) {
+				addrs = append(addrs, addr)
+			}
+		}
+		return addrs
+	}), nil
 }
 
 func (h *host) SetHandler(handler Handler) {
@@ -205,7 +242,7 @@ func (h *host) Start() error {
 
 	// ignore error - node should still be able to run without connecting to
 	// bootstrap nodes (for now)
-	_ = h.bootstrap()
+	_ = h.bootstrap() // TODO: Is this needed?
 
 	go h.logPeers()
 
@@ -279,14 +316,6 @@ func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
 	}
 
 	return writeStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
-}
-
-func (h *host) getBootnodes() []peer.AddrInfo {
-	addrs := h.bootnodes
-	for _, p := range h.h.Network().Peers() {
-		addrs = append(addrs, h.h.Peerstore().PeerInfo(p))
-	}
-	return addrs
 }
 
 // multiaddrs returns the multiaddresses of the host

@@ -74,10 +74,9 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	msg, err := readStreamMessage(stream)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			log.Debug("Peer closed stream with us, protocol exited")
+			log.Debugf("Peer closed stream-id=%s, protocol exited", stream.ID())
 		} else {
-			log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
-				stream.ID(), stream.Protocol(), err)
+			log.Debugf("Failed to read message from peer, stream-id=%s: %s", stream.ID(), err)
 		}
 		_ = stream.Close()
 		return
@@ -146,9 +145,8 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			return
 		}
 
-		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
-		)
+		log.Debugf("received proto=%s message from peer=%s type=%s",
+			stream.Protocol(), stream.Conn().RemotePeer(), msg.Type())
 
 		err = s.HandleProtocolMessage(msg)
 		if err != nil {
