@@ -112,6 +112,9 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
+	// note: this function verifies the forwarder code as well, even if we aren't using a relayer,
+	// in which case it's not relevant to us and we don't need to verify it.
+	// doesn't hurt though I suppose.
 	_, err = contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr)
 	if err != nil {
 		return nil, err

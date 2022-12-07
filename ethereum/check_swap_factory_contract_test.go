@@ -48,6 +48,14 @@ func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 	return code
 }
 
+func TestCheckForwarderContractCode(t *testing.T) {
+	ec, _ := tests.NewEthClient(t)
+	pk := tests.GetMakerTestKey(t)
+	trustedForwarder := deployForwarder(t, ec, pk)
+	err := checkForwarderContractCode(context.Background(), ec, trustedForwarder)
+	require.NoError(t, err)
+}
+
 // This test will fail if the compiled SwapFactory contract is updated, but the
 // expectedSwapFactoryBytecodeHex constant is not updated. Use this test to update the
 // constant.
