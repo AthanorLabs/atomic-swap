@@ -212,13 +212,15 @@ func (h *host) Start() error {
 }
 
 func (h *host) logPeers() {
+	logPeersInterval := time.Minute * 5
+
 	for {
-		if h.ctx.Err() != nil {
+		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
+		err := common.SleepWithContext(h.ctx, logPeersInterval)
+		if err != nil {
+			// context was cancelled, return
 			return
 		}
-
-		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
-		time.Sleep(time.Minute)
 	}
 }
 
