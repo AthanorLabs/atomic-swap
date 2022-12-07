@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 const (
 	tryAdvertiseTimeout = time.Second * 30
 	defaultAdvertiseTTL = time.Minute * 5
+	defaultMinPeers     = 3  // TODO: make this configurable
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
@@ -86,6 +88,7 @@ func (d *discovery) start() error {
 	// wait to connect to bootstrap peers
 	time.Sleep(time.Second)
 	go d.advertiseLoop()
+	go d.discoverLoop()
 
 	log.Debug("discovery started!")
 	return nil
@@ -154,28 +157,48 @@ func (d *discovery) advertise() time.Duration {
 	return defaultAdvertiseTTL
 }
 
-func (d *discovery) discover(provides types.ProvidesCoin,
-	searchTime time.Duration) ([]peer.AddrInfo, error) {
-	log.Debugf("attempting to find DHT peers that provide [%s] for %vs...",
-		provides,
-		searchTime.Seconds(),
-	)
-
-	peerCh, err := d.rd.FindPeers(d.ctx, string(provides))
-	if err != nil {
-		return nil, err
-	}
-
-	timer := time.NewTicker(searchTime)
-	peers := []peer.AddrInfo{}
+func (d *discovery) discoverLoop() {
+	const discoverLoopDuration = time.Minute
+	timer := time.NewTicker(discoverLoopDuration)
 
 	for {
 		select {
 		case <-d.ctx.Done():
 			timer.Stop()
-			return peers, d.ctx.Err()
+			return
 		case <-timer.C:
-			return peers, nil
+			if len(d.h.Network().Peers()) >= defaultMinPeers {
+				continue
+			}
+
+			// if our peer count is low, try to find some peers
+			_, err := d.findPeers("", discoverLoopDuration)
+			if err != nil {
+				log.Errorf("failed to find peers: %s", err)
+			}
+		}
+	}
+}
+
+func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.AddrInfo, error) {
+	peerCh, err := d.rd.FindPeers(d.ctx, provides)
+	if err != nil {
+		return nil, err
+	}
+
+	var peers []peer.AddrInfo
+
+	ctx, cancel := context.WithTimeout(d.ctx, timeout)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return peers, nil
+			}
+
+			return peers, ctx.Err()
 		case peer := <-peerCh:
 			if peer.ID == d.h.ID() || peer.ID == "" {
 				continue
@@ -195,4 +218,16 @@ func (d *discovery) discover(provides types.ProvidesCoin,
 			}
 		}
 	}
+}
+
+func (d *discovery) discover(
+	provides types.ProvidesCoin,
+	searchTime time.Duration,
+) ([]peer.AddrInfo, error) {
+	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",
+		provides,
+		searchTime.Seconds(),
+	)
+
+	return d.findPeers(string(provides), searchTime)
 }
