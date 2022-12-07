@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -171,19 +172,15 @@ func (d *discovery) discoverLoop() {
 			}
 
 			// if our peer count is low, try to find some peers
-			findPeersTimer := time.NewTimer(discoverLoopDuration)
-
-			_, err := d.findPeers("", findPeersTimer.C)
+			_, err := d.findPeers("", discoverLoopDuration)
 			if err != nil {
 				log.Errorf("failed to find peers: %s", err)
 			}
-
-			findPeersTimer.Stop()
 		}
 	}
 }
 
-func (d *discovery) findPeers(provides string, done <-chan time.Time) ([]peer.AddrInfo, error) {
+func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.AddrInfo, error) {
 	peerCh, err := d.rd.FindPeers(d.ctx, provides)
 	if err != nil {
 		return nil, err
@@ -191,12 +188,17 @@ func (d *discovery) findPeers(provides string, done <-chan time.Time) ([]peer.Ad
 
 	var peers []peer.AddrInfo
 
+	ctx, cancel := context.WithTimeout(d.ctx, timeout)
+	defer cancel()
+
 	for {
 		select {
-		case <-d.ctx.Done():
-			return peers, d.ctx.Err()
-		case <-done:
-			return peers, nil
+		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return peers, nil
+			}
+
+			return peers, ctx.Err()
 		case peer := <-peerCh:
 			if peer.ID == d.h.ID() || peer.ID == "" {
 				continue
@@ -227,7 +229,5 @@ func (d *discovery) discover(
 		searchTime.Seconds(),
 	)
 
-	timer := time.NewTimer(searchTime)
-	defer timer.Stop()
-	return d.findPeers(string(provides), timer.C)
+	return d.findPeers(string(provides), searchTime)
 }
