@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path"
 	"sync"
 	"time"
@@ -85,6 +86,14 @@ type Config struct {
 	Bootnodes   []string
 }
 
+// QUIC will have better performance in high-bandwidth protocols if you increase a socket
+// receive buffer (sysctl -w net.core.rmem_max=2500000). We have a low-bandwidth protocol,
+// so setting this variable keeps a warning out of our logs. See this for more information:
+// https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size
+func init() {
+	_ = os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
+}
+
 // NewHost returns a new host
 func NewHost(cfg *Config) (*host, error) {
 	if cfg.DataDir == "" || cfg.KeyFile == "" {
@@ -117,10 +126,7 @@ func NewHost(cfg *Config) (*host, error) {
 
 	// set libp2p host options
 	opts := []libp2p.Option{
-		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/%s/udp/%d/quic", listenIP, cfg.Port),
-			fmt.Sprintf("/ip4/%s/tcp/%d", listenIP, cfg.Port),
-		),
+		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/%s/udp/%d/quic", listenIP, cfg.Port)),
 		libp2p.Identity(key),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelayService(),
