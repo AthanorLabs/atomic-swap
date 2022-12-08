@@ -3,11 +3,14 @@ package xmrmaker
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -139,8 +142,6 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("contract refund key is not expected: got 0x%x, expected 0x%x", event.RefundKey, skTheirs)
 	}
 
-	// TODO: check timeouts (#161)
-
 	// check asset of created swap
 	if types.EthAsset(s.contractSwap.Asset) != types.EthAsset(event.Asset) {
 		return fmt.Errorf("swap asset is not expected: got %v, expected %v", event.Asset, s.contractSwap.Asset)
@@ -170,4 +171,30 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	}
 
 	return nil
+}
+
+func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
+	s.setTimeouts(t0, t1)
+
+	if s.Backend.Env() == common.Development {
+		return nil
+	}
+
+	expectedTimeout := common.SwapTimeoutFromEnvironment(s.Backend.Env())
+	allowableTimeDiff := time.Minute * 3
+
+	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
+		return errInvalidT0
+	}
+
+	if s.t1.Sub(s.t0).Abs() > allowableTimeDiff {
+		return errInvalidT1
+	}
+
+	return nil
+}
+
+func (s *swapState) setTimeouts(t0, t1 *big.Int) {
+	s.t0 = time.Unix(t0.Int64(), 0)
+	s.t1 = time.Unix(t1.Int64(), 0)
 }
