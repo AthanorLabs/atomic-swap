@@ -115,7 +115,7 @@ func (s *IntegrationTestSuite) TestXMRTaker_Discover() {
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 }
 
 func (s *IntegrationTestSuite) TestXMRMaker_Discover() {
@@ -141,7 +141,7 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 	resp, err := c.Query(providers[0][0])
 	require.NoError(s.T(), err)
@@ -219,7 +219,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(s.T(), err)
@@ -313,7 +313,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(s.T(), err)
@@ -451,7 +451,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(s.T(), err)
 
@@ -547,7 +547,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(s.T(), err)
@@ -652,7 +652,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	providers, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 	takerStatusCh, err := wsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
 	require.NoError(s.T(), err)
@@ -709,7 +709,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 	providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(providers))
-	require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+	require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 	errCh := make(chan error, 2)
 
@@ -876,7 +876,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 		providers, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout) //nolint:govet
 		require.NoError(s.T(), err)
 		require.Equal(s.T(), 1, len(providers))
-		require.GreaterOrEqual(s.T(), len(providers[0]), 2)
+		require.GreaterOrEqual(s.T(), len(providers[0]), 1)
 
 		offerID := makerTests[i].offerID
 		takerStatusCh, err := awsc.TakeOfferAndSubscribe(providers[0][0], offerID, 0.05)
