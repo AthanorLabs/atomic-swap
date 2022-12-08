@@ -140,6 +140,19 @@ func NewHost(cfg *Config) (*host, error) {
 		opts = append(opts, libp2p.EnableAutoRelay(autorelay.WithStaticRelays(bns)))
 	}
 
+	// if we are not doing local testing (dev), filter local (private) IPs from the DHT
+	if cfg.Environment != common.Development {
+		opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
+			var addrs []ma.Multiaddr
+			for _, addr := range as {
+				if !privateIPs.AddrBlocked(addr) {
+					addrs = append(addrs, addr)
+				}
+			}
+			return addrs
+		}))
+	}
+
 	if cfg.StaticNATPort {
 		opt, err := getStaticNATPortOption(cfg.Port) //nolint:govet
 		if err != nil {
@@ -204,7 +217,7 @@ func getStaticNATPortOption(p2pPort uint16) (libp2p.Option, error) {
 	if err != nil {
 		return nil, err
 	}
-	externalTCPAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/udp/%d/quic", ip, p2pPort))
+	externalTCPAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ip, p2pPort))
 	if err != nil {
 		return nil, err
 	}
@@ -297,6 +310,10 @@ func (h *host) Addresses() []string {
 		addrs = append(addrs, ma.String())
 	}
 	return addrs
+}
+
+func (h *host) PeerCount() uint {
+	return uint(len(h.h.Network().Peers()))
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.

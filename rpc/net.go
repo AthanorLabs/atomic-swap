@@ -19,6 +19,7 @@ const defaultSearchTime = time.Second * 12
 
 // Net contains the network-related functions required by the rpc service.
 type Net interface {
+	PeerCount() uint
 	Addresses() []string
 	Advertise()
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
@@ -47,11 +48,13 @@ func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager
 
 // AddressesResponse ...
 type AddressesResponse struct {
-	Addrs []string `json:"addresses"`
+	PeerCount uint     `json:"peerCount"`
+	Addrs     []string `json:"addresses"`
 }
 
 // Addresses returns the multiaddresses this node is listening on.
 func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesResponse) error {
+	resp.PeerCount = s.net.PeerCount()
 	resp.Addrs = s.net.Addresses()
 	return nil
 }

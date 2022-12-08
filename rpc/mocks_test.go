@@ -27,6 +27,10 @@ func (*mockNet) Addresses() []string {
 	panic("not implemented")
 }
 
+func (*mockNet) PeerCount() uint {
+	panic("not implemented")
+}
+
 func (*mockNet) Advertise() {
 }
 

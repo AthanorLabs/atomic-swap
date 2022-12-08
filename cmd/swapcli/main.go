@@ -313,14 +313,18 @@ func newWSClient(ctx *cli.Context) (wsclient.WsClient, error) {
 
 func runAddresses(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	addrs, err := c.Addresses()
+	resp, err := c.Addresses()
 	if err != nil {
 		return err
 	}
 
+	fmt.Printf("Peer count: %d\n", resp.PeerCount)
 	fmt.Println("Listening addresses:")
-	for i, a := range addrs {
+	for i, a := range resp.Addrs {
 		fmt.Printf("%d: %s\n", i+1, a)
+	}
+	if len(resp.Addrs) == 0 {
+		fmt.Println("... waiting for 3 peers to agree on public address(es)")
 	}
 	return nil
 }

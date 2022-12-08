@@ -5,7 +5,7 @@ import (
 )
 
 // Addresses calls net_addresses.
-func (c *Client) Addresses() ([]string, error) {
+func (c *Client) Addresses() (*rpc.AddressesResponse, error) {
 	const (
 		method = "net_addresses"
 	)
@@ -16,5 +16,5 @@ func (c *Client) Addresses() ([]string, error) {
 		return nil, err
 	}
 
-	return res.Addrs, nil
+	return res, nil
 }
