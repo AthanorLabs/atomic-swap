@@ -76,14 +76,13 @@ type host struct {
 
 // Config is used to configure the network Host.
 type Config struct {
-	Ctx           context.Context
-	Environment   common.Environment
-	DataDir       string
-	EthChainID    int64
-	Port          uint16
-	KeyFile       string
-	Bootnodes     []string
-	StaticNATPort bool
+	Ctx         context.Context
+	Environment common.Environment
+	DataDir     string
+	EthChainID  int64
+	Port        uint16
+	KeyFile     string
+	Bootnodes   []string
 }
 
 // NewHost returns a new host
@@ -153,14 +152,6 @@ func NewHost(cfg *Config) (*host, error) {
 		}))
 	}
 
-	if cfg.StaticNATPort {
-		opt, err := getStaticNATPortOption(cfg.Port) //nolint:govet
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, opt)
-	}
-
 	// create libp2p host instance
 	basicHost, err := libp2p.New(opts...)
 	if err != nil {
@@ -205,31 +196,6 @@ func NewHost(cfg *Config) (*host, error) {
 	}
 
 	return hst, nil
-}
-
-func getStaticNATPortOption(p2pPort uint16) (libp2p.Option, error) {
-	ip, err := getPubIP()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get public IP error: %s", err)
-	}
-	log.Infof("Public IP for static NAT port is %s", ip)
-	externalUDPAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/udp/%d/quic", ip, p2pPort))
-	if err != nil {
-		return nil, err
-	}
-	externalTCPAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ip, p2pPort))
-	if err != nil {
-		return nil, err
-	}
-	return libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
-		addrs := []ma.Multiaddr{externalUDPAddr, externalTCPAddr}
-		for _, addr := range as {
-			if !privateIPs.AddrBlocked(addr) && !addr.Equal(externalUDPAddr) && !addr.Equal(externalTCPAddr) {
-				addrs = append(addrs, addr)
-			}
-		}
-		return addrs
-	}), nil
 }
 
 func (h *host) SetHandler(handler Handler) {

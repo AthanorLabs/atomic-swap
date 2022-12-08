@@ -67,14 +67,13 @@ func basicTestConfig(t *testing.T) *Config {
 	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
 	tmpDir := t.TempDir()
 	return &Config{
-		Ctx:           context.Background(),
-		Environment:   common.Development,
-		DataDir:       tmpDir,
-		EthChainID:    chainID.Int64(),
-		Port:          0, // OS randomized libp2p port
-		KeyFile:       path.Join(tmpDir, "node.key"),
-		Bootnodes:     nil,
-		StaticNATPort: false,
+		Ctx:         context.Background(),
+		Environment: common.Development,
+		DataDir:     tmpDir,
+		EthChainID:  chainID.Int64(),
+		Port:        0, // OS randomized libp2p port
+		KeyFile:     path.Join(tmpDir, "node.key"),
+		Bootnodes:   nil,
 	}
 }
 
@@ -91,11 +90,9 @@ func newHost(t *testing.T, cfg *Config) *host {
 
 func TestNewHost(t *testing.T) {
 	cfg := basicTestConfig(t)
-	cfg.StaticNATPort = true // get some extra test coverage
 	h := newHost(t, cfg)
 	err := h.Start()
 
-	// only one address currently gets set when setting StaticNATPort
 	addresses := h.Addresses()
 	require.NotEmpty(t, addresses)
 	for _, addr := range h.Addresses() {
