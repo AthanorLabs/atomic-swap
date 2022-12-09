@@ -6,7 +6,7 @@ import (
 	"github.com/MarinX/monerorpc/wallet"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/test"
+	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -22,18 +22,23 @@ import (
 // This file only contains mock definitions used by other test files
 //
 
-type mockNet struct{}
+type mockNet struct {
+	peerID peer.ID
+}
 
 func (*mockNet) Addresses() []string {
 	panic("not implemented")
 }
 
-func (*mockNet) PeerID() peer.ID {
-	peerID, err := test.RandPeerID()
-	if err != nil {
-		panic(err)
+func (m *mockNet) PeerID() peer.ID {
+	if m.peerID == "" {
+		var err error
+		m.peerID, err = libp2ptest.RandPeerID()
+		if err != nil {
+			panic(err)
+		}
 	}
-	return peerID
+	return m.peerID
 }
 
 func (*mockNet) PeerCount() uint {
