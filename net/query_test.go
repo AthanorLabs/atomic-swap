@@ -19,7 +19,7 @@ func TestHost_Query(t *testing.T) {
 	err = ha.h.Connect(ha.ctx, hb.addrInfo())
 	require.NoError(t, err)
 
-	resp, err := ha.Query(hb.addrInfo())
+	resp, err := ha.Query(hb.h.ID())
 	require.NoError(t, err)
 	require.Equal(t, []*types.Offer{}, resp.Offers)
 }

@@ -29,15 +29,15 @@ func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
 	_ = stream.Close()
 }
 
-func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
+func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 	ctx, cancel := context.WithTimeout(h.ctx, queryTimeout)
 	defer cancel()
 
-	if err := h.h.Connect(ctx, who); err != nil {
+	if err := h.h.Connect(ctx, peer.AddrInfo{ID: who}); err != nil {
 		return nil, err
 	}
 
-	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+queryID))
+	stream, err := h.h.NewStream(ctx, who, protocol.ID(h.protocolID+queryID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}

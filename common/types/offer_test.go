@@ -16,7 +16,7 @@ func TestOffer_MarshalJSON(t *testing.T) {
 
 	expected := fmt.Sprintf(`{
 		"version": "0.1.0",
-		"offerId": "%s",
+		"offerID": "%s",
 		"provides": "XMR",
 		"minAmount": 100,
 		"maxAmount": 200,
@@ -32,7 +32,7 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
 	offerJSON := fmt.Sprintf(`{
 		"version": "0.1.0",
-		"offerId": "%s",
+		"offerID": "%s",
 		"provides": "XMR",
 		"minAmount": 100,
 		"maxAmount": 200,
@@ -54,7 +54,7 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
 	offerJSON := fmt.Sprintf(`{
 		"version": "0.1.0",
-		"offerId": "%s",
+		"offerID": "%s",
 		"provides": "XMR",
 		"minAmount": 100,
 		"maxAmount": 200,
@@ -87,7 +87,7 @@ func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
 func TestOffer_UnmarshalJSON_BadID(t *testing.T) {
 	offerJSON := []byte(`{
 		"version": "0.1.0",
-		"offerId": "",
+		"offerID": "",
 		"provides": "XMR",
 		"minAmount": 100,
 		"maxAmount": 200,

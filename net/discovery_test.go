@@ -38,7 +38,7 @@ func TestHost_Discover(t *testing.T) {
 	hc.Advertise()
 	time.Sleep(testAdvertisementSleepDuration)
 
-	peers, err := hc.Discover(types.ProvidesXMR, time.Second)
+	peerIDs, err := hc.Discover(types.ProvidesXMR, time.Second)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(peers), 1)
+	require.GreaterOrEqual(t, len(peerIDs), 1)
 }

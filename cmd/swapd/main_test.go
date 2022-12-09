@@ -201,7 +201,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))
 
-	offerID, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH, "", 0)
+	offerResp, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH, "", 0)
 	require.NoError(t, err)
 
 	// shut down daemon
@@ -235,5 +235,5 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	offers, err := client.GetOffers()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(offers))
-	require.Equal(t, offerID, offers[0].ID.String())
+	require.Equal(t, offerResp.OfferID, offers[0].ID)
 }

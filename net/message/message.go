@@ -105,7 +105,7 @@ func (m *QueryResponse) Type() Type {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            string
+	OfferID            types.Hash
 	ProvidedAmount     float64
 	PublicSpendKey     string
 	PublicViewKey      string

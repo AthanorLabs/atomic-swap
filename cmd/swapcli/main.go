@@ -8,10 +8,12 @@ import (
 	"strings"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
@@ -23,6 +25,9 @@ const (
 	flagSwapdPort         = "swapd-port"
 	flagMinAmount         = "min-amount"
 	flagMaxAmount         = "max-amount"
+	flagPeerID            = "peer-id"
+	flagOfferID           = "offer-id"
+	flagOfferIDs          = "offer-ids"
 	flagExchangeRate      = "exchange-rate"
 	flagProvidesAmount    = "provides-amount"
 	flagRelayerCommission = "relayer-commission"
@@ -82,8 +87,8 @@ var (
 				Action:  runQuery,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "multiaddr",
-						Usage:    "Peer's multiaddress, as provided by discover",
+						Name:     flagPeerID,
+						Usage:    "Peer's ID, as provided by discover",
 						Required: true,
 					},
 					swapdPortFlag,
@@ -157,8 +162,8 @@ var (
 				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "multiaddr",
-						Usage:    "Peer's multiaddress, as provided by discover",
+						Name:     flagPeerID,
+						Usage:    "Peer's ID, as provided by discover",
 						Required: true,
 					},
 					&cli.StringFlag{
@@ -356,29 +361,32 @@ func runDiscover(ctx *cli.Context) error {
 	searchTime := ctx.Uint("search-time")
 
 	c := newRRPClient(ctx)
-	peers, err := c.Discover(provides, uint64(searchTime))
+	peerIDs, err := c.Discover(provides, uint64(searchTime))
 	if err != nil {
 		return err
 	}
 
-	for i, peer := range peers {
-		fmt.Printf("Peer %d: %v\n", i, peer)
+	for i, peerID := range peerIDs {
+		fmt.Printf("Peer %d: %v\n", i, peerID)
 	}
 
 	return nil
 }
 
 func runQuery(ctx *cli.Context) error {
-	maddr := ctx.String("multiaddr")
+	peerID, err := peer.Decode(ctx.String(flagPeerID))
+	if err != nil {
+		return errInvalidFlagValue(flagPeerID, err)
+	}
 
 	c := newRRPClient(ctx)
-	res, err := c.Query(maddr)
+	res, err := c.Query(peerID)
 	if err != nil {
 		return err
 	}
 
 	for _, o := range res.Offers {
-		fmt.Printf("%v\n", o)
+		printOffer(o, "")
 	}
 	return nil
 }
@@ -392,16 +400,16 @@ func runQueryAll(ctx *cli.Context) error {
 	searchTime := ctx.Uint("search-time")
 
 	c := newRRPClient(ctx)
-	peers, err := c.QueryAll(provides, uint64(searchTime))
+	peerOffers, err := c.QueryAll(provides, uint64(searchTime))
 	if err != nil {
 		return err
 	}
 
-	for i, peer := range peers {
+	for i, po := range peerOffers {
 		fmt.Printf("Peer %d:\n", i)
-		fmt.Printf("\tMultiaddress: %v\n", peer.Peer)
+		fmt.Printf("\tPeer ID: %v\n", po.PeerID)
 		fmt.Printf("\tOffers:\n")
-		for _, o := range peer.Offers {
+		for _, o := range po.Offers {
 			fmt.Printf("\t%v\n", o)
 		}
 	}
@@ -434,10 +442,6 @@ func runMake(ctx *cli.Context) error {
 	}
 
 	c := newRRPClient(ctx)
-	ourAddresses, err := c.Addresses()
-	if err != nil {
-		return err
-	}
 
 	relayerEndpoint := ctx.String(flagRelayerEndpoint)
 	relayerCommission := ctx.Float64(flagRelayerCommission)
@@ -457,21 +461,22 @@ func runMake(ctx *cli.Context) error {
 		return errMustSetRelayerEndpoint
 	}
 
-	printOfferSummary := func(offerID string) {
-		fmt.Printf("Published offer with ID: %s\n", offerID)
-		fmt.Printf("On addresses: %v\n", ourAddresses)
-		fmt.Printf("Takers can provide between %s to %s %s\n",
-			common.FmtFloat(otherMin), common.FmtFloat(otherMax), ethAsset)
+	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
+		fmt.Println("Published:")
+		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
+		fmt.Printf("\tPeer ID:   %s\n", offerResp.PeerID)
+		fmt.Printf("\tTaker Min: %s %s\n", common.FmtFloat(otherMin), ethAsset)
+		fmt.Printf("\tTaker Max: %s %s\n", common.FmtFloat(otherMax), ethAsset)
 	}
 
 	if ctx.Bool("subscribe") {
-		wsc, err := newWSClient(ctx) //nolint:govet
+		wsc, err := newWSClient(ctx)
 		if err != nil {
 			return err
 		}
 		defer wsc.Close()
 
-		id, statusCh, err := wsc.MakeOfferAndSubscribe(
+		resp, statusCh, err := wsc.MakeOfferAndSubscribe(
 			min,
 			max,
 			types.ExchangeRate(exchangeRate),
@@ -483,7 +488,7 @@ func runMake(ctx *cli.Context) error {
 			return err
 		}
 
-		printOfferSummary(id)
+		printOfferSummary(resp)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -495,18 +500,25 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	id, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerCommission)
+	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerCommission)
 	if err != nil {
 		return err
 	}
 
-	printOfferSummary(id)
+	printOfferSummary(resp)
 	return nil
 }
 
 func runTake(ctx *cli.Context) error {
-	maddr := ctx.String("multiaddr")
-	offerID := ctx.String("offer-id")
+	peerID, err := peer.Decode(ctx.String(flagPeerID))
+	if err != nil {
+		return errInvalidFlagValue(flagPeerID, err)
+	}
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
 	providesAmount := ctx.Float64(flagProvidesAmount)
 	if providesAmount == 0 {
 		return errNoProvidesAmount
@@ -519,7 +531,7 @@ func runTake(ctx *cli.Context) error {
 		}
 		defer wsc.Close()
 
-		statusCh, err := wsc.TakeOfferAndSubscribe(maddr, offerID, providesAmount)
+		statusCh, err := wsc.TakeOfferAndSubscribe(peerID, offerID, providesAmount)
 		if err != nil {
 			return err
 		}
@@ -537,8 +549,7 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	c := newRRPClient(ctx)
-	err := c.TakeOffer(maddr, offerID, providesAmount)
-	if err != nil {
+	if err := c.TakeOffer(peerID, offerID, providesAmount); err != nil {
 		return err
 	}
 
@@ -609,7 +620,10 @@ func runRefund(ctx *cli.Context) error {
 }
 
 func runCancel(ctx *cli.Context) error {
-	offerID := ctx.String("offer-id")
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
 
 	c := newRRPClient(ctx)
 	resp, err := c.Cancel(offerID)
@@ -624,7 +638,7 @@ func runCancel(ctx *cli.Context) error {
 func runClearOffers(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
 
-	ids := ctx.String("offer-ids")
+	ids := ctx.String(flagOfferIDs)
 	if ids == "" {
 		err := c.ClearOffers(nil)
 		if err != nil {
@@ -635,7 +649,15 @@ func runClearOffers(ctx *cli.Context) error {
 		return nil
 	}
 
-	err := c.ClearOffers(strings.Split(ids, ","))
+	var offerIDs []types.Hash
+	for _, offerIDStr := range strings.Split(ids, ",") {
+		id, err := types.HexToHash(strings.TrimSpace(offerIDStr))
+		if err != nil {
+			return errInvalidFlagValue(flagOfferIDs, err)
+		}
+		offerIDs = append(offerIDs, id)
+	}
+	err := c.ClearOffers(offerIDs)
 	if err != nil {
 		return err
 	}
@@ -653,7 +675,7 @@ func runGetOffers(ctx *cli.Context) error {
 
 	fmt.Println("Offers:")
 	for _, offer := range resp {
-		fmt.Printf("\t%v\n", offer)
+		printOffer(offer, "\t")
 	}
 
 	return nil
@@ -686,4 +708,13 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 
 	fmt.Printf("Set timeout duration to %ds\n", duration)
 	return nil
+}
+
+func printOffer(o *types.Offer, indent string) {
+	fmt.Println(indent, "Offer ID:", o.ID)
+	fmt.Println(indent, "Provides:", o.Provides)
+	fmt.Println(indent, "Min Amount:", o.MinimumAmount)
+	fmt.Println(indent, "Max Amount:", o.MaximumAmount)
+	fmt.Println(indent, "Exchange Rate:", o.ExchangeRate)
+	fmt.Println(indent, "ETH Asset:", o.EthAsset)
 }

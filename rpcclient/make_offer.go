@@ -13,7 +13,7 @@ func (c *Client) MakeOffer(
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
 	relayerCommission float64,
-) (string, error) {
+) (*rpctypes.MakeOfferResponse, error) {
 	const (
 		method = "net_makeOffer"
 	)
@@ -29,8 +29,8 @@ func (c *Client) MakeOffer(
 	res := &rpctypes.MakeOfferResponse{}
 
 	if err := c.Post(method, req, res); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.ID, nil
+	return res, nil
 }

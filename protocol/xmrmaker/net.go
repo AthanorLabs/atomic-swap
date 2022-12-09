@@ -95,15 +95,11 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 	log.Info(str)
 
 	// get offer and determine expected amount
-	id, err := types.HexToHash(msg.OfferID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if types.IsHashZero(id) {
+	if types.IsHashZero(msg.OfferID) {
 		return nil, nil, errOfferIDNotSet
 	}
 
-	offer, offerExtra, err := inst.offerManager.GetOffer(id)
+	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
 		return nil, nil, err
 	}

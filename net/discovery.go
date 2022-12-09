@@ -141,13 +141,13 @@ func (d *discovery) discoverLoop() {
 	}
 }
 
-func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.AddrInfo, error) {
+func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID, error) {
 	peerCh, err := d.rd.FindPeers(d.ctx, provides)
 	if err != nil {
 		return nil, err
 	}
 
-	var peers []peer.AddrInfo
+	var peerIDs []peer.ID
 
 	ctx, cancel := context.WithTimeout(d.ctx, timeout)
 	defer cancel()
@@ -156,17 +156,17 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.Ad
 		select {
 		case <-ctx.Done():
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				return peers, nil
+				return peerIDs, nil
 			}
 
-			return peers, ctx.Err()
+			return peerIDs, ctx.Err()
 		case peer := <-peerCh:
 			if peer.ID == d.h.ID() || peer.ID == "" {
 				continue
 			}
 
 			log.Debugf("found new peer via DHT: peer=%s", peer.ID)
-			peers = append(peers, peer)
+			peerIDs = append(peerIDs, peer.ID)
 
 			// found a peer, try to connect if we need more peers
 			if len(d.h.Network().Peers()) < defaultMaxPeers {
@@ -184,7 +184,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.Ad
 func (d *discovery) discover(
 	provides types.ProvidesCoin,
 	searchTime time.Duration,
-) ([]peer.AddrInfo, error) {
+) ([]peer.ID, error) {
 	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",
 		provides,
 		searchTime.Seconds(),

@@ -27,6 +27,10 @@ func (*mockNet) Addresses() []string {
 	panic("not implemented")
 }
 
+func (*mockNet) PeerID() peer.ID {
+	panic("not implemented")
+}
+
 func (*mockNet) PeerCount() uint {
 	panic("not implemented")
 }
@@ -34,11 +38,11 @@ func (*mockNet) PeerCount() uint {
 func (*mockNet) Advertise() {
 }
 
-func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return nil, nil
 }
 
-func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
+func (*mockNet) Query(who peer.ID) (*net.QueryResponse, error) {
 	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
@@ -141,7 +145,7 @@ func (*mockXMRMaker) GetOffers() []*types.Offer {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) ClearOffers([]string) error {
+func (*mockXMRMaker) ClearOffers([]types.Hash) error {
 	panic("not implemented")
 }
 

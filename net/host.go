@@ -46,8 +46,8 @@ type Host interface {
 	Stop() error
 
 	Advertise()
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
-	Query(who peer.AddrInfo) (*QueryResponse, error)
+	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Query(who peer.ID) (*QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
 	MessageSender
 }
@@ -284,13 +284,17 @@ func (h *host) Addresses() []string {
 	return addrs
 }
 
+func (h *host) PeerID() peer.ID {
+	return h.h.ID()
+}
+
 func (h *host) PeerCount() uint {
 	return uint(len(h.h.Network().Peers()))
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.
 // It searches for up to `searchTime` duration of time.
-func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return h.discovery.discover(provides, searchTime)
 }
 

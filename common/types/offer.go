@@ -20,7 +20,7 @@ var (
 // Offer represents a swap offer
 type Offer struct {
 	Version       semver.Version `json:"version"`
-	ID            Hash           `json:"offerId"`
+	ID            Hash           `json:"offerID"`
 	Provides      ProvidesCoin   `json:"provides"`
 	MinimumAmount float64        `json:"minAmount"`
 	MaximumAmount float64        `json:"maxAmount"`
