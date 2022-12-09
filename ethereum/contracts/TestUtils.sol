@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPLv3
 
-pragma solidity ^0.8.5 .0;
+pragma solidity ^0.8.16 .0;
 
 import "hardhat/console.sol";
 

@@ -135,7 +135,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *big.Int, erc20Contract *ERC20Mock) {
+func testClaim(t *testing.T, asset ethcommon.Address, newSwapLogCount int, value *big.Int, erc20Contract *ERC20Mock) {
 	// generate claim secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -179,11 +179,11 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 	auth.Value = big.NewInt(0)
 
-	require.Equal(t, newLogIndex+1, len(receipt.Logs))
-	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
+	require.Equal(t, newSwapLogCount+1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	swap := SwapFactorySwap{
@@ -224,7 +224,7 @@ func TestSwapFactory_Claim_random(t *testing.T) {
 	testClaim(t, ethAssetAddress, 0, big.NewInt(0), nil)
 }
 
-func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) {
+func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newSwapLogCount int) {
 	// generate refund secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -254,11 +254,11 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 
-	require.Equal(t, newLogIndex+1, len(receipt.Logs))
-	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
+	require.Equal(t, newSwapLogCount+1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	swap := SwapFactorySwap{
@@ -292,7 +292,7 @@ func TestSwapFactory_Refund_beforeT0(t *testing.T) {
 	testRefundBeforeT0(t, ethAssetAddress, 0)
 }
 
-func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
+func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newSwapLogCount int) {
 	// generate refund secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -323,11 +323,11 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 
-	require.Equal(t, newLogIndex+1, len(receipt.Logs))
-	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
+	require.Equal(t, newSwapLogCount+1, len(receipt.Logs))
+	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))

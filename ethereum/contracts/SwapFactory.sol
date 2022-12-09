@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPLv3
-pragma solidity ^0.8.5 .0;
+pragma solidity ^0.8.16 .0;
 
 import "./ERC2771Context.sol";
 import "./IERC20.sol";
@@ -70,24 +70,19 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         uint256 _value,
         uint256 _nonce
     ) public payable returns (bytes32) {
+        if (_asset == address(0)) {
+            require(_value == msg.value, "value not same as ETH amount sent");
+        }
+
         Swap memory swap;
         swap.owner = payable(msg.sender);
+        swap.claimer = _claimer;
         swap.pubKeyClaim = _pubKeyClaim;
         swap.pubKeyRefund = _pubKeyRefund;
-        swap.claimer = _claimer;
         swap.timeout0 = block.timestamp + _timeoutDuration;
         swap.timeout1 = block.timestamp + (_timeoutDuration * 2);
         swap.asset = _asset;
         swap.value = _value;
-        if (swap.asset == address(0)) {
-            require(swap.value == msg.value, "value not same as ETH amount sent");
-        } else {
-            // transfer ERC-20 token into this contract
-            // TODO: potentially check token balance before/after this step
-            // and ensure the balance was increased by swap.value since fee-on-transfer
-            // tokens are not supported
-            IERC20(swap.asset).transferFrom(msg.sender, address(this), swap.value);
-        }
         swap.nonce = _nonce;
 
         bytes32 swapID = keccak256(abi.encode(swap));
@@ -105,6 +100,18 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
             swap.value
         );
         swaps[swapID] = Stage.PENDING;
+
+        if (swap.asset != address(0)) {
+            // transfer ERC-20 token into this contract
+            // TODO: potentially check token balance before/after this step
+            // and ensure the balance was increased by swap.value since fee-on-transfer
+            // tokens are not supported
+            require(
+                IERC20(swap.asset).transferFrom(msg.sender, address(this), swap.value),
+                "ERC20 transferFrom failed"
+            );
+        }
+
         return swapID;
     }
 
@@ -132,7 +139,10 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
 
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
-            IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
+            require(
+                IERC20(_swap.asset).transfer(_swap.claimer, _swap.value),
+                "ERC20 transfer failed"
+            );
         }
     }
 
@@ -158,8 +168,14 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
 
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
-            IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
-            IERC20(_swap.asset).transfer(tx.origin, fee); // solhint-disable-line
+            require(
+                IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee),
+                "ERC20 transfer to claimer failed"
+            );
+            require(
+                IERC20(_swap.asset).transfer(tx.origin, fee), // solhint-disable-line
+                "ERC20 transfer to relayer failed"
+            );
         }
     }
 
@@ -205,7 +221,10 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         if (_swap.asset == address(0)) {
             _swap.owner.transfer(_swap.value);
         } else {
-            IERC20(_swap.asset).transfer(_swap.owner, _swap.value);
+            require(
+                IERC20(_swap.asset).transfer(_swap.owner, _swap.value),
+                "ERC20 transfer failed"
+            );
         }
     }
 
