@@ -34,3 +34,6 @@ xmrtaker.key
 # Ethereum contract compilation artifacts
 /ethereum/abi/
 /ethereum/bin/
+
+# IDE settings
+/.idea/
