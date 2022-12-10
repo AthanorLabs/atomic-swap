@@ -13,30 +13,18 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// StringToAddrInfo converts a single string peer id to AddrInfo
-func StringToAddrInfo(s string) (peer.AddrInfo, error) {
-	maddr, err := ma.NewMultiaddr(s)
-	if err != nil {
-		return peer.AddrInfo{}, err
-	}
-	p, err := peer.AddrInfoFromP2pAddr(maddr)
-	if err != nil {
-		return peer.AddrInfo{}, err
-	}
-	return *p, err
-}
-
-// stringsToAddrInfos converts a string of peer ids to AddrInfo
+// stringsToAddrInfos converts a string of peers in multiaddress format to a
+// minimal set of multiaddr addresses.
 func stringsToAddrInfos(peers []string) ([]peer.AddrInfo, error) {
-	pinfos := make([]peer.AddrInfo, len(peers))
+	madders := make([]ma.Multiaddr, len(peers))
 	for i, p := range peers {
-		p, err := StringToAddrInfo(p)
+		ma, err := ma.NewMultiaddr(p)
 		if err != nil {
 			return nil, err
 		}
-		pinfos[i] = p
+		madders[i] = ma
 	}
-	return pinfos, nil
+	return peer.AddrInfosFromP2pAddrs(madders...)
 }
 
 // generateKey generates an ed25519 private key and writes it to the data directory

@@ -148,17 +148,17 @@ func NewHost(cfg *Config) (*host, error) {
 	}
 
 	// if we are not doing local testing (dev), filter local (private) IPs from the DHT
-	if cfg.Environment != common.Development {
-		opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
-			var addrs []ma.Multiaddr
-			for _, addr := range as {
-				if !privateIPs.AddrBlocked(addr) {
-					addrs = append(addrs, addr)
-				}
-			}
-			return addrs
-		}))
-	}
+	//if cfg.Environment != common.Development {
+	//	opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
+	//		var addrs []ma.Multiaddr
+	//		for _, addr := range as {
+	//			if !privateIPs.AddrBlocked(addr) {
+	//				addrs = append(addrs, addr)
+	//			}
+	//		}
+	//		return addrs
+	//	}))
+	//}
 
 	// create libp2p host instance
 	basicHost, err := libp2p.New(opts...)
@@ -412,7 +412,7 @@ func isEOF(err error) bool {
 func (h *host) bootstrap() error {
 	failed := 0
 	for _, addrInfo := range h.bootnodes {
-		log.Debugf("bootstrapping to peer: peer=%s", addrInfo.ID)
+		log.Debugf("bootstrapping to peer: %s", addrInfo)
 		err := h.h.Connect(h.ctx, addrInfo)
 		if err != nil {
 			log.Debugf("failed to bootstrap to peer: err=%s", err)
