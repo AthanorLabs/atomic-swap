@@ -128,7 +128,6 @@ func NewHost(cfg *Config) (*host, error) {
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(
 			fmt.Sprintf("/ip4/%s/udp/%d/quic", listenIP, cfg.Port),
-			fmt.Sprintf("/ip4/%s/tcp/%d", listenIP, cfg.Port),
 		), libp2p.Identity(key),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelayService(),
@@ -163,7 +162,7 @@ func NewHost(cfg *Config) (*host, error) {
 
 	dht, err := dual.New(cfg.Ctx, basicHost,
 		dual.DHTOption(kaddht.BootstrapPeers(bns...)),
-		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)))
+		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer))) // TODO: Use ModeAuto?
 	if err != nil {
 		return nil, err
 	}
@@ -224,15 +223,10 @@ func (h *host) Start() error {
 }
 
 func (h *host) logPeers() {
-	// TODO: revert this function before merging
-	logPeersInterval := time.Minute * 1
+	logPeersInterval := time.Minute * 5
 
 	for {
-		peers := h.h.Network().Peers()
-		log.Debugf("peer count: %d", len(peers))
-		for i, p := range peers {
-			log.Debugf("Peer %d: %s [%v]", i, p, h.h.Network().ConnsToPeer(p))
-		}
+		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
 		err := common.SleepWithContext(h.ctx, logPeersInterval)
 		if err != nil {
 			// context was cancelled, return
