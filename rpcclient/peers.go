@@ -4,13 +4,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
-// Addresses calls net_addresses.
-func (c *Client) Addresses() (*rpctypes.AddressesResponse, error) {
+// Peers calls net_peers to get the connected peers of a swapd instance.
+func (c *Client) Peers() (*rpctypes.PeersResponse, error) {
 	const (
-		method = "net_addresses"
+		method = "net_peers"
 	)
 
-	res := &rpctypes.AddressesResponse{}
+	res := &rpctypes.PeersResponse{}
 
 	if err := c.Post(method, nil, res); err != nil {
 		return nil, err

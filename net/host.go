@@ -147,19 +147,6 @@ func NewHost(cfg *Config) (*host, error) {
 		opts = append(opts, libp2p.EnableAutoRelay(autorelay.WithStaticRelays(bns)))
 	}
 
-	// if we are not doing local testing (dev), filter local (private) IPs from the DHT
-	//if cfg.Environment != common.Development {
-	//	opts = append(opts, libp2p.AddrsFactory(func(as []ma.Multiaddr) []ma.Multiaddr {
-	//		var addrs []ma.Multiaddr
-	//		for _, addr := range as {
-	//			if !privateIPs.AddrBlocked(addr) {
-	//				addrs = append(addrs, addr)
-	//			}
-	//		}
-	//		return addrs
-	//	}))
-	//}
-
 	// create libp2p host instance
 	basicHost, err := libp2p.New(opts...)
 	if err != nil {
@@ -223,7 +210,7 @@ func (h *host) Start() error {
 		protocol.ID(h.protocolID+swapID),
 	)
 
-	for _, addr := range h.multiaddrs() {
+	for _, addr := range h.h.Addrs() {
 		log.Info("Started listening: address=", addr)
 	}
 
@@ -295,8 +282,14 @@ func (h *host) PeerID() peer.ID {
 	return h.h.ID()
 }
 
-func (h *host) PeerCount() uint {
-	return uint(len(h.h.Network().Peers()))
+func (h *host) ConnectedPeers() []string {
+	var peers []string
+	for _, c := range h.h.Network().Conns() {
+		// the remote multi addr returned is just the transport
+		p := fmt.Sprintf("%s/p2p/%s", c.RemoteMultiaddr(), c.RemotePeer())
+		peers = append(peers, p)
+	}
+	return peers
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.
@@ -318,15 +311,13 @@ func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
 	return writeStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
 }
 
-// multiaddrs returns the multiaddresses of the host
-func (h *host) multiaddrs() (multiaddrs []ma.Multiaddr) {
-	addrs := h.h.Addrs()
-	for _, addr := range addrs {
-		multiaddr, err := ma.NewMultiaddr(fmt.Sprintf("%s/p2p/%s", addr, h.h.ID()))
-		if err != nil {
-			continue
-		}
-		multiaddrs = append(multiaddrs, multiaddr)
+// multiaddrs returns the local multiaddresses that we are listening on
+func (h *host) multiaddrs() []ma.Multiaddr {
+	addr := h.addrInfo()
+	multiaddrs, err := peer.AddrInfoToP2pAddrs(&addr)
+	if err != nil {
+		// This shouldn't ever happen, but don't want to panic
+		log.Errorf("Failed to convert AddrInfo=%q to Multiaddr: %s", addr, err)
 	}
 	return multiaddrs
 }

@@ -20,7 +20,7 @@ const defaultSearchTime = time.Second * 12
 // Net contains the network-related functions required by the rpc service.
 type Net interface {
 	PeerID() peer.ID
-	PeerCount() uint
+	ConnectedPeers() []string
 	Addresses() []string
 	Advertise()
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
@@ -47,16 +47,17 @@ func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager
 	}
 }
 
-// AddressesResponse ...
-type AddressesResponse struct {
-	PeerCount uint     `json:"peerCount"`
-	Addrs     []string `json:"addresses"`
+// Addresses returns the local listening multi-addresses. Note that local listening
+// addresses do not correspond to what remote peers connect to unless your host has a
+// public IP directly attached to a local interface.
+func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *rpctypes.AddressesResponse) error {
+	resp.Addrs = s.net.Addresses()
+	return nil
 }
 
-// Addresses returns the multiaddresses this node is listening on.
-func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesResponse) error {
-	resp.PeerCount = s.net.PeerCount()
-	resp.Addrs = s.net.Addresses()
+// Peers returns the peers that this node is currently connected to.
+func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.PeersResponse) error {
+	resp.Addrs = s.net.ConnectedPeers()
 	return nil
 }
 

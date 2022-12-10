@@ -41,7 +41,7 @@ func (m *mockNet) PeerID() peer.ID {
 	return m.peerID
 }
 
-func (*mockNet) PeerCount() uint {
+func (*mockNet) ConnectedPeers() []string {
 	panic("not implemented")
 }
 

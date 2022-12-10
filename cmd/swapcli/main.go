@@ -52,6 +52,15 @@ var (
 				},
 			},
 			{
+				Name:    "peers",
+				Aliases: []string{"p"},
+				Usage:   "List peers that are currently connected",
+				Action:  runPeers,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
 				Name:    "balances",
 				Aliases: []string{"b"},
 				Usage:   "Show our monero and ethereum account balances",
@@ -323,13 +332,29 @@ func runAddresses(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Peer count: %d\n", resp.PeerCount)
-	fmt.Println("Listening addresses:")
+	fmt.Println("Local listening multi-addresses:")
 	for i, a := range resp.Addrs {
 		fmt.Printf("%d: %s\n", i+1, a)
 	}
 	if len(resp.Addrs) == 0 {
 		fmt.Println("... waiting for 3 peers to agree on public address(es)")
+	}
+	return nil
+}
+
+func runPeers(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	resp, err := c.Peers()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Connected peer multi-addresses:")
+	for i, a := range resp.Addrs {
+		fmt.Printf("%d: %s\n", i+1, a)
+	}
+	if len(resp.Addrs) == 0 {
+		fmt.Println("[... none found ...]")
 	}
 	return nil
 }

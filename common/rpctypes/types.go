@@ -117,3 +117,13 @@ type BalancesResponse struct {
 	EthAddress              string   `json:"ethAddress"`
 	WeiBalance              *big.Int `json:"weiBalance"`
 }
+
+// AddressesResponse ...
+type AddressesResponse struct {
+	Addrs []string `json:"addresses"`
+}
+
+// PeersResponse ...
+type PeersResponse struct {
+	Addrs []string `json:"addresses"`
+}
