@@ -186,16 +186,16 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 	txOpts.Value = big.NewInt(0)
 
-	logIndex := 0
+	logCount := 0
 	if asset != types.EthAssetETH {
-		logIndex = 2
+		logCount = 2
 	}
 
-	require.Equal(t, logIndex+1, len(receipt.Logs))
-	id, err := contracts.GetIDFromLog(receipt.Logs[logIndex])
+	require.Equal(t, logCount+1, len(receipt.Logs))
+	id, err := contracts.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[logIndex])
+	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	swap := contracts.SwapFactorySwap{
