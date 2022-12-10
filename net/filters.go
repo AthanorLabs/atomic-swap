@@ -29,6 +29,7 @@ func newPrivateIPFilters() (privateIPs *ma.Filters, err error) {
 
 var (
 	privateIPs *ma.Filters
+	_          = privateIPs // TODO: remove before merge
 )
 
 func init() {
