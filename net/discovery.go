@@ -165,7 +165,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 				continue
 			}
 
-			log.Debugf("found new peer via DHT: peer=%s", peer.ID)
+			log.Debugf("found new peer via DHT: %s", peer)
 			peerIDs = append(peerIDs, peer.ID)
 
 			// found a peer, try to connect if we need more peers
