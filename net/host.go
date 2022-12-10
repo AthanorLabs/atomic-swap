@@ -237,10 +237,15 @@ func (h *host) Start() error {
 }
 
 func (h *host) logPeers() {
-	logPeersInterval := time.Minute * 5
+	// TODO: revert this function before merging
+	logPeersInterval := time.Minute * 1
 
 	for {
-		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
+		peers := h.h.Network().Peers()
+		log.Debugf("peer count: %d", len(peers))
+		for i, p := range peers {
+			log.Debugf("Peer %d: %s [%v]", i, p, h.h.Network().ConnsToPeer(p))
+		}
 		err := common.SleepWithContext(h.ctx, logPeersInterval)
 		if err != nil {
 			// context was cancelled, return
@@ -412,12 +417,13 @@ func isEOF(err error) bool {
 func (h *host) bootstrap() error {
 	failed := 0
 	for _, addrInfo := range h.bootnodes {
-		log.Debugf("bootstrapping to peer: %s", addrInfo)
+		log.Debugf("bootstrapping to peer: %s (%s)", addrInfo, h.h.Network().Connectedness(addrInfo.ID))
 		err := h.h.Connect(h.ctx, addrInfo)
 		if err != nil {
 			log.Debugf("failed to bootstrap to peer: err=%s", err)
 			failed++
 		}
+		log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(addrInfo.ID))
 	}
 
 	if failed == len(h.bootnodes) && len(h.bootnodes) != 0 {
