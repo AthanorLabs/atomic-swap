@@ -181,12 +181,8 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 	s.setTimeouts(t0, t1)
 
-	if s.Backend.Env() == common.Development {
-		return nil
-	}
-
 	expectedTimeout := common.SwapTimeoutFromEnvironment(s.Backend.Env())
-	allowableTimeDiff := time.Minute * 3
+	allowableTimeDiff := expectedTimeout / 20
 
 	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
 		return errInvalidT0
