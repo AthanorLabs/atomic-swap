@@ -173,6 +173,11 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	return nil
 }
 
+// checkAndSetTimeouts checks that the timeouts set by the counterparty when initiating the swap
+// are not too short or too long.
+// we expect the timeout to be of a certain length (1 hour for mainnet/stagenet), and allow a 3 minute
+// variation between now and the expected time until the first timeout t0, to allow for block confirmations.
+// the time between t0 and t1 should always be the exact length we expect.
 func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 	s.setTimeouts(t0, t1)
 
@@ -187,7 +192,7 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 		return errInvalidT0
 	}
 
-	if s.t1.Sub(s.t0).Abs() > allowableTimeDiff {
+	if s.t1.Sub(s.t0).Abs() == expectedTimeout {
 		return errInvalidT1
 	}
 
