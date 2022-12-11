@@ -29,7 +29,7 @@ Build binary:
 make build
 ```
 
-This creates `swapd` and `swapcli` binaries in the `/bin` directory.
+This creates `swapd` and `swapcli` binaries in the `bin` directory at the top of the project.
 
 To run as Alice, execute in terminal 1:
 ```bash
