@@ -192,7 +192,7 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 		return errInvalidT0
 	}
 
-	if s.t1.Sub(s.t0).Abs() != expectedTimeout {
+	if s.t1.Sub(s.t0) != expectedTimeout {
 		return errInvalidT1
 	}
 
