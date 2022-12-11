@@ -185,7 +185,7 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 	allowableTimeDiff := expectedTimeout / 20
 
 	if s.Backend.Env() == common.Development {
-		allowableTimeDiff = time.Minute
+		allowableTimeDiff = time.Minute * 2
 	}
 
 	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
