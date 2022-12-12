@@ -6,7 +6,9 @@ The `swapd` program automatically starts a JSON-RPC server that can be used to i
 
 ### `net_addresses`
 
-Get the libp2p listening addresses of the node.
+Get the local libp2p listening addresses of the node. Unless you have a public IP
+directly attached to your host, these are not the addresses that remote hosts will
+directly connect to.
 
 Parameters:
 - none
@@ -17,8 +19,21 @@ Returns:
 Example:
 
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_addresses","params":{}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"addresses":["/ip4/192.168.0.101/udp/9933/quic/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2","/ip4/127.0.0.1/udp/9933/quic/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2","/ip4/38.88.101.233/udp/14815/quic/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"]},"id":"0"}
+curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_addresses","params":{}}' \
+| jq .
+```
+```
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "addresses": [
+      "/ip4/192.168.0.105/udp/9901/quic/p2p/12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
+      "/ip4/127.0.0.1/udp/9901/quic/p2p/12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv"
+    ]
+  },
+  "id": "0"
+}
 ```
 
 ### `net_discover`
@@ -26,8 +41,9 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_a
 Discover peers on the network via DHT that have active swap offers.
 
 Parameters:
-- `provides` (optional): one of `ETH` or `XMR`, depending on which offer you are searching for. **Note**: Currently only `XMR` offers are supported. Default is `XMR`.
-- `searchTime` (optional): duration in seconds for which to perform the search. Default is 12s.
+- `provides` (optional): one of `ETH` or `XMR`, depending on which offer you are searching
+  for. **Note**: Currently only `XMR` offers are supported. Default is `XMR`.
+- `searchTime` (optional): time in seconds to perform the search. Default is 12s.
 
 Returns:
 - `peers`: list of lists of peers's multiaddresses. A peer may have multiple multiaddresses, so the nested list pertains to a single peer.
@@ -35,8 +51,23 @@ Returns:
 Example:
 
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_discover","params":{"searchTime":3}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"peers":[["/ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7","/ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"]]},"id":"0"}
+curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_discover","params":{"searchTime":3}}' \
+| jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "peerIDs": [
+      [
+        "12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7",
+        "12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"
+      ]
+    ]
+  },
+  "id": "0"
+}
 ```
 
 ### `net_queryAll`
@@ -53,8 +84,45 @@ Returns:
 Example:
 
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_queryAll","params":{"searchTime":3}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"PeersWithOffers":[{"peer":["/ip4/206.189.47.220/udp/9900/quic/p2p/12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB"],"offers":[{"ID":"a41b00034daee28df414ba337b3ddf942893a117f9a9fcf62bd5a664738710db","Provides":"XMR","MinimumAmount":0.1,"MaximumAmount":1,"ExchangeRate":0.5}]},{"peer":["/ip4/161.35.110.210/udp/9900/quic/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6"],"offers":[{"ID":"25188edd7573f43fca5760f0aacdc1a358171a8fc6bdf11876fa937f77fc583c","Provides":"XMR","MinimumAmount":0.1,"MaximumAmount":1,"ExchangeRate":0.5}]}]},"id":"0"}
+curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_queryAll","params":{"searchTime":3}}' \
+| jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "peersWithOffers": [
+      {
+        "peerID": "12D3KooWGVzz2d2LSceVFFdqTYqmQXTqc5eWziw7PLRahCWGJhKB",
+        "offers": [
+          {
+            "offerID": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+            "provides": "XMR",
+            "minAmount": 0.1,
+            "maxAmount": 1,
+            "exchangeRate": 0.5,
+            "ethAsset": "ETH"
+          }
+        ]
+      },
+      {
+        "peerID": "12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
+        "offers": [
+          {
+            "offerID": "0x25188edd7573f43fca5760f0aacdc1a358171a8fc6bdf11876fa937f77fc583c",
+            "minAmount": 0.1,
+            "maxAmount": 1,
+            "provides": "XMR",
+            "exchangeRate": 0.5,
+            "ethAsset": "ETH"
+          }
+        ]
+      }
+    ]
+  },
+  "id": "0"
+}
 ```
 
 ### `net_queryPeer`
@@ -70,8 +138,29 @@ Returns:
 Example:
 
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_queryPeer","params":{"multiaddr":"/ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"offers":[{"ID":[207,75,240,26,7,117,160,209,63,164,27,20,81,110,75,137,3,67,0,112,122,23,84,224,217,155,101,246,203,111,255,185],"Provides":"XMR","MinimumAmount":0.1,"MaximumAmount":1,"ExchangeRate":0.05}]},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_queryPeer","params":
+{"peerID":"12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv"}}' \
+| jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "offers": [
+      {
+        "version": "0.1.0",
+        "offerID": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+        "provides": "XMR",
+        "minAmount": 0.5,
+        "maxAmount": 1,
+        "exchangeRate": 0.1,
+        "ethAsset": "ETH"
+      }
+    ]
+  },
+  "id": "0"
+}
 ```
 
 ### `net_makeOffer`
@@ -79,57 +168,99 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_q
 Make a new swap offer and advertise it on the network. **Note:** Currently only XMR offers can be made.
 
 Parameters:
-- `minimumAmount`: minimum amount to swap, in XMR.
-- `maximumAmount`: maximum amount to swap, in XMR.
-- `exchangeRate`: exchange rate of ETH-XMR for the swap, expressed in a fraction of XMR/ETH. For example, if you wish to trade 10 XMR for 1 ETH, the exchange rate would be 0.1.
-- `ethAsset`: (optional) Ethereum asset to trade, either an ERC-20 token address or the zero address for regular ETH. default: regular ETH
-- `relayerEndpoint`: (optional) RPC endpoint of the relayer to use for submitting claim transactions. 
-- `relayerCommission`: (optional) Commission in percentage that the relayer receives for submitting the claim transaction.
+- `minAmount`: minimum amount to swap, in XMR.
+- `maxAmount`: maximum amount to swap, in XMR.
+- `exchangeRate`: exchange rate of ETH-XMR for the swap, expressed in a fraction of
+  XMR/ETH. For example, if you wish to trade 10 XMR for 1 ETH, the exchange rate would be
+  0.1.
+- `ethAsset`: (optional) Ethereum asset to trade, either an ERC-20 token address or the
+  zero address for regular ETH. default: regular ETH
+- `relayerEndpoint`: (optional) RPC endpoint of the relayer to use for submitting claim
+  transactions.
+- `relayerCommission`: (optional) Commission in percentage that the relayer receives for
+  submitting the claim transaction.
 
 Returns:
 - `offerID`: ID of the swap offer.
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"net_makeOffer","params":{"minimumAmount":1, "maximumAmount":10, "exchangeRate": 0.1}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"offerID":"12b9d56a4c568c772a4e099aaed03a457256d6680562be2a518753f75d75b7ad"},"id":"0"}
+curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_makeOffer",
+"params":{"minAmount":1, "maxAmount":10, "exchangeRate": 0.1}}' \
+| jq
 ```
-
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "peerID": "12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
+    "offerID": "0x9549685d15cd9a136111db755e5440b4c95e266ba39dc0c84834714d185dc6f0"
+  },
+  "id": "0"
+}
+```
 
 ### `net_takeOffer`
 
-Take an advertised swap offer. This call will initiate and execute an atomic swap. **Note:** You must be the ETH holder to take a swap.
+Take an advertised swap offer. This call will initiate and execute an atomic swap.
+**Note:** You must be the ETH holder to take a swap.
 
 Parameters:
-- `multiaddr`: multiaddress of the peer to swap with.
+- `peerID`: ID of the peer to swap with.
 - `offerID`: ID of the swap offer.
-- `providesAmount`: amount of ETH you will be providing. Must be between the offer's `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you must provide between 0.1 ETH and 0.5 ETH.
+- `providesAmount`: amount of ETH you will be providing. Must be between the offer's
+  `minAmount * exchangeRate` and `maxAmount * exchangeRate`. For example, if the offer has
+  a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you must provide
+  between 0.1 ETH and 0.5 ETH.
 
 Returns:
 - null
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_takeOffer","params":{"multiaddr":"/ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID":"12b9d56a4c568c772a4e099aaed03a457256d6680562be2a518753f75d75b7ad", "providesAmount": 0.3}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":null,"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_takeOffer",
+  "params":{
+    "peerID":"12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
+    "offerID":"0x9549685d15cd9a136111db755e5440b4c95e266ba39dc0c84834714d185dc6f0",
+    "providesAmount": 0.3
+  }
+}'
+```
+```json
+{"jsonrpc":"2.0","result":null,"id":"0"}
 ```
 
 ### `net_takeOfferSync`
 
-Take an advertised swap offer. This call will initiate and execute an atomic swap. It will not return until the swap has completed, after which it will return whether the swap was successful or not. **Note:** You must be the ETH holder to take a swap.
+Take an advertised swap offer. This call will initiate and execute an atomic swap. It will
+not return until the swap has completed, after which it will return whether the swap was
+successful or not. **Note:** You must be the ETH holder to take a swap.
 
 Parameters:
-- `multiaddr`: multiaddress of the peer to swap with.
+- `peerID`: ID of the peer to swap with.
 - `offerID`: ID of the swap offer.
-- `providesAmount`: amount of ETH you will be providing. Must be between the offer's `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you must provide between 0.1 ETH and 0.5 ETH.
+- `providesAmount`: amount of ETH you will be providing. Must be between the offer's
+  `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the
+  offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you
+  must provide between 0.1 ETH and 0.5 ETH.
 
 Returns:
-- `status`: the swap's status, one of `success`, `refunded`, or `aborted`.
+- `status`: the swap's status, one of `Success`, `Refunded`, or `Aborted`.
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_takeOffer","params":{"multiaddr":"/ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID":"12b9d56a4c568c772a4e099aaed03a457256d6680562be2a518753f75d75b7ad", "providesAmount": 0.3}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{status":"success"},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"net_takeOfferSync","params":{
+  "peerID": "12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
+  "offerID":"0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+  "providesAmount": 0.03
+  }
+}'
+```
+```json
+{"jsonrpc":"2.0","result":{"status":"Success"},"id":"0"}
 ```
 
 
