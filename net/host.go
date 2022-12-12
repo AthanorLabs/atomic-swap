@@ -162,7 +162,7 @@ func NewHost(cfg *Config) (*host, error) {
 
 	dht, err := dual.New(cfg.Ctx, basicHost,
 		dual.DHTOption(kaddht.BootstrapPeers(bns...)),
-		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer))) // TODO: Use ModeAuto?
+	)
 	if err != nil {
 		return nil, err
 	}
