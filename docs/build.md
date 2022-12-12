@@ -10,8 +10,9 @@ sudo snap install go --classic
 On other systems or in docker, use the directions here: https://go.dev/doc/install.
 Summary for X86-64 Linux:
 ```bash
-wget https://go.dev/dl/go1.18.7.linux-amd64.tar.gz
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.7.linux-amd64.tar.gz
+GO_VERSION=1.19.4
+wget "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+rm -rf /usr/local/go && tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 echo "export PATH=$PATH:/usr/local/go/bin" >> .profile
 source .profile
 ```
@@ -27,4 +28,4 @@ cd atomic-swap
 make build
 ```
 
-This creates the binaries `swapd` and `swapcli`.
+This creates `swapd`, `swapcli` and `relayer` binaries in the `bin` folder.
