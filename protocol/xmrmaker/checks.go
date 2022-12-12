@@ -188,12 +188,12 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 		allowableTimeDiff = time.Minute
 	}
 
-	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
-		return errInvalidT0
+	if s.t1.Sub(s.t0) != expectedTimeout {
+		return errInvalidT1
 	}
 
-	if s.t1.Sub(s.t0) > allowableTimeDiff {
-		return errInvalidT1
+	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
+		return errInvalidT0
 	}
 
 	return nil
