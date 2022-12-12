@@ -334,7 +334,7 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	offer := resp.Offers[offerIdx]
 
 	// pick random amount between min and max
-	amount := offer.MinimumAmount + mrand.Float64()*(offer.MaximumAmount-offer.MinimumAmount) //nolint:gosec
+	amount := offer.MinAmount + mrand.Float64()*(offer.MaxAmount-offer.MinAmount) //nolint:gosec
 	providesAmount := offer.ExchangeRate.ToETH(amount)
 
 	start := time.Now()

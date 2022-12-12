@@ -55,7 +55,7 @@ type QueryPeerResponse struct {
 
 // PeerWithOffers ...
 type PeerWithOffers struct {
-	PeerID peer.ID        `json:"peer"`
+	PeerID peer.ID        `json:"peerID"`
 	Offers []*types.Offer `json:"offers"`
 }
 
@@ -73,8 +73,8 @@ type TakeOfferRequest struct {
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinimumAmount     float64            `json:"minimumAmount"`
-	MaximumAmount     float64            `json:"maximumAmount"`
+	MinAmount         float64            `json:"minAmount"`
+	MaxAmount         float64            `json:"maxAmount"`
 	ExchangeRate      types.ExchangeRate `json:"exchangeRate"`
 	EthAsset          string             `json:"ethAsset,omitempty"`
 	RelayerEndpoint   string             `json:"relayerEndpoint,omitempty"`

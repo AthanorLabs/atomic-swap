@@ -19,13 +19,13 @@ var (
 
 // Offer represents a swap offer
 type Offer struct {
-	Version       semver.Version `json:"version"`
-	ID            Hash           `json:"offerID"`
-	Provides      ProvidesCoin   `json:"provides"`
-	MinimumAmount float64        `json:"minAmount"`
-	MaximumAmount float64        `json:"maxAmount"`
-	ExchangeRate  ExchangeRate   `json:"exchangeRate"`
-	EthAsset      EthAsset       `json:"ethAsset"`
+	Version      semver.Version `json:"version"`
+	ID           Hash           `json:"offerID"`
+	Provides     ProvidesCoin   `json:"provides"`
+	MinAmount    float64        `json:"minAmount"`
+	MaxAmount    float64        `json:"maxAmount"`
+	ExchangeRate ExchangeRate   `json:"exchangeRate"`
+	EthAsset     EthAsset       `json:"ethAsset"`
 }
 
 // NewOffer creates and returns an Offer with an initialised ID and Version fields
@@ -35,23 +35,23 @@ func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate Ex
 		panic(err)
 	}
 	return &Offer{
-		Version:       *CurOfferVersion,
-		ID:            sha3.Sum256(buf[:]),
-		Provides:      coin,
-		MinimumAmount: minAmount,
-		MaximumAmount: maxAmount,
-		ExchangeRate:  exRate,
-		EthAsset:      ethAsset,
+		Version:      *CurOfferVersion,
+		ID:           sha3.Sum256(buf[:]),
+		Provides:     coin,
+		MinAmount:    minAmount,
+		MaxAmount:    maxAmount,
+		ExchangeRate: exRate,
+		EthAsset:     ethAsset,
 	}
 }
 
 // String ...
 func (o *Offer) String() string {
-	return fmt.Sprintf("Offer ID=%s Provides=%v MinimumAmount=%v MaximumAmount=%v ExchangeRate=%v EthAsset=%v",
+	return fmt.Sprintf("OfferID:%s Provides:%v MinAmount:%v MaxAmount:%v ExchangeRate:%v EthAsset:%v",
 		o.ID,
 		o.Provides,
-		o.MinimumAmount,
-		o.MaximumAmount,
+		o.MinAmount,
+		o.MaxAmount,
 		o.ExchangeRate,
 		o.EthAsset,
 	)
@@ -61,8 +61,8 @@ func (o *Offer) String() string {
 func (o *Offer) IsSet() bool {
 	return !IsHashZero(o.ID) &&
 		o.Provides != "" &&
-		o.MinimumAmount != 0 &&
-		o.MaximumAmount != 0 &&
+		o.MinAmount != 0 &&
+		o.MaxAmount != 0 &&
 		o.ExchangeRate != 0
 }
 

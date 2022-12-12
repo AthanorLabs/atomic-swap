@@ -23,7 +23,7 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 
 	msg, _ := newTestXMRTakerSendKeysMessage(t)
 	msg.OfferID = offer.ID
-	msg.ProvidedAmount = offer.MinimumAmount * float64(offer.ExchangeRate)
+	msg.ProvidedAmount = offer.MinAmount * float64(offer.ExchangeRate)
 
 	_, resp, err := b.HandleInitiateMessage(msg)
 	require.NoError(t, err)

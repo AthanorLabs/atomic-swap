@@ -410,8 +410,8 @@ func runQuery(ctx *cli.Context) error {
 		return err
 	}
 
-	for _, o := range res.Offers {
-		printOffer(o, "")
+	for i, o := range res.Offers {
+		printOffer(o, i, "")
 	}
 	return nil
 }
@@ -699,8 +699,8 @@ func runGetOffers(ctx *cli.Context) error {
 	}
 
 	fmt.Println("Offers:")
-	for _, offer := range resp {
-		printOffer(offer, "\t")
+	for i, offer := range resp {
+		printOffer(offer, i, "\t")
 	}
 
 	return nil
@@ -735,11 +735,14 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 	return nil
 }
 
-func printOffer(o *types.Offer, indent string) {
+func printOffer(o *types.Offer, index int, indent string) {
+	if index > 0 {
+		fmt.Println(indent, "----------")
+	}
 	fmt.Println(indent, "Offer ID:", o.ID)
 	fmt.Println(indent, "Provides:", o.Provides)
-	fmt.Println(indent, "Min Amount:", o.MinimumAmount)
-	fmt.Println(indent, "Max Amount:", o.MaximumAmount)
+	fmt.Println(indent, "Min Amount:", o.MinAmount)
+	fmt.Println(indent, "Max Amount:", o.MaxAmount)
 	fmt.Println(indent, "Exchange Rate:", o.ExchangeRate)
 	fmt.Println(indent, "ETH Asset:", o.EthAsset)
 }

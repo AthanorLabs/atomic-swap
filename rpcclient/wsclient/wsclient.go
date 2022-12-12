@@ -324,8 +324,8 @@ func (c *wsClient) MakeOfferAndSubscribe(
 	relayerCommission float64,
 ) (*rpctypes.MakeOfferResponse, <-chan types.Status, error) {
 	params := &rpctypes.MakeOfferRequest{
-		MinimumAmount:     min,
-		MaximumAmount:     max,
+		MinAmount:         min,
+		MaxAmount:         max,
 		ExchangeRate:      exchangeRate,
 		EthAsset:          ethAsset.Address().String(),
 		RelayerEndpoint:   relayerEndpoint,

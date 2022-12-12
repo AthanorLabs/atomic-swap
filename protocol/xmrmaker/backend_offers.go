@@ -21,8 +21,8 @@ func (b *Instance) MakeOffer(
 	}
 
 	unlockedBalance := common.PiconeroAmount(balance.UnlockedBalance)
-	if unlockedBalance < common.MoneroToPiconero(o.MaximumAmount) {
-		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
+	if unlockedBalance < common.MoneroToPiconero(o.MaxAmount) {
+		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaxAmount}
 	}
 
 	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommission)

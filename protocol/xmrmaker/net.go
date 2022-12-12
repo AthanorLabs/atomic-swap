@@ -106,12 +106,12 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 
-	if providedAmount < offer.MinimumAmount {
-		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinimumAmount}
+	if providedAmount < offer.MinAmount {
+		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
 	}
 
-	if providedAmount > offer.MaximumAmount {
-		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaximumAmount}
+	if providedAmount > offer.MaxAmount {
+		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
 	}
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)

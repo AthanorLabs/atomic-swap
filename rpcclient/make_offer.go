@@ -19,8 +19,8 @@ func (c *Client) MakeOffer(
 	)
 
 	req := &rpctypes.MakeOfferRequest{
-		MinimumAmount:     min,
-		MaximumAmount:     max,
+		MinAmount:         min,
+		MaxAmount:         max,
 		ExchangeRate:      types.ExchangeRate(exchangeRate),
 		EthAsset:          ethcommon.Address(ethAsset).Hex(),
 		RelayerEndpoint:   relayerEndpoint,

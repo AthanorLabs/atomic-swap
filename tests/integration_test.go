@@ -152,8 +152,8 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 	}
 
 	require.NotNil(s.T(), respOffer)
-	require.Equal(s.T(), xmrmakerProvideAmount, respOffer.MinimumAmount)
-	require.Equal(s.T(), xmrmakerProvideAmount, respOffer.MaximumAmount)
+	require.Equal(s.T(), xmrmakerProvideAmount, respOffer.MinAmount)
+	require.Equal(s.T(), xmrmakerProvideAmount, respOffer.MaxAmount)
 	require.Equal(s.T(), exchangeRate, float64(respOffer.ExchangeRate))
 	require.Equal(s.T(), asset, respOffer.EthAsset)
 }

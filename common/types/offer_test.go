@@ -44,8 +44,8 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, ProvidesXMR)
-	assert.Equal(t, offer.MinimumAmount, float64(100))
-	assert.Equal(t, offer.MaximumAmount, float64(200))
+	assert.Equal(t, offer.MinAmount, float64(100))
+	assert.Equal(t, offer.MaxAmount, float64(200))
 	assert.Equal(t, offer.ExchangeRate, ExchangeRate(1.5))
 	assert.Equal(t, "0x0000000000000000000000000000000000000001", ethcommon.Address(offer.EthAsset).Hex())
 }
@@ -66,8 +66,8 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	assert.Equal(t, *CurOfferVersion, offer.Version)
 	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, ProvidesXMR)
-	assert.Equal(t, offer.MinimumAmount, float64(100))
-	assert.Equal(t, offer.MaximumAmount, float64(200))
+	assert.Equal(t, offer.MinAmount, float64(100))
+	assert.Equal(t, offer.MaxAmount, float64(200))
 	assert.Equal(t, offer.ExchangeRate, ExchangeRate(1.5))
 	assert.Equal(t, offer.EthAsset, EthAssetETH)
 }

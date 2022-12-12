@@ -245,8 +245,8 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOf
 
 	offer := types.NewOffer(
 		types.ProvidesXMR,
-		req.MinimumAmount,
-		req.MaximumAmount,
+		req.MinAmount,
+		req.MaxAmount,
 		req.ExchangeRate,
 		ethAsset,
 	)
