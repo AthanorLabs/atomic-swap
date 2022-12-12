@@ -274,17 +274,51 @@ Parameters:
 - none
 
 Returns:
-- `monero_address`: primary monero address of the swapd wallet
-- `piconero_balance`: balance the swapd wallet in piconero
-- `piconero_unlocked_balance`: balance the swapd wallet in piconero that is spendable immediately
-- `blocks_to_unlock`: number of blocks until the full piconero_balance will be unlocked
-- `eth_address`: address of the swapd ethereum wallet
-- `wei_balance`: balance of the ethereum wallet in wei
+- `moneroAddress`: primary monero address of the swapd wallet
+- `piconeroBalance`: balance the swapd wallet in piconero
+- `piconeroUnlockedBalance`: balance the swapd wallet in piconero that is spendable immediately
+- `blocksToUnlock`: number of blocks until the full piconero_balance will be unlocked
+- `ethAddress`: address of the swapd ethereum wallet
+- `weiBalance`: balance of the ethereum wallet in wei
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_balances","params":{}}' -H 'Content-Type: application/json'
-#{"jsonrpc":"2.0","result":{"monero_address":"47RP5qtFwN2fEsRtiXQ5Pe4BDB5UxLxFbbRbvQy4sCLzN8xZxaJTBw25JE7Saz4fCngcY5ZbCk1XN3squfGQzs2pVjgG6tb","piconero_balance":2250425843583586,"piconero_unlocked_balance":175824411726902,"blocks_to_unlock":59,"eth_address":"0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0","wei_balance":999987682387589565906},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"personal_balances","params":{}}' | jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "moneroAddress": "5BVXdWxKp5aMWRfkAiWYb38dPuDFDwTYwCL5ymSoe9CPcLN3c8BanUsiBG8KaGtmQ8W6X2yzCCsvsGjuSYvn8LSZUUV7QB3",
+    "piconeroBalance": 149935630269820,
+    "piconeroUnlockedBalance": 138815986625976,
+    "blocksToUnlock": 37,
+    "ethAddress": "0x297d1DdeA7224252fD629442989C569f23Ffc7FD",
+    "weiBalance": 429169302264321300
+  },
+  "id": "0"
+}
+```
+
+### `personal_setSwapTimeout`
+
+Configures the `_timeoutDuration` used when the ethereum newSwap transaction is created.
+This method is only for testing. In non-dev networks, the swaps are configured to fail if
+you don't use the defaults.
+
+Parameters:
+- `timeout`: duration value in seconds 
+
+Returns:
+- null
+
+```bash
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"personal_setSwapTimeout","params":{"timeout":7200}}'
+```
+```json
+{"jsonrpc":"2.0","result":null,"id":"0"}
 ```
 
 ## `swap` namespace
