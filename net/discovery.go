@@ -9,10 +9,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	libp2pdiscovery "github.com/libp2p/go-libp2p/core/discovery"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	libp2prouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 const (
@@ -26,7 +27,7 @@ type discovery struct {
 	ctx         context.Context
 	dht         *dual.DHT
 	h           libp2phost.Host
-	rd          *libp2pdiscovery.RoutingDiscovery
+	rd          *libp2prouting.RoutingDiscovery
 	provides    []types.ProvidesCoin
 	advertiseCh chan struct{}
 	offerAPI    Handler
@@ -142,7 +143,10 @@ func (d *discovery) discoverLoop() {
 }
 
 func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID, error) {
-	peerCh, err := d.rd.FindPeers(d.ctx, provides)
+	peerCh, err := d.rd.FindPeers(d.ctx, provides,
+		libp2pdiscovery.Limit(defaultMaxPeers),
+		libp2pdiscovery.TTL(defaultAdvertiseTTL),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +164,9 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 			}
 
 			return peerIDs, ctx.Err()
-		case peer := <-peerCh:
-			if peer.ID == d.h.ID() || peer.ID == "" {
-				continue
+		case peer, done := <-peerCh:
+			if done {
+				return peerIDs, nil
 			}
 
 			log.Debugf("found new peer via DHT: %s", peer)
