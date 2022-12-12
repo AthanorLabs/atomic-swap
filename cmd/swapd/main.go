@@ -84,6 +84,7 @@ const (
 	flagTransferBack     = "transfer-back"
 
 	flagLogLevel = "log-level"
+	flagProfile  = "profile"
 )
 
 var (
@@ -202,6 +203,11 @@ var (
 				Name:  flagUseExternalSigner,
 				Usage: "Use external signer, for usage with the swap UI",
 			},
+			&cli.StringFlag{
+				Name:   flagProfile,
+				Usage:  "BIND_IP:PORT to provide profiling information on",
+				Hidden: true, // flag is only for developers
+			},
 		},
 	}
 )
@@ -272,6 +278,10 @@ func runDaemon(c *cli.Context) error {
 	go signalHandler(ctx, cancel)
 
 	if err := setLogLevelsFromContext(c); err != nil {
+		return err
+	}
+
+	if err := maybeStartProfiler(c); err != nil {
 		return err
 	}
 
