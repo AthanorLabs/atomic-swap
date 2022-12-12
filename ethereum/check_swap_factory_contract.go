@@ -107,7 +107,9 @@ func checkForwarderContractCode(
 
 	expectedCode := ethcommon.FromHex(gsnforwarder.ForwarderMetaData.Bin)
 
-	if !bytes.Contains(expectedCode, code) {
+	// expectedCode is the compiled code, while code is the deployed bytecode.
+	// the deployed bytecode is a subset of the compiled code.
+	if !bytes.Equal(expectedCode[705:9585], code) {
 		return errInvalidForwarderContract
 	}
 
