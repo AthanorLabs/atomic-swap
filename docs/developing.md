@@ -8,9 +8,9 @@ Follow the [build instructions](./build.md) to ensure you have Go installed and 
 
 Follow the instructions [here](local.md) to set up your local Alice (ETH-holder, XMR-wanter) and Bob (XMR-holder, ETH-wanter) nodes. 
 
-See the instructions in `scripts/testlib.sh` to quickly set up the local Monerod and ganache environment.
-If you need to later kill `ganache`, `monerod`, `monero-wallet-rpc`, `swapd`, you can use the script
-`scripts/cleanup-test-processes.sh`.
+You can use the script `scripts/setup-env.sh` to quickly set up a local monerod-test and
+ganache instances. If you need to later kill `ganache`, `monerod`, `monero-wallet-rpc`, or
+`swapd` instances, you can use `scripts/cleanup-test-processes.sh`.
 
 ## Deploying or using deployed SwapFactory.sol
 
@@ -26,17 +26,6 @@ If you wish to use an instance of `SwapFactory.sol` that's already deployed on-c
 $ ./swapd --dev-xmrtaker --contract-address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
 # 2022-01-26T18:56:31.627-0500	INFO	cmd	daemon/contract.go:42	loaded SwapFactory.sol from address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
 ```
-
-## Compiling DLEq binaries
-
-The program utilizes a Rust DLEq library implemented by Farcaster.
-
-To compile the farcaster-dleq binaries used, you can run:
-```
-make build-dleq
-```
-
-This will install Rust (if it isn't already installed) and build the binaries. The resulting binaries will be in `./farcaster-dleq/target/release/`.
 
 ## Compiling contract bindings
 
