@@ -29,11 +29,11 @@ Build binary:
 make build
 ```
 
-This creates `swapd` and `swapcli` binaries in the root directory.
+This creates `swapd` and `swapcli` binaries in the `bin` directory at the top of the project.
 
 To run as Alice, execute in terminal 1:
 ```bash
-./swapd --dev-xmrtaker
+./swapd --dev-xmrtaker --deploy
 ```
 
 Alice will print out a libp2p node address, for example
@@ -123,5 +123,5 @@ To query the information for an ongoing swap, you can run:
 
 To query information for a past swap using its ID, you can run:
 ```bash
-./swapcli get-past-swap --id <id>
+./swapcli get-past-swap --offer-id <id>
 ```
