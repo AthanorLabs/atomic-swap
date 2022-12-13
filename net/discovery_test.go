@@ -38,8 +38,6 @@ func TestHost_Discover(t *testing.T) {
 	hc.Advertise()
 	time.Sleep(testAdvertisementSleepDuration)
 
-	// TODO: Need help fixing this. Suspect that it never worked correctly.
-	t.Skipf("hc.Discover isn't finding any peer")
 	peerIDs, err := hc.Discover(types.ProvidesXMR, time.Second)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(peerIDs), 1)

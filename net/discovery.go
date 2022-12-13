@@ -28,8 +28,8 @@ type discovery struct {
 	dht         *dual.DHT
 	h           libp2phost.Host
 	rd          *libp2prouting.RoutingDiscovery
-	provides    []types.ProvidesCoin
-	advertiseCh chan struct{}
+	provides    []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
+	advertiseCh chan struct{}        // signals than an XMR offer was made to advertise
 	offerAPI    Handler
 }
 
@@ -163,13 +163,14 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 				return peerIDs, nil
 			}
-
 			return peerIDs, ctx.Err()
-		case peer, done := <-peerCh:
-			if done {
+		case peer, ok := <-peerCh:
+			if !ok {
+				// channel was closed, no more peers to read
 				return peerIDs, nil
 			}
 			if peer.ID == "" || peer.ID == ourPeerID {
+				// Prove that this never happens by logging at the warning level
 				log.Warnf("Received unexpected peerID: %s", peer.ID)
 				continue
 			}
