@@ -21,8 +21,8 @@ var (
 	errLockTxReverted              = errors.New("other party failed to lock ETH asset (transaction reverted)")
 	errInvalidETHLockedTransaction = errors.New("eth locked tx was not to correct contract address")
 	errRelayerCommissionTooHigh    = errors.New("relayer commission must be less than 0.1 (10%)")
-	errInvalidT0                   = errors.New("invalid t0 value set by counterparty")
-	errInvalidT1                   = errors.New("invalid t1 value set by counterparty")
+	errInvalidT0                   = errors.New("invalid t0 value; asset was locked too far in the past")
+	errInvalidT1                   = errors.New("invalid swap timeout set by counterparty")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
