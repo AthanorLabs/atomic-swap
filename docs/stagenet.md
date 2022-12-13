@@ -47,15 +47,7 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 7. Obtain a Goerli JSON-RPC endpoint. You can get one from infura.io, or you can sync your own node, or ask a friend for their endpoint. 
 
-8. Install go 1.18+ from [here](https://go.dev/doc/install).
-
-For Linux 64-bit, you can do:
-```bash
-wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
-echo "export PATH=$PATH:/usr/local/go/bin" >> .profile
-source .profile
-```
+8. Install go 1.19+. See [build instructions](./build.md) for more details.
 
 9. Clone and build the atomic-swap binaries:
 ```bash
@@ -111,13 +103,13 @@ yarn start
 
 1. Search for existing XMR offers using `swapcli`:
 ```bash
-./swapcli discover --provides XMR --search-time 3 --swapd-port 5001
+./bin/swapcli discover --provides XMR --search-time 3 --swapd-port 5001
 # [[/ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
 2. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
 ```bash
-./swapcli query --multiaddr /ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
+./bin/swapcli query --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
 # Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
 ```
 
@@ -125,13 +117,16 @@ yarn start
 
 3. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much GoETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
 ```bash
-./swapcli take --multiaddr /ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
+./bin/swapcli take --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv \
+  --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
 # Initiated swap with ID=0
 ```
 
 3. b. Alternatively, you can take the offer via websockets and get notified when the swap status updates:
 ```bash
-./swapcli take --multiaddr /ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --swapd-port 5001
+./bin/swapcli take --peer-id 12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 \
+  --offer-id 0xcf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 \
+  --provides-amount 0.05 --subscribe --swapd-port 5001
 ```
 
 If all goes well, you should see the node execute the swap protocol. If the swap ends successfully, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step (so `./node-keys`) named `swap-deposit-wallet`. This wallet will contained the received XMR.
@@ -142,7 +137,7 @@ If all goes well, you should see the node execute the swap protocol. If the swap
  
 1. Find your stagenet address:
 ```bash
-./swapcli balances | grep 'Monero address'
+./bin/swapcli balances | grep 'Monero address'
 ```
 
 2. Fund this address with some stagenet XMR. You can try the faucets here:
@@ -153,13 +148,13 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 3. a. Make an offer with `swapcli`:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001
+./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
 4. b. Alternatively, make an offer and subscribe to updates on it with `swapcli`:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001 --subscribe
+./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --swapd-port 5001 --subscribe
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
