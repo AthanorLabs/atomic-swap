@@ -181,6 +181,8 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 	s.setTimeouts(t0, t1)
 
+	// we ignore the timeout for development, as unit tests and integration tests
+	// often set different timeouts.
 	if s.Backend.Env() == common.Development {
 		return nil
 	}
