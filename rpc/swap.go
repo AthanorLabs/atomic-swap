@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
@@ -179,11 +181,13 @@ func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetS
 
 // GetOffersResponse ...
 type GetOffersResponse struct {
+	PeerID peer.ID
 	Offers []*types.Offer `json:"offers"`
 }
 
 // GetOffers returns the currently available offers.
 func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
+	resp.PeerID = s.net.PeerID()
 	resp.Offers = s.xmrmaker.GetOffers()
 	return nil
 }

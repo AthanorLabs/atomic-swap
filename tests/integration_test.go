@@ -178,7 +178,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offersBefore, err := bc.GetOffers()
+	beforeResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 
 	errCh := make(chan error, 2)
@@ -244,9 +244,9 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	default:
 	}
 
-	offersAfter, err := bc.GetOffers()
+	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), 1, len(offersBefore)-len(offersAfter))
+	require.Equal(s.T(), 1, len(beforeResp.Offers)-len(afterResp.Offers))
 }
 
 func (s *IntegrationTestSuite) TestRefund_XMRTakerCancels() {
@@ -268,7 +268,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offersBefore, err := bc.GetOffers()
+	beforeResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 
 	errCh := make(chan error, 2)
@@ -357,9 +357,9 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 
 	// wait for offer to be re-added
 	time.Sleep(time.Second * 2)
-	offersAfter, err := bc.GetOffers()
+	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), len(offersBefore), len(offersAfter))
+	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
 }
 
 // TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker
@@ -400,7 +400,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 		types.ExchangeRate(exchangeRate), types.EthAssetETH, "", 0)
 	require.NoError(s.T(), err)
 
-	offersBefore, err := bc.GetOffers()
+	beforeResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 
 	errCh := make(chan error, 2)
@@ -479,12 +479,12 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	default:
 	}
 
-	offersAfter, err := bc.GetOffers()
+	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	if expectedExitStatus != types.CompletedSuccess {
-		require.Equal(s.T(), len(offersBefore), len(offersAfter))
+		require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
 	} else {
-		require.Equal(s.T(), 1, len(offersBefore)-len(offersAfter))
+		require.Equal(s.T(), 1, len(beforeResp.Offers)-len(afterResp.Offers))
 	}
 }
 
@@ -507,7 +507,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offersBefore, err := bc.GetOffers()
+	beforeResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 
 	errCh := make(chan error, 2)
@@ -582,9 +582,9 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 
 	// wait for offer to be re-added
 	time.Sleep(time.Second)
-	offersAfter, err := bc.GetOffers()
+	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), len(offersBefore), len(offersAfter))
+	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
 }
 
 // This test simulates the case where neither XMRTaker and XMRMaker have
@@ -609,7 +609,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offersBefore, err := bc.GetOffers()
+	beforeResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 
 	errCh := make(chan error, 2)
@@ -680,9 +680,9 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	default:
 	}
 
-	offersAfter, err := bc.GetOffers()
+	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), len(offersBefore), len(offersAfter))
+	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
 }
 
 // TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.
@@ -827,7 +827,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 	}
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offersBefore, err := bc.GetOffers()
+	beforeResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 
 	var wg sync.WaitGroup
@@ -929,7 +929,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 		}
 	}
 
-	offersAfter, err := bc.GetOffers()
+	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), numConcurrentSwaps, len(offersBefore)-len(offersAfter))
+	require.Equal(s.T(), numConcurrentSwaps, len(beforeResp.Offers)-len(afterResp.Offers))
 }

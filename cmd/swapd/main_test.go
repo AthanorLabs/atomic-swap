@@ -232,8 +232,9 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	time.Sleep(startupTimeout) // let the server start
 
 	client = rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
-	offers, err := client.GetOffers()
+	resp, err := client.GetOffers()
 	require.NoError(t, err)
-	require.Equal(t, 1, len(offers))
-	require.Equal(t, offerResp.OfferID, offers[0].ID)
+	require.Equal(t, offerResp.PeerID, resp.PeerID)
+	require.Equal(t, 1, len(resp.Offers))
+	require.Equal(t, offerResp.OfferID, resp.Offers[0].ID)
 }

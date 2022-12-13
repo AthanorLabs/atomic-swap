@@ -432,10 +432,10 @@ func runQueryAll(ctx *cli.Context) error {
 
 	for i, po := range peerOffers {
 		fmt.Printf("Peer %d:\n", i)
-		fmt.Printf("\tPeer ID: %v\n", po.PeerID)
-		fmt.Printf("\tOffers:\n")
+		fmt.Printf("  Peer ID: %v\n", po.PeerID)
+		fmt.Printf("  Offers:\n")
 		for _, o := range po.Offers {
-			fmt.Printf("\t%v\n", o)
+			printOffer(o, i, "    ")
 		}
 	}
 
@@ -698,9 +698,10 @@ func runGetOffers(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Println("Peer ID (self):", resp.PeerID)
 	fmt.Println("Offers:")
-	for i, offer := range resp {
-		printOffer(offer, i, "\t")
+	for i, offer := range resp.Offers {
+		printOffer(offer, i, "  ")
 	}
 
 	return nil
@@ -737,12 +738,12 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 
 func printOffer(o *types.Offer, index int, indent string) {
 	if index > 0 {
-		fmt.Println(indent, "----------")
+		fmt.Printf("%s----------\n", indent)
 	}
-	fmt.Println(indent, "Offer ID:", o.ID)
-	fmt.Println(indent, "Provides:", o.Provides)
-	fmt.Println(indent, "Min Amount:", o.MinAmount)
-	fmt.Println(indent, "Max Amount:", o.MaxAmount)
-	fmt.Println(indent, "Exchange Rate:", o.ExchangeRate)
-	fmt.Println(indent, "ETH Asset:", o.EthAsset)
+	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
+	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
+	fmt.Printf("%sMin Amount: %s\n", indent, common.FmtFloat(o.MinAmount))
+	fmt.Printf("%sMax Amount: %s\n", indent, common.FmtFloat(o.MaxAmount))
+	fmt.Printf("%sExchange Rate: %s\n", indent, common.FmtFloat(float64(o.ExchangeRate)))
+	fmt.Printf("%sETH Asset: %s\n", indent, o.EthAsset)
 }
