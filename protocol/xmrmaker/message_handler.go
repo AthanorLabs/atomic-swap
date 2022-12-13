@@ -139,8 +139,10 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, err
 	}
 
-	// TODO: check these (in checkContract) (#161)
-	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	err = s.checkAndSetTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	if err != nil {
+		return nil, err
+	}
 
 	notifyXMRLocked, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
 	if err != nil {

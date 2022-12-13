@@ -488,11 +488,6 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 	return nil
 }
 
-func (s *swapState) setTimeouts(t0, t1 *big.Int) {
-	s.t0 = time.Unix(t0.Int64(), 0)
-	s.t1 = time.Unix(t1.Int64(), 0)
-}
-
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
