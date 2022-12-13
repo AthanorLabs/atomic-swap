@@ -173,7 +173,7 @@ func NewHost(cfg *Config) (*host, error) {
 	hst := &host{
 		ctx:        ourCtx,
 		cancel:     cancel,
-		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID),
+		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID), // TODO: need's version
 		h:          routedHost,
 		ds:         ds,
 		bootnodes:  bns,
@@ -215,7 +215,7 @@ func (h *host) Start() error {
 
 	// ignore error - node should still be able to run without connecting to
 	// bootstrap nodes (for now)
-	_ = h.bootstrap() // TODO: Is this needed?
+	_ = h.bootstrap() // TODO: Is this needed? Was it already done when initializing the DHT?
 
 	go h.logPeers()
 
