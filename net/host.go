@@ -160,8 +160,13 @@ func NewHost(cfg *Config) (*host, error) {
 		return nil, err
 	}
 
+	// Note on ModeServer: The dual KAD DHT, by default, puts the LAN interface in server mode and
+	// the WAN interface in ModeClient if it is behind a NAT firewall. In our case, even nodes behind
+	// NAT firewalls should be servers, otherwise remote nodes will not be able to connect and list
+	// their offers.
 	dht, err := dual.New(cfg.Ctx, basicHost,
 		dual.DHTOption(kaddht.BootstrapPeers(bns...)),
+		dual.DHTOption(kaddht.Mode(kaddht.ModeServer)),
 	)
 	if err != nil {
 		return nil, err
