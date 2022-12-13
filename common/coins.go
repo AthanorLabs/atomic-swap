@@ -4,7 +4,6 @@ import (
 	"math"
 	"math/big"
 	"strconv"
-	"strings"
 )
 
 var (
@@ -73,16 +72,10 @@ func (a WeiAmount) String() string {
 	return a.BigInt().String()
 }
 
-// FmtFloat creates a string from a floating point value that keeps enough precision to
-// represent a single wei, does not use exponent notation, and has no trailing zeros after
-// the decimal point.
+// FmtFloat creates a string from a floating point value that keeps maximum precision,
+// does not use exponent notation, and has no trailing zeros after the decimal point.
 func FmtFloat(f float64) string {
-	// 18 decimal points is needed to represent 1 wei in ETH
-	s := strconv.FormatFloat(f, 'f', 18, 64)
-	if strings.Contains(s, ".") {
-		s = strings.TrimRight(s, "0")
-	}
-	return s
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
