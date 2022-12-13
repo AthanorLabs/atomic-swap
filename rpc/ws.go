@@ -120,7 +120,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		return s.subscribeSwapStatus(s.ctx, conn, params.ID)
+		return s.subscribeSwapStatus(s.ctx, conn, params.OfferID)
 	case rpctypes.SubscribeTakeOffer:
 		var params *rpctypes.TakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {

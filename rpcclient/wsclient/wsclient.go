@@ -174,7 +174,7 @@ func (c *wsClient) Query(id peer.ID) (*rpctypes.QueryPeerResponse, error) {
 // If there is no swap with the given ID, it returns an error.
 func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error) {
 	params := &rpctypes.SubscribeSwapStatusRequest{
-		ID: id,
+		OfferID: id,
 	}
 
 	bz, err := json.Marshal(params)

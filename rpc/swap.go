@@ -90,7 +90,7 @@ type GetOngoingResponse struct {
 
 // GetOngoingRequest ...
 type GetOngoingRequest struct {
-	OfferID string `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // GetOngoing returns information about the ongoing swap, if there is one.
@@ -115,7 +115,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 // RefundRequest ...
 type RefundRequest struct {
-	OfferID string `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // RefundResponse ...
@@ -151,7 +151,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 
 // GetStageRequest ...
 type GetStageRequest struct {
-	OfferID string `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // GetStageResponse ...

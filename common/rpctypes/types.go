@@ -23,7 +23,7 @@ const (
 
 // SubscribeSwapStatusRequest ...
 type SubscribeSwapStatusRequest struct {
-	ID types.Hash `json:"id"`
+	OfferID types.Hash `json:"offerID"`
 }
 
 // SubscribeSwapStatusResponse ...
