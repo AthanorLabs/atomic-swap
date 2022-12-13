@@ -151,6 +151,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 		return nil, err
 	}
 
+	ourPeerID := d.h.ID()
 	var peerIDs []peer.ID
 
 	ctx, cancel := context.WithTimeout(d.ctx, timeout)
@@ -167,6 +168,10 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 		case peer, done := <-peerCh:
 			if done {
 				return peerIDs, nil
+			}
+			if peer.ID == "" || peer.ID == ourPeerID {
+				log.Warnf("Received unexpected peerID: %s", peer.ID)
+				continue
 			}
 
 			log.Debugf("found new peer via DHT: %s", peer)
