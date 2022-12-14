@@ -447,8 +447,8 @@ func runQueryAll(ctx *cli.Context) error {
 		fmt.Printf("Peer %d:\n", i)
 		fmt.Printf("  Peer ID: %v\n", po.PeerID)
 		fmt.Printf("  Offers:\n")
-		for _, o := range po.Offers {
-			printOffer(o, i, "    ")
+		for j, o := range po.Offers {
+			printOffer(o, j, "    ")
 		}
 	}
 
