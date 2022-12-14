@@ -29,9 +29,12 @@ const (
 	flagOfferID           = "offer-id"
 	flagOfferIDs          = "offer-ids"
 	flagExchangeRate      = "exchange-rate"
+	flagProvides          = "provides"
 	flagProvidesAmount    = "provides-amount"
 	flagRelayerCommission = "relayer-commission"
 	flagRelayerEndpoint   = "relayer-endpoint"
+	flagSearchTime        = "search-time"
+	flagSubscribe         = "subscribe"
 )
 
 var (
@@ -76,13 +79,13 @@ var (
 				Action:  runDiscover,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name: "provides",
+						Name: flagProvides,
 						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
 							types.ProvidesXMR, types.ProvidesETH),
 						Value: string(types.ProvidesXMR),
 					},
 					&cli.UintFlag{
-						Name:  "search-time",
+						Name:  flagSearchTime,
 						Usage: "Duration of time to search for, in seconds",
 						Value: defaultDiscoverSearchTimeSecs,
 					},
@@ -110,13 +113,13 @@ var (
 				Action:  runQueryAll,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name: "provides",
+						Name: flagProvides,
 						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
 							types.ProvidesXMR, types.ProvidesETH),
 						Value: string(types.ProvidesXMR),
 					},
 					&cli.UintFlag{
-						Name:  "search-time",
+						Name:  flagSearchTime,
 						Usage: "Duration of time to search for, in seconds",
 						Value: defaultDiscoverSearchTimeSecs,
 					},
@@ -145,7 +148,7 @@ var (
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:  "subscribe",
+						Name:  flagSubscribe,
 						Usage: "Subscribe to push notifications about the swap's status",
 					},
 					&cli.StringFlag{
@@ -176,7 +179,7 @@ var (
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:     "offer-id",
+						Name:     flagOfferID,
 						Usage:    "ID of the offer being taken",
 						Required: true,
 					},
@@ -186,7 +189,7 @@ var (
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:  "subscribe",
+						Name:  flagSubscribe,
 						Usage: "Subscribe to push notifications about the swap's status",
 					},
 					swapdPortFlag,
@@ -204,7 +207,7 @@ var (
 				Action: runGetOngoingSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "offer-id",
+						Name:     flagOfferID,
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
@@ -217,7 +220,7 @@ var (
 				Action: runGetPastSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "offer-id",
+						Name:     flagOfferID,
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
@@ -230,7 +233,7 @@ var (
 				Action: runRefund,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "offer-id",
+						Name:     flagOfferID,
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
@@ -243,7 +246,7 @@ var (
 				Action: runCancel,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "offer-id",
+						Name:  flagOfferID,
 						Usage: "ID of swap to retrieve info for",
 					},
 					swapdPortFlag,
@@ -255,7 +258,7 @@ var (
 				Action: runClearOffers,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "offer-ids",
+						Name:  flagOfferIDs,
 						Usage: "A comma-separated list of offer IDs to delete",
 					},
 					swapdPortFlag,
@@ -275,7 +278,7 @@ var (
 				Action: runGetStage,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "offer-id",
+						Name:     flagOfferID,
 						Usage:    "ID of swap to retrieve info for",
 						Required: true,
 					},
@@ -378,12 +381,22 @@ func runBalances(ctx *cli.Context) error {
 }
 
 func runDiscover(ctx *cli.Context) error {
-	provides, err := types.NewProvidesCoin(ctx.String("provides"))
-	if err != nil {
-		return err
+	var provides types.ProvidesCoin
+	providesStr := ctx.String(flagProvides)
+
+	// The provides flag value defaults to XMR, but the user can still specify the empty
+	// string explicitly, which they can do to search the empty DHT namespace for all
+	// peers. `NewProvidesCoin` gives an error if you pass the empty string, so we
+	// special case the empty string.
+	if providesStr != "" {
+		var err error
+		provides, err = types.NewProvidesCoin(providesStr)
+		if err != nil {
+			return err
+		}
 	}
 
-	searchTime := ctx.Uint("search-time")
+	searchTime := ctx.Uint(flagSearchTime)
 
 	c := newRRPClient(ctx)
 	peerIDs, err := c.Discover(provides, uint64(searchTime))
@@ -417,12 +430,12 @@ func runQuery(ctx *cli.Context) error {
 }
 
 func runQueryAll(ctx *cli.Context) error {
-	provides, err := types.NewProvidesCoin(ctx.String("provides"))
+	provides, err := types.NewProvidesCoin(ctx.String(flagProvides))
 	if err != nil {
 		return err
 	}
 
-	searchTime := ctx.Uint("search-time")
+	searchTime := ctx.Uint(flagSearchTime)
 
 	c := newRRPClient(ctx)
 	peerOffers, err := c.QueryAll(provides, uint64(searchTime))
@@ -494,7 +507,7 @@ func runMake(ctx *cli.Context) error {
 		fmt.Printf("\tTaker Max: %s %s\n", common.FmtFloat(otherMax), ethAsset)
 	}
 
-	if ctx.Bool("subscribe") {
+	if ctx.Bool(flagSubscribe) {
 		wsc, err := newWSClient(ctx)
 		if err != nil {
 			return err
@@ -549,7 +562,7 @@ func runTake(ctx *cli.Context) error {
 		return errNoProvidesAmount
 	}
 
-	if ctx.Bool("subscribe") {
+	if ctx.Bool(flagSubscribe) {
 		wsc, err := newWSClient(ctx)
 		if err != nil {
 			return err
@@ -594,7 +607,7 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 }
 
 func runGetOngoingSwap(ctx *cli.Context) error {
-	offerID := ctx.String("offer-id")
+	offerID := ctx.String(flagOfferID)
 
 	c := newRRPClient(ctx)
 	info, err := c.GetOngoingSwap(offerID)
@@ -613,7 +626,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 }
 
 func runGetPastSwap(ctx *cli.Context) error {
-	offerID := ctx.String("offer-id")
+	offerID := ctx.String(flagOfferID)
 
 	c := newRRPClient(ctx)
 	info, err := c.GetPastSwap(offerID)
@@ -632,7 +645,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 }
 
 func runRefund(ctx *cli.Context) error {
-	offerID := ctx.String("offer-id")
+	offerID := ctx.String(flagOfferID)
 
 	c := newRRPClient(ctx)
 	resp, err := c.Refund(offerID)
@@ -708,7 +721,7 @@ func runGetOffers(ctx *cli.Context) error {
 }
 
 func runGetStage(ctx *cli.Context) error {
-	offerID := ctx.String("offer-id")
+	offerID := ctx.String(flagOfferID)
 
 	c := newRRPClient(ctx)
 	resp, err := c.GetStage(offerID)
