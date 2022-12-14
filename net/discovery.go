@@ -29,7 +29,7 @@ type discovery struct {
 	h           libp2phost.Host
 	rd          *libp2prouting.RoutingDiscovery
 	provides    []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
-	advertiseCh chan struct{}        // signals than an XMR offer was made to advertise
+	advertiseCh chan struct{}        // signals to advertise now that an XMR offer was made
 	offerAPI    Handler
 }
 
@@ -77,6 +77,7 @@ func (d *discovery) advertiseLoop() {
 			// query us.
 			offers := d.offerAPI.GetOffers()
 			if len(offers) == 0 {
+				d.provides = nil
 				continue
 			}
 
@@ -169,13 +170,11 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 				// channel was closed, no more peers to read
 				return peerIDs, nil
 			}
-			if peer.ID == "" || peer.ID == ourPeerID {
-				// Prove that this never happens by logging at the warning level
-				log.Warnf("Received unexpected peerID: %s", peer.ID)
+			if peer.ID == ourPeerID {
 				continue
 			}
 
-			log.Debugf("found new peer via DHT: %s", peer)
+			log.Debugf("Found new peer via DHT: %s", peer)
 			peerIDs = append(peerIDs, peer.ID)
 
 			// found a peer, try to connect if we need more peers
