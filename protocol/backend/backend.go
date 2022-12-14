@@ -21,10 +21,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
 
-var (
-	defaultTimeoutDuration = time.Hour * 24
-)
-
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
 	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
@@ -115,12 +111,6 @@ type Config struct {
 
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
-	if cfg.Environment == common.Development {
-		defaultTimeoutDuration = 2 * time.Minute
-	} else if cfg.Environment == common.Stagenet {
-		defaultTimeoutDuration = time.Hour
-	}
-
 	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
 		return nil, errNilSwapContractOrAddress
 	}
@@ -133,7 +123,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		contract:        cfg.SwapContract,
 		contractAddr:    cfg.SwapContractAddress,
 		swapManager:     cfg.SwapManager,
-		swapTimeout:     defaultTimeoutDuration,
+		swapTimeout:     common.SwapTimeoutFromEnvironment(cfg.Environment),
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 		recoveryDB:      cfg.RecoveryDB,
