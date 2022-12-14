@@ -34,7 +34,8 @@ import (
 )
 
 const (
-	protocolID = "/atomic-swap"
+	protocolID      = "/atomic-swap"
+	protocolVersion = "0.1"
 )
 
 var log = logging.Logger("net")
@@ -178,7 +179,7 @@ func NewHost(cfg *Config) (*host, error) {
 	hst := &host{
 		ctx:        ourCtx,
 		cancel:     cancel,
-		protocolID: fmt.Sprintf("%s/%s/%d", protocolID, cfg.Environment, cfg.EthChainID), // TODO: need's version
+		protocolID: fmt.Sprintf("%s/%s/%s/%d", protocolID, protocolVersion, cfg.Environment, cfg.EthChainID),
 		h:          routedHost,
 		ds:         ds,
 		bootnodes:  bns,
