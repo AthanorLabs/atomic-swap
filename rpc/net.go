@@ -62,7 +62,7 @@ func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.Peers
 }
 
 // QueryAll discovers peers who provide a certain coin and queries all of them for their current offers.
-func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.QueryAllResponse) error {
+func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.QueryAllRequest, resp *rpctypes.QueryAllResponse) error {
 	peerIDs, err := s.discover(req)
 	if err != nil {
 		return err

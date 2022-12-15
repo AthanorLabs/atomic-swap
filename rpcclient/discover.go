@@ -32,7 +32,7 @@ func (c *Client) QueryAll(provides types.ProvidesCoin, searchTime uint64) ([]*rp
 		method = "net_queryAll"
 	)
 
-	req := &rpctypes.DiscoverRequest{
+	req := &rpctypes.QueryAllRequest{
 		Provides:   provides,
 		SearchTime: searchTime,
 	}

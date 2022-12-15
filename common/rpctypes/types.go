@@ -59,6 +59,9 @@ type PeerWithOffers struct {
 	Offers []*types.Offer `json:"offers"`
 }
 
+// QueryAllRequest ...
+type QueryAllRequest = DiscoverRequest
+
 // QueryAllResponse ...
 type QueryAllResponse struct {
 	PeersWithOffers []*PeerWithOffers `json:"peersWithOffers"`
