@@ -84,7 +84,7 @@ var (
 							types.ProvidesXMR, types.ProvidesETH),
 						Value: string(types.ProvidesXMR),
 					},
-					&cli.UintFlag{
+					&cli.Uint64Flag{
 						Name:  flagSearchTime,
 						Usage: "Duration of time to search for, in seconds",
 						Value: defaultDiscoverSearchTimeSecs,
@@ -118,7 +118,7 @@ var (
 							types.ProvidesXMR, types.ProvidesETH),
 						Value: string(types.ProvidesXMR),
 					},
-					&cli.UintFlag{
+					&cli.Uint64Flag{
 						Name:  flagSearchTime,
 						Usage: "Duration of time to search for, in seconds",
 						Value: defaultDiscoverSearchTimeSecs,
@@ -381,25 +381,13 @@ func runBalances(ctx *cli.Context) error {
 }
 
 func runDiscover(ctx *cli.Context) error {
-	var provides types.ProvidesCoin
-	providesStr := ctx.String(flagProvides)
-
-	// The provides flag value defaults to XMR, but the user can still specify the empty
-	// string explicitly, which they can do to search the empty DHT namespace for all
-	// peers. `NewProvidesCoin` gives an error if you pass the empty string, so we
-	// special case the empty string.
-	if providesStr != "" {
-		var err error
-		provides, err = types.NewProvidesCoin(providesStr)
-		if err != nil {
-			return err
-		}
+	provides, err := providesStrToVal(ctx.String(flagProvides))
+	if err != nil {
+		return err
 	}
 
-	searchTime := ctx.Uint(flagSearchTime)
-
 	c := newRRPClient(ctx)
-	peerIDs, err := c.Discover(provides, uint64(searchTime))
+	peerIDs, err := c.Discover(provides, ctx.Uint64(flagSearchTime))
 	if err != nil {
 		return err
 	}
@@ -430,20 +418,23 @@ func runQuery(ctx *cli.Context) error {
 }
 
 func runQueryAll(ctx *cli.Context) error {
-	provides, err := types.NewProvidesCoin(ctx.String(flagProvides))
+	provides, err := providesStrToVal(ctx.String(flagProvides))
 	if err != nil {
 		return err
 	}
 
-	searchTime := ctx.Uint(flagSearchTime)
+	searchTime := ctx.Uint64(flagSearchTime)
 
 	c := newRRPClient(ctx)
-	peerOffers, err := c.QueryAll(provides, uint64(searchTime))
+	peerOffers, err := c.QueryAll(provides, searchTime)
 	if err != nil {
 		return err
 	}
 
 	for i, po := range peerOffers {
+		if i > 0 {
+			fmt.Println("---")
+		}
 		fmt.Printf("Peer %d:\n", i)
 		fmt.Printf("  Peer ID: %v\n", po.PeerID)
 		fmt.Printf("  Offers:\n")
@@ -751,7 +742,7 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 
 func printOffer(o *types.Offer, index int, indent string) {
 	if index > 0 {
-		fmt.Printf("%s----------\n", indent)
+		fmt.Printf("%s---\n", indent)
 	}
 	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
 	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
@@ -759,4 +750,17 @@ func printOffer(o *types.Offer, index int, indent string) {
 	fmt.Printf("%sMax Amount: %s\n", indent, common.FmtFloat(o.MaxAmount))
 	fmt.Printf("%sExchange Rate: %s\n", indent, common.FmtFloat(float64(o.ExchangeRate)))
 	fmt.Printf("%sETH Asset: %s\n", indent, o.EthAsset)
+}
+
+func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
+	var provides types.ProvidesCoin
+
+	// The provides flag value defaults to XMR, but the user can still specify the empty
+	// string explicitly, which they can do to search the empty DHT namespace for all
+	// peers. `NewProvidesCoin` gives an error if you pass the empty string, so we
+	// special case the empty string.
+	if providesStr == "" {
+		return provides, nil
+	}
+	return types.NewProvidesCoin(providesStr)
 }
