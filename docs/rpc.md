@@ -19,7 +19,7 @@ Returns:
 Example:
 
 ```bash
-curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 '{"jsonrpc":"2.0","id":"0","method":"net_addresses","params":{}}' \
 | jq .
 ```
@@ -28,8 +28,10 @@ curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
   "jsonrpc": "2.0",
   "result": {
     "addresses": [
-      "/ip4/192.168.0.105/udp/9901/quic/p2p/12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
-      "/ip4/127.0.0.1/udp/9901/quic/p2p/12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv"
+      "/ip4/172.31.32.254/tcp/9900/p2p/12D3KooWQQWDJ7KA1Fwdf2ejWz9VXHKvY8cC5PB7Sf34fbEGbsgV",
+      "/ip4/127.0.0.1/tcp/9900/p2p/12D3KooWQQWDJ7KA1Fwdf2ejWz9VXHKvY8cC5PB7Sf34fbEGbsgV",
+      "/ip4/172.31.32.254/udp/9900/quic-v1/p2p/12D3KooWQQWDJ7KA1Fwdf2ejWz9VXHKvY8cC5PB7Sf34fbEGbsgV",
+      "/ip4/127.0.0.1/udp/9900/quic-v1/p2p/12D3KooWQQWDJ7KA1Fwdf2ejWz9VXHKvY8cC5PB7Sf34fbEGbsgV"
     ]
   },
   "id": "0"
@@ -51,7 +53,7 @@ Returns:
 Example:
 
 ```bash
-curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 '{"jsonrpc":"2.0","id":"0","method":"net_discover","params":{"searchTime":3}}' \
 | jq
 ```
@@ -62,7 +64,7 @@ curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
     "peerIDs": [
       [
         "12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7",
-        "12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7"
+        "12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv"
       ]
     ]
   },
@@ -114,7 +116,7 @@ curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
             "minAmount": 0.1,
             "maxAmount": 1,
             "provides": "XMR",
-            "exchangeRate": 0.5,
+            "exchangeRate": 0.49,
             "ethAsset": "ETH"
           }
         ]
@@ -335,19 +337,22 @@ Returns:
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_cancel","params":{"id": "17c01ad48a1f75c1456932b12cb51d430953bb14ffe097195b1f8cace7776e70"}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"status":"Success"},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_cancel",
+"params":{"offerID": "0x17c01ad48a1f75c1456932b12cb51d430953bb14ffe097195b1f8cace7776e70"}}'
+```
+```json
+{"jsonrpc":"2.0","result":{"status":"Success"},"id":"0"}
 ```
 
 ### `swap_getOngoing`
 
-Gets information about the ongoing swap, if there is one.
+Gets information for the specified ongoing swap.
 
 Parameters:
-- none
+- `offerID`: the swap's ID.
 
 Returns:
-- `id`: the swap's ID.
 - `provided`: the coin provided during the swap.
 - `providedAmount`: the amount of coin provided during the swap.
 - `receivedAmount`: the amount of coin expected to be received during the swap.
@@ -356,8 +361,22 @@ Returns:
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getOngoing","params":{"id":"17c01ad48a1f75c1456932b12cb51d430953bb14ffe097195b1f8cace7776e70"}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"id":3,"provided":"ETH","providedAmount":0.05,"receivedAmount":0,"exchangeRate":0,"status":"ongoing"},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getOngoing",
+"params":{"offerID":"0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381"}}' | jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "provided": "ETH",
+    "providedAmount": 0.01,
+    "receivedAmount": 1,
+    "exchangeRate": 0.01,
+    "status": "ETHLocked"
+  },
+  "id": "0"
+}
 ```
 
 ### `swap_getPastIDs`
@@ -372,8 +391,23 @@ Returns:
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getPastIDs","params":{}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"ids":["7492ceb4d0f5f45ecd5d06923b35cae406d1406cd685ce1ba184f2a40c683ac2","17c01ad48a1f75c1456932b12cb51d430953bb14ffe097195b1f8cace7776e70"]},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getPastIDs","params":{}}' | jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "ids": [
+      "0x6ca19b496426bfbb97ccab16473db4cf50faf77074809701c8478afe7d8370d9",
+      "0x9549685d15cd9a136111db755e5440b4c95e266ba39dc0c84834714d185dc6f0",
+      "0xa55ba276c4c6bc77713776cd50fa2d20d31b8b26ed67be458e0c1a5794721587",
+      "0x2ed05e12ecd45d992b523ee52a516f51d15480d4b7805a29733f9f000efc17d3",
+      "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381"
+    ]
+  },
+  "id": "0"
+}
 ```
 
 ### `swap_getPast`
@@ -381,7 +415,7 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_
 Gets a past swap information for the given swap ID.
 
 Paramters:
-- `id`: the swap ID.
+- `offerID`: the swap ID.
 
 Returns:
 - `provided`: the coin provided during the swap.
@@ -392,8 +426,23 @@ Returns:
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getPast","params":{"id": "17c01ad48a1f75c1456932b12cb51d430953bb14ffe097195b1f8cace7776e70"}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"provided":"ETH","providedAmount":0.05,"receivedAmount":1,"exchangeRate":20,"status":"success"},"id":"0"}
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getPast",
+"params":{"offerID": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381"}}' \
+| jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "provided": "ETH",
+    "providedAmount": 0.01,
+    "receivedAmount": 1,
+    "exchangeRate": 0.01,
+    "status": "Success"
+  },
+  "id": "0"
+}
 ```
 
 ### `swap_getStage`
@@ -409,8 +458,20 @@ Returns:
 
 Example:
 ```bash
-curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_getStage","params":{"id": "17c01ad48a1f75c1456932b12cb51d430953bb14ffe097195b1f8cace7776e70"}}' -H 'Content-Type: application/json'
-# {"jsonrpc":"2.0","result":{"stage":"KeysExchanged", "info":"keys have been exchanged, but no value has been locked"},"id":"0"}
+curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getStage",
+"params":{"offerID": "0xbe6cb622906510e69339fa5d8e7d60c90bad762deb8d06985466dd9144809040"}}' \
+| jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "stage": "KeysExchanged",
+    "info": "keys have been exchanged, but no value has been locked"
+  },
+  "id": "0"
+}
 ```
 
 ## websocket subscriptions
@@ -481,7 +542,7 @@ Example:
 ```bash
 wscat -c ws://localhost:5001/ws
 # Connected (press CTRL+C to quit)
-# > {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"multiaddr": "/ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID": "cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9", "providesAmount": 0.05}, "id": 0}
+# > {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"multiaddr": "/ip4/192.168.0.101/udp/9934/quic-v1/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7", "offerID": "cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9", "providesAmount": 0.05}, "id": 0}
 # < {"jsonrpc":"2.0","result":{"id":0},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"ExpectingKeys"},"error":null,"id":null}
 # < {"jsonrpc":"2.0","result":{"stage":"ETHLocked"},"error":null,"id":null}
