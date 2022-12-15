@@ -3,6 +3,7 @@ package common
 import (
 	"os"
 	"path"
+	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -77,4 +78,16 @@ func (c Config) LibP2PKeyFile() string {
 // depends on current value of the data dir.
 func (c Config) EthKeyFileName() string {
 	return path.Join(c.DataDir, DefaultEthKeyFileName)
+}
+
+// SwapTimeoutFromEnvironment returns the duration between swap timeouts given the environment.
+func SwapTimeoutFromEnvironment(env Environment) time.Duration {
+	switch env {
+	case Mainnet, Stagenet:
+		return time.Hour
+	case Development:
+		return time.Minute * 2
+	default:
+		panic("invalid environment")
+	}
 }
