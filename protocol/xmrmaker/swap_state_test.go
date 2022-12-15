@@ -167,8 +167,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingAddress))
 
-	duration, err := time.ParseDuration("2s")
-	require.NoError(t, err)
+	duration := common.SwapTimeoutFromEnvironment(common.Development)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
 	addr := s.ContractAddr()
@@ -193,7 +192,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	_, s := newTestSwapState(t)
 	defer s.cancel()
-	s.nextExpectedEvent = EventETHLockedType
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -203,27 +201,20 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingAddress))
 
-	duration, err := time.ParseDuration("15s")
+	duration, err := time.ParseDuration("5s")
 	require.NoError(t, err)
-	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
+	_ = newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
 	addr := s.ContractAddr()
 
-	msg = &message.NotifyETHLocked{
-		Address:        addr.String(),
-		ContractSwapID: s.contractSwapID,
-		TxHash:         hash.String(),
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
-	}
-
-	err = s.HandleProtocolMessage(msg)
+	err = s.setContract(addr)
 	require.NoError(t, err)
-
-	resp := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyXMRLockType, resp.Type())
+	err = s.setNextExpectedEvent(EventContractReadyType)
+	require.NoError(t, err)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, EventContractReadyType, s.nextExpectedEvent)
+
+	go s.runT0ExpirationHandler()
 
 	for status := range s.offerExtra.StatusCh {
 		if status == types.CompletedSuccess {
