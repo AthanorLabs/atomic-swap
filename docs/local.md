@@ -45,7 +45,7 @@ logs, our you can obtain it with this command:
 ```
 Pick the localhost address and assign it to a variable. For example (your value will be different):
 ```bash
-BOOT_NODE=/ip4/127.0.0.1/udp/9933/quic/p2p/12D3KooWHRi24PVZ6TBnQJHdVyewDRcKFZtYV3qmB4KQo8iMyqik
+BOOT_NODE=/ip4/127.0.0.1/udp/9933/quic-v1/p2p/12D3KooWHRi24PVZ6TBnQJHdVyewDRcKFZtYV3qmB4KQo8iMyqik
 ```
 Now get the ethereum contract address that Alice deployed to. This can be pulled from the Alice's logs,
 the file ..., or if you have `jq` installed (available via `sudo apt install jq`), you can set a
@@ -93,35 +93,41 @@ Alternatively, you can make the offer via websockets and get notified when the s
 
 Now, we can have Alice begin discovering peers who have offers advertised.
 ```bash
-./swapcli discover --provides XMR --search-time 3
-# [[/ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
+./bin/swapcli discover --provides XMR --search-time 3
+# [[/ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
 Query the returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
 ```bash
-./swapcli query --multiaddr /ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
+./bin/swapcli query --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
 # Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
 ```
 
 Now, we can tell Alice to initiate the protocol w/ the peer (Bob), the offer (copy the Offer id from above), and a desired amount to swap:
 ```bash
-./swapcli take --multiaddr /ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
+./bin/swapcli take \
+  --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv \
+  --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 \
+  --provides-amount 0.05
 # Initiated swap with ID=0
 ```
 
 Alternatively, you can take the offer via websockets and get notified when the swap status updates:
 ```bash
-./swapcli take --multiaddr /ip4/127.0.0.1/udp/9934/quic/p2p/12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05 --subscribe --swapd-port 5001
+./bin/swapcli take \
+  --peer-id 12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 \
+  --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 \
+  --provides-amount 0.05 --subscribe --swapd-port 5001
 ```
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.
 
 To query the information for an ongoing swap, you can run:
 ```bash
-./swapcli get-ongoing-swap
+./bin/swapcli get-ongoing-swap
 ```
 
 To query information for a past swap using its ID, you can run:
 ```bash
-./swapcli get-past-swap --offer-id <id>
+./bin/swapcli get-past-swap --offer-id <id>
 ```

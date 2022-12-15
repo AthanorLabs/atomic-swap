@@ -128,8 +128,8 @@ func NewHost(cfg *Config) (*host, error) {
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/%s/udp/%d/quic", listenIP, cfg.Port),
 			fmt.Sprintf("/ip4/%s/tcp/%d", listenIP, cfg.Port),
+			fmt.Sprintf("/ip4/%s/udp/%d/quic-v1", listenIP, cfg.Port),
 		), libp2p.Identity(key),
 		libp2p.NATPortMap(),
 		libp2p.EnableRelayService(),

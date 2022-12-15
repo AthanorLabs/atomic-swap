@@ -37,7 +37,7 @@ create-eth-keys() {
 }
 
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
-ALICE_MULTIADDR=/ip4/127.0.0.1/udp/9933/quic/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
+ALICE_MULTIADDR=/ip4/127.0.0.1/udp/9933/quic-v1/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 LOG_LEVEL=debug
 

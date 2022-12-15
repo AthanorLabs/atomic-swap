@@ -17,7 +17,7 @@ func TestGenerateAndSaveKey(t *testing.T) {
 
 func Test_stringsToAddrInfos(t *testing.T) {
 	bootnodes := []string{
-		"/ip4/192.168.0.101/udp/9934/quic/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv",
+		"/ip4/192.168.0.101/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv",
 		"/ip4/192.168.0.101/tcp/9934/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv",
 	}
 	addrInfos, err := stringsToAddrInfos(bootnodes)
