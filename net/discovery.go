@@ -103,18 +103,18 @@ func (d *discovery) advertise() time.Duration {
 		return tryAdvertiseTimeout
 	}
 
+	_, err = d.rd.Advertise(d.ctx, "")
+	if err != nil {
+		log.Debugf("failed to advertise in the DHT: err=%s", err)
+		return tryAdvertiseTimeout
+	}
+
 	for _, provides := range d.provides {
 		_, err = d.rd.Advertise(d.ctx, string(provides))
 		if err != nil {
 			log.Debugf("failed to advertise in the DHT: err=%s", err)
 			return tryAdvertiseTimeout
 		}
-	}
-
-	_, err = d.rd.Advertise(d.ctx, "")
-	if err != nil {
-		log.Debugf("failed to advertise in the DHT: err=%s", err)
-		return tryAdvertiseTimeout
 	}
 
 	return defaultAdvertiseTTL
