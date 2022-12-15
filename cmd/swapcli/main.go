@@ -303,6 +303,7 @@ var (
 
 	swapdPortFlag = &cli.UintFlag{
 		Name:    flagSwapdPort,
+		Aliases: []string{"p"},
 		Usage:   "RPC port of swap daemon",
 		Value:   common.DefaultSwapdPort,
 		EnvVars: []string{"SWAPD_PORT"},
@@ -565,7 +566,7 @@ func runTake(ctx *cli.Context) error {
 			return err
 		}
 
-		fmt.Printf("Initiated swap with ID %s\n", offerID)
+		fmt.Printf("Initiated swap with offer ID %s\n", offerID)
 
 		for stage := range statusCh {
 			fmt.Printf("> Stage updated: %s\n", stage)
@@ -582,7 +583,7 @@ func runTake(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Initiated swap with ID %s\n", offerID)
+	fmt.Printf("Initiated swap with offer ID %s\n", offerID)
 	return nil
 }
 
@@ -593,7 +594,13 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Past swap IDs: %v\n", ids)
+	fmt.Println("Past swap offer IDs:")
+	for i, id := range ids {
+		fmt.Printf("%d: %s\n", i, id)
+	}
+	if len(ids) == 0 {
+		fmt.Println("[none]")
+	}
 	return nil
 }
 
@@ -606,7 +613,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
+	fmt.Printf("Provided: %s\nProvidedAmount: %v\nReceivedAmount: %v\nExchangeRate: %v\nStatus: %s\n",
 		info.Provided,
 		info.ProvidedAmount,
 		info.ReceivedAmount,
@@ -706,6 +713,9 @@ func runGetOffers(ctx *cli.Context) error {
 	fmt.Println("Offers:")
 	for i, offer := range resp.Offers {
 		printOffer(offer, i, "  ")
+	}
+	if len(resp.Offers) == 0 {
+		fmt.Println("[no offers]")
 	}
 
 	return nil
