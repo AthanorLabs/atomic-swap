@@ -109,7 +109,7 @@ Example output:
 Published:
 	Offer ID:  0x09dd41c7b8620cdc3716463dc947a11edf3af45ff07c8b0ff89dd23592e732ca
 	Peer ID:   12D3KooWK7989g6xmAaEsKFPuZTj2CVknRxQuk7dFL55CC1rpEWW
-	Taker Min: 0.005000000000000001 ETH
+	Taker Min: 0.005 ETH
 	Taker Max: 0.05 ETH
 ```
 
@@ -131,7 +131,7 @@ Peer 0: 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp
 ```
 
 Query the returned peer to find the range of XMR they are willing to swap and at what exchange rate.
-Note: You need to update the peer ID below with the one from the output in the previous set.
+Note: You need to update the peer ID below with the one from your output in the previous step.
 ```bash
 ./bin/swapcli query --peer-id 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp
 ```

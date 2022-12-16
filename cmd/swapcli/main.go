@@ -358,7 +358,7 @@ func runPeers(ctx *cli.Context) error {
 		fmt.Printf("%d: %s\n", i+1, a)
 	}
 	if len(resp.Addrs) == 0 {
-		fmt.Println("[... none found ...]")
+		fmt.Println("[none]")
 	}
 	return nil
 }
@@ -395,6 +395,9 @@ func runDiscover(ctx *cli.Context) error {
 
 	for i, peerID := range peerIDs {
 		fmt.Printf("Peer %d: %v\n", i, peerID)
+	}
+	if len(peerIDs) == 0 {
+		fmt.Println("[none]")
 	}
 
 	return nil

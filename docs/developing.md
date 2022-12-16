@@ -8,7 +8,7 @@ Follow the [build instructions](./build.md) to ensure you have Go installed and 
 
 Follow the instructions [here](local.md) to set up your local Alice (ETH-holder, XMR-wanter) and Bob (XMR-holder, ETH-wanter) nodes. 
 
-You can use the script `scripts/setup-env.sh` to quickly set up a local monerod-test and
+You can use the script `scripts/setup-env.sh` to quickly set up local monerod-test and
 ganache instances. If you need to later kill `ganache`, `monerod`, `monero-wallet-rpc`, or
 `swapd` instances, you can use `scripts/cleanup-test-processes.sh`.
 
