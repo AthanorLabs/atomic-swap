@@ -224,7 +224,9 @@ func (h *host) Start() error {
 
 	// ignore error - node should still be able to run without connecting to
 	// bootstrap nodes (for now)
-	_ = h.bootstrap()
+	if err := h.bootstrap(); err != nil {
+		return err
+	}
 
 	go h.logPeers()
 
@@ -409,9 +411,20 @@ func isEOF(err error) bool {
 
 // bootstrap connects the host to the configured bootnodes
 func (h *host) bootstrap() error {
+
+	if len(h.bootnodes) == 0 {
+		log.Warnf("Bootstraping peers skipped, no bootnodes found")
+		return nil
+	}
+
+	selfID := h.PeerID()
+
 	var failed uint64 = 0
 	var wg sync.WaitGroup
 	for _, bn := range h.bootnodes {
+		if bn.ID == selfID {
+			continue
+		}
 		h.h.Peerstore().AddAddrs(bn.ID, bn.Addrs, peerstore.PermanentAddrTTL)
 		log.Debugf("Bootstrapping to peer: %s (%s)", bn, h.h.Network().Connectedness(bn.ID))
 		wg.Add(1)
@@ -419,7 +432,7 @@ func (h *host) bootstrap() error {
 			defer wg.Done()
 			err := h.h.Connect(h.ctx, p)
 			if err != nil {
-				log.Debugf("failed to bootstrap to peer: err=%s", err)
+				log.Debugf("Failed to bootstrap to peer %s: err=%s", p.ID, err)
 				atomic.AddUint64(&failed, 1)
 			}
 			log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(p.ID))
@@ -427,7 +440,7 @@ func (h *host) bootstrap() error {
 	}
 	wg.Wait()
 
-	if failed == uint64(len(h.bootnodes)) && len(h.bootnodes) != 0 {
+	if failed == uint64(len(h.bootnodes)) {
 		return errFailedToBootstrap
 	}
 
