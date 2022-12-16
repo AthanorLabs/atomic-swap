@@ -26,6 +26,6 @@ func Test_stringsToAddrInfos(t *testing.T) {
 	require.Equal(t, "12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv",
 		addrInfos[0].ID.String())
 	require.Len(t, addrInfos[0].Addrs, 2)
-	require.Equal(t, "/ip4/192.168.0.101/udp/9934/quic", addrInfos[0].Addrs[0].String())
+	require.Equal(t, "/ip4/192.168.0.101/udp/9934/quic-v1", addrInfos[0].Addrs[0].String())
 	require.Equal(t, "/ip4/192.168.0.101/tcp/9934", addrInfos[0].Addrs[1].String())
 }
