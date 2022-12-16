@@ -415,15 +415,15 @@ func (h *host) bootstrap() error {
 		h.h.Peerstore().AddAddrs(bn.ID, bn.Addrs, peerstore.PermanentAddrTTL)
 		log.Debugf("Bootstrapping to peer: %s (%s)", bn, h.h.Network().Connectedness(bn.ID))
 		wg.Add(1)
-		go func() {
+		go func(p peer.AddrInfo) {
 			defer wg.Done()
-			err := h.h.Connect(h.ctx, bn)
+			err := h.h.Connect(h.ctx, p)
 			if err != nil {
 				log.Debugf("failed to bootstrap to peer: err=%s", err)
 				atomic.AddUint64(&failed, 1)
 			}
-			log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(bn.ID))
-		}()
+			log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(p.ID))
+		}(bn)
 	}
 	wg.Wait()
 
