@@ -41,8 +41,8 @@ const (
 
 	// default RPC port
 	defaultRPCPort         = common.DefaultSwapdPort
-	defaultXMRTakerRPCPort = defaultRPCPort + 1
-	defaultXMRMakerRPCPort = defaultRPCPort + 2
+	defaultXMRTakerRPCPort = defaultRPCPort
+	defaultXMRMakerRPCPort = defaultXMRTakerRPCPort + 1
 )
 
 var (

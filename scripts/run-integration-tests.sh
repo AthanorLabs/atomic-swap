@@ -144,7 +144,7 @@ start-daemons() {
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
-		--rpc-port 5003 \
+		--rpc-port 5002 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
 		"--contract-address=${CONTRACT_ADDR}"
 

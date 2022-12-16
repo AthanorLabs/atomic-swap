@@ -32,11 +32,11 @@ const (
 	generateBlocksEnv = "GENERATEBLOCKS"
 	falseStr          = "false"
 
-	defaultXMRTakerSwapdEndpoint   = "http://localhost:5001"
-	defaultXMRTakerSwapdWSEndpoint = "ws://localhost:5001/ws"
-	defaultXMRMakerSwapdEndpoint   = "http://localhost:5002"
-	defaultXMRMakerSwapdWSEndpoint = "ws://localhost:5002/ws"
-	defaultCharlieSwapdWSEndpoint  = "ws://localhost:5003/ws"
+	defaultXMRTakerSwapdEndpoint   = "http://localhost:5000"
+	defaultXMRTakerSwapdWSEndpoint = "ws://localhost:5000/ws"
+	defaultXMRMakerSwapdEndpoint   = "http://localhost:5001"
+	defaultXMRMakerSwapdWSEndpoint = "ws://localhost:5001/ws"
+	defaultCharlieSwapdWSEndpoint  = "ws://localhost:5002/ws"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
 
