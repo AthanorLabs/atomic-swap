@@ -9,8 +9,19 @@ export type JSONRPCResult<Data> = {
 
 // Create a instance of axios to use the same base url.
 const axiosAPI = axios.create({
-    baseURL: "http://127.0.0.1:5001",
+    baseURL: `http://127.0.0.1:${readSwapdPortNumber()}`,
 });
+
+function readSwapdPortNumber() {
+    const envSwapdPort = process.env.SWAPD_PORT;
+    if (envSwapdPort) {
+        const portNumber = Number.parseInt(envSwapdPort);
+        if (!isNaN(portNumber)) {
+            return portNumber;
+        }
+    }
+    return 5001;
+}
 
 export const rpcRequest = <TypeResult = any>(method: string, params: Record<string, any> = {}): Promise<JSONRPCResult<TypeResult>> => {
     const headers = {
