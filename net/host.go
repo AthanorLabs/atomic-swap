@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	badger "github.com/ipfs/go-ds-badger2"
@@ -21,6 +22,7 @@ import (
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
@@ -222,7 +224,7 @@ func (h *host) Start() error {
 
 	// ignore error - node should still be able to run without connecting to
 	// bootstrap nodes (for now)
-	_ = h.bootstrap() // TODO: Is this needed? Was it already done when initializing the DHT?
+	_ = h.bootstrap()
 
 	go h.logPeers()
 
@@ -407,18 +409,25 @@ func isEOF(err error) bool {
 
 // bootstrap connects the host to the configured bootnodes
 func (h *host) bootstrap() error {
-	failed := 0
-	for _, addrInfo := range h.bootnodes {
-		log.Debugf("bootstrapping to peer: %s (%s)", addrInfo, h.h.Network().Connectedness(addrInfo.ID))
-		err := h.h.Connect(h.ctx, addrInfo)
-		if err != nil {
-			log.Debugf("failed to bootstrap to peer: err=%s", err)
-			failed++
-		}
-		log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(addrInfo.ID))
+	var failed uint64 = 0
+	var wg sync.WaitGroup
+	for _, bn := range h.bootnodes {
+		h.h.Peerstore().AddAddrs(bn.ID, bn.Addrs, peerstore.PermanentAddrTTL)
+		log.Debugf("Bootstrapping to peer: %s (%s)", bn, h.h.Network().Connectedness(bn.ID))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := h.h.Connect(h.ctx, bn)
+			if err != nil {
+				log.Debugf("failed to bootstrap to peer: err=%s", err)
+				atomic.AddUint64(&failed, 1)
+			}
+			log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(bn.ID))
+		}()
 	}
+	wg.Wait()
 
-	if failed == len(h.bootnodes) && len(h.bootnodes) != 0 {
+	if failed == uint64(len(h.bootnodes)) && len(h.bootnodes) != 0 {
 		return errFailedToBootstrap
 	}
 
