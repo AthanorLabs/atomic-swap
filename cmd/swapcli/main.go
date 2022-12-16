@@ -341,7 +341,7 @@ func runAddresses(ctx *cli.Context) error {
 		fmt.Printf("%d: %s\n", i+1, a)
 	}
 	if len(resp.Addrs) == 0 {
-		fmt.Println("... waiting for 3 peers to agree on public address(es)")
+		fmt.Println("[none]")
 	}
 	return nil
 }
