@@ -13,16 +13,27 @@ You can change the directory with the command `npm config set prefix ~/.npm-pack
 [this document](https://github.com/sindresorhus/guides/blob/main/npm-global-without-sudo.md)
 if you want a more sophisticated setup.
 
-#### Set up development environment
+### Set up development environment
 
 Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you.
 You can invoke it directly, but the next script below will run it if there is no symbolic link named
 `monero-bin` to a monero installation in the project's root directory.
 
-Execute the `scripts/setup-env.sh` script to launch ganache, an ethereum simulator, and monerod in regtest
-mode. "regtest" mode is stand-alone (non-networked) mode of monerod for testing purposes.
+Use this command to launch ganache, an ethereum simulator, and monerod in regtest mode.
+"regtest" mode is stand-alone (non-networked) mode of monerod for testing purposes.
+Warning: the command below will kill and running instances of `ganache`, `monerod`,
+`monero-wallet-rpc` or `swapd` that are currently running.
+```bash
+./scripts/setup-env.sh
+```
 
-#### Build and run
+To avoid confusion, delete any data directories from old runs of `swapd` that used
+the flags `--dev-xmrtaker` or `--dev-xmrmaker`:
+```bash
+rm -rf /tmp/xmrtaker-* /tmp/xmrmaker-*
+```
+
+### Build the Executables
 
 Build binary:
 ```bash
@@ -31,19 +42,22 @@ make build
 
 This creates `swapd` and `swapcli` binaries in the `bin` directory at the top of the project.
 
-To run as Alice, execute in terminal 1:
+### Launch Alice and Bob's swapd Instances
+
+To launch Alice's swapd instance, use this command:
 ```bash
-./swapd --dev-xmrtaker --deploy
+./bin/swapd --dev-xmrtaker --deploy &> alice.log &
 ```
 
-Alice will print out a libp2p node address, for example
-`/ip4/127.0.0.1/udp/9933/quic/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH`.
-This will be used for Bob to connect. You can either grab this address from the
-logs, our you can obtain it with this command:
+We are going to use Alice's instance as a bootnode for Bob's instance. To configure this,
+we need one of the multi-addresses that Alice is listening on. Alice will be listing both
+on a TCP port and a UDP/QUIC port, it doesn't matter which one you pick. Use this command
+to list Alice's listening libp2p multi-addresses:
 ```bash
-./swapcli addresses
+./bin/swapcli addresses
 ```
-Pick the localhost address and assign it to a variable. For example (your value will be different):
+Assign the value you picked to a variable. Your value will be different, this is just an
+example below:
 ```bash
 BOOT_NODE=/ip4/127.0.0.1/udp/9933/quic-v1/p2p/12D3KooWHRi24PVZ6TBnQJHdVyewDRcKFZtYV3qmB4KQo8iMyqik
 ```
@@ -51,80 +65,119 @@ Now get the ethereum contract address that Alice deployed to. This can be pulled
 the file ..., or if you have `jq` installed (available via `sudo apt install jq`), you can set a
 variable like this:
 ```bash
-CONTRACT_ADDR=$(jq -r .ContractAddress /tmp/xmrtaker/contract-address.json)
+CONTRACT_ADDR=$(jq -r .ContractAddress /tmp/xmrtaker-*/contract-address.json)
 ```
 
-Now start Bob's swapd instance in terminal 2:
+Now start Bob's swapd instance:
 ```bash
-./swapd --dev-xmrmaker --bootnodes "${BOOT_NODE}" --contract-address "${CONTRACT_ADDR}"
+./bin/swapd --dev-xmrmaker --bootnodes "${BOOT_NODE}" --contract-address "${CONTRACT_ADDR}" &> bob.log &
 ```
+
+### Using swapcli To Check Balances
+
+`swapcli` is an executable to interact with a `swapd` instance via it's RPC port on the
+local host (`127.0.0.1`). The current security model of swapd assumes connections
+originating from the local host are authorized, so you should not run `swapd` for
+production swaps on multi-user hosts or hosts with malicious software running on them.
 
 Note: when using the `--dev-xmrtaker` and `--dev-xmrmaker` flags, Alice's RPC server runs
-on http://localhost:5001 and Bob's runs on http://localhost:5002 by default.
+on http://localhost:5000 (the default port) and Bob's runs on http://localhost:5001. Since
+Bob's `swapd` RPC port is not the default, you will need to pass `--swapd-port 5001` to
+`swapcli` when interacting with his daemon.
 
-Now, in terminal 3, we will interact with the swap daemon using `swapcli`.
+Alice and Bob are both using Ethereum wallet keys that are prefunded by Ganache.
+Background Monero Monero mining was started for Bob, because we used the `--dev-xmrmaker`
+flag.
 
-First we need mine some XMR for Bob. Alice already has ETH, because she is using
-a prefunded by ganache address. You can see the balances for Bob with the following
-command:
+You can check Alice's balance with this command:
 ```bash
-./swapcli balances --swapd-port 5002
+./bin/swapcli balances
 ```
-Note that Alice is on the default swapd port of 5001, so the `--swapd-port` flag is optional
-when interacting with her daemon.
-
-To mine some monero blocks for Bob, you can use our bash shell function shown below:
+And Bob's balances with this command:
 ```bash
-source scripts/testlib.sh
-mine-monero-for-swapd 5002
+./bin/swapcli balances --swapd-port 5001
 ```
-Now you can use the second to last command to see Bob's updated monero balance.
+
+### Make a Swap Offer
 
 Next we need Bob to make an offer and advertise it, so that Alice can take it:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5002
-# Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
+./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5001
+```
+Example output:
+```
+Published:
+	Offer ID:  0x09dd41c7b8620cdc3716463dc947a11edf3af45ff07c8b0ff89dd23592e732ca
+	Peer ID:   12D3KooWK7989g6xmAaEsKFPuZTj2CVknRxQuk7dFL55CC1rpEWW
+	Taker Min: 0.005000000000000001 ETH
+	Taker Max: 0.05 ETH
 ```
 
-Alternatively, you can make the offer via websockets and get notified when the swap is taken:
+Alternatively, you can make the offer via websockets and get notified when the swap is
+taken. This option will block waiting for update messages, so you will need to dedicate a
+separate terminal for it:
 ```bash
-./swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5002 --subscribe
+./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5001 --subscribe
 ```
 
-Now, we can have Alice begin discovering peers who have offers advertised.
+### Discover Swap Offers
+
+Now, Alice can discover peers who have advertised offers.
 ```bash
 ./bin/swapcli discover --provides XMR --search-time 3
-# [[/ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
+```
+```
+Peer 0: 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp
 ```
 
-Query the returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
+Query the returned peer to find the range of XMR they are willing to swap and at what exchange rate.
+Note: You need to update the peer ID below with the one from the output in the previous set.
 ```bash
-./bin/swapcli query --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
-# Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
+./bin/swapcli query --peer-id 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp
+```
+```
+Offer ID: 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb
+Provides: XMR
+Min Amount: 0.1
+Max Amount: 1
+Exchange Rate: 0.05
+ETH Asset: ETH
 ```
 
-Now, we can tell Alice to initiate the protocol w/ the peer (Bob), the offer (copy the Offer id from above), and a desired amount to swap:
+### Take a Swap Offers
+
+Alice now has the information needed to start a swap with Bob. You'll need Bob's peer ID and his offer ID
+from the previous step to update the command below:
 ```bash
 ./bin/swapcli take \
-  --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv \
-  --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 \
+  --peer-id 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp \
+  --offer-id 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb \
   --provides-amount 0.05
-# Initiated swap with ID=0
 ```
 
-Alternatively, you can take the offer via websockets and get notified when the swap status updates:
+Alternatively, you can take the offer via websockets and get notified when the swap status updates.
 ```bash
 ./bin/swapcli take \
-  --peer-id 12D3KooWHLUrLnJtUbaGzTSi6azZavKhNgUZTtSiUZ9Uy12v1eZ7 \
-  --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 \
-  --provides-amount 0.05 --subscribe --swapd-port 5001
+  --peer-id 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp \
+  --offer-id 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb \
+  --provides-amount 0.05 --subscribe
+```
+```
+Initiated swap with offer ID 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb
+> Stage updated: ExpectingKeys
+> Stage updated: ETHLocked
+> Stage updated: ContractReady
+> Stage updated: Success
 ```
 
-If all goes well, you should see Alice and Bob successfully exchange messages and execute the swap protocol. The result is that Alice now owns the private key to a Monero account (and is the only owner of that key) and Bob has the ETH transferred to him. On Alice's side, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step for Alice.
+If all goes well, you should see Alice and Bob successfully exchange messages and execute
+the swap protocol.
+
+### Other swapcli Commands
 
 To query the information for an ongoing swap, you can run:
 ```bash
-./bin/swapcli get-ongoing-swap
+./bin/swapcli get-ongoing-swap --offer-id <id>
 ```
 
 To query information for a past swap using its ID, you can run:
