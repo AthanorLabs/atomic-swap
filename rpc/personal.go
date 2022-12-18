@@ -36,9 +36,13 @@ func (s *PersonalService) SetSwapTimeout(_ *http.Request, req *SetSwapTimeoutReq
 	return nil
 }
 
+type GetSwapTimeoutResponse struct {
+	Timeout uint64 `json:"timeout"` // timeout in seconds
+}
+
 // GetSwapTimeout ...
-func (s *PersonalService) GetSwapTimeout(_ *http.Request, _ *interface{}, resp uint64) error {
-	resp = uint64(s.pb.SwapTimeout().Seconds())
+func (s *PersonalService) GetSwapTimeout(_ *http.Request, _ *interface{}, resp *GetSwapTimeoutResponse) error {
+	resp.Timeout = uint64(s.pb.SwapTimeout().Seconds())
 	return nil
 }
 

@@ -22,14 +22,14 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 	return nil
 }
 
-func (c *Client) GetSwapTimeout() (uint64, error) {
+func (c *Client) GetSwapTimeout() (*rpc.GetSwapTimeoutResponse, error) {
 	const (
 		method = "personal_getSwapTimeout"
 	)
 
-	var swapTimeout uint64
+	swapTimeout := &rpc.GetSwapTimeoutResponse{}
 	if err := c.Post(method, nil, swapTimeout); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	return swapTimeout, nil

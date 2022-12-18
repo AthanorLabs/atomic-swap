@@ -692,11 +692,11 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 
 func runGetSwapTimeout(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	duration, err := c.GetSwapTimeout()
+	resp, err := c.GetSwapTimeout()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Swap Timeout Duration: %d\n", duration)
+	fmt.Printf("Swap Timeout Duration: %d seconds\n", resp.Timeout)
 	return nil
 }
