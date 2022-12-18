@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -47,7 +48,7 @@ func CheckSwapFactoryContractCode(
 	expectedCode := ethcommon.FromHex(expectedSwapFactoryBytecodeHex)
 
 	if len(code) != len(expectedCode) {
-		return ethcommon.Address{}, errInvalidSwapContract
+		return ethcommon.Address{}, fmt.Errorf("length mismatch: %w", errInvalidSwapContract)
 	}
 
 	allZeroAddr := ethcommon.Address{}
