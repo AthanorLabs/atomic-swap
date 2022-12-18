@@ -145,7 +145,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			return
 		}
 
-		log.Debugf("received proto=%s message from peer=%s type=%s",
+		log.Debugf("received protocol=%s message from peer=%s type=%s",
 			stream.Protocol(), stream.Conn().RemotePeer(), msg.Type())
 
 		err = s.HandleProtocolMessage(msg)
