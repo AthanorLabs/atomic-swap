@@ -22,6 +22,7 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 	return nil
 }
 
+// GetSwapTimeout calls personal_getSwapTimeout.
 func (c *Client) GetSwapTimeout() (*rpc.GetSwapTimeoutResponse, error) {
 	const (
 		method = "personal_getSwapTimeout"
