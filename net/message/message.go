@@ -47,7 +47,8 @@ type Message interface {
 
 // DecodeMessage decodes the given bytes into a Message
 func DecodeMessage(b []byte) (Message, error) {
-	if len(b) == 0 {
+	// 1-byte type followed by at least 2-bytes of JSON (`{}`)
+	if len(b) < 3 {
 		return nil, errors.New("invalid message bytes")
 	}
 	msgType := Type(b[0])
