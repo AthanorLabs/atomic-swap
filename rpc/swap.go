@@ -1,11 +1,14 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // SwapService handles information about ongoing or past swaps.
@@ -251,4 +254,38 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 func offerIDStringToHash(s string) (types.Hash, error) {
 	return types.HexToHash(s)
+}
+
+// SuggestedExchangeRateResponse ...
+type SuggestedExchangeRateResponse struct {
+	ETHPrice     *big.Int `json:"ethPrice"`
+	XMRPrice     *big.Int `json:"xmrPrice"`
+	ExchangeRate float64  `json:"exchangeRate"`
+}
+
+// SuggestedExchangeRate returns the current mainnet exchange rate, expressed as the XMR/ETH price.
+func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, resp *SuggestedExchangeRateResponse) error { //nolint:lll
+	ec, err := ethclient.Dial(common.MainnetEndpoint)
+	if err != nil {
+		return err
+	}
+
+	ethPrice, err := common.GetETHUSDPrice(context.Background(), ec)
+	if err != nil {
+		return err
+	}
+
+	xmrPrice, err := common.GetXMRUSDPrice(context.Background(), ec)
+	if err != nil {
+		return err
+	}
+
+	ethPriceFloat := new(big.Float).SetInt(ethPrice)
+	xmrPriceFloat := new(big.Float).SetInt(xmrPrice)
+	exchangeRate := new(big.Float).Quo(xmrPriceFloat, ethPriceFloat)
+
+	resp.ETHPrice = ethPrice
+	resp.XMRPrice = xmrPrice
+	resp.ExchangeRate, _ = exchangeRate.Float64()
+	return nil
 }

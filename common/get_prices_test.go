@@ -9,11 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// from https://chainlist.org/chain/1
-const mainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
-
 func TestGetETHUSDPrice(t *testing.T) {
-	ec, err := ethclient.Dial(mainnetEndpoint)
+	ec, err := ethclient.Dial(MainnetEndpoint)
 	require.NoError(t, err)
 
 	price, err := GetETHUSDPrice(context.Background(), ec)
@@ -22,7 +19,7 @@ func TestGetETHUSDPrice(t *testing.T) {
 }
 
 func TestGetXMRUSDPrice(t *testing.T) {
-	ec, err := ethclient.Dial(mainnetEndpoint)
+	ec, err := ethclient.Dial(MainnetEndpoint)
 	require.NoError(t, err)
 
 	price, err := GetXMRUSDPrice(context.Background(), ec)

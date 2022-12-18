@@ -13,6 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+// MainnetEndpoint is a mainnet Ethereum endpoint.
+// from https://chainlist.org/chain/1
+const MainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
+
 var (
 	functionSig = ethcrypto.Keccak256([]byte("latestRoundData()"))[:4]
 
