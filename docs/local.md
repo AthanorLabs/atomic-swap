@@ -21,8 +21,8 @@ You can invoke it directly, but the next script below will run it if there is no
 
 Use this command to launch ganache, an ethereum simulator, and monerod in regtest mode.
 "regtest" mode is stand-alone (non-networked) mode of monerod for testing purposes.
-Warning: the command below will kill and running instances of `ganache`, `monerod`,
-`monero-wallet-rpc` or `swapd` that are currently running.
+Warning: the command below will kill running instances of `ganache`, `monerod`,
+`monero-wallet-rpc` or `swapd`.
 ```bash
 ./scripts/setup-env.sh
 ```
@@ -86,8 +86,8 @@ Bob's `swapd` RPC port is not the default, you will need to pass `--swapd-port 5
 `swapcli` when interacting with his daemon.
 
 Alice and Bob are both using Ethereum wallet keys that are prefunded by Ganache.
-Background Monero Monero mining was started for Bob, because we used the `--dev-xmrmaker`
-flag.
+Background Monero mining was started for Bob, because his swapd instance used the
+`--dev-xmrmaker` flag.
 
 You can check Alice's balance with this command:
 ```bash
