@@ -110,3 +110,17 @@ func (c *Client) ClearOffers(ids []string) error {
 
 	return nil
 }
+
+// SuggestedExchangeRate calls swap_suggestedExchangeRate
+func (c *Client) SuggestedExchangeRate() (*rpc.SuggestedExchangeRateResponse, error) {
+	const (
+		method = "swap_suggestedExchangeRate"
+	)
+
+	res := &rpc.SuggestedExchangeRateResponse{}
+	if err := c.Post(method, nil, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

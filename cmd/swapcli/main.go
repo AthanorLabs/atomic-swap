@@ -282,6 +282,12 @@ var (
 					swapdPortFlag,
 				},
 			},
+			{
+				Name:   "suggested-exchange-rate",
+				Usage:  "Returns the current mainnet exchange rate based on ETH/USD and XMR/USD price feeds.",
+				Action: runSuggestedExchangeRate,
+				Flags:  []cli.Flag{swapdPortFlag},
+			},
 		},
 	}
 
@@ -679,5 +685,20 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Set timeout duration to %ds\n", duration)
+	return nil
+}
+
+func runSuggestedExchangeRate(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	resp, err := c.SuggestedExchangeRate()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Exchange rate: %v\nETH/USD Price: %v\nXMR/USD Price: %v\n",
+		resp.ExchangeRate,
+		resp.ETHPrice,
+		resp.XMRPrice,
+	)
 	return nil
 }

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 
@@ -258,13 +259,15 @@ func offerIDStringToHash(s string) (types.Hash, error) {
 
 // SuggestedExchangeRateResponse ...
 type SuggestedExchangeRateResponse struct {
-	ETHPrice     *big.Int `json:"ethPrice"`
-	XMRPrice     *big.Int `json:"xmrPrice"`
-	ExchangeRate float64  `json:"exchangeRate"`
+	ETHPrice     float64 `json:"ethPrice"`
+	XMRPrice     float64 `json:"xmrPrice"`
+	ExchangeRate float64 `json:"exchangeRate"`
 }
 
 // SuggestedExchangeRate returns the current mainnet exchange rate, expressed as the XMR/ETH price.
 func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, resp *SuggestedExchangeRateResponse) error { //nolint:lll
+	decimals := math.Pow(10, 8)
+
 	ec, err := ethclient.Dial(common.MainnetEndpoint)
 	if err != nil {
 		return err
@@ -284,8 +287,8 @@ func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, res
 	xmrPriceFloat := new(big.Float).SetInt(xmrPrice)
 	exchangeRate := new(big.Float).Quo(xmrPriceFloat, ethPriceFloat)
 
-	resp.ETHPrice = ethPrice
-	resp.XMRPrice = xmrPrice
+	resp.ETHPrice = float64(ethPrice.Uint64()) / decimals
+	resp.XMRPrice = float64(xmrPrice.Uint64()) / decimals
 	resp.ExchangeRate, _ = exchangeRate.Float64()
 	return nil
 }

@@ -248,6 +248,24 @@ curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_
 # {"jsonrpc":"2.0","result":{"stage":"KeysExchanged", "info":"keys have been exchanged, but no value has been locked"},"id":"0"}
 ```
 
+### `swap_suggestedExchangeRate`
+
+Returns the current mainnet exchange rate expressed as the XMR/ETH price ratio.
+
+Parameters:
+- none
+
+Returns:
+- `ethPrice`: the current ETH/USD price multiplied by 10^8.
+- `xmrPrice`: the current XMR/USD price multiplied by 10^8.
+- `exchangeRate`: the exchange rate expressed as the XMR/ETH price ratio.
+
+Example:
+```bash
+curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_suggestedExchangeRate","params":{}}' -H 'Content-Type: application/json'
+# {"jsonrpc":"2.0","result":{"ethPrice":118530759250,"xmrPrice":14453000000,"exchangeRate":0.12193459395224451},"id":"0"}
+```
+
 ## websocket subscriptions
 
 The daemon also runs a websockets server that can be used to subscribe to push notifications for updates. You can use the command-line tool `wscat` to easily connect to a websockets server.
