@@ -37,7 +37,7 @@
 <!-- 
   curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"net_takeOffer", 
   "params":{
-    "multiaddr":"/ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv",
+    "peerID":"12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv",
     "offerID":"cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9", 
     "providesAmount": 0.05 
 }}' -H 'Content-Type: application/json' 
