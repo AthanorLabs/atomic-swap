@@ -20,7 +20,7 @@ const MainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
 var (
 	functionSig = ethcrypto.Keccak256([]byte("latestRoundData()"))[:4]
 
-	errUnsupportedNetwork = errors.New("unsupported network; expected mainnet")
+	errUnsupportedNetwork = errors.New("unsupported network")
 )
 
 // see latestRoundData at https://docs.chain.link/data-feeds/price-feeds/api-reference/
