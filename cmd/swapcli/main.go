@@ -288,6 +288,14 @@ var (
 				Action: runSuggestedExchangeRate,
 				Flags:  []cli.Flag{swapdPortFlag},
 			},
+			{
+				Name:   "get-swap-timeout",
+				Usage:  "Get the duration between swap initiation and t0 and t0 and t1, in seconds",
+				Action: runGetSwapTimeout,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
 		},
 	}
 
@@ -684,7 +692,18 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Set timeout duration to %ds\n", duration)
+	fmt.Printf("Set timeout duration to %d seconds\n", duration)
+	return nil
+}
+
+func runGetSwapTimeout(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	resp, err := c.GetSwapTimeout()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Swap timeout duration: %d seconds\n", resp.Timeout)
 	return nil
 }
 
@@ -700,5 +719,6 @@ func runSuggestedExchangeRate(ctx *cli.Context) error {
 		resp.ETHPrice,
 		resp.XMRPrice,
 	)
+
 	return nil
 }
