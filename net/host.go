@@ -74,8 +74,6 @@ type host struct {
 	// swap instance info
 	swapMu sync.Mutex
 	swaps  map[types.Hash]*swap
-
-	queryMu sync.Mutex
 }
 
 // Config is used to configure the network Host.

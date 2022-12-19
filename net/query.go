@@ -52,9 +52,6 @@ func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 }
 
 func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
-	h.queryMu.Lock()
-	defer h.queryMu.Unlock() // TODO: Do we need this?
-
 	msg, err := readStreamMessage(stream)
 	if err != nil {
 		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
