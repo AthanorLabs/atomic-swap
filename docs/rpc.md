@@ -158,7 +158,7 @@ curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"perso
 
 ### `personal_setSwapTimeout`
 
-Sets the duration between swap initiation and t0 and t0 and t1, in seconds. Default is 0.
+Sets the duration between swap initiation and t0 and t0 and t1, in seconds.
 
 Parameters:
 - `duration`: duration of timeout, in seconds
@@ -180,7 +180,7 @@ Parameters:
 - none
 
 Returns:
-- `timeout`: timeout in seconds, default is 0
+- `timeout`: timeout in seconds
 
 Example:
 ```bash
