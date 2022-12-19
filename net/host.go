@@ -436,7 +436,9 @@ func (h *host) bootstrap() error {
 				log.Debugf("Failed to bootstrap to peer %s: err=%s", p.ID, err)
 				atomic.AddUint64(&failed, 1)
 			}
-			log.Debugf("Bootstrapped connections to: %s", h.h.Network().ConnsToPeer(p.ID))
+			for _, c := range h.h.Network().ConnsToPeer(p.ID) {
+				log.Debugf("Bootstrapped connection to %s/p2p/%s", c.RemoteMultiaddr(), p.ID)
+			}
 		}(bn)
 	}
 	wg.Wait()
