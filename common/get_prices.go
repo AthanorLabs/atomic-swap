@@ -73,6 +73,9 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*big.Int, error)
 	case 1:
 		// see https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
 		to = ethcommon.HexToAddress("0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419")
+	case 5, 1337, 31337:
+		// for goerli or test clients, just return 1
+		return big.NewInt(1), nil
 	default:
 		return nil, errUnsupportedNetwork
 	}
@@ -94,6 +97,9 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*big.Int, error)
 	case 1:
 		// see https://data.chain.link/ethereum/mainnet/crypto-usd/xmr-usd
 		to = ethcommon.HexToAddress("0xfa66458cce7dd15d8650015c4fce4d278271618f")
+	case 5, 1337, 31337:
+		// for goerli or test clients, just return 1
+		return big.NewInt(1), nil
 	default:
 		return nil, errUnsupportedNetwork
 	}

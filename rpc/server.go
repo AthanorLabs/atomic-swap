@@ -62,7 +62,13 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	swapService := NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net)
+	swapService := NewSwapService(
+		cfg.ProtocolBackend.SwapManager(),
+		cfg.XMRTaker,
+		cfg.XMRMaker,
+		cfg.Net,
+		cfg.ProtocolBackend,
+	)
 	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
 		return nil, err
 	}

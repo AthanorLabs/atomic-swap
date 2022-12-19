@@ -9,7 +9,6 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // SwapService handles information about ongoing or past swaps.
@@ -18,15 +17,17 @@ type SwapService struct {
 	xmrtaker XMRTaker
 	xmrmaker XMRMaker
 	net      Net
+	backend  ProtocolBackend
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, xmrtaker XMRTaker, xmrmaker XMRMaker, net Net) *SwapService {
+func NewSwapService(sm SwapManager, xmrtaker XMRTaker, xmrmaker XMRMaker, net Net, b ProtocolBackend) *SwapService {
 	return &SwapService{
 		sm:       sm,
 		xmrtaker: xmrtaker,
 		xmrmaker: xmrmaker,
 		net:      net,
+		backend:  b,
 	}
 }
 
@@ -268,11 +269,7 @@ type SuggestedExchangeRateResponse struct {
 func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, resp *SuggestedExchangeRateResponse) error { //nolint:lll
 	decimals := math.Pow(10, 8)
 
-	ec, err := ethclient.Dial(common.MainnetEndpoint)
-	if err != nil {
-		return err
-	}
-
+	ec := s.backend.ETHClient().Raw()
 	ethPrice, err := common.GetETHUSDPrice(context.Background(), ec)
 	if err != nil {
 		return err
