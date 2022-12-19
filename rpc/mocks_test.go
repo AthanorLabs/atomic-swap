@@ -199,6 +199,10 @@ func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {
 	panic("not implemented")
 }
 
+func (*mockProtocolBackend) SwapTimeout() time.Duration {
+	panic("not implemented")
+}
+
 func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }

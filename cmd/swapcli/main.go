@@ -298,6 +298,14 @@ var (
 					swapdPortFlag,
 				},
 			},
+			{
+				Name:   "get-swap-timeout",
+				Usage:  "Get the duration between swap initiation and t0 and t0 and t1, in seconds",
+				Action: runGetSwapTimeout,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
 		},
 	}
 
@@ -750,6 +758,17 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Set timeout duration to %ds\n", duration)
+	return nil
+}
+
+func runGetSwapTimeout(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	resp, err := c.GetSwapTimeout()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Swap Timeout Duration: %d seconds\n", resp.Timeout)
 	return nil
 }
 
