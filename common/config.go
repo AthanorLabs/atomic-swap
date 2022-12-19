@@ -22,28 +22,49 @@ const (
 var homeDir, _ = os.UserHomeDir()
 var baseDir = path.Join(homeDir, ".atomicswap")
 
+// MoneroNode represents the host and port of monerod's RPC endpoint
+type MoneroNode struct {
+	Host string
+	Port uint
+}
+
 // Config contains constants that are defaults for various environments
 type Config struct {
-	DataDir          string
-	MoneroDaemonHost string
-	MoneroDaemonPort uint
-	ContractAddress  ethcommon.Address
-	Bootnodes        []string
+	DataDir         string
+	MoneroNodes     []*MoneroNode
+	ContractAddress ethcommon.Address
+	Bootnodes       []string
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration
 var MainnetConfig = Config{
-	DataDir:          path.Join(baseDir, "mainnet"),
-	MoneroDaemonHost: "127.0.0.1",
-	MoneroDaemonPort: DefaultMoneroDaemonMainnetPort,
+	DataDir: path.Join(baseDir, "mainnet"),
+	MoneroNodes: []*MoneroNode{
+		{
+			Host: "127.0.0.1",
+			Port: DefaultMoneroDaemonMainnetPort,
+		},
+	},
 }
 
 // StagenetConfig is the monero stagenet and ethereum Gorli configuration
 var StagenetConfig = Config{
-	DataDir:          path.Join(baseDir, "stagenet"),
-	MoneroDaemonHost: "node.sethforprivacy.com",
-	MoneroDaemonPort: 38089, // Seth is not using the default stagenet value of 38081 (so don't use our constant)
-	ContractAddress:  ethcommon.HexToAddress("0xd2B5d6252D0645E4cF4Bb547E82A485F527BEFb7"),
+	DataDir: path.Join(baseDir, "stagenet"),
+	MoneroNodes: []*MoneroNode{
+		{
+			Host: "node.sethforprivacy.com",
+			Port: 38089,
+		},
+		{
+			Host: "node.monerodevs.org",
+			Port: 38089,
+		},
+		{
+			Host: "stagenet.community.rino.io",
+			Port: 38081,
+		},
+	},
+	ContractAddress: ethcommon.HexToAddress("0xd2B5d6252D0645E4cF4Bb547E82A485F527BEFb7"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
@@ -58,8 +79,13 @@ var StagenetConfig = Config{
 
 // DevelopmentConfig is the monero and ethereum development environment configuration
 var DevelopmentConfig = Config{
-	DataDir:          path.Join(baseDir, "dev"),
-	MoneroDaemonPort: DefaultMoneroDaemonDevPort,
+	DataDir: path.Join(baseDir, "dev"),
+	MoneroNodes: []*MoneroNode{
+		{
+			Host: "127.0.0.1",
+			Port: DefaultMoneroDaemonMainnetPort,
+		},
+	},
 }
 
 // MoneroWalletPath returns the path to the wallet file, whose default value
@@ -80,13 +106,42 @@ func (c Config) EthKeyFileName() string {
 	return path.Join(c.DataDir, DefaultEthKeyFileName)
 }
 
-// SwapTimeoutFromEnvironment returns the duration between swap timeouts given the environment.
-func SwapTimeoutFromEnvironment(env Environment) time.Duration {
+// ConfigDefaultsForEnv returns the configuration defaults for the given environment.
+func ConfigDefaultsForEnv(env Environment) *Config {
+	switch env {
+	case Mainnet:
+		return &MainnetConfig
+	case Stagenet:
+		return &StagenetConfig
+	case Development:
+		return &DevelopmentConfig
+	default:
+		panic("invalid environment")
+	}
+}
+
+// SwapTimeoutFromEnv returns the duration between swap timeouts given the environment.
+func SwapTimeoutFromEnv(env Environment) time.Duration {
 	switch env {
 	case Mainnet, Stagenet:
 		return time.Hour
 	case Development:
 		return time.Minute * 2
+	default:
+		panic("invalid environment")
+	}
+}
+
+// DefaultMoneroPortFromEnv returns the default Monerod RPC port for an environment
+// Reference: https://monerodocs.org/interacting/monerod-reference/
+func DefaultMoneroPortFromEnv(env Environment) uint {
+	switch env {
+	case Mainnet:
+		return DefaultMoneroDaemonMainnetPort
+	case Stagenet:
+		return DefaultMoneroDaemonStagenetPort
+	case Development:
+		return DefaultMoneroDaemonDevPort
 	default:
 		panic("invalid environment")
 	}

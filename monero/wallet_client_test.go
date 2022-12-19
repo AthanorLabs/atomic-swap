@@ -244,25 +244,23 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 	require.Equal(t, "monero-bin/monero-wallet-rpc", walletRPCPath)
 }
 
-func Test_validateMonerodConfig_devSuccess(t *testing.T) {
-	err := validateMonerodConfig(common.Development, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
-	require.NoError(t, err)
-}
+func Test_validateMonerodConfigs(t *testing.T) {
+	// If we some mainnet nodes to our common config defaults, update the slice below with common.Mainnet
+	for _, env := range []common.Environment{common.Development, common.Stagenet} {
+		// findWorkingNode tests validateMonerodNode
+		node, err := findWorkingNode(common.Development, common.ConfigDefaultsForEnv(common.Development).MoneroNodes)
+		require.NoError(t, err, "env=%s", env)
+		require.NotNil(t, node)
+	}
 
-func Test_validateMonerodConfig_stagenetSuccess(t *testing.T) {
-	host := "node.sethforprivacy.com"
-	err := validateMonerodConfig(common.Stagenet, host, 38089)
-	require.NoError(t, err)
-}
-
-func Test_validateMonerodConfig_mainnetSuccess(t *testing.T) {
-	host := "node.sethforprivacy.com"
-	err := validateMonerodConfig(common.Mainnet, host, 18089)
-	require.NoError(t, err)
 }
 
 func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
-	err := validateMonerodConfig(common.Mainnet, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+	node := &common.MoneroNode{
+		Host: "127.0.0.1",
+		Port: common.DefaultMoneroDaemonDevPort,
+	}
+	err := validateMonerodNode(common.Mainnet, node)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "is not a mainnet node")
 }
@@ -270,7 +268,11 @@ func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
 func Test_validateMonerodConfig_invalidPort(t *testing.T) {
 	nonUsedPort, err := getFreePort()
 	require.NoError(t, err)
-	err = validateMonerodConfig(common.Development, "127.0.0.1", nonUsedPort)
+	node := &common.MoneroNode{
+		Host: "127.0.0.1",
+		Port: nonUsedPort,
+	}
+	err = validateMonerodNode(common.Development, node)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connection refused")
 }

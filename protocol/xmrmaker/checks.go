@@ -187,7 +187,7 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 		return nil
 	}
 
-	expectedTimeout := common.SwapTimeoutFromEnvironment(s.Backend.Env())
+	expectedTimeout := common.SwapTimeoutFromEnv(s.Backend.Env())
 	allowableTimeDiff := expectedTimeout / 20
 
 	if s.t1.Sub(s.t0) != expectedTimeout {
