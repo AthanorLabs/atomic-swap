@@ -146,7 +146,6 @@ func (d *discovery) discoverLoop() {
 func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID, error) {
 	peerCh, err := d.rd.FindPeers(d.ctx, provides,
 		libp2pdiscovery.Limit(defaultMaxPeers),
-		libp2pdiscovery.TTL(defaultAdvertiseTTL),
 	)
 	if err != nil {
 		return nil, err
