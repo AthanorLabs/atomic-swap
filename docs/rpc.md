@@ -156,6 +156,38 @@ curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"perso
 #{"jsonrpc":"2.0","result":{"monero_address":"47RP5qtFwN2fEsRtiXQ5Pe4BDB5UxLxFbbRbvQy4sCLzN8xZxaJTBw25JE7Saz4fCngcY5ZbCk1XN3squfGQzs2pVjgG6tb","piconero_balance":2250425843583586,"piconero_unlocked_balance":175824411726902,"blocks_to_unlock":59,"eth_address":"0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0","wei_balance":999987682387589565906},"id":"0"}
 ```
 
+### `personal_setSwapTimeout`
+
+Sets the duration between swap initiation and t0 and t0 and t1, in seconds. Default is 0.
+
+Parameters:
+- `duration`: duration of timeout, in seconds
+
+Returns:
+- null
+
+Example:
+```bash
+curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_setSwapTimeout","params":{"duration": 120}}' -H 'Content-Type: application/json'
+#{"jsonrpc":"2.0","result":null,"id":"0"}
+```
+
+### `personal_getSwapTimeout`
+
+Returns the duration between swap initiation and t0 and t0 and t1, in seconds
+
+Parameters:
+- none
+
+Returns:
+- `timeout`: timeout in seconds, default is 0
+
+Example:
+```bash
+curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_getSwapTimeout","params":{}}' -H 'Content-Type: application/json'
+#{"jsonrpc":"2.0","result":{"timeout":120},"id":"0"}
+```
+
 ## `swap` namespace
 
 ### `swap_cancel`
