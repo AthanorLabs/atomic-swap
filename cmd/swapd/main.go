@@ -40,9 +40,9 @@ const (
 	defaultXMRMakerLibp2pPort = 9934
 
 	// default RPC port
-	defaultRPCPort         = 5005
-	defaultXMRTakerRPCPort = 5001
-	defaultXMRMakerRPCPort = 5002
+	defaultRPCPort         = common.DefaultSwapdPort
+	defaultXMRTakerRPCPort = defaultRPCPort
+	defaultXMRMakerRPCPort = defaultXMRTakerRPCPort + 1
 )
 
 var (
@@ -84,6 +84,7 @@ const (
 	flagTransferBack     = "transfer-back"
 
 	flagLogLevel = "log-level"
+	flagProfile  = "profile"
 )
 
 var (
@@ -162,6 +163,7 @@ var (
 				Name:    flagBootnodes,
 				Aliases: []string{"bn"},
 				Usage:   "libp2p bootnode, comma separated if passing multiple to a single flag",
+				EnvVars: []string{"SWAPD_BOOTNODES"},
 			},
 			&cli.UintFlag{
 				Name:  flagGasPrice,
@@ -200,6 +202,11 @@ var (
 			&cli.BoolFlag{
 				Name:  flagUseExternalSigner,
 				Usage: "Use external signer, for usage with the swap UI",
+			},
+			&cli.StringFlag{
+				Name:   flagProfile,
+				Usage:  "BIND_IP:PORT to provide profiling information on",
+				Hidden: true, // flag is only for developers
 			},
 		},
 	}
@@ -274,6 +281,10 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
+	if err := maybeStartProfiler(c); err != nil {
+		return err
+	}
+
 	d := newEmptyDaemon(ctx, cancel)
 	if err := d.make(c); err != nil {
 		log.Errorf("RPC/Websocket server exited: %s", err)
@@ -337,11 +348,16 @@ func (d *daemon) stop() error {
 // can be specified individually with multiple flags, but can also contain
 // multiple boot nodes passed to single flag separated by commas.
 func expandBootnodes(nodesCLI []string) []string {
-	var nodes []string
-	for _, n := range nodesCLI {
-		splitNodes := strings.Split(n, ",")
-		for _, ns := range splitNodes {
-			nodes = append(nodes, strings.TrimSpace(ns))
+	var nodes []string // nodes from all flag values combined
+	for _, flagVal := range nodesCLI {
+		splitNodes := strings.Split(flagVal, ",")
+		for _, n := range splitNodes {
+			n = strings.TrimSpace(n)
+			// Handle the empty string to not use default bootnodes. Doing it here after
+			// the split has the arguably positive side effect of skipping empty entries.
+			if len(n) > 0 {
+				nodes = append(nodes, strings.TrimSpace(n))
+			}
 		}
 	}
 	return nodes
@@ -379,7 +395,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	if len(c.StringSlice(flagBootnodes)) > 0 {
+	if c.IsSet(flagBootnodes) {
 		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
 	}
 

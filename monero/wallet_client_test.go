@@ -247,12 +247,12 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 func Test_validateMonerodConfigs(t *testing.T) {
 	// If we add some mainnet nodes to our common config defaults, update the slice below with common.Mainnet
 	for _, env := range []common.Environment{common.Development, common.Stagenet} {
+		nodes := common.ConfigDefaultsForEnv(common.Development).MoneroNodes
 		// findWorkingNode tests validateMonerodNode
-		node, err := findWorkingNode(common.Development, common.ConfigDefaultsForEnv(common.Development).MoneroNodes)
+		node, err := findWorkingNode(common.Development, nodes)
 		require.NoError(t, err, "env=%s", env)
 		require.NotNil(t, node)
 	}
-
 }
 
 func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
@@ -266,7 +266,7 @@ func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
 }
 
 func Test_validateMonerodConfig_invalidPort(t *testing.T) {
-	nonUsedPort, err := getFreePort()
+	nonUsedPort, err := getFreeTCPPort()
 	require.NoError(t, err)
 	node := &common.MoneroNode{
 		Host: "127.0.0.1",

@@ -2,22 +2,23 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
+
+	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/net/message"
-
-	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 const (
-	swapID            = "/swap/0"
-	protocolTimeout   = time.Second * 5
-	messageBufferSize = 1 << 17
+	swapID          = "/swap/0"
+	protocolTimeout = time.Second * 5
+	maxMessageSize  = 1 << 17
 )
 
 func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
@@ -49,7 +50,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		"opened protocol stream, peer=", who.ID,
 	)
 
-	if err := h.writeToStream(stream, msg); err != nil {
+	if err := writeStreamMessage(stream, msg, who.ID); err != nil {
 		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}
@@ -59,7 +60,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		stream:    stream,
 	}
 
-	go h.handleProtocolStreamInner(stream, s, make([]byte, messageBufferSize))
+	go h.handleProtocolStreamInner(stream, s)
 	return nil
 }
 
@@ -70,18 +71,13 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	buf := make([]byte, messageBufferSize)
-	tot, err := readStream(stream, buf[:])
+	msg, err := readStreamMessage(stream)
 	if err != nil {
-		log.Debug("peer closed stream with us, protocol exited")
-		_ = stream.Close()
-		return
-	}
-
-	// decode message based on message type
-	msg, err := message.DecodeMessage(buf[:tot])
-	if err != nil {
-		log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
+		if errors.Is(err, io.EOF) {
+			log.Debugf("Peer closed stream-id=%s, protocol exited", stream.ID())
+		} else {
+			log.Debugf("Failed to read message from peer, stream-id=%s: %s", stream.ID(), err)
+		}
 		_ = stream.Close()
 		return
 	}
@@ -105,7 +101,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	if err := h.writeToStream(stream, resp); err != nil {
+	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send response to peer: err=%s", err)
 		_ = s.Exit()
 		_ = stream.Close()
@@ -119,11 +115,11 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 	h.swapMu.Unlock()
 
-	h.handleProtocolStreamInner(stream, s, buf)
+	h.handleProtocolStreamInner(stream, s)
 }
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
-func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState, buf []byte) {
+func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
@@ -138,22 +134,19 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 	}()
 
 	for {
-		tot, err := readStream(stream, buf[:])
+		msg, err := readStreamMessage(stream)
 		if err != nil {
-			log.Debug("peer closed stream with us, protocol exited")
+			if errors.Is(err, io.EOF) {
+				log.Debug("Peer closed stream with us, protocol exited")
+			} else {
+				log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
+					stream.ID(), stream.Protocol(), err)
+			}
 			return
 		}
 
-		// decode message based on message type
-		msg, err := message.DecodeMessage(buf[:tot])
-		if err != nil {
-			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
-			continue
-		}
-
-		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
-		)
+		log.Debugf("received protocol=%s message from peer=%s type=%s",
+			stream.Protocol(), stream.Conn().RemotePeer(), msg.Type())
 
 		err = s.HandleProtocolMessage(msg)
 		if err != nil {

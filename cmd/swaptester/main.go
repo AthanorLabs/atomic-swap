@@ -305,22 +305,22 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	defer wsc.Close()
 
 	const defaultDiscoverTimeout = uint64(3) // 3s
-	providers, err := wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
 	if err != nil {
 		d.errCh <- err
 		return
 	}
 
-	if len(providers) == 0 {
+	if len(peerIDs) == 0 {
 		return
 	}
 
-	makerIdx := getRandomInt(len(providers))
-	peer := providers[makerIdx][0]
+	makerIdx := getRandomInt(len(peerIDs))
+	peerID := peerIDs[makerIdx]
 
-	log.Debugf("node %d querying peer %s...", d.idx, peer)
+	log.Debugf("node %d querying peer %s...", d.idx, peerID)
 
-	resp, err := wsc.Query(peer)
+	resp, err := wsc.Query(peerID)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -334,14 +334,13 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	offer := resp.Offers[offerIdx]
 
 	// pick random amount between min and max
-	amount := offer.MinimumAmount + mrand.Float64()*(offer.MaximumAmount-offer.MinimumAmount) //nolint:gosec
+	amount := offer.MinAmount + mrand.Float64()*(offer.MaxAmount-offer.MinAmount) //nolint:gosec
 	providesAmount := offer.ExchangeRate.ToETH(amount)
 
 	start := time.Now()
-	log.Infof("node %d taking offer %s", d.idx, offer.ID.String())
+	log.Infof("node %d taking offer %s", d.idx, offer.ID)
 
-	takerStatusCh, err := wsc.TakeOfferAndSubscribe(peer,
-		offer.ID.String(), providesAmount)
+	takerStatusCh, err := wsc.TakeOfferAndSubscribe(peerID, offer.ID, providesAmount)
 	if err != nil {
 		d.errCh <- err
 		return

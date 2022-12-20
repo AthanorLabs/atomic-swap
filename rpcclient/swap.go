@@ -3,6 +3,7 @@ package rpcclient
 import (
 	"fmt"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -95,13 +96,13 @@ func (c *Client) GetStage(id string) (*rpc.GetStageResponse, error) {
 }
 
 // ClearOffers calls swap_clearOffers
-func (c *Client) ClearOffers(ids []string) error {
+func (c *Client) ClearOffers(offerIDs []types.Hash) error {
 	const (
 		method = "swap_clearOffers"
 	)
 
 	req := &rpc.ClearOffersRequest{
-		IDs: ids,
+		OfferIDs: offerIDs,
 	}
 
 	if err := c.Post(method, req, nil); err != nil {

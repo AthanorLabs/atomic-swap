@@ -24,7 +24,7 @@ type (
 // Info contains the details of the swap as well as its status.
 type Info struct {
 	Version        *semver.Version    `json:"version"`
-	ID             types.Hash         `json:"offerId"` // swap offer ID
+	ID             types.Hash         `json:"offerID"` // swap offer ID
 	Provides       types.ProvidesCoin `json:"provides"`
 	ProvidedAmount float64            `json:"providedAmount"`
 	ReceivedAmount float64            `json:"receivedAmount"`

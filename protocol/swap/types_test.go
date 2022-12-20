@@ -29,7 +29,7 @@ func Test_InfoMarshal(t *testing.T) {
 	require.NoError(t, err)
 	expectedJSON := `{
 		"version": "0.1.0",
-		"offerId": "0x0102030405060708091011121314151617181920212223242526272829303132",
+		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303132",
 		"provides": "XMR",
 		"providedAmount": 1.25,
 		"receivedAmount": 1,
