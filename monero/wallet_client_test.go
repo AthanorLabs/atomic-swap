@@ -245,7 +245,7 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 }
 
 func Test_validateMonerodConfigs(t *testing.T) {
-	// If we some mainnet nodes to our common config defaults, update the slice below with common.Mainnet
+	// If we add some mainnet nodes to our common config defaults, update the slice below with common.Mainnet
 	for _, env := range []common.Environment{common.Development, common.Stagenet} {
 		// findWorkingNode tests validateMonerodNode
 		node, err := findWorkingNode(common.Development, common.ConfigDefaultsForEnv(common.Development).MoneroNodes)
