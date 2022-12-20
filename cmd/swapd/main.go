@@ -364,10 +364,11 @@ func expandBootnodes(nodesCLI []string) []string {
 }
 
 func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
-	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
+	env, err := common.NewEnv(c.String(flagEnv))
 	if err != nil {
 		return err
 	}
+	cfg := common.ConfigDefaultsForEnv(env)
 
 	devXMRMaker := c.Bool(flagDevXMRMaker)
 	devXMRTaker := c.Bool(flagDevXMRTaker)
@@ -559,11 +560,15 @@ func errFlagValueEmpty(flag string) error {
 	return fmt.Errorf("flag %q requires a non-empty value", flag)
 }
 
+func errFlagValueZero(flag string) error {
+	return fmt.Errorf("flag %q requires a non-zero value", flag)
+}
+
 func newBackend(
 	ctx context.Context,
 	c *cli.Context,
 	env common.Environment,
-	cfg common.Config,
+	cfg *common.Config,
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
@@ -643,17 +648,26 @@ func newBackend(
 		return nil, err
 	}
 
-	// For the monero wallet related values, keep the default config values unless the end
-	// use explicitly set the flag.
-	if c.IsSet(flagMoneroDaemonHost) {
-		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
-		if cfg.MoneroDaemonHost == "" {
-			return nil, errFlagValueEmpty(flagMoneroDaemonHost)
+	if c.IsSet(flagMoneroDaemonHost) || c.IsSet(flagMoneroDaemonPort) {
+		node := &common.MoneroNode{
+			Host: "127.0.0.1",
+			Port: common.DefaultMoneroPortFromEnv(env),
 		}
+		if c.IsSet(flagMoneroDaemonHost) {
+			node.Host = c.String(flagMoneroDaemonHost)
+			if node.Host == "" {
+				return nil, errFlagValueEmpty(flagMoneroDaemonHost)
+			}
+		}
+		if c.IsSet(flagMoneroDaemonPort) {
+			node.Port = c.Uint(flagMoneroDaemonPort)
+			if node.Port == 0 {
+				return nil, errFlagValueZero(flagMoneroDaemonPort)
+			}
+		}
+		cfg.MoneroNodes = []*common.MoneroNode{node}
 	}
-	if c.IsSet(flagMoneroDaemonPort) {
-		cfg.MoneroDaemonPort = c.Uint(flagMoneroDaemonPort)
-	}
+
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
@@ -664,8 +678,7 @@ func newBackend(
 	mc, err := monero.NewWalletClient(&monero.WalletClientConf{
 		Env:                 env,
 		WalletFilePath:      walletFilePath,
-		MonerodPort:         cfg.MoneroDaemonPort,
-		MonerodHost:         cfg.MoneroDaemonHost,
+		MonerodNodes:        cfg.MoneroNodes,
 		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
 		WalletPassword:      c.String(flagMoneroWalletPassword),
 		WalletPort:          c.Uint(flagMoneroWalletPort),
@@ -703,7 +716,7 @@ func newBackend(
 	return b, nil
 }
 
-func getProtocolInstances(c *cli.Context, cfg common.Config,
+func getProtocolInstances(c *cli.Context, cfg *common.Config,
 	b backend.Backend, db *db.Database, host net.Host) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {

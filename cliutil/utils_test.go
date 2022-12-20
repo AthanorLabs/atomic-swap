@@ -76,26 +76,6 @@ func TestGetEthereumPrivateKey_fromFileFail(t *testing.T) {
 	require.ErrorContains(t, err, "invalid hex character")
 }
 
-func TestGetEnvironment(t *testing.T) {
-	expected := map[string]common.Environment{
-		"mainnet":  common.Mainnet,
-		"stagenet": common.Stagenet,
-		"dev":      common.Development,
-	}
-
-	for cliVal, expectedResult := range expected {
-		env, cfg, err := GetEnvironment(cliVal)
-		require.NoError(t, err)
-		require.Equal(t, expectedResult, env)
-		require.NotEmpty(t, cfg.DataDir)
-	}
-}
-
-func TestGetEnvironment_fail(t *testing.T) {
-	_, _, err := GetEnvironment("goerli")
-	require.ErrorIs(t, err, errInvalidEnv)
-}
-
 func TestGetVersion(t *testing.T) {
 	// Nothing we can test other than that it does not panic without a built executable
 	require.NotEmpty(t, GetVersion())

@@ -123,7 +123,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		contract:        cfg.SwapContract,
 		contractAddr:    cfg.SwapContractAddress,
 		swapManager:     cfg.SwapManager,
-		swapTimeout:     common.SwapTimeoutFromEnvironment(cfg.Environment),
+		swapTimeout:     common.SwapTimeoutFromEnv(cfg.Environment),
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 		recoveryDB:      cfg.RecoveryDB,

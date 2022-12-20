@@ -167,7 +167,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingAddress))
 
-	duration := common.SwapTimeoutFromEnvironment(common.Development)
+	duration := common.SwapTimeoutFromEnv(common.Development)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
 	addr := s.ContractAddr()
