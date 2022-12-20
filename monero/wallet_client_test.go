@@ -270,7 +270,7 @@ func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
 }
 
 func Test_validateMonerodConfig_invalidPort(t *testing.T) {
-	nonUsedPort, err := getFreePort()
+	nonUsedPort, err := getFreeTCPPort()
 	require.NoError(t, err)
 	err = validateMonerodConfig(common.Development, "127.0.0.1", nonUsedPort)
 	require.Error(t, err)

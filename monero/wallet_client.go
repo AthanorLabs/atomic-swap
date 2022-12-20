@@ -450,7 +450,7 @@ func createWalletRPCService(conf *WalletClientConf) (*os.Process, error) {
 
 	if conf.WalletPort == 0 {
 		var err error
-		conf.WalletPort, err = getFreePort()
+		conf.WalletPort, err = getFreeTCPPort()
 		if err != nil {
 			return nil, err
 		}
@@ -591,10 +591,10 @@ func getWalletRPCFlags(conf *WalletClientConf) []string {
 	return args
 }
 
-// getFreePort returns an OS allocated and immediately freed port. There is nothing preventing
+// getFreeTCPPort returns an OS allocated and immediately freed port. There is nothing preventing
 // something else on the system from using the port before the caller has a chance, but OS
 // allocated ports are randomised to make the risk negligible.
-func getFreePort() (uint, error) {
+func getFreeTCPPort() (uint, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	defer func() { _ = ln.Close() }()
 	if err != nil {

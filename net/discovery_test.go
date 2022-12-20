@@ -12,13 +12,13 @@ import (
 var testAdvertisementSleepDuration = time.Millisecond * 100
 
 func TestHost_Discover(t *testing.T) {
-	ha := newHost(t, defaultPort)
+	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
-	hb := newHost(t, defaultPort+1)
+	hb := newHost(t, basicTestConfig(t))
 	err = hb.Start()
 	require.NoError(t, err)
-	hc := newHost(t, defaultPort+2)
+	hc := newHost(t, basicTestConfig(t))
 	err = hc.Start()
 	require.NoError(t, err)
 
@@ -38,7 +38,9 @@ func TestHost_Discover(t *testing.T) {
 	hc.Advertise()
 	time.Sleep(testAdvertisementSleepDuration)
 
-	peers, err := hc.Discover(types.ProvidesXMR, time.Second)
+	peerIDs, err := hc.Discover(types.ProvidesXMR, time.Second)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(peers), 1)
+	require.GreaterOrEqual(t, len(peerIDs), 1)
+	require.NotEmpty(t, peerIDs[0])
+	require.NotEqual(t, peerIDs[0], hc.PeerID()) // should be ha or hb's ID
 }

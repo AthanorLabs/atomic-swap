@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
@@ -90,7 +92,7 @@ type GetOngoingResponse struct {
 
 // GetOngoingRequest ...
 type GetOngoingRequest struct {
-	OfferID string `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // GetOngoing returns information about the ongoing swap, if there is one.
@@ -115,7 +117,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 // RefundRequest ...
 type RefundRequest struct {
-	OfferID string `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // RefundResponse ...
@@ -151,7 +153,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 
 // GetStageRequest ...
 type GetStageRequest struct {
-	OfferID string `json:"id"`
+	OfferID string `json:"offerID"`
 }
 
 // GetStageResponse ...
@@ -179,23 +181,25 @@ func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetS
 
 // GetOffersResponse ...
 type GetOffersResponse struct {
+	PeerID peer.ID
 	Offers []*types.Offer `json:"offers"`
 }
 
 // GetOffers returns the currently available offers.
 func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
+	resp.PeerID = s.net.PeerID()
 	resp.Offers = s.xmrmaker.GetOffers()
 	return nil
 }
 
 // ClearOffersRequest ...
 type ClearOffersRequest struct {
-	IDs []string `json:"ids"`
+	OfferIDs []types.Hash `json:"offerIDs"`
 }
 
 // ClearOffers clears the provided offers. If there are no offers provided, it clears all offers.
 func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *interface{}) error {
-	err := s.xmrmaker.ClearOffers(req.IDs)
+	err := s.xmrmaker.ClearOffers(req.OfferIDs)
 	if err != nil {
 		return err
 	}
@@ -206,7 +210,7 @@ func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *i
 
 // CancelRequest ...
 type CancelRequest struct {
-	OfferID string `json:"id"`
+	OfferID types.Hash `json:"offerID"`
 }
 
 // CancelResponse ...
@@ -216,12 +220,7 @@ type CancelResponse struct {
 
 // Cancel attempts to cancel the currently ongoing swap, if there is one.
 func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelResponse) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
-	}
-
-	info, err := s.sm.GetOngoingSwap(offerID)
+	info, err := s.sm.GetOngoingSwap(req.OfferID)
 	if err != nil {
 		return fmt.Errorf("failed to get ongoing swap: %w", err)
 	}
@@ -229,16 +228,16 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 	var ss common.SwapState
 	switch info.Provides {
 	case types.ProvidesETH:
-		ss = s.xmrtaker.GetOngoingSwapState(offerID)
+		ss = s.xmrtaker.GetOngoingSwapState(req.OfferID)
 	case types.ProvidesXMR:
-		ss = s.xmrmaker.GetOngoingSwapState(offerID)
+		ss = s.xmrmaker.GetOngoingSwapState(req.OfferID)
 	}
 
 	if err = ss.Exit(); err != nil {
 		return err
 	}
 
-	s.net.CloseProtocolStream(offerID)
+	s.net.CloseProtocolStream(req.OfferID)
 
 	past, err := s.sm.GetPastSwap(info.ID)
 	if err != nil {

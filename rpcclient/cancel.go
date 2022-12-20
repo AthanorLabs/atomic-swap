@@ -6,13 +6,13 @@ import (
 )
 
 // Cancel calls swap_cancel.
-func (c *Client) Cancel(id string) (types.Status, error) {
+func (c *Client) Cancel(offerID types.Hash) (types.Status, error) {
 	const (
 		method = "swap_cancel"
 	)
 
 	req := &rpc.CancelRequest{
-		OfferID: id,
+		OfferID: offerID,
 	}
 	res := &rpc.CancelResponse{}
 

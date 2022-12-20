@@ -12,17 +12,19 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const defaultSearchTime = time.Second * 12
 
 // Net contains the network-related functions required by the rpc service.
 type Net interface {
+	PeerID() peer.ID
+	ConnectedPeers() []string
 	Addresses() []string
 	Advertise()
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error)
-	Query(who peer.AddrInfo) (*net.QueryResponse, error)
+	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Query(who peer.ID) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error
 	CloseProtocolStream(types.Hash)
 }
@@ -45,51 +47,44 @@ func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager
 	}
 }
 
-// AddressesResponse ...
-type AddressesResponse struct {
-	Addrs []string `json:"addresses"`
-}
-
-// Addresses returns the multiaddresses this node is listening on.
-func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *AddressesResponse) error {
+// Addresses returns the local listening multi-addresses. Note that local listening
+// addresses do not correspond to what remote peers connect to unless your host has a
+// public IP directly attached to a local interface.
+func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *rpctypes.AddressesResponse) error {
 	resp.Addrs = s.net.Addresses()
 	return nil
 }
 
+// Peers returns the peers that this node is currently connected to.
+func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.PeersResponse) error {
+	resp.Addrs = s.net.ConnectedPeers()
+	return nil
+}
+
 // QueryAll discovers peers who provide a certain coin and queries all of them for their current offers.
-func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.QueryAllResponse) error {
-	peers, err := s.discover(req)
+func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.QueryAllRequest, resp *rpctypes.QueryAllResponse) error {
+	peerIDs, err := s.discover(req)
 	if err != nil {
 		return err
 	}
 
-	resp.PeersWithOffers = make([]*rpctypes.PeerWithOffers, len(peers))
-	for i, p := range peers {
-		multiaddrs := addrInfoToStrings(p)
+	resp.PeersWithOffers = make([]*rpctypes.PeerWithOffers, len(peerIDs))
+	for i, p := range peerIDs {
 		resp.PeersWithOffers[i] = &rpctypes.PeerWithOffers{
-			Peer: multiaddrs,
+			PeerID: p,
 		}
-
-		for _, maddr := range multiaddrs {
-			who, err := net.StringToAddrInfo(maddr)
-			if err != nil {
-				return err
-			}
-
-			msg, err := s.net.Query(who)
-			if err != nil {
-				continue
-			}
-
-			resp.PeersWithOffers[i].Offers = msg.Offers
-			break
+		msg, err := s.net.Query(p)
+		if err != nil {
+			log.Debugf("Failed to query peer ID %s", p)
+			continue
 		}
+		resp.PeersWithOffers[i].Offers = msg.Offers
 	}
 
 	return nil
 }
 
-func (s *NetService) discover(req *rpctypes.DiscoverRequest) ([]peer.AddrInfo, error) {
+func (s *NetService) discover(req *rpctypes.DiscoverRequest) ([]peer.ID, error) {
 	searchTime, err := time.ParseDuration(fmt.Sprintf("%ds", req.SearchTime))
 	if err != nil {
 		return nil, err
@@ -113,36 +108,19 @@ func (s *NetService) Discover(_ *http.Request, req *rpctypes.DiscoverRequest, re
 		searchTime = defaultSearchTime
 	}
 
-	peers, err := s.net.Discover(req.Provides, searchTime)
+	resp.PeerIDs, err = s.net.Discover(req.Provides, searchTime)
 	if err != nil {
 		return err
-	}
-
-	resp.Peers = make([][]string, len(peers))
-	for i, p := range peers {
-		resp.Peers[i] = addrInfoToStrings(p)
 	}
 
 	return nil
 }
 
-func addrInfoToStrings(addrInfo peer.AddrInfo) []string {
-	strs := make([]string, len(addrInfo.Addrs))
-	for i, addr := range addrInfo.Addrs {
-		strs[i] = fmt.Sprintf("%s/p2p/%s", addr, addrInfo.ID)
-	}
-	return strs
-}
-
 // QueryPeer queries a peer for the coins they provide, their maximum amounts, and desired exchange rate.
 func (s *NetService) QueryPeer(_ *http.Request, req *rpctypes.QueryPeerRequest,
 	resp *rpctypes.QueryPeerResponse) error {
-	who, err := net.StringToAddrInfo(req.Multiaddr)
-	if err != nil {
-		return err
-	}
 
-	msg, err := s.net.Query(who)
+	msg, err := s.net.Query(req.PeerID)
 	if err != nil {
 		return err
 	}
@@ -157,7 +135,7 @@ func (s *NetService) TakeOffer(
 	req *rpctypes.TakeOfferRequest,
 	_ *interface{},
 ) error {
-	_, err := s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
+	_, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -165,12 +143,7 @@ func (s *NetService) TakeOffer(
 	return nil
 }
 
-func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64) (<-chan types.Status, error) {
-	who, err := net.StringToAddrInfo(multiaddr)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount float64) (<-chan types.Status, error) {
 	queryResp, err := s.net.Query(who)
 	if err != nil {
 		return nil, err
@@ -178,7 +151,7 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 
 	var offer *types.Offer
 	for _, maybeOffer := range queryResp.Offers {
-		if offerID == maybeOffer.ID.String() {
+		if offerID == maybeOffer.ID {
 			offer = maybeOffer
 			break
 		}
@@ -196,17 +169,12 @@ func (s *NetService) takeOffer(multiaddr, offerID string, providesAmount float64
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
 
-	if err = s.net.Initiate(who, skm, swapState); err != nil {
+	if err = s.net.Initiate(peer.AddrInfo{ID: who}, skm, swapState); err != nil {
 		_ = swapState.Exit()
 		return nil, err
 	}
 
-	id, err := offerIDStringToHash(offerID)
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := s.sm.GetOngoingSwap(id)
+	info, err := s.sm.GetOngoingSwap(offerID)
 	if err != nil {
 		return nil, err
 	}
@@ -226,13 +194,8 @@ func (s *NetService) TakeOfferSync(
 	req *rpctypes.TakeOfferRequest,
 	resp *TakeOfferSyncResponse,
 ) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
-	}
 
-	_, err = s.takeOffer(req.Multiaddr, req.OfferID, req.ProvidesAmount)
-	if err != nil {
+	if _, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount); err != nil {
 		return err
 	}
 
@@ -241,7 +204,7 @@ func (s *NetService) TakeOfferSync(
 	for {
 		time.Sleep(checkSwapSleepDuration)
 
-		info, err := s.sm.GetPastSwap(offerID)
+		info, err := s.sm.GetPastSwap(req.OfferID)
 		if err != nil {
 			return err
 		}
@@ -263,36 +226,38 @@ func (s *NetService) MakeOffer(
 	req *rpctypes.MakeOfferRequest,
 	resp *rpctypes.MakeOfferResponse,
 ) error {
-	id, _, err := s.makeOffer(req)
+	offerResp, _, err := s.makeOffer(req)
 	if err != nil {
 		return err
 	}
-
-	resp.ID = id
+	*resp = *offerResp
 	return nil
 }
 
-func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (string, *types.OfferExtra, error) {
+func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOfferResponse, *types.OfferExtra, error) {
 	ethAsset := types.EthAssetETH
 	if req.EthAsset != "" {
 		if !ethcommon.IsHexAddress(req.EthAsset) {
-			return "", nil, errEthAssetIncorrectFormat
+			return nil, nil, errEthAssetIncorrectFormat
 		}
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(req.EthAsset))
 	}
 
 	offer := types.NewOffer(
 		types.ProvidesXMR,
-		req.MinimumAmount,
-		req.MaximumAmount,
+		req.MinAmount,
+		req.MaxAmount,
 		req.ExchangeRate,
 		ethAsset,
 	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerCommission)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
-	return offer.ID.String(), offerExtra, nil
+	return &rpctypes.MakeOfferResponse{
+		PeerID:  s.net.PeerID(),
+		OfferID: offer.ID,
+	}, offerExtra, nil
 }

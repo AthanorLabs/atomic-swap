@@ -13,7 +13,7 @@ import (
 	message "github.com/athanorlabs/atomic-swap/net/message"
 	common0 "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
 // MockHost is a mock of Host interface.
@@ -64,10 +64,10 @@ func (mr *MockHostMockRecorder) CloseProtocolStream(arg0 interface{}) *gomock.Ca
 }
 
 // Discover mocks base method.
-func (m *MockHost) Discover(arg0 types.ProvidesCoin, arg1 time.Duration) ([]peer.AddrInfo, error) {
+func (m *MockHost) Discover(arg0 types.ProvidesCoin, arg1 time.Duration) ([]peer.ID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Discover", arg0, arg1)
-	ret0, _ := ret[0].([]peer.AddrInfo)
+	ret0, _ := ret[0].([]peer.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -93,7 +93,7 @@ func (mr *MockHostMockRecorder) Initiate(arg0, arg1, arg2 interface{}) *gomock.C
 }
 
 // Query mocks base method.
-func (m *MockHost) Query(arg0 peer.AddrInfo) (*message.QueryResponse, error) {
+func (m *MockHost) Query(arg0 peer.ID) (*message.QueryResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Query", arg0)
 	ret0, _ := ret[0].(*message.QueryResponse)

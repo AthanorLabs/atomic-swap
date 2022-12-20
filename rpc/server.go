@@ -176,7 +176,7 @@ type XMRMaker interface {
 	Protocol
 	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission float64) (*types.OfferExtra, error)
 	GetOffers() []*types.Offer
-	ClearOffers([]string) error
+	ClearOffers([]types.Hash) error
 	GetMoneroBalance() (string, *wallet.GetBalanceResponse, error)
 }
 

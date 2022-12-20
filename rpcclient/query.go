@@ -1,17 +1,19 @@
 package rpcclient
 
 import (
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
 // Query calls net_query.
-func (c *Client) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
+func (c *Client) Query(who peer.ID) (*rpctypes.QueryPeerResponse, error) {
 	const (
 		method = "net_queryPeer"
 	)
 
 	req := &rpctypes.QueryPeerRequest{
-		Multiaddr: maddr,
+		PeerID: who,
 	}
 	res := &rpctypes.QueryPeerResponse{}
 

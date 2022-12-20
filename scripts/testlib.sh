@@ -25,7 +25,7 @@ GANACHE_PORT=8545
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 MONERO_BIN_DIR="${PROJECT_ROOT}/monero-bin"
 
-# return 0 (true) if the passed port is open, otherwise non-zero (false)
+# return 0 (true) if the passed TCP port is open, otherwise non-zero (false)
 is-port-open() {
 	local port="${1:?}"
 	: &>/dev/null <"/dev/tcp/127.0.0.1/${port}"
