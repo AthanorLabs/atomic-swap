@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
-	"os"
 	"path"
 	"testing"
 
@@ -19,10 +18,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-func TestMain(m *testing.M) {
+func init() {
 	logging.SetLogLevel("net", "debug")
-	m.Run()
-	os.Exit(0)
 }
 
 var testID = types.Hash{99}

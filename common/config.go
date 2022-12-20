@@ -41,7 +41,19 @@ var MainnetConfig = Config{
 	DataDir: path.Join(baseDir, "mainnet"),
 	MoneroNodes: []*MoneroNode{
 		{
-			Host: "127.0.0.1",
+			Host: "node.sethforprivacy.com",
+			Port: 18089,
+		},
+		{
+			Host: "xmr-node.cakewallet.com",
+			Port: DefaultMoneroDaemonMainnetPort,
+		},
+		{
+			Host: "node.monerodevs.org",
+			Port: 18089,
+		},
+		{
+			Host: "node.community.rino.io",
 			Port: DefaultMoneroDaemonMainnetPort,
 		},
 	},
