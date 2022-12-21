@@ -1,12 +1,14 @@
 package rpcclient
 
 import (
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // Discover calls net_discover.
-func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error) {
+func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([]peer.ID, error) {
 	const (
 		method = "net_discover"
 	)
@@ -21,7 +23,7 @@ func (c *Client) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]s
 		return nil, err
 	}
 
-	return res.Peers, nil
+	return res.PeerIDs, nil
 }
 
 // QueryAll calls net_queryAll.
@@ -30,7 +32,7 @@ func (c *Client) QueryAll(provides types.ProvidesCoin, searchTime uint64) ([]*rp
 		method = "net_queryAll"
 	)
 
-	req := &rpctypes.DiscoverRequest{
+	req := &rpctypes.QueryAllRequest{
 		Provides:   provides,
 		SearchTime: searchTime,
 	}

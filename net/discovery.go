@@ -8,12 +8,12 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 
-	libp2phost "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	libp2pdiscovery "github.com/libp2p/go-libp2p/core/discovery"
+	libp2phost "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	libp2prouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 const (
@@ -27,48 +27,10 @@ type discovery struct {
 	ctx         context.Context
 	dht         *dual.DHT
 	h           libp2phost.Host
-	rd          *libp2pdiscovery.RoutingDiscovery
-	provides    []types.ProvidesCoin
-	advertiseCh chan struct{}
+	rd          *libp2prouting.RoutingDiscovery
+	provides    []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
+	advertiseCh chan struct{}        // signals to advertise now that an XMR offer was made
 	offerAPI    Handler
-}
-
-func newDiscovery(
-	ctx context.Context,
-	h libp2phost.Host,
-	bnsFunc func() []peer.AddrInfo,
-) (*discovery, error) {
-	dhtOpts := []dual.Option{
-		dual.DHTOption(kaddht.BootstrapPeersFunc(bnsFunc)),
-		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
-	}
-
-	// There is libp2p bug when calling `dual.New` with a cancelled context creating a panic,
-	// so we added the extra guard below:
-	// Panic:  https://github.com/jbenet/goprocess/blob/v0.1.4/impl-mutex.go#L99
-	// Caller: https://github.com/libp2p/go-libp2p-kad-dht/blob/v0.17.0/dht.go#L222
-	//
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-		// not cancelled, continue on
-	}
-
-	dht, err := dual.New(ctx, h, dhtOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	rd := libp2pdiscovery.NewRoutingDiscovery(dht)
-
-	return &discovery{
-		ctx:         ctx,
-		dht:         dht,
-		h:           h,
-		rd:          rd,
-		advertiseCh: make(chan struct{}),
-	}, nil
 }
 
 func (d *discovery) setOfferAPI(offerAPI Handler) {
@@ -115,6 +77,7 @@ func (d *discovery) advertiseLoop() {
 			// query us.
 			offers := d.offerAPI.GetOffers()
 			if len(offers) == 0 {
+				d.provides = nil
 				continue
 			}
 
@@ -140,18 +103,18 @@ func (d *discovery) advertise() time.Duration {
 		return tryAdvertiseTimeout
 	}
 
+	_, err = d.rd.Advertise(d.ctx, "")
+	if err != nil {
+		log.Debugf("failed to advertise in the DHT: err=%s", err)
+		return tryAdvertiseTimeout
+	}
+
 	for _, provides := range d.provides {
 		_, err = d.rd.Advertise(d.ctx, string(provides))
 		if err != nil {
 			log.Debugf("failed to advertise in the DHT: err=%s", err)
 			return tryAdvertiseTimeout
 		}
-	}
-
-	_, err = d.rd.Advertise(d.ctx, "")
-	if err != nil {
-		log.Debugf("failed to advertise in the DHT: err=%s", err)
-		return tryAdvertiseTimeout
 	}
 
 	return defaultAdvertiseTTL
@@ -180,13 +143,16 @@ func (d *discovery) discoverLoop() {
 	}
 }
 
-func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.AddrInfo, error) {
-	peerCh, err := d.rd.FindPeers(d.ctx, provides)
+func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID, error) {
+	peerCh, err := d.rd.FindPeers(d.ctx, provides,
+		libp2pdiscovery.Limit(defaultMaxPeers),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	var peers []peer.AddrInfo
+	ourPeerID := d.h.ID()
+	var peerIDs []peer.ID
 
 	ctx, cancel := context.WithTimeout(d.ctx, timeout)
 	defer cancel()
@@ -195,17 +161,20 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.Ad
 		select {
 		case <-ctx.Done():
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				return peers, nil
+				return peerIDs, nil
 			}
-
-			return peers, ctx.Err()
-		case peer := <-peerCh:
-			if peer.ID == d.h.ID() || peer.ID == "" {
+			return peerIDs, ctx.Err()
+		case peer, ok := <-peerCh:
+			if !ok {
+				// channel was closed, no more peers to read
+				return peerIDs, nil
+			}
+			if peer.ID == ourPeerID {
 				continue
 			}
 
-			log.Debugf("found new peer via DHT: peer=%s", peer.ID)
-			peers = append(peers, peer)
+			log.Debugf("Found new peer via DHT: %s", peer)
+			peerIDs = append(peerIDs, peer.ID)
 
 			// found a peer, try to connect if we need more peers
 			if len(d.h.Network().Peers()) < defaultMaxPeers {
@@ -223,7 +192,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.Ad
 func (d *discovery) discover(
 	provides types.ProvidesCoin,
 	searchTime time.Duration,
-) ([]peer.AddrInfo, error) {
+) ([]peer.ID, error) {
 	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",
 		provides,
 		searchTime.Seconds(),

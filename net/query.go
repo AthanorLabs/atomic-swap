@@ -2,13 +2,14 @@ package net
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
@@ -21,29 +22,27 @@ func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
 		Offers: h.handler.GetOffers(),
 	}
 
-	if err := h.writeToStream(stream, resp); err != nil {
+	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
 
 	_ = stream.Close()
 }
 
-func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
+func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 	ctx, cancel := context.WithTimeout(h.ctx, queryTimeout)
 	defer cancel()
 
-	if err := h.h.Connect(ctx, who); err != nil {
+	if err := h.h.Connect(ctx, peer.AddrInfo{ID: who}); err != nil {
 		return nil, err
 	}
 
-	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+queryID))
+	stream, err := h.h.NewStream(ctx, who, protocol.ID(h.protocolID+queryID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
 
-	log.Debug(
-		"opened query stream, peer=", who.ID,
-	)
+	log.Debugf("opened query stream: %s", stream.Conn())
 
 	defer func() {
 		_ = stream.Close()
@@ -53,23 +52,14 @@ func (h *host) Query(who peer.AddrInfo) (*QueryResponse, error) {
 }
 
 func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
-	h.queryMu.Lock()
-	defer h.queryMu.Unlock()
-
-	buf := h.queryBuf
-
-	n, err := readStream(stream, buf)
+	msg, err := readStreamMessage(stream)
 	if err != nil {
-		return nil, fmt.Errorf("read stream error: %w", err)
+		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
 	}
 
-	if n == 0 {
-		return nil, fmt.Errorf("received empty message")
-	}
-
-	var resp *QueryResponse
-	if err := json.Unmarshal(buf[1:n], &resp); err != nil {
-		return nil, err
+	resp, ok := msg.(*QueryResponse)
+	if !ok {
+		return nil, fmt.Errorf("expected %s message but received %s", message.QueryResponseType, msg.Type())
 	}
 
 	return resp, nil

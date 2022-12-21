@@ -16,3 +16,7 @@ var (
 	errMustSetRelayerCommission           = fmt.Errorf("%s must be set if %s is set", flagRelayerCommission, flagRelayerEndpoint)
 	errMustSetRelayerEndpoint             = fmt.Errorf("%s must be set if %s is set", flagRelayerEndpoint, flagRelayerCommission)
 )
+
+func errInvalidFlagValue(flagName string, err error) error {
+	return fmt.Errorf("invalid value passed to --%s: %w", flagName, err)
+}

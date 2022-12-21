@@ -6,19 +6,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	testMultiaddr = "/ip4/192.168.0.102/tcp/9933/p2p/12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2"
-)
-
 var (
-	testSwapID  = types.Hash{99}
-	testTimeout = time.Second * 5
+	testPeerID, _ = peer.Decode("12D3KooWAYn1T8Lu122Pav4zAogjpeU61usLTNZpLRNh9gCqY6X2")
+	testSwapID    = types.Hash{99}
+	testTimeout   = time.Second * 5
 )
 
 func newServer(t *testing.T) *Server {
@@ -79,9 +78,9 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	c, err := wsclient.NewWsClient(s.ctx, s.WsURL())
 	require.NoError(t, err)
 
-	id, ch, err := c.MakeOfferAndSubscribe(0.1, 1, 0.05, types.EthAssetETH, "", 0)
+	offerResp, ch, err := c.MakeOfferAndSubscribe(0.1, 1, 0.05, types.EthAssetETH, "", 0)
 	require.NoError(t, err)
-	require.NotEqual(t, id, testSwapID)
+	require.NotEqual(t, offerResp.OfferID, testSwapID)
 	select {
 	case status := <-ch:
 		require.Equal(t, types.CompletedSuccess, status)
@@ -100,7 +99,7 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	c, err := wsclient.NewWsClient(cliCtx, s.WsURL())
 	require.NoError(t, err)
 
-	ch, err := c.TakeOfferAndSubscribe(testMultiaddr, testSwapID.String(), 1)
+	ch, err := c.TakeOfferAndSubscribe(testPeerID, testSwapID, 1)
 	require.NoError(t, err)
 
 	select {

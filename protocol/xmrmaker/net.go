@@ -72,7 +72,7 @@ func (inst *Instance) initiate(
 		return nil, err
 	}
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
 		s.info.ReceivedAmount,
@@ -95,27 +95,23 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 	log.Info(str)
 
 	// get offer and determine expected amount
-	id, err := types.HexToHash(msg.OfferID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if types.IsHashZero(id) {
+	if types.IsHashZero(msg.OfferID) {
 		return nil, nil, errOfferIDNotSet
 	}
 
-	offer, offerExtra, err := inst.offerManager.GetOffer(id)
+	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 
-	if providedAmount < offer.MinimumAmount {
-		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinimumAmount}
+	if providedAmount < offer.MinAmount {
+		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
 	}
 
-	if providedAmount > offer.MaximumAmount {
-		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaximumAmount}
+	if providedAmount > offer.MaxAmount {
+		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
 	}
 
 	providedPicoXMR := common.MoneroToPiconero(providedAmount)

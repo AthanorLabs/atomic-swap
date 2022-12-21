@@ -5,7 +5,8 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
+	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -21,20 +22,37 @@ import (
 // This file only contains mock definitions used by other test files
 //
 
-type mockNet struct{}
+type mockNet struct {
+	peerID peer.ID
+}
 
 func (*mockNet) Addresses() []string {
+	panic("not implemented")
+}
+
+func (m *mockNet) PeerID() peer.ID {
+	if m.peerID == "" {
+		var err error
+		m.peerID, err = libp2ptest.RandPeerID()
+		if err != nil {
+			panic(err)
+		}
+	}
+	return m.peerID
+}
+
+func (*mockNet) ConnectedPeers() []string {
 	panic("not implemented")
 }
 
 func (*mockNet) Advertise() {
 }
 
-func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return nil, nil
 }
 
-func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
+func (*mockNet) Query(who peer.ID) (*net.QueryResponse, error) {
 	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
@@ -137,7 +155,7 @@ func (*mockXMRMaker) GetOffers() []*types.Offer {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) ClearOffers([]string) error {
+func (*mockXMRMaker) ClearOffers([]types.Hash) error {
 	panic("not implemented")
 }
 

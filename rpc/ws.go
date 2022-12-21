@@ -120,14 +120,14 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		return s.subscribeSwapStatus(s.ctx, conn, params.ID)
+		return s.subscribeSwapStatus(s.ctx, conn, params.OfferID)
 	case rpctypes.SubscribeTakeOffer:
 		var params *rpctypes.TakeOfferRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		ch, err := s.ns.takeOffer(params.Multiaddr, params.OfferID, params.ProvidesAmount)
+		ch, err := s.ns.takeOffer(params.PeerID, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
@@ -139,23 +139,19 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		offerID, offerExtra, err := s.ns.makeOffer(params)
+		offerResp, offerExtra, err := s.ns.makeOffer(params)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeMakeOffer(s.ctx, conn, offerID, offerExtra)
+		return s.subscribeMakeOffer(s.ctx, conn, offerResp.OfferID, offerExtra)
 	default:
 		return errInvalidMethod
 	}
 }
 
-func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerIDStr, ethAddress,
+func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID types.Hash, ethAddress,
 	xmrAddr string) error {
-	offerID, err := offerIDStringToHash(offerIDStr)
-	if err != nil {
-		return err
-	}
 
 	signer, err := s.taker.ExternalSender(offerID)
 	if err != nil {
@@ -191,7 +187,7 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 		case tx := <-txsOutCh:
 			log.Debugf("outbound tx: %v", tx)
 			resp := &rpctypes.SignerResponse{
-				OfferID: offerIDStr,
+				OfferID: offerID,
 				To:      tx.To.String(),
 				Data:    tx.Data,
 				Value:   tx.Value,
@@ -212,11 +208,11 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 				return fmt.Errorf("failed to unmarshal parameters: %w", err)
 			}
 
-			if params.OfferID != offerIDStr {
+			if params.OfferID != offerID {
 				return fmt.Errorf("got unexpected offerID %s, expected %s", params.OfferID, offerID)
 			}
 
-			txsInCh <- ethcommon.HexToHash(params.TxHash)
+			txsInCh <- params.TxHash
 		}
 	}
 }
@@ -248,9 +244,10 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 }
 
 func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
-	offerID string, offerExtra *types.OfferExtra) error {
+	offerID types.Hash, offerExtra *types.OfferExtra) error {
 	resp := &rpctypes.MakeOfferResponse{
-		ID: offerID,
+		PeerID:  s.ns.net.PeerID(),
+		OfferID: offerID,
 	}
 
 	if err := writeResponse(conn, resp); err != nil {

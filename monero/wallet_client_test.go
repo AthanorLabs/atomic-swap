@@ -6,6 +6,7 @@ import (
 	"path"
 	"testing"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -13,6 +14,10 @@ import (
 )
 
 var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
+
+func init() {
+	logging.SetLogLevel("monero", "debug")
+}
 
 func TestClient_Transfer(t *testing.T) {
 	amount := common.MoneroToPiconero(10) // 1k monero
@@ -244,35 +249,45 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 	require.Equal(t, "monero-bin/monero-wallet-rpc", walletRPCPath)
 }
 
-func Test_validateMonerodConfig_devSuccess(t *testing.T) {
-	err := validateMonerodConfig(common.Development, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+func Test_validateMonerodConfigs_dev(t *testing.T) {
+	env := common.Development
+	node, err := findWorkingNode(env, common.ConfigDefaultsForEnv(env).MoneroNodes)
 	require.NoError(t, err)
+	require.NotNil(t, node)
 }
 
-func Test_validateMonerodConfig_stagenetSuccess(t *testing.T) {
-	t.Skip("skip for now b/c public node is down")
-	host := "node.sethforprivacy.com"
-	err := validateMonerodConfig(common.Stagenet, host, 38089)
+func Test_validateMonerodConfigs_stagenet(t *testing.T) {
+	env := common.Stagenet
+	node, err := findWorkingNode(env, common.ConfigDefaultsForEnv(env).MoneroNodes)
 	require.NoError(t, err)
+	require.NotNil(t, node)
 }
 
-func Test_validateMonerodConfig_mainnetSuccess(t *testing.T) {
-	t.Skip("skip for now b/c public node is down")
-	host := "node.sethforprivacy.com"
-	err := validateMonerodConfig(common.Mainnet, host, 18089)
+func Test_validateMonerodConfigs_mainnet(t *testing.T) {
+	env := common.Mainnet
+	node, err := findWorkingNode(env, common.ConfigDefaultsForEnv(env).MoneroNodes)
 	require.NoError(t, err)
+	require.NotNil(t, node)
 }
 
 func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
-	err := validateMonerodConfig(common.Mainnet, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+	node := &common.MoneroNode{
+		Host: "127.0.0.1",
+		Port: common.DefaultMoneroDaemonDevPort,
+	}
+	err := validateMonerodNode(common.Mainnet, node)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "is not a mainnet node")
 }
 
 func Test_validateMonerodConfig_invalidPort(t *testing.T) {
-	nonUsedPort, err := getFreePort()
+	nonUsedPort, err := getFreeTCPPort()
 	require.NoError(t, err)
-	err = validateMonerodConfig(common.Development, "127.0.0.1", nonUsedPort)
+	node := &common.MoneroNode{
+		Host: "127.0.0.1",
+		Port: nonUsedPort,
+	}
+	err = validateMonerodNode(common.Development, node)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connection refused")
 }
