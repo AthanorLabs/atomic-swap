@@ -1,4 +1,4 @@
-package net
+package host
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
@@ -22,7 +23,7 @@ func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
 		Offers: h.handler.GetOffers(),
 	}
 
-	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
+	if err := net.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
 
@@ -37,7 +38,7 @@ func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 		return nil, err
 	}
 
-	stream, err := h.h.NewStream(ctx, who, protocol.ID(h.protocolID+queryID))
+	stream, err := h.h.NewStream(ctx, who, protocol.ID(queryID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
@@ -52,7 +53,7 @@ func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 }
 
 func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
-	msg, err := readStreamMessage(stream)
+	msg, err := net.ReadStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
 	}

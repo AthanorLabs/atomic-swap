@@ -23,6 +23,8 @@ const (
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
+type ShouldAdvertiseFunc = func() bool
+
 type discovery struct {
 	ctx         context.Context
 	dht         *dual.DHT
@@ -30,18 +32,25 @@ type discovery struct {
 	rd          *libp2prouting.RoutingDiscovery
 	provides    []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
 	advertiseCh chan struct{}        // signals to advertise now that an XMR offer was made
-	offerAPI    Handler
+	//offerAPI    Handler
+	shouldAdvertiseFunc ShouldAdvertiseFunc
 }
 
-func (d *discovery) setOfferAPI(offerAPI Handler) {
-	d.offerAPI = offerAPI
+// func (d *discovery) setOfferAPI(offerAPI Handler) {
+// 	d.offerAPI = offerAPI
+// }
+
+// TODO: set this as the shouldAdvertiseFunc
+// func hasOffers() bool {
+// 	offers := offerAPI.GetOffers()
+// 	return len(offers) == 0
+// }
+
+func (d *discovery) setShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
+	d.shouldAdvertiseFunc = fn
 }
 
 func (d *discovery) start() error {
-	if d.offerAPI == nil {
-		return errNilOfferAPI
-	}
-
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
@@ -75,8 +84,7 @@ func (d *discovery) advertiseLoop() {
 			// no longer present in the DHT as a provider.
 			// otherwise, we'll be present, but no offers will be sent when peers
 			// query us.
-			offers := d.offerAPI.GetOffers()
-			if len(offers) == 0 {
+			if !d.shouldAdvertiseFunc() {
 				d.provides = nil
 				continue
 			}

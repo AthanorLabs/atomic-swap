@@ -1,4 +1,4 @@
-package net
+package host
 
 import (
 	"testing"
@@ -16,10 +16,10 @@ func TestHost_Query(t *testing.T) {
 	err = hb.Start()
 	require.NoError(t, err)
 
-	err = ha.h.Connect(ha.ctx, hb.addrInfo())
+	err = ha.h.Connect(ha.ctx, hb.h.AddrInfo())
 	require.NoError(t, err)
 
-	resp, err := ha.Query(hb.h.ID())
+	resp, err := ha.Query(hb.h.PeerID())
 	require.NoError(t, err)
 	require.Equal(t, []*types.Offer{}, resp.Offers)
 }

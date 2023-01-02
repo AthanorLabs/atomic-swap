@@ -1,4 +1,4 @@
-package net
+package host
 
 import (
 	"github.com/athanorlabs/atomic-swap/common"
