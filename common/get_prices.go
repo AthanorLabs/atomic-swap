@@ -42,19 +42,19 @@ func latestRoundDataReturnArgs() abi.Arguments {
 
 	return abi.Arguments{
 		{
-			Type: uint80Ty,
+			Type: uint80Ty, // roundId
 		},
 		{
-			Type: int256Ty,
+			Type: int256Ty, // answer (the price)
 		},
 		{
-			Type: uint256Ty,
+			Type: uint256Ty, // startedAt
 		},
 		{
-			Type: uint256Ty,
+			Type: uint256Ty, // updatedAt
 		},
 		{
-			Type: uint80Ty,
+			Type: uint80Ty, // answeredInRound
 		},
 	}
 }
@@ -70,12 +70,12 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*big.Int, error)
 	var to ethcommon.Address
 
 	switch chainID.Uint64() {
-	case 1:
+	case MainnetChainID:
 		// see https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
 		to = ethcommon.HexToAddress("0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419")
-	case 5, 1337, 31337:
+	case GoerliChainID, GanacheChainID, HardhatChainID:
 		// for goerli or test clients, just return 1
-		return big.NewInt(1), nil
+		return big.NewInt(1000), nil
 	default:
 		return nil, errUnsupportedNetwork
 	}
@@ -94,12 +94,12 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*big.Int, error)
 	var to ethcommon.Address
 
 	switch chainID.Uint64() {
-	case 1:
+	case MainnetChainID:
 		// see https://data.chain.link/ethereum/mainnet/crypto-usd/xmr-usd
 		to = ethcommon.HexToAddress("0xfa66458cce7dd15d8650015c4fce4d278271618f")
-	case 5, 1337, 31337:
+	case GoerliChainID, GanacheChainID, HardhatChainID:
 		// for goerli or test clients, just return 1
-		return big.NewInt(1), nil
+		return big.NewInt(100), nil
 	default:
 		return nil, errUnsupportedNetwork
 	}
