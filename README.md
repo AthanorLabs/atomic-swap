@@ -34,6 +34,10 @@ The swap process comes with a HTTP JSON-RPC API as well as a Websockets API. You
 
 If you'd like to contribute, feel free to fork the repo and make a pull request. Please make sure the CI is passing - you can run `make build`, `make lint`, and `make test` to make sure the checks pass locally.
 
+## Contact
+ 
+- [Matrix room](https://matrix.to/#/#ethxmrswap:matrix.org)
+
 ## Donations
 
 The work on this project has been funded previously by community grants. It is currently not funded; if you'd like to donate, you can do so at the following address:
