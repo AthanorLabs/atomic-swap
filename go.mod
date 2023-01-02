@@ -7,7 +7,7 @@ require (
 	github.com/ChainSafe/chaindb v0.1.5-0.20221010190531-f900218c88f8
 	github.com/MarinX/monerorpc v1.0.5
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/athanorlabs/go-dleq v0.0.0-20221219211615-fd3fee546127
+	github.com/athanorlabs/go-dleq v0.0.0-20221228030413-8ac300febf46
 	github.com/athanorlabs/go-relayer v0.0.4
 	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
