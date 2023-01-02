@@ -5,6 +5,7 @@ package extethclient
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -63,7 +64,12 @@ type ethClient struct {
 
 // NewEthClient creates and returns our extended ethereum client/wallet. The passed context
 // is only used for creation.
-func NewEthClient(ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
+func NewEthClient(env common.Environment, ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
+	err := ValidateEthClient(ctx, env, ec)
+	if err != nil {
+		return nil, err
+	}
+
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return nil, err
@@ -229,4 +235,30 @@ func (c *ethClient) Unlock() {
 
 func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
+}
+
+func ValidateEthClient(ctx context.Context, env common.Environment, ec *ethclient.Client) error {
+	chainID, err := ec.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+
+	switch env {
+	case common.Mainnet:
+		if chainID != big.NewInt(1) {
+			return fmt.Errorf("Environment detected as mainnet which has expected chain ID of 1, but Ethereum chain ID is %s", chainID)
+		}
+	case common.Stagenet:
+		if chainID != big.NewInt(5) {
+			return fmt.Errorf("Environment detected as stagenet (goerli) which has expected chain ID of 5, but Ethereum chain ID is %s", chainID)
+		}
+	case common.Development:
+		if chainID != big.NewInt(1337) {
+			return fmt.Errorf("Environment detected as development which has expected chain ID of 1337, but Ethereum chain ID is %s", chainID)
+		}
+	default:
+		panic("unhandled environment type")
+	}
+
+	return nil
 }
