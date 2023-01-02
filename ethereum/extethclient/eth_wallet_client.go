@@ -65,7 +65,7 @@ type ethClient struct {
 // NewEthClient creates and returns our extended ethereum client/wallet. The passed context
 // is only used for creation.
 func NewEthClient(env common.Environment, ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
-	err := ValidateEthClient(ctx, env, ec)
+	err := validateEthClient(ctx, env, ec)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
 
-func ValidateEthClient(ctx context.Context, env common.Environment, ec *ethclient.Client) error {
+func validateEthClient(ctx context.Context, env common.Environment, ec *ethclient.Client) error {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return err
