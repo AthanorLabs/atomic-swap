@@ -114,7 +114,7 @@ func (h *host) Advertise() {
 }
 
 func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
-	return h.h.Discover(provides, searchTime)
+	return h.h.Discover(string(provides), searchTime)
 }
 
 func (h *host) AddrInfo() peer.AddrInfo {

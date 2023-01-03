@@ -192,7 +192,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 }
 
 func (d *discovery) discover(
-	provides types.ProvidesCoin,
+	provides string,
 	searchTime time.Duration,
 ) ([]peer.ID, error) {
 	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",
@@ -200,5 +200,5 @@ func (d *discovery) discover(
 		searchTime.Seconds(),
 	)
 
-	return d.findPeers(string(provides), searchTime)
+	return d.findPeers(provides, searchTime)
 }
