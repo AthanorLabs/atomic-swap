@@ -75,7 +75,6 @@ type Config struct {
 	KeyFile     string
 	Bootnodes   []string
 	ProtocolID  string
-	//MaxMessageSize uint32
 }
 
 // QUIC will have better performance in high-bandwidth protocols if you increase a socket
