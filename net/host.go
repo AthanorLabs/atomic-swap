@@ -58,6 +58,7 @@ type Host interface {
 	AddrInfo() peer.AddrInfo
 	Addresses() []string
 	PeerID() peer.ID
+	ConnectedPeers() []string
 }
 
 type host struct {

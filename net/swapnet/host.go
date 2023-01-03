@@ -1,4 +1,4 @@
-package host
+package swapnet
 
 import (
 	"context"
@@ -29,6 +29,12 @@ type Host interface {
 
 	Advertise()
 	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+
+	AddrInfo() peer.AddrInfo
+	Addresses() []string
+	ConnectedPeers() []string
+	PeerID() peer.ID
+
 	Query(who peer.ID) (*QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
 	MessageSender
@@ -49,7 +55,10 @@ type host struct {
 	swaps  map[types.Hash]*swap
 }
 
-func NewHost(cfg *net.Config, handler Handler) (*host, error) {
+// NewHost returns a new Host.
+// The host implemented in this package is swap-specific; ie. it supports swap-specific
+// messages (initiate and query).
+func NewHost(cfg *net.Config) (*host, error) {
 	cfg.ProtocolID = protocolID
 
 	h, err := net.NewHost(cfg)
@@ -58,10 +67,9 @@ func NewHost(cfg *net.Config, handler Handler) (*host, error) {
 	}
 
 	return &host{
-		ctx:     cfg.Ctx,
-		h:       h,
-		handler: handler,
-		swaps:   make(map[types.Hash]*swap),
+		ctx:   cfg.Ctx,
+		h:     h,
+		swaps: make(map[types.Hash]*swap),
 	}, nil
 }
 
@@ -75,6 +83,10 @@ func (h *host) SetHandler(handler Handler) {
 }
 
 func (h *host) Start() error {
+	if h.handler == nil {
+		return errNilHandler
+	}
+
 	h.h.SetStreamHandler(queryID, h.handleQueryStream)
 	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 	return h.h.Start()
@@ -103,4 +115,20 @@ func (h *host) Advertise() {
 
 func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return h.h.Discover(provides, searchTime)
+}
+
+func (h *host) AddrInfo() peer.AddrInfo {
+	return h.h.AddrInfo()
+}
+
+func (h *host) Addresses() []string {
+	return h.h.Addresses()
+}
+
+func (h *host) ConnectedPeers() []string {
+	return h.h.ConnectedPeers()
+}
+
+func (h *host) PeerID() peer.ID {
+	return h.h.AddrInfo().ID
 }

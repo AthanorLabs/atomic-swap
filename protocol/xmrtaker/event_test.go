@@ -13,7 +13,6 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
@@ -86,7 +85,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	s.SetSwapTimeout(time.Minute * 2)
 
 	// invalid SendKeysMessage should result in an error
-	msg := &net.SendKeysMessage{}
+	msg := &message.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
 

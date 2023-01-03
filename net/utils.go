@@ -18,6 +18,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
+// WriteStreamMessage writes the given message to the writer.
+// The peer ID is only used for logging, as it's assumed the writer implementation
+// is a stream opened with the given peer.
 func WriteStreamMessage(s io.Writer, msg message.Message, peerID peer.ID) error {
 	encMsg, err := msg.Encode()
 	if err != nil {
@@ -38,7 +41,7 @@ func WriteStreamMessage(s io.Writer, msg message.Message, peerID peer.ID) error 
 	return nil
 }
 
-// readStreamMessage reads the 4-byte LE size header and message body returning the
+// ReadStreamMessage reads the 4-byte LE size header and message body returning the
 // message body bytes. io.EOF is returned if the stream is closed before any bytes
 // are received. If a partial message is received before the stream closes,
 // io.ErrUnexpectedEOF is returned.

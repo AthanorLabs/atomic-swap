@@ -21,7 +21,6 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -32,17 +31,17 @@ import (
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
 type mockNet struct {
-	msgMu sync.Mutex  // lock needed, as SendSwapMessage is called async from timeout handlers
-	msg   net.Message // last value passed to SendSwapMessage
+	msgMu sync.Mutex      // lock needed, as SendSwapMessage is called async from timeout handlers
+	msg   message.Message // last value passed to SendSwapMessage
 }
 
-func (n *mockNet) LastSentMessage() net.Message {
+func (n *mockNet) LastSentMessage() message.Message {
 	n.msgMu.Lock()
 	defer n.msgMu.Unlock()
 	return n.msg
 }
 
-func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
+func (n *mockNet) SendSwapMessage(msg message.Message, _ types.Hash) error {
 	n.msgMu.Lock()
 	defer n.msgMu.Unlock()
 	n.msg = msg
@@ -138,11 +137,11 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 	return swapState, contract
 }
 
-func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+func newTestXMRMakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pcommon.KeysAndProof) {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
-	msg := &net.SendKeysMessage{
+	msg := &message.SendKeysMessage{
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
@@ -157,7 +156,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	s := newTestSwapState(t)
 	defer s.cancel()
 
-	msg := &net.SendKeysMessage{}
+	msg := &message.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
 

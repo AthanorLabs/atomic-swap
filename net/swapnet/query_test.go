@@ -1,4 +1,4 @@
-package host
+package swapnet
 
 import (
 	"testing"

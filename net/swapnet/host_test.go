@@ -1,4 +1,4 @@
-package host
+package swapnet
 
 import (
 	"context"
@@ -72,9 +72,9 @@ func basicTestConfig(t *testing.T) *net.Config {
 }
 
 func newHost(t *testing.T, cfg *net.Config) *host {
-	h, err := NewHost(cfg, &mockHandler{})
+	h, err := NewHost(cfg)
 	require.NoError(t, err)
-	//h.SetHandler(&mockHandler{})
+	h.SetHandler(&mockHandler{})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)

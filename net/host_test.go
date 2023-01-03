@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
@@ -23,8 +22,6 @@ const defaultMaxMessageSize = 1 << 17
 func init() {
 	logging.SetLogLevel("net", "debug")
 }
-
-var testID = types.Hash{99}
 
 func basicTestConfig(t *testing.T) *Config {
 	_, chainID := tests.NewEthClient(t)

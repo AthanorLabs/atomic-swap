@@ -23,28 +23,20 @@ const (
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
+// ShouldAdvertiseFunc is the type for a function that returns whether we should
+// regularly advertise inside the advertisement loop.
+// If it returns false, we don't advertise until the next loop iteration.
 type ShouldAdvertiseFunc = func() bool
 
 type discovery struct {
-	ctx         context.Context
-	dht         *dual.DHT
-	h           libp2phost.Host
-	rd          *libp2prouting.RoutingDiscovery
-	provides    []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
-	advertiseCh chan struct{}        // signals to advertise now that an XMR offer was made
-	//offerAPI    Handler
+	ctx                 context.Context
+	dht                 *dual.DHT
+	h                   libp2phost.Host
+	rd                  *libp2prouting.RoutingDiscovery
+	provides            []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
+	advertiseCh         chan struct{}        // signals to advertise now that an XMR offer was made
 	shouldAdvertiseFunc ShouldAdvertiseFunc
 }
-
-// func (d *discovery) setOfferAPI(offerAPI Handler) {
-// 	d.offerAPI = offerAPI
-// }
-
-// TODO: set this as the shouldAdvertiseFunc
-// func hasOffers() bool {
-// 	offers := offerAPI.GetOffers()
-// 	return len(offers) == 0
-// }
 
 func (d *discovery) setShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
 	d.shouldAdvertiseFunc = fn
@@ -84,7 +76,9 @@ func (d *discovery) advertiseLoop() {
 			// no longer present in the DHT as a provider.
 			// otherwise, we'll be present, but no offers will be sent when peers
 			// query us.
-			if !d.shouldAdvertiseFunc() {
+			//
+			// this function is set in net/swapnet/host.go SetHandler().
+			if d.shouldAdvertiseFunc != nil && !d.shouldAdvertiseFunc() {
 				d.provides = nil
 				continue
 			}

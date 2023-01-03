@@ -16,7 +16,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/swapnet"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
@@ -41,7 +41,7 @@ type RecoveryDB interface {
 type Backend interface {
 	XMRClient() monero.WalletClient
 	ETHClient() extethclient.EthClient
-	net.MessageSender
+	swapnet.MessageSender
 
 	RecoveryDB() RecoveryDB
 
@@ -57,7 +57,7 @@ type Backend interface {
 	SwapManager() swap.Manager
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
-	Net() net.MessageSender
+	Net() swapnet.MessageSender
 	SwapTimeout() time.Duration
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 
@@ -89,7 +89,7 @@ type backend struct {
 	swapTimeout  time.Duration
 
 	// network interface
-	net.MessageSender
+	swapnet.MessageSender
 }
 
 // Config is the config for the Backend
@@ -106,7 +106,7 @@ type Config struct {
 
 	RecoveryDB RecoveryDB
 
-	Net net.MessageSender
+	Net swapnet.MessageSender
 }
 
 // NewBackend returns a new Backend
@@ -166,7 +166,7 @@ func (b *backend) Env() common.Environment {
 	return b.env
 }
 
-func (b *backend) Net() net.MessageSender {
+func (b *backend) Net() swapnet.MessageSender {
 	return b.MessageSender
 }
 
