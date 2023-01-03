@@ -19,7 +19,6 @@ import (
 	"github.com/MarinX/monerorpc"
 	"github.com/MarinX/monerorpc/daemon"
 	"github.com/MarinX/monerorpc/wallet"
-	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -142,15 +141,4 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *common.Piconer
 		}
 		require.NoError(t, err)
 	}
-}
-
-// Str2Decimal converts strings to big decimal for tests, panicing on error.
-// This function is intended for use with string constants, where panic is
-// an acceptable behavior.
-func Str2Decimal(amount string) *apd.Decimal {
-	a, _, err := new(apd.Decimal).SetString(amount)
-	if err != nil {
-		panic(err)
-	}
-	return a
 }

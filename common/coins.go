@@ -73,12 +73,15 @@ func (a *PiconeroAmount) MarshalText() ([]byte, error) {
 func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	pnAmt := new(apd.Decimal).Set(xmrAmt)
 	pnAmt.Exponent += NumMoneroDecimals
-	_, err := DecimalCtx.Round(pnAmt, pnAmt)
+	// Adjust the exponent to zero rounding out any fractional piconeros
+	_, err := DecimalCtx.Quantize(pnAmt, pnAmt, 0)
 	if err != nil {
-		// This could only happen on over or underflow. We vet the ranges of all external
-		// inputs, so this cannot happen.
+		// TODO: Test our APIs to make sure we prevent this during input validation.
+		//       This error can only happen if the number of base10 piconero digits
+		//       exceeds the max precision of DecimalCtx.
 		panic(err)
 	}
+
 	return (*PiconeroAmount)(pnAmt)
 }
 
@@ -200,11 +203,11 @@ func (a *WeiAmount) String() string {
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
 type ERC20TokenAmount struct {
 	amount      *apd.Decimal
-	numDecimals int // num digits after the Decimal point needed for smallest denomination
+	numDecimals uint8 // num digits after the Decimal point needed for smallest denomination
 }
 
 // NewERC20TokenAmountFromBigInt converts some amount in the smallest token denomination into an ERC20TokenAmount.
-func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals int) *ERC20TokenAmount {
+func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals uint8) *ERC20TokenAmount {
 	asDecimal := new(apd.Decimal)
 	asDecimal.Coeff.SetBytes(amount.Bytes())
 	return &ERC20TokenAmount{
@@ -214,7 +217,7 @@ func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals int) *ERC20TokenAmo
 }
 
 // NewERC20TokenAmount converts some amount in the smallest token denomination into an ERC20TokenAmount.
-func NewERC20TokenAmount(amount int64, decimals int) *ERC20TokenAmount {
+func NewERC20TokenAmount(amount int64, decimals uint8) *ERC20TokenAmount {
 	return &ERC20TokenAmount{
 		amount:      apd.New(amount, 0),
 		numDecimals: decimals,
@@ -225,7 +228,7 @@ func NewERC20TokenAmount(amount int64, decimals int) *ERC20TokenAmount {
 // to its smaller denomination.
 // For example, if amount is 1.99 and decimals is 9, the resulting value stored
 // is 1.99 * 10^9.
-func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals int) *ERC20TokenAmount {
+func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20TokenAmount {
 	adjusted := new(apd.Decimal).Set(amount)
 	adjusted.Exponent += int32(decimals)
 	return &ERC20TokenAmount{
@@ -250,7 +253,7 @@ func (a *ERC20TokenAmount) BigInt() *big.Int {
 // AsStandard returns the amount in standard form
 func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
 	tokenAmt := new(apd.Decimal).Set(a.amount)
-	tokenAmt.Exponent -= NumEtherDecimals
+	tokenAmt.Exponent -= int32(a.numDecimals)
 	return tokenAmt
 }
 

@@ -31,7 +31,7 @@ func GetEthereumAssetAmount(
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return common.NewERC20TokenAmountFromDecimals(amt, int(decimals)), nil
+		return common.NewERC20TokenAmountFromDecimals(amt, decimals), nil
 	}
 
 	return common.EtherToWei(amt), nil

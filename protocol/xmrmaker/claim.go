@@ -50,7 +50,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v %s",
-			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
+			common.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
 			symbol,
 		)
 	}
@@ -91,7 +91,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 
 		log.Infof("balance after claim: %s %s",
-			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
+			common.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
 			symbol,
 		)
 	}
