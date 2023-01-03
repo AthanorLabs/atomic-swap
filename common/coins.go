@@ -20,8 +20,7 @@ const (
 
 var (
 	// DecimalCtx is the apd context used for math operations on our coins
-	DecimalCtx          = apd.BaseContext.WithPrecision(MaxCoinPrecision)
-	nonFractionalWeiCtx = apd.BaseContext.WithPrecision(NumEtherDecimals)
+	DecimalCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
 )
 
 // PiconeroAmount represents some amount of piconero (the smallest denomination of monero)
@@ -73,7 +72,7 @@ func (a *PiconeroAmount) MarshalText() ([]byte, error) {
 func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	pnAmt := new(apd.Decimal).Set(xmrAmt)
 	pnAmt.Exponent += NumMoneroDecimals
-	// Adjust the exponent to zero rounding out any fractional piconeros
+	// Adjust the exponent to zero rounding, out any fractional piconeros
 	_, err := DecimalCtx.Quantize(pnAmt, pnAmt, 0)
 	if err != nil {
 		// TODO: Test our APIs to make sure we prevent this during input validation.
@@ -160,7 +159,11 @@ func BigInt2Wei(amount *big.Int) *WeiAmount {
 func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	weiAmt := new(apd.Decimal).Set(ethAmt)
 	weiAmt.Exponent += NumEtherDecimals
-	if _, err := nonFractionalWeiCtx.Round(weiAmt, weiAmt); err != nil {
+	// Adjust the exponent to zero, rounding out any fractional wei
+	_, err := DecimalCtx.Quantize(weiAmt, weiAmt, 0)
+	if err != nil {
+		// Could happen if there were more wei digits than MaxCoinPrecision, but
+		// our APIs do input validation to prevent this.
 		panic(err)
 	}
 	return (*WeiAmount)(weiAmt)
@@ -231,6 +234,13 @@ func NewERC20TokenAmount(amount int64, decimals uint8) *ERC20TokenAmount {
 func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20TokenAmount {
 	adjusted := new(apd.Decimal).Set(amount)
 	adjusted.Exponent += int32(decimals)
+	// Adjust the exponent to zero, rounding out any fractional token units
+	_, err := DecimalCtx.Quantize(adjusted, adjusted, 0)
+	if err != nil {
+		// Could happen if there were more whole token digits than MaxCoinPrecision, but
+		// our APIs do input validation to prevent this.
+		panic(err)
+	}
 	return &ERC20TokenAmount{
 		amount:      adjusted,
 		numDecimals: decimals,
@@ -239,21 +249,22 @@ func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20
 
 // BigInt returns the ERC20TokenAmount as a *big.Int
 func (a *ERC20TokenAmount) BigInt() *big.Int {
-	noExponent := new(apd.Decimal)
-	cond, err := nonFractionalWeiCtx.Quantize(noExponent, a.amount, 0)
+	wholeTokenUnits := new(apd.Decimal)
+	cond, err := DecimalCtx.Quantize(wholeTokenUnits, a.amount, 0)
 	if err != nil {
 		panic(err)
 	}
 	if cond.Rounded() {
 		log.Warn("Converting ERC20TokenAmount=%s (digits=%d) to big.Int required rounding", a.amount, a.numDecimals)
 	}
-	return new(big.Int).SetBytes(noExponent.Coeff.Bytes())
+	return new(big.Int).SetBytes(wholeTokenUnits.Coeff.Bytes())
 }
 
 // AsStandard returns the amount in standard form
 func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
 	tokenAmt := new(apd.Decimal).Set(a.amount)
 	tokenAmt.Exponent -= int32(a.numDecimals)
+	_, _ = tokenAmt.Reduce(tokenAmt)
 	return tokenAmt
 }
 

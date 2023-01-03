@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,8 @@ func TestPiconeroAmount(t *testing.T) {
 func TestWeiAmount(t *testing.T) {
 	amount := Str2Decimal("33.3")
 	wei := EtherToWei(amount)
-	require.Equal(t, fmt.Sprintf("%.18f", amount), fmt.Sprintf("%.18f", wei.AsEther()))
+	require.Equal(t, "33300000000000000000", wei.String())
+	require.Equal(t, "33.3", wei.AsEther().String())
 
 	amountUint := int64(8181)
 	WeiAmount := NewWeiAmount(amountUint)
@@ -35,7 +35,7 @@ func TestERC20TokenAmount(t *testing.T) {
 
 	amount = Str2Decimal("33.000000005")
 	wei = NewERC20TokenAmountFromDecimals(amount, 9)
-	require.Equal(t, fmt.Sprintf("%.9f", amount), fmt.Sprintf("%.9f", wei.AsStandard()))
+	require.Equal(t, "33.000000005", wei.AsStandard().String())
 
 	amount = Str2Decimal("33.0000000005")
 	wei = NewERC20TokenAmountFromDecimals(amount, 9)
