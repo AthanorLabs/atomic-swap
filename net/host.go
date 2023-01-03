@@ -30,10 +30,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
-// const (
-// 	defaultMaxMessageSize = 1 << 17
-// )
-
 var log = logging.Logger("net")
 var _ Host = &host{}
 
@@ -47,10 +43,6 @@ type Host interface {
 
 	SetStreamHandler(string, func(libp2pnetwork.Stream))
 	SetShouldAdvertiseFunc(ShouldAdvertiseFunc)
-
-	// Query(who peer.ID) (*QueryResponse, error)
-	// Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
-	// MessageSender
 
 	Connectedness(peer.ID) libp2pnetwork.Connectedness
 	Connect(context.Context, peer.AddrInfo) error
@@ -176,11 +168,6 @@ func NewHost(cfg *Config) (*host, error) {
 
 	routedHost := routedhost.Wrap(basicHost, dht)
 
-	// maxMessageSize := cfg.MaxMessageSize
-	// if maxMessageSize == 0 {
-	// 	maxMessageSize = defaultMaxMessageSize
-	// }
-
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
 	hst := &host{
 		ctx:        ourCtx,
@@ -197,24 +184,12 @@ func NewHost(cfg *Config) (*host, error) {
 			provides:    nil,
 			advertiseCh: make(chan struct{}),
 		},
-		//maxMessageSize: maxMessageSize,
 	}
 
 	return hst, nil
 }
 
 func (h *host) Start() error {
-	// if h.handler == nil {
-	// 	return errNilHandler
-	// }
-
-	// h.h.SetStreamHandler(protocol.ID(h.protocolID+queryID), h.handleQueryStream)
-	// h.h.SetStreamHandler(protocol.ID(h.protocolID+swapID), h.handleProtocolStream)
-	// log.Debugf("supporting protocols %s and %s",
-	// 	protocol.ID(h.protocolID+queryID),
-	// 	protocol.ID(h.protocolID+swapID),
-	// )
-
 	for _, addr := range h.h.Addrs() {
 		log.Info("Started listening: address=", addr)
 	}
@@ -320,19 +295,6 @@ func (h *host) Connect(ctx context.Context, who peer.AddrInfo) error {
 func (h *host) NewStream(ctx context.Context, p peer.ID, pid protocol.ID) (libp2pnetwork.Stream, error) {
 	return h.h.NewStream(ctx, p, protocol.ID(h.protocolID)+pid)
 }
-
-// // SendSwapMessage sends a message to the peer who we're currently doing a swap with.
-// func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
-// 	h.swapMu.Lock()
-// 	defer h.swapMu.Unlock()
-
-// 	swap, has := h.swaps[id]
-// 	if !has {
-// 		return errNoOngoingSwap
-// 	}
-
-// 	return writeStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
-// }
 
 // multiaddrs returns the local multiaddresses that we are listening on
 func (h *host) multiaddrs() []ma.Multiaddr {
