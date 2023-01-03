@@ -203,7 +203,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	client := rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
 	balance, err := client.Balances()
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(one))
+	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance.Cmp(common.MoneroToPiconero(one)), 0)
 
 	minXMRAmt := tests.Str2Decimal("0.1")
 	maxXMRAmt := one
