@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -95,8 +97,8 @@ func newSwapStateFromStart(
 	offerID types.Hash,
 	transferBack bool,
 	providedAmount EthereumAssetAmount,
-	receivedAmount common.PiconeroAmount,
-	exchangeRate types.ExchangeRate,
+	receivedAmount *common.PiconeroAmount,
+	exchangeRate *types.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
 	stage := types.ExpectingKeys
@@ -313,11 +315,11 @@ func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 }
 
 // ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
-func (s *swapState) ReceivedAmount() float64 {
+func (s *swapState) ReceivedAmount() *apd.Decimal {
 	return s.info.ReceivedAmount
 }
 
-func (s *swapState) receivedAmountInPiconero() common.PiconeroAmount {
+func (s *swapState) receivedAmountInPiconero() *common.PiconeroAmount {
 	return common.MoneroToPiconero(s.info.ReceivedAmount)
 }
 

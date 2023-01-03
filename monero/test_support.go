@@ -19,6 +19,7 @@ import (
 	"github.com/MarinX/monerorpc"
 	"github.com/MarinX/monerorpc/daemon"
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -116,17 +117,20 @@ func TestBackgroundMineBlocks(t *testing.T) {
 
 // MineMinXMRBalance enables mining for the passed wc wallet until it has an unlocked balance greater
 // than or equal to minBalance.
-func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.PiconeroAmount) {
+func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *common.PiconeroAmount) {
 	daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 	addr, err := wc.GetAddress(0)
 	require.NoError(t, err)
 	t.Log("mining to address:", addr.Address)
 
+	minBal64Bit, err := minBalance.Decimal().Int64()
+	require.NoError(t, err)
+
 	for {
 		require.NoError(t, wc.Refresh())
 		balance, err := wc.GetBalance(0)
 		require.NoError(t, err)
-		if balance.UnlockedBalance > uint64(minBalance) {
+		if balance.UnlockedBalance > uint64(minBal64Bit) {
 			break
 		}
 		_, err = daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
@@ -138,4 +142,15 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.Piconero
 		}
 		require.NoError(t, err)
 	}
+}
+
+// Str2Decimal converts strings to big decimal for tests, panicing on error.
+// This function is intended for use with string constants, where panic is
+// an acceptable behavior.
+func Str2Decimal(amount string) *apd.Decimal {
+	a, _, err := new(apd.Decimal).SetString(amount)
+	if err != nil {
+		panic(err)
+	}
+	return a
 }

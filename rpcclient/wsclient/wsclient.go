@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
@@ -25,13 +26,17 @@ type WsClient interface {
 	Discover(provides types.ProvidesCoin, searchTime uint64) ([]peer.ID, error)
 	Query(who peer.ID) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
-	TakeOfferAndSubscribe(peerID peer.ID, offerID types.Hash, providesAmount float64) (ch <-chan types.Status, err error)
+	TakeOfferAndSubscribe(peerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
+		ch <-chan types.Status,
+		err error,
+	)
 	MakeOfferAndSubscribe(
-		min, max float64,
-		exchangeRate types.ExchangeRate,
+		min *apd.Decimal,
+		max *apd.Decimal,
+		exchangeRate *types.ExchangeRate,
 		ethAsset types.EthAsset,
 		relayerEndpoint string,
-		relayerCommission float64,
+		relayerCommission *apd.Decimal,
 	) (*rpctypes.MakeOfferResponse, <-chan types.Status, error)
 }
 
@@ -238,7 +243,7 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 func (c *wsClient) TakeOfferAndSubscribe(
 	peerID peer.ID,
 	offerID types.Hash,
-	providesAmount float64,
+	providesAmount *apd.Decimal,
 ) (ch <-chan types.Status, err error) {
 	params := &rpctypes.TakeOfferRequest{
 		PeerID:         peerID,
@@ -317,11 +322,12 @@ func (c *wsClient) readTakeOfferResponse() (string, error) {
 }
 
 func (c *wsClient) MakeOfferAndSubscribe(
-	min, max float64,
-	exchangeRate types.ExchangeRate,
+	min *apd.Decimal,
+	max *apd.Decimal,
+	exchangeRate *types.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommission *apd.Decimal,
 ) (*rpctypes.MakeOfferResponse, <-chan types.Status, error) {
 	params := &rpctypes.MakeOfferRequest{
 		MinAmount:         min,

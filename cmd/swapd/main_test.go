@@ -10,10 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -164,7 +167,8 @@ func TestDaemon_PersistOffers(t *testing.T) {
 
 	dataDir := t.TempDir()
 	wc := monero.CreateWalletClientWithWalletDir(t, dataDir)
-	monero.MineMinXMRBalance(t, wc, common.MoneroToPiconero(1))
+	one := apd.New(1, 0)
+	monero.MineMinXMRBalance(t, wc, common.MoneroToPiconero(one))
 
 	c := newTestContext(t,
 		"test --dev-xmrmaker",
@@ -199,9 +203,13 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	client := rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
 	balance, err := client.Balances()
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))
+	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(one))
 
-	offerResp, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH, "", 0)
+	minXMRAmt := tests.Str2Decimal("0.1")
+	maxXMRAmt := one
+	xRate := (*types.ExchangeRate)(one)
+
+	offerResp, err := client.MakeOffer(minXMRAmt, maxXMRAmt, xRate, types.EthAssetETH, "", nil)
 	require.NoError(t, err)
 
 	// shut down daemon

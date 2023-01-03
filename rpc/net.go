@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -143,7 +144,10 @@ func (s *NetService) TakeOffer(
 	return nil
 }
 
-func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount float64) (<-chan types.Status, error) {
+func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
+	<-chan types.Status,
+	error,
+) {
 	queryResp, err := s.net.Query(who)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -39,20 +40,15 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst := newTestInstance(t)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
-	offer := types.NewOffer(
-		types.ProvidesXMR,
-		1,
-		1,
-		1,
-		types.EthAssetETH,
-	)
+	one := apd.New(1, 0)
+	offer := types.NewOffer(types.ProvidesXMR, one, one, types.ToExchangeRate(one), types.EthAssetETH)
 
 	s := &pswap.Info{
 		ID:             offer.ID,
 		Provides:       types.ProvidesXMR,
-		ProvidedAmount: 1,
-		ReceivedAmount: 1,
-		ExchangeRate:   types.ExchangeRate(1),
+		ProvidedAmount: one,
+		ReceivedAmount: one,
+		ExchangeRate:   types.ToExchangeRate(one),
 		EthAsset:       types.EthAssetETH,
 		Status:         types.ETHLocked,
 	}

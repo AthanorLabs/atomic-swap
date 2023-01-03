@@ -12,6 +12,12 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/rpc/v2"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -19,13 +25,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
-
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/rpc/v2"
-
-	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("rpc")
@@ -166,7 +165,7 @@ type ProtocolBackend interface {
 // XMRTaker ...
 type XMRTaker interface {
 	Protocol
-	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
+	InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error)
 	Refund(types.Hash) (ethcommon.Hash, error)
 	ExternalSender(offerID types.Hash) (*txsender.ExternalSender, error)
 }
@@ -174,7 +173,7 @@ type XMRTaker interface {
 // XMRMaker ...
 type XMRMaker interface {
 	Protocol
-	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission float64) (*types.OfferExtra, error)
+	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission *apd.Decimal) (*types.OfferExtra, error)
 	GetOffers() []*types.Offer
 	ClearOffers([]types.Hash) error
 	GetMoneroBalance() (string, *wallet.GetBalanceResponse, error)

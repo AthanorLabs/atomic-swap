@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
@@ -132,17 +133,17 @@ var (
 				Usage:   "Make a swap offer; currently monero holders must be the makers",
 				Action:  runMake,
 				Flags: []cli.Flag{
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagMinAmount,
 						Usage:    "Minimum amount to be swapped, in XMR",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagMaxAmount,
 						Usage:    "Maximum amount to be swapped, in XMR",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagExchangeRate,
 						Usage:    "Desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
 						Required: true,
@@ -159,7 +160,7 @@ var (
 						Name:  flagRelayerEndpoint,
 						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name: flagRelayerCommission,
 						Usage: "Commission to pay the relayer in percentage of the swap value:" +
 							" eg. --relayer-commission=0.01 for 1% commission",
@@ -183,7 +184,7 @@ var (
 						Usage:    "ID of the offer being taken",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagProvidesAmount,
 						Usage:    "Amount of coin to send in the swap",
 						Required: true,
@@ -379,12 +380,12 @@ func runBalances(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
-	fmt.Printf("Balance: %s\n", common.FmtFloat((*common.WeiAmount)(balances.WeiBalance).AsEther()))
+	fmt.Printf("Balance: %s\n", balances.WeiBalance.AsEther())
 	fmt.Println()
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
-	fmt.Printf("Balance: %s\n", common.FmtFloat(common.PiconeroAmount(balances.PiconeroBalance).AsMonero()))
+	fmt.Printf("Balance: %s\n", balances.PiconeroBalance.AsMonero())
 	fmt.Printf("Unlocked balance: %s\n",
-		common.FmtFloat(common.PiconeroAmount(balances.PiconeroUnlockedBalance).AsMonero()))
+		balances.PiconeroUnlockedBalance.AsMonero())
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
 	return nil
 }
@@ -459,22 +460,24 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
-	min := ctx.Float64(flagMinAmount)
-	if min == 0 {
-		return errNoMinAmount
+	min, err := readBigUFloatFlag(ctx, flagMinAmount)
+	if err != nil {
+		return err
 	}
 
-	max := ctx.Float64(flagMaxAmount)
-	if max == 0 {
-		return errNoMaxAmount
+	max, err := readBigUFloatFlag(ctx, flagMaxAmount)
+	if err != nil {
+		return err
 	}
 
-	exchangeRate := ctx.Float64(flagExchangeRate)
-	if exchangeRate == 0 {
-		return errNoExchangeRate
+	exchangeRateFl, err := readBigUFloatFlag(ctx, flagExchangeRate)
+	if err != nil {
+		return err
 	}
-	otherMin := min * exchangeRate
-	otherMax := max * exchangeRate
+	exchangeRate := (*types.ExchangeRate)(exchangeRateFl)
+	// TODO: How to handle this if the other asset is not ETH?
+	otherMin := exchangeRate.ToETH(min)
+	otherMax := exchangeRate.ToETH(max)
 
 	ethAssetStr := ctx.String("eth-asset")
 	ethAsset := types.EthAssetETH
@@ -485,33 +488,28 @@ func runMake(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
 
 	relayerEndpoint := ctx.String(flagRelayerEndpoint)
-	relayerCommission := ctx.Float64(flagRelayerCommission)
-	if relayerCommission < 0 {
-		return errCannotHaveNegativeCommission
-	}
-
-	if relayerCommission > 1 {
-		return errCannotHaveGreaterThan100Commission
-	}
-
-	if relayerEndpoint != "" && relayerCommission == 0 {
-		return errMustSetRelayerCommission
-	}
-
-	if relayerCommission != 0 && relayerEndpoint == "" {
+	relayerCommission := new(apd.Decimal)
+	if relayerEndpoint != "" {
+		if relayerCommission, err = readBigUFloatFlag(ctx, flagRelayerCommission); err != nil {
+			return err
+		}
+	} else if ctx.IsSet(flagRelayerCommission) {
 		return errMustSetRelayerEndpoint
+	}
+	if relayerCommission.Cmp(apd.New(1, 0)) > 0 {
+		return errCannotHaveGreaterThan100Commission
 	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
 		fmt.Printf("\tPeer ID:   %s\n", offerResp.PeerID)
-		fmt.Printf("\tTaker Min: %s %s\n", common.FmtFloat(otherMin), ethAsset)
-		fmt.Printf("\tTaker Max: %s %s\n", common.FmtFloat(otherMax), ethAsset)
+		fmt.Printf("\tTaker Min: %s %s\n", otherMin.String(), ethAsset)
+		fmt.Printf("\tTaker Max: %s %s\n", otherMax.String(), ethAsset)
 	}
 
 	if ctx.Bool(flagSubscribe) {
-		wsc, err := newWSClient(ctx)
+		wsc, err := newWSClient(ctx) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -520,7 +518,7 @@ func runMake(ctx *cli.Context) error {
 		resp, statusCh, err := wsc.MakeOfferAndSubscribe(
 			min,
 			max,
-			types.ExchangeRate(exchangeRate),
+			exchangeRate,
 			ethAsset,
 			relayerEndpoint,
 			relayerCommission,
@@ -560,9 +558,9 @@ func runTake(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	providesAmount := ctx.Float64(flagProvidesAmount)
-	if providesAmount == 0 {
-		return errNoProvidesAmount
+	providesAmount, err := readBigUFloatFlag(ctx, flagProvidesAmount)
+	if err != nil {
+		return err
 	}
 
 	if ctx.Bool(flagSubscribe) {
@@ -776,12 +774,19 @@ func printOffer(o *types.Offer, index int, indent string) {
 	if index > 0 {
 		fmt.Printf("%s---\n", indent)
 	}
+
+	xRate := o.ExchangeRate
+	minETH := xRate.ToETH(o.MinAmount)
+	maxETH := xRate.ToETH(o.MaxAmount)
+
 	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
 	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
-	fmt.Printf("%sMin Amount: %s\n", indent, common.FmtFloat(o.MinAmount))
-	fmt.Printf("%sMax Amount: %s\n", indent, common.FmtFloat(o.MaxAmount))
-	fmt.Printf("%sExchange Rate: %s\n", indent, common.FmtFloat(float64(o.ExchangeRate)))
-	fmt.Printf("%sETH Asset: %s\n", indent, o.EthAsset)
+	fmt.Printf("%sTakes: %s\n", indent, o.EthAsset)
+	fmt.Printf("%sExchange Rate: %s\n", indent, o.ExchangeRate)
+	fmt.Printf("%sMin XMR: %s\n", indent, o.MinAmount)
+	fmt.Printf("%sMax XMR: %s\n", indent, o.MaxAmount)
+	fmt.Printf("%sMin %s: %s\n", indent, o.EthAsset, minETH)
+	fmt.Printf("%sMax %s: %s\n", indent, o.EthAsset, maxETH)
 }
 
 func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
@@ -795,4 +800,24 @@ func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
 		return provides, nil
 	}
 	return types.NewProvidesCoin(providesStr)
+}
+
+func readBigUFloatFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
+	s := ctx.String(flagName)
+	if s == "" {
+		return nil, fmt.Errorf("flag --%s can not be empty", flagName)
+	}
+	bf, _, err := new(apd.Decimal).SetString(s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
+	}
+	cmp := bf.Cmp(new(apd.Decimal)) // compare with zero
+	// none of our flags (min, max, provides, commission) allow negative values
+	if cmp < 0 {
+		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
+	}
+	if cmp == 0 {
+		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
+	}
+	return bf, nil
 }

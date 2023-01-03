@@ -6,13 +6,14 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 var (
 	// CurInfoVersion is the latest supported version of a serialised Info struct
-	CurInfoVersion, _ = semver.NewVersion("0.1.0")
+	CurInfoVersion, _ = semver.NewVersion("0.2.0")
 
 	errInfoVersionMissing = errors.New("required 'version' field missing in swap Info")
 )
@@ -23,14 +24,14 @@ type (
 
 // Info contains the details of the swap as well as its status.
 type Info struct {
-	Version        *semver.Version    `json:"version"`
-	ID             types.Hash         `json:"offerID"` // swap offer ID
-	Provides       types.ProvidesCoin `json:"provides"`
-	ProvidedAmount float64            `json:"providedAmount"`
-	ReceivedAmount float64            `json:"receivedAmount"`
-	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
-	EthAsset       types.EthAsset     `json:"ethAsset"`
-	Status         Status             `json:"status"`
+	Version        *semver.Version     `json:"version"`
+	ID             types.Hash          `json:"offerID"` // swap offer ID
+	Provides       types.ProvidesCoin  `json:"provides"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
+	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
+	ExchangeRate   *types.ExchangeRate `json:"exchangeRate"`
+	EthAsset       types.EthAsset      `json:"ethAsset"`
+	Status         Status              `json:"status"`
 	// MoneroStartHeight is the Monero block number when the swap begins.
 	MoneroStartHeight uint64            `json:"moneroStartHeight"`
 	statusCh          chan types.Status `json:"-"`
@@ -41,8 +42,8 @@ type Info struct {
 func NewInfo(
 	id types.Hash,
 	provides types.ProvidesCoin,
-	providedAmount, receivedAmount float64,
-	exchangeRate types.ExchangeRate,
+	providedAmount, receivedAmount *apd.Decimal,
+	exchangeRate *types.ExchangeRate,
 	ethAsset types.EthAsset,
 	status Status,
 	moneroStartHeight uint64,
@@ -61,11 +62,6 @@ func NewInfo(
 		statusCh:          statusCh,
 	}
 	return info
-}
-
-// NewEmptyInfo returns an empty *Info
-func NewEmptyInfo() *Info {
-	return &Info{}
 }
 
 // StatusCh returns the swap's status update channel.

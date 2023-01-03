@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
@@ -23,14 +24,15 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	backend := newBackend(t)
 	err := backend.XMRClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
-	monero.MineMinXMRBalance(t, backend.XMRClient(), common.MoneroToPiconero(1))
+	one := apd.New(1, 0)
+	monero.MineMinXMRBalance(t, backend.XMRClient(), common.MoneroToPiconero(one))
 
 	// lock xmr
-	amt := common.PiconeroAmount(1000000000)
-	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, uint64(amt))
+	amt := common.NewPiconeroAmount(1000000000)
+	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, uint64(amt), tResp.Amount)
+	require.Equal(t, amt.String(), tResp.Amount)
 
 	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,

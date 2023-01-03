@@ -6,6 +6,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
@@ -20,15 +21,19 @@ func init() {
 }
 
 func TestClient_Transfer(t *testing.T) {
-	amount := common.MoneroToPiconero(10) // 1k monero
+	amount := common.MoneroToPiconero(apd.New(10, 0))
+	amountPlusFees := common.MoneroToPiconero(Str2Decimal("10.01"))
 
 	cXMRMaker := CreateWalletClient(t)
-	MineMinXMRBalance(t, cXMRMaker, amount+common.MoneroToPiconero(0.1)) // add a little extra for fees
+	MineMinXMRBalance(t, cXMRMaker, amountPlusFees)
 
 	balance := GetBalance(t, cXMRMaker)
 	t.Logf("Bob's initial balance: bal=%d unlocked=%d blocks-to-unlock=%d",
 		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock)
-	require.Greater(t, balance.UnlockedBalance, uint64(amount))
+
+	amountU64, err := amount.Uint64()
+	require.NoError(t, err)
+	require.Greater(t, balance.UnlockedBalance, amountU64)
 
 	kpA, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
@@ -40,10 +45,11 @@ func TestClient_Transfer(t *testing.T) {
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	// Transfer from Bob's account to the Alice+Bob swap account
-	transResp, err := cXMRMaker.Transfer(abAddress, 0, uint64(amount))
+	transResp, err := cXMRMaker.Transfer(abAddress, 0, amount)
 	require.NoError(t, err)
-	t.Logf("Bob sent %f (+fee %f) XMR to A+B address with TX ID %s",
-		common.PiconeroAmount(transResp.Amount).AsMonero(), common.PiconeroAmount(transResp.Fee).AsMonero(),
+	t.Logf("Bob sent %s (+fee %s) XMR to A+B address with TX ID %s",
+		common.NewPiconeroAmount(transResp.Amount).AsMonero(),
+		common.NewPiconeroAmount(transResp.Fee).AsMonero(),
 		transResp.TxHash)
 	require.NoError(t, err)
 	transfer, err := cXMRMaker.WaitForReceipt(&WaitForReceiptRequest{
@@ -88,7 +94,7 @@ func TestClient_Transfer(t *testing.T) {
 		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock, height)
 	require.Zero(t, balance.BlocksToUnlock)
 	require.Equal(t, balance.UnlockedBalance, balance.Balance)
-	require.Equal(t, balance.UnlockedBalance, uint64(amount))
+	require.Equal(t, balance.UnlockedBalance, amountU64)
 
 	// At this point Alice has received the key from Bob to create an A+B spend wallet.
 	// She'll now sweep the funds from the A+B spend wallet into her primary wallet.
@@ -100,7 +106,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	balance = GetBalance(t, cXMRTaker)
 	// Verify that the spend wallet, like the view-only wallet, has the exact amount expected in it
-	require.Equal(t, balance.UnlockedBalance, uint64(amount))
+	require.Equal(t, balance.UnlockedBalance, amountU64)
 
 	// Alice transfers from A+B spend wallet to her primary wallet's address
 	sweepResp, err := cXMRTaker.SweepAll(alicePrimaryAddr, 0)
@@ -113,7 +119,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	t.Logf("Sweep of A+B wallet sent %d with fees %d to Alice's primary wallet",
 		sweepAmount, sweepFee)
-	require.Equal(t, uint64(amount), sweepAmount+sweepFee)
+	require.Equal(t, amountU64, sweepAmount+sweepFee)
 
 	transfer, err = cXMRTaker.WaitForReceipt(&WaitForReceiptRequest{
 		Ctx:              context.Background(),
@@ -293,13 +299,14 @@ func Test_validateMonerodConfig_invalidPort(t *testing.T) {
 }
 
 func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
-	amount := common.MoneroToPiconero(10) // 1k monero
+	const amount = 10
+	minBal := common.MoneroToPiconero(Str2Decimal("10.01")) // add a little extra for fees
 	destAddr := mcrypto.Address(blockRewardAddress)
 
 	c := CreateWalletClient(t)
-	MineMinXMRBalance(t, c, amount+common.MoneroToPiconero(0.1)) // add a little extra for fees
+	MineMinXMRBalance(t, c, minBal)
 
-	transResp, err := c.Transfer(destAddr, 0, uint64(amount))
+	transResp, err := c.Transfer(destAddr, 0, common.NewPiconeroAmount(amount))
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

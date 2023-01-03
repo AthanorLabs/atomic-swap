@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
@@ -108,8 +109,9 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestSwapState(t *testing.T) *swapState {
 	b := newBackend(t)
+	exchangeRate := types.ToExchangeRate(apd.New(1, 0)) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAssetETH)
+		common.NewWeiAmount(1), common.NewPiconeroAmount(0), exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
 }
@@ -132,8 +134,10 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
+	exchangeRate := types.ToExchangeRate(apd.New(1, 0)) // 100%
+	zeroPiconeros := common.NewPiconeroAmount(0)
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAsset(addr))
+		common.NewWeiAmount(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }

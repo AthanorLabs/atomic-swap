@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math"
 	"math/big"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -20,7 +20,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
-var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
+var (
+	maxRelayerCommissionRate, _, _ = apd.NewFromString("0.1") // 10%
+)
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
@@ -41,7 +43,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %v ETH", common.WeiAmount(*balance).AsEther())
+		log.Infof("balance before claim: %s ETH", common.BigInt2Wei(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
@@ -81,14 +83,14 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %v ETH", common.WeiAmount(*balance).AsEther())
+		log.Infof("balance after claim: %s ETH", common.BigInt2Wei(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 
-		log.Infof("balance after claim: %v %s",
+		log.Infof("balance after claim: %s %s",
 			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
 			symbol,
 		)
@@ -119,7 +121,7 @@ func claimRelayer(
 	contractAddr ethcommon.Address,
 	ec *ethclient.Client,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommission *apd.Decimal,
 	contractSwap *contracts.SwapFactorySwap,
 	secret [32]byte,
 ) (ethcommon.Hash, error) {
@@ -133,12 +135,12 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryABI))
+	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	feeValue, err := calculateRelayerCommissionValue(contractSwap.Value, relayerCommission)
+	feeValue, err := calculateRelayerCommission(contractSwap.Value, relayerCommission)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -170,17 +172,20 @@ func claimRelayer(
 	return txHash, nil
 }
 
-// swapValue is in wei
-// relayerCommission is a percentage (ie must be much less than 1)
-// error if it's greater than 0.1 (10%) - arbitrary, just a sanity check
-func calculateRelayerCommissionValue(swapValue *big.Int, relayerCommission float64) (*big.Int, error) {
-	if relayerCommission > 0.1 {
-		return nil, errRelayerCommissionTooHigh
+// calculateRelayerCommission calculates and returns the amount of wei that the relayer
+// will receive as commission. The commissionRate is a multiplier (multiply by 100 to get
+// the percent) that must be greater than zero and less than or equal to the 10% maximum.
+// The 10% max is an arbitrary sanity check and may be adjusted in the future.
+func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal) (*big.Int, error) {
+	if commissionRate.Cmp(maxRelayerCommissionRate) > 0 {
+		return nil, errRelayerCommissionRateTooHigh
 	}
 
-	swapValueF := big.NewFloat(0).SetInt(swapValue)
-	relayerCommissionF := big.NewFloat(relayerCommission)
-	feeValue := big.NewFloat(0).Mul(swapValueF, relayerCommissionF)
-	wei, _ := feeValue.Int(nil)
-	return wei, nil
+	feeValue := new(apd.Decimal)
+	_, err := common.DecimalCtx.Mul(feeValue, common.BigInt2Wei(swapWeiAmt).Decimal(), commissionRate)
+	if err != nil {
+		return nil, err
+	}
+
+	return common.ToWeiAmount(feeValue).BigInt(), nil
 }

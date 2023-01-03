@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 )
@@ -78,7 +80,10 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	c, err := wsclient.NewWsClient(s.ctx, s.WsURL())
 	require.NoError(t, err)
 
-	offerResp, ch, err := c.MakeOfferAndSubscribe(0.1, 1, 0.05, types.EthAssetETH, "", 0)
+	min := tests.Str2Decimal("0.1")
+	max := tests.Str2Decimal("1")
+	exRate := types.ToExchangeRate(tests.Str2Decimal("0.05"))
+	offerResp, ch, err := c.MakeOfferAndSubscribe(min, max, exRate, types.EthAssetETH, "", nil)
 	require.NoError(t, err)
 	require.NotEqual(t, offerResp.OfferID, testSwapID)
 	select {
@@ -99,7 +104,7 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	c, err := wsclient.NewWsClient(cliCtx, s.WsURL())
 	require.NoError(t, err)
 
-	ch, err := c.TakeOfferAndSubscribe(testPeerID, testSwapID, 1)
+	ch, err := c.TakeOfferAndSubscribe(testPeerID, testSwapID, apd.New(1, 0))
 	require.NoError(t, err)
 
 	select {

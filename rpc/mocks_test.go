@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2ptest "github.com/libp2p/go-libp2p/core/test"
@@ -86,12 +87,13 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
+	one := apd.New(1, 0)
 	return *swap.NewInfo(
 		id,
 		types.ProvidesETH,
-		1,
-		1,
-		1,
+		one,
+		one,
+		types.ToExchangeRate(one),
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		1,
@@ -117,7 +119,7 @@ func (*mockXMRTaker) GetOngoingSwapState(types.Hash) common.SwapState {
 	return new(mockSwapState)
 }
 
-func (*mockXMRTaker) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
+func (*mockXMRTaker) InitiateProtocol(providesAmount *apd.Decimal, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
 
@@ -143,7 +145,7 @@ func (m *mockXMRMaker) GetOngoingSwapState(hash types.Hash) common.SwapState {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ float64) (*types.OfferExtra, error) {
+func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ *apd.Decimal) (*types.OfferExtra, error) {
 	offerExtra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, 1),
 	}

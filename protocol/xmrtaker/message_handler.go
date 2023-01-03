@@ -81,8 +81,9 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	if msg.ProvidedAmount < s.info.ReceivedAmount {
-		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
+	// TODO: THIS CHECK LOOKS BACKWARDS?!?
+	if msg.ProvidedAmount.Cmp(s.info.ReceivedAmount) < 0 {
+		return nil, fmt.Errorf("receiving amount is not the same as expected: got %s, expected %s",
 			msg.ProvidedAmount,
 			s.info.ReceivedAmount,
 		)
@@ -224,9 +225,10 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
-	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
+	// TODO: I'm confused. If it is received (past tense), how is this possible here?
+	if s.receivedAmountInPiconero().CmpU64(balance.Balance) > 0 {
 		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
-			balance.Balance, float64(s.receivedAmountInPiconero()))
+			balance.Balance, s.receivedAmountInPiconero())
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before

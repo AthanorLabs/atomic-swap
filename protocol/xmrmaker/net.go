@@ -3,6 +3,8 @@ package xmrmaker
 import (
 	"math/big"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
@@ -14,7 +16,7 @@ import (
 // EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthereumAssetAmount interface {
 	BigInt() *big.Int
-	AsStandard() float64
+	AsStandard() *apd.Decimal
 }
 
 // Provides returns types.ProvidesXMR
@@ -25,7 +27,7 @@ func (inst *Instance) Provides() types.ProvidesCoin {
 func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
-	providesAmount common.PiconeroAmount,
+	providesAmount *common.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	if inst.swapStates[offer.ID] != nil {
@@ -37,10 +39,12 @@ func (inst *Instance) initiate(
 		return nil, err
 	}
 
-	// check user's balance and that they actually have what they will provide
-	if balance.UnlockedBalance <= uint64(providesAmount) {
+	// check that the user's monero balance is sufficient for their max swap amount (strictly
+	// greater check, since they need to cover chain fees).
+	unlockedBal := common.NewPiconeroAmount(balance.UnlockedBalance)
+	if unlockedBal.Decimal().Cmp(providesAmount.Decimal()) <= 0 {
 		return nil, errBalanceTooLow{
-			unlockedBalance: common.PiconeroAmount(balance.UnlockedBalance).AsMonero(),
+			unlockedBalance: unlockedBal.AsMonero(),
 			providedAmount:  providesAmount.AsMonero(),
 		}
 	}
@@ -106,15 +110,16 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 
 	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 
-	if providedAmount < offer.MinAmount {
+	if providedAmount.Cmp(offer.MinAmount) < 0 {
+		// TODO: This message will be confusing to the end-user, since they provided ETH, not XMR
 		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
 	}
 
-	if providedAmount > offer.MaxAmount {
+	if providedAmount.Cmp(offer.MaxAmount) > 0 {
 		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
 	}
 
-	providedPicoXMR := common.MoneroToPiconero(providedAmount)
+	providedPiconero := common.MoneroToPiconero(providedAmount)
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
@@ -128,7 +133,7 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, err
 	}
 
-	state, err := inst.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)
+	state, err := inst.initiate(offer, offerExtra, providedPiconero, receivedAmount)
 	if err != nil {
 		return nil, nil, err
 	}

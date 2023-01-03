@@ -1,6 +1,7 @@
 package rpcclient
 
 import (
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
@@ -9,10 +10,11 @@ import (
 
 // MakeOffer calls net_makeOffer.
 func (c *Client) MakeOffer(
-	min, max, exchangeRate float64,
+	min, max *apd.Decimal,
+	exchangeRate *types.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommission *apd.Decimal,
 ) (*rpctypes.MakeOfferResponse, error) {
 	const (
 		method = "net_makeOffer"
@@ -21,7 +23,7 @@ func (c *Client) MakeOffer(
 	req := &rpctypes.MakeOfferRequest{
 		MinAmount:         min,
 		MaxAmount:         max,
-		ExchangeRate:      types.ExchangeRate(exchangeRate),
+		ExchangeRate:      exchangeRate,
 		EthAsset:          ethcommon.Address(ethAsset).Hex(),
 		RelayerEndpoint:   relayerEndpoint,
 		RelayerCommission: relayerCommission,

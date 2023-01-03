@@ -110,10 +110,11 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 		return ethcommon.Hash{}, nil, err
 	}
 
+	valueWei := common.BigInt2Wei(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  fmt.Sprintf("0x%x", input),
-		Value: fmt.Sprintf("%v", common.WeiAmount(*value).AsEther()),
+		Value: fmt.Sprintf("%v", valueWei.AsEther()),
 	}
 
 	s.Lock()

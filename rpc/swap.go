@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -54,11 +55,11 @@ type GetPastRequest struct {
 
 // GetPastResponse ...
 type GetPastResponse struct {
-	Provided       types.ProvidesCoin `json:"provided"`
-	ProvidedAmount float64            `json:"providedAmount"`
-	ReceivedAmount float64            `json:"receivedAmount"`
-	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
-	Status         string             `json:"status"`
+	Provided       types.ProvidesCoin  `json:"provided"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
+	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
+	ExchangeRate   *types.ExchangeRate `json:"exchangeRate"`
+	Status         string              `json:"status"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -83,11 +84,11 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // GetOngoingResponse ...
 type GetOngoingResponse struct {
-	Provided       types.ProvidesCoin `json:"provided"`
-	ProvidedAmount float64            `json:"providedAmount"`
-	ReceivedAmount float64            `json:"receivedAmount"`
-	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
-	Status         string             `json:"status"`
+	Provided       types.ProvidesCoin  `json:"provided"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
+	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
+	ExchangeRate   *types.ExchangeRate `json:"exchangeRate"`
+	Status         string              `json:"status"`
 }
 
 // GetOngoingRequest ...

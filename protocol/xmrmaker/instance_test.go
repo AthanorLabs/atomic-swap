@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -130,7 +132,8 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	xmrmaker, err := NewInstance(cfg)
 	require.NoError(t, err)
 
-	monero.MineMinXMRBalance(t, b.XMRClient(), 1.0)
+	oneXMR := common.MoneroToPiconero(apd.New(1, 0))
+	monero.MineMinXMRBalance(t, b.XMRClient(), oneXMR)
 	err = b.XMRClient().Refresh()
 	require.NoError(t, err)
 	return xmrmaker, db
@@ -140,20 +143,16 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst, offerDB := newTestInstanceAndDB(t)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
-	offer := types.NewOffer(
-		types.ProvidesXMR,
-		1,
-		1,
-		1,
-		types.EthAssetETH,
-	)
+	one := apd.New(1, 0)
+	rate := types.ToExchangeRate(apd.New(1, 0)) // 100% relayer commission
+	offer := types.NewOffer(types.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
 	s := &pswap.Info{
 		ID:             offer.ID,
 		Provides:       types.ProvidesXMR,
-		ProvidedAmount: 1,
-		ReceivedAmount: 1,
-		ExchangeRate:   types.ExchangeRate(1),
+		ProvidedAmount: one,
+		ReceivedAmount: one,
+		ExchangeRate:   rate,
 		EthAsset:       types.EthAssetETH,
 		Status:         types.XMRLocked,
 	}

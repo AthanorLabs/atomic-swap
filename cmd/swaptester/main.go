@@ -11,12 +11,14 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/MarinX/monerorpc"
 	monerodaemon "github.com/MarinX/monerorpc/daemon"
+	"github.com/cockroachdb/apd/v3"
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
@@ -197,9 +199,35 @@ const (
 	maxExchangeRate   = 1.1
 )
 
-func getRandomExchangeRate() types.ExchangeRate {
-	rate := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
-	return types.ExchangeRate(rate)
+var (
+	minProvidesAmountBD, _, _ = apd.NewFromString(fmt.Sprintf("%f", minProvidesAmount))
+	maxProvidesAmountBD, _, _ = apd.NewFromString(fmt.Sprintf("%f", maxProvidesAmount))
+)
+
+func getRandomExchangeRate() *types.ExchangeRate {
+	rateFl := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
+	rate, _, err := new(apd.Decimal).SetString(strconv.FormatFloat(rateFl, 'f', -1, 64))
+	if err != nil {
+		panic(err) // shouldn't be possible
+	}
+	return (*types.ExchangeRate)(rate)
+}
+
+func getRndOfferAmount(xRate *types.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) *apd.Decimal {
+	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64()) //nolint:gosec
+	if err != nil {
+		panic(err) // shouldn't be possible
+	}
+	minETHAmt := xRate.ToETH(minXMRAmt)
+	maxETHAmt := xRate.ToETH(maxXMRAmt)
+	ed := apd.MakeErrDecimal(common.DecimalCtx)
+	rangeLen := ed.Sub(new(apd.Decimal), maxETHAmt, minETHAmt)
+	randDelta := ed.Mul(new(apd.Decimal), rangeLen, randVal)
+	offerAmt := ed.Add(new(apd.Decimal), minETHAmt, randDelta)
+	if ed.Err() != nil {
+		panic(ed.Err())
+	}
+	return offerAmt
 }
 
 func generateBlocks() {
@@ -333,9 +361,8 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	offerIdx := getRandomInt(len(resp.Offers))
 	offer := resp.Offers[offerIdx]
 
-	// pick random amount between min and max
-	amount := offer.MinAmount + mrand.Float64()*(offer.MaxAmount-offer.MinAmount) //nolint:gosec
-	providesAmount := offer.ExchangeRate.ToETH(amount)
+	// pick a random ETH amount in the allowed range
+	providesAmount := getRndOfferAmount(offer.ExchangeRate, offer.MinAmount, offer.MaxAmount)
 
 	start := time.Now()
 	log.Infof("node %d taking offer %s", d.idx, offer.ID)
@@ -389,12 +416,12 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 
 	defer wsc.Close()
 
-	offerID, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmount,
-		maxProvidesAmount,
+	offerID, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmountBD,
+		maxProvidesAmountBD,
 		getRandomExchangeRate(),
 		types.EthAssetETH,
 		"",
-		0,
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to make offer (node %d): %s", d.idx, err)

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +22,7 @@ func TestSwapFactorySwap_JSON(t *testing.T) {
 		Timeout0:     big.NewInt(1672531200),
 		Timeout1:     big.NewInt(1672545600),
 		Asset:        ethcommon.HexToAddress("0xdac17f958d2ee523a2206206994597c13d831ec7"),
-		Value:        common.EtherToWei(9876).BigInt(),
+		Value:        common.EtherToWei(apd.New(9876, 0)).BigInt(),
 		Nonce:        big.NewInt(1234),
 	}
 	expectedJSON := `{

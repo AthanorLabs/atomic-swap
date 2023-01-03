@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/cockroachdb/apd/v3"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -22,14 +23,20 @@ type Offer struct {
 	Version      semver.Version `json:"version"`
 	ID           Hash           `json:"offerID"`
 	Provides     ProvidesCoin   `json:"provides"`
-	MinAmount    float64        `json:"minAmount"`
-	MaxAmount    float64        `json:"maxAmount"`
-	ExchangeRate ExchangeRate   `json:"exchangeRate"`
+	MinAmount    *apd.Decimal   `json:"minAmount"` // Min XMR amount
+	MaxAmount    *apd.Decimal   `json:"maxAmount"` // Max XMR amount
+	ExchangeRate *ExchangeRate  `json:"exchangeRate"`
 	EthAsset     EthAsset       `json:"ethAsset"`
 }
 
 // NewOffer creates and returns an Offer with an initialised ID and Version fields
-func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate ExchangeRate, ethAsset EthAsset) *Offer {
+func NewOffer(
+	coin ProvidesCoin,
+	minAmount *apd.Decimal,
+	maxAmount *apd.Decimal,
+	exRate *ExchangeRate,
+	ethAsset EthAsset,
+) *Offer {
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
 		panic(err)
@@ -47,12 +54,12 @@ func NewOffer(coin ProvidesCoin, minAmount float64, maxAmount float64, exRate Ex
 
 // String ...
 func (o *Offer) String() string {
-	return fmt.Sprintf("OfferID:%s Provides:%v MinAmount:%v MaxAmount:%v ExchangeRate:%v EthAsset:%v",
+	return fmt.Sprintf("OfferID:%s Provides:%s MinAmount:%s MaxAmount:%s ExchangeRate:%s EthAsset:%s",
 		o.ID,
 		o.Provides,
-		o.MinAmount,
-		o.MaxAmount,
-		o.ExchangeRate,
+		o.MinAmount.String(),
+		o.MaxAmount.String(),
+		o.ExchangeRate.String(),
 		o.EthAsset,
 	)
 }
@@ -61,16 +68,16 @@ func (o *Offer) String() string {
 func (o *Offer) IsSet() bool {
 	return !IsHashZero(o.ID) &&
 		o.Provides != "" &&
-		o.MinAmount != 0 &&
-		o.MaxAmount != 0 &&
-		o.ExchangeRate != 0
+		o.MinAmount != nil &&
+		o.MaxAmount != nil &&
+		o.ExchangeRate != nil
 }
 
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
-	StatusCh          chan Status `json:"-"`
-	RelayerEndpoint   string      `json:"relayerEndpoint"`
-	RelayerCommission float64     `json:"relayerCommission"`
+	StatusCh          chan Status  `json:"-"`
+	RelayerEndpoint   string       `json:"relayerEndpoint"`
+	RelayerCommission *apd.Decimal `json:"relayerCommission"`
 }
 
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before

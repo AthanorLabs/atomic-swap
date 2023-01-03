@@ -41,7 +41,7 @@ type WalletClient interface {
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
 	PrimaryWalletAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
-	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
+	Transfer(to mcrypto.Address, accountIdx uint64, amount *common.PiconeroAmount) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
 	GenerateFromKeys(
@@ -219,10 +219,18 @@ func (c *walletClient) WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Trans
 	return transfer, nil
 }
 
-func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
+func (c *walletClient) Transfer(
+	to mcrypto.Address,
+	accountIdx uint64,
+	amount *common.PiconeroAmount,
+) (*wallet.TransferResponse, error) {
+	amt, err := amount.Uint64()
+	if err != nil {
+		return nil, err
+	}
 	return c.wRPC.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
-			Amount:  amount,
+			Amount:  amt,
 			Address: string(to),
 		}},
 		AccountIndex: accountIdx,

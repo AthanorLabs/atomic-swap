@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -24,8 +26,8 @@ import (
 
 var (
 	_                         = logging.SetLogLevel("xmrmaker", "debug")
-	desiredAmount             = common.EtherToWei(0.33)
-	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
+	desiredAmount             = common.EtherToWei(apd.New(33, -2)) // "0.33"
+	defaultTimeoutDuration, _ = time.ParseDuration("86400s")       // 1 day = 60s * 60min * 24hr
 )
 
 func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
@@ -33,10 +35,10 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 
 	swapState, err := newSwapStateFromStart(
 		xmrmaker.backend,
-		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
+		types.NewOffer("", new(apd.Decimal), new(apd.Decimal), new(types.ExchangeRate), types.EthAssetETH),
 		&types.OfferExtra{},
 		xmrmaker.offerManager,
-		common.PiconeroAmount(33),
+		common.NewPiconeroAmount(33),
 		desiredAmount,
 	)
 	require.NoError(t, err)
@@ -315,7 +317,9 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
-	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
+	providedPiconeros, err := common.MoneroToPiconero(s.info.ProvidedAmount).Uint64()
+	require.NoError(t, err)
+	require.Equal(t, providedPiconeros, balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
 
@@ -342,7 +346,10 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestSwapState(t)
 	s.nextExpectedEvent = EventNoneType
-	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	min := tests.Str2Decimal("0.1")
+	max := tests.Str2Decimal("0.2")
+	rate := types.ToExchangeRate(tests.Str2Decimal("0.1"))
+	s.offer = types.NewOffer(types.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
@@ -358,9 +365,12 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 
 	b.net.(*MockHost).EXPECT().Advertise()
 
-	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	min := tests.Str2Decimal("0.1")
+	max := tests.Str2Decimal("0.2")
+	rate := types.ToExchangeRate(tests.Str2Decimal("0.1"))
+	s.offer = types.NewOffer(types.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	b.MakeOffer(s.offer, "", 0)
+	b.MakeOffer(s.offer, "", nil)
 
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()

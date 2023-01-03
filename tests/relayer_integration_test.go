@@ -6,7 +6,10 @@ import (
 
 const (
 	defaultRelayerEndpoint = "http://127.0.0.1:7799"
-	relayerCommission      = float64(0.01)
+)
+
+var (
+	relayerCommission = Str2Decimal("0.01")
 )
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {

@@ -1,102 +1,223 @@
 package common
 
 import (
-	"math"
+	"fmt"
 	"math/big"
-	"strconv"
+
+	"github.com/cockroachdb/apd/v3"
+	"github.com/ethereum/go-ethereum/log"
+)
+
+const (
+	// NumEtherDecimals is the number of Decimal points needed to represent whole units of Wei in Ether
+	NumEtherDecimals = 18
+	// NumMoneroDecimals is the number of Decimal points needed to represent whole units of piconero in XMR
+	NumMoneroDecimals = 12
+
+	// MaxCoinPrecision is a somewhat arbitrary precision upper bound (2^256 consumes 78 digits)
+	MaxCoinPrecision = 100
 )
 
 var (
-	numEtherUnits  = math.Pow(10, 18)
-	numMoneroUnits = math.Pow(10, 12)
+	// DecimalCtx is the apd context used for math operations on our coins
+	DecimalCtx          = apd.BaseContext.WithPrecision(MaxCoinPrecision)
+	nonFractionalWeiCtx = apd.BaseContext.WithPrecision(NumEtherDecimals)
 )
 
 // PiconeroAmount represents some amount of piconero (the smallest denomination of monero)
-type PiconeroAmount uint64
+type PiconeroAmount apd.Decimal
 
-// MoneroToPiconero converts an amount of standard monero and returns it as a PiconeroAmount
-func MoneroToPiconero(amount float64) PiconeroAmount {
-	return PiconeroAmount(amount * numMoneroUnits)
+// NewPiconeroAmount converts piconeros in uint64 to PicnoneroAmount
+func NewPiconeroAmount(amount uint64) *PiconeroAmount {
+	// apd.New(...) takes signed int64, so we need to use string initialization
+	// to avoid error handling on values greater than 2^63-1.
+	a, _, err := apd.NewFromString(fmt.Sprintf("%d", amount))
+	if err != nil {
+		panic(err) // can't happen, since we generated the string
+	}
+	return (*PiconeroAmount)(a)
 }
 
-// Uint64 ...
-func (a PiconeroAmount) Uint64() uint64 {
-	return uint64(a)
+// Decimal casts *PiconeroAmount to *apd.Decimal
+func (a *PiconeroAmount) Decimal() *apd.Decimal {
+	return (*apd.Decimal)(a)
+}
+
+// Uint64 converts piconero amount to uint64. Errors if a is negative or larger than 2^63-1.
+func (a *PiconeroAmount) Uint64() (uint64, error) {
+	// 2^63 / 10^12 is over 9 million XMR, so there is no point in adding complicated code to
+	// handle all 64 bits.
+	amtInt64, err := a.Decimal().Int64()
+	if err != nil {
+		return 0, err
+	}
+	// Hopefully, the rest of our code is doing input validation and the error below
+	// never gets triggered.
+	if amtInt64 < 0 {
+		return 0, fmt.Errorf("can not convert %d to unsigned value", amtInt64)
+	}
+	return uint64(amtInt64), nil
+}
+
+// UnmarshalText hands off JSON decoding to apd.Decimal
+func (a *PiconeroAmount) UnmarshalText(b []byte) error {
+	return a.Decimal().UnmarshalText(b)
+}
+
+// MarshalText hands off JSON encoding to apd.Decimal
+func (a *PiconeroAmount) MarshalText() ([]byte, error) {
+	return a.Decimal().MarshalText()
+}
+
+// MoneroToPiconero converts an amount in Monero to Piconero
+func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
+	pnAmt := new(apd.Decimal).Set(xmrAmt)
+	pnAmt.Exponent += NumMoneroDecimals
+	_, err := DecimalCtx.Round(pnAmt, pnAmt)
+	if err != nil {
+		// This could only happen on over or underflow. We vet the ranges of all external
+		// inputs, so this cannot happen.
+		panic(err)
+	}
+	return (*PiconeroAmount)(pnAmt)
+}
+
+// Cmp compares a and other and returns:
+//
+//	-1 if a < other
+//	 0 if a == other
+//	+1 if a > other
+func (a *PiconeroAmount) Cmp(other *PiconeroAmount) int {
+	return a.Decimal().Cmp(other.Decimal())
+}
+
+// CmpU64 compares a and other and returns:
+//
+//	-1 if a < other
+//	 0 if a == other
+//	+1 if a > other
+func (a *PiconeroAmount) CmpU64(other uint64) int {
+	return a.Cmp(NewPiconeroAmount(other))
+}
+
+// String returns the PiconeroAmount as a base10 string
+func (a *PiconeroAmount) String() string {
+	return a.Decimal().String()
 }
 
 // AsMonero converts the piconero PiconeroAmount into standard units
-func (a PiconeroAmount) AsMonero() float64 {
-	return float64(a) / numMoneroUnits
+func (a *PiconeroAmount) AsMonero() *apd.Decimal {
+	xmrAmt := new(apd.Decimal).Set(a.Decimal())
+	xmrAmt.Exponent -= NumMoneroDecimals
+	_, _ = xmrAmt.Reduce(xmrAmt)
+	return xmrAmt
 }
 
 // WeiAmount represents some amount of ether in the smallest denomination (wei)
-type WeiAmount big.Int
+type WeiAmount apd.Decimal
 
-// NewWeiAmount converts some amount of wei into an WeiAmount.
-func NewWeiAmount(amount int64) WeiAmount {
-	i := big.NewInt(amount)
-	return WeiAmount(*i)
+// Decimal exists to reduce ugly casts
+func (a *WeiAmount) Decimal() *apd.Decimal {
+	return (*apd.Decimal)(a)
+}
+
+// UnmarshalText hands off JSON decoding to apd.Decimal
+func (a *WeiAmount) UnmarshalText(b []byte) error {
+	return a.Decimal().UnmarshalText(b)
+}
+
+// MarshalText hands off JSON encoding to apd.Decimal
+func (a *WeiAmount) MarshalText() ([]byte, error) {
+	return a.Decimal().MarshalText()
+}
+
+// NewWeiAmount converts some amount of wei into an WeiAmount. (Only used by unit tests.)
+// TODO: Should this method take *big.Int instead?
+func NewWeiAmount(amount int64) *WeiAmount {
+	if amount < 0 {
+		panic("negative wei amounts are not supported")
+	}
+	return (*WeiAmount)(apd.New(amount, 0))
+}
+
+// ToWeiAmount casts an *apd.Decimal to *WeiAmount
+func ToWeiAmount(wei *apd.Decimal) *WeiAmount {
+	return (*WeiAmount)(wei)
+}
+
+// BigInt2Wei converts the passed *big.Int representation of a
+// wei amount to the WeiAmount type. The returned value is a copy
+// with no references to the passed value.
+func BigInt2Wei(amount *big.Int) *WeiAmount {
+	a := new(apd.BigInt).SetMathBigInt(amount)
+	return (*WeiAmount)(apd.NewWithBigInt(a, 0))
 }
 
 // EtherToWei converts some amount of standard ether to an WeiAmount.
-func EtherToWei(amount float64) WeiAmount {
-	amt := big.NewFloat(amount)
-	mult := big.NewFloat(numEtherUnits)
-	prod := new(big.Float).Mul(amt, mult)
-	res := round(prod)
-	return WeiAmount(*res)
+func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
+	weiAmt := new(apd.Decimal).Set(ethAmt)
+	weiAmt.Exponent += NumEtherDecimals
+	if _, err := nonFractionalWeiCtx.Round(weiAmt, weiAmt); err != nil {
+		panic(err)
+	}
+	return (*WeiAmount)(weiAmt)
 }
 
 // BigInt returns the given WeiAmount as a *big.Int
-func (a WeiAmount) BigInt() *big.Int {
-	i := big.Int(a)
-	return &i
+func (a *WeiAmount) BigInt() *big.Int {
+	// Passing Quantize zero for the exponent set the coefficient to the whole-number
+	// wei value. Round-half-up is used by default.
+	wholeWeiVal := new(apd.Decimal)
+	cond, err := DecimalCtx.Quantize(wholeWeiVal, a.Decimal(), 0)
+	if err != nil {
+		panic(err)
+	}
+	if cond.Rounded() {
+		// We round when converting from Ether to Wei, so we shouldn't see this
+		log.Warn("Converting WeiAmount=%s to big.Int required rounding", a)
+	}
+	return new(big.Int).SetBytes(wholeWeiVal.Coeff.Bytes())
 }
 
 // AsEther returns the wei amount as ether
-func (a WeiAmount) AsEther() float64 {
-	wei := new(big.Float).SetInt(a.BigInt())
-	mult := big.NewFloat(numEtherUnits)
-	ether := new(big.Float).Quo(wei, mult)
-	res, _ := ether.Float64()
-	return res
+func (a *WeiAmount) AsEther() *apd.Decimal {
+	ether := new(apd.Decimal).Set(a.Decimal())
+	ether.Exponent -= NumEtherDecimals
+	_, _ = ether.Reduce(ether)
+	return ether
 }
 
-// AsStandard returns the wei amount as ether
-func (a WeiAmount) AsStandard() float64 {
+// AsStandard is an alias for AsEther, returning the wei amount as ether
+func (a *WeiAmount) AsStandard() *apd.Decimal {
 	return a.AsEther()
 }
 
-// String ...
-func (a WeiAmount) String() string {
-	return a.BigInt().String()
-}
-
-// FmtFloat creates a string from a floating point value that keeps maximum precision,
-// does not use exponent notation, and has no trailing zeros after the decimal point.
-func FmtFloat(f float64) string {
-	return strconv.FormatFloat(f, 'f', -1, 64)
+// String returns the wei amount as a base10 string
+func (a *WeiAmount) String() string {
+	return a.Decimal().String()
 }
 
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
 type ERC20TokenAmount struct {
-	amount   *big.Int
-	numUnits float64 // 10^decimals
+	amount      *apd.Decimal
+	numDecimals int // num digits after the Decimal point needed for smallest denomination
 }
 
 // NewERC20TokenAmountFromBigInt converts some amount in the smallest token denomination into an ERC20TokenAmount.
 func NewERC20TokenAmountFromBigInt(amount *big.Int, decimals int) *ERC20TokenAmount {
+	asDecimal := new(apd.Decimal)
+	asDecimal.Coeff.SetBytes(amount.Bytes())
 	return &ERC20TokenAmount{
-		amount:   amount,
-		numUnits: math.Pow10(decimals),
+		amount:      asDecimal,
+		numDecimals: decimals,
 	}
 }
 
 // NewERC20TokenAmount converts some amount in the smallest token denomination into an ERC20TokenAmount.
 func NewERC20TokenAmount(amount int64, decimals int) *ERC20TokenAmount {
 	return &ERC20TokenAmount{
-		amount:   big.NewInt(amount),
-		numUnits: math.Pow10(decimals),
+		amount:      apd.New(amount, 0),
+		numDecimals: decimals,
 	}
 }
 
@@ -104,49 +225,36 @@ func NewERC20TokenAmount(amount int64, decimals int) *ERC20TokenAmount {
 // to its smaller denomination.
 // For example, if amount is 1.99 and decimals is 9, the resulting value stored
 // is 1.99 * 10^9.
-func NewERC20TokenAmountFromDecimals(amount float64, decimals int) *ERC20TokenAmount {
-	numUnits := math.Pow10(decimals)
-	amt := big.NewFloat(amount)
-	mult := big.NewFloat(numUnits)
-	prod := new(big.Float).Mul(amt, mult)
-	res := round(prod)
+func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals int) *ERC20TokenAmount {
+	adjusted := new(apd.Decimal).Set(amount)
+	adjusted.Exponent += int32(decimals)
 	return &ERC20TokenAmount{
-		amount:   res,
-		numUnits: numUnits,
+		amount:      adjusted,
+		numDecimals: decimals,
 	}
 }
 
-// BigInt returns the given ERC20TokenAmount as a *big.Int
+// BigInt returns the ERC20TokenAmount as a *big.Int
 func (a *ERC20TokenAmount) BigInt() *big.Int {
-	return a.amount
+	noExponent := new(apd.Decimal)
+	cond, err := nonFractionalWeiCtx.Quantize(noExponent, a.amount, 0)
+	if err != nil {
+		panic(err)
+	}
+	if cond.Rounded() {
+		log.Warn("Converting ERC20TokenAmount=%s (digits=%d) to big.Int required rounding", a.amount, a.numDecimals)
+	}
+	return new(big.Int).SetBytes(noExponent.Coeff.Bytes())
 }
 
 // AsStandard returns the amount in standard form
-func (a *ERC20TokenAmount) AsStandard() float64 {
-	wei := new(big.Float).SetInt(a.BigInt())
-	mult := big.NewFloat(a.numUnits)
-	ether := new(big.Float).Quo(wei, mult)
-	res, _ := ether.Float64()
-	return res
+func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
+	tokenAmt := new(apd.Decimal).Set(a.amount)
+	tokenAmt.Exponent -= NumEtherDecimals
+	return tokenAmt
 }
 
-// String ...
+// String returns the ERC20TokenAmount as a base10 string
 func (a *ERC20TokenAmount) String() string {
-	return a.BigInt().String()
-}
-
-// round rounds the input *big.Float to a *big.Int.
-// eg. if the input is 33.49, it returns 33.
-// if the input is 33.5, it returns 34.
-func round(num *big.Float) *big.Int {
-	// ignore overflow, we only care about the least significant decimals
-	numAsFloat, _ := num.Float64()
-	rounded := math.Round(numAsFloat)
-	if rounded <= numAsFloat {
-		res, _ := num.Int(nil)
-		return res
-	}
-
-	res, _ := new(big.Float).Add(num, big.NewFloat(1)).Int(nil)
-	return res
+	return a.amount.String()
 }

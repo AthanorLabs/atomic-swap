@@ -6,6 +6,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ChainSafe/chaindb"
 	"github.com/stretchr/testify/require"
@@ -27,23 +28,13 @@ func TestDatabase_OfferTable(t *testing.T) {
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
-	offerA := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	one := tests.Str2Decimal("1")
+	oneEx := types.ToExchangeRate(one)
+	offerA := types.NewOffer(types.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
-	offerB := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	offerB := types.NewOffer(types.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerB)
 	require.NoError(t, err)
 
@@ -68,13 +59,10 @@ func TestDatabase_SwapTable(t *testing.T) {
 	db, err := NewDatabase(cfg)
 	require.NoError(t, err)
 
-	offerA := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	one := tests.Str2Decimal("1")
+	oneEx := (*types.ExchangeRate)(one)
+
+	offerA := types.NewOffer(types.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
