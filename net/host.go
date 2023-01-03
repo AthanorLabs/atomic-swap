@@ -57,7 +57,6 @@ type host struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	protocolID string
-	//	maxMessageSize uint32
 
 	h         libp2phost.Host
 	bootnodes []peer.AddrInfo
