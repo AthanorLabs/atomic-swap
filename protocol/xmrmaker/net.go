@@ -92,7 +92,7 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 
-	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
+	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %s**",
 		msg.OfferID,
 		msg.ProvidedAmount,
 	)

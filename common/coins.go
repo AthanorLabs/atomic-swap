@@ -104,7 +104,7 @@ func (a *PiconeroAmount) CmpU64(other uint64) int {
 
 // String returns the PiconeroAmount as a base10 string
 func (a *PiconeroAmount) String() string {
-	return a.Decimal().String()
+	return a.Decimal().Text('f')
 }
 
 // AsMonero converts the piconero PiconeroAmount into standard units
@@ -200,7 +200,7 @@ func (a *WeiAmount) AsStandard() *apd.Decimal {
 
 // String returns the wei amount as a base10 string
 func (a *WeiAmount) String() string {
-	return a.Decimal().String()
+	return a.Decimal().Text('f')
 }
 
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
@@ -270,5 +270,5 @@ func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
 
 // String returns the ERC20TokenAmount as a base10 string
 func (a *ERC20TokenAmount) String() string {
-	return a.amount.String()
+	return a.amount.Text('f')
 }

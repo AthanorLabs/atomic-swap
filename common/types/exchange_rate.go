@@ -5,6 +5,11 @@ import (
 )
 
 const (
+	// NumEtherDecimals is the number of Decimal points needed to represent whole units of Wei in Ether
+	NumEtherDecimals = 18
+	// NumMoneroDecimals is the number of Decimal points needed to represent whole units of piconero in XMR
+	NumMoneroDecimals = 12
+
 	// MaxCoinPrecision is a somewhat arbitrary precision upper bound (2^256 consumes 78 digits)
 	MaxCoinPrecision = 100
 )
@@ -19,7 +24,7 @@ func ToExchangeRate(rate *apd.Decimal) *ExchangeRate {
 	return (*ExchangeRate)(rate)
 }
 
-var decCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
+var decimalCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
 
 func (r *ExchangeRate) decimal() *apd.Decimal {
 	return (*apd.Decimal)(r)
@@ -38,11 +43,18 @@ func (r *ExchangeRate) MarshalText() ([]byte, error) {
 // ToXMR converts an ether amount to a monero amount with the given exchange rate
 func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) *apd.Decimal {
 	xmrAmt := new(apd.Decimal)
-	// TODO: return error? round?
-	_, err := decCtx.Quo(xmrAmt, r.decimal(), ethAmount)
+	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.decimal())
 	if err != nil {
 		panic(err)
 	}
+	// Adjust the exponent to piconeros, round, then adjust back
+	xmrAmt.Exponent += NumMoneroDecimals
+	_, err = decimalCtx.RoundToIntegralValue(xmrAmt, xmrAmt)
+	if err != nil {
+		panic(err)
+	}
+	xmrAmt.Exponent -= NumMoneroDecimals
+	_, _ = xmrAmt.Reduce(xmrAmt)
 	return xmrAmt
 }
 
@@ -51,10 +63,11 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) *apd.Decimal {
 	ethAmt := new(apd.Decimal)
 	// TODO: return error? round?
 	// TODO: Min should round up, max should round down???
-	_, err := decCtx.Mul(ethAmt, r.decimal(), xmrAmount)
+	_, err := decimalCtx.Mul(ethAmt, r.decimal(), xmrAmount)
 	if err != nil {
 		panic(err)
 	}
+	_, _ = ethAmt.Reduce(ethAmt)
 	return ethAmt
 }
 
@@ -62,5 +75,5 @@ func (r *ExchangeRate) String() string {
 	if r == nil {
 		return ""
 	}
-	return ((*apd.Decimal)(r)).String()
+	return r.decimal().Text('f')
 }
