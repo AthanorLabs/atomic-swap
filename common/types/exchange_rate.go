@@ -41,34 +41,32 @@ func (r *ExchangeRate) MarshalText() ([]byte, error) {
 }
 
 // ToXMR converts an ether amount to a monero amount with the given exchange rate
-func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) *apd.Decimal {
+func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	xmrAmt := new(apd.Decimal)
 	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.decimal())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// Adjust the exponent to piconeros, round, then adjust back
 	xmrAmt.Exponent += NumMoneroDecimals
 	_, err = decimalCtx.RoundToIntegralValue(xmrAmt, xmrAmt)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	xmrAmt.Exponent -= NumMoneroDecimals
 	_, _ = xmrAmt.Reduce(xmrAmt)
-	return xmrAmt
+	return xmrAmt, nil
 }
 
 // ToETH converts a monero amount to an eth amount with the given exchange rate
-func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) *apd.Decimal {
+func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	ethAmt := new(apd.Decimal)
-	// TODO: return error? round?
-	// TODO: Min should round up, max should round down???
 	_, err := decimalCtx.Mul(ethAmt, r.decimal(), xmrAmount)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, _ = ethAmt.Reduce(ethAmt)
-	return ethAmt
+	return ethAmt, nil
 }
 
 func (r *ExchangeRate) String() string {

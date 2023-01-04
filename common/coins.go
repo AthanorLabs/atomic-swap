@@ -160,7 +160,7 @@ func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	weiAmt := new(apd.Decimal).Set(ethAmt)
 	weiAmt.Exponent += NumEtherDecimals
 	// Adjust the exponent to zero, rounding out any fractional wei
-	_, err := DecimalCtx.Quantize(weiAmt, weiAmt, 0)
+	_, err := DecimalCtx.Round(weiAmt, weiAmt)
 	if err != nil {
 		// Could happen if there were more wei digits than MaxCoinPrecision, but
 		// our APIs do input validation to prevent this.

@@ -27,8 +27,10 @@ func (inst *Instance) Provides() types.ProvidesCoin {
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
 func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error) {
-	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
-
+	receivedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
+	if err != nil {
+		return nil, err
+	}
 	providedAmount, err := pcommon.GetEthereumAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),

@@ -108,7 +108,10 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, err
 	}
 
-	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if providedAmount.Cmp(offer.MinAmount) < 0 {
 		// TODO: This message will be confusing to the end-user, since they provided ETH, not XMR

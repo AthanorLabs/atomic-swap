@@ -213,21 +213,27 @@ func getRandomExchangeRate() *types.ExchangeRate {
 	return (*types.ExchangeRate)(rate)
 }
 
-func getRndOfferAmount(xRate *types.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) *apd.Decimal {
+func getRndOfferAmount(xRate *types.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) (*apd.Decimal, error) {
 	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64()) //nolint:gosec
 	if err != nil {
-		panic(err) // shouldn't be possible
+		return nil, err
 	}
-	minETHAmt := xRate.ToETH(minXMRAmt)
-	maxETHAmt := xRate.ToETH(maxXMRAmt)
+	minETHAmt, err := xRate.ToETH(minXMRAmt)
+	if err != nil {
+		return nil, err
+	}
+	maxETHAmt, err := xRate.ToETH(maxXMRAmt)
+	if err != nil {
+		return nil, err
+	}
 	ed := apd.MakeErrDecimal(common.DecimalCtx)
 	rangeLen := ed.Sub(new(apd.Decimal), maxETHAmt, minETHAmt)
 	randDelta := ed.Mul(new(apd.Decimal), rangeLen, randVal)
 	offerAmt := ed.Add(new(apd.Decimal), minETHAmt, randDelta)
 	if ed.Err() != nil {
-		panic(ed.Err())
+		return nil, ed.Err()
 	}
-	return offerAmt
+	return offerAmt, nil
 }
 
 func generateBlocks() {
@@ -362,7 +368,11 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	offer := resp.Offers[offerIdx]
 
 	// pick a random ETH amount in the allowed range
-	providesAmount := getRndOfferAmount(offer.ExchangeRate, offer.MinAmount, offer.MaxAmount)
+	providesAmount, err := getRndOfferAmount(offer.ExchangeRate, offer.MinAmount, offer.MaxAmount)
+	if err != nil {
+		d.errCh <- err
+		return
+	}
 
 	start := time.Now()
 	log.Infof("node %d taking offer %s", d.idx, offer.ID)

@@ -425,7 +425,10 @@ func runQuery(ctx *cli.Context) error {
 	}
 
 	for i, o := range res.Offers {
-		printOffer(o, i, "")
+		err = printOffer(o, i, "")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -452,7 +455,10 @@ func runQueryAll(ctx *cli.Context) error {
 		fmt.Printf("  Peer ID: %v\n", po.PeerID)
 		fmt.Printf("  Offers:\n")
 		for j, o := range po.Offers {
-			printOffer(o, j, "    ")
+			err = printOffer(o, j, "    ")
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -476,8 +482,14 @@ func runMake(ctx *cli.Context) error {
 	}
 	exchangeRate := (*types.ExchangeRate)(exchangeRateFl)
 	// TODO: How to handle this if the other asset is not ETH?
-	otherMin := exchangeRate.ToETH(min)
-	otherMax := exchangeRate.ToETH(max)
+	otherMin, err := exchangeRate.ToETH(min)
+	if err != nil {
+		return err
+	}
+	otherMax, err := exchangeRate.ToETH(max)
+	if err != nil {
+		return err
+	}
 
 	ethAssetStr := ctx.String("eth-asset")
 	ethAsset := types.EthAssetETH
@@ -721,7 +733,10 @@ func runGetOffers(ctx *cli.Context) error {
 	fmt.Println("Peer ID (self):", resp.PeerID)
 	fmt.Println("Offers:")
 	for i, offer := range resp.Offers {
-		printOffer(offer, i, "  ")
+		err = printOffer(offer, i, "  ")
+		if err != nil {
+			return err
+		}
 	}
 	if len(resp.Offers) == 0 {
 		fmt.Println("[no offers]")
@@ -770,14 +785,20 @@ func runGetSwapTimeout(ctx *cli.Context) error {
 	return nil
 }
 
-func printOffer(o *types.Offer, index int, indent string) {
+func printOffer(o *types.Offer, index int, indent string) error {
 	if index > 0 {
 		fmt.Printf("%s---\n", indent)
 	}
 
 	xRate := o.ExchangeRate
-	minETH := xRate.ToETH(o.MinAmount)
-	maxETH := xRate.ToETH(o.MaxAmount)
+	minETH, err := xRate.ToETH(o.MinAmount)
+	if err != nil {
+		return err
+	}
+	maxETH, err := xRate.ToETH(o.MaxAmount)
+	if err != nil {
+		return err
+	}
 
 	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
 	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
@@ -787,6 +808,7 @@ func printOffer(o *types.Offer, index int, indent string) {
 	fmt.Printf("%sMax XMR: %s\n", indent, o.MaxAmount)
 	fmt.Printf("%sMin %s: %s\n", indent, o.EthAsset, minETH)
 	fmt.Printf("%sMax %s: %s\n", indent, o.EthAsset, maxETH)
+	return nil
 }
 
 func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
