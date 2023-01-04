@@ -2,6 +2,7 @@ package xmrtaker
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -32,7 +33,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, amt.String(), tResp.Amount)
+	require.Equal(t, amt.String(), fmt.Sprintf("%d", tResp.Amount))
 
 	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
@@ -88,12 +89,13 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	s.SetSwapTimeout(time.Minute * 2)
 
 	// invalid SendKeysMessage should result in an error
-	msg := &net.SendKeysMessage{}
+	msg := &net.SendKeysMessage{ProvidedAmount: new(apd.Decimal)}
 	err := s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
 
 	// handle valid SendKeysMessage
 	msg = s.SendKeysMessage()
+	msg.ProvidedAmount = apd.New(1, -0)
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
 	msg.EthAddress = s.ETHClient().Address().String()
 

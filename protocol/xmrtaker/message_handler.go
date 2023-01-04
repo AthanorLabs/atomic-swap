@@ -81,6 +81,11 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
+
+	if msg.ProvidedAmount == nil {
+		return nil, errMissingProvidedAmount
+	}
+
 	// TODO: THIS CHECK LOOKS BACKWARDS?!?
 	if msg.ProvidedAmount.Cmp(s.info.ReceivedAmount) < 0 {
 		return nil, fmt.Errorf("receiving amount is not the same as expected: got %s, expected %s",
