@@ -59,7 +59,7 @@ func (a *PiconeroAmount) MarshalText() ([]byte, error) {
 func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	pnAmt := new(apd.Decimal).Set(xmrAmt)
 	increaseExponent(pnAmt, NumMoneroDecimals)
-	if err := roundToDecimalPlace(pnAmt, 0); err != nil {
+	if err := roundToDecimalPlace(pnAmt, pnAmt, 0); err != nil {
 		panic(err) // shouldn't be possible
 	}
 	return (*PiconeroAmount)(pnAmt)
@@ -142,7 +142,7 @@ func BigInt2Wei(amount *big.Int) *WeiAmount {
 func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	weiAmt := new(apd.Decimal).Set(ethAmt)
 	increaseExponent(weiAmt, NumEtherDecimals)
-	if err := roundToDecimalPlace(weiAmt, 0); err != nil {
+	if err := roundToDecimalPlace(weiAmt, weiAmt, 0); err != nil {
 		panic(err) // shouldn't be possible
 	}
 	return ToWeiAmount(weiAmt)
@@ -213,7 +213,7 @@ func NewERC20TokenAmount(amount int64, decimals uint8) *ERC20TokenAmount {
 func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20TokenAmount {
 	adjusted := new(apd.Decimal).Set(amount)
 	increaseExponent(adjusted, decimals)
-	if err := roundToDecimalPlace(adjusted, 0); err != nil {
+	if err := roundToDecimalPlace(adjusted, adjusted, 0); err != nil {
 		panic(err) // this shouldn't be possible
 	}
 	return &ERC20TokenAmount{

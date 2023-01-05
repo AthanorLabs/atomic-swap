@@ -4,14 +4,16 @@ import (
 	"github.com/cockroachdb/apd/v3"
 )
 
-func roundToDecimalPlace(n *apd.Decimal, decimalPlace uint8) error {
+func roundToDecimalPlace(result *apd.Decimal, n *apd.Decimal, decimalPlace uint8) error {
+	result.Set(n) // already optimizes result == n
+
 	// Adjust the exponent to the rounding place, round, then adjust the exponent back
-	increaseExponent(n, decimalPlace)
-	_, err := DecimalCtx.RoundToIntegralValue(n, n)
+	increaseExponent(result, decimalPlace)
+	_, err := DecimalCtx.RoundToIntegralValue(result, result)
 	if err != nil {
 		return err
 	}
-	decreaseExponent(n, decimalPlace)
-	_, _ = n.Reduce(n)
+	decreaseExponent(result, decimalPlace)
+	_, _ = result.Reduce(result)
 	return nil
 }

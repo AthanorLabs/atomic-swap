@@ -35,7 +35,7 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = roundToDecimalPlace(xmrAmt, NumMoneroDecimals); err != nil {
+	if err = roundToDecimalPlace(xmrAmt, xmrAmt, NumMoneroDecimals); err != nil {
 		return nil, err
 	}
 	return xmrAmt, nil
@@ -48,7 +48,7 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = roundToDecimalPlace(ethAmt, NumEtherDecimals); err != nil {
+	if err = roundToDecimalPlace(ethAmt, ethAmt, NumEtherDecimals); err != nil {
 		return nil, err
 	}
 	return ethAmt, nil
