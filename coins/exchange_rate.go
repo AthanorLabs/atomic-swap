@@ -35,7 +35,10 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	return roundToDecimalPlace(xmrAmt, NumMoneroDecimals)
+	if err = roundToDecimalPlace(xmrAmt, NumMoneroDecimals); err != nil {
+		return nil, err
+	}
+	return xmrAmt, nil
 }
 
 // ToETH converts a monero amount to an eth amount with the given exchange rate
@@ -45,7 +48,10 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	return roundToDecimalPlace(ethAmt, NumEtherDecimals)
+	if err = roundToDecimalPlace(ethAmt, NumEtherDecimals); err != nil {
+		return nil, err
+	}
+	return ethAmt, nil
 }
 
 func (r *ExchangeRate) String() string {

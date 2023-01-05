@@ -58,16 +58,10 @@ func (a *PiconeroAmount) MarshalText() ([]byte, error) {
 // MoneroToPiconero converts an amount in Monero to Piconero
 func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	pnAmt := new(apd.Decimal).Set(xmrAmt)
-	pnAmt.Exponent += NumMoneroDecimals
-	// Adjust the exponent to zero rounding, out any fractional piconeros
-	_, err := DecimalCtx.Quantize(pnAmt, pnAmt, 0)
-	if err != nil {
-		// TODO: Test our APIs to make sure we prevent this during input validation.
-		//       This error can only happen if the number of base10 piconero digits
-		//       exceeds the max precision of DecimalCtx.
-		panic(err)
+	increaseExponent(pnAmt, NumMoneroDecimals)
+	if err := roundToDecimalPlace(pnAmt, 0); err != nil {
+		panic(err) // shouldn't be possible
 	}
-
 	return (*PiconeroAmount)(pnAmt)
 }
 
@@ -91,13 +85,15 @@ func (a *PiconeroAmount) CmpU64(other uint64) int {
 
 // String returns the PiconeroAmount as a base10 string
 func (a *PiconeroAmount) String() string {
+	// If you call Decimal's String() method, it calls Text('G'), but
+	// we'd rather 0.001 instead of 1E-3.
 	return a.Decimal().Text('f')
 }
 
 // AsMonero converts the piconero PiconeroAmount into standard units
 func (a *PiconeroAmount) AsMonero() *apd.Decimal {
 	xmrAmt := new(apd.Decimal).Set(a.Decimal())
-	xmrAmt.Exponent -= NumMoneroDecimals
+	decreaseExponent(xmrAmt, NumMoneroDecimals)
 	_, _ = xmrAmt.Reduce(xmrAmt)
 	return xmrAmt
 }
@@ -126,7 +122,7 @@ func NewWeiAmount(amount int64) *WeiAmount {
 	if amount < 0 {
 		panic("negative wei amounts are not supported")
 	}
-	return (*WeiAmount)(apd.New(amount, 0))
+	return ToWeiAmount(apd.New(amount, 0))
 }
 
 // ToWeiAmount casts an *apd.Decimal to *WeiAmount
@@ -139,21 +135,17 @@ func ToWeiAmount(wei *apd.Decimal) *WeiAmount {
 // with no references to the passed value.
 func BigInt2Wei(amount *big.Int) *WeiAmount {
 	a := new(apd.BigInt).SetMathBigInt(amount)
-	return (*WeiAmount)(apd.NewWithBigInt(a, 0))
+	return ToWeiAmount(apd.NewWithBigInt(a, 0))
 }
 
 // EtherToWei converts some amount of standard ether to an WeiAmount.
 func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	weiAmt := new(apd.Decimal).Set(ethAmt)
-	weiAmt.Exponent += NumEtherDecimals
-	// Adjust the exponent to zero, rounding out any fractional wei
-	_, err := DecimalCtx.Round(weiAmt, weiAmt)
-	if err != nil {
-		// Could happen if there were more wei digits than MaxCoinPrecision, but
-		// our APIs do input validation to prevent this.
-		panic(err)
+	increaseExponent(weiAmt, NumEtherDecimals)
+	if err := roundToDecimalPlace(weiAmt, 0); err != nil {
+		panic(err) // shouldn't be possible
 	}
-	return (*WeiAmount)(weiAmt)
+	return ToWeiAmount(weiAmt)
 }
 
 // BigInt returns the given WeiAmount as a *big.Int
@@ -175,7 +167,7 @@ func (a *WeiAmount) BigInt() *big.Int {
 // AsEther returns the wei amount as ether
 func (a *WeiAmount) AsEther() *apd.Decimal {
 	ether := new(apd.Decimal).Set(a.Decimal())
-	ether.Exponent -= NumEtherDecimals
+	decreaseExponent(ether, NumEtherDecimals)
 	_, _ = ether.Reduce(ether)
 	return ether
 }
@@ -220,13 +212,9 @@ func NewERC20TokenAmount(amount int64, decimals uint8) *ERC20TokenAmount {
 // is 1.99 * 10^9.
 func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20TokenAmount {
 	adjusted := new(apd.Decimal).Set(amount)
-	adjusted.Exponent += int32(decimals)
-	// Adjust the exponent to zero, rounding out any fractional token units
-	_, err := DecimalCtx.Quantize(adjusted, adjusted, 0)
-	if err != nil {
-		// Could happen if there were more whole token digits than MaxCoinPrecision, but
-		// our APIs do input validation to prevent this.
-		panic(err)
+	increaseExponent(adjusted, decimals)
+	if err := roundToDecimalPlace(adjusted, 0); err != nil {
+		panic(err) // this shouldn't be possible
 	}
 	return &ERC20TokenAmount{
 		amount:      adjusted,
@@ -250,7 +238,7 @@ func (a *ERC20TokenAmount) BigInt() *big.Int {
 // AsStandard returns the amount in standard form
 func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
 	tokenAmt := new(apd.Decimal).Set(a.amount)
-	tokenAmt.Exponent -= int32(a.numDecimals)
+	decreaseExponent(tokenAmt, a.numDecimals)
 	_, _ = tokenAmt.Reduce(tokenAmt)
 	return tokenAmt
 }
