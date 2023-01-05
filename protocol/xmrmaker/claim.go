@@ -182,7 +182,7 @@ func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal
 	}
 
 	feeValue := new(apd.Decimal)
-	_, err := coins.DecimalCtx.Mul(feeValue, coins.BigInt2Wei(swapWeiAmt).Decimal(), commissionRate)
+	_, err := coins.DecimalCtx().Mul(feeValue, coins.BigInt2Wei(swapWeiAmt).Decimal(), commissionRate)
 	if err != nil {
 		return nil, err
 	}

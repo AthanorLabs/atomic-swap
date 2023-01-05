@@ -9,7 +9,7 @@ func roundToDecimalPlace(result *apd.Decimal, n *apd.Decimal, decimalPlace uint8
 
 	// Adjust the exponent to the rounding place, round, then adjust the exponent back
 	increaseExponent(result, decimalPlace)
-	_, err := DecimalCtx.RoundToIntegralValue(result, result)
+	_, err := decimalCtx.RoundToIntegralValue(result, result)
 	if err != nil {
 		return err
 	}

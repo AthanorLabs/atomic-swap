@@ -31,7 +31,7 @@ func (r *ExchangeRate) MarshalText() ([]byte, error) {
 // ToXMR converts an ether amount to a monero amount with the given exchange rate
 func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	xmrAmt := new(apd.Decimal)
-	_, err := DecimalCtx.Quo(xmrAmt, ethAmount, r.decimal())
+	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.decimal())
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 // ToETH converts a monero amount to an eth amount with the given exchange rate
 func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	ethAmt := new(apd.Decimal)
-	_, err := DecimalCtx.Mul(ethAmt, r.decimal(), xmrAmount)
+	_, err := decimalCtx.Mul(ethAmt, r.decimal(), xmrAmount)
 	if err != nil {
 		return nil, err
 	}

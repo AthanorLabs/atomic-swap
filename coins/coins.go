@@ -151,7 +151,7 @@ func (a *WeiAmount) BigInt() *big.Int {
 	// Passing Quantize zero for the exponent set the coefficient to the whole-number
 	// wei value. Round-half-up is used by default.
 	wholeWeiVal := new(apd.Decimal)
-	cond, err := DecimalCtx.Quantize(wholeWeiVal, a.Decimal(), 0)
+	cond, err := decimalCtx.Quantize(wholeWeiVal, a.Decimal(), 0)
 	if err != nil {
 		panic(err)
 	}
@@ -223,7 +223,7 @@ func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20
 // BigInt returns the ERC20TokenAmount as a *big.Int
 func (a *ERC20TokenAmount) BigInt() *big.Int {
 	wholeTokenUnits := new(apd.Decimal)
-	cond, err := DecimalCtx.Quantize(wholeTokenUnits, a.amount, 0)
+	cond, err := decimalCtx.Quantize(wholeTokenUnits, a.amount, 0)
 	if err != nil {
 		panic(err)
 	}

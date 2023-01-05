@@ -65,7 +65,7 @@ func (s *IntegrationTestSuite) SetupTest() {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		// We need slightly more than xmrmakerProvideAmount for transaction fees
 		minBal := new(apd.Decimal)
-		_, err := coins.DecimalCtx.Mul(minBal, xmrmakerProvideAmount, apd.New(2, 0))
+		_, err := coins.DecimalCtx().Mul(minBal, xmrmakerProvideAmount, apd.New(2, 0))
 		require.NoError(s.T(), err)
 		mineMinXMRMakerBalance(s.T(), coins.MoneroToPiconero(minBal))
 	}

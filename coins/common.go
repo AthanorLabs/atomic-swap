@@ -16,5 +16,13 @@ const (
 
 var (
 	// DecimalCtx is the apd context used for math operations on our coins
-	DecimalCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
+	decimalCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
 )
+
+// DecimalCtx clones and returns the apd.Context we use for coin math operations.
+func DecimalCtx() *apd.Context {
+	// return a clone to prevent external callers from modifying our context
+	c := new(apd.Context)
+	*c = *decimalCtx
+	return c
+}

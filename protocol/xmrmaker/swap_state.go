@@ -94,13 +94,6 @@ func newSwapStateFromStart(
 	providesAmount *coins.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
-	exRateDec := new(apd.Decimal)
-	_, err := coins.DecimalCtx.Quo(exRateDec, providesAmount.AsMonero(), desiredAmount.AsStandard())
-	if err != nil {
-		return nil, err
-	}
-	exRate := coins.ToExchangeRate(exRateDec)
-
 	// at this point, we've received the counterparty's keys,
 	// and will send our own after this function returns.
 	// see HandleInitiateMessage().
@@ -110,7 +103,7 @@ func newSwapStateFromStart(
 	}
 
 	if offerExtra.RelayerEndpoint != "" {
-		if err = b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {
+		if err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {
 			return nil, err
 		}
 	}
@@ -134,7 +127,7 @@ func newSwapStateFromStart(
 		coins.ProvidesXMR,
 		providesAmount.AsMonero(),
 		desiredAmount.AsStandard(),
-		exRate,
+		offer.ExchangeRate,
 		offer.EthAsset,
 		stage,
 		moneroStartHeight,

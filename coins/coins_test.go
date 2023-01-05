@@ -40,7 +40,7 @@ func TestMoneroToPiconero_roundUp(t *testing.T) {
 
 func TestMoneroToPiconero_roundDown(t *testing.T) {
 	xrmAmount := Str2Decimal("1.00000000000049") // 12 zeros, then "49"
-	const expectedPiconeros = "1000000000001"
+	const expectedPiconeros = "1000000000000"
 	piconeroAmount := MoneroToPiconero(xrmAmount)
 	require.Equal(t, expectedPiconeros, piconeroAmount.String())
 }
@@ -61,7 +61,7 @@ func TestPiconeroAmount_Uint64(t *testing.T) {
 
 	// MaxUint64+1 should return an error
 	one := apd.New(1, 0)
-	_, err = DecimalCtx.Add(piconeros.Decimal(), piconeros.Decimal(), one)
+	_, err = decimalCtx.Add(piconeros.Decimal(), piconeros.Decimal(), one)
 	require.NoError(t, err)
 	_, err = piconeros.Uint64()
 	require.ErrorContains(t, err, "value out of range")
