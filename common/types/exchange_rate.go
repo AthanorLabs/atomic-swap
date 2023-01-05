@@ -47,15 +47,7 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Adjust the exponent to piconeros, round, then adjust back
-	xmrAmt.Exponent += NumMoneroDecimals
-	_, err = decimalCtx.RoundToIntegralValue(xmrAmt, xmrAmt)
-	if err != nil {
-		return nil, err
-	}
-	xmrAmt.Exponent -= NumMoneroDecimals
-	_, _ = xmrAmt.Reduce(xmrAmt)
-	return xmrAmt, nil
+	return roundToDecimalPlace(xmrAmt, NumMoneroDecimals)
 }
 
 // ToETH converts a monero amount to an eth amount with the given exchange rate
@@ -65,8 +57,21 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _ = ethAmt.Reduce(ethAmt)
-	return ethAmt, nil
+	return roundToDecimalPlace(ethAmt, NumEtherDecimals)
+}
+
+func roundToDecimalPlace(n *apd.Decimal, decimalPlace int32) (*apd.Decimal, error) {
+	rounded := new(apd.Decimal).Set(n)
+
+	// Adjust the exponent to the rounding place, round, then adjust the exponent back
+	rounded.Exponent += decimalPlace
+	_, err := decimalCtx.RoundToIntegralValue(rounded, rounded)
+	if err != nil {
+		return nil, err
+	}
+	rounded.Exponent -= decimalPlace
+	_, _ = rounded.Reduce(rounded)
+	return rounded, nil
 }
 
 func (r *ExchangeRate) String() string {
