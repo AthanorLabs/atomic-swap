@@ -5,6 +5,7 @@ package coins
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/log"
@@ -31,18 +32,15 @@ func (a *PiconeroAmount) Decimal() *apd.Decimal {
 
 // Uint64 converts piconero amount to uint64. Errors if a is negative or larger than 2^63-1.
 func (a *PiconeroAmount) Uint64() (uint64, error) {
-	// 2^63 / 10^12 is over 9 million XMR, so there is no point in adding complicated code to
-	// handle all 64 bits.
-	amtInt64, err := a.Decimal().Int64()
-	if err != nil {
-		return 0, err
-	}
 	// Hopefully, the rest of our code is doing input validation and the error below
 	// never gets triggered.
-	if amtInt64 < 0 {
-		return 0, fmt.Errorf("can not convert %d to unsigned value", amtInt64)
+	if a.Negative {
+		return 0, fmt.Errorf("can not convert %s to unsigned", a.String())
 	}
-	return uint64(amtInt64), nil
+
+	// Decimal has an Int64() method, but not a UInt64() method, so we are converting to
+	// a string and back (optimizing for least code instead of speed).
+	return strconv.ParseUint(a.String(), 10, 64)
 }
 
 // UnmarshalText hands off JSON decoding to apd.Decimal
