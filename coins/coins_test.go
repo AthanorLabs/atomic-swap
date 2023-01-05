@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,15 +16,15 @@ func TestPiconeroAmount(t *testing.T) {
 
 	amount := Str2Decimal(preciseAmount)
 	piconero := MoneroToPiconero(amount)
-	require.Equal(t, moneroAmount, piconero.AsMonero().String())
-	require.Equal(t, piconeroAmount, piconero.String())
+	assert.Equal(t, moneroAmount, piconero.AsMonero().String())
+	assert.Equal(t, piconeroAmount, piconero.String())
 }
 
 func TestMoneroToPiconero(t *testing.T) {
 	xrmAmount := Str2Decimal("2")
 	const expectedPiconeros = "2000000000000"
 	piconeroAmount := MoneroToPiconero(xrmAmount)
-	require.Equal(t, expectedPiconeros, piconeroAmount.String())
+	assert.Equal(t, expectedPiconeros, piconeroAmount.String())
 }
 
 func TestMoneroToPiconero_roundUp(t *testing.T) {
@@ -35,21 +36,21 @@ func TestMoneroToPiconero_roundUp(t *testing.T) {
 	xrmAmount := Str2Decimal("1.0000000000005") // 12 zeros, then "5"
 	const expectedPiconeros = "1000000000001"
 	piconeroAmount := MoneroToPiconero(xrmAmount)
-	require.Equal(t, expectedPiconeros, piconeroAmount.String())
+	assert.Equal(t, expectedPiconeros, piconeroAmount.String())
 }
 
 func TestMoneroToPiconero_roundDown(t *testing.T) {
 	xrmAmount := Str2Decimal("1.00000000000049") // 12 zeros, then "49"
 	const expectedPiconeros = "1000000000000"
 	piconeroAmount := MoneroToPiconero(xrmAmount)
-	require.Equal(t, expectedPiconeros, piconeroAmount.String())
+	assert.Equal(t, expectedPiconeros, piconeroAmount.String())
 }
 
 func TestNewPiconeroAmount(t *testing.T) {
 	onePn := NewPiconeroAmount(1)
 	oneU64, err := onePn.Uint64()
 	require.NoError(t, err)
-	require.Equal(t, oneU64, uint64(1))
+	assert.Equal(t, oneU64, uint64(1))
 }
 
 func TestPiconeroAmount_Uint64(t *testing.T) {
@@ -57,50 +58,50 @@ func TestPiconeroAmount_Uint64(t *testing.T) {
 	piconeros := NewPiconeroAmount(math.MaxUint64)
 	piconerosU64, err := piconeros.Uint64()
 	require.NoError(t, err)
-	require.Equal(t, uint64(math.MaxUint64), piconerosU64)
+	assert.Equal(t, uint64(math.MaxUint64), piconerosU64)
 
 	// MaxUint64+1 should return an error
 	one := apd.New(1, 0)
 	_, err = decimalCtx.Add(piconeros.Decimal(), piconeros.Decimal(), one)
 	require.NoError(t, err)
 	_, err = piconeros.Uint64()
-	require.ErrorContains(t, err, "value out of range")
+	assert.ErrorContains(t, err, "value out of range")
 
 	// Negative values, which we should never have, return an error
 	piconeros.Decimal().Set(apd.New(-1, 0))
 	_, err = piconeros.Uint64()
-	require.ErrorContains(t, err, "can not convert")
+	assert.ErrorContains(t, err, "can not convert")
 }
 
 func TestWeiAmount(t *testing.T) {
 	amount := Str2Decimal("33.3")
 	wei := EtherToWei(amount)
-	require.Equal(t, "33300000000000000000", wei.String())
-	require.Equal(t, "33.3", wei.AsEther().String())
+	assert.Equal(t, "33300000000000000000", wei.String())
+	assert.Equal(t, "33.3", wei.AsEther().String())
 
 	amountUint := int64(8181)
 	WeiAmount := NewWeiAmount(amountUint)
-	require.Equal(t, amountUint, WeiAmount.BigInt().Int64())
+	assert.Equal(t, amountUint, WeiAmount.BigInt().Int64())
 }
 
 func TestERC20TokenAmount(t *testing.T) {
 	amount := Str2Decimal("33.999999999")
 	wei := NewERC20TokenAmountFromDecimals(amount, 9)
-	require.Equal(t, amount.String(), wei.AsStandard().String())
+	assert.Equal(t, amount.String(), wei.AsStandard().String())
 
 	amount = Str2Decimal("33.000000005")
 	wei = NewERC20TokenAmountFromDecimals(amount, 9)
-	require.Equal(t, "33.000000005", wei.AsStandard().String())
+	assert.Equal(t, "33.000000005", wei.AsStandard().String())
 
 	amount = Str2Decimal("33.0000000005")
 	wei = NewERC20TokenAmountFromDecimals(amount, 9)
-	require.Equal(t, "33.000000001", wei.AsStandard().String())
+	assert.Equal(t, "33.000000001", wei.AsStandard().String())
 
 	amount = Str2Decimal("999999999999999999.0000000005")
 	wei = NewERC20TokenAmountFromDecimals(amount, 9)
-	require.Equal(t, "999999999999999999.000000001", wei.AsStandard().String())
+	assert.Equal(t, "999999999999999999.000000001", wei.AsStandard().String())
 
 	amountUint := int64(8181)
 	tokenAmt := NewERC20TokenAmount(amountUint, 9)
-	require.Equal(t, amountUint, tokenAmt.BigInt().Int64())
+	assert.Equal(t, amountUint, tokenAmt.BigInt().Int64())
 }

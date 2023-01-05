@@ -3,18 +3,19 @@ package coins
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewProvidesCoin(t *testing.T) {
 	coin, err := NewProvidesCoin("XMR")
 	require.NoError(t, err)
-	require.Equal(t, ProvidesXMR, coin)
+	assert.Equal(t, ProvidesXMR, coin)
 
 	coin, err = NewProvidesCoin("ETH")
 	require.NoError(t, err)
-	require.Equal(t, ProvidesETH, coin)
+	assert.Equal(t, ProvidesETH, coin)
 
 	_, err = NewProvidesCoin("asdf")
-	require.NotNil(t, err)
+	assert.ErrorIs(t, err, errInvalidCoin)
 }

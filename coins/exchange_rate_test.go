@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func TestExchangeRate_ToXMR(t *testing.T) {
 	const expectedXMRAmount = "4"
 	xmrAmount, err := rate.ToXMR(ethAmount)
 	require.NoError(t, err)
-	require.Equal(t, expectedXMRAmount, xmrAmount.String())
+	assert.Equal(t, expectedXMRAmount, xmrAmount.String())
 }
 
 func TestExchangeRate_ToXMR_roundDown(t *testing.T) {
@@ -31,7 +32,7 @@ func TestExchangeRate_ToXMR_roundDown(t *testing.T) {
 	const expectedXMRAmount = "9"
 	xmrAmount, err := rate.ToXMR(ethAmount)
 	require.NoError(t, err)
-	require.Equal(t, expectedXMRAmount, xmrAmount.String())
+	assert.Equal(t, expectedXMRAmount, xmrAmount.String())
 }
 
 func TestExchangeRate_ToXMR_roundUp(t *testing.T) {
@@ -41,7 +42,7 @@ func TestExchangeRate_ToXMR_roundUp(t *testing.T) {
 	const expectedXMRAmount = "9"
 	xmrAmount, err := rate.ToXMR(ethAmount)
 	require.NoError(t, err)
-	require.Equal(t, expectedXMRAmount, xmrAmount.String())
+	assert.Equal(t, expectedXMRAmount, xmrAmount.String())
 }
 
 func TestExchangeRate_ToETH(t *testing.T) {
@@ -50,5 +51,10 @@ func TestExchangeRate_ToETH(t *testing.T) {
 	const expectedETHAmount = "1"
 	ethAmount, err := rate.ToETH(xmrAmount)
 	require.NoError(t, err)
-	require.Equal(t, expectedETHAmount, ethAmount.String())
+	assert.Equal(t, expectedETHAmount, ethAmount.String())
+}
+
+func TestExchangeRate_String(t *testing.T) {
+	rate := ToExchangeRate(apd.New(3, -4)) // 0.0003
+	assert.Equal(t, "0.0003", rate.String())
 }
