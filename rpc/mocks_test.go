@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -49,7 +50,7 @@ func (*mockNet) ConnectedPeers() []string {
 func (*mockNet) Advertise() {
 }
 
-func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
+func (*mockNet) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return nil, nil
 }
 
@@ -90,10 +91,10 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	one := apd.New(1, 0)
 	return *swap.NewInfo(
 		id,
-		types.ProvidesETH,
+		coins.ProvidesETH,
 		one,
 		one,
-		types.ToExchangeRate(one),
+		coins.ToExchangeRate(one),
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		1,
@@ -111,7 +112,7 @@ func (*mockSwapManager) CompleteOngoingSwap(*swap.Info) error {
 
 type mockXMRTaker struct{}
 
-func (*mockXMRTaker) Provides() types.ProvidesCoin {
+func (*mockXMRTaker) Provides() coins.ProvidesCoin {
 	panic("not implemented")
 }
 
@@ -137,7 +138,7 @@ func (*mockXMRTaker) ExternalSender(_ types.Hash) (*txsender.ExternalSender, err
 
 type mockXMRMaker struct{}
 
-func (m *mockXMRMaker) Provides() types.ProvidesCoin {
+func (m *mockXMRMaker) Provides() coins.ProvidesCoin {
 	panic("not implemented")
 }
 

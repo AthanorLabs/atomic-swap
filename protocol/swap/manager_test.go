@@ -5,6 +5,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 
 	"github.com/golang/mock/gomock"
@@ -25,10 +26,10 @@ func TestNewManager(t *testing.T) {
 	hashA := types.Hash{0x1}
 	infoA := NewInfo(
 		hashA,
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		apd.New(1, 0),
 		apd.New(10, 0),
-		(*types.ExchangeRate)(apd.New(1, -1)), // 0.1
+		coins.ToExchangeRate(apd.New(1, -1)), // 0.1
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
@@ -40,10 +41,10 @@ func TestNewManager(t *testing.T) {
 
 	infoB := NewInfo(
 		types.Hash{2},
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		apd.New(1, 0),
 		apd.New(10, 0),
-		(*types.ExchangeRate)(apd.New(1, -1)), // 0.1
+		coins.ToExchangeRate(apd.New(1, -1)), // 0.1
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		100,
@@ -71,10 +72,10 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 	require.NoError(t, err)
 	info := NewInfo(
 		types.Hash{},
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		apd.New(1, 0),
 		apd.New(10, 0),
-		(*types.ExchangeRate)(apd.New(1, -1)), // 0.1
+		coins.ToExchangeRate(apd.New(1, -1)), // 0.1
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,

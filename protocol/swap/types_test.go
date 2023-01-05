@@ -9,6 +9,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -17,10 +18,10 @@ func Test_InfoMarshal(t *testing.T) {
 	offerID := ethcommon.HexToHash(offerIDStr)
 	info := NewInfo(
 		offerID,
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		apd.New(125, -2), // 1.25
 		apd.New(1, 0),
-		(*types.ExchangeRate)(apd.New(33, -2)), // 0.33
+		coins.ToExchangeRate(apd.New(33, -2)), // 0.33
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		200,

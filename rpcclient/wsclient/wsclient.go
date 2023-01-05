@@ -11,6 +11,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 
@@ -23,7 +24,7 @@ var log = logging.Logger("rpcclient")
 // WsClient ...
 type WsClient interface {
 	Close()
-	Discover(provides types.ProvidesCoin, searchTime uint64) ([]peer.ID, error)
+	Discover(provides coins.ProvidesCoin, searchTime uint64) ([]peer.ID, error)
 	Query(who peer.ID) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
 	TakeOfferAndSubscribe(peerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
@@ -33,7 +34,7 @@ type WsClient interface {
 	MakeOfferAndSubscribe(
 		min *apd.Decimal,
 		max *apd.Decimal,
-		exchangeRate *types.ExchangeRate,
+		exchangeRate *coins.ExchangeRate,
 		ethAsset types.EthAsset,
 		relayerEndpoint string,
 		relayerCommission *apd.Decimal,
@@ -83,7 +84,7 @@ func (c *wsClient) read() ([]byte, error) {
 	return message, nil
 }
 
-func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([]peer.ID, error) {
+func (c *wsClient) Discover(provides coins.ProvidesCoin, searchTime uint64) ([]peer.ID, error) {
 	params := &rpctypes.DiscoverRequest{
 		Provides:   provides,
 		SearchTime: searchTime,
@@ -324,7 +325,7 @@ func (c *wsClient) readTakeOfferResponse() (string, error) {
 func (c *wsClient) MakeOfferAndSubscribe(
 	min *apd.Decimal,
 	max *apd.Decimal,
-	exchangeRate *types.ExchangeRate,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
 	relayerCommission *apd.Decimal,

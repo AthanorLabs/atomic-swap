@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -24,7 +25,7 @@ type Net interface {
 	ConnectedPeers() []string
 	Addresses() []string
 	Advertise()
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*net.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error
 	CloseProtocolStream(types.Hash)
@@ -248,7 +249,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOf
 	}
 
 	offer := types.NewOffer(
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		req.MinAmount,
 		req.MaxAmount,
 		req.ExchangeRate,

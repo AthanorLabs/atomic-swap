@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -110,7 +111,7 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 		return ethcommon.Hash{}, nil, err
 	}
 
-	valueWei := common.BigInt2Wei(value)
+	valueWei := coins.BigInt2Wei(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  fmt.Sprintf("0x%x", input),

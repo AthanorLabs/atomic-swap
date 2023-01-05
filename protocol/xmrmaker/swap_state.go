@@ -13,6 +13,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -90,15 +91,15 @@ func newSwapStateFromStart(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	providesAmount *common.PiconeroAmount,
+	providesAmount *coins.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	exRateDec := new(apd.Decimal)
-	_, err := common.DecimalCtx.Quo(exRateDec, providesAmount.AsMonero(), desiredAmount.AsStandard())
+	_, err := coins.DecimalCtx.Quo(exRateDec, providesAmount.AsMonero(), desiredAmount.AsStandard())
 	if err != nil {
 		return nil, err
 	}
-	exRate := types.ToExchangeRate(exRateDec)
+	exRate := coins.ToExchangeRate(exRateDec)
 
 	// at this point, we've received the counterparty's keys,
 	// and will send our own after this function returns.
@@ -130,7 +131,7 @@ func newSwapStateFromStart(
 
 	info := pswap.NewInfo(
 		offer.ID,
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		providesAmount.AsMonero(),
 		desiredAmount.AsStandard(),
 		exRate,
@@ -496,7 +497,7 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount *common.PiconeroAmount) (*message.NotifyXMRLock, error) {
+func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 

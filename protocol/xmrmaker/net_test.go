@@ -3,6 +3,7 @@ package xmrmaker
 import (
 	"testing"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -14,8 +15,8 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 	b, db := newTestInstanceAndDB(t)
 	min := tests.Str2Decimal("0.001")
 	max := tests.Str2Decimal("0.002")
-	rate := types.ToExchangeRate(tests.Str2Decimal("0.1"))
-	offer := types.NewOffer(types.ProvidesXMR, min, max, rate, types.EthAssetETH)
+	rate := coins.ToExchangeRate(tests.Str2Decimal("0.1"))
+	offer := types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(offer)
 	db.EXPECT().DeleteOffer(offer.ID)
 

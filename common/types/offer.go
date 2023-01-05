@@ -9,6 +9,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/cockroachdb/apd/v3"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 var (
@@ -20,21 +22,21 @@ var (
 
 // Offer represents a swap offer
 type Offer struct {
-	Version      semver.Version `json:"version"`
-	ID           Hash           `json:"offerID"`
-	Provides     ProvidesCoin   `json:"provides"`
-	MinAmount    *apd.Decimal   `json:"minAmount"` // Min XMR amount
-	MaxAmount    *apd.Decimal   `json:"maxAmount"` // Max XMR amount
-	ExchangeRate *ExchangeRate  `json:"exchangeRate"`
-	EthAsset     EthAsset       `json:"ethAsset"`
+	Version      semver.Version      `json:"version"`
+	ID           Hash                `json:"offerID"`
+	Provides     coins.ProvidesCoin  `json:"provides"`
+	MinAmount    *apd.Decimal        `json:"minAmount"` // Min XMR amount
+	MaxAmount    *apd.Decimal        `json:"maxAmount"` // Max XMR amount
+	ExchangeRate *coins.ExchangeRate `json:"exchangeRate"`
+	EthAsset     EthAsset            `json:"ethAsset"`
 }
 
 // NewOffer creates and returns an Offer with an initialised ID and Version fields
 func NewOffer(
-	coin ProvidesCoin,
+	coin coins.ProvidesCoin,
 	minAmount *apd.Decimal,
 	maxAmount *apd.Decimal,
-	exRate *ExchangeRate,
+	exRate *coins.ExchangeRate,
 	ethAsset EthAsset,
 ) *Offer {
 	var buf [16]byte

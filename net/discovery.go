@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	libp2pdiscovery "github.com/libp2p/go-libp2p/core/discovery"
 	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	libp2prouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 const (
@@ -28,7 +28,7 @@ type discovery struct {
 	dht         *dual.DHT
 	h           libp2phost.Host
 	rd          *libp2prouting.RoutingDiscovery
-	provides    []types.ProvidesCoin // set to a single item slice of XMR when we make an offer
+	provides    []coins.ProvidesCoin // set to a single item slice of XMR when we make an offer
 	advertiseCh chan struct{}        // signals to advertise now that an XMR offer was made
 	offerAPI    Handler
 }
@@ -66,7 +66,7 @@ func (d *discovery) advertiseLoop() {
 	for {
 		select {
 		case <-d.advertiseCh:
-			d.provides = []types.ProvidesCoin{types.ProvidesXMR}
+			d.provides = []coins.ProvidesCoin{coins.ProvidesXMR}
 			ttl = d.advertise()
 		case <-time.After(ttl):
 			// the DHT clears provider records (ie. who is advertising what content)
@@ -190,7 +190,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 }
 
 func (d *discovery) discover(
-	provides types.ProvidesCoin,
+	provides coins.ProvidesCoin,
 	searchTime time.Duration,
 ) ([]peer.ID, error) {
 	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",

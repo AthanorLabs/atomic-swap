@@ -7,7 +7,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 )
@@ -31,8 +31,8 @@ func GetEthereumAssetAmount(
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return common.NewERC20TokenAmountFromDecimals(amt, decimals), nil
+		return coins.NewERC20TokenAmountFromDecimals(amt, decimals), nil
 	}
 
-	return common.EtherToWei(amt), nil
+	return coins.EtherToWei(amt), nil
 }

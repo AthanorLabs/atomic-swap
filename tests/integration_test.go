@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
@@ -46,7 +46,7 @@ const (
 
 var (
 	xmrmakerProvideAmount = apd.New(1, 0)
-	exchangeRate          = types.ToExchangeRate(Str2Decimal("0.05"))
+	exchangeRate          = coins.ToExchangeRate(Str2Decimal("0.05"))
 )
 
 type IntegrationTestSuite struct {
@@ -65,9 +65,9 @@ func (s *IntegrationTestSuite) SetupTest() {
 	if os.Getenv(generateBlocksEnv) != falseStr {
 		// We need slightly more than xmrmakerProvideAmount for transaction fees
 		minBal := new(apd.Decimal)
-		_, err := common.DecimalCtx.Mul(minBal, xmrmakerProvideAmount, apd.New(2, 0))
+		_, err := coins.DecimalCtx.Mul(minBal, xmrmakerProvideAmount, apd.New(2, 0))
 		require.NoError(s.T(), err)
-		mineMinXMRMakerBalance(s.T(), common.MoneroToPiconero(minBal))
+		mineMinXMRMakerBalance(s.T(), coins.MoneroToPiconero(minBal))
 	}
 
 	// Reset XMR Maker and Taker between tests, so tests starts in a known state
@@ -82,7 +82,7 @@ func (s *IntegrationTestSuite) SetupTest() {
 // mineMinXMRMakerBalance is similar to monero.MineMinXMRBalance(...), but this version
 // uses the swapd RPC Balances method to get the wallet address and balance from a
 // running swapd instance instead of interacting with a wallet.
-func mineMinXMRMakerBalance(t *testing.T, minBalance *common.PiconeroAmount) {
+func mineMinXMRMakerBalance(t *testing.T, minBalance *coins.PiconeroAmount) {
 	daemonCli := monerorpc.New(monero.MonerodRegtestEndpoint, nil).Daemon
 	ctx := context.Background()
 	for {
@@ -118,7 +118,7 @@ func (s *IntegrationTestSuite) TestXMRTaker_Discover() {
 	require.NoError(s.T(), err)
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
-	peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 }
@@ -126,7 +126,7 @@ func (s *IntegrationTestSuite) TestXMRTaker_Discover() {
 func (s *IntegrationTestSuite) TestXMRMaker_Discover() {
 	ctx := context.Background()
 	c := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	peerIDs, err := c.Discover(types.ProvidesETH, defaultDiscoverTimeout)
+	peerIDs, err := c.Discover(coins.ProvidesETH, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 0, len(peerIDs))
 }
@@ -143,7 +143,7 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 
 	c := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 
-	peerIDs, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := c.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 
@@ -221,7 +221,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
 	// TODO: implement discovery over websockets (#97)
-	peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), peerIDs[0], offerResp.PeerID)
@@ -316,7 +316,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	err = ac.SetSwapTimeout(swapTimeout)
 	require.NoError(s.T(), err)
 
-	peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), offerResp.PeerID, peerIDs[0])
@@ -455,7 +455,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	err = ac.SetSwapTimeout(swapTimeout)
 	require.NoError(s.T(), err)
 
-	peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 	providesAmt := Str2Decimal("0.05")
@@ -552,7 +552,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-	peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), offerResp.PeerID, peerIDs[0])
@@ -658,7 +658,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	c := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	wsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-	peerIDs, err := c.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := c.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 
@@ -715,7 +715,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 
-	peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), offerResp.PeerID, peerIDs[0])
@@ -884,7 +884,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 		awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
 		// TODO: implement discovery over websockets (#97)
-		peerIDs, err := ac.Discover(types.ProvidesXMR, defaultDiscoverTimeout) //nolint:govet
+		peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout) //nolint:govet
 		require.NoError(s.T(), err)
 		require.Equal(s.T(), 1, len(peerIDs))
 

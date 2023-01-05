@@ -19,7 +19,7 @@ import (
 	"github.com/athanorlabs/go-relayer/relayer"
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	//"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
@@ -257,7 +257,7 @@ func TestCalculateRelayerCommissionValue(t *testing.T) {
 	swapValueEther, _, err := apd.NewFromString("4.567")
 	require.NoError(t, err)
 
-	swapValueWei := common.EtherToWei(swapValueEther).BigInt()
+	swapValueWei := coins.EtherToWei(swapValueEther).BigInt()
 	require.Equal(t, "4567000000000000000", swapValueWei.Text(10))
 
 	commissionRate, _, err := apd.NewFromString("0.01398")
@@ -267,5 +267,5 @@ func TestCalculateRelayerCommissionValue(t *testing.T) {
 
 	val, err := calculateRelayerCommission(swapValueWei, commissionRate)
 	require.NoError(t, err)
-	require.Equal(t, expectedCommission, common.BigInt2Wei(val).AsEther().Text('f'))
+	require.Equal(t, expectedCommission, coins.BigInt2Wei(val).AsEther().Text('f'))
 }

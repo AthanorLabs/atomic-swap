@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/cockroachdb/apd/v3"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -26,10 +27,10 @@ type (
 type Info struct {
 	Version        *semver.Version     `json:"version"`
 	ID             types.Hash          `json:"offerID"` // swap offer ID
-	Provides       types.ProvidesCoin  `json:"provides"`
+	Provides       coins.ProvidesCoin  `json:"provides"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
-	ExchangeRate   *types.ExchangeRate `json:"exchangeRate"`
+	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	EthAsset       types.EthAsset      `json:"ethAsset"`
 	Status         Status              `json:"status"`
 	// MoneroStartHeight is the Monero block number when the swap begins.
@@ -41,9 +42,9 @@ type Info struct {
 // Note that the swap ID is the same as the offer ID.
 func NewInfo(
 	id types.Hash,
-	provides types.ProvidesCoin,
+	provides coins.ProvidesCoin,
 	providedAmount, receivedAmount *apd.Decimal,
-	exchangeRate *types.ExchangeRate,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	status Status,
 	moneroStartHeight uint64,

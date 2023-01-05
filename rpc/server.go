@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/rpc/v2"
 	logging "github.com/ipfs/go-log"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -147,7 +148,7 @@ func (s *Server) Stop() error {
 
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
-	Provides() types.ProvidesCoin
+	Provides() coins.ProvidesCoin
 	GetOngoingSwapState(types.Hash) common.SwapState
 }
 

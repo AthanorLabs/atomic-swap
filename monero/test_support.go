@@ -21,6 +21,7 @@ import (
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 )
 
@@ -116,7 +117,7 @@ func TestBackgroundMineBlocks(t *testing.T) {
 
 // MineMinXMRBalance enables mining for the passed wc wallet until it has an unlocked balance greater
 // than or equal to minBalance.
-func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *common.PiconeroAmount) {
+func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *coins.PiconeroAmount) {
 	daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 	addr, err := wc.GetAddress(0)
 	require.NoError(t, err)

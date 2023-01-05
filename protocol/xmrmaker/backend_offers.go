@@ -3,7 +3,7 @@ package xmrmaker
 import (
 	"github.com/cockroachdb/apd/v3"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -22,7 +22,7 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	unlockedBalance := common.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
+	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
 	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
 		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
 	}

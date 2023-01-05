@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/db"
@@ -31,7 +32,7 @@ func newTestInstance(t *testing.T) *Instance {
 func TestNewInstance(t *testing.T) {
 	inst := newTestInstance(t)
 	assert.Nil(t, inst.GetOngoingSwapState(types.EmptyHash))
-	assert.Equal(t, inst.Provides(), types.ProvidesETH)
+	assert.Equal(t, inst.Provides(), coins.ProvidesETH)
 	_, err := inst.Refund(types.EmptyHash)
 	assert.ErrorIs(t, err, errNoOngoingSwap)
 }
@@ -41,14 +42,14 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
 	one := apd.New(1, 0)
-	offer := types.NewOffer(types.ProvidesXMR, one, one, types.ToExchangeRate(one), types.EthAssetETH)
+	offer := types.NewOffer(coins.ProvidesXMR, one, one, coins.ToExchangeRate(one), types.EthAssetETH)
 
 	s := &pswap.Info{
 		ID:             offer.ID,
-		Provides:       types.ProvidesXMR,
+		Provides:       coins.ProvidesXMR,
 		ProvidedAmount: one,
 		ReceivedAmount: one,
-		ExchangeRate:   types.ToExchangeRate(one),
+		ExchangeRate:   coins.ToExchangeRate(one),
 		EthAsset:       types.EthAssetETH,
 		Status:         types.ETHLocked,
 	}

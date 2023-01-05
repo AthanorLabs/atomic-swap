@@ -13,7 +13,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
@@ -43,14 +43,14 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %s ETH", common.BigInt2Wei(balance).AsEther())
+		log.Infof("balance before claim: %s ETH", coins.BigInt2Wei(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v %s",
-			common.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
 			symbol,
 		)
 	}
@@ -83,7 +83,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %s ETH", common.BigInt2Wei(balance).AsEther())
+		log.Infof("balance after claim: %s ETH", coins.BigInt2Wei(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
@@ -91,7 +91,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 
 		log.Infof("balance after claim: %s %s",
-			common.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
 			symbol,
 		)
 	}
@@ -182,10 +182,10 @@ func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal
 	}
 
 	feeValue := new(apd.Decimal)
-	_, err := common.DecimalCtx.Mul(feeValue, common.BigInt2Wei(swapWeiAmt).Decimal(), commissionRate)
+	_, err := coins.DecimalCtx.Mul(feeValue, coins.BigInt2Wei(swapWeiAmt).Decimal(), commissionRate)
 	if err != nil {
 		return nil, err
 	}
 
-	return common.ToWeiAmount(feeValue).BigInt(), nil
+	return coins.ToWeiAmount(feeValue).BigInt(), nil
 }

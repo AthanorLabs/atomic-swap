@@ -5,6 +5,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -20,8 +21,8 @@ type EthereumAssetAmount interface {
 }
 
 // Provides returns types.ProvidesETH
-func (inst *Instance) Provides() types.ProvidesCoin {
-	return types.ProvidesETH
+func (inst *Instance) Provides() coins.ProvidesCoin {
+	return coins.ProvidesETH
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
@@ -41,7 +42,7 @@ func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types
 		return nil, err
 	}
 
-	state, err := inst.initiate(providedAmount, common.MoneroToPiconero(receivedAmount),
+	state, err := inst.initiate(providedAmount, coins.MoneroToPiconero(receivedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -50,8 +51,8 @@ func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types
 	return state, nil
 }
 
-func (inst *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount *common.PiconeroAmount,
-	exchangeRate *types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
+func (inst *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount *coins.PiconeroAmount,
+	exchangeRate *coins.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 

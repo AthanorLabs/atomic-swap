@@ -14,6 +14,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -97,8 +98,8 @@ func newSwapStateFromStart(
 	offerID types.Hash,
 	transferBack bool,
 	providedAmount EthereumAssetAmount,
-	receivedAmount *common.PiconeroAmount,
-	exchangeRate *types.ExchangeRate,
+	receivedAmount *coins.PiconeroAmount,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
 	stage := types.ExpectingKeys
@@ -121,7 +122,7 @@ func newSwapStateFromStart(
 
 	info := pswap.NewInfo(
 		offerID,
-		types.ProvidesETH,
+		coins.ProvidesETH,
 		providedAmount.AsStandard(),
 		receivedAmount.AsMonero(),
 		exchangeRate,
@@ -272,7 +273,7 @@ func newSwapState(
 		claimedCh:         make(chan struct{}),
 		done:              make(chan struct{}),
 		info:              info,
-		providedAmount:    common.EtherToWei(info.ProvidedAmount),
+		providedAmount:    coins.EtherToWei(info.ProvidedAmount),
 		statusCh:          info.StatusCh(),
 	}
 
@@ -319,8 +320,8 @@ func (s *swapState) ReceivedAmount() *apd.Decimal {
 	return s.info.ReceivedAmount
 }
 
-func (s *swapState) receivedAmountInPiconero() *common.PiconeroAmount {
-	return common.MoneroToPiconero(s.info.ReceivedAmount)
+func (s *swapState) receivedAmountInPiconero() *coins.PiconeroAmount {
+	return coins.MoneroToPiconero(s.info.ReceivedAmount)
 }
 
 // ID returns the ID of the swap

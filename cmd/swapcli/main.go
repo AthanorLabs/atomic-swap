@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -82,8 +83,8 @@ var (
 					&cli.StringFlag{
 						Name: flagProvides,
 						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
-							types.ProvidesXMR, types.ProvidesETH),
-						Value: string(types.ProvidesXMR),
+							coins.ProvidesXMR, coins.ProvidesETH),
+						Value: string(coins.ProvidesXMR),
 					},
 					&cli.Uint64Flag{
 						Name:  flagSearchTime,
@@ -116,8 +117,8 @@ var (
 					&cli.StringFlag{
 						Name: flagProvides,
 						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
-							types.ProvidesXMR, types.ProvidesETH),
-						Value: string(types.ProvidesXMR),
+							coins.ProvidesXMR, coins.ProvidesETH),
+						Value: string(coins.ProvidesXMR),
 					},
 					&cli.Uint64Flag{
 						Name:  flagSearchTime,
@@ -466,21 +467,21 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
-	min, err := readBigUFloatFlag(ctx, flagMinAmount)
+	min, err := readUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
 		return err
 	}
 
-	max, err := readBigUFloatFlag(ctx, flagMaxAmount)
+	max, err := readUnsignedDecimalFlag(ctx, flagMaxAmount)
 	if err != nil {
 		return err
 	}
 
-	exchangeRateFl, err := readBigUFloatFlag(ctx, flagExchangeRate)
+	exchangeRateDec, err := readUnsignedDecimalFlag(ctx, flagExchangeRate)
 	if err != nil {
 		return err
 	}
-	exchangeRate := (*types.ExchangeRate)(exchangeRateFl)
+	exchangeRate := coins.ToExchangeRate(exchangeRateDec)
 	// TODO: How to handle this if the other asset is not ETH?
 	otherMin, err := exchangeRate.ToETH(min)
 	if err != nil {
@@ -502,7 +503,7 @@ func runMake(ctx *cli.Context) error {
 	relayerEndpoint := ctx.String(flagRelayerEndpoint)
 	relayerCommission := new(apd.Decimal)
 	if relayerEndpoint != "" {
-		if relayerCommission, err = readBigUFloatFlag(ctx, flagRelayerCommission); err != nil {
+		if relayerCommission, err = readUnsignedDecimalFlag(ctx, flagRelayerCommission); err != nil {
 			return err
 		}
 	} else if ctx.IsSet(flagRelayerCommission) {
@@ -570,7 +571,7 @@ func runTake(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	providesAmount, err := readBigUFloatFlag(ctx, flagProvidesAmount)
+	providesAmount, err := readUnsignedDecimalFlag(ctx, flagProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -811,8 +812,8 @@ func printOffer(o *types.Offer, index int, indent string) error {
 	return nil
 }
 
-func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
-	var provides types.ProvidesCoin
+func providesStrToVal(providesStr string) (coins.ProvidesCoin, error) {
+	var provides coins.ProvidesCoin
 
 	// The provides flag value defaults to XMR, but the user can still specify the empty
 	// string explicitly, which they can do to search the empty DHT namespace for all
@@ -821,10 +822,10 @@ func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
 	if providesStr == "" {
 		return provides, nil
 	}
-	return types.NewProvidesCoin(providesStr)
+	return coins.NewProvidesCoin(providesStr)
 }
 
-func readBigUFloatFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
+func readUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
 	s := ctx.String(flagName)
 	if s == "" {
 		return nil, fmt.Errorf("flag --%s can not be empty", flagName)
@@ -833,13 +834,12 @@ func readBigUFloatFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) 
 	if err != nil {
 		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
 	}
-	cmp := bf.Cmp(new(apd.Decimal)) // compare with zero
-	// none of our flags (min, max, provides, commission) allow negative values
-	if cmp < 0 {
-		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
-	}
-	if cmp == 0 {
+	if bf.IsZero() {
 		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
 	}
+	if bf.Negative {
+		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
+	}
+
 	return bf, nil
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
@@ -11,7 +12,7 @@ import (
 // MakeOffer calls net_makeOffer.
 func (c *Client) MakeOffer(
 	min, max *apd.Decimal,
-	exchangeRate *types.ExchangeRate,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
 	relayerCommission *apd.Decimal,

@@ -21,6 +21,7 @@ import (
 	monerodaemon "github.com/MarinX/monerorpc/daemon"
 	"github.com/MarinX/monerorpc/wallet"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
@@ -41,7 +42,7 @@ type WalletClient interface {
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
 	PrimaryWalletAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
-	Transfer(to mcrypto.Address, accountIdx uint64, amount *common.PiconeroAmount) (*wallet.TransferResponse, error)
+	Transfer(to mcrypto.Address, accountIdx uint64, amount *coins.PiconeroAmount) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
 	GenerateFromKeys(
@@ -222,7 +223,7 @@ func (c *walletClient) WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Trans
 func (c *walletClient) Transfer(
 	to mcrypto.Address,
 	accountIdx uint64,
-	amount *common.PiconeroAmount,
+	amount *coins.PiconeroAmount,
 ) (*wallet.TransferResponse, error) {
 	amt, err := amount.Uint64()
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
@@ -17,15 +18,15 @@ import (
 var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
 
 // package "tests" depends on the "monero", so Str2Decimal is in "common" so both can use it.
-var str2Decimal = common.Str2Decimal
+var str2Decimal = coins.Str2Decimal
 
 func init() {
 	logging.SetLogLevel("monero", "debug")
 }
 
 func TestClient_Transfer(t *testing.T) {
-	amount := common.MoneroToPiconero(apd.New(10, 0))
-	amountPlusFees := common.MoneroToPiconero(str2Decimal("10.01"))
+	amount := coins.MoneroToPiconero(apd.New(10, 0))
+	amountPlusFees := coins.MoneroToPiconero(str2Decimal("10.01"))
 
 	cXMRMaker := CreateWalletClient(t)
 	MineMinXMRBalance(t, cXMRMaker, amountPlusFees)
@@ -51,8 +52,8 @@ func TestClient_Transfer(t *testing.T) {
 	transResp, err := cXMRMaker.Transfer(abAddress, 0, amount)
 	require.NoError(t, err)
 	t.Logf("Bob sent %s (+fee %s) XMR to A+B address with TX ID %s",
-		common.NewPiconeroAmount(transResp.Amount).AsMonero(),
-		common.NewPiconeroAmount(transResp.Fee).AsMonero(),
+		coins.NewPiconeroAmount(transResp.Amount).AsMonero(),
+		coins.NewPiconeroAmount(transResp.Fee).AsMonero(),
 		transResp.TxHash)
 	require.NoError(t, err)
 	transfer, err := cXMRMaker.WaitForReceipt(&WaitForReceiptRequest{
@@ -303,13 +304,13 @@ func Test_validateMonerodConfig_invalidPort(t *testing.T) {
 
 func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	const amount = 10
-	minBal := common.MoneroToPiconero(str2Decimal("10.01")) // add a little extra for fees
+	minBal := coins.MoneroToPiconero(str2Decimal("10.01")) // add a little extra for fees
 	destAddr := mcrypto.Address(blockRewardAddress)
 
 	c := CreateWalletClient(t)
 	MineMinXMRBalance(t, c, minBal)
 
-	transResp, err := c.Transfer(destAddr, 0, common.NewPiconeroAmount(amount))
+	transResp, err := c.Transfer(destAddr, 0, coins.NewPiconeroAmount(amount))
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

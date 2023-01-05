@@ -5,7 +5,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
@@ -20,14 +20,14 @@ type EthereumAssetAmount interface {
 }
 
 // Provides returns types.ProvidesXMR
-func (inst *Instance) Provides() types.ProvidesCoin {
-	return types.ProvidesXMR
+func (inst *Instance) Provides() coins.ProvidesCoin {
+	return coins.ProvidesXMR
 }
 
 func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
-	providesAmount *common.PiconeroAmount,
+	providesAmount *coins.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	if inst.swapStates[offer.ID] != nil {
@@ -41,7 +41,7 @@ func (inst *Instance) initiate(
 
 	// check that the user's monero balance is sufficient for their max swap amount (strictly
 	// greater check, since they need to cover chain fees).
-	unlockedBal := common.NewPiconeroAmount(balance.UnlockedBalance)
+	unlockedBal := coins.NewPiconeroAmount(balance.UnlockedBalance)
 	if unlockedBal.Decimal().Cmp(providesAmount.Decimal()) <= 0 {
 		return nil, errBalanceTooLow{
 			unlockedBalance: unlockedBal.AsMonero(),
@@ -122,7 +122,7 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
 	}
 
-	providedPiconero := common.MoneroToPiconero(providedAmount)
+	providedPiconero := coins.MoneroToPiconero(providedAmount)
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving

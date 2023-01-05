@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 var testAdvertisementSleepDuration = time.Millisecond * 100
@@ -38,7 +38,7 @@ func TestHost_Discover(t *testing.T) {
 	hc.Advertise()
 	time.Sleep(testAdvertisementSleepDuration)
 
-	peerIDs, err := hc.Discover(types.ProvidesXMR, time.Second)
+	peerIDs, err := hc.Discover(coins.ProvidesXMR, time.Second)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(peerIDs), 1)
 	require.NotEmpty(t, peerIDs[0])

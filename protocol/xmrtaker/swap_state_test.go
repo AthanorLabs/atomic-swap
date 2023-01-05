@@ -16,6 +16,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -109,9 +110,9 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestSwapState(t *testing.T) *swapState {
 	b := newBackend(t)
-	exchangeRate := types.ToExchangeRate(apd.New(1, 0)) // 100%
+	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		common.NewWeiAmount(1), common.NewPiconeroAmount(0), exchangeRate, types.EthAssetETH)
+		coins.NewWeiAmount(1), coins.NewPiconeroAmount(0), exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
 }
@@ -134,10 +135,10 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
-	exchangeRate := types.ToExchangeRate(apd.New(1, 0)) // 100%
-	zeroPiconeros := common.NewPiconeroAmount(0)
+	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
+	zeroPiconeros := coins.NewPiconeroAmount(0)
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		common.NewWeiAmount(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
+		coins.NewWeiAmount(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }

@@ -30,6 +30,7 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -49,7 +50,7 @@ type Host interface {
 	Stop() error
 
 	Advertise()
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
 	MessageSender
@@ -298,7 +299,7 @@ func (h *host) ConnectedPeers() []string {
 
 // Discover searches the DHT for peers that advertise that they provide the given coin.
 // It searches for up to `searchTime` duration of time.
-func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
+func (h *host) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return h.discovery.discover(provides, searchTime)
 }
 

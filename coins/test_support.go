@@ -1,6 +1,6 @@
 //go:build !prod
 
-package common
+package coins
 
 import (
 	"github.com/cockroachdb/apd/v3"

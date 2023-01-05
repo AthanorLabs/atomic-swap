@@ -7,7 +7,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -33,7 +33,7 @@ type SubscribeSwapStatusResponse struct {
 
 // DiscoverRequest ...
 type DiscoverRequest struct {
-	Provides   types.ProvidesCoin `json:"provides"`
+	Provides   coins.ProvidesCoin `json:"provides"`
 	SearchTime uint64             `json:"searchTime"` // in seconds
 }
 
@@ -78,7 +78,7 @@ type TakeOfferRequest struct {
 type MakeOfferRequest struct {
 	MinAmount         *apd.Decimal        `json:"minAmount"`
 	MaxAmount         *apd.Decimal        `json:"maxAmount"`
-	ExchangeRate      *types.ExchangeRate `json:"exchangeRate"`
+	ExchangeRate      *coins.ExchangeRate `json:"exchangeRate"`
 	EthAsset          string              `json:"ethAsset,omitempty"`
 	RelayerEndpoint   string              `json:"relayerEndpoint,omitempty"`
 	RelayerCommission *apd.Decimal        `json:"relayerCommission,omitempty"`
@@ -113,12 +113,12 @@ type SignerTxSigned struct {
 
 // BalancesResponse holds the response for the combined Monero and Ethereum Balances request
 type BalancesResponse struct {
-	MoneroAddress           string                 `json:"moneroAddress"`
-	PiconeroBalance         *common.PiconeroAmount `json:"piconeroBalance"`
-	PiconeroUnlockedBalance *common.PiconeroAmount `json:"piconeroUnlockedBalance"`
-	BlocksToUnlock          uint64                 `json:"blocksToUnlock"`
-	EthAddress              string                 `json:"ethAddress"`
-	WeiBalance              *common.WeiAmount      `json:"weiBalance"`
+	MoneroAddress           string                `json:"moneroAddress"`
+	PiconeroBalance         *coins.PiconeroAmount `json:"piconeroBalance"`
+	PiconeroUnlockedBalance *coins.PiconeroAmount `json:"piconeroUnlockedBalance"`
+	BlocksToUnlock          uint64                `json:"blocksToUnlock"`
+	EthAddress              string                `json:"ethAddress"`
+	WeiBalance              *coins.WeiAmount      `json:"weiBalance"`
 }
 
 // AddressesResponse ...

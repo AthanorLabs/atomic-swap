@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -28,10 +29,10 @@ func Test_Manager(t *testing.T) {
 	for i := 0; i < numAdd; i++ {
 		iDecimal := apd.New(int64(i), 0)
 		offer := types.NewOffer(
-			types.ProvidesXMR,
+			coins.ProvidesXMR,
 			iDecimal,
 			iDecimal,
-			types.ToExchangeRate(iDecimal),
+			coins.ToExchangeRate(iDecimal),
 			types.EthAssetETH,
 		)
 		db.EXPECT().PutOffer(offer)

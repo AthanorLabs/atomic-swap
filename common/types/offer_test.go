@@ -9,13 +9,15 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 func TestOffer_MarshalJSON(t *testing.T) {
 	min := apd.New(100, 0)
 	max := apd.New(200, 0)
-	rate := (*ExchangeRate)(apd.New(15, -1)) // 1.5
-	offer := NewOffer(ProvidesXMR, min, max, rate, EthAssetETH)
+	rate := coins.ToExchangeRate(apd.New(15, -1)) // 1.5
+	offer := NewOffer(coins.ProvidesXMR, min, max, rate, EthAssetETH)
 	require.False(t, IsHashZero(offer.ID))
 
 	expected := fmt.Sprintf(`{
@@ -47,7 +49,7 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	err := json.Unmarshal([]byte(offerJSON), &offer)
 	require.NoError(t, err)
 	assert.Equal(t, idStr, offer.ID.String())
-	assert.Equal(t, offer.Provides, ProvidesXMR)
+	assert.Equal(t, offer.Provides, coins.ProvidesXMR)
 	assert.Equal(t, offer.MinAmount.String(), "100")
 	assert.Equal(t, offer.MaxAmount.String(), "200")
 	assert.Equal(t, offer.ExchangeRate.String(), "1.5")
@@ -69,7 +71,7 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, *CurOfferVersion, offer.Version)
 	assert.Equal(t, idStr, offer.ID.String())
-	assert.Equal(t, offer.Provides, ProvidesXMR)
+	assert.Equal(t, offer.Provides, coins.ProvidesXMR)
 	assert.Equal(t, offer.MinAmount.String(), "100")
 	assert.Equal(t, offer.MaxAmount.String(), "200")
 	assert.Equal(t, offer.ExchangeRate.String(), "1.5")
@@ -79,8 +81,8 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
 	min := apd.New(100, 0)
 	max := apd.New(200, 0)
-	rate := (*ExchangeRate)(apd.New(15, -1)) // 1.5
-	offer1 := NewOffer(ProvidesXMR, min, max, rate, EthAssetETH)
+	rate := coins.ToExchangeRate(apd.New(15, -1)) // 1.5
+	offer1 := NewOffer(coins.ProvidesXMR, min, max, rate, EthAssetETH)
 	offerJSON, err := json.Marshal(offer1)
 	require.NoError(t, err)
 	var offer2 Offer

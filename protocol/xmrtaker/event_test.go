@@ -10,6 +10,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -26,10 +27,10 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	err := backend.XMRClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
 	one := apd.New(1, 0)
-	monero.MineMinXMRBalance(t, backend.XMRClient(), common.MoneroToPiconero(one))
+	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(one))
 
 	// lock xmr
-	amt := common.NewPiconeroAmount(1000000000)
+	amt := coins.NewPiconeroAmount(1000000000)
 	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)

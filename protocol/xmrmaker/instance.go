@@ -6,6 +6,7 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -85,7 +86,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	}
 
 	for _, s := range swaps {
-		if s.Provides != types.ProvidesXMR {
+		if s.Provides != coins.ProvidesXMR {
 			continue
 		}
 

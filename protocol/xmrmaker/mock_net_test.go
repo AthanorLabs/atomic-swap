@@ -5,15 +5,16 @@
 package xmrmaker
 
 import (
-	reflect "reflect"
-	time "time"
+	"reflect"
+	"time"
 
-	common "github.com/athanorlabs/atomic-swap/common"
-	types "github.com/athanorlabs/atomic-swap/common/types"
-	message "github.com/athanorlabs/atomic-swap/net/message"
 	common0 "github.com/ethereum/go-ethereum/common"
-	gomock "github.com/golang/mock/gomock"
-	peer "github.com/libp2p/go-libp2p/core/peer"
+	"github.com/golang/mock/gomock"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	types "github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 // MockHost is a mock of Host interface.

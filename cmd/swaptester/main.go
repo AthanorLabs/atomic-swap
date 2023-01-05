@@ -23,6 +23,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -204,16 +205,16 @@ var (
 	maxProvidesAmountBD, _, _ = apd.NewFromString(fmt.Sprintf("%f", maxProvidesAmount))
 )
 
-func getRandomExchangeRate() *types.ExchangeRate {
+func getRandomExchangeRate() *coins.ExchangeRate {
 	rateFl := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
 	rate, _, err := new(apd.Decimal).SetString(strconv.FormatFloat(rateFl, 'f', -1, 64))
 	if err != nil {
 		panic(err) // shouldn't be possible
 	}
-	return (*types.ExchangeRate)(rate)
+	return coins.ToExchangeRate(rate)
 }
 
-func getRndOfferAmount(xRate *types.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) (*apd.Decimal, error) {
+func getRndOfferAmount(xRate *coins.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) (*apd.Decimal, error) {
 	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64()) //nolint:gosec
 	if err != nil {
 		return nil, err
@@ -226,7 +227,7 @@ func getRndOfferAmount(xRate *types.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Deci
 	if err != nil {
 		return nil, err
 	}
-	ed := apd.MakeErrDecimal(common.DecimalCtx)
+	ed := apd.MakeErrDecimal(apd.BaseContext.WithPrecision(coins.MaxCoinPrecision))
 	rangeLen := ed.Sub(new(apd.Decimal), maxETHAmt, minETHAmt)
 	randDelta := ed.Mul(new(apd.Decimal), rangeLen, randVal)
 	offerAmt := ed.Add(new(apd.Decimal), minETHAmt, randDelta)
@@ -339,7 +340,7 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	defer wsc.Close()
 
 	const defaultDiscoverTimeout = uint64(3) // 3s
-	peerIDs, err := wsc.Discover(types.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := wsc.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	if err != nil {
 		d.errCh <- err
 		return

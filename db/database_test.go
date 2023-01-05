@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -29,12 +30,12 @@ func TestDatabase_OfferTable(t *testing.T) {
 	require.NoError(t, err)
 
 	one := tests.Str2Decimal("1")
-	oneEx := types.ToExchangeRate(one)
-	offerA := types.NewOffer(types.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
+	oneEx := coins.ToExchangeRate(one)
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
-	offerB := types.NewOffer(types.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
+	offerB := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerB)
 	require.NoError(t, err)
 
@@ -60,9 +61,9 @@ func TestDatabase_SwapTable(t *testing.T) {
 	require.NoError(t, err)
 
 	one := tests.Str2Decimal("1")
-	oneEx := (*types.ExchangeRate)(one)
+	oneEx := coins.ToExchangeRate(one)
 
-	offerA := types.NewOffer(types.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 

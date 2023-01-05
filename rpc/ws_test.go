@@ -9,6 +9,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -82,7 +83,7 @@ func TestSubscribeMakeOffer(t *testing.T) {
 
 	min := tests.Str2Decimal("0.1")
 	max := tests.Str2Decimal("1")
-	exRate := types.ToExchangeRate(tests.Str2Decimal("0.05"))
+	exRate := coins.ToExchangeRate(tests.Str2Decimal("0.05"))
 	offerResp, ch, err := c.MakeOfferAndSubscribe(min, max, exRate, types.EthAssetETH, "", nil)
 	require.NoError(t, err)
 	require.NotEqual(t, offerResp.OfferID, testSwapID)
