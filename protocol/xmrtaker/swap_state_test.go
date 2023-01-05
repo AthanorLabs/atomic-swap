@@ -152,6 +152,7 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
 		EthAddress:         "0x",
+		ProvidedAmount:     apd.New(1, 0),
 	}
 
 	return msg, keysAndProof
@@ -163,7 +164,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 
 	msg := &net.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingKeys))
+	require.True(t, errors.Is(err, errMissingProvidedAmount))
 
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
