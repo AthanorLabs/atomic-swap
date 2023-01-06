@@ -347,9 +347,9 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestSwapState(t)
 	s.nextExpectedEvent = EventNoneType
-	min := tests.Str2Decimal("0.1")
-	max := tests.Str2Decimal("0.2")
-	rate := coins.ToExchangeRate(tests.Str2Decimal("0.1"))
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("0.2")
+	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
@@ -366,9 +366,9 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 
 	b.net.(*MockHost).EXPECT().Advertise()
 
-	min := tests.Str2Decimal("0.1")
-	max := tests.Str2Decimal("0.2")
-	rate := coins.ToExchangeRate(tests.Str2Decimal("0.1"))
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("0.2")
+	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
 	b.MakeOffer(s.offer, "", nil)

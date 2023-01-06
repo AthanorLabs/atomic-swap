@@ -20,7 +20,14 @@ func (r *ExchangeRate) decimal() *apd.Decimal {
 
 // UnmarshalText hands off JSON decoding to apd.Decimal
 func (r *ExchangeRate) UnmarshalText(b []byte) error {
-	return r.decimal().UnmarshalText(b)
+	err := r.decimal().UnmarshalText(b)
+	if err != nil {
+		return err
+	}
+	if r.Negative {
+		return errNegativeRate
+	}
+	return nil
 }
 
 // MarshalText hands off JSON encoding to apd.Decimal
@@ -55,8 +62,5 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 }
 
 func (r *ExchangeRate) String() string {
-	if r == nil {
-		return ""
-	}
 	return r.decimal().Text('f')
 }

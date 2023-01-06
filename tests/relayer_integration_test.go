@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -9,7 +10,7 @@ const (
 )
 
 var (
-	relayerCommission = Str2Decimal("0.01")
+	relayerCommission = coins.StrToDecimal("0.01")
 )
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {

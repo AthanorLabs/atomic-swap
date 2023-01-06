@@ -45,7 +45,14 @@ func (a *PiconeroAmount) Uint64() (uint64, error) {
 
 // UnmarshalText hands off JSON decoding to apd.Decimal
 func (a *PiconeroAmount) UnmarshalText(b []byte) error {
-	return a.Decimal().UnmarshalText(b)
+	err := a.Decimal().UnmarshalText(b)
+	if err != nil {
+		return err
+	}
+	if a.Negative {
+		return errNegativePiconeros
+	}
+	return nil
 }
 
 // MarshalText hands off JSON encoding to apd.Decimal
@@ -99,6 +106,14 @@ func (a *PiconeroAmount) AsMonero() *apd.Decimal {
 // WeiAmount represents some amount of ether in the smallest denomination (wei)
 type WeiAmount apd.Decimal
 
+// NewWeiAmount converts the passed *big.Int representation of a
+// wei amount to the WeiAmount type. The returned value is a copy
+// with no references to the passed value.
+func NewWeiAmount(amount *big.Int) *WeiAmount {
+	a := new(apd.BigInt).SetMathBigInt(amount)
+	return ToWeiAmount(apd.NewWithBigInt(a, 0))
+}
+
 // Decimal exists to reduce ugly casts
 func (a *WeiAmount) Decimal() *apd.Decimal {
 	return (*apd.Decimal)(a)
@@ -106,7 +121,14 @@ func (a *WeiAmount) Decimal() *apd.Decimal {
 
 // UnmarshalText hands off JSON decoding to apd.Decimal
 func (a *WeiAmount) UnmarshalText(b []byte) error {
-	return a.Decimal().UnmarshalText(b)
+	err := a.Decimal().UnmarshalText(b)
+	if err != nil {
+		return err
+	}
+	if a.Negative {
+		return errNegativeWei
+	}
+	return nil
 }
 
 // MarshalText hands off JSON encoding to apd.Decimal
@@ -114,26 +136,9 @@ func (a *WeiAmount) MarshalText() ([]byte, error) {
 	return a.Decimal().MarshalText()
 }
 
-// NewWeiAmount converts some amount of wei into an WeiAmount. (Only used by unit tests.)
-// TODO: Should this method take *big.Int instead?
-func NewWeiAmount(amount int64) *WeiAmount {
-	if amount < 0 {
-		panic("negative wei amounts are not supported")
-	}
-	return ToWeiAmount(apd.New(amount, 0))
-}
-
 // ToWeiAmount casts an *apd.Decimal to *WeiAmount
 func ToWeiAmount(wei *apd.Decimal) *WeiAmount {
 	return (*WeiAmount)(wei)
-}
-
-// BigInt2Wei converts the passed *big.Int representation of a
-// wei amount to the WeiAmount type. The returned value is a copy
-// with no references to the passed value.
-func BigInt2Wei(amount *big.Int) *WeiAmount {
-	a := new(apd.BigInt).SetMathBigInt(amount)
-	return ToWeiAmount(apd.NewWithBigInt(a, 0))
 }
 
 // EtherToWei converts some amount of standard ether to an WeiAmount.

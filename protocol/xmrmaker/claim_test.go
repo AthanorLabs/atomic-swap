@@ -267,5 +267,5 @@ func TestCalculateRelayerCommissionValue(t *testing.T) {
 
 	val, err := calculateRelayerCommission(swapValueWei, commissionRate)
 	require.NoError(t, err)
-	require.Equal(t, expectedCommission, coins.BigInt2Wei(val).AsEther().Text('f'))
+	require.Equal(t, expectedCommission, coins.NewWeiAmount(val).AsEther().Text('f'))
 }

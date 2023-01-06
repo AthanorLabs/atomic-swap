@@ -17,8 +17,8 @@ import (
 
 var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
 
-// package "tests" depends on the "monero", so Str2Decimal is in "common" so both can use it.
-var str2Decimal = coins.Str2Decimal
+// package "tests" depends on the "monero", so StrToDecimal is in "common" so both can use it.
+var str2Decimal = coins.StrToDecimal
 
 func init() {
 	logging.SetLogLevel("monero", "debug")

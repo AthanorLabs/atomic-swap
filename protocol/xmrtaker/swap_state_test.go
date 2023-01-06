@@ -112,7 +112,7 @@ func newTestSwapState(t *testing.T) *swapState {
 	b := newBackend(t)
 	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		coins.NewWeiAmount(1), coins.NewPiconeroAmount(0), exchangeRate, types.EthAssetETH)
+		coins.IntToWei(1), coins.NewPiconeroAmount(0), exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState
 }
@@ -138,7 +138,7 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
 	zeroPiconeros := coins.NewPiconeroAmount(0)
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		coins.NewWeiAmount(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
+		coins.IntToWei(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }

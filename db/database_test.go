@@ -4,13 +4,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ChainSafe/chaindb"
+	"github.com/stretchr/testify/require"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
-	"github.com/athanorlabs/atomic-swap/tests"
-
-	"github.com/ChainSafe/chaindb"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDatabase_OfferTable(t *testing.T) {
@@ -29,7 +28,7 @@ func TestDatabase_OfferTable(t *testing.T) {
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
-	one := tests.Str2Decimal("1")
+	one := coins.StrToDecimal("1")
 	oneEx := coins.ToExchangeRate(one)
 	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
@@ -60,7 +59,7 @@ func TestDatabase_SwapTable(t *testing.T) {
 	db, err := NewDatabase(cfg)
 	require.NoError(t, err)
 
-	one := tests.Str2Decimal("1")
+	one := coins.StrToDecimal("1")
 	oneEx := coins.ToExchangeRate(one)
 
 	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)

@@ -111,7 +111,7 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 		return ethcommon.Hash{}, nil, err
 	}
 
-	valueWei := coins.BigInt2Wei(value)
+	valueWei := coins.NewWeiAmount(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  fmt.Sprintf("0x%x", input),

@@ -43,7 +43,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %s ETH", coins.BigInt2Wei(balance).AsEther())
+		log.Infof("balance before claim: %s ETH", coins.NewWeiAmount(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
@@ -83,7 +83,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %s ETH", coins.BigInt2Wei(balance).AsEther())
+		log.Infof("balance after claim: %s ETH", coins.NewWeiAmount(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
@@ -182,7 +182,7 @@ func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal
 	}
 
 	feeValue := new(apd.Decimal)
-	_, err := coins.DecimalCtx().Mul(feeValue, coins.BigInt2Wei(swapWeiAmt).Decimal(), commissionRate)
+	_, err := coins.DecimalCtx().Mul(feeValue, coins.NewWeiAmount(swapWeiAmt).Decimal(), commissionRate)
 	if err != nil {
 		return nil, err
 	}

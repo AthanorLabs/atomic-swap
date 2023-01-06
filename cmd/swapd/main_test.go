@@ -12,14 +12,13 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/tests"
-
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
 )
 
 func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
@@ -205,7 +204,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance.Cmp(coins.MoneroToPiconero(one)), 0)
 
-	minXMRAmt := tests.Str2Decimal("0.1")
+	minXMRAmt := coins.StrToDecimal("0.1")
 	maxXMRAmt := one
 	xRate := coins.ToExchangeRate(one)
 

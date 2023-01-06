@@ -46,7 +46,7 @@ const (
 
 var (
 	xmrmakerProvideAmount = apd.New(1, 0)
-	exchangeRate          = coins.ToExchangeRate(Str2Decimal("0.05"))
+	exchangeRate          = coins.StrToExchangeRate("0.05")
 )
 
 type IntegrationTestSuite struct {
@@ -179,7 +179,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	defer cancel()
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
-	min := Str2Decimal("0.1")
+	min := coins.StrToDecimal("0.1")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
 		exchangeRate, asset, relayerEndpoint, relayerCommission)
 	require.NoError(s.T(), err)
@@ -226,7 +226,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), peerIDs[0], offerResp.PeerID)
 
-	providesAmt := Str2Decimal("0.05")
+	providesAmt := coins.StrToDecimal("0.05")
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmt)
 	require.NoError(s.T(), err)
 
@@ -321,7 +321,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), offerResp.PeerID, peerIDs[0])
 
-	providesAmt := Str2Decimal("0.05")
+	providesAmt := coins.StrToDecimal("0.05")
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmt)
 	require.NoError(s.T(), err)
 
@@ -458,7 +458,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
-	providesAmt := Str2Decimal("0.05")
+	providesAmt := coins.StrToDecimal("0.05")
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmt)
 	require.NoError(s.T(), err)
 
@@ -512,7 +512,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 
-	min := Str2Decimal("0.1")
+	min := coins.StrToDecimal("0.1")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
 		exchangeRate, asset, "", nil)
 	require.NoError(s.T(), err)
@@ -557,7 +557,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	require.Equal(s.T(), 1, len(peerIDs))
 	assert.Equal(s.T(), offerResp.PeerID, peerIDs[0])
 
-	amount := Str2Decimal("0.05")
+	amount := coins.StrToDecimal("0.05")
 	takerStatusCh, err := awsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, amount)
 	require.NoError(s.T(), err)
 
@@ -662,7 +662,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 
-	providesAmount := Str2Decimal("0.05")
+	providesAmount := coins.StrToDecimal("0.05")
 	takerStatusCh, err := wsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmount)
 	require.NoError(s.T(), err)
 
@@ -729,7 +729,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 		defer wg.Done()
 		wsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-		providesAmount := Str2Decimal("0.05")
+		providesAmount := coins.StrToDecimal("0.05")
 		takerStatusCh, err := wsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmount) //nolint:govet
 		if err != nil {
 			errCh <- err
@@ -756,7 +756,7 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 		defer wg.Done()
 		wsc := s.newSwapdWSClient(ctx, defaultCharlieSwapdWSEndpoint)
 
-		providesAmount := Str2Decimal("0.05")
+		providesAmount := coins.StrToDecimal("0.05")
 		takerStatusCh, err := wsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmount) //nolint:govet
 		if err != nil {
 			errCh <- err
@@ -889,7 +889,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 		require.Equal(s.T(), 1, len(peerIDs))
 
 		offerID := makerTests[i].offerID
-		providesAmount := Str2Decimal("0.05")
+		providesAmount := coins.StrToDecimal("0.05")
 		takerStatusCh, err := awsc.TakeOfferAndSubscribe(peerIDs[0], offerID, providesAmount)
 		require.NoError(s.T(), err)
 

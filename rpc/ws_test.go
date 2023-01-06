@@ -9,12 +9,11 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
-	"github.com/athanorlabs/atomic-swap/tests"
-
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -81,9 +80,9 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	c, err := wsclient.NewWsClient(s.ctx, s.WsURL())
 	require.NoError(t, err)
 
-	min := tests.Str2Decimal("0.1")
-	max := tests.Str2Decimal("1")
-	exRate := coins.ToExchangeRate(tests.Str2Decimal("0.05"))
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("1")
+	exRate := coins.ToExchangeRate(coins.StrToDecimal("0.05"))
 	offerResp, ch, err := c.MakeOfferAndSubscribe(min, max, exRate, types.EthAssetETH, "", nil)
 	require.NoError(t, err)
 	require.NotEqual(t, offerResp.OfferID, testSwapID)
