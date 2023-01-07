@@ -21,7 +21,7 @@ func Test_roundToDecimalPlace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "34", amt.String())
 
-	// Round at decimal position
+	// Round at Decimal position
 	amt = StrToDecimal("0.00009")
 	res := new(apd.Decimal) // use a separate result variable this time
 	err = roundToDecimalPlace(res, amt, 4)

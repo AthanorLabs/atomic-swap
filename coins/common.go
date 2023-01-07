@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	// NumEtherDecimals is the number of Decimal points needed to represent whole units of Wei in Ether
+	// NumEtherDecimals is the number of decimal points needed to represent whole units of Wei in Ether
 	NumEtherDecimals = 18
-	// NumMoneroDecimals is the number of Decimal points needed to represent whole units of piconero in XMR
+	// NumMoneroDecimals is the number of decimal points needed to represent whole units of piconero in XMR
 	NumMoneroDecimals = 12
 
 	// MaxCoinPrecision is a somewhat arbitrary precision upper bound (2^256 consumes 78 digits)

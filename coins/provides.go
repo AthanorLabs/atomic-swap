@@ -1,6 +1,8 @@
 package coins
 
-import "errors"
+import (
+	"fmt"
+)
 
 // ProvidesCoin represents a coin that a swap participant can provide.
 type ProvidesCoin string
@@ -8,8 +10,6 @@ type ProvidesCoin string
 var (
 	ProvidesXMR ProvidesCoin = "XMR" //nolint
 	ProvidesETH ProvidesCoin = "ETH" //nolint
-
-	errInvalidCoin = errors.New("invalid ProvidesCoin")
 )
 
 // NewProvidesCoin converts a string to a ProvidesCoin.
@@ -20,6 +20,25 @@ func NewProvidesCoin(s string) (ProvidesCoin, error) {
 	case "ETH", "eth":
 		return ProvidesETH, nil
 	default:
-		return "", errInvalidCoin
+		return "", ErrInvalidCoin
 	}
+}
+
+// MarshalText hands off JSON encoding to apd.Decimal
+func (c *ProvidesCoin) MarshalText() ([]byte, error) {
+	switch *c {
+	case ProvidesXMR, ProvidesETH:
+		return []byte(*c), nil
+	}
+	return nil, fmt.Errorf("can not marshal ProvidesCoin %q", *c)
+}
+
+// UnmarshalText hands off JSON decoding to apd.Decimal
+func (c *ProvidesCoin) UnmarshalText(data []byte) error {
+	c2, err := NewProvidesCoin(string(data))
+	if err != nil {
+		return err
+	}
+	*c = c2
+	return nil
 }

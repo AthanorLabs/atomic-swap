@@ -21,7 +21,7 @@ func TestOffer_MarshalJSON(t *testing.T) {
 	require.False(t, IsHashZero(offer.ID))
 
 	expected := fmt.Sprintf(`{
-		"version": "0.1.0",
+		"version": "1.0.0",
 		"offerID": "%s",
 		"provides": "XMR",
 		"minAmount": "100",
@@ -59,7 +59,7 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
 	offerJSON := fmt.Sprintf(`{
-		"version": "0.1.0",
+		"version": "1.0.0",
 		"offerID": "%s",
 		"provides": "XMR",
 		"minAmount": "100",
@@ -108,12 +108,104 @@ func TestOffer_UnmarshalJSON_BadID(t *testing.T) {
 	require.ErrorContains(t, err, "hex string has length 0, want 64")
 }
 
-func TestUnmarshalOffer_missingVersion(t *testing.T) {
+func TestOffer_UnmarshalJSON_MissingID(t *testing.T) {
+	offerJSON := []byte(`{
+		"version": "0.1.0",
+		"provides": "XMR",
+		"minAmount": "100",
+		"maxAmount": "200",
+		"exchangeRate": "1.5",
+		"ethAsset": "ETH"
+	}`)
+	_, err := UnmarshalOffer(offerJSON)
+	require.ErrorIs(t, err, errOfferIDNotSet)
+}
+
+func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
+	offerJSON := `{
+		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303131",
+		"provides": "XMR",
+		"minAmount": %s,
+		"maxAmount": %s,
+		"exchangeRate": %s,
+		"ethAsset": "ETH"
+	}`
+	type entry struct {
+		jsonData    string
+		errContains string
+	}
+	testEntries := []entry{
+		// Min amount checks
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `null`, `"1"`, `"0.1"`),
+			errContains: `"minAmount" is not set`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"0"`, `"1"`, `"0.1"`),
+			errContains: `"minAmount" must be non-zero`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"-1"`, `"1"`, `"0.1"`),
+			errContains: `"minAmount" can not be negative`,
+		},
+		// Max Amount checks
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `null`, `"0.1"`),
+			errContains: `"maxAmount" is not set`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"-0"`, `"0.1"`),
+			errContains: `"maxAmount" must be non-zero`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"-1E1"`, `"0.1"`),
+			errContains: `"maxAmount" can not be negative`,
+		},
+		// Combo min/max check
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"0.11"`, `"0.1"`, `"0.1"`),
+			errContains: `"minAmount" must be less than or equal to "maxAmount"`,
+		},
+		// Exchange rate checks
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"1"`, `null`),
+			errContains: `"exchangeRate" is not set`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"1"`, `"0"`),
+			errContains: `"exchangeRate" must be non-zero`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"1"`, `"-0.1"`),
+			errContains: `"exchangeRate" can not be negative`,
+		},
+	}
+	for _, e := range testEntries {
+		o := new(Offer)
+		err := json.Unmarshal([]byte(e.jsonData), o)
+		assert.ErrorContains(t, err, e.errContains)
+	}
+}
+
+func TestOffer_UnmarshalJSON_BadProvides(t *testing.T) {
+	offerJSON := []byte(`{
+		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303131",
+		"provides": "",
+		"minAmount": "0.1",
+		"maxAmount": "0.2",
+		"exchangeRate": "0.5",
+		"ethAsset": "ETH"
+	}`)
+	err := json.Unmarshal(offerJSON, new(Offer))
+	assert.ErrorIs(t, err, coins.ErrInvalidCoin)
+}
+
+func TestUnmarshalOffer_MissingVersion(t *testing.T) {
 	_, err := UnmarshalOffer([]byte(`{}`))
 	require.ErrorIs(t, err, errOfferVersionMissing)
 }
 
-func TestUnmarshalOffer_versionTooNew(t *testing.T) {
+func TestUnmarshalOffer_VersionTooNew(t *testing.T) {
 	unsupportedVersion := CurOfferVersion.IncMajor()
 	offerJSON := fmt.Sprintf(`{
 		"version": "%s",

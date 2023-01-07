@@ -202,5 +202,5 @@ func TestJSONMarshal(t *testing.T) {
 	err = json.Unmarshal([]byte(`{ "wei": "-3" }`), tt)
 	require.ErrorIs(t, err, errNegativeWei)
 	err = json.Unmarshal([]byte(`{ "rate": "-0.1" }`), tt)
-	require.ErrorIs(t, err, errNegativeRate)
+	require.ErrorIs(t, err, ErrNegativeRate)
 }

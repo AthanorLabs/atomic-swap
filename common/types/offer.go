@@ -15,9 +15,12 @@ import (
 
 var (
 	// CurOfferVersion is the latest supported version of a serialised Offer struct
-	CurOfferVersion, _ = semver.NewVersion("0.1.0")
+	CurOfferVersion, _ = semver.NewVersion("1.0.0")
 
-	errOfferVersionMissing = errors.New("required 'version' field missing in offer")
+	errOfferVersionMissing = errors.New(`required "version" field missing in offer`)
+	errOfferIDNotSet       = errors.New(`"offerID" is not set`)
+	errExchangeRateNil     = errors.New(`"exchangeRate" is not set`)
+	errMinGreaterThanMax   = errors.New(`"minAmount" must be less than or equal to "maxAmount"`)
 )
 
 // Offer represents a swap offer
@@ -75,6 +78,31 @@ func (o *Offer) IsSet() bool {
 		o.ExchangeRate != nil
 }
 
+func (o *Offer) validate() error {
+	if IsHashZero(o.ID) {
+		return errOfferIDNotSet
+	}
+
+	if err := coins.ValidatePositive("minAmount", o.MinAmount); err != nil {
+		return err
+	}
+	if err := coins.ValidatePositive("maxAmount", o.MaxAmount); err != nil {
+		return err
+	}
+
+	if o.MinAmount.Cmp(o.MaxAmount) > 0 {
+		return errMinGreaterThanMax
+	}
+
+	// The JSON decoder for ExchangeRate does validation, but it can't check for nil, as
+	// it won't get invoked when the value is not present.
+	if o.ExchangeRate == nil {
+		return errExchangeRateNil
+	}
+
+	return nil
+}
+
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
 	StatusCh          chan Status  `json:"-"`
@@ -102,4 +130,24 @@ func UnmarshalOffer(jsonData []byte) (*Offer, error) {
 		return nil, err
 	}
 	return o, nil
+}
+
+// MarshalJSON provides JSON marshalling for the Offer type
+func (o *Offer) MarshalJSON() ([]byte, error) {
+	if err := o.validate(); err != nil {
+		return nil, err
+	}
+	// Do standard JSON marshal without recursion
+	type _Offer Offer
+	return json.Marshal((*_Offer)(o))
+}
+
+// UnmarshalJSON provides JSON unmarshalling the Offer type
+func (o *Offer) UnmarshalJSON(data []byte) error {
+	// Do standard JSON marshal without recursion
+	type _Offer Offer
+	if err := json.Unmarshal(data, (*_Offer)(o)); err != nil {
+		return err
+	}
+	return o.validate()
 }

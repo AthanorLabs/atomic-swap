@@ -14,31 +14,35 @@ func ToExchangeRate(rate *apd.Decimal) *ExchangeRate {
 	return (*ExchangeRate)(rate)
 }
 
-func (r *ExchangeRate) decimal() *apd.Decimal {
+// Decimal casts *ExchangeRate to *apd.Decimal
+func (r *ExchangeRate) Decimal() *apd.Decimal {
 	return (*apd.Decimal)(r)
 }
 
 // UnmarshalText hands off JSON decoding to apd.Decimal
 func (r *ExchangeRate) UnmarshalText(b []byte) error {
-	err := r.decimal().UnmarshalText(b)
+	err := r.Decimal().UnmarshalText(b)
 	if err != nil {
 		return err
 	}
 	if r.Negative {
-		return errNegativeRate
+		return ErrNegativeRate
+	}
+	if r.Decimal().IsZero() {
+		return ErrZeroRate
 	}
 	return nil
 }
 
 // MarshalText hands off JSON encoding to apd.Decimal
 func (r *ExchangeRate) MarshalText() ([]byte, error) {
-	return r.decimal().MarshalText()
+	return r.Decimal().MarshalText()
 }
 
 // ToXMR converts an ether amount to a monero amount with the given exchange rate
 func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	xmrAmt := new(apd.Decimal)
-	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.decimal())
+	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.Decimal())
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +55,7 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 // ToETH converts a monero amount to an eth amount with the given exchange rate
 func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	ethAmt := new(apd.Decimal)
-	_, err := decimalCtx.Mul(ethAmt, r.decimal(), xmrAmount)
+	_, err := decimalCtx.Mul(ethAmt, r.Decimal(), xmrAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -62,5 +66,5 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 }
 
 func (r *ExchangeRate) String() string {
-	return r.decimal().Text('f')
+	return r.Decimal().Text('f')
 }
