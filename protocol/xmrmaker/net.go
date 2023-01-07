@@ -103,6 +103,10 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, errOfferIDNotSet
 	}
 
+	if err := coins.ValidatePositive("providedAmount", msg.ProvidedAmount); err != nil {
+		return nil, nil, err
+	}
+
 	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
 		return nil, nil, err

@@ -107,14 +107,14 @@ func (m *QueryResponse) Type() Type {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            types.Hash
-	ProvidedAmount     *apd.Decimal
-	PublicSpendKey     string
-	PublicViewKey      string
-	PrivateViewKey     string
-	DLEqProof          string
-	Secp256k1PublicKey string
-	EthAddress         string
+	OfferID            types.Hash   `json:"offerID"`
+	ProvidedAmount     *apd.Decimal `json:"providedAmount"`
+	PublicSpendKey     string       `json:"publicSpendKey"`
+	PublicViewKey      string       `json:"publicViewKey"`
+	PrivateViewKey     string       `json:"privateViewKey"`
+	DLEqProof          string       `json:"dleqProof"`
+	Secp256k1PublicKey string       `json:"secp256k1PublicKey"`
+	EthAddress         string       `json:"ethAddress"`
 }
 
 // String ...
