@@ -1,3 +1,5 @@
+// Package swapnet adds swap-specific functionality to net/Host,
+// in particular the swap messages for querying and initiation.
 package swapnet
 
 import (
@@ -22,7 +24,7 @@ const (
 var log = logging.Logger("host")
 var _ Host = &host{}
 
-// Host represents a peer-to-peer node (ie. a host)
+// Host represents a p2p node that implements the atomic swap protocol.
 type Host interface {
 	Start() error
 	Stop() error

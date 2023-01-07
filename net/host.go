@@ -1,4 +1,4 @@
-// Package net provides libraries for direct communication between swapd nodes using libp2p.
+// Package net implements p2p functionality for nodes using libp2p.
 package net
 
 import (
@@ -32,7 +32,8 @@ import (
 var log = logging.Logger("net")
 var _ Host = &host{}
 
-// Host represents a peer-to-peer node (ie. a host)
+// Host represents a generic peer-to-peer node (ie. a host) that supports
+// discovery via DHT.
 type Host interface {
 	Start() error
 	Stop() error
