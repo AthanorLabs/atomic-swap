@@ -123,14 +123,14 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *coins.Piconero
 	require.NoError(t, err)
 	t.Log("mining to address:", addr.Address)
 
-	minBal64Bit, err := minBalance.Decimal().Int64()
+	minBalU64, err := minBalance.Uint64()
 	require.NoError(t, err)
 
 	for {
 		require.NoError(t, wc.Refresh())
 		balance, err := wc.GetBalance(0)
 		require.NoError(t, err)
-		if balance.UnlockedBalance > uint64(minBal64Bit) {
+		if balance.UnlockedBalance > minBalU64 {
 			break
 		}
 		_, err = daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
