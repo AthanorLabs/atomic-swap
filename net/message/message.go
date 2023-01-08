@@ -12,18 +12,16 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
-// Type represents the type of a network message
-type Type byte
-
 const (
-	QueryResponseType Type = iota //nolint
+	QueryResponseType byte = iota //nolint
 	SendKeysType
 	NotifyETHLockedType
 	NotifyXMRLockType
 	NilType
 )
 
-func (t Type) String() string {
+// TypeToString converts a message type into a string.
+func TypeToString(t byte) string {
 	switch t {
 	case QueryResponseType:
 		return "QueryResponse"
@@ -42,7 +40,7 @@ func (t Type) String() string {
 type Message interface {
 	String() string
 	Encode() ([]byte, error)
-	Type() Type
+	Type() byte
 }
 
 // DecodeMessage decodes the given bytes into a Message
@@ -51,7 +49,8 @@ func DecodeMessage(b []byte) (Message, error) {
 	if len(b) < 3 {
 		return nil, errors.New("invalid message bytes")
 	}
-	msgType := Type(b[0])
+
+	msgType := b[0]
 	msgJSON := b[1:]
 	var msg Message
 
@@ -69,7 +68,7 @@ func DecodeMessage(b []byte) (Message, error) {
 	}
 
 	if err := json.Unmarshal(msgJSON, &msg); err != nil {
-		return nil, fmt.Errorf("failed to decode %s message: %w", msg.Type(), err)
+		return nil, fmt.Errorf("failed to decode %s message: %w", TypeToString(msg.Type()), err)
 	}
 	return msg, nil
 }
@@ -93,11 +92,11 @@ func (m *QueryResponse) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{byte(QueryResponseType)}, b...), nil
+	return append([]byte{QueryResponseType}, b...), nil
 }
 
 // Type ...
-func (m *QueryResponse) Type() Type {
+func (m *QueryResponse) Type() byte {
 	return QueryResponseType
 }
 
@@ -137,11 +136,11 @@ func (m *SendKeysMessage) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{byte(SendKeysType)}, b...), nil
+	return append([]byte{SendKeysType}, b...), nil
 }
 
 // Type ...
-func (m *SendKeysMessage) Type() Type {
+func (m *SendKeysMessage) Type() byte {
 	return SendKeysType
 }
 
@@ -184,11 +183,11 @@ func (m *NotifyETHLocked) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{byte(NotifyETHLockedType)}, b...), nil
+	return append([]byte{NotifyETHLockedType}, b...), nil
 }
 
 // Type ...
-func (m *NotifyETHLocked) Type() Type {
+func (m *NotifyETHLocked) Type() byte {
 	return NotifyETHLockedType
 }
 
@@ -210,10 +209,10 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	return append([]byte{byte(NotifyXMRLockType)}, b...), nil
+	return append([]byte{NotifyXMRLockType}, b...), nil
 }
 
 // Type ...
-func (m *NotifyXMRLock) Type() Type {
+func (m *NotifyXMRLock) Type() byte {
 	return NotifyXMRLockType
 }

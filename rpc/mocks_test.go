@@ -44,9 +44,6 @@ func (*mockNet) ConnectedPeers() []string {
 	panic("not implemented")
 }
 
-func (*mockNet) Advertise() {
-}
-
 func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return nil, nil
 }

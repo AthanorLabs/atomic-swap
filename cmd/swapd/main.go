@@ -23,13 +23,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/net/swapnet"
+	swapnet "github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
+	net "github.com/athanorlabs/go-p2p-net"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -431,15 +431,21 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	netCfg := &net.Config{
-		Ctx:         d.ctx,
-		Environment: env,
-		DataDir:     cfg.DataDir,
-		EthChainID:  chainID.Int64(),
-		Port:        libp2pPort,
-		KeyFile:     libp2pKey,
-		Bootnodes:   cfg.Bootnodes,
+	listenIP := "0.0.0.0"
+	if env == common.Development {
+		listenIP = "127.0.0.1"
 	}
+
+	netCfg := &net.Config{
+		Ctx:        d.ctx,
+		DataDir:    cfg.DataDir,
+		Port:       libp2pPort,
+		KeyFile:    libp2pKey,
+		Bootnodes:  cfg.Bootnodes,
+		ProtocolID: fmt.Sprintf("/%s/%s/%d", swapnet.ProtocolID, env.String(), chainID.Int64()),
+		ListenIP:   listenIP,
+	}
+
 	host, err := swapnet.NewHost(netCfg)
 	if err != nil {
 		return err

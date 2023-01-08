@@ -9,8 +9,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
+	net "github.com/athanorlabs/go-p2p-net"
 )
 
 const (
@@ -54,14 +54,16 @@ func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
 }
 
 func (h *Host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
-	msg, err := net.ReadStreamMessage(stream, maxMessageSize)
+	msg, err := readStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
 	}
 
 	resp, ok := msg.(*QueryResponse)
 	if !ok {
-		return nil, fmt.Errorf("expected %s message but received %s", message.QueryResponseType, msg.Type())
+		return nil, fmt.Errorf("expected %s message but received %s",
+			message.TypeToString(message.QueryResponseType),
+			message.TypeToString(msg.Type()))
 	}
 
 	return resp, nil

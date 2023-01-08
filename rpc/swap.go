@@ -204,7 +204,6 @@ func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *i
 		return err
 	}
 
-	s.net.Advertise()
 	return nil
 }
 
