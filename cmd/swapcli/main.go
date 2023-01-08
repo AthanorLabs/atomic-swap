@@ -517,8 +517,8 @@ func runMake(ctx *cli.Context) error {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
 		fmt.Printf("\tPeer ID:   %s\n", offerResp.PeerID)
-		fmt.Printf("\tTaker Min: %s %s\n", otherMin.String(), ethAsset)
-		fmt.Printf("\tTaker Max: %s %s\n", otherMax.String(), ethAsset)
+		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), ethAsset)
+		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
 	}
 
 	if ctx.Bool(flagSubscribe) {
@@ -810,11 +810,11 @@ func printOffer(o *types.Offer, index int, indent string) error {
 	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
 	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
 	fmt.Printf("%sTakes: %s\n", indent, o.EthAsset)
-	fmt.Printf("%sExchange Rate: %s\n", indent, o.ExchangeRate)
-	fmt.Printf("%sMin XMR: %s\n", indent, o.MinAmount)
-	fmt.Printf("%sMax XMR: %s\n", indent, o.MaxAmount)
-	fmt.Printf("%sMin %s: %s\n", indent, o.EthAsset, minETH)
-	fmt.Printf("%sMax %s: %s\n", indent, o.EthAsset, maxETH)
+	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, o.EthAsset, o.Provides)
+	fmt.Printf("%sMaker Min: %s %s\n", indent, o.MinAmount.Text('f'), o.Provides)
+	fmt.Printf("%sMaker Max: %s %s\n", indent, o.MaxAmount.Text('f'), o.Provides)
+	fmt.Printf("%sTaker Min: %s %s\n", indent, minETH.Text('f'), o.EthAsset)
+	fmt.Printf("%sTaker Max: %s %s\n", indent, maxETH.Text('f'), o.EthAsset)
 	return nil
 }
 
