@@ -94,5 +94,7 @@ func UnmarshalInfo(jsonData []byte) (*Info, error) {
 	if err := json.Unmarshal(jsonData, info); err != nil {
 		return nil, err
 	}
+	// TODO: Are there additional sanity checks we can perform on the Provided and Received amounts
+	//       (or other fields) here when decoding the JSON?
 	return info, nil
 }
