@@ -17,7 +17,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-const defaultMaxMessageSize = 1 << 17
+const testMaxMessageSize = 1 << 17
 
 func init() {
 	logging.SetLogLevel("net", "debug")
@@ -70,7 +70,7 @@ func Test_readStreamMessage(t *testing.T) {
 	binary.LittleEndian.PutUint32(lenBytes[:], uint32(len(msgBytes)))
 	streamData := append(lenBytes[:], msgBytes...)
 	stream := bytes.NewReader(streamData)
-	readMsg, err := ReadStreamMessage(stream, defaultMaxMessageSize)
+	readMsg, err := ReadStreamMessage(stream, testMaxMessageSize)
 	require.NoError(t, err)
 	require.Equal(t, msg.Type(), readMsg.Type())
 }
@@ -79,31 +79,31 @@ func Test_readStreamMessage_EOF(t *testing.T) {
 	// If the stream is closed before we read a length value, no message was truncated and
 	// the returned error is io.EOF
 	stream := bytes.NewReader(nil)
-	_, err := ReadStreamMessage(stream, defaultMaxMessageSize)
+	_, err := ReadStreamMessage(stream, testMaxMessageSize)
 	require.ErrorIs(t, err, io.EOF) // connection closed before we read any length
 
 	// If the message was truncated either in the length or body, the error is io.ErrUnexpectedEOF
 	serializedData := []byte{0x1} // truncated length
 	stream = bytes.NewReader(serializedData)
-	_, err = ReadStreamMessage(stream, defaultMaxMessageSize)
+	_, err = ReadStreamMessage(stream, testMaxMessageSize)
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF) // connection after we read at least one byte
 
 	serializedData = []byte{0x1, 0, 0, 0} // truncated encoded message
 	stream = bytes.NewReader(serializedData)
-	_, err = ReadStreamMessage(stream, defaultMaxMessageSize)
+	_, err = ReadStreamMessage(stream, testMaxMessageSize)
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF) // connection after we read at least one byte
 }
 
 func Test_readStreamMessage_TooLarge(t *testing.T) {
-	buf := make([]byte, 4+defaultMaxMessageSize+1)
-	binary.LittleEndian.PutUint32(buf, defaultMaxMessageSize+1)
-	_, err := ReadStreamMessage(bytes.NewReader(buf), defaultMaxMessageSize)
+	buf := make([]byte, 4+testMaxMessageSize+1)
+	binary.LittleEndian.PutUint32(buf, testMaxMessageSize+1)
+	_, err := ReadStreamMessage(bytes.NewReader(buf), testMaxMessageSize)
 	require.ErrorContains(t, err, "too large")
 }
 
 func Test_readStreamMessage_NilStream(t *testing.T) {
 	// Can our code actually trigger this error?
-	_, err := ReadStreamMessage(nil, defaultMaxMessageSize)
+	_, err := ReadStreamMessage(nil, testMaxMessageSize)
 	require.ErrorIs(t, err, errNilStream)
 }
 
