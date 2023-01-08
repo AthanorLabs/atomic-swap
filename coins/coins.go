@@ -35,7 +35,7 @@ func (a *PiconeroAmount) Uint64() (uint64, error) {
 	// Hopefully, the rest of our code is doing input validation and the error below
 	// never gets triggered.
 	if a.Negative {
-		return 0, fmt.Errorf("can not convert %s to unsigned", a.String())
+		return 0, fmt.Errorf("cannot convert %s to unsigned", a.String())
 	}
 
 	// Decimal has an Int64() method, but not a UInt64() method, so we are converting to
