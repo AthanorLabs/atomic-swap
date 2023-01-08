@@ -381,12 +381,12 @@ func runBalances(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
-	fmt.Printf("Balance: %s\n", balances.WeiBalance.AsEther())
+	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEther().Text('f'))
 	fmt.Println()
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
-	fmt.Printf("Balance: %s\n", balances.PiconeroBalance.AsMonero())
-	fmt.Printf("Unlocked balance: %s\n",
-		balances.PiconeroUnlockedBalance.AsMonero())
+	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMonero().Text('f'))
+	fmt.Printf("Unlocked XMR balance: %s\n",
+		balances.PiconeroUnlockedBalance.AsMonero().Text('f'))
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
 	return nil
 }
@@ -635,13 +635,16 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provided: %s\nProvidedAmount: %v\nReceivedAmount: %v\nExchangeRate: %v\nStatus: %s\n",
-		info.Provided,
-		info.ProvidedAmount,
-		info.ReceivedAmount,
-		info.ExchangeRate,
-		info.Status,
-	)
+	receivedCoin := "ETH"
+	if info.Provided == coins.ProvidesETH {
+		receivedCoin = "XMR"
+	}
+
+	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+	fmt.Printf("Receiving: %s %s\n", info.ReceivedAmount, receivedCoin)
+	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+	fmt.Printf("Status: %s\n", info.Status)
+
 	return nil
 }
 
@@ -654,13 +657,16 @@ func runGetPastSwap(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
-		info.Provided,
-		info.ProvidedAmount,
-		info.ReceivedAmount,
-		info.ExchangeRate,
-		info.Status,
-	)
+	receivedCoin := "ETH"
+	if info.Provided == coins.ProvidesETH {
+		receivedCoin = "XMR"
+	}
+
+	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+	fmt.Printf("Receiving: %s %s\n", info.ReceivedAmount, receivedCoin)
+	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+	fmt.Printf("Status: %s\n", info.Status)
+
 	return nil
 }
 
