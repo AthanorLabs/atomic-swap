@@ -21,7 +21,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -303,8 +303,8 @@ func (s *swapState) waitForSendKeysMessage() {
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
-	return &net.SendKeysMessage{
+func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+	return &message.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),

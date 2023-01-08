@@ -12,7 +12,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
@@ -52,11 +51,11 @@ func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) 
 	return nil, nil
 }
 
-func (*mockNet) Query(who peer.ID) (*net.QueryResponse, error) {
-	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
+func (*mockNet) Query(who peer.ID) (*message.QueryResponse, error) {
+	return &message.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
-func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error {
+func (*mockNet) Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error {
 	return nil
 }
 

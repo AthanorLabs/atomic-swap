@@ -16,10 +16,16 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
+
+// MessageSender is implemented by a Host
+type MessageSender interface {
+	SendSwapMessage(message.Message, types.Hash) error
+	CloseProtocolStream(id types.Hash)
+}
 
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
@@ -41,7 +47,7 @@ type RecoveryDB interface {
 type Backend interface {
 	XMRClient() monero.WalletClient
 	ETHClient() extethclient.EthClient
-	net.MessageSender
+	MessageSender
 
 	RecoveryDB() RecoveryDB
 
@@ -57,7 +63,6 @@ type Backend interface {
 	SwapManager() swap.Manager
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
-	Net() net.MessageSender
 	SwapTimeout() time.Duration
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 
@@ -89,7 +94,7 @@ type backend struct {
 	swapTimeout  time.Duration
 
 	// network interface
-	net.MessageSender
+	MessageSender
 }
 
 // Config is the config for the Backend
@@ -106,7 +111,7 @@ type Config struct {
 
 	RecoveryDB RecoveryDB
 
-	Net net.MessageSender
+	Net MessageSender
 }
 
 // NewBackend returns a new Backend
@@ -164,10 +169,6 @@ func (b *backend) Ctx() context.Context {
 
 func (b *backend) Env() common.Environment {
 	return b.env
-}
-
-func (b *backend) Net() net.MessageSender {
-	return b.MessageSender
 }
 
 func (b *backend) SwapManager() swap.Manager {

@@ -11,7 +11,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -43,16 +42,31 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 	return xmrmaker, swapState, db
 }
 
+func newTestSwapStateAndNet(t *testing.T) (*Instance, *swapState, *mockNet) {
+	xmrmaker, net := newTestInstanceAndNet(t)
+
+	swapState, err := newSwapStateFromStart(
+		xmrmaker.backend,
+		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
+		&types.OfferExtra{},
+		xmrmaker.offerManager,
+		common.PiconeroAmount(33),
+		desiredAmount,
+	)
+	require.NoError(t, err)
+	return xmrmaker, swapState, net
+}
+
 func newTestSwapState(t *testing.T) (*Instance, *swapState) {
 	xmrmaker, swapState, _ := newTestSwapStateAndDB(t)
 	return xmrmaker, swapState
 }
 
-func newTestXMRTakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pcommon.KeysAndProof) {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
-	msg := &net.SendKeysMessage{
+	msg := &message.SendKeysMessage{
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
 		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
@@ -139,7 +153,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	_, s := newTestSwapState(t)
 
-	msg := &net.SendKeysMessage{}
+	msg := &message.SendKeysMessage{}
 	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
@@ -155,7 +169,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
-	_, s := newTestSwapState(t)
+	_, s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
 
@@ -181,7 +195,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	resp := s.Net().(*mockNet).LastSentMessage()
+	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.Equal(t, duration, s.t1.Sub(s.t0))
