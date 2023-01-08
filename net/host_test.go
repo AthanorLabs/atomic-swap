@@ -38,7 +38,7 @@ func basicTestConfig(t *testing.T) *Config {
 	}
 }
 
-func newHost(t *testing.T, cfg *Config) *host {
+func newHost(t *testing.T, cfg *Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() {

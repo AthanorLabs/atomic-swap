@@ -18,7 +18,7 @@ const (
 	queryTimeout = time.Second * 5
 )
 
-func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
+func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
 	resp := &QueryResponse{
 		Offers: h.handler.GetOffers(),
 	}
@@ -30,7 +30,8 @@ func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
 	_ = stream.Close()
 }
 
-func (h *host) Query(who peer.ID) (*QueryResponse, error) {
+// Query queries the given peer for its offers.
+func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
 	ctx, cancel := context.WithTimeout(h.ctx, queryTimeout)
 	defer cancel()
 
@@ -52,7 +53,7 @@ func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 	return h.receiveQueryResponse(stream)
 }
 
-func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
+func (h *Host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
 	msg, err := net.ReadStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, fmt.Errorf("error reading QueryResponse: %w", err)

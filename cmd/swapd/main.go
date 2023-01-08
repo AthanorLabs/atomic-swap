@@ -233,7 +233,7 @@ type daemon struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	database  *db.Database
-	host      swapnet.Host
+	host      *swapnet.Host
 	rpcServer *rpc.Server
 
 	// this channel is closed once the daemon has started up
@@ -573,7 +573,7 @@ func newBackend(
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
-	net swapnet.Host,
+	net *swapnet.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
 ) (backend.Backend, error) {
@@ -722,7 +722,7 @@ func getProtocolInstances(
 	cfg *common.Config,
 	b backend.Backend,
 	db *db.Database,
-	host swapnet.Host,
+	host *swapnet.Host,
 ) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {

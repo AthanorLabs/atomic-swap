@@ -9,7 +9,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net/swapnet"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -21,13 +20,18 @@ var (
 	log = logging.Logger("xmrmaker")
 )
 
+// Host contains required network functionality.
+type Host interface {
+	Advertise()
+}
+
 // Instance implements the functionality that will be needed by a user who owns XMR
 // and wishes to swap for ETH.
 type Instance struct {
 	backend backend.Backend
 	dataDir string
 
-	net swapnet.Host
+	net Host
 
 	walletFile, walletPassword string
 
@@ -44,7 +48,7 @@ type Config struct {
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool
-	Network                    swapnet.Host
+	Network                    Host
 }
 
 // NewInstance returns a new *xmrmaker.Instance.

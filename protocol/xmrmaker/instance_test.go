@@ -63,7 +63,7 @@ func newSwapManager(t *testing.T) pswap.Manager {
 	return sm
 }
 
-func newTestBackend(t *testing.T) backend.Backend {
+func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 
@@ -89,6 +89,7 @@ func newTestBackend(t *testing.T) backend.Backend {
 	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
 	require.NoError(t, err)
 
+	net := new(mockNet)
 	bcfg := &backend.Config{
 		Ctx:                 context.Background(),
 		MoneroClient:        monero.CreateWalletClient(t),
@@ -97,18 +98,18 @@ func newTestBackend(t *testing.T) backend.Backend {
 		SwapContract:        contract,
 		SwapContractAddress: addr,
 		SwapManager:         newSwapManager(t),
-		Net:                 new(mockNet),
+		Net:                 net,
 		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
 
-	return b
+	return b, net
 }
 
-func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
-	b := newTestBackend(t)
+func newTestInstanceAndDBAndNet(t *testing.T) (*Instance, *offers.MockDatabase, *mockNet) {
+	b, net := newBackendAndNet(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -116,7 +117,7 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	db.EXPECT().GetAllOffers()
 	db.EXPECT().DeleteOffer(gomock.Any()).Return(nil).AnyTimes()
 
-	net := NewMockHost(ctrl)
+	host := NewMockHost(ctrl)
 
 	cfg := &Config{
 		Backend:        b,
@@ -124,7 +125,7 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 		WalletFile:     testWallet,
 		WalletPassword: "",
 		Database:       db,
-		Network:        net,
+		Network:        host,
 	}
 
 	xmrmaker, err := NewInstance(cfg)
@@ -133,7 +134,17 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	monero.MineMinXMRBalance(t, b.XMRClient(), 1.0)
 	err = b.XMRClient().Refresh()
 	require.NoError(t, err)
-	return xmrmaker, db
+	return xmrmaker, db, net
+}
+
+func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
+	inst, db, _ := newTestInstanceAndDBAndNet(t)
+	return inst, db
+}
+
+func newTestInstanceAndNet(t *testing.T) (*Instance, *mockNet) {
+	inst, _, net := newTestInstanceAndDBAndNet(t)
+	return inst, net
 }
 
 func TestInstance_createOngoingSwap(t *testing.T) {

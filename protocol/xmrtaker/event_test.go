@@ -80,7 +80,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 }
 
 func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
-	s := newTestSwapState(t)
+	s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
@@ -97,7 +97,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 
-	resp := s.Net().(*mockNet).LastSentMessage()
+	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))

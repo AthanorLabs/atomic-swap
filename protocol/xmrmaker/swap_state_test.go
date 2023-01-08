@@ -42,6 +42,21 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 	return xmrmaker, swapState, db
 }
 
+func newTestSwapStateAndNet(t *testing.T) (*Instance, *swapState, *mockNet) {
+	xmrmaker, net := newTestInstanceAndNet(t)
+
+	swapState, err := newSwapStateFromStart(
+		xmrmaker.backend,
+		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
+		&types.OfferExtra{},
+		xmrmaker.offerManager,
+		common.PiconeroAmount(33),
+		desiredAmount,
+	)
+	require.NoError(t, err)
+	return xmrmaker, swapState, net
+}
+
 func newTestSwapState(t *testing.T) (*Instance, *swapState) {
 	xmrmaker, swapState, _ := newTestSwapStateAndDB(t)
 	return xmrmaker, swapState
@@ -154,7 +169,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
-	_, s := newTestSwapState(t)
+	_, s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
 
@@ -180,7 +195,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	resp := s.Net().(*mockNet).LastSentMessage()
+	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.Equal(t, duration, s.t1.Sub(s.t0))

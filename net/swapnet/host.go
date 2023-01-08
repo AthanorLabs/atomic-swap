@@ -10,8 +10,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 )
@@ -22,34 +22,32 @@ const (
 )
 
 var log = logging.Logger("host")
-var _ Host = &host{}
 
-// Host represents a p2p node that implements the atomic swap protocol.
-type Host interface {
+// NetHost contains libp2p functionality used by the Host.
+type NetHost interface {
 	Start() error
 	Stop() error
 
 	Advertise()
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
+
+	SetStreamHandler(string, func(libp2pnetwork.Stream))
+	SetShouldAdvertiseFunc(net.ShouldAdvertiseFunc)
+
+	Connectedness(peer.ID) libp2pnetwork.Connectedness
+	Connect(context.Context, peer.AddrInfo) error
+	NewStream(context.Context, peer.ID, protocol.ID) (libp2pnetwork.Stream, error)
 
 	AddrInfo() peer.AddrInfo
 	Addresses() []string
-	ConnectedPeers() []string
 	PeerID() peer.ID
-
-	Query(who peer.ID) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
-	MessageSender
+	ConnectedPeers() []string
 }
 
-type swap struct {
-	swapState SwapState
-	stream    libp2pnetwork.Stream
-}
-
-type host struct {
+// Host represents a p2p node that implements the atomic swap protocol.
+type Host struct {
 	ctx     context.Context
-	h       net.Host
+	h       NetHost
 	handler Handler
 
 	// swap instance info
@@ -60,7 +58,7 @@ type host struct {
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
-func NewHost(cfg *net.Config) (*host, error) {
+func NewHost(cfg *net.Config) (*Host, error) {
 	cfg.ProtocolID = protocolID
 
 	h, err := net.NewHost(cfg)
@@ -68,14 +66,15 @@ func NewHost(cfg *net.Config) (*host, error) {
 		return nil, err
 	}
 
-	return &host{
+	return &Host{
 		ctx:   cfg.Ctx,
 		h:     h,
 		swaps: make(map[types.Hash]*swap),
 	}, nil
 }
 
-func (h *host) SetHandler(handler Handler) {
+// SetHandler sets the Handler instance used by the host.
+func (h *Host) SetHandler(handler Handler) {
 	fn := func() bool {
 		return len(handler.GetOffers()) == 0
 	}
@@ -84,7 +83,8 @@ func (h *host) SetHandler(handler Handler) {
 	h.h.SetShouldAdvertiseFunc(fn)
 }
 
-func (h *host) Start() error {
+// Start starts the bootstrap and discovery process.
+func (h *Host) Start() error {
 	if h.handler == nil {
 		return errNilHandler
 	}
@@ -94,12 +94,13 @@ func (h *host) Start() error {
 	return h.h.Start()
 }
 
-func (h *host) Stop() error {
+// Stop stops the host.
+func (h *Host) Stop() error {
 	return h.h.Stop()
 }
 
 // SendSwapMessage sends a message to the peer who we're currently doing a swap with.
-func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
+func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -111,26 +112,46 @@ func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
 	return net.WriteStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
 }
 
-func (h *host) Advertise() {
+// CloseProtocolStream closes the current swap protocol stream.
+func (h *Host) CloseProtocolStream(id types.Hash) {
+	swap, has := h.swaps[id]
+	if !has {
+		return
+	}
+
+	log.Debugf("closing stream: peer=%s protocol=%s",
+		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
+	)
+	_ = swap.stream.Close()
+}
+
+// Advertise advertises in the DHT.
+func (h *Host) Advertise() {
 	h.h.Advertise()
 }
 
-func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
+// Discover searches the DHT for peers that advertise that they provide the given coin..
+// It searches for up to `searchTime` duration of time.
+func (h *Host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return h.h.Discover(string(provides), searchTime)
 }
 
-func (h *host) AddrInfo() peer.AddrInfo {
+// AddrInfo returns the host's AddrInfo.
+func (h *Host) AddrInfo() peer.AddrInfo {
 	return h.h.AddrInfo()
 }
 
-func (h *host) Addresses() []string {
+// Addresses returns the list of multiaddress the host is listening on.
+func (h *Host) Addresses() []string {
 	return h.h.Addresses()
 }
 
-func (h *host) ConnectedPeers() []string {
+// ConnectedPeers returns the multiaddresses of our currently connected peers.
+func (h *Host) ConnectedPeers() []string {
 	return h.h.ConnectedPeers()
 }
 
-func (h *host) PeerID() peer.ID {
+// PeerID returns the host's peer ID.
+func (h *Host) PeerID() peer.ID {
 	return h.h.AddrInfo().ID
 }

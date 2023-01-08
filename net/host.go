@@ -30,30 +30,10 @@ import (
 )
 
 var log = logging.Logger("net")
-var _ Host = &host{}
 
 // Host represents a generic peer-to-peer node (ie. a host) that supports
 // discovery via DHT.
-type Host interface {
-	Start() error
-	Stop() error
-
-	Advertise()
-	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
-
-	SetStreamHandler(string, func(libp2pnetwork.Stream))
-	SetShouldAdvertiseFunc(ShouldAdvertiseFunc)
-
-	Connectedness(peer.ID) libp2pnetwork.Connectedness
-	Connect(context.Context, peer.AddrInfo) error
-	NewStream(context.Context, peer.ID, protocol.ID) (libp2pnetwork.Stream, error)
-	AddrInfo() peer.AddrInfo
-	Addresses() []string
-	PeerID() peer.ID
-	ConnectedPeers() []string
-}
-
-type host struct {
+type Host struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	protocolID string
@@ -84,8 +64,8 @@ func init() {
 	_ = os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
 }
 
-// NewHost returns a new host
-func NewHost(cfg *Config) (*host, error) {
+// NewHost returns a new Host
+func NewHost(cfg *Config) (*Host, error) {
 	if cfg.DataDir == "" || cfg.KeyFile == "" {
 		panic("required parameters not set")
 	}
@@ -167,7 +147,7 @@ func NewHost(cfg *Config) (*host, error) {
 	routedHost := routedhost.Wrap(basicHost, dht)
 
 	ourCtx, cancel := context.WithCancel(cfg.Ctx)
-	hst := &host{
+	hst := &Host{
 		ctx:        ourCtx,
 		cancel:     cancel,
 		protocolID: fmt.Sprintf("%s/%s/%d", cfg.ProtocolID, cfg.Environment, cfg.EthChainID),
@@ -187,7 +167,8 @@ func NewHost(cfg *Config) (*host, error) {
 	return hst, nil
 }
 
-func (h *host) Start() error {
+// Start starts the bootstrap and discovery process.
+func (h *Host) Start() error {
 	for _, addr := range h.h.Addrs() {
 		log.Info("Started listening: address=", addr)
 	}
@@ -203,7 +184,7 @@ func (h *host) Start() error {
 	return h.discovery.start()
 }
 
-func (h *host) logPeers() {
+func (h *Host) logPeers() {
 	logPeersInterval := time.Minute * 5
 
 	for {
@@ -217,7 +198,7 @@ func (h *host) logPeers() {
 }
 
 // Stop closes host services and the libp2p host (host services first)
-func (h *host) Stop() error {
+func (h *Host) Stop() error {
 	h.cancel()
 
 	if err := h.discovery.stop(); err != nil {
@@ -241,11 +222,13 @@ func (h *host) Stop() error {
 	return nil
 }
 
-func (h *host) Advertise() {
+// Advertise advertises in the DHT.
+func (h *Host) Advertise() {
 	h.discovery.advertiseCh <- struct{}{}
 }
 
-func (h *host) Addresses() []string {
+// Addresses returns the list of multiaddress the host is listening on.
+func (h *Host) Addresses() []string {
 	var addrs []string
 	for _, ma := range h.multiaddrs() {
 		addrs = append(addrs, ma.String())
@@ -253,11 +236,21 @@ func (h *host) Addresses() []string {
 	return addrs
 }
 
-func (h *host) PeerID() peer.ID {
+// PeerID returns the host's peer ID.
+func (h *Host) PeerID() peer.ID {
 	return h.h.ID()
 }
 
-func (h *host) ConnectedPeers() []string {
+// AddrInfo returns the host's AddrInfo.
+func (h *Host) AddrInfo() peer.AddrInfo {
+	return peer.AddrInfo{
+		ID:    h.h.ID(),
+		Addrs: h.h.Addrs(),
+	}
+}
+
+// ConnectedPeers returns the multiaddresses of our currently connected peers.
+func (h *Host) ConnectedPeers() []string {
 	var peers []string
 	for _, c := range h.h.Network().Conns() {
 		// the remote multi addr returned is just the transport
@@ -267,35 +260,41 @@ func (h *host) ConnectedPeers() []string {
 	return peers
 }
 
-// Discover searches the DHT for peers that advertise that they provide the given coin.
+// Discover searches the DHT for peers that advertise that they provide the given string..
 // It searches for up to `searchTime` duration of time.
-func (h *host) Discover(provides string, searchTime time.Duration) ([]peer.ID, error) {
+func (h *Host) Discover(provides string, searchTime time.Duration) ([]peer.ID, error) {
 	return h.discovery.discover(provides, searchTime)
 }
 
-func (h *host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) {
+// SetStreamHandler sets the stream handler for the given protocol ID.
+func (h *Host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) {
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+pid), handler)
 	log.Debugf("supporting protocol %s", protocol.ID(pid))
 }
 
-func (h *host) SetShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
+// SetShouldAdvertiseFunc sets the function which is called before auto-advertising in
+// the DHT. If it returns false, we don't advertise automatically.
+func (h *Host) SetShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
 	h.discovery.setShouldAdvertiseFunc(fn)
 }
 
-func (h *host) Connectedness(who peer.ID) libp2pnetwork.Connectedness {
+// Connectedness returns the connectedness state of a given peer.
+func (h *Host) Connectedness(who peer.ID) libp2pnetwork.Connectedness {
 	return h.h.Network().Connectedness(who)
 }
 
-func (h *host) Connect(ctx context.Context, who peer.AddrInfo) error {
+// Connect connects to the given peer.
+func (h *Host) Connect(ctx context.Context, who peer.AddrInfo) error {
 	return h.h.Connect(ctx, who)
 }
 
-func (h *host) NewStream(ctx context.Context, p peer.ID, pid protocol.ID) (libp2pnetwork.Stream, error) {
+// NewStream opens a stream with the given peer on the given protocol ID.
+func (h *Host) NewStream(ctx context.Context, p peer.ID, pid protocol.ID) (libp2pnetwork.Stream, error) {
 	return h.h.NewStream(ctx, p, protocol.ID(h.protocolID)+pid)
 }
 
 // multiaddrs returns the local multiaddresses that we are listening on
-func (h *host) multiaddrs() []ma.Multiaddr {
+func (h *Host) multiaddrs() []ma.Multiaddr {
 	addr := h.AddrInfo()
 	multiaddrs, err := peer.AddrInfoToP2pAddrs(&addr)
 	if err != nil {
@@ -305,15 +304,8 @@ func (h *host) multiaddrs() []ma.Multiaddr {
 	return multiaddrs
 }
 
-func (h *host) AddrInfo() peer.AddrInfo {
-	return peer.AddrInfo{
-		ID:    h.h.ID(),
-		Addrs: h.h.Addrs(),
-	}
-}
-
 // bootstrap connects the host to the configured bootnodes
-func (h *host) bootstrap() error {
+func (h *Host) bootstrap() error {
 
 	if len(h.bootnodes) == 0 {
 		log.Warnf("Bootstraping peers skipped, no bootnodes found")

@@ -71,7 +71,7 @@ func basicTestConfig(t *testing.T) *net.Config {
 	}
 }
 
-func newHost(t *testing.T, cfg *net.Config) *host {
+func newHost(t *testing.T, cfg *net.Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
 	h.SetHandler(&mockHandler{})
