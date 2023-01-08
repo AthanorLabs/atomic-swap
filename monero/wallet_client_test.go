@@ -17,16 +17,13 @@ import (
 
 var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
 
-// package "tests" depends on the "monero", so StrToDecimal is in "common" so both can use it.
-var str2Decimal = coins.StrToDecimal
-
 func init() {
-	logging.SetLogLevel("monero", "debug")
+	_ = logging.SetLogLevel("monero", "debug")
 }
 
 func TestClient_Transfer(t *testing.T) {
 	amount := coins.MoneroToPiconero(apd.New(10, 0))
-	amountPlusFees := coins.MoneroToPiconero(str2Decimal("10.01"))
+	amountPlusFees := coins.MoneroToPiconero(coins.StrToDecimal("10.01"))
 
 	cXMRMaker := CreateWalletClient(t)
 	MineMinXMRBalance(t, cXMRMaker, amountPlusFees)
@@ -304,7 +301,7 @@ func Test_validateMonerodConfig_invalidPort(t *testing.T) {
 
 func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	const amount = 10
-	minBal := coins.MoneroToPiconero(str2Decimal("10.01")) // add a little extra for fees
+	minBal := coins.MoneroToPiconero(coins.StrToDecimal("10.01")) // add a little extra for fees
 	destAddr := mcrypto.Address(blockRewardAddress)
 
 	c := CreateWalletClient(t)
