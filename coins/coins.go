@@ -1,5 +1,5 @@
 // Package coins provides types, conversions and exchange calculations for dealing
-// with cryptocurrency coins and ECR20 tokens.
+// with cryptocurrency coin and ERC20 token representations.
 package coins
 
 import (
