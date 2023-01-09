@@ -1,6 +1,6 @@
-// Package swapnet adds swap-specific functionality to net/Host,
+// Package net adds swap-specific functionality to go-p2p-net/Host,
 // in particular the swap messages for querying and initiation.
-package swapnet
+package net
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	net "github.com/athanorlabs/go-p2p-net"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 const (
@@ -25,8 +25,8 @@ const (
 
 var log = logging.Logger("host")
 
-// NetHost contains libp2p functionality used by the Host.
-type NetHost interface {
+// P2pnetHost contains libp2p functionality used by the Host.
+type P2pnetHost interface {
 	Start() error
 	Stop() error
 
@@ -34,7 +34,7 @@ type NetHost interface {
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 
 	SetStreamHandler(string, func(libp2pnetwork.Stream))
-	SetShouldAdvertiseFunc(net.ShouldAdvertiseFunc)
+	SetShouldAdvertiseFunc(p2pnet.ShouldAdvertiseFunc)
 
 	Connectedness(peer.ID) libp2pnetwork.Connectedness
 	Connect(context.Context, peer.AddrInfo) error
@@ -49,7 +49,7 @@ type NetHost interface {
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
 	ctx     context.Context
-	h       NetHost
+	h       P2pnetHost
 	handler Handler
 
 	// swap instance info
@@ -60,8 +60,8 @@ type Host struct {
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
-func NewHost(cfg *net.Config) (*Host, error) {
-	h, err := net.NewHost(cfg)
+func NewHost(cfg *p2pnet.Config) (*Host, error) {
+	h, err := p2pnet.NewHost(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 		return errNoOngoingSwap
 	}
 
-	return net.WriteStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
+	return p2pnet.WriteStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
 }
 
 // CloseProtocolStream closes the current swap protocol stream.
@@ -157,7 +157,7 @@ func (h *Host) PeerID() peer.ID {
 }
 
 func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (message.Message, error) {
-	msgBytes, err := net.ReadStreamMessage(stream, maxMessageSize)
+	msgBytes, err := p2pnet.ReadStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package swapnet
+package net
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	net "github.com/athanorlabs/go-p2p-net"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 func init() {
@@ -54,10 +54,10 @@ func (s *mockSwapState) Exit() error {
 	return nil
 }
 
-func basicTestConfig(t *testing.T) *net.Config {
+func basicTestConfig(t *testing.T) *p2pnet.Config {
 	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
 	tmpDir := t.TempDir()
-	return &net.Config{
+	return &p2pnet.Config{
 		Ctx:        context.Background(),
 		DataDir:    tmpDir,
 		Port:       0, // OS randomized libp2p port
@@ -68,7 +68,7 @@ func basicTestConfig(t *testing.T) *net.Config {
 	}
 }
 
-func newHost(t *testing.T, cfg *net.Config) *Host {
+func newHost(t *testing.T, cfg *p2pnet.Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
 	h.SetHandler(&mockHandler{})

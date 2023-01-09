@@ -1,4 +1,4 @@
-package swapnet
+package net
 
 import (
 	"github.com/athanorlabs/atomic-swap/common"

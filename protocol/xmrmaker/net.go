@@ -5,7 +5,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	swapnet "github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
@@ -85,7 +85,7 @@ func (inst *Instance) initiate(
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (swapnet.SwapState, message.Message, error) {
+func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.SwapState, message.Message, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 

@@ -1,4 +1,4 @@
-package swapnet
+package net
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/athanorlabs/atomic-swap/net/message"
-	net "github.com/athanorlabs/go-p2p-net"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 const (
@@ -23,7 +23,7 @@ func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
 		Offers: h.handler.GetOffers(),
 	}
 
-	if err := net.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
 

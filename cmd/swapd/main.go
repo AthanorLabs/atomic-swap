@@ -23,13 +23,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	swapnet "github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
-	net "github.com/athanorlabs/go-p2p-net"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -225,7 +225,7 @@ type xmrtakerHandler interface {
 }
 
 type xmrmakerHandler interface {
-	swapnet.Handler
+	net.Handler
 	rpc.XMRMaker
 }
 
@@ -233,7 +233,7 @@ type daemon struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	database  *db.Database
-	host      *swapnet.Host
+	host      *net.Host
 	rpcServer *rpc.Server
 
 	// this channel is closed once the daemon has started up
@@ -436,17 +436,17 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		listenIP = "127.0.0.1"
 	}
 
-	netCfg := &net.Config{
+	netCfg := &p2pnet.Config{
 		Ctx:        d.ctx,
 		DataDir:    cfg.DataDir,
 		Port:       libp2pPort,
 		KeyFile:    libp2pKey,
 		Bootnodes:  cfg.Bootnodes,
-		ProtocolID: fmt.Sprintf("/%s/%s/%d", swapnet.ProtocolID, env.String(), chainID.Int64()),
+		ProtocolID: fmt.Sprintf("/%s/%s/%d", net.ProtocolID, env.String(), chainID.Int64()),
 		ListenIP:   listenIP,
 	}
 
-	host, err := swapnet.NewHost(netCfg)
+	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
 	}
@@ -579,7 +579,7 @@ func newBackend(
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
-	net *swapnet.Host,
+	net *net.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
 ) (backend.Backend, error) {
@@ -728,7 +728,7 @@ func getProtocolInstances(
 	cfg *common.Config,
 	b backend.Backend,
 	db *db.Database,
-	host *swapnet.Host,
+	host *net.Host,
 ) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
