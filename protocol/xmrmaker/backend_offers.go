@@ -30,7 +30,7 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	b.net.Advertise()
+	b.net.Advertise([]string{string(types.ProvidesXMR)})
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }

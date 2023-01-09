@@ -5,6 +5,7 @@ import (
 )
 
 var (
-	errNilStream         = errors.New("stream is nil")
-	errFailedToBootstrap = errors.New("failed to bootstrap to any bootnode")
+	errNilHandler            = errors.New("handler is nil")
+	errNoOngoingSwap         = errors.New("no swap currently happening")
+	errSwapAlreadyInProgress = errors.New("already have ongoing swap")
 )

@@ -22,7 +22,7 @@ var (
 
 // Host contains required network functionality.
 type Host interface {
-	Advertise()
+	Advertise([]string)
 }
 
 // Instance implements the functionality that will be needed by a user who owns XMR
@@ -61,7 +61,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	if om.NumOffers() > 0 {
 		// this is blocking if the network service hasn't started yet
-		go cfg.Network.Advertise()
+		go cfg.Network.Advertise([]string{string(types.ProvidesXMR)})
 	}
 
 	inst := &Instance{

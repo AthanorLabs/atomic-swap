@@ -1,4 +1,4 @@
-package swapnet
+package net
 
 import (
 	"github.com/athanorlabs/atomic-swap/common"
@@ -12,7 +12,7 @@ type SwapState = common.SwapStateNet //nolint:revive
 
 //nolint:revive
 type (
-	MessageType     = message.Type
+	MessageType     = byte
 	Message         = message.Message
 	QueryResponse   = message.QueryResponse
 	SendKeysMessage = message.SendKeysMessage
