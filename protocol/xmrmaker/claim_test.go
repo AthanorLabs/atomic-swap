@@ -20,7 +20,6 @@ import (
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
 	"github.com/athanorlabs/atomic-swap/coins"
-	//"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
