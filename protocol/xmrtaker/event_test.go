@@ -1,7 +1,6 @@
 package xmrtaker
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -26,11 +25,11 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))
 
 	// lock xmr
-	amt := coins.NewPiconeroAmount(1000000000)
+	amt := s.expectedPiconeroAmount()
 	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, amt, tResp.Amount)
+	require.Equal(t, amt.CmpU64(tResp.Amount), 0)
 
 	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
@@ -88,12 +87,13 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	// invalid SendKeysMessage should result in an error
 	msg := &message.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingKeys))
+	require.ErrorIs(t, err, errMissingProvidedAmount)
 
 	// handle valid SendKeysMessage
 	msg = s.SendKeysMessage()
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
 	msg.EthAddress = s.ETHClient().Address().String()
+	msg.ProvidedAmount = s.providedAmount.AsStandard()
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)

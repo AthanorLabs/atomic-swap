@@ -115,9 +115,11 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	b, net := newBackendAndNet(t)
-	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
+	providedAmt := coins.EtherToWei(coins.StrToDecimal("0.1"))
+	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("0.1"))
+	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		coins.IntToWei(1), coins.NewPiconeroAmount(0), exchangeRate, types.EthAssetETH)
+		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState, net
 }
