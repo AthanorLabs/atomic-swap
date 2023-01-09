@@ -14,8 +14,8 @@ import (
 )
 
 func TestOffer_MarshalJSON(t *testing.T) {
-	min := apd.New(100, 0)
-	max := apd.New(200, 0)
+	min := apd.New(101, 0)
+	max := apd.New(202, 0)
 	rate := coins.ToExchangeRate(apd.New(15, -1)) // 1.5
 	offer := NewOffer(coins.ProvidesXMR, min, max, rate, EthAssetETH)
 	require.False(t, IsHashZero(offer.ID))
@@ -24,8 +24,8 @@ func TestOffer_MarshalJSON(t *testing.T) {
 		"version": "1.0.0",
 		"offerID": "%s",
 		"provides": "XMR",
-		"minAmount": "100",
-		"maxAmount": "200",
+		"minAmount": "101",
+		"maxAmount": "202",
 		"exchangeRate": "1.5",
 		"ethAsset": "ETH"
 	}`, offer.ID)
@@ -50,8 +50,8 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, coins.ProvidesXMR)
-	assert.Equal(t, offer.MinAmount.String(), "100")
-	assert.Equal(t, offer.MaxAmount.String(), "200")
+	assert.Equal(t, offer.MinAmount.Text('f'), "100")
+	assert.Equal(t, offer.MaxAmount.Text('f'), "200")
 	assert.Equal(t, offer.ExchangeRate.String(), "1.5")
 	assert.Equal(t, "0x0000000000000000000000000000000000000001", ethcommon.Address(offer.EthAsset).Hex())
 }
@@ -72,8 +72,8 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	assert.Equal(t, *CurOfferVersion, offer.Version)
 	assert.Equal(t, idStr, offer.ID.String())
 	assert.Equal(t, offer.Provides, coins.ProvidesXMR)
-	assert.Equal(t, offer.MinAmount.String(), "100")
-	assert.Equal(t, offer.MaxAmount.String(), "200")
+	assert.Equal(t, offer.MinAmount.Text('f'), "100")
+	assert.Equal(t, offer.MaxAmount.Text('f'), "200")
 	assert.Equal(t, offer.ExchangeRate.String(), "1.5")
 	assert.Equal(t, offer.EthAsset, EthAssetETH)
 }
