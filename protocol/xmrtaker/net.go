@@ -28,7 +28,7 @@ func (inst *Instance) Provides() coins.ProvidesCoin {
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
 func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error) {
-	receivedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
+	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types
 		return nil, err
 	}
 
-	state, err := inst.initiate(providedAmount, coins.MoneroToPiconero(receivedAmount),
+	state, err := inst.initiate(providedAmount, coins.MoneroToPiconero(expectedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types
 	return state, nil
 }
 
-func (inst *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount *coins.PiconeroAmount,
+func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
@@ -92,7 +92,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmoun
 		offerID,
 		inst.transferBack,
 		providesAmount,
-		receivedAmount,
+		expectedAmount,
 		exchangeRate,
 		ethAsset,
 	)

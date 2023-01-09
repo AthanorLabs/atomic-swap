@@ -98,7 +98,7 @@ func newSwapStateFromStart(
 	offerID types.Hash,
 	transferBack bool,
 	providedAmount EthereumAssetAmount,
-	receivedAmount *coins.PiconeroAmount,
+	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
@@ -124,7 +124,7 @@ func newSwapStateFromStart(
 		offerID,
 		coins.ProvidesETH,
 		providedAmount.AsStandard(),
-		receivedAmount.AsMonero(),
+		expectedAmount.AsMonero(),
 		exchangeRate,
 		ethAsset,
 		stage,
@@ -315,13 +315,13 @@ func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 	}
 }
 
-// ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
-func (s *swapState) ReceivedAmount() *apd.Decimal {
-	return s.info.ReceivedAmount
+// ExpectedAmount returns the amount received, or expected to be received, at the end of the swap
+func (s *swapState) ExpectedAmount() *apd.Decimal {
+	return s.info.ExpectedAmount
 }
 
-func (s *swapState) receivedAmountInPiconero() *coins.PiconeroAmount {
-	return coins.MoneroToPiconero(s.info.ReceivedAmount)
+func (s *swapState) expectedPiconeroAmount() *coins.PiconeroAmount {
+	return coins.MoneroToPiconero(s.info.ExpectedAmount)
 }
 
 // ID returns the ID of the swap

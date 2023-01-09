@@ -58,7 +58,7 @@ type GetPastRequest struct {
 type GetPastResponse struct {
 	Provided       coins.ProvidesCoin  `json:"provided"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
-	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
+	ReceivedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
 }
@@ -77,7 +77,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 	resp.Provided = info.Provides
 	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ReceivedAmount = info.ReceivedAmount
+	resp.ReceivedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
 	resp.Status = info.Status.String()
 	return nil
@@ -87,7 +87,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 type GetOngoingResponse struct {
 	Provided       coins.ProvidesCoin  `json:"provided"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
-	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
+	ReceivedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
 }
@@ -111,7 +111,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 	resp.Provided = info.Provides
 	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ReceivedAmount = info.ReceivedAmount
+	resp.ReceivedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
 	resp.Status = info.Status.String()
 	return nil

@@ -79,7 +79,7 @@ func (inst *Instance) initiate(
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
-		s.info.ReceivedAmount,
+		s.info.ExpectedAmount,
 		symbol,
 		s.info.ProvidedAmount),
 	)
@@ -130,7 +130,7 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+	expectedAmount, err := pcommon.GetEthereumAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
 		msg.ProvidedAmount,
@@ -140,7 +140,7 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, err
 	}
 
-	state, err := inst.initiate(offer, offerExtra, providedPiconero, receivedAmount)
+	state, err := inst.initiate(offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {
 		return nil, nil, err
 	}

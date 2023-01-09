@@ -29,7 +29,7 @@ type Info struct {
 	ID             types.Hash          `json:"offerID"` // swap offer ID
 	Provides       coins.ProvidesCoin  `json:"provides"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
-	ReceivedAmount *apd.Decimal        `json:"receivedAmount"`
+	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	EthAsset       types.EthAsset      `json:"ethAsset"`
 	Status         Status              `json:"status"`
@@ -43,7 +43,7 @@ type Info struct {
 func NewInfo(
 	id types.Hash,
 	provides coins.ProvidesCoin,
-	providedAmount, receivedAmount *apd.Decimal,
+	providedAmount, expectedAmount *apd.Decimal,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	status Status,
@@ -55,7 +55,7 @@ func NewInfo(
 		ID:                id,
 		Provides:          provides,
 		ProvidedAmount:    providedAmount,
-		ReceivedAmount:    receivedAmount,
+		ExpectedAmount:    expectedAmount,
 		ExchangeRate:      exchangeRate,
 		EthAsset:          ethAsset,
 		Status:            status,

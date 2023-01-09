@@ -152,7 +152,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 		ID:             offer.ID,
 		Provides:       coins.ProvidesXMR,
 		ProvidedAmount: one,
-		ReceivedAmount: one,
+		ExpectedAmount: one,
 		ExchangeRate:   rate,
 		EthAsset:       types.EthAssetETH,
 		Status:         types.XMRLocked,

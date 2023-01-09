@@ -34,7 +34,7 @@ func Test_InfoMarshal(t *testing.T) {
 		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303132",
 		"provides": "XMR",
 		"providedAmount": "1.25",
-		"receivedAmount": "1",
+		"expectedAmount": "1",
 		"exchangeRate": "0.33",
 		"ethAsset": "ETH",
 		"moneroStartHeight": 200,
