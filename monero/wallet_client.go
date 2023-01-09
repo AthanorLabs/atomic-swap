@@ -107,7 +107,7 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	}
 
 	if path.Dir(conf.WalletFilePath) == "." {
-		return nil, errors.New("wallet file can not be in the current working directory")
+		return nil, errors.New("wallet file cannot be in the current working directory")
 	}
 
 	walletExists, err := common.FileExists(conf.WalletFilePath)

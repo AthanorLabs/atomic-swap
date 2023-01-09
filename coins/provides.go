@@ -30,7 +30,7 @@ func (c *ProvidesCoin) MarshalText() ([]byte, error) {
 	case ProvidesXMR, ProvidesETH:
 		return []byte(*c), nil
 	}
-	return nil, fmt.Errorf("can not marshal ProvidesCoin %q", *c)
+	return nil, fmt.Errorf("cannot marshal ProvidesCoin %q", *c)
 }
 
 // UnmarshalText hands off JSON decoding to apd.Decimal

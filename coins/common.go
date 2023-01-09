@@ -9,6 +9,8 @@ const (
 	NumEtherDecimals = 18
 	// NumMoneroDecimals is the number of decimal points needed to represent whole units of piconero in XMR
 	NumMoneroDecimals = 12
+	// MaxExchangeRateDecimals is the number of decimal points we allow in an exchange rate
+	MaxExchangeRateDecimals = 6
 
 	// MaxCoinPrecision is a somewhat arbitrary precision upper bound (2^256 consumes 78 digits)
 	MaxCoinPrecision = 100

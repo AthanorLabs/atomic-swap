@@ -83,10 +83,10 @@ func (o *Offer) validate() error {
 		return errOfferIDNotSet
 	}
 
-	if err := coins.ValidatePositive("minAmount", o.MinAmount); err != nil {
+	if err := coins.ValidatePositive("minAmount", coins.NumMoneroDecimals, o.MinAmount); err != nil {
 		return err
 	}
-	if err := coins.ValidatePositive("maxAmount", o.MaxAmount); err != nil {
+	if err := coins.ValidatePositive("maxAmount", coins.NumMoneroDecimals, o.MaxAmount); err != nil {
 		return err
 	}
 

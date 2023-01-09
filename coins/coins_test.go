@@ -72,7 +72,7 @@ func TestPiconeroAmount_Uint64(t *testing.T) {
 	// Negative values, which we should never have, return an error
 	piconeros.Decimal().Set(apd.New(-1, 0))
 	_, err = piconeros.Uint64()
-	assert.ErrorContains(t, err, "can not convert")
+	assert.ErrorContains(t, err, "cannot convert")
 }
 
 func TestWeiAmount(t *testing.T) {
@@ -202,5 +202,5 @@ func TestJSONMarshal(t *testing.T) {
 	err = json.Unmarshal([]byte(`{ "wei": "-3" }`), tt)
 	require.ErrorIs(t, err, errNegativeWei)
 	err = json.Unmarshal([]byte(`{ "rate": "-0.1" }`), tt)
-	require.ErrorIs(t, err, ErrNegativeRate)
+	require.ErrorContains(t, err, `"exchangeRate" cannot be negative`)
 }

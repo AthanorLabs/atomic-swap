@@ -103,7 +103,10 @@ func (inst *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapS
 		return nil, nil, errOfferIDNotSet
 	}
 
-	if err := coins.ValidatePositive("providedAmount", msg.ProvidedAmount); err != nil {
+	// TODO: If this is not ETH, we need quick/easy access to the number
+	//       of token decimal places. Should it be in the OfferExtra struct?
+	err := coins.ValidatePositive("providedAmount", coins.NumEtherDecimals, msg.ProvidedAmount)
+	if err != nil {
 		return nil, nil, err
 	}
 

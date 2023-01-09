@@ -649,7 +649,7 @@ func (s *swapState) ready() error {
 		return err
 	}
 	if stage != contracts.StagePending {
-		return fmt.Errorf("can not set contract to ready when swap stage is %s", contracts.StageToString(stage))
+		return fmt.Errorf("cannot set contract to ready when swap stage is %s", contracts.StageToString(stage))
 	}
 	_, receipt, err := s.sender.SetReady(s.contractSwap)
 	if err != nil {

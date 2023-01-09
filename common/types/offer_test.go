@@ -146,7 +146,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"-1"`, `"1"`, `"0.1"`),
-			errContains: `"minAmount" can not be negative`,
+			errContains: `"minAmount" cannot be negative`,
 		},
 		// Max Amount checks
 		{
@@ -159,7 +159,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"-1E1"`, `"0.1"`),
-			errContains: `"maxAmount" can not be negative`,
+			errContains: `"maxAmount" cannot be negative`,
 		},
 		// Combo min/max check
 		{
@@ -177,7 +177,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"1"`, `"-0.1"`),
-			errContains: `"exchangeRate" can not be negative`,
+			errContains: `"exchangeRate" cannot be negative`,
 		},
 	}
 	for _, e := range testEntries {

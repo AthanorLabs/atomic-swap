@@ -18,20 +18,25 @@ func TestExchangeRate_ToXMR(t *testing.T) {
 }
 
 func TestExchangeRate_ToXMR_roundDown(t *testing.T) {
-	// XMR has 12 decimal points of accuracy, 1/3 below is represented with 14 decimal points
-	rate := StrToExchangeRate("0.33333333333333") // 9 XMR * 1/3 = 3 ETH
-	ethAmount := StrToDecimal("3")
-	const expectedXMRAmount = "9"
+	rate := StrToExchangeRate("0.333333")
+	ethAmount := StrToDecimal("3.1")
+
+	// 3.1/0.333333 calculated to 13 decimals is 9.3000093000093 (300009 repeats indefinitely)
+	// This calculator goes to 200 decimals: https://www.mathsisfun.com/calculator-precision.html
+	// XMR rounds at 12 decimal places to:
+	const expectedXMRAmount = "9.300009300009"
+
 	xmrAmount, err := rate.ToXMR(ethAmount)
 	require.NoError(t, err)
 	assert.Equal(t, expectedXMRAmount, xmrAmount.String())
 }
 
 func TestExchangeRate_ToXMR_roundUp(t *testing.T) {
-	// XMR has 12 decimal points of accuracy, 2/3 below is represented with 14 decimal points.
-	rate := StrToExchangeRate("0.66666666666666") // 9 XMR * 2/3 = 6 ETH
-	ethAmount := StrToDecimal("6")
-	const expectedXMRAmount = "9"
+	rate := StrToExchangeRate("0.666666")
+	ethAmount := StrToDecimal("6.6")
+	// 6.6/0.666666 to 13 decimal places is 9.9000099000099 (900009 repeats indefinitely)
+	// The 9 in the 12th position goes to zero changing 11th position to 1:
+	const expectedXMRAmount = "9.90000990001" // only 11 decimal places shown as 12th is 0
 	xmrAmount, err := rate.ToXMR(ethAmount)
 	require.NoError(t, err)
 	assert.Equal(t, expectedXMRAmount, xmrAmount.String())

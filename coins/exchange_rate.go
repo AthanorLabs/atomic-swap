@@ -25,13 +25,7 @@ func (r *ExchangeRate) UnmarshalText(b []byte) error {
 	if err != nil {
 		return err
 	}
-	if r.Negative {
-		return ErrNegativeRate
-	}
-	if r.Decimal().IsZero() {
-		return ErrZeroRate
-	}
-	return nil
+	return ValidatePositive("exchangeRate", MaxExchangeRateDecimals, r.Decimal())
 }
 
 // MarshalText hands off JSON encoding to apd.Decimal
@@ -59,6 +53,9 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Assuming the xmrAmount was capped at 12 decimal places and the exchange
+	// rate was capped at 6 decimal places, you can't generate more than 18
+	// decimal places below, so no rounding occurs.
 	if err = roundToDecimalPlace(ethAmt, ethAmt, NumEtherDecimals); err != nil {
 		return nil, err
 	}

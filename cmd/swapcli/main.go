@@ -834,7 +834,7 @@ func providesStrToVal(providesStr string) (coins.ProvidesCoin, error) {
 func readUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
 	s := ctx.String(flagName)
 	if s == "" {
-		return nil, fmt.Errorf("flag --%s can not be empty", flagName)
+		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
 	}
 	bf, _, err := new(apd.Decimal).SetString(s)
 	if err != nil {

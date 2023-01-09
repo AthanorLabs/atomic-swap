@@ -36,11 +36,11 @@ func TestProvidesCoinMarshal(t *testing.T) {
 
 	// We are slightly lenient in what we accept, but string in what we generate
 	_, err = json.Marshal(&M{"xmr"})
-	require.ErrorContains(t, err, "can not marshal")
+	require.ErrorContains(t, err, "cannot marshal")
 	_, err = json.Marshal(&M{"eth"})
-	require.ErrorContains(t, err, "can not marshal")
+	require.ErrorContains(t, err, "cannot marshal")
 	_, err = json.Marshal(&M{""})
-	require.ErrorContains(t, err, "can not marshal")
+	require.ErrorContains(t, err, "cannot marshal")
 }
 
 func TestProvidesCoinUnMarshal(t *testing.T) {

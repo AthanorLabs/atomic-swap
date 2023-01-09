@@ -64,6 +64,9 @@ func (a *PiconeroAmount) MarshalText() ([]byte, error) {
 func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	pnAmt := new(apd.Decimal).Set(xmrAmt)
 	increaseExponent(pnAmt, NumMoneroDecimals)
+	// We do input validation and reject XMR values with more than 12 decimal
+	// places from external sources, so no rounding will happen with those
+	// values below.
 	if err := roundToDecimalPlace(pnAmt, pnAmt, 0); err != nil {
 		panic(err) // shouldn't be possible
 	}
@@ -145,6 +148,9 @@ func ToWeiAmount(wei *apd.Decimal) *WeiAmount {
 func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	weiAmt := new(apd.Decimal).Set(ethAmt)
 	increaseExponent(weiAmt, NumEtherDecimals)
+	// We do input validation on provided amounts and prevent values with
+	// more than 18 decimal places, so no rounding happens with such values
+	// below.
 	if err := roundToDecimalPlace(weiAmt, weiAmt, 0); err != nil {
 		panic(err) // shouldn't be possible
 	}
@@ -153,8 +159,10 @@ func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 
 // BigInt returns the given WeiAmount as a *big.Int
 func (a *WeiAmount) BigInt() *big.Int {
-	// Passing Quantize zero for the exponent set the coefficient to the whole-number
-	// wei value. Round-half-up is used by default.
+	// Passing Quantize(...) zero as the exponent sets the coefficient to a whole-number
+	// wei value. Round-half-up is used by default. Assuming no rounding occurs, the
+	// operation below is the opposite of Reduce(...) which lops off even factors of
+	// 10 from the coefficient, placing them on the exponent.
 	wholeWeiVal := new(apd.Decimal)
 	cond, err := decimalCtx.Quantize(wholeWeiVal, a.Decimal(), 0)
 	if err != nil {
@@ -216,6 +224,8 @@ func NewERC20TokenAmount(amount int64, decimals uint8) *ERC20TokenAmount {
 func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, decimals uint8) *ERC20TokenAmount {
 	adjusted := new(apd.Decimal).Set(amount)
 	increaseExponent(adjusted, decimals)
+	// If we are rejecting token amounts that have too many decimal places on input, rounding
+	// below will never occur.
 	if err := roundToDecimalPlace(adjusted, adjusted, 0); err != nil {
 		panic(err) // this shouldn't be possible
 	}
