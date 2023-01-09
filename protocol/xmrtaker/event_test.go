@@ -2,11 +2,9 @@ package xmrtaker
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/apd/v3"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +14,6 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
@@ -26,15 +23,14 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	backend := newBackend(t)
 	err := backend.XMRClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
-	one := apd.New(1, 0)
-	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(one))
+	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))
 
 	// lock xmr
 	amt := coins.NewPiconeroAmount(1000000000)
 	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, amt.String(), fmt.Sprintf("%d", tResp.Amount))
+	require.Equal(t, amt, tResp.Amount)
 
 	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
@@ -85,25 +81,24 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 }
 
 func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
-	s := newTestSwapState(t)
+	s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
 	// invalid SendKeysMessage should result in an error
-	msg := &net.SendKeysMessage{ProvidedAmount: new(apd.Decimal)}
+	msg := &message.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingKeys))
 
 	// handle valid SendKeysMessage
 	msg = s.SendKeysMessage()
-	msg.ProvidedAmount = apd.New(1, -0)
 	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
 	msg.EthAddress = s.ETHClient().Address().String()
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
 
-	resp := s.Net().(*mockNet).LastSentMessage()
+	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))

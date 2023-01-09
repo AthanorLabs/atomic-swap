@@ -23,25 +23,26 @@ const (
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
+// ShouldAdvertiseFunc is the type for a function that returns whether we should
+// regularly advertise inside the advertisement loop.
+// If it returns false, we don't advertise until the next loop iteration.
+type ShouldAdvertiseFunc = func() bool
+
 type discovery struct {
-	ctx         context.Context
-	dht         *dual.DHT
-	h           libp2phost.Host
-	rd          *libp2prouting.RoutingDiscovery
-	provides    []coins.ProvidesCoin // set to a single item slice of XMR when we make an offer
-	advertiseCh chan struct{}        // signals to advertise now that an XMR offer was made
-	offerAPI    Handler
+	ctx                 context.Context
+	dht                 *dual.DHT
+	h                   libp2phost.Host
+	rd                  *libp2prouting.RoutingDiscovery
+	provides            []coins.ProvidesCoin // set to a single item slice of XMR when we make an offer
+	advertiseCh         chan struct{}        // signals to advertise now that an XMR offer was made
+	shouldAdvertiseFunc ShouldAdvertiseFunc
 }
 
-func (d *discovery) setOfferAPI(offerAPI Handler) {
-	d.offerAPI = offerAPI
+func (d *discovery) setShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
+	d.shouldAdvertiseFunc = fn
 }
 
 func (d *discovery) start() error {
-	if d.offerAPI == nil {
-		return errNilOfferAPI
-	}
-
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
@@ -75,8 +76,9 @@ func (d *discovery) advertiseLoop() {
 			// no longer present in the DHT as a provider.
 			// otherwise, we'll be present, but no offers will be sent when peers
 			// query us.
-			offers := d.offerAPI.GetOffers()
-			if len(offers) == 0 {
+			//
+			// this function is set in net/swapnet/host.go SetHandler().
+			if d.shouldAdvertiseFunc != nil && !d.shouldAdvertiseFunc() {
 				d.provides = nil
 				continue
 			}
@@ -190,7 +192,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 }
 
 func (d *discovery) discover(
-	provides coins.ProvidesCoin,
+	provides string,
 	searchTime time.Duration,
 ) ([]peer.ID, error) {
 	log.Debugf("attempting to find DHT peers that provide [%s] for %vs",
@@ -198,5 +200,5 @@ func (d *discovery) discover(
 		searchTime.Seconds(),
 	)
 
-	return d.findPeers(string(provides), searchTime)
+	return d.findPeers(provides, searchTime)
 }

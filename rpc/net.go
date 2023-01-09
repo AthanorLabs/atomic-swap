@@ -7,14 +7,13 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/net"
-
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const defaultSearchTime = time.Second * 12
@@ -26,8 +25,8 @@ type Net interface {
 	Addresses() []string
 	Advertise()
 	Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
-	Query(who peer.ID) (*net.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error
+	Query(who peer.ID) (*message.QueryResponse, error)
+	Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error
 	CloseProtocolStream(types.Hash)
 }
 

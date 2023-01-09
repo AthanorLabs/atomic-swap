@@ -1,4 +1,4 @@
-package net
+package swapnet
 
 import (
 	"testing"
@@ -17,10 +17,10 @@ func TestHost_Initiate(t *testing.T) {
 	err = hb.Start()
 	require.NoError(t, err)
 
-	err = ha.h.Connect(ha.ctx, hb.addrInfo())
+	err = ha.h.Connect(ha.ctx, hb.h.AddrInfo())
 	require.NoError(t, err)
 
-	err = ha.Initiate(hb.addrInfo(), &SendKeysMessage{}, new(mockSwapState))
+	err = ha.Initiate(hb.h.AddrInfo(), &SendKeysMessage{}, new(mockSwapState))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 500)
 	require.NotNil(t, ha.swaps[testID])
@@ -33,17 +33,17 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 	require.NoError(t, err)
 
 	hbCfg := basicTestConfig(t)
-	hbCfg.Bootnodes = ha.Addresses() // get some test coverage on our bootnode code
+	hbCfg.Bootnodes = ha.h.Addresses() // get some test coverage on our bootnode code
 	hb := newHost(t, hbCfg)
 	err = hb.Start()
 	require.NoError(t, err)
 
 	testID2 := types.Hash{98}
 
-	err = ha.h.Connect(ha.ctx, hb.addrInfo())
+	err = ha.h.Connect(ha.ctx, hb.h.AddrInfo())
 	require.NoError(t, err)
 
-	err = ha.Initiate(hb.addrInfo(), &SendKeysMessage{}, new(mockSwapState))
+	err = ha.Initiate(hb.h.AddrInfo(), &SendKeysMessage{}, new(mockSwapState))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 500)
 	require.NotNil(t, ha.swaps[testID])
@@ -51,7 +51,7 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 
 	hb.handler.(*mockHandler).id = testID2
 
-	err = ha.Initiate(hb.addrInfo(), &SendKeysMessage{}, &mockSwapState{testID2})
+	err = ha.Initiate(hb.h.AddrInfo(), &SendKeysMessage{}, &mockSwapState{testID2})
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 1500)
 	require.NotNil(t, ha.swaps[testID2])
