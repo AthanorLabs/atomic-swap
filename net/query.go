@@ -50,10 +50,10 @@ func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
 		_ = stream.Close()
 	}()
 
-	return h.receiveQueryResponse(stream)
+	return receiveQueryResponse(stream)
 }
 
-func (h *Host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
+func receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
 	msg, err := readStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
