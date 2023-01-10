@@ -122,7 +122,6 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 	}
 
 	if providedAmount.Cmp(offer.MinAmount) < 0 {
-		// TODO: This message will be confusing to the end-user, since they provided ETH, not XMR
 		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
 	}
 

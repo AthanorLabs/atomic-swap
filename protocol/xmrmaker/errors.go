@@ -47,7 +47,7 @@ type errAmountProvidedTooLow struct {
 }
 
 func (e errAmountProvidedTooLow) Error() string {
-	return fmt.Sprintf("%s XMR provided by taker is under offer minimum of %s XMR",
+	return fmt.Sprintf("%s ETH provided by taker is under offer minimum of %s XMR",
 		e.providedAmount.String(),
 		e.minAmount.String(),
 	)
@@ -59,20 +59,20 @@ type errAmountProvidedTooHigh struct {
 }
 
 func (e errAmountProvidedTooHigh) Error() string {
-	return fmt.Sprintf("%s XMR provided by taker is over offer maximum of %s XMR",
+	return fmt.Sprintf("%s ETH provided by taker is over offer maximum of %s XMR",
 		e.providedAmount.String(),
 		e.maxAmount.String(),
 	)
 }
 
 type errUnlockedBalanceTooLow struct {
-	minAmount       *apd.Decimal // TODO: This is confusing. Is it the offer max like the message?
+	maxOfferAmount  *apd.Decimal
 	unlockedBalance *apd.Decimal
 }
 
 func (e errUnlockedBalanceTooLow) Error() string {
 	return fmt.Sprintf("balance %s XMR is too low for maximum offer amount of %s XMR",
-		e.minAmount.String(),
+		e.maxOfferAmount.String(),
 		e.unlockedBalance.String(),
 	)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -228,8 +229,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
 	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
-		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
-			balance.Balance, s.expectedPiconeroAmount())
+		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
+			coins.NewPiconeroAmount(balance.Balance).AsMonero().Text('f'),
+			s.ExpectedAmount().Text('f'))
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before
