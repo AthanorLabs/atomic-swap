@@ -641,7 +641,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
-	fmt.Printf("Receiving: %s %s\n", info.ReceivedAmount, receivedCoin)
+	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 	fmt.Printf("Status: %s\n", info.Status)
 
@@ -663,7 +663,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
-	fmt.Printf("Receiving: %s %s\n", info.ReceivedAmount, receivedCoin)
+	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 	fmt.Printf("Status: %s\n", info.Status)
 
