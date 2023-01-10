@@ -21,6 +21,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
+const (
+	mainnetChainID     = 1
+	stagenetChainID    = 5
+	developmentChainID = 1337
+)
+
 var log = logging.Logger("extethclient")
 
 // EthClient provides management of a private key and other convenience functions layered
@@ -64,7 +70,12 @@ type ethClient struct {
 
 // NewEthClient creates and returns our extended ethereum client/wallet. The passed context
 // is only used for creation.
-func NewEthClient(env common.Environment, ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
+func NewEthClient(
+	ctx context.Context,
+	env common.Environment,
+	ec *ethclient.Client,
+	privKey *ecdsa.PrivateKey,
+) (EthClient, error) {
 	err := validateEthClient(ctx, env, ec)
 	if err != nil {
 		return nil, err
@@ -245,16 +256,19 @@ func validateEthClient(ctx context.Context, env common.Environment, ec *ethclien
 
 	switch env {
 	case common.Mainnet:
-		if chainID != big.NewInt(1) {
-			return fmt.Errorf("Environment detected as mainnet which has expected chain ID of 1, but Ethereum chain ID is %s", chainID)
+		if chainID.Cmp(big.NewInt(mainnetChainID)) != 0 {
+			return fmt.Errorf("Environment detected as mainnet which has expected chain ID of 1,"+
+				"but Ethereum chain ID is %s", chainID)
 		}
 	case common.Stagenet:
-		if chainID != big.NewInt(5) {
-			return fmt.Errorf("Environment detected as stagenet (goerli) which has expected chain ID of 5, but Ethereum chain ID is %s", chainID)
+		if chainID.Cmp(big.NewInt(stagenetChainID)) != 0 {
+			return fmt.Errorf("Environment detected as stagenet (goerli) which has expected chain ID of 5,"+
+				"but Ethereum chain ID is %s", chainID)
 		}
 	case common.Development:
-		if chainID != big.NewInt(1337) {
-			return fmt.Errorf("Environment detected as development which has expected chain ID of 1337, but Ethereum chain ID is %s", chainID)
+		if chainID.Cmp(big.NewInt(developmentChainID)) != 0 {
+			return fmt.Errorf("Environment detected as development which has expected chain ID of 1337,"+
+				"but Ethereum chain ID is %s", chainID)
 		}
 	default:
 		panic("unhandled environment type")

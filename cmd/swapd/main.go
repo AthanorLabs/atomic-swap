@@ -658,7 +658,7 @@ func newBackend(
 		return nil, err
 	}
 
-	extendedEC, err := extethclient.NewEthClient(env, ctx, ec, ethPrivKey)
+	extendedEC, err := extethclient.NewEthClient(ctx, env, ec, ethPrivKey)
 	if err != nil {
 		return nil, err
 	}
