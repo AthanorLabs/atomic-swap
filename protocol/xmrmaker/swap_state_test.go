@@ -384,7 +384,7 @@ func TestSwapState_Exit_Success(t *testing.T) {
 func TestSwapState_Exit_Refunded(t *testing.T) {
 	b, s, db := newTestSwapStateAndDB(t)
 
-	b.net.(*MockHost).EXPECT().Advertise()
+	b.net.(*MockP2pnetHost).EXPECT().Advertise([]string{"XMR"})
 
 	min := coins.StrToDecimal("0.1")
 	max := coins.StrToDecimal("0.2")

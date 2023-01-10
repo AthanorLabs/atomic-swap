@@ -120,7 +120,7 @@ func newTestInstanceAndDBAndNet(t *testing.T) (*Instance, *offers.MockDatabase, 
 	db.EXPECT().GetAllOffers()
 	db.EXPECT().DeleteOffer(gomock.Any()).Return(nil).AnyTimes()
 
-	host := NewMockHost(ctrl)
+	host := NewMockP2pnetHost(ctrl)
 
 	cfg := &Config{
 		Backend:        b,

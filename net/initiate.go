@@ -1,4 +1,4 @@
-package swapnet
+package net
 
 import (
 	"context"
@@ -12,7 +12,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 const (
@@ -51,7 +52,7 @@ func (h *Host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		"opened protocol stream, peer=", who.ID,
 	)
 
-	if err := net.WriteStreamMessage(stream, msg, who.ID); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, msg, who.ID); err != nil {
 		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}
@@ -72,7 +73,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	msg, err := net.ReadStreamMessage(stream, maxMessageSize)
+	msg, err := readStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			log.Debugf("Peer closed stream-id=%s, protocol exited", stream.ID())
@@ -84,7 +85,10 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	log.Debug(
-		"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
+		"received message from peer, peer=",
+		stream.Conn().RemotePeer(),
+		" type=",
+		message.TypeToString(msg.Type()),
 	)
 
 	im, ok := msg.(*SendKeysMessage)
@@ -102,7 +106,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	if err := net.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send response to peer: err=%s", err)
 		_ = s.Exit()
 		_ = stream.Close()
@@ -135,7 +139,7 @@ func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 	}()
 
 	for {
-		msg, err := net.ReadStreamMessage(stream, maxMessageSize)
+		msg, err := readStreamMessage(stream, maxMessageSize)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				log.Debug("Peer closed stream with us, protocol exited")
@@ -147,7 +151,7 @@ func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 		}
 
 		log.Debugf("received protocol=%s message from peer=%s type=%s",
-			stream.Protocol(), stream.Conn().RemotePeer(), msg.Type())
+			stream.Protocol(), stream.Conn().RemotePeer(), message.TypeToString(msg.Type()))
 
 		err = s.HandleProtocolMessage(msg)
 		if err != nil {
