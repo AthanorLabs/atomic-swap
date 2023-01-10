@@ -233,7 +233,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 
 func lockXMRFunds(
 	t *testing.T,
-	ctx context.Context,
+	ctx context.Context, //nolint:revive
 	wc monero.WalletClient,
 	destAddr mcrypto.Address,
 	amount *coins.PiconeroAmount,
