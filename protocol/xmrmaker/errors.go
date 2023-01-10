@@ -72,7 +72,7 @@ type errUnlockedBalanceTooLow struct {
 
 func (e errUnlockedBalanceTooLow) Error() string {
 	return fmt.Sprintf("balance %s XMR is too low for maximum offer amount of %s XMR",
-		e.maxOfferAmount.String(),
 		e.unlockedBalance.String(),
+		e.maxOfferAmount.String(),
 	)
 }
