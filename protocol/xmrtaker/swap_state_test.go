@@ -115,8 +115,8 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	b, net := newBackendAndNet(t)
-	providedAmt := coins.EtherToWei(coins.StrToDecimal("0.1"))
-	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("0.1"))
+	providedAmt := coins.EtherToWei(coins.StrToDecimal("0.0001"))
+	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("0.0001"))
 	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
 		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
@@ -231,6 +231,27 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, contracts.StageCompleted, stage)
 }
 
+func lockXMRFunds(
+	t *testing.T,
+	ctx context.Context,
+	wc monero.WalletClient,
+	destAddr mcrypto.Address,
+	amount *coins.PiconeroAmount,
+) string {
+	monero.MineMinXMRBalance(t, wc, amount)
+	transResp, err := wc.Transfer(destAddr, 0, amount)
+	require.NoError(t, err)
+	transfer, err := wc.WaitForReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              ctx,
+		TxID:             transResp.TxHash,
+		DestAddr:         destAddr,
+		NumConfirmations: monero.MinSpendConfirmations,
+		AccountIdx:       0,
+	})
+	require.NoError(t, err)
+	return transfer.TxID
+}
+
 func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s := newTestSwapState(t)
 	defer s.cancel()
@@ -246,10 +267,11 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
+	xmrAddr := kp.Address(common.Development)
 
 	msg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
+		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
 	}
 
 	err = s.HandleProtocolMessage(msg)
@@ -275,10 +297,11 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
+	xmrAddr := kp.Address(common.Development)
 
 	msg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
+		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
 	}
 
 	err = s.HandleProtocolMessage(msg)
