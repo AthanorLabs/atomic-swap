@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
 
 	logging "github.com/ipfs/go-log"
@@ -80,7 +82,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 func (m *Manager) AddOffer(
 	offer *types.Offer,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommission *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

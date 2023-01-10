@@ -3,7 +3,9 @@ package xmrmaker
 import (
 	"math/big"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -15,18 +17,18 @@ import (
 // EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthereumAssetAmount interface {
 	BigInt() *big.Int
-	AsStandard() float64
+	AsStandard() *apd.Decimal
 }
 
 // Provides returns types.ProvidesXMR
-func (inst *Instance) Provides() types.ProvidesCoin {
-	return types.ProvidesXMR
+func (inst *Instance) Provides() coins.ProvidesCoin {
+	return coins.ProvidesXMR
 }
 
 func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
-	providesAmount common.PiconeroAmount,
+	providesAmount *coins.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
 	if inst.swapStates[offer.ID] != nil {
@@ -38,10 +40,12 @@ func (inst *Instance) initiate(
 		return nil, err
 	}
 
-	// check user's balance and that they actually have what they will provide
-	if balance.UnlockedBalance <= uint64(providesAmount) {
+	// check that the user's monero balance is sufficient for their max swap amount (strictly
+	// greater check, since they need to cover chain fees).
+	unlockedBal := coins.NewPiconeroAmount(balance.UnlockedBalance)
+	if unlockedBal.Decimal().Cmp(providesAmount.Decimal()) <= 0 {
 		return nil, errBalanceTooLow{
-			unlockedBalance: common.PiconeroAmount(balance.UnlockedBalance).AsMonero(),
+			unlockedBalance: unlockedBal.AsMonero(),
 			providedAmount:  providesAmount.AsMonero(),
 		}
 	}
@@ -76,7 +80,7 @@ func (inst *Instance) initiate(
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
-		s.info.ReceivedAmount,
+		s.info.ExpectedAmount,
 		symbol,
 		s.info.ProvidedAmount),
 	)
@@ -89,7 +93,7 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 
-	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
+	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %s**",
 		msg.OfferID,
 		msg.ProvidedAmount,
 	)
@@ -100,26 +104,36 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 		return nil, nil, errOfferIDNotSet
 	}
 
+	// TODO: If this is not ETH, we need quick/easy access to the number
+	//       of token decimal places. Should it be in the OfferExtra struct?
+	err := coins.ValidatePositive("providedAmount", coins.NumEtherDecimals, msg.ProvidedAmount)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	if providedAmount < offer.MinAmount {
+	if providedAmount.Cmp(offer.MinAmount) < 0 {
 		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
 	}
 
-	if providedAmount > offer.MaxAmount {
+	if providedAmount.Cmp(offer.MaxAmount) > 0 {
 		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
 	}
 
-	providedPicoXMR := common.MoneroToPiconero(providedAmount)
+	providedPiconero := coins.MoneroToPiconero(providedAmount)
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+	expectedAmount, err := pcommon.GetEthereumAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
 		msg.ProvidedAmount,
@@ -129,7 +143,7 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 		return nil, nil, err
 	}
 
-	state, err := inst.initiate(offer, offerExtra, providedPicoXMR, receivedAmount)
+	state, err := inst.initiate(offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {
 		return nil, nil, err
 	}

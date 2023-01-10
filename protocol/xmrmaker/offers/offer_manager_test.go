@@ -3,9 +3,11 @@ package offers
 import (
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -25,10 +27,16 @@ func Test_Manager(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < numAdd; i++ {
-		offer := types.NewOffer(types.ProvidesXMR, float64(i), float64(i), types.ExchangeRate(i),
-			types.EthAssetETH)
+		iDecimal := apd.New(int64(i), 0)
+		offer := types.NewOffer(
+			coins.ProvidesXMR,
+			iDecimal,
+			iDecimal,
+			coins.ToExchangeRate(iDecimal),
+			types.EthAssetETH,
+		)
 		db.EXPECT().PutOffer(offer)
-		offerExtra, err := mgr.AddOffer(offer, "", 0)
+		offerExtra, err := mgr.AddOffer(offer, "", nil)
 		require.NoError(t, err)
 		require.NotNil(t, offerExtra)
 	}

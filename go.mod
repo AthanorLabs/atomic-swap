@@ -12,6 +12,7 @@ require (
 	github.com/athanorlabs/go-relayer v0.0.4
 	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
+	github.com/cockroachdb/apd/v3 v3.1.2
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/fatih/color v1.13.0

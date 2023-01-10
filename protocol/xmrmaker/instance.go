@@ -6,6 +6,7 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -61,7 +62,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	if om.NumOffers() > 0 {
 		// this is blocking if the network service hasn't started yet
-		go cfg.Network.Advertise([]string{string(types.ProvidesXMR)})
+		go cfg.Network.Advertise([]string{string(coins.ProvidesXMR)})
 	}
 
 	inst := &Instance{
@@ -89,7 +90,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	}
 
 	for _, s := range swaps {
-		if s.Provides != types.ProvidesXMR {
+		if s.Provides != coins.ProvidesXMR {
 			continue
 		}
 

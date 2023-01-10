@@ -21,6 +21,7 @@ import (
 	monerodaemon "github.com/MarinX/monerorpc/daemon"
 	"github.com/MarinX/monerorpc/wallet"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
@@ -41,7 +42,7 @@ type WalletClient interface {
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
 	PrimaryWalletAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
-	Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error)
+	Transfer(to mcrypto.Address, accountIdx uint64, amount *coins.PiconeroAmount) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
 	GenerateFromKeys(
@@ -106,7 +107,7 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	}
 
 	if path.Dir(conf.WalletFilePath) == "." {
-		return nil, errors.New("wallet file can not be in the current working directory")
+		return nil, errors.New("wallet file cannot be in the current working directory")
 	}
 
 	walletExists, err := common.FileExists(conf.WalletFilePath)
@@ -219,10 +220,18 @@ func (c *walletClient) WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Trans
 	return transfer, nil
 }
 
-func (c *walletClient) Transfer(to mcrypto.Address, accountIdx, amount uint64) (*wallet.TransferResponse, error) {
+func (c *walletClient) Transfer(
+	to mcrypto.Address,
+	accountIdx uint64,
+	amount *coins.PiconeroAmount,
+) (*wallet.TransferResponse, error) {
+	amt, err := amount.Uint64()
+	if err != nil {
+		return nil, err
+	}
 	return c.wRPC.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
-			Amount:  amount,
+			Amount:  amt,
 			Address: string(to),
 		}},
 		AccountIndex: accountIdx,

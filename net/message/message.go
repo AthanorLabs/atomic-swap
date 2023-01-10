@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -105,14 +106,14 @@ func (m *QueryResponse) Type() byte {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            types.Hash
-	ProvidedAmount     float64
-	PublicSpendKey     string
-	PublicViewKey      string
-	PrivateViewKey     string
-	DLEqProof          string
-	Secp256k1PublicKey string
-	EthAddress         string
+	OfferID            types.Hash   `json:"offerID"`
+	ProvidedAmount     *apd.Decimal `json:"providedAmount"`
+	PublicSpendKey     string       `json:"publicSpendKey"`
+	PublicViewKey      string       `json:"publicViewKey"`
+	PrivateViewKey     string       `json:"privateViewKey"`
+	DLEqProof          string       `json:"dleqProof"`
+	Secp256k1PublicKey string       `json:"secp256k1PublicKey"`
+	EthAddress         string       `json:"ethAddress"`
 }
 
 // String ...

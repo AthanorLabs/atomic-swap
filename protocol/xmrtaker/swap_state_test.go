@@ -9,12 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -113,8 +115,11 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	b, net := newBackendAndNet(t)
+	providedAmt := coins.EtherToWei(coins.StrToDecimal("0.0001"))
+	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("0.0001"))
+	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAssetETH)
+		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState, net
 }
@@ -142,8 +147,10 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
+	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
+	zeroPiconeros := coins.NewPiconeroAmount(0)
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
-		common.NewWeiAmount(1), common.PiconeroAmount(0), 1, types.EthAsset(addr))
+		coins.IntToWei(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }
@@ -158,6 +165,7 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
 		EthAddress:         "0x",
+		ProvidedAmount:     apd.New(1, 0),
 	}
 
 	return msg, keysAndProof
@@ -169,7 +177,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 
 	msg := &message.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingKeys))
+	require.True(t, errors.Is(err, errMissingProvidedAmount))
 
 	msg, xmrmakerKeysAndProof := newTestXMRMakerSendKeysMessage(t)
 
@@ -223,6 +231,27 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, contracts.StageCompleted, stage)
 }
 
+func lockXMRFunds(
+	t *testing.T,
+	ctx context.Context, //nolint:revive
+	wc monero.WalletClient,
+	destAddr mcrypto.Address,
+	amount *coins.PiconeroAmount,
+) string {
+	monero.MineMinXMRBalance(t, wc, amount)
+	transResp, err := wc.Transfer(destAddr, 0, amount)
+	require.NoError(t, err)
+	transfer, err := wc.WaitForReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              ctx,
+		TxID:             transResp.TxHash,
+		DestAddr:         destAddr,
+		NumConfirmations: monero.MinSpendConfirmations,
+		AccountIdx:       0,
+	})
+	require.NoError(t, err)
+	return transfer.TxID
+}
+
 func TestSwapState_NotifyXMRLock(t *testing.T) {
 	s := newTestSwapState(t)
 	defer s.cancel()
@@ -238,10 +267,11 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
+	xmrAddr := kp.Address(common.Development)
 
 	msg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
+		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
 	}
 
 	err = s.HandleProtocolMessage(msg)
@@ -267,10 +297,11 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NoError(t, err)
 
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
+	xmrAddr := kp.Address(common.Development)
 
 	msg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
+		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
 	}
 
 	err = s.HandleProtocolMessage(msg)

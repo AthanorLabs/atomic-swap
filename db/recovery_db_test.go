@@ -7,12 +7,13 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/ChainSafe/chaindb"
+	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-
-	"github.com/ChainSafe/chaindb"
-	"github.com/stretchr/testify/require"
 )
 
 func newTestRecoveryDB(t *testing.T) *RecoveryDB {
@@ -80,9 +81,10 @@ func TestRecoveryDB_SwapRelayerInfo(t *testing.T) {
 	rdb := newTestRecoveryDB(t)
 	offerID := types.Hash{5, 6, 7, 8}
 
+	commission := coins.StrToDecimal("0.0135")
 	info := &types.OfferExtra{
 		RelayerEndpoint:   "endpoint",
-		RelayerCommission: 0.0135,
+		RelayerCommission: commission,
 	}
 
 	err := rdb.PutSwapRelayerInfo(offerID, info)
@@ -162,9 +164,10 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 		},
 		ContractAddress: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
 	}
+
 	info := &types.OfferExtra{
 		RelayerEndpoint:   "endpoint",
-		RelayerCommission: 0.0135,
+		RelayerCommission: coins.StrToDecimal("0.0135"),
 	}
 
 	err = rdb.PutContractSwapInfo(offerID, si)

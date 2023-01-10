@@ -103,9 +103,9 @@ curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
           {
             "offerID": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
             "provides": "XMR",
-            "minAmount": 0.1,
-            "maxAmount": 1,
-            "exchangeRate": 0.5,
+            "minAmount": "0.1",
+            "maxAmount": "1",
+            "exchangeRate": "0.5",
             "ethAsset": "ETH"
           }
         ]
@@ -115,10 +115,10 @@ curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
         "offers": [
           {
             "offerID": "0x25188edd7573f43fca5760f0aacdc1a358171a8fc6bdf11876fa937f77fc583c",
-            "minAmount": 0.1,
-            "maxAmount": 1,
+            "minAmount": "0.1",
+            "maxAmount": "1",
             "provides": "XMR",
-            "exchangeRate": 0.49,
+            "exchangeRate": "0.49",
             "ethAsset": "ETH"
           }
         ]
@@ -156,9 +156,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
         "version": "0.1.0",
         "offerID": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
         "provides": "XMR",
-        "minAmount": 0.5,
-        "maxAmount": 1,
-        "exchangeRate": 0.1,
+        "minAmount": "0.5",
+        "maxAmount": "1",
+        "exchangeRate": "0.1",
         "ethAsset": "ETH"
       }
     ]
@@ -191,7 +191,7 @@ Example:
 ```bash
 curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
 '{"jsonrpc":"2.0","id":"0","method":"net_makeOffer",
-"params":{"minAmount":1, "maxAmount":10, "exchangeRate": 0.1}}' \
+"params":{"minAmount":"1", "maxAmount":"10", "exchangeRate": "0.1"}}' \
 | jq
 ```
 ```json
@@ -228,7 +228,7 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
   "params":{
     "peerID":"12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
     "offerID":"0x9549685d15cd9a136111db755e5440b4c95e266ba39dc0c84834714d185dc6f0",
-    "providesAmount": 0.3
+    "providesAmount": "0.3"
   }
 }'
 ```
@@ -259,7 +259,7 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 '{"jsonrpc":"2.0","id":"0","method":"net_takeOfferSync","params":{
   "peerID": "12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
   "offerID":"0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
-  "providesAmount": 0.03
+  "providesAmount": "0.03"
   }
 }'
 ```
@@ -404,9 +404,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
   "jsonrpc": "2.0",
   "result": {
     "provided": "ETH",
-    "providedAmount": 0.01,
-    "receivedAmount": 1,
-    "exchangeRate": 0.01,
+    "providedAmount": "0.01",
+    "receivedAmount": "1",
+    "exchangeRate": "0.01",
     "status": "ETHLocked"
   },
   "id": "0"
@@ -470,9 +470,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
   "jsonrpc": "2.0",
   "result": {
     "provided": "ETH",
-    "providedAmount": 0.01,
-    "receivedAmount": 1,
-    "exchangeRate": 0.01,
+    "providedAmount": "0.01",
+    "receivedAmount": "1",
+    "exchangeRate": "0.01",
     "status": "Success"
   },
   "id": "0"
@@ -561,7 +561,7 @@ Example (including notifications when swap is taken):
 wscat -c ws://localhost:5000/ws
 Connected (press CTRL+C to quit)
 
-> {"jsonrpc":"2.0", "method":"net_makeOfferAndSubscribe", "params": {"minAmount": 0.1, "maxAmount": 1, "exchangeRate": 0.05}, "id": 0}
+> {"jsonrpc":"2.0", "method":"net_makeOfferAndSubscribe", "params": {"minAmount": "0.1", "maxAmount": "1", "exchangeRate": "0.05"}, "id": 0}
 
 < {"jsonrpc":"2.0","result":{"peerID":"12D3KooWNseb7Ei8Xx1aBKjSFoZ9PGfdxN9MwQxfSRxsBAyA8op4","offerID":"0x64f49193dc5e8d70893331498b76a156e33ed8cdf46a1f901c7fab59a827e840"},"error":null,"id":null}
 < {"jsonrpc":"2.0","result":{"status":"KeysExchanged"},"error":null,"id":null}
@@ -591,7 +591,7 @@ Example:
 wscat -c ws://localhost:5001/ws
 Connected (press CTRL+C to quit)
 
-> {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"peerID": "12D3KooWNseb7Ei8Xx1aBKjSFoZ9PGfdxN9MwQxfSRxsBAyA8op4", "offerID": "0x64f49193dc5e8d70893331498b76a156e33ed8cdf46a1f901c7fab59a827e840", "providesAmount": 0.025}, "id": 0}
+> {"jsonrpc":"2.0", "method":"net_takeOfferAndSubscribe", "params": {"peerID": "12D3KooWNseb7Ei8Xx1aBKjSFoZ9PGfdxN9MwQxfSRxsBAyA8op4", "offerID": "0x64f49193dc5e8d70893331498b76a156e33ed8cdf46a1f901c7fab59a827e840", "providesAmount": "0.025"}, "id": 0}
 
 < {"jsonrpc":"2.0","result":{"status":"ExpectingKeys"},"error":null,"id":null}
 < {"jsonrpc":"2.0","result":{"status":"ETHLocked"},"error":null,"id":null}

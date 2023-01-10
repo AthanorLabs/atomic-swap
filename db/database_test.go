@@ -4,11 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/protocol/swap"
-
 	"github.com/ChainSafe/chaindb"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 func TestDatabase_OfferTable(t *testing.T) {
@@ -22,28 +23,19 @@ func TestDatabase_OfferTable(t *testing.T) {
 
 	// put swap to ensure iterator over offers is ok
 	infoA := &swap.Info{
-		ID: types.Hash{0x1},
+		ID:       types.Hash{0x1},
+		Provides: coins.ProvidesXMR,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
-	offerA := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	one := coins.StrToDecimal("1")
+	oneEx := coins.ToExchangeRate(one)
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
-	offerB := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	offerB := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerB)
 	require.NoError(t, err)
 
@@ -68,26 +60,25 @@ func TestDatabase_SwapTable(t *testing.T) {
 	db, err := NewDatabase(cfg)
 	require.NoError(t, err)
 
-	offerA := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	one := coins.StrToDecimal("1")
+	oneEx := coins.ToExchangeRate(one)
+
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
 	infoA := &swap.Info{
-		ID:      types.Hash{0x1},
-		Version: swap.CurInfoVersion,
+		ID:       types.Hash{0x1},
+		Version:  swap.CurInfoVersion,
+		Provides: coins.ProvidesXMR,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		ID:      types.Hash{0x2},
-		Version: swap.CurInfoVersion,
+		ID:       types.Hash{0x2},
+		Version:  swap.CurInfoVersion,
+		Provides: coins.ProvidesXMR,
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
@@ -112,14 +103,16 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 
 	id := types.Hash{0x1}
 	infoA := &swap.Info{
-		ID: id,
+		ID:       id,
+		Provides: coins.ProvidesXMR,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		ID:     id,
-		Status: types.CompletedSuccess,
+		ID:       id,
+		Status:   types.CompletedSuccess,
+		Provides: coins.ProvidesXMR,
 	}
 
 	err = db.PutSwap(infoB)

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
@@ -54,11 +56,11 @@ type GetPastRequest struct {
 
 // GetPastResponse ...
 type GetPastResponse struct {
-	Provided       types.ProvidesCoin `json:"provided"`
-	ProvidedAmount float64            `json:"providedAmount"`
-	ReceivedAmount float64            `json:"receivedAmount"`
-	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
-	Status         string             `json:"status"`
+	Provided       coins.ProvidesCoin  `json:"provided"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
+	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
+	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
+	Status         string              `json:"status"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -75,7 +77,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 	resp.Provided = info.Provides
 	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ReceivedAmount = info.ReceivedAmount
+	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
 	resp.Status = info.Status.String()
 	return nil
@@ -83,11 +85,11 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // GetOngoingResponse ...
 type GetOngoingResponse struct {
-	Provided       types.ProvidesCoin `json:"provided"`
-	ProvidedAmount float64            `json:"providedAmount"`
-	ReceivedAmount float64            `json:"receivedAmount"`
-	ExchangeRate   types.ExchangeRate `json:"exchangeRate"`
-	Status         string             `json:"status"`
+	Provided       coins.ProvidesCoin  `json:"provided"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
+	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
+	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
+	Status         string              `json:"status"`
 }
 
 // GetOngoingRequest ...
@@ -109,7 +111,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 	resp.Provided = info.Provides
 	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ReceivedAmount = info.ReceivedAmount
+	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
 	resp.Status = info.Status.String()
 	return nil
@@ -138,7 +140,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 		return err
 	}
 
-	if info.Provides != types.ProvidesETH {
+	if info.Provides != coins.ProvidesETH {
 		return errCannotRefund
 	}
 
@@ -226,9 +228,9 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 	var ss common.SwapState
 	switch info.Provides {
-	case types.ProvidesETH:
+	case coins.ProvidesETH:
 		ss = s.xmrtaker.GetOngoingSwapState(req.OfferID)
-	case types.ProvidesXMR:
+	case coins.ProvidesXMR:
 		ss = s.xmrmaker.GetOngoingSwapState(req.OfferID)
 	}
 

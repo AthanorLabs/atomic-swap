@@ -5,14 +5,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
-
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const defaultSearchTime = time.Second * 12
@@ -22,7 +23,7 @@ type Net interface {
 	PeerID() peer.ID
 	ConnectedPeers() []string
 	Addresses() []string
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*message.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error
 	CloseProtocolStream(types.Hash)
@@ -142,7 +143,10 @@ func (s *NetService) TakeOffer(
 	return nil
 }
 
-func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount float64) (<-chan types.Status, error) {
+func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
+	<-chan types.Status,
+	error,
+) {
 	queryResp, err := s.net.Query(who)
 	if err != nil {
 		return nil, err
@@ -243,7 +247,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOf
 	}
 
 	offer := types.NewOffer(
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		req.MinAmount,
 		req.MaxAmount,
 		req.ExchangeRate,

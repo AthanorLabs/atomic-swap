@@ -7,14 +7,15 @@ import (
 	"sync"
 	"time"
 
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	logging "github.com/ipfs/go-log"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 const (
@@ -132,7 +133,7 @@ func (h *Host) Advertise(strs []string) {
 
 // Discover searches the DHT for peers that advertise that they provide the given coin..
 // It searches for up to `searchTime` duration of time.
-func (h *Host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
+func (h *Host) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return h.h.Discover(string(provides), searchTime)
 }
 

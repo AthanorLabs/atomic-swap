@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -23,8 +26,8 @@ import (
 
 var (
 	_                         = logging.SetLogLevel("xmrmaker", "debug")
-	desiredAmount             = common.EtherToWei(0.33)
-	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
+	desiredAmount             = coins.EtherToWei(apd.New(33, -2)) // "0.33"
+	defaultTimeoutDuration, _ = time.ParseDuration("86400s")      // 1 day = 60s * 60min * 24hr
 )
 
 func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
@@ -32,10 +35,10 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 
 	swapState, err := newSwapStateFromStart(
 		xmrmaker.backend,
-		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
+		types.NewOffer("", new(apd.Decimal), new(apd.Decimal), new(coins.ExchangeRate), types.EthAssetETH),
 		&types.OfferExtra{},
 		xmrmaker.offerManager,
-		common.PiconeroAmount(33),
+		coins.NewPiconeroAmount(33),
 		desiredAmount,
 	)
 	require.NoError(t, err)
@@ -47,10 +50,16 @@ func newTestSwapStateAndNet(t *testing.T) (*Instance, *swapState, *mockNet) {
 
 	swapState, err := newSwapStateFromStart(
 		xmrmaker.backend,
-		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
+		types.NewOffer(
+			coins.ProvidesXMR,
+			coins.StrToDecimal("0.1"),
+			coins.StrToDecimal("1"),
+			coins.StrToExchangeRate("0.1"),
+			types.EthAssetETH,
+		),
 		&types.OfferExtra{},
 		xmrmaker.offerManager,
-		common.PiconeroAmount(33),
+		coins.MoneroToPiconero(coins.StrToDecimal("0.1")),
 		desiredAmount,
 	)
 	require.NoError(t, err)
@@ -256,7 +265,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -299,7 +308,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's secret
@@ -329,7 +338,9 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
-	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
+	providedPiconeros, err := coins.MoneroToPiconero(s.info.ProvidedAmount).Uint64()
+	require.NoError(t, err)
+	require.Equal(t, providedPiconeros, balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
 
@@ -356,7 +367,10 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 func TestSwapState_Exit_Success(t *testing.T) {
 	b, s := newTestSwapState(t)
 	s.nextExpectedEvent = EventNoneType
-	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("0.2")
+	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
+	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
@@ -372,9 +386,12 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 
 	b.net.(*MockP2pnetHost).EXPECT().Advertise([]string{"XMR"})
 
-	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("0.2")
+	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
+	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	b.MakeOffer(s.offer, "", 0)
+	b.MakeOffer(s.offer, "", nil)
 
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()

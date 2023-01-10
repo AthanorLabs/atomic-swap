@@ -14,8 +14,10 @@ import (
 	"strings"
 
 	"github.com/ChainSafe/chaindb"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -29,9 +31,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
-	p2pnet "github.com/athanorlabs/go-p2p-net"
-
-	logging "github.com/ipfs/go-log"
 )
 
 const (

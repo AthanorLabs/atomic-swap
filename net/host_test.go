@@ -5,12 +5,12 @@ import (
 	"path"
 	"testing"
 
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 func init() {

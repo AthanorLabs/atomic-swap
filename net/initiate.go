@@ -7,13 +7,13 @@ import (
 	"io"
 	"time"
 
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	p2pnet "github.com/athanorlabs/go-p2p-net"
 )
 
 const (

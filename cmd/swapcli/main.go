@@ -7,11 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -81,8 +83,8 @@ var (
 					&cli.StringFlag{
 						Name: flagProvides,
 						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
-							types.ProvidesXMR, types.ProvidesETH),
-						Value: string(types.ProvidesXMR),
+							coins.ProvidesXMR, coins.ProvidesETH),
+						Value: string(coins.ProvidesXMR),
 					},
 					&cli.Uint64Flag{
 						Name:  flagSearchTime,
@@ -115,8 +117,8 @@ var (
 					&cli.StringFlag{
 						Name: flagProvides,
 						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
-							types.ProvidesXMR, types.ProvidesETH),
-						Value: string(types.ProvidesXMR),
+							coins.ProvidesXMR, coins.ProvidesETH),
+						Value: string(coins.ProvidesXMR),
 					},
 					&cli.Uint64Flag{
 						Name:  flagSearchTime,
@@ -132,17 +134,17 @@ var (
 				Usage:   "Make a swap offer; currently monero holders must be the makers",
 				Action:  runMake,
 				Flags: []cli.Flag{
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagMinAmount,
 						Usage:    "Minimum amount to be swapped, in XMR",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagMaxAmount,
 						Usage:    "Maximum amount to be swapped, in XMR",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagExchangeRate,
 						Usage:    "Desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
 						Required: true,
@@ -159,7 +161,7 @@ var (
 						Name:  flagRelayerEndpoint,
 						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name: flagRelayerCommission,
 						Usage: "Commission to pay the relayer in percentage of the swap value:" +
 							" eg. --relayer-commission=0.01 for 1% commission",
@@ -183,7 +185,7 @@ var (
 						Usage:    "ID of the offer being taken",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     flagProvidesAmount,
 						Usage:    "Amount of coin to send in the swap",
 						Required: true,
@@ -379,12 +381,12 @@ func runBalances(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
-	fmt.Printf("Balance: %s\n", common.FmtFloat((*common.WeiAmount)(balances.WeiBalance).AsEther()))
+	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEther().Text('f'))
 	fmt.Println()
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
-	fmt.Printf("Balance: %s\n", common.FmtFloat(common.PiconeroAmount(balances.PiconeroBalance).AsMonero()))
-	fmt.Printf("Unlocked balance: %s\n",
-		common.FmtFloat(common.PiconeroAmount(balances.PiconeroUnlockedBalance).AsMonero()))
+	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMonero().Text('f'))
+	fmt.Printf("Unlocked XMR balance: %s\n",
+		balances.PiconeroUnlockedBalance.AsMonero().Text('f'))
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
 	return nil
 }
@@ -424,7 +426,10 @@ func runQuery(ctx *cli.Context) error {
 	}
 
 	for i, o := range res.Offers {
-		printOffer(o, i, "")
+		err = printOffer(o, i, "")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -451,7 +456,10 @@ func runQueryAll(ctx *cli.Context) error {
 		fmt.Printf("  Peer ID: %v\n", po.PeerID)
 		fmt.Printf("  Offers:\n")
 		for j, o := range po.Offers {
-			printOffer(o, j, "    ")
+			err = printOffer(o, j, "    ")
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -459,22 +467,30 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
-	min := ctx.Float64(flagMinAmount)
-	if min == 0 {
-		return errNoMinAmount
+	min, err := readUnsignedDecimalFlag(ctx, flagMinAmount)
+	if err != nil {
+		return err
 	}
 
-	max := ctx.Float64(flagMaxAmount)
-	if max == 0 {
-		return errNoMaxAmount
+	max, err := readUnsignedDecimalFlag(ctx, flagMaxAmount)
+	if err != nil {
+		return err
 	}
 
-	exchangeRate := ctx.Float64(flagExchangeRate)
-	if exchangeRate == 0 {
-		return errNoExchangeRate
+	exchangeRateDec, err := readUnsignedDecimalFlag(ctx, flagExchangeRate)
+	if err != nil {
+		return err
 	}
-	otherMin := min * exchangeRate
-	otherMax := max * exchangeRate
+	exchangeRate := coins.ToExchangeRate(exchangeRateDec)
+	// TODO: How to handle this if the other asset is not ETH?
+	otherMin, err := exchangeRate.ToETH(min)
+	if err != nil {
+		return err
+	}
+	otherMax, err := exchangeRate.ToETH(max)
+	if err != nil {
+		return err
+	}
 
 	ethAssetStr := ctx.String("eth-asset")
 	ethAsset := types.EthAssetETH
@@ -485,33 +501,28 @@ func runMake(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
 
 	relayerEndpoint := ctx.String(flagRelayerEndpoint)
-	relayerCommission := ctx.Float64(flagRelayerCommission)
-	if relayerCommission < 0 {
-		return errCannotHaveNegativeCommission
-	}
-
-	if relayerCommission > 1 {
-		return errCannotHaveGreaterThan100Commission
-	}
-
-	if relayerEndpoint != "" && relayerCommission == 0 {
-		return errMustSetRelayerCommission
-	}
-
-	if relayerCommission != 0 && relayerEndpoint == "" {
+	relayerCommission := new(apd.Decimal)
+	if relayerEndpoint != "" {
+		if relayerCommission, err = readUnsignedDecimalFlag(ctx, flagRelayerCommission); err != nil {
+			return err
+		}
+	} else if ctx.IsSet(flagRelayerCommission) {
 		return errMustSetRelayerEndpoint
+	}
+	if relayerCommission.Cmp(apd.New(1, 0)) > 0 {
+		return errCannotHaveGreaterThan100Commission
 	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
 		fmt.Printf("\tPeer ID:   %s\n", offerResp.PeerID)
-		fmt.Printf("\tTaker Min: %s %s\n", common.FmtFloat(otherMin), ethAsset)
-		fmt.Printf("\tTaker Max: %s %s\n", common.FmtFloat(otherMax), ethAsset)
+		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), ethAsset)
+		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
 	}
 
 	if ctx.Bool(flagSubscribe) {
-		wsc, err := newWSClient(ctx)
+		wsc, err := newWSClient(ctx) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -520,7 +531,7 @@ func runMake(ctx *cli.Context) error {
 		resp, statusCh, err := wsc.MakeOfferAndSubscribe(
 			min,
 			max,
-			types.ExchangeRate(exchangeRate),
+			exchangeRate,
 			ethAsset,
 			relayerEndpoint,
 			relayerCommission,
@@ -560,9 +571,9 @@ func runTake(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	providesAmount := ctx.Float64(flagProvidesAmount)
-	if providesAmount == 0 {
-		return errNoProvidesAmount
+	providesAmount, err := readUnsignedDecimalFlag(ctx, flagProvidesAmount)
+	if err != nil {
+		return err
 	}
 
 	if ctx.Bool(flagSubscribe) {
@@ -624,13 +635,16 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provided: %s\nProvidedAmount: %v\nReceivedAmount: %v\nExchangeRate: %v\nStatus: %s\n",
-		info.Provided,
-		info.ProvidedAmount,
-		info.ReceivedAmount,
-		info.ExchangeRate,
-		info.Status,
-	)
+	receivedCoin := "ETH"
+	if info.Provided == coins.ProvidesETH {
+		receivedCoin = "XMR"
+	}
+
+	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
+	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+	fmt.Printf("Status: %s\n", info.Status)
+
 	return nil
 }
 
@@ -643,13 +657,16 @@ func runGetPastSwap(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Provided: %s\n ProvidedAmount: %v\n ReceivedAmount: %v\n ExchangeRate: %v\n Status: %s\n",
-		info.Provided,
-		info.ProvidedAmount,
-		info.ReceivedAmount,
-		info.ExchangeRate,
-		info.Status,
-	)
+	receivedCoin := "ETH"
+	if info.Provided == coins.ProvidesETH {
+		receivedCoin = "XMR"
+	}
+
+	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
+	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+	fmt.Printf("Status: %s\n", info.Status)
+
 	return nil
 }
 
@@ -723,7 +740,10 @@ func runGetOffers(ctx *cli.Context) error {
 	fmt.Println("Peer ID (self):", resp.PeerID)
 	fmt.Println("Offers:")
 	for i, offer := range resp.Offers {
-		printOffer(offer, i, "  ")
+		err = printOffer(offer, i, "  ")
+		if err != nil {
+			return err
+		}
 	}
 	if len(resp.Offers) == 0 {
 		fmt.Println("[no offers]")
@@ -772,20 +792,34 @@ func runGetSwapTimeout(ctx *cli.Context) error {
 	return nil
 }
 
-func printOffer(o *types.Offer, index int, indent string) {
+func printOffer(o *types.Offer, index int, indent string) error {
 	if index > 0 {
 		fmt.Printf("%s---\n", indent)
 	}
+
+	xRate := o.ExchangeRate
+	minETH, err := xRate.ToETH(o.MinAmount)
+	if err != nil {
+		return err
+	}
+	maxETH, err := xRate.ToETH(o.MaxAmount)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
 	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
-	fmt.Printf("%sMin Amount: %s\n", indent, common.FmtFloat(o.MinAmount))
-	fmt.Printf("%sMax Amount: %s\n", indent, common.FmtFloat(o.MaxAmount))
-	fmt.Printf("%sExchange Rate: %s\n", indent, common.FmtFloat(float64(o.ExchangeRate)))
-	fmt.Printf("%sETH Asset: %s\n", indent, o.EthAsset)
+	fmt.Printf("%sTakes: %s\n", indent, o.EthAsset)
+	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, o.EthAsset, o.Provides)
+	fmt.Printf("%sMaker Min: %s %s\n", indent, o.MinAmount.Text('f'), o.Provides)
+	fmt.Printf("%sMaker Max: %s %s\n", indent, o.MaxAmount.Text('f'), o.Provides)
+	fmt.Printf("%sTaker Min: %s %s\n", indent, minETH.Text('f'), o.EthAsset)
+	fmt.Printf("%sTaker Max: %s %s\n", indent, maxETH.Text('f'), o.EthAsset)
+	return nil
 }
 
-func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
-	var provides types.ProvidesCoin
+func providesStrToVal(providesStr string) (coins.ProvidesCoin, error) {
+	var provides coins.ProvidesCoin
 
 	// The provides flag value defaults to XMR, but the user can still specify the empty
 	// string explicitly, which they can do to search the empty DHT namespace for all
@@ -794,5 +828,24 @@ func providesStrToVal(providesStr string) (types.ProvidesCoin, error) {
 	if providesStr == "" {
 		return provides, nil
 	}
-	return types.NewProvidesCoin(providesStr)
+	return coins.NewProvidesCoin(providesStr)
+}
+
+func readUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
+	s := ctx.String(flagName)
+	if s == "" {
+		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
+	}
+	bf, _, err := new(apd.Decimal).SetString(s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
+	}
+	if bf.IsZero() {
+		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
+	}
+	if bf.Negative {
+		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
+	}
+
+	return bf, nil
 }
