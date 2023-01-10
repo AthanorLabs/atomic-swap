@@ -66,6 +66,7 @@ func newSwapManager(t *testing.T) pswap.Manager {
 func newTestBackend(t *testing.T) backend.Backend {
 	pk := tests.GetMakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
+	env := common.Development
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
@@ -86,7 +87,7 @@ func newTestBackend(t *testing.T) backend.Backend {
 	rdb.EXPECT().PutSwapRelayerInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{

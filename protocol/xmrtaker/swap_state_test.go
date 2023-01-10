@@ -67,6 +67,7 @@ func newBackend(t *testing.T) backend.Backend {
 	pk := tests.GetTakerTestKey(t)
 	ec, chainID := tests.NewEthClient(t)
 	ctx := context.Background()
+	env := common.Development
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
@@ -86,7 +87,7 @@ func newBackend(t *testing.T) backend.Backend {
 	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutXMRMakerSwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
+	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
 	require.NoError(t, err)
 
 	bcfg := &backend.Config{
