@@ -22,19 +22,6 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 	return nil
 }
 
-func (c *Client) GetSwapTimeout() (uint64, error) {
-	const (
-		method = "personal_getSwapTimeout"
-	)
-
-	var swapTimeout uint64
-	if err := c.Post(method, nil, swapTimeout); err != nil {
-		return 0, err
-	}
-
-	return swapTimeout, nil
-}
-
 // Balances calls personal_balances.
 func (c *Client) Balances() (*rpctypes.BalancesResponse, error) {
 	const (

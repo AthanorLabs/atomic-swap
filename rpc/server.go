@@ -156,7 +156,6 @@ type Protocol interface {
 type ProtocolBackend interface {
 	Env() common.Environment
 	SetSwapTimeout(timeout time.Duration)
-	SwapTimeout() time.Duration
 	SwapManager() swap.Manager
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)

@@ -36,12 +36,6 @@ func (s *PersonalService) SetSwapTimeout(_ *http.Request, req *SetSwapTimeoutReq
 	return nil
 }
 
-// GetSwapTimeout ...
-func (s *PersonalService) GetSwapTimeout(_ *http.Request, _ *interface{}, resp uint64) error {
-	resp = uint64(s.pb.SwapTimeout().Seconds())
-	return nil
-}
-
 // SetGasPriceRequest ...
 type SetGasPriceRequest struct {
 	GasPrice uint64
