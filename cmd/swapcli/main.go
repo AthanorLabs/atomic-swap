@@ -777,7 +777,7 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Set timeout duration to %ds\n", duration)
+	fmt.Printf("New Swap Timeout: %d seconds\n", duration)
 	return nil
 }
 
@@ -788,7 +788,7 @@ func runGetSwapTimeout(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Swap Timeout Duration: %d seconds\n", resp.Timeout)
+	fmt.Printf("Swap Timeout: %d seconds\n", resp.Timeout)
 	return nil
 }
 
