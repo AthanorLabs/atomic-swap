@@ -605,6 +605,14 @@ func newBackend(
 		}
 	}
 
+	extendedEC, err := extethclient.NewEthClient(ctx, env, ec, ethPrivKey)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
+	extendedEC.SetGasPrice(uint64(c.Uint(flagGasPrice)))
+	extendedEC.SetGasLimit(uint64(c.Uint(flagGasLimit)))
+
 	deploy := c.Bool(flagDeploy)
 	if deploy {
 		if c.IsSet(flagContractAddress) {
@@ -692,14 +700,6 @@ func newBackend(
 	if err != nil {
 		return nil, err
 	}
-
-	extendedEC, err := extethclient.NewEthClient(ctx, env, ec, ethPrivKey)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
-	extendedEC.SetGasPrice(uint64(c.Uint(flagGasPrice)))
-	extendedEC.SetGasLimit(uint64(c.Uint(flagGasLimit)))
 
 	bcfg := &backend.Config{
 		Ctx:                 ctx,
