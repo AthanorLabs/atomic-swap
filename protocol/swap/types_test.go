@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -16,10 +18,10 @@ func Test_InfoMarshal(t *testing.T) {
 	offerID := ethcommon.HexToHash(offerIDStr)
 	info := NewInfo(
 		offerID,
-		types.ProvidesXMR,
-		1.25,
-		1,
-		0.33,
+		coins.ProvidesXMR,
+		apd.New(125, -2), // 1.25
+		apd.New(1, 0),
+		coins.ToExchangeRate(apd.New(33, -2)), // 0.33
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		200,
@@ -28,12 +30,12 @@ func Test_InfoMarshal(t *testing.T) {
 	infoBytes, err := json.Marshal(info)
 	require.NoError(t, err)
 	expectedJSON := `{
-		"version": "0.1.0",
-		"offerId": "0x0102030405060708091011121314151617181920212223242526272829303132",
+		"version": "0.2.0",
+		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303132",
 		"provides": "XMR",
-		"providedAmount": 1.25,
-		"receivedAmount": 1,
-		"exchangeRate": 0.33,
+		"providedAmount": "1.25",
+		"expectedAmount": "1",
+		"exchangeRate": "0.33",
 		"ethAsset": "ETH",
 		"moneroStartHeight": 200,
 		"status": 5

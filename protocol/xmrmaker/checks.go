@@ -3,11 +3,14 @@ package xmrmaker
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -139,8 +142,6 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("contract refund key is not expected: got 0x%x, expected 0x%x", event.RefundKey, skTheirs)
 	}
 
-	// TODO: check timeouts (#161)
-
 	// check asset of created swap
 	if types.EthAsset(s.contractSwap.Asset) != types.EthAsset(event.Asset) {
 		return fmt.Errorf("swap asset is not expected: got %v, expected %v", event.Asset, s.contractSwap.Asset)
@@ -152,22 +153,55 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("swap value and event value don't match: got %v, expected %v", event.Value, s.contractSwap.Value)
 	}
 
-	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+	expectedAmount, err := pcommon.GetEthereumAssetAmount(
 		s.ctx,
 		s.ETHClient(),
-		s.info.ReceivedAmount,
+		s.info.ExpectedAmount,
 		types.EthAsset(s.contractSwap.Asset),
 	)
 	if err != nil {
 		return err
 	}
 
-	if s.contractSwap.Value.Cmp(receivedAmount.BigInt()) != 0 {
+	if s.contractSwap.Value.Cmp(expectedAmount.BigInt()) != 0 {
 		return fmt.Errorf("swap value is not expected: got %v, expected %v",
 			s.contractSwap.Value,
-			receivedAmount.BigInt(),
+			expectedAmount.BigInt(),
 		)
 	}
 
 	return nil
+}
+
+// checkAndSetTimeouts checks that the timeouts set by the counterparty when initiating the swap
+// are not too short or too long.
+// we expect the timeout to be of a certain length (1 hour for mainnet/stagenet), and allow a 3 minute
+// variation between now and the expected time until the first timeout t0, to allow for block confirmations.
+// the time between t0 and t1 should always be the exact length we expect.
+func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
+	s.setTimeouts(t0, t1)
+
+	// we ignore the timeout for development, as unit tests and integration tests
+	// often set different timeouts.
+	if s.Backend.Env() == common.Development {
+		return nil
+	}
+
+	expectedTimeout := common.SwapTimeoutFromEnv(s.Backend.Env())
+	allowableTimeDiff := expectedTimeout / 20
+
+	if s.t1.Sub(s.t0) != expectedTimeout {
+		return errInvalidT1
+	}
+
+	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
+		return errInvalidT0
+	}
+
+	return nil
+}
+
+func (s *swapState) setTimeouts(t0, t1 *big.Int) {
+	s.t0 = time.Unix(t0.Int64(), 0)
+	s.t1 = time.Unix(t1.Int64(), 0)
 }

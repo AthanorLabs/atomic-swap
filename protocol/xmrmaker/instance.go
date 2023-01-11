@@ -6,10 +6,10 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -21,13 +21,18 @@ var (
 	log = logging.Logger("xmrmaker")
 )
 
+// Host contains required network functionality.
+type Host interface {
+	Advertise([]string)
+}
+
 // Instance implements the functionality that will be needed by a user who owns XMR
 // and wishes to swap for ETH.
 type Instance struct {
 	backend backend.Backend
 	dataDir string
 
-	net net.Host
+	net Host
 
 	walletFile, walletPassword string
 
@@ -44,7 +49,7 @@ type Config struct {
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool
-	Network                    net.Host
+	Network                    Host
 }
 
 // NewInstance returns a new *xmrmaker.Instance.
@@ -57,7 +62,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	if om.NumOffers() > 0 {
 		// this is blocking if the network service hasn't started yet
-		go cfg.Network.Advertise()
+		go cfg.Network.Advertise([]string{string(coins.ProvidesXMR)})
 	}
 
 	inst := &Instance{
@@ -85,7 +90,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	}
 
 	for _, s := range swaps {
-		if s.Provides != types.ProvidesXMR {
+		if s.Provides != coins.ProvidesXMR {
 			continue
 		}
 

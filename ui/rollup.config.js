@@ -1,6 +1,7 @@
 import svelte from 'rollup-plugin-svelte'
 import commonjs from '@rollup/plugin-commonjs'
 import resolve from '@rollup/plugin-node-resolve'
+import replace from 'rollup-plugin-replace';
 import livereload from 'rollup-plugin-livereload'
 import { terser } from 'rollup-plugin-terser'
 import sveltePreprocess from 'svelte-preprocess'
@@ -71,6 +72,10 @@ export default {
     typescript({
       sourceMap: !production,
       inlineSources: !production,
+    }),
+    replace({
+      exclude: 'node_modules/**',
+      'process.env.SWAPD_PORT': process.env.SWAPD_PORT,
     }),
 
     // In dev mode, call `npm run start` once

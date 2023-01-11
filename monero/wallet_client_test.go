@@ -6,24 +6,35 @@ import (
 	"path"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
 var moneroWalletRPCPath = path.Join("..", "monero-bin", "monero-wallet-rpc")
 
+func init() {
+	_ = logging.SetLogLevel("monero", "debug")
+}
+
 func TestClient_Transfer(t *testing.T) {
-	amount := common.MoneroToPiconero(10) // 1k monero
+	amount := coins.MoneroToPiconero(apd.New(10, 0))
+	amountPlusFees := coins.MoneroToPiconero(coins.StrToDecimal("10.01"))
 
 	cXMRMaker := CreateWalletClient(t)
-	MineMinXMRBalance(t, cXMRMaker, amount+common.MoneroToPiconero(0.1)) // add a little extra for fees
+	MineMinXMRBalance(t, cXMRMaker, amountPlusFees)
 
 	balance := GetBalance(t, cXMRMaker)
 	t.Logf("Bob's initial balance: bal=%d unlocked=%d blocks-to-unlock=%d",
 		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock)
-	require.Greater(t, balance.UnlockedBalance, uint64(amount))
+
+	amountU64, err := amount.Uint64()
+	require.NoError(t, err)
+	require.Greater(t, balance.UnlockedBalance, amountU64)
 
 	kpA, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
@@ -35,10 +46,11 @@ func TestClient_Transfer(t *testing.T) {
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	// Transfer from Bob's account to the Alice+Bob swap account
-	transResp, err := cXMRMaker.Transfer(abAddress, 0, uint64(amount))
+	transResp, err := cXMRMaker.Transfer(abAddress, 0, amount)
 	require.NoError(t, err)
-	t.Logf("Bob sent %f (+fee %f) XMR to A+B address with TX ID %s",
-		common.PiconeroAmount(transResp.Amount).AsMonero(), common.PiconeroAmount(transResp.Fee).AsMonero(),
+	t.Logf("Bob sent %s (+fee %s) XMR to A+B address with TX ID %s",
+		coins.NewPiconeroAmount(transResp.Amount).AsMonero(),
+		coins.NewPiconeroAmount(transResp.Fee).AsMonero(),
 		transResp.TxHash)
 	require.NoError(t, err)
 	transfer, err := cXMRMaker.WaitForReceipt(&WaitForReceiptRequest{
@@ -83,7 +95,7 @@ func TestClient_Transfer(t *testing.T) {
 		balance.Balance, balance.UnlockedBalance, balance.BlocksToUnlock, height)
 	require.Zero(t, balance.BlocksToUnlock)
 	require.Equal(t, balance.UnlockedBalance, balance.Balance)
-	require.Equal(t, balance.UnlockedBalance, uint64(amount))
+	require.Equal(t, balance.UnlockedBalance, amountU64)
 
 	// At this point Alice has received the key from Bob to create an A+B spend wallet.
 	// She'll now sweep the funds from the A+B spend wallet into her primary wallet.
@@ -95,7 +107,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	balance = GetBalance(t, cXMRTaker)
 	// Verify that the spend wallet, like the view-only wallet, has the exact amount expected in it
-	require.Equal(t, balance.UnlockedBalance, uint64(amount))
+	require.Equal(t, balance.UnlockedBalance, amountU64)
 
 	// Alice transfers from A+B spend wallet to her primary wallet's address
 	sweepResp, err := cXMRTaker.SweepAll(alicePrimaryAddr, 0)
@@ -108,7 +120,7 @@ func TestClient_Transfer(t *testing.T) {
 
 	t.Logf("Sweep of A+B wallet sent %d with fees %d to Alice's primary wallet",
 		sweepAmount, sweepFee)
-	require.Equal(t, uint64(amount), sweepAmount+sweepFee)
+	require.Equal(t, amountU64, sweepAmount+sweepFee)
 
 	transfer, err = cXMRTaker.WaitForReceipt(&WaitForReceiptRequest{
 		Ctx:              context.Background(),
@@ -244,45 +256,58 @@ func Test_getMoneroWalletRPCBin(t *testing.T) {
 	require.Equal(t, "monero-bin/monero-wallet-rpc", walletRPCPath)
 }
 
-func Test_validateMonerodConfig_devSuccess(t *testing.T) {
-	err := validateMonerodConfig(common.Development, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+func Test_validateMonerodConfigs_dev(t *testing.T) {
+	env := common.Development
+	node, err := findWorkingNode(env, common.ConfigDefaultsForEnv(env).MoneroNodes)
 	require.NoError(t, err)
+	require.NotNil(t, node)
 }
 
-func Test_validateMonerodConfig_stagenetSuccess(t *testing.T) {
-	host := "node.sethforprivacy.com"
-	err := validateMonerodConfig(common.Stagenet, host, 38089)
+func Test_validateMonerodConfigs_stagenet(t *testing.T) {
+	env := common.Stagenet
+	node, err := findWorkingNode(env, common.ConfigDefaultsForEnv(env).MoneroNodes)
 	require.NoError(t, err)
+	require.NotNil(t, node)
 }
 
-func Test_validateMonerodConfig_mainnetSuccess(t *testing.T) {
-	host := "node.sethforprivacy.com"
-	err := validateMonerodConfig(common.Mainnet, host, 18089)
+func Test_validateMonerodConfigs_mainnet(t *testing.T) {
+	env := common.Mainnet
+	node, err := findWorkingNode(env, common.ConfigDefaultsForEnv(env).MoneroNodes)
 	require.NoError(t, err)
+	require.NotNil(t, node)
 }
 
 func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
-	err := validateMonerodConfig(common.Mainnet, "127.0.0.1", common.DefaultMoneroDaemonDevPort)
+	node := &common.MoneroNode{
+		Host: "127.0.0.1",
+		Port: common.DefaultMoneroDaemonDevPort,
+	}
+	err := validateMonerodNode(common.Mainnet, node)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "is not a mainnet node")
 }
 
 func Test_validateMonerodConfig_invalidPort(t *testing.T) {
-	nonUsedPort, err := getFreePort()
+	nonUsedPort, err := getFreeTCPPort()
 	require.NoError(t, err)
-	err = validateMonerodConfig(common.Development, "127.0.0.1", nonUsedPort)
+	node := &common.MoneroNode{
+		Host: "127.0.0.1",
+		Port: nonUsedPort,
+	}
+	err = validateMonerodNode(common.Development, node)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connection refused")
 }
 
 func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
-	amount := common.MoneroToPiconero(10) // 1k monero
+	const amount = 10
+	minBal := coins.MoneroToPiconero(coins.StrToDecimal("10.01")) // add a little extra for fees
 	destAddr := mcrypto.Address(blockRewardAddress)
 
 	c := CreateWalletClient(t)
-	MineMinXMRBalance(t, c, amount+common.MoneroToPiconero(0.1)) // add a little extra for fees
+	MineMinXMRBalance(t, c, minBal)
 
-	transResp, err := c.Transfer(destAddr, 0, uint64(amount))
+	transResp, err := c.Transfer(destAddr, 0, coins.NewPiconeroAmount(amount))
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

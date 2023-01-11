@@ -1,20 +1,20 @@
 package rpcclient
 
 import (
-	"github.com/athanorlabs/atomic-swap/rpc"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
 // Addresses calls net_addresses.
-func (c *Client) Addresses() ([]string, error) {
+func (c *Client) Addresses() (*rpctypes.AddressesResponse, error) {
 	const (
 		method = "net_addresses"
 	)
 
-	res := &rpc.AddressesResponse{}
+	res := &rpctypes.AddressesResponse{}
 
 	if err := c.Post(method, nil, res); err != nil {
 		return nil, err
 	}
 
-	return res.Addrs, nil
+	return res, nil
 }

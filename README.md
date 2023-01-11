@@ -26,10 +26,6 @@ To try the swap on Stagenet/Goerli, follow the instructions [here](./docs/stagen
 
 Please see the [developer docs](docs/developing.md).
 
-### Recovery module
-
-In case the swap process crashes during a swap, you can recover your funds with the recovery module. Please see the instructions [here](./docs/recovery.md).
-
 ### RPC API
 
 The swap process comes with a HTTP JSON-RPC API as well as a Websockets API. You can find the documentation [here](./docs/rpc.md).
@@ -38,6 +34,12 @@ The swap process comes with a HTTP JSON-RPC API as well as a Websockets API. You
 
 If you'd like to contribute, feel free to fork the repo and make a pull request. Please make sure the CI is passing - you can run `make build`, `make lint`, and `make test` to make sure the checks pass locally.
 
+## Contact
+ 
+- [Matrix room](https://matrix.to/#/#ethxmrswap:matrix.org)
+
 ## Donations
 
-The work on this project is currently funded via a [Monero CCS Proposal](https://ccs.getmonero.org/proposals/noot-eth-xmr-atomic-swap.html) If you would like help fund this project, feel free to contribute to a follow-up CCS proposal when it's ready for funding. In the meantime, check out other [CCS proposals ready for funding](https://ccs.getmonero.org/funding-required/).
+The work on this project has been funded previously by community grants. It is currently not funded; if you'd like to donate, you can do so at the following address:
+- XMR `8AYdE4Tzq3rQYh7QNHfHz8HqcgT9kcTcHMcRHL1LhVtqYwah27zwPYGdesBgK5PATvGBAd4BC1t2NfrqKQqDguybQrC1tZb`
+- ETH `0x39D3b8cc9D08fD83360dDaCFe054b7D6e7f2cA08`

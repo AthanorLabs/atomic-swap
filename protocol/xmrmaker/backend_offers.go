@@ -1,9 +1,9 @@
 package xmrmaker
 
 import (
-	"fmt"
+	"github.com/cockroachdb/apd/v3"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -11,7 +11,7 @@ import (
 func (b *Instance) MakeOffer(
 	o *types.Offer,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommissionRate *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	b.backend.XMRClient().Lock()
 	defer b.backend.XMRClient().Unlock()
@@ -22,17 +22,17 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	unlockedBalance := common.PiconeroAmount(balance.UnlockedBalance)
-	if unlockedBalance < common.MoneroToPiconero(o.MaximumAmount) {
-		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaximumAmount}
+	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
+	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
+		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
 	}
 
-	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommission)
+	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommissionRate)
 	if err != nil {
 		return nil, err
 	}
 
-	b.net.Advertise()
+	b.net.Advertise([]string{string(coins.ProvidesXMR)})
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }
@@ -44,8 +44,8 @@ func (b *Instance) GetOffers() []*types.Offer {
 
 // ClearOffers clears all offers.
 // If the offer list is empty, it clears all offers.
-func (b *Instance) ClearOffers(ids []string) error {
-	l := len(ids)
+func (b *Instance) ClearOffers(offerIDs []types.Hash) error {
+	l := len(offerIDs)
 	if l == 0 {
 		err := b.offerManager.ClearAllOffers()
 		if err != nil {
@@ -53,14 +53,6 @@ func (b *Instance) ClearOffers(ids []string) error {
 		}
 	}
 
-	idHashes := make([]types.Hash, l)
-	for i, idStr := range ids {
-		id, err := types.HexToHash(idStr)
-		if err != nil {
-			return fmt.Errorf("invalid offer id %s: %w", id, err)
-		}
-		idHashes[i] = id
-	}
-	b.offerManager.ClearOfferIDs(idHashes)
+	b.offerManager.ClearOfferIDs(offerIDs)
 	return nil
 }

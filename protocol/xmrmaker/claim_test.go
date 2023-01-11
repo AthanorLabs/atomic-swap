@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -18,7 +19,7 @@ import (
 	"github.com/athanorlabs/go-relayer/relayer"
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
-	//"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -28,7 +29,7 @@ import (
 
 var (
 	defaultTestTimeoutDuration = big.NewInt(60 * 5)
-	relayerCommission          = float64(0.01)
+	relayerCommission, _, _    = apd.NewFromString("0.01")
 )
 
 // runRelayer starts the relayer and returns the endpoint URL
@@ -252,15 +253,18 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 }
 
 func TestCalculateRelayerCommissionValue(t *testing.T) {
-	swapValueF := big.NewFloat(0).Mul(big.NewFloat(4.567), numEtherUnitsFloat)
-	swapValue, _ := swapValueF.Int(nil)
-
-	relayerCommission := float64(0.01398)
-
-	expectedF := big.NewFloat(0).Mul(big.NewFloat(0.06384666), numEtherUnitsFloat)
-	expected, _ := expectedF.Int(nil)
-
-	val, err := calculateRelayerCommissionValue(swapValue, relayerCommission)
+	swapValueEther, _, err := apd.NewFromString("4.567")
 	require.NoError(t, err)
-	require.Equal(t, expected, val)
+
+	swapValueWei := coins.EtherToWei(swapValueEther).BigInt()
+	require.Equal(t, "4567000000000000000", swapValueWei.Text(10))
+
+	commissionRate, _, err := apd.NewFromString("0.01398")
+	require.NoError(t, err)
+
+	expectedCommission := "0.06384666"
+
+	val, err := calculateRelayerCommission(swapValueWei, commissionRate)
+	require.NoError(t, err)
+	require.Equal(t, expectedCommission, coins.NewWeiAmount(val).AsEther().Text('f'))
 }

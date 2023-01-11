@@ -14,7 +14,7 @@ type mPoint ed25519.Point
 // MarshalText returns the 64-symbol hex representation of the 32-byte k in little endian.
 func (s *mScalar) MarshalText() ([]byte, error) {
 	if s == nil {
-		return nil, errors.New("can not marshal uninitialized scalar")
+		return nil, errors.New("cannot marshal uninitialized scalar")
 	}
 	sBytes := (*ed25519.Scalar)(s).Bytes()
 	return []byte(hex.EncodeToString(sBytes)), nil

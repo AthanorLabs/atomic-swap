@@ -1,12 +1,16 @@
 package tests
 
 import (
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 const (
 	defaultRelayerEndpoint = "http://127.0.0.1:7799"
-	relayerCommission      = float64(0.01)
+)
+
+var (
+	relayerCommission = coins.StrToDecimal("0.01")
 )
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {

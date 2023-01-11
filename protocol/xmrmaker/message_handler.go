@@ -7,12 +7,12 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
@@ -20,7 +20,7 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) error {
+func (s *swapState) HandleProtocolMessage(msg message.Message) error {
 	if s == nil {
 		return errNilSwapState
 	}
@@ -87,7 +87,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
-func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Message, error) {
+func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (message.Message, error) {
 	if msg.Address == "" {
 		return nil, errMissingAddress
 	}
@@ -139,10 +139,12 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 		return nil, err
 	}
 
-	// TODO: check these (in checkContract) (#161)
-	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	err = s.checkAndSetTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	if err != nil {
+		return nil, err
+	}
 
-	notifyXMRLocked, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	notifyXMRLocked, err := s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
@@ -196,7 +198,7 @@ func (s *swapState) handleT0Expired() {
 	}
 }
 
-func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
+func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
 	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
 		return errMissingKeys
 	}

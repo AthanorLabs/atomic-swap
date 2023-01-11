@@ -37,7 +37,7 @@ create-eth-keys() {
 }
 
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
-ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
+ALICE_MULTIADDR=/ip4/127.0.0.1/udp/9933/quic-v1/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 LOG_LEVEL=debug
 
@@ -144,7 +144,7 @@ start-daemons() {
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
-		--rpc-port 5003 \
+		--rpc-port 5002 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
 		"--contract-address=${CONTRACT_ADDR}"
 
@@ -172,9 +172,9 @@ KEEP_TEST_DATA="${OK}" stop-daemons
 # Cleanup test files if we succeeded
 if [[ "${OK}" -eq 0 ]]; then
 	rm -f "${CHARLIE_ETH_KEY}"
-	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,info-*.json,monero-wallet-rpc.log}
+	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,monero-wallet-rpc.log}
 	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{net,eth}.key
-	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore}
+	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore,db}
 	rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
 	remove-test-data-dir
 fi

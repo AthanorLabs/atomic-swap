@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 )
@@ -13,14 +15,14 @@ import (
 // EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthereumAssetAmount interface {
 	BigInt() *big.Int
-	AsStandard() float64
+	AsStandard() *apd.Decimal
 }
 
 // GetEthereumAssetAmount returns an EthereumAssetAmount (ie WeiAmount or ERC20TokenAmount)
 func GetEthereumAssetAmount(
 	ctx context.Context,
 	ec extethclient.EthClient,
-	amt float64,
+	amt *apd.Decimal,
 	asset types.EthAsset,
 ) (EthereumAssetAmount, error) {
 	if asset != types.EthAssetETH {
@@ -29,8 +31,8 @@ func GetEthereumAssetAmount(
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return common.NewERC20TokenAmountFromDecimals(amt, int(decimals)), nil
+		return coins.NewERC20TokenAmountFromDecimals(amt, decimals), nil
 	}
 
-	return common.EtherToWei(amt), nil
+	return coins.EtherToWei(amt), nil
 }
