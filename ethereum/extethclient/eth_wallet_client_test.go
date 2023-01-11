@@ -9,17 +9,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_validateEthClient_devSuccess(t *testing.T) {
+func Test_validateChainID_devSuccess(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx := context.Background()
-	err := validateEthClient(ctx, common.Development, ec)
+	chainID, _ := ec.ChainID(ctx)
+	err := validateChainID(common.Development, chainID)
 	require.NoError(t, err)
 }
 
-func Test_validateEthClient_misMatchedenv(t *testing.T) {
+func Test_validateChainID_mismatchedenv(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx := context.Background()
-	err := validateEthClient(ctx, common.Mainnet, ec)
+	chainID, _ := ec.ChainID(ctx)
+	err := validateChainID(common.Mainnet, chainID)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "expected chain ID of 1")
 }

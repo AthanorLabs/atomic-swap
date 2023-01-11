@@ -76,12 +76,12 @@ func NewEthClient(
 	ec *ethclient.Client,
 	privKey *ecdsa.PrivateKey,
 ) (EthClient, error) {
-	err := validateEthClient(ctx, env, ec)
+	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	chainID, err := ec.ChainID(ctx)
+	err = validateChainID(env, chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -248,12 +248,7 @@ func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
 
-func validateEthClient(ctx context.Context, env common.Environment, ec *ethclient.Client) error {
-	chainID, err := ec.ChainID(ctx)
-	if err != nil {
-		return err
-	}
-
+func validateChainID(env common.Environment, chainID *big.Int) error {
 	switch env {
 	case common.Mainnet:
 		if chainID.Cmp(big.NewInt(mainnetChainID)) != 0 {
