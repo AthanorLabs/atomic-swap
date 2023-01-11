@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	mainnetChainID     = 1
-	stagenetChainID    = 5
-	developmentChainID = 1337
+	mainnetChainID = 1
+	goerliChainID  = 5
+	ganacheChainID = 1337
 )
 
 var log = logging.Logger("extethclient")
@@ -257,18 +257,15 @@ func validateEthClient(ctx context.Context, env common.Environment, ec *ethclien
 	switch env {
 	case common.Mainnet:
 		if chainID.Cmp(big.NewInt(mainnetChainID)) != 0 {
-			return fmt.Errorf("Environment detected as mainnet which has expected chain ID of 1,"+
-				"but Ethereum chain ID is %s", chainID)
+			return fmt.Errorf("expected Ethereum mainnet chain ID (%d), but found %s", mainnetChainID, chainID)
 		}
 	case common.Stagenet:
-		if chainID.Cmp(big.NewInt(stagenetChainID)) != 0 {
-			return fmt.Errorf("Environment detected as stagenet (goerli) which has expected chain ID of 5,"+
-				"but Ethereum chain ID is %s", chainID)
+		if chainID.Cmp(big.NewInt(goerliChainID)) != 0 {
+			return fmt.Errorf("expected Goerli chain ID (%d), but found %s", goerliChainID, chainID)
 		}
 	case common.Development:
-		if chainID.Cmp(big.NewInt(developmentChainID)) != 0 {
-			return fmt.Errorf("Environment detected as development which has expected chain ID of 1337,"+
-				"but Ethereum chain ID is %s", chainID)
+		if chainID.Cmp(big.NewInt(ganacheChainID)) != 0 {
+			return fmt.Errorf("expected Ganache chain ID (%d), but found %s", ganacheChainID, chainID)
 		}
 	default:
 		panic("unhandled environment type")
