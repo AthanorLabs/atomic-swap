@@ -3,11 +3,11 @@
 package rpctypes
 
 import (
-	"math/big"
-
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -33,7 +33,7 @@ type SubscribeSwapStatusResponse struct {
 
 // DiscoverRequest ...
 type DiscoverRequest struct {
-	Provides   types.ProvidesCoin `json:"provides"`
+	Provides   coins.ProvidesCoin `json:"provides"`
 	SearchTime uint64             `json:"searchTime"` // in seconds
 }
 
@@ -69,19 +69,19 @@ type QueryAllResponse struct {
 
 // TakeOfferRequest ...
 type TakeOfferRequest struct {
-	PeerID         peer.ID    `json:"peerID"`
-	OfferID        types.Hash `json:"offerID"`
-	ProvidesAmount float64    `json:"providesAmount"`
+	PeerID         peer.ID      `json:"peerID"`
+	OfferID        types.Hash   `json:"offerID"`
+	ProvidesAmount *apd.Decimal `json:"providesAmount"` // ether amount
 }
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinAmount         float64            `json:"minAmount"`
-	MaxAmount         float64            `json:"maxAmount"`
-	ExchangeRate      types.ExchangeRate `json:"exchangeRate"`
-	EthAsset          string             `json:"ethAsset,omitempty"`
-	RelayerEndpoint   string             `json:"relayerEndpoint,omitempty"`
-	RelayerCommission float64            `json:"relayerCommission,omitempty"`
+	MinAmount         *apd.Decimal        `json:"minAmount"`
+	MaxAmount         *apd.Decimal        `json:"maxAmount"`
+	ExchangeRate      *coins.ExchangeRate `json:"exchangeRate"`
+	EthAsset          string              `json:"ethAsset,omitempty"`
+	RelayerEndpoint   string              `json:"relayerEndpoint,omitempty"`
+	RelayerCommission *apd.Decimal        `json:"relayerCommission,omitempty"`
 }
 
 // MakeOfferResponse ...
@@ -113,12 +113,12 @@ type SignerTxSigned struct {
 
 // BalancesResponse holds the response for the combined Monero and Ethereum Balances request
 type BalancesResponse struct {
-	MoneroAddress           string   `json:"moneroAddress"`
-	PiconeroBalance         uint64   `json:"piconeroBalance"`
-	PiconeroUnlockedBalance uint64   `json:"piconeroUnlockedBalance"`
-	BlocksToUnlock          uint64   `json:"blocksToUnlock"`
-	EthAddress              string   `json:"ethAddress"`
-	WeiBalance              *big.Int `json:"weiBalance"`
+	MoneroAddress           string                `json:"moneroAddress"`
+	PiconeroBalance         *coins.PiconeroAmount `json:"piconeroBalance"`
+	PiconeroUnlockedBalance *coins.PiconeroAmount `json:"piconeroUnlockedBalance"`
+	BlocksToUnlock          uint64                `json:"blocksToUnlock"`
+	EthAddress              string                `json:"ethAddress"`
+	WeiBalance              *coins.WeiAmount      `json:"weiBalance"`
 }
 
 // AddressesResponse ...

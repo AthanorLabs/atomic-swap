@@ -4,8 +4,10 @@ import (
 	"path"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -23,8 +25,11 @@ func newTestXMRTaker(t *testing.T) *Instance {
 
 func TestXMRTaker_InitiateProtocol(t *testing.T) {
 	a := newTestXMRTaker(t)
-	offer := types.NewOffer(types.ProvidesETH, 0, 0, 1, types.EthAssetETH)
-	s, err := a.InitiateProtocol(3.33, offer)
+	zero := new(apd.Decimal)
+	one := apd.New(1, 0)
+	offer := types.NewOffer(coins.ProvidesETH, zero, zero, coins.ToExchangeRate(one), types.EthAssetETH)
+	providesAmount := apd.New(333, -2) // 3.33
+	s, err := a.InitiateProtocol(providesAmount, offer)
 	require.NoError(t, err)
 	require.Equal(t, a.swapStates[offer.ID], s)
 }

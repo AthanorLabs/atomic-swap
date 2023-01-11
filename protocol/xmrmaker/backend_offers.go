@@ -1,7 +1,9 @@
 package xmrmaker
 
 import (
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -9,7 +11,7 @@ import (
 func (b *Instance) MakeOffer(
 	o *types.Offer,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommissionRate *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	b.backend.XMRClient().Lock()
 	defer b.backend.XMRClient().Unlock()
@@ -20,17 +22,17 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	unlockedBalance := common.PiconeroAmount(balance.UnlockedBalance)
-	if unlockedBalance < common.MoneroToPiconero(o.MaxAmount) {
-		return nil, errUnlockedBalanceTooLow{unlockedBalance.AsMonero(), o.MaxAmount}
+	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
+	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
+		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
 	}
 
-	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommission)
+	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommissionRate)
 	if err != nil {
 		return nil, err
 	}
 
-	b.net.Advertise()
+	b.net.Advertise([]string{string(coins.ProvidesXMR)})
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }

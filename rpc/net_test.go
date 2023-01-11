@@ -3,6 +3,8 @@ package rpc
 import (
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 
 	"github.com/stretchr/testify/require"
@@ -42,7 +44,7 @@ func TestNet_TakeOffer(t *testing.T) {
 	req := &rpctypes.TakeOfferRequest{
 		PeerID:         "12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		OfferID:        testSwapID,
-		ProvidesAmount: 1,
+		ProvidesAmount: apd.New(1, 0),
 	}
 
 	err := ns.TakeOffer(nil, req, nil)
@@ -55,7 +57,7 @@ func TestNet_TakeOfferSync(t *testing.T) {
 	req := &rpctypes.TakeOfferRequest{
 		PeerID:         "12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		OfferID:        testSwapID,
-		ProvidesAmount: 1,
+		ProvidesAmount: apd.New(1, 0),
 	}
 
 	resp := new(TakeOfferSyncResponse)

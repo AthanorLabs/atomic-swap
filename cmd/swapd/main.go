@@ -14,8 +14,10 @@ import (
 	"strings"
 
 	"github.com/ChainSafe/chaindb"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -29,8 +31,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
-
-	logging "github.com/ipfs/go-log"
 )
 
 const (
@@ -232,7 +232,7 @@ type daemon struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	database  *db.Database
-	host      net.Host
+	host      *net.Host
 	rpcServer *rpc.Server
 
 	// this channel is closed once the daemon has started up
@@ -430,15 +430,21 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	netCfg := &net.Config{
-		Ctx:         d.ctx,
-		Environment: env,
-		DataDir:     cfg.DataDir,
-		EthChainID:  chainID.Int64(),
-		Port:        libp2pPort,
-		KeyFile:     libp2pKey,
-		Bootnodes:   cfg.Bootnodes,
+	listenIP := "0.0.0.0"
+	if env == common.Development {
+		listenIP = "127.0.0.1"
 	}
+
+	netCfg := &p2pnet.Config{
+		Ctx:        d.ctx,
+		DataDir:    cfg.DataDir,
+		Port:       libp2pPort,
+		KeyFile:    libp2pKey,
+		Bootnodes:  cfg.Bootnodes,
+		ProtocolID: fmt.Sprintf("/%s/%s/%d", net.ProtocolID, env.String(), chainID.Int64()),
+		ListenIP:   listenIP,
+	}
+
 	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
@@ -572,7 +578,7 @@ func newBackend(
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
-	net net.Host,
+	net *net.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
 ) (backend.Backend, error) {
@@ -716,8 +722,13 @@ func newBackend(
 	return b, nil
 }
 
-func getProtocolInstances(c *cli.Context, cfg *common.Config,
-	b backend.Backend, db *db.Database, host net.Host) (xmrtakerHandler, xmrmakerHandler, error) {
+func getProtocolInstances(
+	c *cli.Context,
+	cfg *common.Config,
+	b backend.Backend,
+	db *db.Database,
+	host *net.Host,
+) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)

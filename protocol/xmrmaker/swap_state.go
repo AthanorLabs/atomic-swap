@@ -8,10 +8,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -21,7 +23,6 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -89,11 +90,9 @@ func newSwapStateFromStart(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
-	providesAmount common.PiconeroAmount,
+	providesAmount *coins.PiconeroAmount,
 	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
-	exchangeRate := types.ExchangeRate(providesAmount.AsMonero() / desiredAmount.AsStandard())
-
 	// at this point, we've received the counterparty's keys,
 	// and will send our own after this function returns.
 	// see HandleInitiateMessage().
@@ -103,8 +102,7 @@ func newSwapStateFromStart(
 	}
 
 	if offerExtra.RelayerEndpoint != "" {
-		err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra)
-		if err != nil {
+		if err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {
 			return nil, err
 		}
 	}
@@ -125,10 +123,10 @@ func newSwapStateFromStart(
 
 	info := pswap.NewInfo(
 		offer.ID,
-		types.ProvidesXMR,
+		coins.ProvidesXMR,
 		providesAmount.AsMonero(),
 		desiredAmount.AsStandard(),
-		exchangeRate,
+		offer.ExchangeRate,
 		offer.EthAsset,
 		stage,
 		moneroStartHeight,
@@ -298,8 +296,8 @@ func newSwapState(
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
-	return &net.SendKeysMessage{
+func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+	return &message.SendKeysMessage{
 		ProvidedAmount:     s.info.ProvidedAmount,
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
@@ -309,9 +307,9 @@ func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 	}
 }
 
-// ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
-func (s *swapState) ReceivedAmount() float64 {
-	return s.info.ReceivedAmount
+// ExpectedAmount returns the amount received, or expected to be received, at the end of the swap
+func (s *swapState) ExpectedAmount() *apd.Decimal {
+	return s.info.ExpectedAmount
 }
 
 // ID returns the ID of the swap
@@ -491,7 +489,7 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRLock, error) {
+func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
 
@@ -506,7 +504,7 @@ func (s *swapState) lockFunds(amount common.PiconeroAmount) (*message.NotifyXMRL
 	log.Debug("total XMR balance: ", balance.Balance)
 	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
 
-	transResp, err := s.XMRClient().Transfer(swapDestAddr, 0, uint64(amount))
+	transResp, err := s.XMRClient().Transfer(swapDestAddr, 0, amount)
 	if err != nil {
 		return nil, err
 	}

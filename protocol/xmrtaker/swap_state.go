@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -21,7 +24,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -95,8 +98,8 @@ func newSwapStateFromStart(
 	offerID types.Hash,
 	transferBack bool,
 	providedAmount EthereumAssetAmount,
-	receivedAmount common.PiconeroAmount,
-	exchangeRate types.ExchangeRate,
+	expectedAmount *coins.PiconeroAmount,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
 	stage := types.ExpectingKeys
@@ -119,9 +122,9 @@ func newSwapStateFromStart(
 
 	info := pswap.NewInfo(
 		offerID,
-		types.ProvidesETH,
+		coins.ProvidesETH,
 		providedAmount.AsStandard(),
-		receivedAmount.AsMonero(),
+		expectedAmount.AsMonero(),
 		exchangeRate,
 		ethAsset,
 		stage,
@@ -270,7 +273,7 @@ func newSwapState(
 		claimedCh:         make(chan struct{}),
 		done:              make(chan struct{}),
 		info:              info,
-		providedAmount:    common.EtherToWei(info.ProvidedAmount),
+		providedAmount:    coins.EtherToWei(info.ProvidedAmount),
 		statusCh:          info.StatusCh(),
 	}
 
@@ -303,8 +306,8 @@ func (s *swapState) waitForSendKeysMessage() {
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
-	return &net.SendKeysMessage{
+func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+	return &message.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
 		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
@@ -312,13 +315,13 @@ func (s *swapState) SendKeysMessage() *net.SendKeysMessage {
 	}
 }
 
-// ReceivedAmount returns the amount received, or expected to be received, at the end of the swap
-func (s *swapState) ReceivedAmount() float64 {
-	return s.info.ReceivedAmount
+// ExpectedAmount returns the amount received, or expected to be received, at the end of the swap
+func (s *swapState) ExpectedAmount() *apd.Decimal {
+	return s.info.ExpectedAmount
 }
 
-func (s *swapState) receivedAmountInPiconero() common.PiconeroAmount {
-	return common.MoneroToPiconero(s.info.ReceivedAmount)
+func (s *swapState) expectedPiconeroAmount() *coins.PiconeroAmount {
+	return coins.MoneroToPiconero(s.info.ExpectedAmount)
 }
 
 // ID returns the ID of the swap
@@ -646,7 +649,7 @@ func (s *swapState) ready() error {
 		return err
 	}
 	if stage != contracts.StagePending {
-		return fmt.Errorf("can not set contract to ready when swap stage is %s", contracts.StageToString(stage))
+		return fmt.Errorf("cannot set contract to ready when swap stage is %s", contracts.StageToString(stage))
 	}
 	_, receipt, err := s.sender.SetReady(s.contractSwap)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -17,19 +18,20 @@ const (
 	queryTimeout = time.Second * 5
 )
 
-func (h *host) handleQueryStream(stream libp2pnetwork.Stream) {
+func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
 	resp := &QueryResponse{
 		Offers: h.handler.GetOffers(),
 	}
 
-	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
 
 	_ = stream.Close()
 }
 
-func (h *host) Query(who peer.ID) (*QueryResponse, error) {
+// Query queries the given peer for its offers.
+func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
 	ctx, cancel := context.WithTimeout(h.ctx, queryTimeout)
 	defer cancel()
 
@@ -37,7 +39,7 @@ func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 		return nil, err
 	}
 
-	stream, err := h.h.NewStream(ctx, who, protocol.ID(h.protocolID+queryID))
+	stream, err := h.h.NewStream(ctx, who, protocol.ID(queryID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
@@ -48,18 +50,20 @@ func (h *host) Query(who peer.ID) (*QueryResponse, error) {
 		_ = stream.Close()
 	}()
 
-	return h.receiveQueryResponse(stream)
+	return receiveQueryResponse(stream)
 }
 
-func (h *host) receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
-	msg, err := readStreamMessage(stream)
+func receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
+	msg, err := readStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
 	}
 
 	resp, ok := msg.(*QueryResponse)
 	if !ok {
-		return nil, fmt.Errorf("expected %s message but received %s", message.QueryResponseType, msg.Type())
+		return nil, fmt.Errorf("expected %s message but received %s",
+			message.TypeToString(message.QueryResponseType),
+			message.TypeToString(msg.Type()))
 	}
 
 	return resp, nil

@@ -7,21 +7,23 @@ import (
 	"io"
 	"time"
 
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
 	swapID          = "/swap/0"
 	protocolTimeout = time.Second * 5
-	maxMessageSize  = 1 << 17
 )
 
-func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
+// Initiate attempts to initiate a swap with the given peer by sending a SendKeysMessage,
+// the first message of the swap protocol.
+func (h *Host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -34,14 +36,14 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
 	defer cancel()
 
-	if h.h.Network().Connectedness(who.ID) != libp2pnetwork.Connected {
+	if h.h.Connectedness(who.ID) != libp2pnetwork.Connected {
 		err := h.h.Connect(ctx, who)
 		if err != nil {
 			return err
 		}
 	}
 
-	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+swapID))
+	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(swapID))
 	if err != nil {
 		return fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
@@ -50,7 +52,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		"opened protocol stream, peer=", who.ID,
 	)
 
-	if err := writeStreamMessage(stream, msg, who.ID); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, msg, who.ID); err != nil {
 		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}
@@ -65,13 +67,13 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 }
 
 // handleProtocolStream is called when there is an incoming protocol stream.
-func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
+func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	if h.handler == nil {
 		_ = stream.Close()
 		return
 	}
 
-	msg, err := readStreamMessage(stream)
+	msg, err := readStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			log.Debugf("Peer closed stream-id=%s, protocol exited", stream.ID())
@@ -83,7 +85,10 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	log.Debug(
-		"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
+		"received message from peer, peer=",
+		stream.Conn().RemotePeer(),
+		" type=",
+		message.TypeToString(msg.Type()),
 	)
 
 	im, ok := msg.(*SendKeysMessage)
@@ -101,7 +106,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	if err := writeStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send response to peer: err=%s", err)
 		_ = s.Exit()
 		_ = stream.Close()
@@ -119,7 +124,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 }
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
-func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
+func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
@@ -134,7 +139,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 	}()
 
 	for {
-		msg, err := readStreamMessage(stream)
+		msg, err := readStreamMessage(stream, maxMessageSize)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				log.Debug("Peer closed stream with us, protocol exited")
@@ -146,7 +151,7 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 		}
 
 		log.Debugf("received protocol=%s message from peer=%s type=%s",
-			stream.Protocol(), stream.Conn().RemotePeer(), msg.Type())
+			stream.Protocol(), stream.Conn().RemotePeer(), message.TypeToString(msg.Type()))
 
 		err = s.HandleProtocolMessage(msg)
 		if err != nil {
@@ -154,17 +159,4 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			return
 		}
 	}
-}
-
-// CloseProtocolStream closes the current swap protocol stream.
-func (h *host) CloseProtocolStream(id types.Hash) {
-	swap, has := h.swaps[id]
-	if !has {
-		return
-	}
-
-	log.Debugf("closing stream: peer=%s protocol=%s",
-		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
-	)
-	_ = swap.stream.Close()
 }

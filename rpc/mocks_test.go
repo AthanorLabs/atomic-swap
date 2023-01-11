@@ -4,15 +4,16 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
@@ -45,18 +46,15 @@ func (*mockNet) ConnectedPeers() []string {
 	panic("not implemented")
 }
 
-func (*mockNet) Advertise() {
-}
-
-func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
+func (*mockNet) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
 	return nil, nil
 }
 
-func (*mockNet) Query(who peer.ID) (*net.QueryResponse, error) {
-	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
+func (*mockNet) Query(who peer.ID) (*message.QueryResponse, error) {
+	return &message.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
-func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error {
+func (*mockNet) Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error {
 	return nil
 }
 
@@ -86,12 +84,13 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
+	one := apd.New(1, 0)
 	return *swap.NewInfo(
 		id,
-		types.ProvidesETH,
-		1,
-		1,
-		1,
+		coins.ProvidesETH,
+		one,
+		one,
+		coins.ToExchangeRate(one),
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		1,
@@ -109,7 +108,7 @@ func (*mockSwapManager) CompleteOngoingSwap(*swap.Info) error {
 
 type mockXMRTaker struct{}
 
-func (*mockXMRTaker) Provides() types.ProvidesCoin {
+func (*mockXMRTaker) Provides() coins.ProvidesCoin {
 	panic("not implemented")
 }
 
@@ -117,7 +116,7 @@ func (*mockXMRTaker) GetOngoingSwapState(types.Hash) common.SwapState {
 	return new(mockSwapState)
 }
 
-func (*mockXMRTaker) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
+func (*mockXMRTaker) InitiateProtocol(providesAmount *apd.Decimal, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
 
@@ -135,7 +134,7 @@ func (*mockXMRTaker) ExternalSender(_ types.Hash) (*txsender.ExternalSender, err
 
 type mockXMRMaker struct{}
 
-func (m *mockXMRMaker) Provides() types.ProvidesCoin {
+func (m *mockXMRMaker) Provides() coins.ProvidesCoin {
 	panic("not implemented")
 }
 
@@ -143,7 +142,7 @@ func (m *mockXMRMaker) GetOngoingSwapState(hash types.Hash) common.SwapState {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ float64) (*types.OfferExtra, error) {
+func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ *apd.Decimal) (*types.OfferExtra, error) {
 	offerExtra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, 1),
 	}

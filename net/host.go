@@ -1,309 +1,107 @@
-// Package net provides libraries for direct communication between swapd nodes using libp2p.
+// Package net adds swap-specific functionality to go-p2p-net/Host,
+// in particular the swap messages for querying and initiation.
 package net
 
 import (
 	"context"
-	"encoding/binary"
-	"errors"
-	"fmt"
-	"io"
-	"net"
-	"os"
-	"path"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	badger "github.com/ipfs/go-ds-badger2"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p"
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	libp2phost "github.com/libp2p/go-libp2p/core/host"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
-	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
-	protocolID      = "/atomic-swap"
-	protocolVersion = "0.1"
+	// ProtocolID is the base atomic swap network protocol ID.
+	ProtocolID     = "/atomic-swap/0.1"
+	maxMessageSize = 1 << 17
 )
 
-var log = logging.Logger("net")
-var _ Host = &host{}
+var log = logging.Logger("host")
 
-// Host represents a peer-to-peer node (ie. a host)
-type Host interface {
+// P2pnetHost contains libp2p functionality used by the Host.
+type P2pnetHost interface {
 	Start() error
 	Stop() error
 
-	Advertise()
-	Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
-	Query(who peer.ID) (*QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error
-	MessageSender
+	Advertise([]string)
+	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
+
+	SetStreamHandler(string, func(libp2pnetwork.Stream))
+	SetShouldAdvertiseFunc(p2pnet.ShouldAdvertiseFunc)
+
+	Connectedness(peer.ID) libp2pnetwork.Connectedness
+	Connect(context.Context, peer.AddrInfo) error
+	NewStream(context.Context, peer.ID, protocol.ID) (libp2pnetwork.Stream, error)
+
+	AddrInfo() peer.AddrInfo
+	Addresses() []string
+	PeerID() peer.ID
+	ConnectedPeers() []string
 }
 
-type swap struct {
-	swapState SwapState
-	stream    libp2pnetwork.Stream
-}
-
-type host struct {
-	ctx        context.Context
-	cancel     context.CancelFunc
-	protocolID string
-
-	h         libp2phost.Host
-	bootnodes []peer.AddrInfo
-	discovery *discovery
-	handler   Handler
-	ds        *badger.Datastore
+// Host represents a p2p node that implements the atomic swap protocol.
+type Host struct {
+	ctx     context.Context
+	h       P2pnetHost
+	handler Handler
 
 	// swap instance info
 	swapMu sync.Mutex
 	swaps  map[types.Hash]*swap
 }
 
-// Config is used to configure the network Host.
-type Config struct {
-	Ctx         context.Context
-	Environment common.Environment
-	DataDir     string
-	EthChainID  int64
-	Port        uint16
-	KeyFile     string
-	Bootnodes   []string
+// NewHost returns a new Host.
+// The host implemented in this package is swap-specific; ie. it supports swap-specific
+// messages (initiate and query).
+func NewHost(cfg *p2pnet.Config) (*Host, error) {
+	h, err := p2pnet.NewHost(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Host{
+		ctx:   cfg.Ctx,
+		h:     h,
+		swaps: make(map[types.Hash]*swap),
+	}, nil
 }
 
-// QUIC will have better performance in high-bandwidth protocols if you increase a socket
-// receive buffer (sysctl -w net.core.rmem_max=2500000). We have a low-bandwidth protocol,
-// so setting this variable keeps a warning out of our logs. See this for more information:
-// https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size
-func init() {
-	_ = os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
-}
-
-// NewHost returns a new host
-func NewHost(cfg *Config) (*host, error) {
-	if cfg.DataDir == "" || cfg.KeyFile == "" {
-		panic("required parameters not set")
+// SetHandler sets the Handler instance used by the host.
+func (h *Host) SetHandler(handler Handler) {
+	fn := func() bool {
+		return len(handler.GetOffers()) == 0
 	}
 
-	key, err := loadKey(cfg.KeyFile)
-	if err != nil {
-		log.Debugf("failed to load libp2p key, generating key %s...", cfg.KeyFile)
-		key, err = generateKey(0, cfg.KeyFile)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	listenIP := "0.0.0.0"
-	if cfg.Environment == common.Development {
-		listenIP = "127.0.0.1"
-	}
-
-	ds, err := badger.NewDatastore(path.Join(cfg.DataDir, "libp2p-datastore"), &badger.DefaultOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	ps, err := pstoreds.NewPeerstore(cfg.Ctx, ds, pstoreds.DefaultOpts())
-	if err != nil {
-		return nil, err
-	}
-
-	// set libp2p host options
-	opts := []libp2p.Option{
-		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/%s/tcp/%d", listenIP, cfg.Port),
-			fmt.Sprintf("/ip4/%s/udp/%d/quic-v1", listenIP, cfg.Port),
-		),
-		libp2p.Identity(key),
-		libp2p.NATPortMap(),
-		libp2p.EnableRelayService(),
-		libp2p.EnableNATService(),
-		libp2p.EnableHolePunching(),
-		libp2p.Peerstore(ps),
-	}
-
-	// format bootnodes
-	bns, err := stringsToAddrInfos(cfg.Bootnodes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to format bootnodes: %w", err)
-	}
-
-	if len(bns) > 0 {
-		opts = append(opts, libp2p.EnableAutoRelay(autorelay.WithStaticRelays(bns)))
-	}
-
-	// create libp2p host instance
-	basicHost, err := libp2p.New(opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	// There is libp2p bug when calling `dual.New` with a cancelled context creating a panic,
-	// so we need the extra guard below:
-	// Panic:  https://github.com/jbenet/goprocess/blob/v0.1.4/impl-mutex.go#L99
-	// Caller: https://github.com/libp2p/go-libp2p-kad-dht/blob/v0.17.0/dht.go#L222
-	if cfg.Ctx.Err() != nil {
-		return nil, err
-	}
-
-	// Note on ModeServer: The dual KAD DHT, by default, puts the LAN interface in server mode and
-	// the WAN interface in ModeClient if it is behind a NAT firewall. In our case, even nodes behind
-	// NAT firewalls should be servers, otherwise remote nodes will not be able to connect and list
-	// their offers.
-	dht, err := dual.New(cfg.Ctx, basicHost,
-		dual.DHTOption(kaddht.BootstrapPeers(bns...)),
-		dual.DHTOption(kaddht.Mode(kaddht.ModeServer)),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	routedHost := routedhost.Wrap(basicHost, dht)
-
-	ourCtx, cancel := context.WithCancel(cfg.Ctx)
-	hst := &host{
-		ctx:        ourCtx,
-		cancel:     cancel,
-		protocolID: fmt.Sprintf("%s/%s/%s/%d", protocolID, protocolVersion, cfg.Environment, cfg.EthChainID),
-		h:          routedHost,
-		ds:         ds,
-		bootnodes:  bns,
-		swaps:      make(map[types.Hash]*swap),
-		discovery: &discovery{
-			ctx:         ourCtx,
-			dht:         dht,
-			h:           routedHost,
-			rd:          libp2pdiscovery.NewRoutingDiscovery(dht),
-			provides:    nil,
-			advertiseCh: make(chan struct{}),
-			offerAPI:    nil,
-		},
-	}
-
-	return hst, nil
-}
-
-func (h *host) SetHandler(handler Handler) {
 	h.handler = handler
-	h.discovery.setOfferAPI(handler)
+	h.h.SetShouldAdvertiseFunc(fn)
 }
 
-func (h *host) Start() error {
+// Start starts the bootstrap and discovery process.
+func (h *Host) Start() error {
 	if h.handler == nil {
 		return errNilHandler
 	}
 
-	h.h.SetStreamHandler(protocol.ID(h.protocolID+queryID), h.handleQueryStream)
-	h.h.SetStreamHandler(protocol.ID(h.protocolID+swapID), h.handleProtocolStream)
-	log.Debugf("supporting protocols %s and %s",
-		protocol.ID(h.protocolID+queryID),
-		protocol.ID(h.protocolID+swapID),
-	)
-
-	for _, addr := range h.h.Addrs() {
-		log.Info("Started listening: address=", addr)
-	}
-
-	// ignore error - node should still be able to run without connecting to
-	// bootstrap nodes (for now)
-	if err := h.bootstrap(); err != nil {
-		return err
-	}
-
-	go h.logPeers()
-
-	return h.discovery.start()
+	h.h.SetStreamHandler(queryID, h.handleQueryStream)
+	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
+	return h.h.Start()
 }
 
-func (h *host) logPeers() {
-	logPeersInterval := time.Minute * 5
-
-	for {
-		log.Debugf("peer count: %d", len(h.h.Network().Peers()))
-		err := common.SleepWithContext(h.ctx, logPeersInterval)
-		if err != nil {
-			// context was cancelled, return
-			return
-		}
-	}
-}
-
-// Stop closes host services and the libp2p host (host services first)
-func (h *host) Stop() error {
-	h.cancel()
-
-	if err := h.discovery.stop(); err != nil {
-		return err
-	}
-
-	if err := h.h.Close(); err != nil {
-		return fmt.Errorf("failed to close libp2p host: %w", err)
-	}
-
-	err := h.h.Peerstore().Close()
-	if err != nil {
-		return fmt.Errorf("failed to close peerstore: %w", err)
-	}
-
-	err = h.ds.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close libp2p datastore: %w", err)
-	}
-
-	return nil
-}
-
-func (h *host) Advertise() {
-	h.discovery.advertiseCh <- struct{}{}
-}
-
-func (h *host) Addresses() []string {
-	var addrs []string
-	for _, ma := range h.multiaddrs() {
-		addrs = append(addrs, ma.String())
-	}
-	return addrs
-}
-
-func (h *host) PeerID() peer.ID {
-	return h.h.ID()
-}
-
-func (h *host) ConnectedPeers() []string {
-	var peers []string
-	for _, c := range h.h.Network().Conns() {
-		// the remote multi addr returned is just the transport
-		p := fmt.Sprintf("%s/p2p/%s", c.RemoteMultiaddr(), c.RemotePeer())
-		peers = append(peers, p)
-	}
-	return peers
-}
-
-// Discover searches the DHT for peers that advertise that they provide the given coin.
-// It searches for up to `searchTime` duration of time.
-func (h *host) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
-	return h.discovery.discover(provides, searchTime)
+// Stop stops the host.
+func (h *Host) Stop() error {
+	return h.h.Stop()
 }
 
 // SendSwapMessage sends a message to the peer who we're currently doing a swap with.
-func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
+func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -312,138 +110,58 @@ func (h *host) SendSwapMessage(msg Message, id types.Hash) error {
 		return errNoOngoingSwap
 	}
 
-	return writeStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
+	return p2pnet.WriteStreamMessage(swap.stream, msg, swap.stream.Conn().RemotePeer())
 }
 
-// multiaddrs returns the local multiaddresses that we are listening on
-func (h *host) multiaddrs() []ma.Multiaddr {
-	addr := h.addrInfo()
-	multiaddrs, err := peer.AddrInfoToP2pAddrs(&addr)
-	if err != nil {
-		// This shouldn't ever happen, but don't want to panic
-		log.Errorf("Failed to convert AddrInfo=%q to Multiaddr: %s", addr, err)
+// CloseProtocolStream closes the current swap protocol stream.
+func (h *Host) CloseProtocolStream(id types.Hash) {
+	swap, has := h.swaps[id]
+	if !has {
+		return
 	}
-	return multiaddrs
+
+	log.Debugf("closing stream: peer=%s protocol=%s",
+		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
+	)
+	_ = swap.stream.Close()
 }
 
-func (h *host) addrInfo() peer.AddrInfo {
-	return peer.AddrInfo{
-		ID:    h.h.ID(),
-		Addrs: h.h.Addrs(),
-	}
+// Advertise advertises in the DHT.
+func (h *Host) Advertise(strs []string) {
+	h.h.Advertise(strs)
 }
 
-func writeStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
-	encMsg, err := msg.Encode()
-	if err != nil {
-		return err
-	}
-
-	err = binary.Write(s, binary.LittleEndian, uint32(len(encMsg)))
-	if err != nil {
-		return err
-	}
-
-	_, err = s.Write(encMsg)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("Sent message to peer=%s type=%s", peerID, msg.Type())
-
-	return nil
+// Discover searches the DHT for peers that advertise that they provide the given coin..
+// It searches for up to `searchTime` duration of time.
+func (h *Host) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
+	return h.h.Discover(string(provides), searchTime)
 }
 
-// readStreamMessage reads the 4-byte LE size header and message body returning the
-// message body bytes. io.EOF is returned if the stream is closed before any bytes
-// are received. If a partial message is received before the stream closes,
-// io.ErrUnexpectedEOF is returned.
-func readStreamMessage(s io.Reader) (Message, error) {
-	if s == nil {
-		return nil, errNilStream
-	}
+// AddrInfo returns the host's AddrInfo.
+func (h *Host) AddrInfo() peer.AddrInfo {
+	return h.h.AddrInfo()
+}
 
-	lenBuf := make([]byte, 4) // uint32 size
-	n, err := io.ReadFull(s, lenBuf)
+// Addresses returns the list of multiaddress the host is listening on.
+func (h *Host) Addresses() []string {
+	return h.h.Addresses()
+}
+
+// ConnectedPeers returns the multiaddresses of our currently connected peers.
+func (h *Host) ConnectedPeers() []string {
+	return h.h.ConnectedPeers()
+}
+
+// PeerID returns the host's peer ID.
+func (h *Host) PeerID() peer.ID {
+	return h.h.AddrInfo().ID
+}
+
+func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (message.Message, error) {
+	msgBytes, err := p2pnet.ReadStreamMessage(stream, maxMessageSize)
 	if err != nil {
-		if isEOF(err) {
-			if n > 0 {
-				err = io.ErrUnexpectedEOF
-			} else {
-				err = io.EOF
-			}
-		}
-		return nil, err
-	}
-	msgLen := binary.LittleEndian.Uint32(lenBuf)
-
-	if msgLen > maxMessageSize {
-		log.Warnf("Received message longer than max allowed size: msg size=%d, max=%d",
-			msgLen, maxMessageSize)
-		return nil, fmt.Errorf("message size %d too large", msgLen)
-	}
-
-	msgBuf := make([]byte, msgLen)
-	_, err = io.ReadFull(s, msgBuf)
-	if err != nil {
-		if isEOF(err) {
-			err = io.ErrUnexpectedEOF
-		}
 		return nil, err
 	}
 
-	return message.DecodeMessage(msgBuf)
-}
-
-func isEOF(err error) bool {
-	switch {
-	case
-		errors.Is(err, net.ErrClosed), // what libp2p with QUIC usually generates
-		errors.Is(err, io.EOF),
-		errors.Is(err, io.ErrUnexpectedEOF),
-		errors.Is(err, io.ErrClosedPipe):
-		return true
-	default:
-		return false
-	}
-}
-
-// bootstrap connects the host to the configured bootnodes
-func (h *host) bootstrap() error {
-
-	if len(h.bootnodes) == 0 {
-		log.Warnf("Bootstraping peers skipped, no bootnodes found")
-		return nil
-	}
-
-	selfID := h.PeerID()
-
-	var failed uint64 = 0
-	var wg sync.WaitGroup
-	for _, bn := range h.bootnodes {
-		if bn.ID == selfID {
-			continue
-		}
-		h.h.Peerstore().AddAddrs(bn.ID, bn.Addrs, peerstore.PermanentAddrTTL)
-		log.Debugf("Bootstrapping to peer: %s (%s)", bn, h.h.Network().Connectedness(bn.ID))
-		wg.Add(1)
-		go func(p peer.AddrInfo) {
-			defer wg.Done()
-			err := h.h.Connect(h.ctx, p)
-			if err != nil {
-				log.Debugf("Failed to bootstrap to peer %s: err=%s", p.ID, err)
-				atomic.AddUint64(&failed, 1)
-			}
-			for _, c := range h.h.Network().ConnsToPeer(p.ID) {
-				log.Debugf("Bootstrapped connection to %s/p2p/%s", c.RemoteMultiaddr(), p.ID)
-			}
-		}(bn)
-	}
-	wg.Wait()
-
-	if failed == uint64(len(h.bootnodes)) {
-		return errFailedToBootstrap
-	}
-
-	return nil
+	return message.DecodeMessage(msgBytes)
 }

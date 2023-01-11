@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
@@ -19,9 +19,9 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) error {
+func (s *swapState) HandleProtocolMessage(msg message.Message) error {
 	switch msg := msg.(type) {
-	case *net.SendKeysMessage:
+	case *message.SendKeysMessage:
 		event := newEventKeysReceived(msg)
 		s.eventCh <- event
 		err := <-event.errCh
@@ -80,11 +80,15 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
-func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	if msg.ProvidedAmount < s.info.ReceivedAmount {
-		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
-			msg.ProvidedAmount,
-			s.info.ReceivedAmount,
+func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message.Message, error) {
+	if msg.ProvidedAmount == nil {
+		return nil, errMissingProvidedAmount
+	}
+
+	if msg.ProvidedAmount.Cmp(s.info.ExpectedAmount) < 0 {
+		return nil, fmt.Errorf("provided amount is not the same as expected: got %s, expected %s",
+			msg.ProvidedAmount.Text('f'),
+			s.info.ExpectedAmount.Text('f'),
 		)
 	}
 
@@ -224,9 +228,10 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
-	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
-		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
-			balance.Balance, float64(s.receivedAmountInPiconero()))
+	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
+		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
+			coins.NewPiconeroAmount(balance.Balance).AsMonero().Text('f'),
+			s.ExpectedAmount().Text('f'))
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before
