@@ -126,6 +126,7 @@ func getChainlinkPriceFeed(ctx context.Context, feedAddress string, ec *ethclien
 	}
 
 	price := apd.NewWithBigInt(new(apd.BigInt).SetMathBigInt(roundData.Answer), -int32(decimals))
+	_, _ = price.Reduce(price) // push even multiples of 10 to the exponent
 	updatedAt := time.Unix(roundData.StartedAt.Int64(), 0)
 
 	description, err := chainlinkPriceFeedProxy.Description(opts)

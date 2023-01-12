@@ -536,11 +536,11 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 {
   "jsonrpc": "2.0",
   "result": {
-    "ethUpdatedAt": "2023-01-12T14:26:11-06:00",
-    "ethPrice": "1430.10000000",
+    "ethUpdatedAt": "2023-01-12T14:55:35-06:00",
+    "ethPrice": "1430.98158542",
     "xmrUpdatedAt": "2023-01-12T14:22:23-06:00",
-    "xmrPrice": "170.99780000",
-    "exchangeRate": "0.119571"
+    "xmrPrice": "170.9978",
+    "exchangeRate": "0.119497"
   },
   "id": "0"
 }
