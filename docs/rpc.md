@@ -520,8 +520,32 @@ Returns:
 - `xmrPrice`: the current XMR/USD price multiplied by 10^8.
 - `exchangeRate`: the exchange rate expressed as the XMR/ETH price ratio.
 
+- `ethUpdatedAt`: time when the ETH price was last updated (RFC 3339 formatted)
+- `ethPrice`: current ETH/USD price (8 decimal points or less)
+- `xmrUpdatedAt`: time when the XMR price was last updated (RFC 3339 formatted)
+- `xmrPrice`: the current XMR/USD price (8 decimal points or less)
+- `exchangeRate`: "0.119571"
+
 Example:
 ```bash
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_suggestedExchangeRate","params":{}}' \
+| jq .
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "ethUpdatedAt": "2023-01-12T14:26:11-06:00",
+    "ethPrice": "1430.10000000",
+    "xmrUpdatedAt": "2023-01-12T14:22:23-06:00",
+    "xmrPrice": "170.99780000",
+    "exchangeRate": "0.119571"
+  },
+  "id": "0"
+}
+
+
 curl -X POST http://127.0.0.1:5001 -d '{"jsonrpc":"2.0","id":"0","method":"swap_suggestedExchangeRate","params":{}}' -H 'Content-Type: application/json'
 # {"jsonrpc":"2.0","result":{"ethPrice":118530759250,"xmrPrice":14453000000,"exchangeRate":0.12193459395224451},"id":"0"}
 ```
