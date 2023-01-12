@@ -22,7 +22,6 @@ func TestGetETHUSDPrice_mainnet(t *testing.T) {
 
 	feed, err := GetETHUSDPrice(context.Background(), ec)
 	require.NoError(t, err)
-	t.Logf("%s: $%s (%s)", feed.Description, feed.Price, feed.UpdatedAt)
 	assert.Equal(t, "ETH / USD", feed.Description)
 	assert.False(t, feed.Price.Negative)
 	assert.False(t, feed.Price.IsZero())
@@ -42,7 +41,6 @@ func TestGetXMRUSDPrice_mainnet(t *testing.T) {
 
 	feed, err := GetXMRUSDPrice(context.Background(), ec)
 	require.NoError(t, err)
-	t.Logf("%s: $%s (%s)", feed.Description, feed.Price, feed.UpdatedAt)
 	assert.Equal(t, "XMR / USD", feed.Description)
 	assert.False(t, feed.Price.Negative)
 	assert.False(t, feed.Price.IsZero())

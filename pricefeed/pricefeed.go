@@ -126,15 +126,17 @@ func getChainlinkPriceFeed(ctx context.Context, feedAddress string, ec *ethclien
 	}
 
 	price := apd.NewWithBigInt(new(apd.BigInt).SetMathBigInt(roundData.Answer), -int32(decimals))
+	updatedAt := time.Unix(roundData.StartedAt.Int64(), 0)
 
 	description, err := chainlinkPriceFeedProxy.Description(opts)
 	if err != nil {
 		return nil, err
 	}
 
+	log.Debugf("%s: $%s (%s)", description, price, updatedAt)
 	return &PriceFeed{
 		Description: description,
 		Price:       price,
-		UpdatedAt:   time.Unix(roundData.StartedAt.Int64(), 0),
+		UpdatedAt:   updatedAt,
 	}, nil
 }
