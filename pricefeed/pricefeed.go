@@ -62,7 +62,7 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 	case common.GanacheChainID, common.HardhatChainID:
 		return &PriceFeed{
 			Description: "ETH / USD (fake)",
-			Price:       apd.New(123412345678, -8),
+			Price:       apd.New(123412345678, -8), // 1234.12345678
 			UpdatedAt:   time.Now(),
 		}, nil
 	default:
