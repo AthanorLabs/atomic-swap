@@ -516,11 +516,11 @@ Parameters:
 - none
 
 Returns:
-- `ethUpdatedAt`: time when the ETH price was last updated (RFC 3339 formatted)
-- `ethPrice`: current ETH/USD price (8 decimal points or less)
-- `xmrUpdatedAt`: time when the XMR price was last updated (RFC 3339 formatted)
-- `xmrPrice`: the current XMR/USD price (8 decimal points or less)
-- `exchangeRate`: "0.119571"
+- `ethUpdatedAt`: time when the ETH price was last updated (RFC 3339 format).
+- `ethPrice`: current ETH/USD price (max 8 decimal points).
+- `xmrUpdatedAt`: time when the XMR price was last updated (RFC 3339 format).
+- `xmrPrice`: the current XMR/USD price (max 8 decimal points).
+- `exchangeRate`: the exchange rate expressed as the XMR/ETH price ratio.
 
 Example:
 ```bash
