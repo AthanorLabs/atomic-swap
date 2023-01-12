@@ -61,3 +61,18 @@ func TestExchangeRate_String(t *testing.T) {
 	rate := ToExchangeRate(apd.New(3, -4)) // 0.0003
 	assert.Equal(t, "0.0003", rate.String())
 }
+
+func TestCalcExchangeRate(t *testing.T) {
+	xmrPrice := StrToDecimal("200")
+	ethPrice := StrToDecimal("300")
+	rate, err := CalcExchangeRate(xmrPrice, ethPrice)
+	require.NoError(t, err)
+	assert.Equal(t, "0.666667", rate.String())
+}
+
+func TestCalcExchangeRate_fail(t *testing.T) {
+	xmrPrice := StrToDecimal("1.0")
+	ethPrice := StrToDecimal("0") // create a division by zero error
+	_, err := CalcExchangeRate(xmrPrice, ethPrice)
+	require.ErrorContains(t, err, "division by zero")
+}

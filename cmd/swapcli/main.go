@@ -805,11 +805,9 @@ func runSuggestedExchangeRate(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Exchange rate: %v\nETH/USD Price: %v\nXMR/USD Price: %v\n",
-		resp.ExchangeRate,
-		resp.ETHPrice,
-		resp.XMRPrice,
-	)
+	fmt.Printf("Exchange rate: %s\n", resp.ExchangeRate)
+	fmt.Printf("XMR/USD Price: %-13s (%s)\n", resp.XMRPrice, resp.XMRUpdatedAt)
+	fmt.Printf("ETH/USD Price: %-13s (%s)\n", resp.ETHPrice, resp.ETHUpdatedAt)
 
 	return nil
 }

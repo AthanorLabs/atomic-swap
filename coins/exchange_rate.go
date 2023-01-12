@@ -9,6 +9,21 @@ import (
 // ie. an ExchangeRate of 0.1 means that the node considers 1 ETH = 10 XMR.
 type ExchangeRate apd.Decimal
 
+// CalcExchangeRate computes and returns an exchange rate using ETH and XRM prices. The
+// price can be relative to USD, bitcoin or something else, but both values should be
+// relative to the same alternate currency.
+func CalcExchangeRate(xmrPrice *apd.Decimal, ethPrice *apd.Decimal) (*ExchangeRate, error) {
+	rate := new(apd.Decimal)
+	_, err := decimalCtx.Quo(rate, xmrPrice, ethPrice)
+	if err != nil {
+		return nil, err
+	}
+	if err = roundToDecimalPlace(rate, rate, MaxExchangeRateDecimals); err != nil {
+		return nil, err
+	}
+	return ToExchangeRate(rate), nil
+}
+
 // ToExchangeRate casts an *apd.Decimal to *ExchangeRate
 func ToExchangeRate(rate *apd.Decimal) *ExchangeRate {
 	return (*ExchangeRate)(rate)

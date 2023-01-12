@@ -3,9 +3,8 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"math"
-	"math/big"
 	"net/http"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -13,6 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/pricefeed"
 )
 
 // SwapService handles information about ongoing or past swaps.
@@ -260,32 +260,41 @@ func offerIDStringToHash(s string) (types.Hash, error) {
 
 // SuggestedExchangeRateResponse ...
 type SuggestedExchangeRateResponse struct {
-	ETHPrice     float64 `json:"ethPrice"`
-	XMRPrice     float64 `json:"xmrPrice"`
-	ExchangeRate float64 `json:"exchangeRate"`
+	ETHUpdatedAt time.Time           `json:"ethUpdatedAt"`
+	ETHPrice     *apd.Decimal        `json:"ethPrice"`
+	XMRUpdatedAt time.Time           `json:"xmrUpdatedAt"`
+	XMRPrice     *apd.Decimal        `json:"xmrPrice"`
+	ExchangeRate *coins.ExchangeRate `json:"exchangeRate"`
 }
 
 // SuggestedExchangeRate returns the current mainnet exchange rate, expressed as the XMR/ETH price.
 func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, resp *SuggestedExchangeRateResponse) error { //nolint:lll
-	decimals := math.Pow(10, 8)
+
+	ctx := context.Background() // TODO: There should be some parent context that would be better to use
 
 	ec := s.backend.ETHClient().Raw()
-	ethPrice, err := common.GetETHUSDPrice(context.Background(), ec)
+
+	xmrFeed, err := pricefeed.GetXMRUSDPrice(ctx, ec)
 	if err != nil {
 		return err
 	}
 
-	xmrPrice, err := common.GetXMRUSDPrice(context.Background(), ec)
+	ethFeed, err := pricefeed.GetETHUSDPrice(ctx, ec)
 	if err != nil {
 		return err
 	}
 
-	ethPriceFloat := new(big.Float).SetInt(ethPrice)
-	xmrPriceFloat := new(big.Float).SetInt(xmrPrice)
-	exchangeRate := new(big.Float).Quo(xmrPriceFloat, ethPriceFloat)
+	exchangeRate, err := coins.CalcExchangeRate(xmrFeed.Price, ethFeed.Price)
+	if err != nil {
+		return err
+	}
 
-	resp.ETHPrice = float64(ethPrice.Uint64()) / decimals
-	resp.XMRPrice = float64(xmrPrice.Uint64()) / decimals
-	resp.ExchangeRate, _ = exchangeRate.Float64()
+	resp.XMRUpdatedAt = xmrFeed.UpdatedAt
+	resp.XMRPrice = xmrFeed.Price
+
+	resp.ETHUpdatedAt = ethFeed.UpdatedAt
+	resp.ETHPrice = ethFeed.Price
+
+	resp.ExchangeRate = exchangeRate
 	return nil
 }

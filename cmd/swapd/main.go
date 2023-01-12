@@ -262,14 +262,17 @@ func setLogLevelsFromContext(c *cli.Context) error {
 func setLogLevels(level string) {
 	_ = logging.SetLogLevel("xmrtaker", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
+	_ = logging.SetLogLevel("coins", level)
 	_ = logging.SetLogLevel("common", level)
+	_ = logging.SetLogLevel("contracts", level)
 	_ = logging.SetLogLevel("cmd", level)
+	_ = logging.SetLogLevel("extethclient", level)
+	_ = logging.SetLogLevel("monero", level)
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("offers", level)
+	_ = logging.SetLogLevel("pricefeed", level)
 	_ = logging.SetLogLevel("rpc", level)
-	_ = logging.SetLogLevel("monero", level)
-	_ = logging.SetLogLevel("extethclient", level)
-	_ = logging.SetLogLevel("contracts", level)
+
 }
 
 func runDaemon(c *cli.Context) error {
