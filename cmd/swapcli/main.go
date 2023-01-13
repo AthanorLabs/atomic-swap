@@ -301,6 +301,12 @@ var (
 				},
 			},
 			{
+				Name:   "suggested-exchange-rate",
+				Usage:  "Returns the current mainnet exchange rate based on ETH/USD and XMR/USD price feeds.",
+				Action: runSuggestedExchangeRate,
+				Flags:  []cli.Flag{swapdPortFlag},
+			},
+			{
 				Name:   "get-swap-timeout",
 				Usage:  "Get the duration between swap initiation and t0 and t0 and t1, in seconds",
 				Action: runGetSwapTimeout,
@@ -777,7 +783,7 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("New Swap Timeout: %d seconds\n", duration)
+	fmt.Printf("Set timeout duration to %d seconds\n", duration)
 	return nil
 }
 
@@ -788,7 +794,21 @@ func runGetSwapTimeout(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Swap Timeout: %d seconds\n", resp.Timeout)
+	fmt.Printf("Swap timeout duration: %d seconds\n", resp.Timeout)
+	return nil
+}
+
+func runSuggestedExchangeRate(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	resp, err := c.SuggestedExchangeRate()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Exchange rate: %s\n", resp.ExchangeRate)
+	fmt.Printf("XMR/USD Price: %-13s (%s)\n", resp.XMRPrice, resp.XMRUpdatedAt)
+	fmt.Printf("ETH/USD Price: %-13s (%s)\n", resp.ETHPrice, resp.ETHUpdatedAt)
+
 	return nil
 }
 
