@@ -357,38 +357,6 @@ curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"perso
 #{"jsonrpc":"2.0","result":{"timeout":120},"id":"0"}
 ```
 
-### `personal_setSwapTimeout`
-
-Sets the duration between swap initiation and t0 and t0 and t1, in seconds. Default is 0.
-
-Parameters:
-- `duration`: duration of timeout, in seconds
-
-Returns:
-- null
-
-Example:
-```bash
-curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_setSwapTimeout","params":{"duration": 120}}' -H 'Content-Type: application/json'
-#{"jsonrpc":"2.0","result":null,"id":"0"}
-```
-
-### `personal_getSwapTimeout`
-
-Returns the duration between swap initiation and t0 and t0 and t1, in seconds
-
-Parameters:
-- none
-
-Returns:
-- `timeout`: timeout in seconds, default is 0
-
-Example:
-```bash
-curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"personal_getSwapTimeout","params":{}}' -H 'Content-Type: application/json'
-#{"jsonrpc":"2.0","result":{"timeout":120},"id":"0"}
-```
-
 ## `swap` namespace
 
 ### `swap_cancel`
