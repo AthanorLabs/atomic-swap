@@ -21,12 +21,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
-const (
-	mainnetChainID = 1
-	goerliChainID  = 5
-	ganacheChainID = 1337
-)
-
 var log = logging.Logger("extethclient")
 
 // EthClient provides management of a private key and other convenience functions layered
@@ -256,16 +250,16 @@ func validateEthClient(ctx context.Context, env common.Environment, ec *ethclien
 
 	switch env {
 	case common.Mainnet:
-		if chainID.Cmp(big.NewInt(mainnetChainID)) != 0 {
-			return fmt.Errorf("expected Ethereum mainnet chain ID (%d), but found %s", mainnetChainID, chainID)
+		if chainID.Cmp(big.NewInt(common.MainnetChainID)) != 0 {
+			return fmt.Errorf("expected Mainnet chain ID (%d), but found %s", common.MainnetChainID, chainID)
 		}
 	case common.Stagenet:
-		if chainID.Cmp(big.NewInt(goerliChainID)) != 0 {
-			return fmt.Errorf("expected Goerli chain ID (%d), but found %s", goerliChainID, chainID)
+		if chainID.Cmp(big.NewInt(common.GoerliChainID)) != 0 {
+			return fmt.Errorf("expected Goerli chain ID (%d), but found %s", common.GoerliChainID, chainID)
 		}
 	case common.Development:
-		if chainID.Cmp(big.NewInt(ganacheChainID)) != 0 {
-			return fmt.Errorf("expected Ganache chain ID (%d), but found %s", ganacheChainID, chainID)
+		if chainID.Cmp(big.NewInt(common.GanacheChainID)) != 0 {
+			return fmt.Errorf("expected Ganache chain ID (%d), but found %s", common.GanacheChainID, chainID)
 		}
 	default:
 		panic("unhandled environment type")
