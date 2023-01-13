@@ -11,22 +11,22 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-func Test_validateEthClient_devSuccess(t *testing.T) {
+func Test_validateChainID_devSuccess(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx := context.Background()
-	err := validateEthClient(ctx, common.Development, ec)
+	err := validateChainID(ctx, common.Development, ec)
 	require.NoError(t, err)
 }
 
-func Test_validateEthClient_mismatchedEnv(t *testing.T) {
+func Test_validateChainID_mismatchedEnv(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx := context.Background()
 
-	err := validateEthClient(ctx, common.Mainnet, ec)
+	err := validateChainID(ctx, common.Mainnet, ec)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "expected Ethereum mainnet chain ID (1), but found 1337")
 
-	err = validateEthClient(ctx, common.Stagenet, ec)
+	err = validateChainID(ctx, common.Stagenet, ec)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "expected Goerli chain ID (5), but found 1337")
 }

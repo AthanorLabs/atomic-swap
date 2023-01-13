@@ -70,7 +70,7 @@ func NewEthClient(
 	ec *ethclient.Client,
 	privKey *ecdsa.PrivateKey,
 ) (EthClient, error) {
-	err := validateEthClient(ctx, env, ec)
+	err := validateChainID(ctx, env, ec)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
 
-func validateEthClient(ctx context.Context, env common.Environment, ec *ethclient.Client) error {
+func validateChainID(ctx context.Context, env common.Environment, ec *ethclient.Client) error {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return err
