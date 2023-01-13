@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Installs abigen into the user's GOPATH bin directory if it is not there already
 # or if the existing version does not match go-ethereum version in go.mod.
 

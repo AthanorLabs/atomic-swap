@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 bash ./scripts/install-monero-linux.sh
 echo "starting monerod..."

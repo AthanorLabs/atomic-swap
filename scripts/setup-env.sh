@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # If you need to debug unit tests, this script will turn up the necessary
 # daemons without running the tests. Warning: It will terminate any
 # currently running test daemons.

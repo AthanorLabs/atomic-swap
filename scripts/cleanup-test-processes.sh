@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script can be handy to kill test processes launched manually
 # for debugging or still hanging around for other reasons.
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Use the project root (one directory above this script) as the current working directory:
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"

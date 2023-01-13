@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Installs the latest version of monero CLI tools. You can force a reinstall or upgrade by
 # deleting the monero-bin symlink or the version specific folder that it links to. This

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script is designed to be sourced by other test scripts, or by the shell
 # on the command line if you are using bash. Here is an example:
 #

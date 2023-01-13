@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Generate the UTContract.sol Go bindings into a file named ut_contract_test.go of the
 # parent directory for use by unit tests.
 
