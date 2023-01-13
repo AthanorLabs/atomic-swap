@@ -12,9 +12,9 @@ if [[ "${os_name}" ==  Linux ]] && [[ "${arch_name}" == x86_64 ]]; then
 	xmr_arch=linux64
 elif [[ "${os_name}" ==  Linux ]] && [[ "${arch_name}" == aarch64 ]]; then
 	xmr_arch=linuxarm8
-elif [[ "${os_name}" ==  macOS ]] && [[ "${arch_name}" == x86_64 ]]; then
+elif [[ "${os_name}" ==  Darwin ]] && [[ "${arch_name}" == x86_64 ]]; then
 	xmr_arch=mac64
-elif [[ "${os_name}" ==  macOS ]] && [[ "${arch_name}" == arm64 ]]; then
+elif [[ "${os_name}" ==  Darwin ]] && [[ "${arch_name}" == arm64 ]]; then
 	xmr_arch=macarm8
 else
 	echo "OS=${os_name} on ARCH=${arch_name} is not supported"
