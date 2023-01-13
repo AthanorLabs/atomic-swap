@@ -22,7 +22,7 @@
 MONEROD_PORT=18081
 GANACHE_PORT=8545
 
-PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 MONERO_BIN_DIR="${PROJECT_ROOT}/monero-bin"
 
 # return 0 (true) if the passed TCP port is open, otherwise non-zero (false)

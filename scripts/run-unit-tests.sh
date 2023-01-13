@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
 
 source "scripts/testlib.sh"

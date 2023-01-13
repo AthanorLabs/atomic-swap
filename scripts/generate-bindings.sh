@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Use the project root (one directory above this script) as the current working directory:
-PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
 
 ABIGEN="$(go env GOPATH)/bin/abigen"

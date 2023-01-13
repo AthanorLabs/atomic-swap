@@ -21,7 +21,7 @@ else
 	exit 1
 fi
 
-PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}"
 
 if [[ -d "monero-bin" ]]; then
