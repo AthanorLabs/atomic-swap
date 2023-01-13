@@ -63,6 +63,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	}
 
 	swapService := NewSwapService(
+		cfg.Ctx,
 		cfg.ProtocolBackend.SwapManager(),
 		cfg.XMRTaker,
 		cfg.XMRMaker,

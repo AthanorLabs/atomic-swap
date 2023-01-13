@@ -105,7 +105,6 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 
 // getChainlinkPriceFeed retries the latest price feed data from the given contract address.
 func getChainlinkPriceFeed(ctx context.Context, feedAddress string, ec *ethclient.Client) (*PriceFeed, error) {
-
 	chainlinkPriceFeedProxy, err := contracts.NewAggregatorV3Interface(ethcommon.HexToAddress(feedAddress), ec)
 	if err != nil {
 		return nil, err
@@ -127,7 +126,7 @@ func getChainlinkPriceFeed(ctx context.Context, feedAddress string, ec *ethclien
 
 	price := apd.NewWithBigInt(new(apd.BigInt).SetMathBigInt(roundData.Answer), -int32(decimals))
 	_, _ = price.Reduce(price) // push even multiples of 10 to the exponent
-	updatedAt := time.Unix(roundData.StartedAt.Int64(), 0)
+	updatedAt := time.Unix(roundData.UpdatedAt.Int64(), 0)
 
 	description, err := chainlinkPriceFeedProxy.Description(opts)
 	if err != nil {

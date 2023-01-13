@@ -17,6 +17,7 @@ import (
 
 // SwapService handles information about ongoing or past swaps.
 type SwapService struct {
+	ctx      context.Context
 	sm       SwapManager
 	xmrtaker XMRTaker
 	xmrmaker XMRMaker
@@ -25,8 +26,16 @@ type SwapService struct {
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, xmrtaker XMRTaker, xmrmaker XMRMaker, net Net, b ProtocolBackend) *SwapService {
+func NewSwapService(
+	ctx context.Context,
+	sm SwapManager,
+	xmrtaker XMRTaker,
+	xmrmaker XMRMaker,
+	net Net,
+	b ProtocolBackend,
+) *SwapService {
 	return &SwapService{
+		ctx:      ctx,
 		sm:       sm,
 		xmrtaker: xmrtaker,
 		xmrmaker: xmrmaker,
@@ -269,17 +278,14 @@ type SuggestedExchangeRateResponse struct {
 
 // SuggestedExchangeRate returns the current mainnet exchange rate, expressed as the XMR/ETH price.
 func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, resp *SuggestedExchangeRateResponse) error { //nolint:lll
-
-	ctx := context.Background() // TODO: There should be some parent context that would be better to use
-
 	ec := s.backend.ETHClient().Raw()
 
-	xmrFeed, err := pricefeed.GetXMRUSDPrice(ctx, ec)
+	xmrFeed, err := pricefeed.GetXMRUSDPrice(s.ctx, ec)
 	if err != nil {
 		return err
 	}
 
-	ethFeed, err := pricefeed.GetETHUSDPrice(ctx, ec)
+	ethFeed, err := pricefeed.GetETHUSDPrice(s.ctx, ec)
 	if err != nil {
 		return err
 	}
