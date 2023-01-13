@@ -1,37 +1,23 @@
 package rpcclient
 
 import (
-	"encoding/json"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
 // Query calls net_query.
-func (c *Client) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
+func (c *Client) Query(who peer.ID) (*rpctypes.QueryPeerResponse, error) {
 	const (
 		method = "net_queryPeer"
 	)
 
 	req := &rpctypes.QueryPeerRequest{
-		Multiaddr: maddr,
+		PeerID: who,
 	}
+	res := &rpctypes.QueryPeerResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var res *rpctypes.QueryPeerResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, req, res); err != nil {
 		return nil, err
 	}
 

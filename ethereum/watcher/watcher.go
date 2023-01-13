@@ -1,3 +1,4 @@
+// Package watcher provides tools to track events emitted from ethereum contracts.
 package watcher
 
 import (

@@ -1,3 +1,5 @@
+// Package backend provides the portion of top-level swapd instance
+// management that is shared by both the maker and the taker.
 package backend
 
 import (
@@ -10,24 +12,44 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
 
-var (
-	defaultTimeoutDuration = time.Hour * 24
-)
+// MessageSender is implemented by a Host
+type MessageSender interface {
+	SendSwapMessage(message.Message, types.Hash) error
+	CloseProtocolStream(id types.Hash)
+}
+
+// RecoveryDB is implemented by *db.RecoveryDB
+type RecoveryDB interface {
+	PutContractSwapInfo(id types.Hash, info *db.EthereumSwapInfo) error
+	GetContractSwapInfo(id types.Hash) (*db.EthereumSwapInfo, error)
+	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey) error
+	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
+	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey) error
+	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
+	PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error
+	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
+	PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error
+	GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error)
+	DeleteSwap(id types.Hash) error
+}
 
 // Backend provides an interface for both the XMRTaker and XMRMaker into the Monero/Ethereum chains.
 // It also interfaces with the network layer.
 type Backend interface {
 	XMRClient() monero.WalletClient
 	ETHClient() extethclient.EthClient
-	net.MessageSender
+	MessageSender
+
+	RecoveryDB() RecoveryDB
 
 	// NewTxSender creates a new transaction sender, called per-swap
 	NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error)
@@ -41,7 +63,6 @@ type Backend interface {
 	SwapManager() swap.Manager
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
-	Net() net.MessageSender
 	SwapTimeout() time.Duration
 	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
 
@@ -56,6 +77,7 @@ type backend struct {
 	ctx         context.Context
 	env         common.Environment
 	swapManager swap.Manager
+	recoveryDB  RecoveryDB
 
 	// wallet/node endpoints
 	moneroWallet monero.WalletClient
@@ -72,7 +94,7 @@ type backend struct {
 	swapTimeout  time.Duration
 
 	// network interface
-	net.MessageSender
+	MessageSender
 }
 
 // Config is the config for the Backend
@@ -87,17 +109,13 @@ type Config struct {
 
 	SwapManager swap.Manager
 
-	Net net.MessageSender
+	RecoveryDB RecoveryDB
+
+	Net MessageSender
 }
 
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
-	if cfg.Environment == common.Development {
-		defaultTimeoutDuration = 2 * time.Minute
-	} else if cfg.Environment == common.Stagenet {
-		defaultTimeoutDuration = time.Hour
-	}
-
 	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
 		return nil, errNilSwapContractOrAddress
 	}
@@ -110,9 +128,10 @@ func NewBackend(cfg *Config) (Backend, error) {
 		contract:        cfg.SwapContract,
 		contractAddr:    cfg.SwapContractAddress,
 		swapManager:     cfg.SwapManager,
-		swapTimeout:     defaultTimeoutDuration,
+		swapTimeout:     common.SwapTimeoutFromEnv(cfg.Environment),
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
+		recoveryDB:      cfg.RecoveryDB,
 	}, nil
 }
 
@@ -128,7 +147,12 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.
 	if !b.ethClient.HasPrivateKey() {
 		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient.Raw(), b.contractAddr, asset)
 	}
+
 	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETHClient(), b.contract, erc20Contract), nil
+}
+
+func (b *backend) RecoveryDB() RecoveryDB {
+	return b.recoveryDB
 }
 
 func (b *backend) Contract() *contracts.SwapFactory {
@@ -145,10 +169,6 @@ func (b *backend) Ctx() context.Context {
 
 func (b *backend) Env() common.Environment {
 	return b.env
-}
-
-func (b *backend) Net() net.MessageSender {
-	return b.MessageSender
 }
 
 func (b *backend) SwapManager() swap.Manager {

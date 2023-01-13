@@ -1,6 +1,8 @@
+// Package protocol has functions that are used by both the maker and taker during execution of the swap.
 package protocol
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 
@@ -52,9 +54,15 @@ func GenerateKeysAndProof() (*KeysAndProof, error) {
 	}, nil
 }
 
+// VerifyResult is returned from verifying a DLEq proof.
+type VerifyResult struct {
+	Secp256k1PublicKey *secp256k1.PublicKey
+	Ed25519PublicKey   *mcrypto.PublicKey
+}
+
 // VerifyKeysAndProof verifies the given DLEq proof and asserts that the resulting secp256k1 key corresponds
 // to the given key.
-func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicKey, error) {
+func VerifyKeysAndProof(proofStr, secp256k1PubString, ed25519PubString string) (*VerifyResult, error) {
 	pb, err := hex.DecodeString(proofStr)
 	if err != nil {
 		return nil, err
@@ -76,5 +84,17 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString string) (*secp256k1.PublicK
 		return nil, err
 	}
 
-	return secp256k1Pub, nil
+	ed25519Pub, err := mcrypto.NewPublicKeyFromHex(ed25519PubString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate XMRMaker's public spend key: %w", err)
+	}
+
+	if !bytes.Equal(res.Ed25519PublicKey().Bytes(), ed25519Pub.Bytes()) {
+		return nil, errInvalidEd25519Key
+	}
+
+	return &VerifyResult{
+		Secp256k1PublicKey: secp256k1Pub,
+		Ed25519PublicKey:   ed25519Pub,
+	}, nil
 }

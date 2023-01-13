@@ -1,3 +1,4 @@
+// Package db implements the APIs for interacting with our disk persisted key-value store.
 package db
 
 import (
@@ -23,6 +24,7 @@ type Database struct {
 	// offerTable entries are stored when offers are made by swapd.
 	// they are removed when the offer is taken.
 	offerTable chaindb.Database
+
 	// swapTable is a key-value store where all the keys are prefixed by swapPrefix
 	// in the underlying database.
 	// the key is the 32-byte swap ID (which is the same as the ID of the offer taken
@@ -30,6 +32,11 @@ type Database struct {
 	// swapTable entries are added when a swap begins, and they are never deleted;
 	// only their `Status` field within *swap.Info may be updated.
 	swapTable chaindb.Database
+
+	// recoveryDB contains a db table prefixed by recoveryPrefix.
+	// it contains information about ongoing swaps required to recover funds
+	// in case of a node crash, or any other problem.
+	recoveryDB *RecoveryDB
 }
 
 // NewDatabase returns a new *Database.
@@ -39,9 +46,12 @@ func NewDatabase(cfg *chaindb.Config) (*Database, error) {
 		return nil, err
 	}
 
+	recoveryDB := newRecoveryDB(chaindb.NewTable(db, recoveryPrefix))
+
 	return &Database{
 		offerTable: chaindb.NewTable(db, offerPrefix),
 		swapTable:  chaindb.NewTable(db, swapPrefix),
+		recoveryDB: recoveryDB,
 	}, nil
 }
 
@@ -57,7 +67,12 @@ func (db *Database) Close() error {
 		return err
 	}
 
-	return nil
+	return db.recoveryDB.close()
+}
+
+// RecoveryDB ...
+func (db *Database) RecoveryDB() *RecoveryDB {
+	return db.recoveryDB
 }
 
 // PutOffer puts an offer in the database.
@@ -74,6 +89,16 @@ func (db *Database) PutOffer(offer *types.Offer) error {
 // DeleteOffer deletes an offer from the database.
 func (db *Database) DeleteOffer(id types.Hash) error {
 	return db.offerTable.Del(id[:])
+}
+
+// GetOffer returns the given offer from the db, if it exists.
+func (db *Database) GetOffer(id types.Hash) (*types.Offer, error) {
+	val, err := db.offerTable.Get(id[:])
+	if err != nil {
+		return nil, err
+	}
+
+	return types.UnmarshalOffer(val)
 }
 
 // GetAllOffers returns all offers in the database.

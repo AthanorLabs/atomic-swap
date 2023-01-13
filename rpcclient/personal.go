@@ -1,9 +1,6 @@
 package rpcclient
 
 import (
-	"encoding/json"
-	"errors"
-
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
@@ -18,21 +15,25 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 		Timeout: timeoutSeconds,
 	}
 
-	params, err := json.Marshal(req)
-	if err != nil {
+	if err := c.Post(method, req, nil); err != nil {
 		return err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return resp.Error
 	}
 
 	return nil
+}
+
+// GetSwapTimeout calls personal_getSwapTimeout.
+func (c *Client) GetSwapTimeout() (*rpc.GetSwapTimeoutResponse, error) {
+	const (
+		method = "personal_getSwapTimeout"
+	)
+
+	swapTimeout := &rpc.GetSwapTimeoutResponse{}
+	if err := c.Post(method, nil, swapTimeout); err != nil {
+		return nil, err
+	}
+
+	return swapTimeout, nil
 }
 
 // Balances calls personal_balances.
@@ -41,22 +42,10 @@ func (c *Client) Balances() (*rpctypes.BalancesResponse, error) {
 		method = "personal_balances"
 	)
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, "{}")
-	if err != nil {
+	balances := &rpctypes.BalancesResponse{}
+	if err := c.Post(method, nil, balances); err != nil {
 		return nil, err
 	}
 
-	if resp.Error != nil {
-		return nil, resp.Error
-	}
-
-	var balances rpctypes.BalancesResponse
-	if err = json.Unmarshal(resp.Result, &balances); err != nil {
-		return nil, err
-	}
-	if balances.WeiBalance == nil {
-		return nil, errors.New("required field wei_balance missing")
-	}
-
-	return &balances, nil
+	return balances, nil
 }

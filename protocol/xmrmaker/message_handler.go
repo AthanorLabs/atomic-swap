@@ -7,11 +7,12 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
@@ -19,7 +20,7 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) error {
+func (s *swapState) HandleProtocolMessage(msg message.Message) error {
 	if s == nil {
 		return errNilSwapState
 	}
@@ -56,9 +57,10 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event EventType) {
+func (s *swapState) setNextExpectedEvent(event EventType) error {
 	if s.nextExpectedEvent == EventNoneType {
-		return
+		// should have called clearNextExpectedEvent instead
+		panic("cannot set next expected event to EventNoneType")
 	}
 
 	if event == s.nextExpectedEvent {
@@ -67,16 +69,25 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 
 	s.nextExpectedEvent = event
 	status := event.getStatus()
-	if status != types.UnknownStatus {
-		s.info.SetStatus(status)
+
+	if status == types.UnknownStatus {
+		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
-	if s.offerExtra.StatusCh != nil && status != types.UnknownStatus {
+	s.info.SetStatus(status)
+	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
+	if err != nil {
+		return err
+	}
+
+	if s.offerExtra.StatusCh != nil {
 		s.offerExtra.StatusCh <- status
 	}
+
+	return nil
 }
 
-func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Message, error) {
+func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (message.Message, error) {
 	if msg.Address == "" {
 		return nil, errMissingAddress
 	}
@@ -95,31 +106,45 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (net.Mes
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
-	if err := pcommon.WriteContractSwapToFile(s.offerExtra.InfoFile, s.contractSwapID, s.contractSwap); err != nil {
+	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, ethcommon.HexToHash(msg.TxHash))
+	if err != nil {
 		return nil, err
 	}
 
 	contractAddr := ethcommon.HexToAddress(msg.Address)
-	if _, err := contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr); err != nil {
+	// note: this function verifies the forwarder code as well, even if we aren't using a relayer,
+	// in which case it's not relevant to us and we don't need to verify it.
+	// doesn't hurt though I suppose.
+	_, err = contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := s.setContract(contractAddr); err != nil {
+	if err = s.setContract(contractAddr); err != nil {
 		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
-	if err := pcommon.WriteContractAddressToFile(s.offerExtra.InfoFile, msg.Address); err != nil {
-		return nil, fmt.Errorf("failed to write contract address to file: %w", err)
+	ethInfo := &db.EthereumSwapInfo{
+		StartNumber:     receipt.BlockNumber,
+		SwapID:          s.contractSwapID,
+		Swap:            s.contractSwap,
+		ContractAddress: contractAddr,
 	}
 
-	if err := s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
+	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
 		return nil, err
 	}
 
-	// TODO: check these (in checkContract) (#161)
-	s.setTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	if err = s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
+		return nil, err
+	}
 
-	notifyXMRLocked, err := s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	err = s.checkAndSetTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	if err != nil {
+		return nil, err
+	}
+
+	notifyXMRLocked, err := s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock funds: %w", err)
 	}
@@ -173,9 +198,15 @@ func (s *swapState) handleT0Expired() {
 	}
 }
 
-func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
+func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
 	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
 		return errMissingKeys
+	}
+
+	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
+	verifyResult, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey, msg.PublicSpendKey)
+	if err != nil {
+		return err
 	}
 
 	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
@@ -183,12 +214,6 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) error {
 		return fmt.Errorf("failed to generate XMRTaker's public keys: %w", err)
 	}
 
-	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	secp256k1Pub, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
-	if err != nil {
-		return err
-	}
-
-	s.setXMRTakerPublicKeys(kp, secp256k1Pub)
+	s.setXMRTakerPublicKeys(kp, verifyResult.Secp256k1PublicKey)
 	return nil
 }

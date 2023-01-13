@@ -1,68 +1,35 @@
 package xmrtaker
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
-func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
-	s := newTestInstance(t)
-	defer s.cancel()
-	s.SetSwapTimeout(time.Minute * 2)
-
+func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Address) {
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
 	err := backend.XMRClient().CreateWallet("test-wallet", "")
 	require.NoError(t, err)
-	monero.MineMinXMRBalance(t, backend.XMRClient(), common.MoneroToPiconero(1))
-
-	// invalid SendKeysMessage should result in an error
-	msg := &net.SendKeysMessage{}
-	err = s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingKeys))
-
-	err = s.generateAndSetKeys()
-	require.NoError(t, err)
-
-	// handle valid SendKeysMessage
-	msg, err = s.SendKeysMessage()
-	require.NoError(t, err)
-	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = s.ETHClient().Address().String()
-
-	err = s.HandleProtocolMessage(msg)
-	require.NoError(t, err)
-
-	resp := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyETHLockedType, resp.Type())
-	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
-	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
-	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
-
-	// simulate xmrmaker locking xmr
-	amt := common.MoneroAmount(1000000000)
-	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
-	xmrAddr := kp.Address(common.Mainnet)
+	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))
 
 	// lock xmr
-	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, uint64(amt))
+	amt := s.expectedPiconeroAmount()
+	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
 	require.NoError(t, err)
 	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, uint64(amt), tResp.Amount)
+	require.Equal(t, amt.CmpU64(tResp.Amount), 0)
 
 	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
@@ -110,6 +77,38 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	case <-time.After(time.Second * 2):
 		t.Fatalf("didn't get ready logs in time")
 	}
+}
+
+func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
+	s, net := newTestSwapStateAndNet(t)
+	defer s.cancel()
+	s.SetSwapTimeout(time.Minute * 2)
+
+	// invalid SendKeysMessage should result in an error
+	msg := &message.SendKeysMessage{}
+	err := s.HandleProtocolMessage(msg)
+	require.ErrorIs(t, err, errMissingProvidedAmount)
+
+	// handle valid SendKeysMessage
+	msg = s.SendKeysMessage()
+	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
+	msg.EthAddress = s.ETHClient().Address().String()
+	msg.ProvidedAmount = s.providedAmount.AsStandard()
+
+	err = s.HandleProtocolMessage(msg)
+	require.NoError(t, err)
+
+	resp := net.LastSentMessage()
+	require.NotNil(t, resp)
+	require.Equal(t, message.NotifyETHLockedType, resp.Type())
+	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
+	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
+	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
+
+	// simulate xmrmaker locking xmr
+	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
+	xmrAddr := kp.Address(common.Mainnet)
+	lockXMRAndCheckForReadyLog(t, s, xmrAddr)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key

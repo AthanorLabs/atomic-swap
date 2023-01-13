@@ -1,3 +1,5 @@
+// Package extethclient provides libraries for interacting with an ethereum node
+// using a specific private key.
 package extethclient
 
 import (
@@ -201,7 +203,7 @@ func (c *ethClient) WaitForTimestamp(ctx context.Context, ts time.Time) error {
 	if err != nil {
 		return err
 	}
-	log.Debug("Wait complete for block %d with ts=%s >= %s",
+	log.Debugf("Wait complete for block %d with ts=%s >= %s",
 		hdr.Number.Uint64(),
 		time.Unix(int64(hdr.Time), 0).Format(common.TimeFmtSecs),
 		ts.Format(common.TimeFmtSecs),

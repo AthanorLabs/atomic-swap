@@ -1,112 +1,149 @@
 package xmrmaker
 
 import (
-	"github.com/athanorlabs/atomic-swap/common"
+	"math/big"
+
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 )
 
-// Provides returns types.ProvidesXMR
-func (b *Instance) Provides() types.ProvidesCoin {
-	return types.ProvidesXMR
+// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
+type EthereumAssetAmount interface {
+	BigInt() *big.Int
+	AsStandard() *apd.Decimal
 }
 
-func (b *Instance) initiate(
+// Provides returns types.ProvidesXMR
+func (inst *Instance) Provides() coins.ProvidesCoin {
+	return coins.ProvidesXMR
+}
+
+func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
-	providesAmount common.MoneroAmount,
-	desiredAmount common.EtherAmount,
+	providesAmount *coins.PiconeroAmount,
+	desiredAmount EthereumAssetAmount,
 ) (*swapState, error) {
-	b.swapMu.Lock()
-	defer b.swapMu.Unlock()
-
-	if b.swapStates[offer.ID] != nil {
+	if inst.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := b.backend.XMRClient().GetBalance(0)
+	balance, err := inst.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
 
-	// check user's balance and that they actually have what they will provide
-	if balance.UnlockedBalance <= uint64(providesAmount) {
+	// check that the user's monero balance is sufficient for their max swap amount (strictly
+	// greater check, since they need to cover chain fees).
+	unlockedBal := coins.NewPiconeroAmount(balance.UnlockedBalance)
+	if unlockedBal.Decimal().Cmp(providesAmount.Decimal()) <= 0 {
 		return nil, errBalanceTooLow{
-			unlockedBalance: common.MoneroAmount(balance.UnlockedBalance).AsMonero(),
+			unlockedBalance: unlockedBal.AsMonero(),
 			providedAmount:  providesAmount.AsMonero(),
 		}
 	}
 
 	// checks passed, delete offer for now
-	b.offerManager.DeleteOffer(offer.ID)
+	inst.offerManager.DeleteOffer(offer.ID)
 
-	s, err := newSwapState(b.backend, offer, offerExtra, b.offerManager, providesAmount, desiredAmount)
+	s, err := newSwapStateFromStart(
+		inst.backend,
+		offer,
+		offerExtra,
+		inst.offerManager,
+		providesAmount,
+		desiredAmount,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
 		<-s.done
-		b.swapMu.Lock()
-		defer b.swapMu.Unlock()
-		delete(b.swapStates, offer.ID)
+		inst.swapMu.Lock()
+		defer inst.swapMu.Unlock()
+		delete(inst.swapStates, offer.ID)
 	}()
 
-	symbol, err := pcommon.AssetSymbol(b.backend, offer.EthAsset)
+	symbol, err := pcommon.AssetSymbol(inst.backend, offer.EthAsset)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
-		s.info.ReceivedAmount,
+		s.info.ExpectedAmount,
 		symbol,
 		s.info.ProvidedAmount),
 	)
-	b.swapStates[offer.ID] = s
+	inst.swapStates[offer.ID] = s
 	return s, nil
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapState, net.Message, error) {
-	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %v**",
+func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.SwapState, message.Message, error) {
+	inst.swapMu.Lock()
+	defer inst.swapMu.Unlock()
+
+	str := color.New(color.Bold).Sprintf("**incoming take of offer %s with provided amount %s**",
 		msg.OfferID,
 		msg.ProvidedAmount,
 	)
 	log.Info(str)
 
 	// get offer and determine expected amount
-	id, err := types.HexToHash(msg.OfferID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if types.IsHashZero(id) {
+	if types.IsHashZero(msg.OfferID) {
 		return nil, nil, errOfferIDNotSet
 	}
 
-	offer, offerExtra, err := b.offerManager.GetOffer(id)
+	// TODO: If this is not ETH, we need quick/easy access to the number
+	//       of token decimal places. Should it be in the OfferExtra struct?
+	err := coins.ValidatePositive("providedAmount", coins.NumEtherDecimals, msg.ProvidedAmount)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	providedAmount := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
-
-	if providedAmount < offer.MinimumAmount {
-		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinimumAmount}
+	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if providedAmount > offer.MaximumAmount {
-		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaximumAmount}
+	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	providedPicoXMR := common.MoneroToPiconero(providedAmount)
-	providedWei := common.EtherToWei(msg.ProvidedAmount)
+	if providedAmount.Cmp(offer.MinAmount) < 0 {
+		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
+	}
 
-	state, err := b.initiate(offer, offerExtra, providedPicoXMR, providedWei)
+	if providedAmount.Cmp(offer.MaxAmount) > 0 {
+		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
+	}
+
+	providedPiconero := coins.MoneroToPiconero(providedAmount)
+
+	// check decimals if ERC20
+	// note: this is our counterparty's provided amount, ie. how much we're receiving
+	expectedAmount, err := pcommon.GetEthereumAssetAmount(
+		inst.backend.Ctx(),
+		inst.backend.ETHClient(),
+		msg.ProvidedAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	state, err := inst.initiate(offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -115,10 +152,6 @@ func (b *Instance) HandleInitiateMessage(msg *net.SendKeysMessage) (net.SwapStat
 		return nil, nil, err
 	}
 
-	resp, err := state.SendKeysMessage()
-	if err != nil {
-		return nil, nil, err
-	}
-
+	resp := state.SendKeysMessage()
 	return state, resp, nil
 }

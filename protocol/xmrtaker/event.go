@@ -23,6 +23,19 @@ const (
 	EventNoneType
 )
 
+func nextExpectedEventFromStatus(s types.Status) EventType {
+	switch s {
+	case types.ExpectingKeys:
+		return EventKeysReceivedType
+	case types.ETHLocked:
+		return EventXMRLockedType
+	case types.ContractReady:
+		return EventETHClaimedType
+	default:
+		return EventExitType
+	}
+}
+
 func (t EventType) String() string {
 	switch t {
 	case EventKeysReceivedType:
@@ -181,7 +194,11 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(EventXMRLockedType)
+		err = s.setNextExpectedEvent(EventXMRLockedType)
+		if err != nil {
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventXMRLockedType: %w", err)
+			return
+		}
 	case *EventXMRLocked:
 		log.Infof("EventXMRLocked")
 		defer close(e.errCh)
@@ -197,7 +214,11 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		s.setNextExpectedEvent(EventETHClaimedType)
+		err = s.setNextExpectedEvent(EventETHClaimedType)
+		if err != nil {
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventETHClaimedType: %w", err)
+			return
+		}
 	case *EventETHClaimed:
 		log.Infof("EventETHClaimed")
 		defer close(e.errCh)

@@ -25,7 +25,7 @@ GANACHE_PORT=8545
 PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 MONERO_BIN_DIR="${PROJECT_ROOT}/monero-bin"
 
-# return 0 (true) if the passed port is open, otherwise non-zero (false)
+# return 0 (true) if the passed TCP port is open, otherwise non-zero (false)
 is-port-open() {
 	local port="${1:?}"
 	: &>/dev/null <"/dev/tcp/127.0.0.1/${port}"
@@ -54,7 +54,7 @@ mine-monero-for-swapd() {
 	local swapd_port="${1:-5001}" # defaults to 5001 if not passed
 	local wallet_addr
 	wallet_addr="$(
-		"${PROJECT_ROOT}/swapcli" balances --swapd-port "${swapd_port}" | grep 'Monero address:' | sed 's/.*: //'
+		"${PROJECT_ROOT}/bin/swapcli" balances --swapd-port "${swapd_port}" | grep 'Monero address:' | sed 's/.*: //'
 	)"
 	echo "mining to address ${wallet_addr}"
 	mine-monero "${wallet_addr}"

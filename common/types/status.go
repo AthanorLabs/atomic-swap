@@ -1,3 +1,4 @@
+// Package types is for types that are shared by multiple packages
 package types
 
 // Status represents the stage that a swap is at.

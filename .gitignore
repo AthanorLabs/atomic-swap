@@ -10,10 +10,7 @@
 /monero-*
 
 # Generated binaries
-/swapcli
-/swapd
-/swaprecover
-/swaptester
+/bin/
 
 # Test binary, built with `go test -c`
 *.test
@@ -37,3 +34,6 @@ xmrtaker.key
 # Ethereum contract compilation artifacts
 /ethereum/abi/
 /ethereum/bin/
+
+# IDE settings
+/.idea/

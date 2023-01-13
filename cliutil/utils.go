@@ -1,8 +1,8 @@
+// Package cliutil provides utility functions intended for sharing by the main packages of multiple executables.
 package cliutil
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,8 +19,6 @@ import (
 var (
 	// Only use this logger in functions called by programs that use formatted logs like swapd (not swapcli)
 	log = logging.Logger("cmd")
-
-	errInvalidEnv = errors.New("--env must be one of mainnet, stagenet, or dev")
 )
 
 func createAndWriteEthKeyFile(ethPrivKeyFile string, env common.Environment, devXMRMaker, devXMRTaker bool) error {
@@ -76,25 +74,6 @@ func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMR
 	}
 	ethPrivKeyHex := strings.TrimSpace(string(fileData))
 	return ethcrypto.HexToECDSA(ethPrivKeyHex)
-}
-
-// GetEnvironment returns a common.Environment from the CLI options.
-func GetEnvironment(envStr string) (env common.Environment, cfg common.Config, err error) {
-	switch envStr {
-	case "mainnet":
-		env = common.Mainnet
-		cfg = common.MainnetConfig
-	case "stagenet":
-		env = common.Stagenet
-		cfg = common.StagenetConfig
-	case "dev":
-		env = common.Development
-		cfg = common.DevelopmentConfig
-	default:
-		return 0, common.Config{}, errInvalidEnv
-	}
-
-	return env, cfg, nil
 }
 
 // GetVersion returns our version string for an executable

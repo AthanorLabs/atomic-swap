@@ -1,11 +1,13 @@
+// Package offers provides management of the offers being made by a swapd instance.
 package offers
 
 import (
 	"errors"
 	"sync"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/athanorlabs/atomic-swap/common/types"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -46,7 +48,6 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 	for _, offer := range savedOffers {
 		extra := &types.OfferExtra{
 			StatusCh: make(chan types.Status, statusChSize),
-			InfoFile: pcommon.GetSwapInfoFilepath(dataDir, offer.ID.String()),
 		}
 
 		offers[offer.ID] = &offerWithExtra{
@@ -81,7 +82,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 func (m *Manager) AddOffer(
 	offer *types.Offer,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommission *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -99,7 +100,6 @@ func (m *Manager) AddOffer(
 
 	extra := &types.OfferExtra{
 		StatusCh:          make(chan types.Status, statusChSize),
-		InfoFile:          pcommon.GetSwapInfoFilepath(m.dataDir, id.String()),
 		RelayerEndpoint:   relayerEndpoint,
 		RelayerCommission: relayerCommission,
 	}
@@ -123,13 +123,26 @@ func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, err
 		return nil, nil, errOfferDoesNotExist
 	}
 
-	err := m.db.DeleteOffer(id)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	delete(m.offers, id)
 	return offer.offer, offer.extra, nil
+}
+
+// DeleteOfferFromDB deletes the offer from the database.
+func (m *Manager) DeleteOfferFromDB(id types.Hash) error {
+	return m.db.DeleteOffer(id)
+}
+
+// GetOfferFromDB returns an offer from memory or the database, if it exists.
+func (m *Manager) GetOfferFromDB(id types.Hash) (*types.Offer, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	offer, has := m.offers[id]
+	if has {
+		return offer.offer, nil
+	}
+
+	return m.db.GetOffer(id)
 }
 
 // GetOffers returns all current offers. The returned slice is in random order and will not

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -328,6 +329,8 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 
 	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
+
+	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
 
 	swap := SwapFactorySwap{
 		Owner:        addr,

@@ -1,53 +1,39 @@
 package rpcclient
 
 import (
-	"encoding/json"
-	"fmt"
-
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // MakeOffer calls net_makeOffer.
 func (c *Client) MakeOffer(
-	min, max, exchangeRate float64,
+	min, max *apd.Decimal,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission float64,
-) (string, error) {
+	relayerCommission *apd.Decimal,
+) (*rpctypes.MakeOfferResponse, error) {
 	const (
 		method = "net_makeOffer"
 	)
 
 	req := &rpctypes.MakeOfferRequest{
-		MinimumAmount:     min,
-		MaximumAmount:     max,
-		ExchangeRate:      types.ExchangeRate(exchangeRate),
+		MinAmount:         min,
+		MaxAmount:         max,
+		ExchangeRate:      exchangeRate,
 		EthAsset:          ethcommon.Address(ethAsset).Hex(),
 		RelayerEndpoint:   relayerEndpoint,
 		RelayerCommission: relayerCommission,
 	}
+	res := &rpctypes.MakeOfferResponse{}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return "", err
+	if err := c.Post(method, req, res); err != nil {
+		return nil, err
 	}
 
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return "", err
-	}
-
-	if resp.Error != nil {
-		return "", fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpctypes.MakeOfferResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
-		return "", err
-	}
-
-	return res.ID, nil
+	return res, nil
 }

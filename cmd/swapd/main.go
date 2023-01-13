@@ -1,3 +1,5 @@
+// Package main provides the entrypoint of swapd, a daemon that manages atomic swaps
+// between monero and ethereum assets.
 package main
 
 import (
@@ -12,8 +14,10 @@ import (
 	"strings"
 
 	"github.com/ChainSafe/chaindb"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -27,8 +31,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
-
-	logging "github.com/ipfs/go-log"
 )
 
 const (
@@ -38,9 +40,9 @@ const (
 	defaultXMRMakerLibp2pPort = 9934
 
 	// default RPC port
-	defaultRPCPort         = 5005
-	defaultXMRTakerRPCPort = 5001
-	defaultXMRMakerRPCPort = 5002
+	defaultRPCPort         = common.DefaultSwapdPort
+	defaultXMRTakerRPCPort = defaultRPCPort
+	defaultXMRMakerRPCPort = defaultXMRTakerRPCPort + 1
 )
 
 var (
@@ -82,6 +84,7 @@ const (
 	flagTransferBack     = "transfer-back"
 
 	flagLogLevel = "log-level"
+	flagProfile  = "profile"
 )
 
 var (
@@ -100,8 +103,8 @@ var (
 			},
 			&cli.StringFlag{
 				Name:  flagDataDir,
-				Usage: "Path to store swap artifacts", //nolint:misspell
-				Value: "{HOME}/.atomicswap/{ENV}",     // For --help only, actual default replaces variables
+				Usage: "Path to store swap artifacts",
+				Value: "{HOME}/.atomicswap/{ENV}", // For --help only, actual default replaces variables
 			},
 			&cli.StringFlag{
 				Name:  flagLibp2pKey,
@@ -160,6 +163,7 @@ var (
 				Name:    flagBootnodes,
 				Aliases: []string{"bn"},
 				Usage:   "libp2p bootnode, comma separated if passing multiple to a single flag",
+				EnvVars: []string{"SWAPD_BOOTNODES"},
 			},
 			&cli.UintFlag{
 				Name:  flagGasPrice,
@@ -199,6 +203,11 @@ var (
 				Name:  flagUseExternalSigner,
 				Usage: "Use external signer, for usage with the swap UI",
 			},
+			&cli.StringFlag{
+				Name:   flagProfile,
+				Usage:  "BIND_IP:PORT to provide profiling information on",
+				Hidden: true, // flag is only for developers
+			},
 		},
 	}
 )
@@ -223,7 +232,7 @@ type daemon struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	database  *db.Database
-	host      net.Host
+	host      *net.Host
 	rpcServer *rpc.Server
 
 	// this channel is closed once the daemon has started up
@@ -253,14 +262,17 @@ func setLogLevelsFromContext(c *cli.Context) error {
 func setLogLevels(level string) {
 	_ = logging.SetLogLevel("xmrtaker", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
+	_ = logging.SetLogLevel("coins", level)
 	_ = logging.SetLogLevel("common", level)
+	_ = logging.SetLogLevel("contracts", level)
 	_ = logging.SetLogLevel("cmd", level)
+	_ = logging.SetLogLevel("extethclient", level)
+	_ = logging.SetLogLevel("monero", level)
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("offers", level)
+	_ = logging.SetLogLevel("pricefeed", level)
 	_ = logging.SetLogLevel("rpc", level)
-	_ = logging.SetLogLevel("monero", level)
-	_ = logging.SetLogLevel("extethclient", level)
-	_ = logging.SetLogLevel("contracts", level)
+
 }
 
 func runDaemon(c *cli.Context) error {
@@ -269,6 +281,10 @@ func runDaemon(c *cli.Context) error {
 	go signalHandler(ctx, cancel)
 
 	if err := setLogLevelsFromContext(c); err != nil {
+		return err
+	}
+
+	if err := maybeStartProfiler(c); err != nil {
 		return err
 	}
 
@@ -335,21 +351,27 @@ func (d *daemon) stop() error {
 // can be specified individually with multiple flags, but can also contain
 // multiple boot nodes passed to single flag separated by commas.
 func expandBootnodes(nodesCLI []string) []string {
-	var nodes []string
-	for _, n := range nodesCLI {
-		splitNodes := strings.Split(n, ",")
-		for _, ns := range splitNodes {
-			nodes = append(nodes, strings.TrimSpace(ns))
+	var nodes []string // nodes from all flag values combined
+	for _, flagVal := range nodesCLI {
+		splitNodes := strings.Split(flagVal, ",")
+		for _, n := range splitNodes {
+			n = strings.TrimSpace(n)
+			// Handle the empty string to not use default bootnodes. Doing it here after
+			// the split has the arguably positive side effect of skipping empty entries.
+			if len(n) > 0 {
+				nodes = append(nodes, strings.TrimSpace(n))
+			}
 		}
 	}
 	return nodes
 }
 
 func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
-	env, cfg, err := cliutil.GetEnvironment(c.String(flagEnv))
+	env, err := common.NewEnv(c.String(flagEnv))
 	if err != nil {
 		return err
 	}
+	cfg := common.ConfigDefaultsForEnv(env)
 
 	devXMRMaker := c.Bool(flagDevXMRMaker)
 	devXMRTaker := c.Bool(flagDevXMRTaker)
@@ -376,7 +398,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	if len(c.StringSlice(flagBootnodes)) > 0 {
+	if c.IsSet(flagBootnodes) {
 		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
 	}
 
@@ -411,15 +433,21 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	netCfg := &net.Config{
-		Ctx:         d.ctx,
-		Environment: env,
-		DataDir:     cfg.DataDir,
-		EthChainID:  chainID.Int64(),
-		Port:        libp2pPort,
-		KeyFile:     libp2pKey,
-		Bootnodes:   cfg.Bootnodes,
+	listenIP := "0.0.0.0"
+	if env == common.Development {
+		listenIP = "127.0.0.1"
 	}
+
+	netCfg := &p2pnet.Config{
+		Ctx:        d.ctx,
+		DataDir:    cfg.DataDir,
+		Port:       libp2pPort,
+		KeyFile:    libp2pKey,
+		Bootnodes:  cfg.Bootnodes,
+		ProtocolID: fmt.Sprintf("/%s/%s/%d", net.ProtocolID, env.String(), chainID.Int64()),
+		ListenIP:   listenIP,
+	}
+
 	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
@@ -441,7 +469,18 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	swapBackend, err := newBackend(d.ctx, c, env, cfg, devXMRMaker, devXMRTaker, sm, host, ec)
+	swapBackend, err := newBackend(
+		d.ctx,
+		c,
+		env,
+		cfg,
+		devXMRMaker,
+		devXMRTaker,
+		sm,
+		host,
+		ec,
+		sdb.RecoveryDB(),
+	)
 	if err != nil {
 		return err
 	}
@@ -530,16 +569,21 @@ func errFlagValueEmpty(flag string) error {
 	return fmt.Errorf("flag %q requires a non-empty value", flag)
 }
 
+func errFlagValueZero(flag string) error {
+	return fmt.Errorf("flag %q requires a non-zero value", flag)
+}
+
 func newBackend(
 	ctx context.Context,
 	c *cli.Context,
 	env common.Environment,
-	cfg common.Config,
+	cfg *common.Config,
 	devXMRMaker bool,
 	devXMRTaker bool,
 	sm swap.Manager,
-	net net.Host,
+	net *net.Host,
 	ec *ethclient.Client,
+	rdb *db.RecoveryDB,
 ) (backend.Backend, error) {
 	var (
 		ethPrivKey *ecdsa.PrivateKey
@@ -613,17 +657,26 @@ func newBackend(
 		return nil, err
 	}
 
-	// For the monero wallet related values, keep the default config values unless the end
-	// use explicitly set the flag.
-	if c.IsSet(flagMoneroDaemonHost) {
-		cfg.MoneroDaemonHost = c.String(flagMoneroDaemonHost)
-		if cfg.MoneroDaemonHost == "" {
-			return nil, errFlagValueEmpty(flagMoneroDaemonHost)
+	if c.IsSet(flagMoneroDaemonHost) || c.IsSet(flagMoneroDaemonPort) {
+		node := &common.MoneroNode{
+			Host: "127.0.0.1",
+			Port: common.DefaultMoneroPortFromEnv(env),
 		}
+		if c.IsSet(flagMoneroDaemonHost) {
+			node.Host = c.String(flagMoneroDaemonHost)
+			if node.Host == "" {
+				return nil, errFlagValueEmpty(flagMoneroDaemonHost)
+			}
+		}
+		if c.IsSet(flagMoneroDaemonPort) {
+			node.Port = c.Uint(flagMoneroDaemonPort)
+			if node.Port == 0 {
+				return nil, errFlagValueZero(flagMoneroDaemonPort)
+			}
+		}
+		cfg.MoneroNodes = []*common.MoneroNode{node}
 	}
-	if c.IsSet(flagMoneroDaemonPort) {
-		cfg.MoneroDaemonPort = c.Uint(flagMoneroDaemonPort)
-	}
+
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
@@ -634,8 +687,7 @@ func newBackend(
 	mc, err := monero.NewWalletClient(&monero.WalletClientConf{
 		Env:                 env,
 		WalletFilePath:      walletFilePath,
-		MonerodPort:         cfg.MoneroDaemonPort,
-		MonerodHost:         cfg.MoneroDaemonHost,
+		MonerodNodes:        cfg.MoneroNodes,
 		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
 		WalletPassword:      c.String(flagMoneroWalletPassword),
 		WalletPort:          c.Uint(flagMoneroWalletPort),
@@ -661,6 +713,7 @@ func newBackend(
 		SwapContract:        contract,
 		SwapContractAddress: contractAddr,
 		Net:                 net,
+		RecoveryDB:          rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -672,8 +725,13 @@ func newBackend(
 	return b, nil
 }
 
-func getProtocolInstances(c *cli.Context, cfg common.Config,
-	b backend.Backend, db *db.Database, host net.Host) (xmrtakerHandler, xmrmakerHandler, error) {
+func getProtocolInstances(
+	c *cli.Context,
+	cfg *common.Config,
+	b backend.Backend,
+	db *db.Database,
+	host *net.Host,
+) (xmrtakerHandler, xmrmakerHandler, error) {
 	walletFilePath := cfg.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)

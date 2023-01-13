@@ -1,40 +1,26 @@
 package rpcclient
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // TakeOffer calls net_takeOffer.
-func (c *Client) TakeOffer(maddr string, offerID string, providesAmount float64) error {
+func (c *Client) TakeOffer(peerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) error {
 	const (
 		method = "net_takeOffer"
 	)
 
 	req := &rpctypes.TakeOfferRequest{
-		Multiaddr:      maddr,
+		PeerID:         peerID,
 		OfferID:        offerID,
 		ProvidesAmount: providesAmount,
 	}
 
-	params, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	resp, err := rpctypes.PostRPC(c.endpoint, method, string(params))
-	if err != nil {
-		return err
-	}
-
-	if resp.Error != nil {
-		return fmt.Errorf("failed to call %s: %w", method, resp.Error)
-	}
-
-	var res *rpctypes.TakeOfferResponse
-	if err = json.Unmarshal(resp.Result, &res); err != nil {
+	if err := c.Post(method, req, nil); err != nil {
 		return err
 	}
 

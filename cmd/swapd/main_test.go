@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/rpcclient"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+
+	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
 )
 
 func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
@@ -68,12 +70,15 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		"test --dev-xmrtaker",
 		map[string]any{
 			flagEnv:         "dev",
+			flagDeploy:      true,
 			flagDevXMRTaker: true,
 			flagDataDir:     t.TempDir(),
+			flagRPCPort:     uint(0),
+			flagLibp2pPort:  uint(0),
 		},
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(c.Context)
 	defer cancel()
 
 	d := &daemon{
@@ -102,6 +107,8 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 			flagDevXMRMaker: true,
 			flagDeploy:      true,
 			flagDataDir:     t.TempDir(),
+			flagRPCPort:     uint(0),
+			flagLibp2pPort:  uint(0),
 		},
 	)
 
@@ -146,13 +153,21 @@ func Test_expandBootnodes(t *testing.T) {
 	require.EqualValues(t, expected, expandBootnodes(cliNodes))
 }
 
+func Test_expandBootnodes_noNodes(t *testing.T) {
+	// This can happen when the user specifies a single `--bootnodes ""` flag
+	// to not use the default bootnodes for an environment.
+	cliNodes := []string{""}
+	nodes := expandBootnodes(cliNodes)
+	require.Zero(t, len(nodes))
+}
+
 func TestDaemon_PersistOffers(t *testing.T) {
-	defaultXMRMakerSwapdEndpoint := fmt.Sprintf("http://localhost:%d", defaultXMRMakerRPCPort)
 	startupTimeout := time.Millisecond * 100
 
-	datadir := t.TempDir()
-	wc := monero.CreateWalletClientWithWalletDir(t, datadir)
-	monero.MineMinXMRBalance(t, wc, common.MoneroToPiconero(1))
+	dataDir := t.TempDir()
+	wc := monero.CreateWalletClientWithWalletDir(t, dataDir)
+	one := apd.New(1, 0)
+	monero.MineMinXMRBalance(t, wc, coins.MoneroToPiconero(one))
 
 	c := newTestContext(t,
 		"test --dev-xmrmaker",
@@ -160,8 +175,10 @@ func TestDaemon_PersistOffers(t *testing.T) {
 			flagEnv:              "dev",
 			flagDevXMRMaker:      true,
 			flagDeploy:           true,
-			flagDataDir:          datadir,
-			flagMoneroWalletPath: path.Join(datadir, "test-wallet"),
+			flagRPCPort:          uint(0),
+			flagLibp2pPort:       uint(0),
+			flagDataDir:          dataDir,
+			flagMoneroWalletPath: path.Join(dataDir, "test-wallet"),
 		},
 	)
 
@@ -182,12 +199,16 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	time.Sleep(startupTimeout) // let the server start
 
 	// make an offer
-	client := rpcclient.NewClient(defaultXMRMakerSwapdEndpoint)
+	client := rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
 	balance, err := client.Balances()
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))
+	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance.Cmp(coins.MoneroToPiconero(one)), 0)
 
-	offerID, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH, "", 0)
+	minXMRAmt := coins.StrToDecimal("0.1")
+	maxXMRAmt := one
+	xRate := coins.ToExchangeRate(one)
+
+	offerResp, err := client.MakeOffer(minXMRAmt, maxXMRAmt, xRate, types.EthAssetETH, "", nil)
 	require.NoError(t, err)
 
 	// shut down daemon
@@ -217,8 +238,10 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	<-d.startedCh
 	time.Sleep(startupTimeout) // let the server start
 
-	offers, err := client.GetOffers()
+	client = rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
+	resp, err := client.GetOffers()
 	require.NoError(t, err)
-	require.Equal(t, 1, len(offers))
-	require.Equal(t, offerID, offers[0].ID.String())
+	require.Equal(t, offerResp.PeerID, resp.PeerID)
+	require.Equal(t, 1, len(resp.Offers))
+	require.Equal(t, offerResp.OfferID, resp.Offers[0].ID)
 }

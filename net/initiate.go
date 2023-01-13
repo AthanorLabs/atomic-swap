@@ -2,25 +2,28 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/net/message"
+	p2pnet "github.com/athanorlabs/go-p2p-net"
+	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 
-	libp2pnetwork "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
-	swapID            = "/swap/0"
-	protocolTimeout   = time.Second * 5
-	messageBufferSize = 1 << 17
+	swapID          = "/swap/0"
+	protocolTimeout = time.Second * 5
 )
 
-func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
+// Initiate attempts to initiate a swap with the given peer by sending a SendKeysMessage,
+// the first message of the swap protocol.
+func (h *Host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -33,14 +36,14 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
 	defer cancel()
 
-	if h.h.Network().Connectedness(who.ID) != libp2pnetwork.Connected {
+	if h.h.Connectedness(who.ID) != libp2pnetwork.Connected {
 		err := h.h.Connect(ctx, who)
 		if err != nil {
 			return err
 		}
 	}
 
-	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(h.protocolID+swapID))
+	stream, err := h.h.NewStream(ctx, who.ID, protocol.ID(swapID))
 	if err != nil {
 		return fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
@@ -49,7 +52,7 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		"opened protocol stream, peer=", who.ID,
 	)
 
-	if err := h.writeToStream(stream, msg); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, msg, who.ID); err != nil {
 		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}
@@ -59,35 +62,33 @@ func (h *host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		stream:    stream,
 	}
 
-	go h.handleProtocolStreamInner(stream, s, make([]byte, messageBufferSize))
+	go h.handleProtocolStreamInner(stream, s)
 	return nil
 }
 
 // handleProtocolStream is called when there is an incoming protocol stream.
-func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
+func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	if h.handler == nil {
 		_ = stream.Close()
 		return
 	}
 
-	buf := make([]byte, messageBufferSize)
-	tot, err := readStream(stream, buf[:])
+	msg, err := readStreamMessage(stream, maxMessageSize)
 	if err != nil {
-		log.Debug("peer closed stream with us, protocol exited")
-		_ = stream.Close()
-		return
-	}
-
-	// decode message based on message type
-	msg, err := message.DecodeMessage(buf[:tot])
-	if err != nil {
-		log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
+		if errors.Is(err, io.EOF) {
+			log.Debugf("Peer closed stream-id=%s, protocol exited", stream.ID())
+		} else {
+			log.Debugf("Failed to read message from peer, stream-id=%s: %s", stream.ID(), err)
+		}
 		_ = stream.Close()
 		return
 	}
 
 	log.Debug(
-		"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
+		"received message from peer, peer=",
+		stream.Conn().RemotePeer(),
+		" type=",
+		message.TypeToString(msg.Type()),
 	)
 
 	im, ok := msg.(*SendKeysMessage)
@@ -105,7 +106,7 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	if err := h.writeToStream(stream, resp); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send response to peer: err=%s", err)
 		_ = s.Exit()
 		_ = stream.Close()
@@ -119,11 +120,11 @@ func (h *host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 	h.swapMu.Unlock()
 
-	h.handleProtocolStreamInner(stream, s, buf)
+	h.handleProtocolStreamInner(stream, s)
 }
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
-func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState, buf []byte) {
+func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
 	defer func() {
 		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 		_ = stream.Close()
@@ -138,22 +139,19 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 	}()
 
 	for {
-		tot, err := readStream(stream, buf[:])
+		msg, err := readStreamMessage(stream, maxMessageSize)
 		if err != nil {
-			log.Debug("peer closed stream with us, protocol exited")
+			if errors.Is(err, io.EOF) {
+				log.Debug("Peer closed stream with us, protocol exited")
+			} else {
+				log.Debugf("Failed to read message from peer, id=%s protocol=%s: %s",
+					stream.ID(), stream.Protocol(), err)
+			}
 			return
 		}
 
-		// decode message based on message type
-		msg, err := message.DecodeMessage(buf[:tot])
-		if err != nil {
-			log.Debug("failed to decode message from peer, id=", stream.ID(), " protocol=", stream.Protocol(), " err=", err)
-			continue
-		}
-
-		log.Debug(
-			"received message from peer, peer=", stream.Conn().RemotePeer(), " type=", msg.Type(),
-		)
+		log.Debugf("received protocol=%s message from peer=%s type=%s",
+			stream.Protocol(), stream.Conn().RemotePeer(), message.TypeToString(msg.Type()))
 
 		err = s.HandleProtocolMessage(msg)
 		if err != nil {
@@ -161,17 +159,4 @@ func (h *host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			return
 		}
 	}
-}
-
-// CloseProtocolStream closes the current swap protocol stream.
-func (h *host) CloseProtocolStream(id types.Hash) {
-	swap, has := h.swaps[id]
-	if !has {
-		return
-	}
-
-	log.Debugf("closing stream: peer=%s protocol=%s",
-		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
-	)
-	_ = swap.stream.Close()
 }

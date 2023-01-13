@@ -5,23 +5,23 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) error {
+func (s *swapState) HandleProtocolMessage(msg message.Message) error {
 	switch msg := msg.(type) {
-	case *net.SendKeysMessage:
+	case *message.SendKeysMessage:
 		event := newEventKeysReceived(msg)
 		s.eventCh <- event
 		err := <-event.errCh
@@ -50,9 +50,10 @@ func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	}
 }
 
-func (s *swapState) setNextExpectedEvent(event EventType) {
+func (s *swapState) setNextExpectedEvent(event EventType) error {
 	if s.nextExpectedEvent == EventNoneType {
-		return
+		// should have called clearNextExpectedEvent instead
+		panic("cannot set next expected event to EventNoneType")
 	}
 
 	if event == s.nextExpectedEvent {
@@ -61,20 +62,33 @@ func (s *swapState) setNextExpectedEvent(event EventType) {
 
 	s.nextExpectedEvent = event
 	status := event.getStatus()
-	if status != types.UnknownStatus {
-		s.info.SetStatus(status)
+
+	if status == types.UnknownStatus {
+		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
-	if s.statusCh != nil && status != types.UnknownStatus {
-		s.statusCh <- status
+	s.info.SetStatus(status)
+	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
+	if err != nil {
+		return err
 	}
+
+	if s.info.StatusCh() != nil {
+		s.info.StatusCh() <- status
+	}
+
+	return nil
 }
 
-func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	if msg.ProvidedAmount < s.info.ReceivedAmount {
-		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
-			msg.ProvidedAmount,
-			s.info.ReceivedAmount,
+func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message.Message, error) {
+	if msg.ProvidedAmount == nil {
+		return nil, errMissingProvidedAmount
+	}
+
+	if msg.ProvidedAmount.Cmp(s.info.ExpectedAmount) < 0 {
+		return nil, fmt.Errorf("provided amount is not the same as expected: got %s, expected %s",
+			msg.ProvidedAmount.Text('f'),
+			s.info.ExpectedAmount.Text('f'),
 		)
 	}
 
@@ -91,22 +105,16 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, fmt.Errorf("failed to generate XMRMaker's private view keys: %w", err)
 	}
 
-	s.xmrmakerAddress = ethcommon.HexToAddress(msg.EthAddress)
-
-	log.Debugf("got XMRMaker's keys and address: address=%s", s.xmrmakerAddress)
-
-	sk, err := mcrypto.NewPublicKeyFromHex(msg.PublicSpendKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate XMRMaker's public spend key: %w", err)
-	}
-
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
-	secp256k1Pub, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey)
+	verificationRes, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey, msg.PublicSpendKey)
 	if err != nil {
 		return nil, err
 	}
 
-	symbol, err := pcommon.AssetSymbol(s.Backend, s.ethAsset)
+	s.xmrmakerAddress = ethcommon.HexToAddress(msg.EthAddress)
+	log.Debugf("got XMRMaker's keys and address: address=%s", s.xmrmakerAddress)
+
+	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
 	if err != nil {
 		return nil, err
 	}
@@ -117,10 +125,14 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		symbol,
 	))
 
-	s.setXMRMakerKeys(sk, vk, secp256k1Pub)
-	txHash, err := s.lockAsset(s.providedAmountInWei())
+	err = s.setXMRMakerKeys(verificationRes.Ed25519PublicKey, vk, verificationRes.Secp256k1PublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to lock ETH in contract: %w", err)
+		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
+	}
+
+	txHash, err := s.lockAsset()
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock ethereum asset in contract: %w", err)
 	}
 
 	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
@@ -173,16 +185,19 @@ func (s *swapState) runT0ExpirationHandler() {
 	}
 }
 
+func (s *swapState) expectedXMRLockAccount() (mcrypto.Address, *mcrypto.PrivateViewKey) {
+	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
+	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
+	return mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env()), vk
+}
+
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	if msg.Address == "" {
 		return errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
-	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
-	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
-	lockedAddr := mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env())
-
+	lockedAddr, vk := s.expectedXMRLockAccount()
 	if msg.Address != string(lockedAddr) {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
@@ -192,7 +207,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	t := time.Now().Format(common.TimeFmtNSecs)
 	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(vk, lockedAddr, s.walletScanHeight, walletName, "")
+	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(
+		vk, lockedAddr, s.walletScanHeight, walletName, "",
+	)
 	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
@@ -211,9 +228,10 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
-	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
-		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
-			balance.Balance, float64(s.receivedAmountInPiconero()))
+	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
+		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
+			coins.NewPiconeroAmount(balance.Balance).AsMonero().Text('f'),
+			s.ExpectedAmount().Text('f'))
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before

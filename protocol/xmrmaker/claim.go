@@ -4,68 +4,25 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math"
 	"math/big"
 	"strings"
-	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
-var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
-
-func (s *swapState) tryClaim() (ethcommon.Hash, error) {
-	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-	switch stage {
-	case contracts.StageInvalid:
-		return ethcommon.Hash{}, errClaimInvalid
-	case contracts.StageCompleted:
-		return ethcommon.Hash{}, errClaimSwapComplete
-	case contracts.StagePending, contracts.StageReady:
-		// do nothing
-	default:
-		panic("Unhandled stage value")
-	}
-
-	ts, err := s.ETHClient().LatestBlockTimestamp(s.ctx)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	// The block that our claim transaction goes into needs a timestamp that is strictly less
-	// than T1. Since the minimum interval between blocks is 1 second, the current block must
-	// be at least 2 seconds before T1 for a non-zero chance of the next block having a
-	// timestamp that is strictly less than T1.
-	if ts.After(s.t1.Add(-2 * time.Second)) {
-		// We've passed t1, so the only way we can regain control of the locked XMR is for
-		// XMRTaker to call refund on the contract.
-		return ethcommon.Hash{}, errClaimPastTime
-	}
-
-	if ts.Before(s.t0) && stage != contracts.StageReady {
-		// TODO: t0 could be 24 hours from now. Don't we want to poll the stage periodically? (#163)
-		// we need to wait until t0 to claim
-		log.Infof("waiting until time %s to claim, time now=%s", s.t0, time.Now())
-		err = s.ETHClient().WaitForTimestamp(s.ctx, s.t0)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-	}
-
-	return s.claimFunds()
-}
+var (
+	maxRelayerCommissionRate, _, _ = apd.NewFromString("0.1") // 10%
+)
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
@@ -86,13 +43,16 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %v ETH", common.EtherAmount(*balance).AsEther())
+		log.Infof("balance before claim: %s ETH", coins.NewWeiAmount(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance before claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
+		log.Infof("balance before claim: %v %s",
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
+			symbol,
+		)
 	}
 
 	var (
@@ -123,14 +83,17 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %v ETH", common.EtherAmount(*balance).AsEther())
+		log.Infof("balance after claim: %s ETH", coins.NewWeiAmount(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 
-		log.Infof("balance after claim: %v %s", common.EtherAmount(*balance).ToDecimals(decimals), symbol)
+		log.Infof("balance after claim: %s %s",
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
+			symbol,
+		)
 	}
 
 	return txHash, nil
@@ -158,7 +121,7 @@ func claimRelayer(
 	contractAddr ethcommon.Address,
 	ec *ethclient.Client,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerCommission *apd.Decimal,
 	contractSwap *contracts.SwapFactorySwap,
 	secret [32]byte,
 ) (ethcommon.Hash, error) {
@@ -172,12 +135,12 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryABI))
+	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
-	feeValue, err := calculateRelayerCommissionValue(contractSwap.Value, relayerCommission)
+	feeValue, err := calculateRelayerCommission(contractSwap.Value, relayerCommission)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -209,17 +172,20 @@ func claimRelayer(
 	return txHash, nil
 }
 
-// swapValue is in wei
-// relayerCommission is a percentage (ie must be much less than 1)
-// error if it's greater than 0.1 (10%) - arbitrary, just a sanity check
-func calculateRelayerCommissionValue(swapValue *big.Int, relayerCommission float64) (*big.Int, error) {
-	if relayerCommission > 0.1 {
-		return nil, errRelayerCommissionTooHigh
+// calculateRelayerCommission calculates and returns the amount of wei that the relayer
+// will receive as commission. The commissionRate is a multiplier (multiply by 100 to get
+// the percent) that must be greater than zero and less than or equal to the 10% maximum.
+// The 10% max is an arbitrary sanity check and may be adjusted in the future.
+func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal) (*big.Int, error) {
+	if commissionRate.Cmp(maxRelayerCommissionRate) > 0 {
+		return nil, errRelayerCommissionRateTooHigh
 	}
 
-	swapValueF := big.NewFloat(0).SetInt(swapValue)
-	relayerCommissionF := big.NewFloat(relayerCommission)
-	feeValue := big.NewFloat(0).Mul(swapValueF, relayerCommissionF)
-	wei, _ := feeValue.Int(nil)
-	return wei, nil
+	feeValue := new(apd.Decimal)
+	_, err := coins.DecimalCtx().Mul(feeValue, coins.NewWeiAmount(swapWeiAmt).Decimal(), commissionRate)
+	if err != nil {
+		return nil, err
+	}
+
+	return coins.ToWeiAmount(feeValue).BigInt(), nil
 }

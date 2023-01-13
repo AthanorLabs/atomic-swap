@@ -1,3 +1,6 @@
+// Package rpc provides the HTTP server for incoming JSON-RPC and websocket requests to
+// swapd from the local host. The answers to these queries come from 3 subsystems: net,
+// personal and swap.
 package rpc
 
 import (
@@ -9,20 +12,20 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/rpc/v2"
+	logging "github.com/ipfs/go-log"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
-
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/rpc/v2"
-
-	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("rpc")
@@ -59,7 +62,14 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	swapService := NewSwapService(cfg.ProtocolBackend.SwapManager(), cfg.XMRTaker, cfg.XMRMaker, cfg.Net)
+	swapService := NewSwapService(
+		cfg.Ctx,
+		cfg.ProtocolBackend.SwapManager(),
+		cfg.XMRTaker,
+		cfg.XMRMaker,
+		cfg.Net,
+		cfg.ProtocolBackend,
+	)
 	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
 		return nil, err
 	}
@@ -145,7 +155,7 @@ func (s *Server) Stop() error {
 
 // Protocol represents the functions required by the rpc service into the protocol handler.
 type Protocol interface {
-	Provides() types.ProvidesCoin
+	Provides() coins.ProvidesCoin
 	GetOngoingSwapState(types.Hash) common.SwapState
 }
 
@@ -153,6 +163,7 @@ type Protocol interface {
 type ProtocolBackend interface {
 	Env() common.Environment
 	SetSwapTimeout(timeout time.Duration)
+	SwapTimeout() time.Duration
 	SwapManager() swap.Manager
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
@@ -162,7 +173,7 @@ type ProtocolBackend interface {
 // XMRTaker ...
 type XMRTaker interface {
 	Protocol
-	InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error)
+	InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error)
 	Refund(types.Hash) (ethcommon.Hash, error)
 	ExternalSender(offerID types.Hash) (*txsender.ExternalSender, error)
 }
@@ -170,9 +181,9 @@ type XMRTaker interface {
 // XMRMaker ...
 type XMRMaker interface {
 	Protocol
-	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission float64) (*types.OfferExtra, error)
+	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission *apd.Decimal) (*types.OfferExtra, error)
 	GetOffers() []*types.Offer
-	ClearOffers([]string) error
+	ClearOffers([]types.Hash) error
 	GetMoneroBalance() (string, *wallet.GetBalanceResponse, error)
 }
 

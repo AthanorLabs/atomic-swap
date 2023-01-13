@@ -2,26 +2,21 @@ package net
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"path"
 	"testing"
 
+	p2pnet "github.com/athanorlabs/go-p2p-net"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/tests"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
-func TestMain(m *testing.M) {
+func init() {
 	logging.SetLogLevel("net", "debug")
-	m.Run()
-	os.Exit(0)
 }
 
-var defaultPort uint16 = 5009
 var testID = types.Hash{99}
 
 type mockHandler struct {
@@ -32,7 +27,7 @@ func (h *mockHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockHandler) HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockHandler) HandleInitiateMessage(_ *message.SendKeysMessage) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
 		return &mockSwapState{h.id}, &SendKeysMessage{}, nil
 	}
@@ -51,7 +46,7 @@ func (s *mockSwapState) ID() types.Hash {
 	return testID
 }
 
-func (s *mockSwapState) HandleProtocolMessage(msg Message) error {
+func (s *mockSwapState) HandleProtocolMessage(_ Message) error {
 	return nil
 }
 
@@ -59,30 +54,27 @@ func (s *mockSwapState) Exit() error {
 	return nil
 }
 
-func newHost(t *testing.T, port uint16) *host {
-	_, chainID := tests.NewEthClient(t)
-	cfg := &Config{
-		Ctx:         context.Background(),
-		Environment: common.Development,
-		DataDir:     t.TempDir(),
-		EthChainID:  chainID.Int64(),
-		Port:        port,
-		KeyFile:     path.Join(t.TempDir(), fmt.Sprintf("node-%d.key", port)),
-		Bootnodes:   []string{},
-		Handler:     &mockHandler{},
+func basicTestConfig(t *testing.T) *p2pnet.Config {
+	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
+	tmpDir := t.TempDir()
+	return &p2pnet.Config{
+		Ctx:        context.Background(),
+		DataDir:    tmpDir,
+		Port:       0, // OS randomized libp2p port
+		KeyFile:    path.Join(tmpDir, "node.key"),
+		Bootnodes:  nil,
+		ProtocolID: "/testid",
+		ListenIP:   "127.0.0.1",
 	}
+}
 
+func newHost(t *testing.T, cfg *p2pnet.Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
+	h.SetHandler(&mockHandler{})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)
 	})
 	return h
-}
-
-func TestNewHost(t *testing.T) {
-	h := newHost(t, defaultPort)
-	err := h.Start()
-	require.NoError(t, err)
 }

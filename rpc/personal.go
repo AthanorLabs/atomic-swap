@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 )
 
@@ -36,6 +37,17 @@ func (s *PersonalService) SetSwapTimeout(_ *http.Request, req *SetSwapTimeoutReq
 	return nil
 }
 
+// GetSwapTimeoutResponse ...
+type GetSwapTimeoutResponse struct {
+	Timeout uint64 `json:"timeout"` // timeout in seconds
+}
+
+// GetSwapTimeout ...
+func (s *PersonalService) GetSwapTimeout(_ *http.Request, _ *interface{}, resp *GetSwapTimeoutResponse) error {
+	resp.Timeout = uint64(s.pb.SwapTimeout().Seconds())
+	return nil
+}
+
 // SetGasPriceRequest ...
 type SetGasPriceRequest struct {
 	GasPrice uint64
@@ -62,11 +74,11 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 
 	*resp = rpctypes.BalancesResponse{
 		MoneroAddress:           mAddr,
-		PiconeroBalance:         mBal.Balance,
-		PiconeroUnlockedBalance: mBal.UnlockedBalance,
+		PiconeroBalance:         coins.NewPiconeroAmount(mBal.Balance),
+		PiconeroUnlockedBalance: coins.NewPiconeroAmount(mBal.UnlockedBalance),
 		BlocksToUnlock:          mBal.BlocksToUnlock,
 		EthAddress:              s.pb.ETHClient().Address().String(),
-		WeiBalance:              eBal,
+		WeiBalance:              coins.NewWeiAmount(eBal),
 	}
 	return nil
 }

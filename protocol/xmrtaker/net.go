@@ -1,24 +1,48 @@
 package xmrtaker
 
 import (
+	"math/big"
+
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
-	"github.com/fatih/color" //nolint:misspell
+	"github.com/fatih/color"
 )
 
+// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
+type EthereumAssetAmount interface {
+	BigInt() *big.Int
+	AsStandard() *apd.Decimal
+}
+
 // Provides returns types.ProvidesETH
-func (a *Instance) Provides() types.ProvidesCoin {
-	return types.ProvidesETH
+func (inst *Instance) Provides() coins.ProvidesCoin {
+	return coins.ProvidesETH
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
-func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
-	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
-	state, err := a.initiate(common.EtherToWei(providesAmount), common.MoneroToPiconero(receivedAmount),
+func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error) {
+	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
+	if err != nil {
+		return nil, err
+	}
+	providedAmount, err := pcommon.GetEthereumAssetAmount(
+		inst.backend.Ctx(),
+		inst.backend.ETHClient(),
+		providesAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := inst.initiate(providedAmount, coins.MoneroToPiconero(expectedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -27,33 +51,33 @@ func (a *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) 
 	return state, nil
 }
 
-func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount common.MoneroAmount,
-	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
-	a.swapMu.Lock()
-	defer a.swapMu.Unlock()
+func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmount *coins.PiconeroAmount,
+	exchangeRate *coins.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
+	inst.swapMu.Lock()
+	defer inst.swapMu.Unlock()
 
-	if a.swapStates[offerID] != nil {
+	if inst.swapStates[offerID] != nil {
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := a.backend.ETHClient().Balance(a.backend.Ctx())
+	balance, err := inst.backend.ETHClient().Balance(inst.backend.Ctx())
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
 	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
-		log.Warnf("Account %s needs additional funds for this transaction", a.backend.ETHClient().Address())
+		log.Warnf("Account %s needs additional funds for this transaction", inst.backend.ETHClient().Address())
 		return nil, errBalanceTooLow
 	}
 
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), a.backend.ETHClient().Raw()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), inst.backend.ETHClient().Raw()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
-		balance, err := erc20Contract.BalanceOf(a.backend.ETHClient().CallOpts(a.backend.Ctx()), a.backend.ETHClient().Address()) //nolint:lll
+		balance, err := erc20Contract.BalanceOf(inst.backend.ETHClient().CallOpts(inst.backend.Ctx()), inst.backend.ETHClient().Address()) //nolint:lll
 		if err != nil {
 			return nil, err
 		}
@@ -63,13 +87,12 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 		}
 	}
 
-	s, err := newSwapState(
-		a.backend,
+	s, err := newSwapStateFromStart(
+		inst.backend,
 		offerID,
-		pcommon.GetSwapInfoFilepath(a.dataDir, offerID.String()),
-		a.transferBack,
+		inst.transferBack,
 		providesAmount,
-		receivedAmount,
+		expectedAmount,
 		exchangeRate,
 		ethAsset,
 	)
@@ -79,13 +102,13 @@ func (a *Instance) initiate(providesAmount common.EtherAmount, receivedAmount co
 
 	go func() {
 		<-s.done
-		a.swapMu.Lock()
-		defer a.swapMu.Unlock()
-		delete(a.swapStates, offerID)
+		inst.swapMu.Lock()
+		defer inst.swapMu.Unlock()
+		delete(inst.swapStates, offerID)
 	}()
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
-	a.swapStates[offerID] = s
+	inst.swapStates[offerID] = s
 	return s, nil
 }

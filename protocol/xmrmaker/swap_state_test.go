@@ -1,160 +1,81 @@
 package xmrmaker
 
 import (
-	"context"
 	"encoding/hex"
 	"errors"
 	"math/big"
-	"path"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
-	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-	"github.com/athanorlabs/atomic-swap/protocol/backend"
-	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/tests"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
 
 var (
 	_                         = logging.SetLogLevel("xmrmaker", "debug")
-	testWallet                = "test-wallet"
-	desiredAmount             = common.EtherToWei(0.33)
-	defaultTimeoutDuration, _ = time.ParseDuration("86400s") // 1 day = 60s * 60min * 24hr
+	desiredAmount             = coins.EtherToWei(apd.New(33, -2)) // "0.33"
+	defaultTimeoutDuration, _ = time.ParseDuration("86400s")      // 1 day = 60s * 60min * 24hr
 )
 
-type mockNet struct {
-	msgMu sync.Mutex  // lock needed, as SendSwapMessage is called async from timeout handlers
-	msg   net.Message // last value passed to SendSwapMessage
-}
+func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
+	xmrmaker, db := newTestInstanceAndDB(t)
 
-func (n *mockNet) LastSentMessage() net.Message {
-	n.msgMu.Lock()
-	defer n.msgMu.Unlock()
-	return n.msg
-}
-
-func (n *mockNet) SendSwapMessage(msg net.Message, _ types.Hash) error {
-	n.msgMu.Lock()
-	defer n.msgMu.Unlock()
-	n.msg = msg
-	return nil
-}
-
-func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
-
-func newSwapManager(t *testing.T) pswap.Manager {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	db := pswap.NewMockDatabase(ctrl)
-	db.EXPECT().GetAllSwaps()
-	db.EXPECT().PutSwap(gomock.Any()).AnyTimes()
-
-	sm, err := pswap.NewManager(db)
-	require.NoError(t, err)
-	return sm
-}
-
-func newTestXMRMakerAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
-	pk := tests.GetMakerTestKey(t)
-	ec, chainID := tests.NewEthClient(t)
-
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
-
-	var forwarderAddress ethcommon.Address
-	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
-	require.NoError(t, err)
-
-	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
-	require.NoError(t, err)
-
-	extendedEC, err := extethclient.NewEthClient(context.Background(), ec, pk)
-	require.NoError(t, err)
-
-	bcfg := &backend.Config{
-		Ctx:                 context.Background(),
-		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      extendedEC,
-		Environment:         common.Development,
-		SwapContract:        contract,
-		SwapContractAddress: addr,
-		SwapManager:         newSwapManager(t),
-		Net:                 new(mockNet),
-	}
-
-	b, err := backend.NewBackend(bcfg)
-	require.NoError(t, err)
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	db := offers.NewMockDatabase(ctrl)
-	db.EXPECT().GetAllOffers()
-
-	net := NewMockHost(ctrl)
-
-	cfg := &Config{
-		Backend:        b,
-		DataDir:        path.Join(t.TempDir(), "xmrmaker"),
-		WalletFile:     testWallet,
-		WalletPassword: "",
-		Database:       db,
-		Network:        net,
-	}
-
-	xmrmaker, err := NewInstance(cfg)
-	require.NoError(t, err)
-
-	monero.MineMinXMRBalance(t, b.XMRClient(), 5.0)
-	err = b.XMRClient().Refresh()
-	require.NoError(t, err)
-	return xmrmaker, db
-}
-
-func newTestInstanceAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
-	xmrmaker, db := newTestXMRMakerAndDB(t)
-	infoFile := path.Join(t.TempDir(), "test.keys")
-	oe := &types.OfferExtra{
-		InfoFile: infoFile,
-	}
-
-	swapState, err := newSwapState(
+	swapState, err := newSwapStateFromStart(
 		xmrmaker.backend,
-		types.NewOffer("", 0, 0, 0, types.EthAssetETH),
-		oe,
+		types.NewOffer("", new(apd.Decimal), new(apd.Decimal), new(coins.ExchangeRate), types.EthAssetETH),
+		&types.OfferExtra{},
 		xmrmaker.offerManager,
-		common.MoneroAmount(33),
+		coins.NewPiconeroAmount(33),
 		desiredAmount,
 	)
 	require.NoError(t, err)
 	return xmrmaker, swapState, db
 }
 
-func newTestInstance(t *testing.T) (*Instance, *swapState) {
-	xmrmaker, swapState, _ := newTestInstanceAndDB(t)
+func newTestSwapStateAndNet(t *testing.T) (*Instance, *swapState, *mockNet) {
+	xmrmaker, net := newTestInstanceAndNet(t)
+
+	swapState, err := newSwapStateFromStart(
+		xmrmaker.backend,
+		types.NewOffer(
+			coins.ProvidesXMR,
+			coins.StrToDecimal("0.1"),
+			coins.StrToDecimal("1"),
+			coins.StrToExchangeRate("0.1"),
+			types.EthAssetETH,
+		),
+		&types.OfferExtra{},
+		xmrmaker.offerManager,
+		coins.MoneroToPiconero(coins.StrToDecimal("0.1")),
+		desiredAmount,
+	)
+	require.NoError(t, err)
+	return xmrmaker, swapState, net
+}
+
+func newTestSwapState(t *testing.T) (*Instance, *swapState) {
+	xmrmaker, swapState, _ := newTestSwapStateAndDB(t)
 	return xmrmaker, swapState
 }
 
-func newTestXMRTakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommon.KeysAndProof) {
+func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pcommon.KeysAndProof) {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
-	msg := &net.SendKeysMessage{
+	msg := &message.SendKeysMessage{
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
 		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey().Hex(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
@@ -164,8 +85,14 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*net.SendKeysMessage, *pcommo
 	return msg, keysAndProof
 }
 
-func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount *big.Int,
-	timeout time.Duration) ethcommon.Hash {
+func newSwap(
+	t *testing.T,
+	ss *swapState,
+	claimKey,
+	refundKey types.Hash,
+	amount *big.Int,
+	timeout time.Duration,
+) ethcommon.Hash {
 	tm := big.NewInt(int64(timeout.Seconds()))
 	if types.IsHashZero(claimKey) {
 		claimKey = ss.secp256k1Pub.Keccak256()
@@ -173,8 +100,6 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 
 	txOpts, err := ss.ETHClient().TxOpts(ss.ctx)
 	require.NoError(t, err)
-
-	// TODO: this is sus, update this when signing interfaces are updated
 	txOpts.Value = amount
 
 	ethAddr := ss.ETHClient().Address()
@@ -208,20 +133,15 @@ func newSwap(t *testing.T, ss *swapState, claimKey, refundKey types.Hash, amount
 	return tx.Hash()
 }
 
-func TestSwapState_GenerateAndSetKeys(t *testing.T) {
-	_, swapState := newTestInstance(t)
-
-	err := swapState.generateAndSetKeys()
-	require.NoError(t, err)
+func TestNewSwapState_generateAndSetKeys(t *testing.T) {
+	_, swapState := newTestSwapState(t)
 	require.NotNil(t, swapState.privkeys)
 	require.NotNil(t, swapState.pubkeys)
 	require.NotNil(t, swapState.dleqProof)
 }
 
 func TestSwapState_ClaimFunds(t *testing.T) {
-	_, swapState := newTestInstance(t)
-	err := swapState.generateAndSetKeys()
-	require.NoError(t, err)
+	_, swapState := newTestSwapState(t)
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
@@ -240,9 +160,9 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 }
 
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s := newTestSwapState(t)
 
-	msg := &net.SendKeysMessage{}
+	msg := &message.SendKeysMessage{}
 	err := s.handleSendKeysMessage(msg)
 	require.Equal(t, errMissingKeys, err)
 
@@ -258,11 +178,9 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -272,8 +190,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingAddress))
 
-	duration, err := time.ParseDuration("2s")
-	require.NoError(t, err)
+	duration := common.SwapTimeoutFromEnv(common.Development)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
 	addr := s.ContractAddr()
@@ -287,7 +204,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	resp := s.Net().(*mockNet).LastSentMessage()
+	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyXMRLockType, resp.Type())
 	require.Equal(t, duration, s.t1.Sub(s.t0))
@@ -296,11 +213,8 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
-	_, s := newTestInstance(t)
+	_, s := newTestSwapState(t)
 	defer s.cancel()
-	s.nextExpectedEvent = EventETHLockedType
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -310,27 +224,20 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	err = s.HandleProtocolMessage(msg)
 	require.True(t, errors.Is(err, errMissingAddress))
 
-	duration, err := time.ParseDuration("15s")
+	duration, err := time.ParseDuration("5s")
 	require.NoError(t, err)
-	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
+	_ = newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
 	addr := s.ContractAddr()
 
-	msg = &message.NotifyETHLocked{
-		Address:        addr.String(),
-		ContractSwapID: s.contractSwapID,
-		TxHash:         hash.String(),
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
-	}
-
-	err = s.HandleProtocolMessage(msg)
+	err = s.setContract(addr)
 	require.NoError(t, err)
-
-	resp := s.Net().(*mockNet).LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyXMRLockType, resp.Type())
+	err = s.setNextExpectedEvent(EventContractReadyType)
+	require.NoError(t, err)
 	require.Equal(t, duration, s.t1.Sub(s.t0))
 	require.Equal(t, EventContractReadyType, s.nextExpectedEvent)
+
+	go s.runT0ExpirationHandler()
 
 	for status := range s.offerExtra.StatusCh {
 		if status == types.CompletedSuccess {
@@ -344,11 +251,8 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
-	_, s, db := newTestInstanceAndDB(t)
+	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -361,7 +265,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -390,11 +294,8 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 // test that if the protocol exits early, and XMRTaker refunds, XMRMaker can reclaim his monero
 func TestSwapState_Exit_Reclaim(t *testing.T) {
-	_, s, db := newTestInstanceAndDB(t)
+	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
-
-	err := s.generateAndSetKeys()
-	require.NoError(t, err)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -407,7 +308,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's secret
@@ -437,12 +338,14 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
-	require.Equal(t, common.MoneroToPiconero(s.info.ProvidedAmount).Uint64(), balance.Balance)
+	providedPiconeros, err := coins.MoneroToPiconero(s.info.ProvidedAmount).Uint64()
+	require.NoError(t, err)
+	require.Equal(t, providedPiconeros, balance.Balance)
 	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
 
 func TestSwapState_Exit_Aborted(t *testing.T) {
-	_, s, db := newTestInstanceAndDB(t)
+	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
 	s.nextExpectedEvent = EventETHLockedType
@@ -452,7 +355,7 @@ func TestSwapState_Exit_Aborted(t *testing.T) {
 }
 
 func TestSwapState_Exit_Aborted_1(t *testing.T) {
-	_, s, db := newTestInstanceAndDB(t)
+	_, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
 
 	s.nextExpectedEvent = EventETHRefundedType
@@ -462,26 +365,33 @@ func TestSwapState_Exit_Aborted_1(t *testing.T) {
 }
 
 func TestSwapState_Exit_Success(t *testing.T) {
-	b, s := newTestInstance(t)
-	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	b, s := newTestSwapState(t)
+	s.nextExpectedEvent = EventNoneType
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("0.2")
+	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
+	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	s.info.SetStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
 
-	// since the swap was successful, the offer should be removed.
+	// since the swap was successful, the offer should not have been re-added.
 	o, oe, _ := b.offerManager.GetOffer(s.offer.ID)
 	require.Nil(t, o)
 	require.Nil(t, oe)
 }
 
 func TestSwapState_Exit_Refunded(t *testing.T) {
-	b, s, db := newTestInstanceAndDB(t)
+	b, s, db := newTestSwapStateAndDB(t)
 
-	b.net.(*MockHost).EXPECT().Advertise()
+	b.net.(*MockP2pnetHost).EXPECT().Advertise([]string{"XMR"})
 
-	s.offer = types.NewOffer(types.ProvidesXMR, 0.1, 0.2, 0.1, types.EthAssetETH)
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("0.2")
+	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
+	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	b.MakeOffer(s.offer, "", 0)
+	b.MakeOffer(s.offer, "", nil)
 
 	s.info.SetStatus(types.CompletedRefund)
 	err := s.Exit()
