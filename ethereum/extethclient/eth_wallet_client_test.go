@@ -1,7 +1,7 @@
 package extethclient
 
 import (
-	"context"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,21 +12,17 @@ import (
 )
 
 func Test_validateChainID_devSuccess(t *testing.T) {
-	ec, _ := tests.NewEthClient(t)
-	ctx := context.Background()
-	err := validateChainID(ctx, common.Development, ec)
+	_, chainID := tests.NewEthClient(t)
+	err := validateChainID(common.Development, chainID)
 	require.NoError(t, err)
 }
 
 func Test_validateChainID_mismatchedEnv(t *testing.T) {
-	ec, _ := tests.NewEthClient(t)
-	ctx := context.Background()
-
-	err := validateChainID(ctx, common.Mainnet, ec)
+	err := validateChainID(common.Mainnet, big.NewInt(common.GanacheChainID))
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "expected Ethereum mainnet chain ID (1), but found 1337")
+	assert.ErrorContains(t, err, "expected Mainnet chain ID (1), but found 1337")
 
-	err = validateChainID(ctx, common.Stagenet, ec)
+	err = validateChainID(common.Stagenet, big.NewInt(common.GanacheChainID))
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "expected Goerli chain ID (5), but found 1337")
 }
