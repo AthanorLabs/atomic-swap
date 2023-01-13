@@ -2,6 +2,7 @@ package coins
 
 import (
 	"github.com/cockroachdb/apd/v3"
+	logging "github.com/ipfs/go-log"
 )
 
 const (
@@ -19,6 +20,8 @@ const (
 var (
 	// DecimalCtx is the apd context used for math operations on our coins
 	decimalCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
+
+	log = logging.Logger("coins")
 )
 
 // DecimalCtx clones and returns the apd.Context we use for coin math operations.

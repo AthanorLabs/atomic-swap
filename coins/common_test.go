@@ -3,8 +3,13 @@ package coins
 import (
 	"testing"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	logging.SetLogLevel("coins", "debug")
+}
 
 func TestDecimalCtx(t *testing.T) {
 	c := DecimalCtx()

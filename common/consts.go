@@ -17,9 +17,16 @@ const (
 	TimeFmtSecs  = "2006-01-02-15:04:05"
 	TimeFmtNSecs = "2006-01-02-15:04:05.999999999"
 
+	//nolint:revive
 	// SwapFactory.sol function and event signatures
-
 	ReadyEventSignature    = "Ready(bytes32)"
 	ClaimedEventSignature  = "Claimed(bytes32,bytes32)"
 	RefundedEventSignature = "Refunded(bytes32,bytes32)"
+
+	//nolint:revive
+	// Ethereum chain IDs
+	MainnetChainID = 1
+	GoerliChainID  = 5
+	GanacheChainID = 1337
+	HardhatChainID = 31337
 )

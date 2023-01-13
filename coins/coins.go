@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 // PiconeroAmount represents some amount of piconero (the smallest denomination of monero)

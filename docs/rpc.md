@@ -508,6 +508,40 @@ curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
 }
 ```
 
+### `swap_suggestedExchangeRate`
+
+Returns the current mainnet exchange rate expressed as the XMR/ETH price ratio.
+
+Parameters:
+- none
+
+Returns:
+- `ethUpdatedAt`: time when the ETH price was last updated (RFC 3339 format).
+- `ethPrice`: current ETH/USD price (max 8 decimal points).
+- `xmrUpdatedAt`: time when the XMR price was last updated (RFC 3339 format).
+- `xmrPrice`: the current XMR/USD price (max 8 decimal points).
+- `exchangeRate`: the exchange rate expressed as the XMR/ETH price ratio.
+
+Example:
+```bash
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_suggestedExchangeRate","params":{}}' \
+| jq .
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "ethUpdatedAt": "2023-01-12T14:55:35-06:00",
+    "ethPrice": "1430.98158542",
+    "xmrUpdatedAt": "2023-01-12T14:22:23-06:00",
+    "xmrPrice": "170.9978",
+    "exchangeRate": "0.119497"
+  },
+  "id": "0"
+}
+```
+
 ## websocket subscriptions
 
 The daemon also runs a websockets server that can be used to subscribe to push

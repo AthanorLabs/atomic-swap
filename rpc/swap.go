@@ -1,8 +1,10 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -10,23 +12,35 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/pricefeed"
 )
 
 // SwapService handles information about ongoing or past swaps.
 type SwapService struct {
+	ctx      context.Context
 	sm       SwapManager
 	xmrtaker XMRTaker
 	xmrmaker XMRMaker
 	net      Net
+	backend  ProtocolBackend
 }
 
 // NewSwapService ...
-func NewSwapService(sm SwapManager, xmrtaker XMRTaker, xmrmaker XMRMaker, net Net) *SwapService {
+func NewSwapService(
+	ctx context.Context,
+	sm SwapManager,
+	xmrtaker XMRTaker,
+	xmrmaker XMRMaker,
+	net Net,
+	b ProtocolBackend,
+) *SwapService {
 	return &SwapService{
+		ctx:      ctx,
 		sm:       sm,
 		xmrtaker: xmrtaker,
 		xmrmaker: xmrmaker,
 		net:      net,
+		backend:  b,
 	}
 }
 
@@ -251,4 +265,42 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 func offerIDStringToHash(s string) (types.Hash, error) {
 	return types.HexToHash(s)
+}
+
+// SuggestedExchangeRateResponse ...
+type SuggestedExchangeRateResponse struct {
+	ETHUpdatedAt time.Time           `json:"ethUpdatedAt"`
+	ETHPrice     *apd.Decimal        `json:"ethPrice"`
+	XMRUpdatedAt time.Time           `json:"xmrUpdatedAt"`
+	XMRPrice     *apd.Decimal        `json:"xmrPrice"`
+	ExchangeRate *coins.ExchangeRate `json:"exchangeRate"`
+}
+
+// SuggestedExchangeRate returns the current mainnet exchange rate, expressed as the XMR/ETH price.
+func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, resp *SuggestedExchangeRateResponse) error { //nolint:lll
+	ec := s.backend.ETHClient().Raw()
+
+	xmrFeed, err := pricefeed.GetXMRUSDPrice(s.ctx, ec)
+	if err != nil {
+		return err
+	}
+
+	ethFeed, err := pricefeed.GetETHUSDPrice(s.ctx, ec)
+	if err != nil {
+		return err
+	}
+
+	exchangeRate, err := coins.CalcExchangeRate(xmrFeed.Price, ethFeed.Price)
+	if err != nil {
+		return err
+	}
+
+	resp.XMRUpdatedAt = xmrFeed.UpdatedAt
+	resp.XMRPrice = xmrFeed.Price
+
+	resp.ETHUpdatedAt = ethFeed.UpdatedAt
+	resp.ETHPrice = ethFeed.Price
+
+	resp.ExchangeRate = exchangeRate
+	return nil
 }
