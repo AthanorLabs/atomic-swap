@@ -165,7 +165,11 @@ start-ganache() {
 	# shellcheck disable=SC2155
 	local ganache_exec="$(npm config get prefix)/bin/ganache"
 	check-set-swap-test-data-dir
-	NODE_OPTIONS="--max_old_space_size=8192" nohup \
+	local nohup_cmd=nohup
+	if [[ "$(uname)" == 'Darwin' ]]; then
+		nohup_cmd=
+	fi
+	NODE_OPTIONS="--max_old_space_size=8192" ${nohup_cmd} \
 		"${ganache_exec}" --deterministic \
 		--accounts=50 \
 		--miner.blockTime=1 \
