@@ -13,6 +13,14 @@ You can change the directory with the command `npm config set prefix ~/.npm-pack
 [this document](https://github.com/sindresorhus/guides/blob/main/npm-global-without-sudo.md)
 if you want a more sophisticated setup.
 
+On macOS, if using Homebrew, you can use:
+```bash
+brew install coreutils # provides "realpath" executable
+brew install go
+brew install nvm
+nvm install node
+```
+
 ### Set up development environment
 
 Note: the `scripts/install-monero-linux.sh` script will download the monero binaries needed for you.
@@ -30,7 +38,7 @@ Warning: the command below will kill running instances of `ganache`, `monerod`,
 To avoid confusion, delete any data directories from old runs of `swapd` that used
 the flags `--dev-xmrtaker` or `--dev-xmrmaker`:
 ```bash
-rm -rf /tmp/xmrtaker-* /tmp/xmrmaker-*
+rm -rf "${TMPDIR:-/tmp}"/xmr[mt]aker-*
 ```
 
 ### Build the Executables
