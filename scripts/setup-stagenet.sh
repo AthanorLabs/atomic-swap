@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
 
+# swapd will call monero-wallet-rpc, so make sure it is installed
 bash ./scripts/install-monero-linux.sh
-echo "starting monerod..."
 
-./monero-bin/monerod --detach --stagenet --rpc-bind-port 18081 &
-sleep 5
+#
+# Put your own ethereum endpoint below (or define ETHEREUM_ENDPOINT before
+# invoking this script. There is no guarantee that the node below will be
+# running or should be trusted when you test.
+#
+ETHEREUM_ENDPOINT="${ETHEREUM_ENDPOINT:-"https://ethereum-goerli-rpc.allthatnode.com"}"
 
-echo "starting monero-wallet-rpc on port 18083..."
-nohup ./monero-bin/monero-wallet-rpc --rpc-bind-port 18083 --disable-rpc-login --wallet-dir ./node-keys --stagenet --trusted-daemon &>monero-wallet-cli.log &
+#
+# swapd has some preconfigured stagenet monerod nodes, but the best option
+# is to run and sync your own local node. If you do this, add the flags
+# --monerod-host=127.0.0.1 and --monero-port=38081 to swapd.
+#
+# ./monero-bin/monerod --detach --stagenet &
 
-# open wallet (must have funds)
-sleep 5
-curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"open_wallet","params":{"filename":"stagenet-wallet","password":""}}' -H 'Content-Type: application/json'
+log_level=info # change to "debug" for more logs
 
-# check balance
-curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"get_accounts","params":{}}' -H 'Content-Type: application/json'
+./bin/swapd --env stagenet \
+	"--log-level=${log_level}" \
+	"--ethereum-endpoint=${ETHEREUM_ENDPOINT}" \
+	&>swapd.log &
 
-# start mining (if synced)
-# curl http://localhost:18083/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":start_mining","params":{"threads_count":1,"do_background_mining":true,"ignore_battery":false}}' -H 'Content-Type: application/json'
+echo "swapd start with logs in swapd.log"
