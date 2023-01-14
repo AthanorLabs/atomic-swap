@@ -10,11 +10,11 @@ fi
 echo "Stoping any monerod regest instances"
 "${pkill_cmd[@]}" '/monerod .* --regtest '
 
-echo "Stoping any deterministic ganache instances"
-"${pkill_cmd[@]}" '/ganache.* --deterministic '
+echo "Stoping any ganache instances"
+"${pkill_cmd[@]}" '/ganache '
 
 echo "Stoping any relayer instances"
-"${pkill_cmd[@]}" '/relayer'
+"${pkill_cmd[@]}" '/relayer '
 
 # If you have monero-wallet-rpc or swapd processes owned by the current user
 # that you don't want to kill, don't use this script!
