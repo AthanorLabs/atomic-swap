@@ -90,9 +90,9 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	wg.Add(1)
 
 	go func() {
+		defer wg.Done()
 		err := d.make(c) // blocks on RPC server start
 		require.ErrorIs(t, err, context.Canceled)
-		wg.Done()
 	}()
 	time.Sleep(500 * time.Millisecond) // let the server start
 	cancel()
