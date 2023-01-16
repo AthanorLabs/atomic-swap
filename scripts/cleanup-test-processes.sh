@@ -7,18 +7,18 @@ if [[ "$(uname)" == 'Darwin' ]]; then
 	pkill_cmd=(pkill -l -U "${UID}" -f)
 fi
 
-echo "Stoping any monerod regest instances"
+echo "Stopping any monerod regest instances"
 "${pkill_cmd[@]}" '/monerod .* --regtest '
 
-echo "Stoping any ganache instances"
+echo "Stopping any ganache instances"
 "${pkill_cmd[@]}" '/ganache '
 
-echo "Stoping any relayer instances"
+echo "Stopping any relayer instances"
 "${pkill_cmd[@]}" '/relayer '
 
 # If you have monero-wallet-rpc or swapd processes owned by the current user
 # that you don't want to kill, don't use this script!
-echo "Stoping any swapd instances"
+echo "Stopping any swapd instances"
 if "${pkill_cmd[@]}" '/swapd '; then
 	# If swapd instances were killed, give the monero-wallet-rpc instances
 	# some time to shutdown.
@@ -27,7 +27,7 @@ fi
 
 # Take note of monero-wallet-rpc instances being killed here if the instances
 # were started by swapd
-echo "Stoping any monero-wallet-rpc instances"
+echo "Stopping any monero-wallet-rpc instances"
 "${pkill_cmd[@]}" '/monero-wallet-rpc '
 
 # Don't use the exit value of the last pkill, since it will exit with
