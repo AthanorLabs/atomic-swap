@@ -40,5 +40,8 @@ jobs:
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-mod
 
+      - name: Install brew dependencies
+        run: brew install coreutils
+
       - name: Run build
         run: make build

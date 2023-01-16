@@ -2,16 +2,42 @@
 
 ### Requirements
 
-- go 1.19+ (see [build instructions](./build.md) to download Go.)
-- ganache (can be installed with `npm install --location=global ganache`)
+#### Operating System
+The code base is only tested regularly with Ubuntu 22.04 on X86-64, but we would like to
+support most 64-bit Linux distributions, macOS, and WSL on Windows both with X86-64
+and ARM processors.
 
-These programs and scripts have only been tested on X86-64 Ubuntu 20.04 and 22.04.
-Using nvm is [the suggested way](https://github.com/nvm-sh/nvm#installing-and-updating)
-to install npm. If you install npm using a package manager like snap, ensure the install
-prefix (`npm config get prefix`) is a directory that you have write access to without sudo.
-You can change the directory with the command `npm config set prefix ~/.npm-packages`. See
-[this document](https://github.com/sindresorhus/guides/blob/main/npm-global-without-sudo.md)
+#### Installed Dependencies for Building/Testing
+- go 1.19+ (see [build instructions](./build.md) to download Go.)
+- node/npm (to install ganache, see suggestions after list)
+- ganache (can be installed with `npm install --location=global ganache`)
+- jq, curl, bzip2, realpath
+
+[The suggested way](https://github.com/nvm-sh/nvm#installing-and-updating) to install
+node/npm is using nvm. If you install npm using a package manager like snap, ensure
+the install prefix (`npm config get prefix`) is a directory that you have write
+access to without sudo. You can change the directory with this command:
+```
+npm config set prefix ~/.npm-packages
+```
+See [this document](https://github.com/sindresorhus/guides/blob/main/npm-global-without-sudo.md)
 if you want a more sophisticated setup.
+
+If you are testing, you'll want `jq` installed. `curl` and `bzip2` are normally
+preinstalled, but if you are running in a docker container, you might have to
+install them.
+```bash
+sudo apt install curl bzip2 jq
+```
+
+#### Macos Notes
+On macOS, you'll need to install `realpath` (from the `coreutils` package). If you
+are using Homebrew, you can use these commands to install all the needed tools:
+```bash
+brew install coreutils go jq nvm
+nvm install node
+npm install --location=global ganache
+```
 
 ### Set up development environment
 
@@ -30,7 +56,7 @@ Warning: the command below will kill running instances of `ganache`, `monerod`,
 To avoid confusion, delete any data directories from old runs of `swapd` that used
 the flags `--dev-xmrtaker` or `--dev-xmrmaker`:
 ```bash
-rm -rf /tmp/xmrtaker-* /tmp/xmrmaker-*
+rm -rf "${TMPDIR:-/tmp}"/xmr[mt]aker-*
 ```
 
 ### Build the Executables
@@ -65,7 +91,7 @@ Now get the ethereum contract address that Alice deployed to. This can be pulled
 the file ..., or if you have `jq` installed (available via `sudo apt install jq`), you can set a
 variable like this:
 ```bash
-CONTRACT_ADDR=$(jq -r .ContractAddress /tmp/xmrtaker-*/contract-address.json)
+CONTRACT_ADDR=$(jq -r .ContractAddress "${TMPDIR-/tmp}"/xmrtaker-*/contract-address.json)
 ```
 
 Now start Bob's swapd instance:
