@@ -62,7 +62,7 @@ type WalletClient interface {
 	GetHeight() (uint64, error)
 	GetChainHeight() (uint64, error)
 	Refresh() error
-	CreateWallet(filename, password string) error
+
 	OpenWallet(filename, password string) error
 	CloseWallet() error
 	Endpoint() string // URL on which the wallet is accepting RPC requests

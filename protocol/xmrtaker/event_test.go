@@ -20,8 +20,6 @@ import (
 func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Address) {
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
-	err := backend.XMRClient().CreateWallet("test-wallet", "")
-	require.NoError(t, err)
 	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))
 
 	// lock xmr
