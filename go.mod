@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/athanorlabs/go-dleq v0.0.0-20221228030413-8ac300febf46
 	github.com/athanorlabs/go-p2p-net v0.0.0-20230109212235-d22ff2447282
-	github.com/athanorlabs/go-relayer v0.0.4
+	github.com/athanorlabs/go-relayer v0.0.5
 	github.com/athanorlabs/go-relayer-client v0.0.0-20221103041240-2aad2e8fc742
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/cockroachdb/apd/v3 v3.1.2
