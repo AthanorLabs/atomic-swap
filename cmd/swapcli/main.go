@@ -473,17 +473,17 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
-	min, err := readUnsignedDecimalFlag(ctx, flagMinAmount)
+	min, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
 		return err
 	}
 
-	max, err := readUnsignedDecimalFlag(ctx, flagMaxAmount)
+	max, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMaxAmount)
 	if err != nil {
 		return err
 	}
 
-	exchangeRateDec, err := readUnsignedDecimalFlag(ctx, flagExchangeRate)
+	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
 	if err != nil {
 		return err
 	}
@@ -509,7 +509,7 @@ func runMake(ctx *cli.Context) error {
 	relayerEndpoint := ctx.String(flagRelayerEndpoint)
 	relayerCommission := new(apd.Decimal)
 	if relayerEndpoint != "" {
-		if relayerCommission, err = readUnsignedDecimalFlag(ctx, flagRelayerCommission); err != nil {
+		if relayerCommission, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerCommission); err != nil {
 			return err
 		}
 	} else if ctx.IsSet(flagRelayerCommission) {
@@ -577,7 +577,7 @@ func runTake(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	providesAmount, err := readUnsignedDecimalFlag(ctx, flagProvidesAmount)
+	providesAmount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -849,23 +849,4 @@ func providesStrToVal(providesStr string) (coins.ProvidesCoin, error) {
 		return provides, nil
 	}
 	return coins.NewProvidesCoin(providesStr)
-}
-
-func readUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
-	s := ctx.String(flagName)
-	if s == "" {
-		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
-	}
-	bf, _, err := new(apd.Decimal).SetString(s)
-	if err != nil {
-		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
-	}
-	if bf.IsZero() {
-		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
-	}
-	if bf.Negative {
-		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
-	}
-
-	return bf, nil
 }

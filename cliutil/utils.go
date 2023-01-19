@@ -9,9 +9,11 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	logging "github.com/ipfs/go-log"
+	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/common"
 )
@@ -103,4 +105,24 @@ func GetVersion() string {
 		dirty,             // add "-dirty" to commit hash if repo was not clean
 		info.GoVersion,
 	)
+}
+
+// ReadUnsignedDecimalFlag reads a string flag and parses it into an *apd.Decimal.
+func ReadUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
+	s := ctx.String(flagName)
+	if s == "" {
+		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
+	}
+	bf, _, err := new(apd.Decimal).SetString(s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
+	}
+	if bf.IsZero() {
+		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
+	}
+	if bf.Negative {
+		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
+	}
+
+	return bf, nil
 }

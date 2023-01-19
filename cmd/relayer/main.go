@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,32 +11,42 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
 	p2pnet "github.com/athanorlabs/go-p2p-net"
-	"github.com/athanorlabs/go-relayer/common"
-	contracts "github.com/athanorlabs/go-relayer/impls/gsnforwarder"
-	"github.com/athanorlabs/go-relayer/net"
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	rcontracts "github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	net "github.com/athanorlabs/go-relayer/net"
 	"github.com/athanorlabs/go-relayer/relayer"
-	"github.com/athanorlabs/go-relayer/rpc"
+	rrpc "github.com/athanorlabs/go-relayer/rpc"
+
+	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/ethereum"
+	swapnet "github.com/athanorlabs/atomic-swap/net"
 
 	logging "github.com/ipfs/go-log"
 )
 
 const (
-	flagEndpoint         = "endpoint"
-	flagForwarderAddress = "forwarder-address"
-	flagKey              = "key"
-	flagRPCPort          = "rpc-port"
-	flagDeploy           = "deploy"
-	flagLog              = "log-level"
-	flagWithNetwork      = "with-network"
-	flagLibp2pKey        = "libp2p-key"
-	flagLibp2pPort       = "libp2p-port"
-	flagBootnodes        = "bootnodes"
+	flagEndpoint          = "endpoint"
+	flagEnv               = "env"
+	flagForwarderAddress  = "forwarder-address"
+	flagKey               = "key"
+	flagRPC               = "rpc"
+	flagRPCPort           = "rpc-port"
+	flagDeploy            = "deploy"
+	flagLog               = "log-level"
+	flagWithNetwork       = "with-network" // TODO: remove
+	flagLibp2pKey         = "libp2p-key"
+	flagLibp2pPort        = "libp2p-port"
+	flagBootnodes         = "bootnodes"
+	flagRelayerCommission = "relayer-commission"
 
 	defaultLibp2pPort = 10900
 )
@@ -49,6 +60,11 @@ var (
 			Value: "http://localhost:8545",
 			Usage: "Ethereum RPC endpoint",
 		},
+		// &cli.StringFlag{
+		// 	Name:  flagEnv,
+		// 	Usage: "Environment to use: one of mainnet, stagenet, or dev",
+		// 	Value: "dev",
+		// },
 		&cli.StringFlag{
 			Name:  flagKey,
 			Value: "eth.key",
@@ -60,13 +76,18 @@ var (
 			Usage: "Relayer RPC server port",
 		},
 		&cli.BoolFlag{
+			Name:  flagRPC,
+			Value: false,
+			Usage: "Run the relayer RPC server. Defaults false",
+		},
+		&cli.BoolFlag{
 			Name:  flagDeploy,
 			Usage: "Deploy an instance of the forwarder contract",
 		},
-		&cli.StringFlag{
-			Name:  flagForwarderAddress,
-			Usage: "Forwarder contract address",
-		},
+		// &cli.StringFlag{
+		// 	Name:  flagForwarderAddress,
+		// 	Usage: "Forwarder contract address", // TODO: deploy this on goerli
+		// },
 		&cli.StringFlag{
 			Name:  flagLog,
 			Value: "info",
@@ -91,6 +112,12 @@ var (
 			Name:    flagBootnodes,
 			Aliases: []string{"bn"},
 			Usage:   "libp2p bootnode, comma separated if passing multiple to a single flag",
+			EnvVars: []string{"SWAPD_BOOTNODES"},
+		},
+		&cli.StringFlag{
+			Name: flagRelayerCommission,
+			Usage: "Minimum commission percentage (of the swap value) to receive:" +
+				" eg. --relayer-commission=0.01 for 1% commission",
 		},
 	}
 
@@ -149,7 +176,7 @@ func run(c *cli.Context) error {
 	}
 
 	ctx, cancel := context.WithCancel(c.Context)
-	go signalHandler(ctx, cancel)
+	defer cancel()
 
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
@@ -183,24 +210,32 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	cfg := &relayer.Config{
-		Ctx:       context.Background(),
-		EthClient: ec,
-		Forwarder: contracts.NewIForwarderWrapped(forwarder),
-		Key:       key,
-		ValidateTransactionFunc: func(_ *common.SubmitTransactionRequest) error {
-			// Note: an actual application will likely want to set this
-			return nil
-		},
+	relayerCommission, err := cliutil.ReadUnsignedDecimalFlag(c, flagRelayerCommission)
+	if err != nil {
+		return err
 	}
 
-	r, err := relayer.NewRelayer(cfg)
+	v := &validator{
+		ctx:               ctx,
+		ec:                ec,
+		relayerCommission: relayerCommission,
+	}
+
+	rcfg := &relayer.Config{
+		Ctx:                     ctx,
+		EthClient:               ec,
+		Forwarder:               rcontracts.NewIForwarderWrapped(forwarder),
+		Key:                     key,
+		ValidateTransactionFunc: v.validateTransactionFunc,
+	}
+
+	r, err := relayer.NewRelayer(rcfg)
 	if err != nil {
 		return err
 	}
 
 	if c.Bool(flagWithNetwork) {
-		h, err := setupNework(c, ec, r) //nolint:govet
+		h, err := setupNetwork(ctx, c, ec, r) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -210,27 +245,167 @@ func run(c *cli.Context) error {
 		}()
 	}
 
-	rpcCfg := &rpc.Config{
-		Ctx:     ctx,
-		Address: fmt.Sprintf("127.0.0.1:%d", port),
-		Relayer: r,
-	}
+	if c.Bool(flagRPC) {
+		go signalHandler(ctx, cancel)
+		rpcCfg := &rrpc.Config{
+			Ctx:     ctx,
+			Address: fmt.Sprintf("127.0.0.1:%d", port),
+			Relayer: r,
+		}
 
-	server, err := rpc.NewServer(rpcCfg)
-	if err != nil {
-		return err
-	}
+		server, err := rrpc.NewServer(rpcCfg)
+		if err != nil {
+			return err
+		}
 
-	err = server.Start()
-	if errors.Is(err, context.Canceled) || errors.Is(err, http.ErrServerClosed) {
-		return nil
+		err = server.Start()
+		if errors.Is(err, context.Canceled) || errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+	} else {
+		signalHandler(ctx, cancel)
 	}
 
 	return err
 }
 
-func setupNework(c *cli.Context, ec *ethclient.Client, r *relayer.Relayer) (*net.Host, error) {
-	chainID, err := ec.ChainID(context.Background())
+type validator struct {
+	ctx               context.Context
+	ec                *ethclient.Client
+	relayerCommission *apd.Decimal
+}
+
+func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionRequest) error {
+	// validate that:
+	// 1. the `to` address is a swap contract;
+	// 2. the function being called is `claimRelayer`;
+	// 3. the fee passed to `claimRelayer` is equal to or greater
+	// than our desired commission percentage.
+
+	_, err := contracts.CheckSwapFactoryContractCode(
+		v.ctx, v.ec, req.To,
+	)
+	if err != nil {
+		return err
+	}
+
+	// hardcoded, from swap_factory.go bindings
+	claimRelayerSig := ethcommon.Hex2Bytes("0x73e4771c")
+	if !bytes.Equal(claimRelayerSig, req.Data[:4]) {
+		return errors.New("call must be to claimRelayer()")
+	}
+
+	err = validateRelayerFee(req.Data[4:], v.relayerCommission)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateRelayerFee(data []byte, minFeePercentage *apd.Decimal) error {
+	uint256Ty, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create uint256 type: %w", err)
+	}
+
+	bytes32Ty, err := abi.NewType("bytes32", "", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create bytes32 type: %w", err)
+	}
+
+	addressTy, err := abi.NewType("address", "", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create address type: %w", err)
+	}
+
+	arguments := abi.Arguments{
+		// Swap
+		{
+			Type: addressTy,
+		},
+		{
+			Type: addressTy,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: addressTy,
+		},
+		{
+			Type: uint256Ty, // value
+		},
+		{
+			Type: uint256Ty,
+		},
+		// _s
+		{
+			Type: bytes32Ty,
+		},
+		// _fee
+		{
+			Type: uint256Ty,
+		},
+	}
+	args, err := arguments.Unpack(data)
+	if err != nil {
+		return err
+	}
+
+	value, ok := args[7].(*big.Int)
+	if !ok {
+		// this shouldn't happen afaik
+		return errors.New("value argument was not marshalled into a *big.Int")
+	}
+
+	fee, ok := args[10].(*big.Int)
+	if !ok {
+		// this shouldn't happen afaik
+		return errors.New("fee argument was not marshalled into a *big.Int")
+	}
+
+	valueD := apd.NewWithBigInt(
+		new(apd.BigInt).SetMathBigInt(value), // swap value, in wei
+		0,
+	)
+	feeD := apd.NewWithBigInt(
+		new(apd.BigInt).SetMathBigInt(fee), // fee, in wei
+		0,
+	)
+
+	percentage := new(apd.Decimal)
+	_, err = coins.DecimalCtx().Quo(percentage, feeD, valueD)
+	if err != nil {
+		return err
+	}
+
+	if percentage.Cmp(minFeePercentage) == -1 {
+		return fmt.Errorf("fee too low: percentage is %s, expected minimum %s",
+			percentage,
+			minFeePercentage,
+		)
+	}
+
+	return nil
+}
+
+func setupNetwork(
+	ctx context.Context,
+	c *cli.Context,
+	ec *ethclient.Client,
+	r *relayer.Relayer,
+) (*net.Host, error) {
+	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -242,17 +417,17 @@ func setupNework(c *cli.Context, ec *ethclient.Client, r *relayer.Relayer) (*net
 
 	listenIP := "0.0.0.0"
 	netCfg := &p2pnet.Config{
-		Ctx:        context.Background(),
+		Ctx:        ctx,
 		DataDir:    os.TempDir(),
 		Port:       uint16(c.Uint(flagLibp2pPort)),
 		KeyFile:    c.String(flagLibp2pKey),
 		Bootnodes:  bootnodes,
-		ProtocolID: fmt.Sprintf("/%s/%d", net.ProtocolID, chainID.Int64()),
+		ProtocolID: fmt.Sprintf("/%s/%s/%d", swapnet.ProtocolID, net.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
 	}
 
 	cfg := &net.Config{
-		Context:              context.Background(),
+		Context:              ctx,
 		P2pConfig:            netCfg,
 		TransactionSubmitter: r,
 		IsRelayer:            true,
@@ -274,16 +449,16 @@ func setupNework(c *cli.Context, ec *ethclient.Client, r *relayer.Relayer) (*net
 func deployOrGetForwarder(
 	addressString string,
 	ec *ethclient.Client,
-	key *common.Key,
+	key *rcommon.Key,
 	chainID *big.Int,
-) (*contracts.IForwarder, error) { // TODO: change to interface
+) (*rcontracts.IForwarder, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey(), chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make transactor: %w", err)
 	}
 
 	if addressString == "" {
-		address, tx, _, err := contracts.DeployForwarder(txOpts, ec)
+		address, tx, _, err := rcontracts.DeployForwarder(txOpts, ec)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +469,7 @@ func deployOrGetForwarder(
 		}
 
 		log.Infof("deployed Forwarder.sol to %s", address)
-		return contracts.NewIForwarder(address, ec)
+		return rcontracts.NewIForwarder(address, ec)
 	}
 
 	ok := ethcommon.IsHexAddress(addressString)
@@ -303,17 +478,17 @@ func deployOrGetForwarder(
 	}
 
 	log.Infof("loaded Forwarder.sol at %s", ethcommon.HexToAddress(addressString))
-	return contracts.NewIForwarder(ethcommon.HexToAddress(addressString), ec)
+	return rcontracts.NewIForwarder(ethcommon.HexToAddress(addressString), ec)
 }
 
-func getPrivateKey(keyFile string) (*common.Key, error) {
+func getPrivateKey(keyFile string) (*rcommon.Key, error) {
 	if keyFile != "" {
 		fileData, err := os.ReadFile(filepath.Clean(keyFile))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read private key file: %w", err)
 		}
 		keyHex := strings.TrimSpace(string(fileData))
-		return common.NewKeyFromPrivateKeyString(keyHex)
+		return rcommon.NewKeyFromPrivateKeyString(keyHex)
 	}
 	return nil, errNoEthereumPrivateKey
 }
