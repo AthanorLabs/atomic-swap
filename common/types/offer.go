@@ -2,6 +2,7 @@ package types
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +33,7 @@ type Offer struct {
 	MaxAmount    *apd.Decimal        `json:"maxAmount"` // Max XMR amount
 	ExchangeRate *coins.ExchangeRate `json:"exchangeRate"`
 	EthAsset     EthAsset            `json:"ethAsset"`
+	Nonce        uint64              `json:"nonce"`
 }
 
 // NewOffer creates and returns an Offer with an initialised ID and Version fields
@@ -42,30 +44,53 @@ func NewOffer(
 	exRate *coins.ExchangeRate,
 	ethAsset EthAsset,
 ) *Offer {
-	var buf [16]byte
-	if _, err := rand.Read(buf[:]); err != nil {
+	var n [8]byte
+	if _, err := rand.Read(n[:]); err != nil {
 		panic(err)
 	}
-	return &Offer{
+
+	offer := &Offer{
 		Version:      *CurOfferVersion,
-		ID:           sha3.Sum256(buf[:]),
 		Provides:     coin,
 		MinAmount:    minAmount,
 		MaxAmount:    maxAmount,
 		ExchangeRate: exRate,
 		EthAsset:     ethAsset,
+		Nonce:        binary.BigEndian.Uint64(n[:]),
 	}
+
+	offer.setID()
+	return offer
+}
+
+func (o *Offer) setID() {
+	if !IsHashZero(o.ID) {
+		panic("offer ID is already set")
+	}
+
+	o.ID = o.hash()
+}
+
+func (o *Offer) hash() Hash {
+	b := append([]byte(o.Version.String()), []byte(o.Provides)...)
+	b = append(b, []byte(o.MinAmount.Text('f'))...)
+	b = append(b, []byte(o.MaxAmount.Text('f'))...)
+	b = append(b, []byte(o.ExchangeRate.String())...)
+	b = append(b, o.EthAsset[:]...)
+	b = append(b, []byte(fmt.Sprintf("%d", o.Nonce))...)
+	return sha3.Sum256(b)
 }
 
 // String ...
 func (o *Offer) String() string {
-	return fmt.Sprintf("OfferID:%s Provides:%s MinAmount:%s MaxAmount:%s ExchangeRate:%s EthAsset:%s",
+	return fmt.Sprintf("OfferID:%s Provides:%s MinAmount:%s MaxAmount:%s ExchangeRate:%s EthAsset:%s Nonce:%d",
 		o.ID,
 		o.Provides,
 		o.MinAmount.String(),
 		o.MaxAmount.String(),
 		o.ExchangeRate.String(),
 		o.EthAsset,
+		o.Nonce,
 	)
 }
 
@@ -98,6 +123,10 @@ func (o *Offer) validate() error {
 	// it won't get invoked when the value is not present.
 	if o.ExchangeRate == nil {
 		return errExchangeRateNil
+	}
+
+	if o.ID != o.hash() {
+		return errors.New("hash of offer fields does not match offer ID")
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
@@ -27,15 +28,27 @@ func TestOffer_MarshalJSON(t *testing.T) {
 		"minAmount": "101",
 		"maxAmount": "202",
 		"exchangeRate": "1.5",
-		"ethAsset": "ETH"
-	}`, offer.ID)
+		"ethAsset": "ETH",
+		"nonce": %d
+	}`, offer.ID, offer.Nonce)
 	jsonData, err := json.Marshal(offer)
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(jsonData))
 }
 
 func TestOffer_UnmarshalJSON(t *testing.T) {
-	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
+	min := apd.New(100, 0)
+	max := apd.New(200, 0)
+	rate := coins.ToExchangeRate(apd.New(15, -1)) // 1.5
+	ethAsset := EthAsset(
+		ethcommon.HexToAddress("0x0000000000000000000000000000000000000001"),
+	)
+	offer := NewOffer(coins.ProvidesXMR, min, max, rate, ethAsset)
+	require.False(t, IsHashZero(offer.ID))
+	v, _ := semver.NewVersion("0.1.0")
+	offer.Version = *v
+	offer.ID = offer.hash()
+
 	offerJSON := fmt.Sprintf(`{
 		"version": "0.1.0",
 		"offerID": "%s",
@@ -43,39 +56,48 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 		"minAmount": "100",
 		"maxAmount": "200",
 		"exchangeRate": "1.5",
-		"ethAsset":"0x0000000000000000000000000000000000000001"
-	}`, idStr)
-	var offer Offer
-	err := json.Unmarshal([]byte(offerJSON), &offer)
+		"ethAsset":"%s",
+		"nonce": %d
+	}`, offer.ID, ethAsset, offer.Nonce)
+
+	var res Offer
+	err := json.Unmarshal([]byte(offerJSON), &res)
 	require.NoError(t, err)
-	assert.Equal(t, idStr, offer.ID.String())
-	assert.Equal(t, offer.Provides, coins.ProvidesXMR)
-	assert.Equal(t, offer.MinAmount.Text('f'), "100")
-	assert.Equal(t, offer.MaxAmount.Text('f'), "200")
-	assert.Equal(t, offer.ExchangeRate.String(), "1.5")
-	assert.Equal(t, "0x0000000000000000000000000000000000000001", ethcommon.Address(offer.EthAsset).Hex())
+	assert.Equal(t, offer.ID, res.ID)
+	assert.Equal(t, res.Provides, coins.ProvidesXMR)
+	assert.Equal(t, res.MinAmount.Text('f'), "100")
+	assert.Equal(t, res.MaxAmount.Text('f'), "200")
+	assert.Equal(t, res.ExchangeRate.String(), "1.5")
+	assert.Equal(t, ethAsset, res.EthAsset)
 }
 
 func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
-	idStr := "0x0102030405060708091011121314151617181920212223242526272829303131"
+	min := apd.New(100, 0)
+	max := apd.New(200, 0)
+	rate := coins.ToExchangeRate(apd.New(15, -1)) // 1.5
+	offer := NewOffer(coins.ProvidesXMR, min, max, rate, EthAssetETH)
+	require.False(t, IsHashZero(offer.ID))
+
 	offerJSON := fmt.Sprintf(`{
 		"version": "1.0.0",
 		"offerID": "%s",
 		"provides": "XMR",
 		"minAmount": "100",
 		"maxAmount": "200",
-		"exchangeRate": "1.5"
-	}`, idStr)
-	var offer Offer
-	err := json.Unmarshal([]byte(offerJSON), &offer)
+		"exchangeRate": "1.5",
+		"nonce": %d
+	}`, offer.ID, offer.Nonce)
+
+	var res Offer
+	err := json.Unmarshal([]byte(offerJSON), &res)
 	require.NoError(t, err)
 	assert.Equal(t, *CurOfferVersion, offer.Version)
-	assert.Equal(t, idStr, offer.ID.String())
-	assert.Equal(t, offer.Provides, coins.ProvidesXMR)
-	assert.Equal(t, offer.MinAmount.Text('f'), "100")
-	assert.Equal(t, offer.MaxAmount.Text('f'), "200")
-	assert.Equal(t, offer.ExchangeRate.String(), "1.5")
-	assert.Equal(t, offer.EthAsset, EthAssetETH)
+	assert.Equal(t, offer.ID, res.ID)
+	assert.Equal(t, res.Provides, coins.ProvidesXMR)
+	assert.Equal(t, res.MinAmount.Text('f'), "100")
+	assert.Equal(t, res.MaxAmount.Text('f'), "200")
+	assert.Equal(t, res.ExchangeRate.String(), "1.5")
+	assert.Equal(t, EthAssetETH, res.EthAsset)
 }
 
 func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
