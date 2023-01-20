@@ -27,7 +27,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
-	"github.com/athanorlabs/atomic-swap/ethereum"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	swapnet "github.com/athanorlabs/atomic-swap/net"
 
 	logging "github.com/ipfs/go-log"
@@ -35,14 +35,13 @@ import (
 
 const (
 	flagEndpoint          = "endpoint"
-	flagEnv               = "env"
 	flagForwarderAddress  = "forwarder-address"
 	flagKey               = "key"
 	flagRPC               = "rpc"
 	flagRPCPort           = "rpc-port"
 	flagDeploy            = "deploy"
 	flagLog               = "log-level"
-	flagWithNetwork       = "with-network" // TODO: remove
+	flagWithNetwork       = "with-network" // TODO: do we need this?
 	flagLibp2pKey         = "libp2p-key"
 	flagLibp2pPort        = "libp2p-port"
 	flagBootnodes         = "bootnodes"
@@ -60,11 +59,6 @@ var (
 			Value: "http://localhost:8545",
 			Usage: "Ethereum RPC endpoint",
 		},
-		// &cli.StringFlag{
-		// 	Name:  flagEnv,
-		// 	Usage: "Environment to use: one of mainnet, stagenet, or dev",
-		// 	Value: "dev",
-		// },
 		&cli.StringFlag{
 			Name:  flagKey,
 			Value: "eth.key",
@@ -84,10 +78,6 @@ var (
 			Name:  flagDeploy,
 			Usage: "Deploy an instance of the forwarder contract",
 		},
-		// &cli.StringFlag{
-		// 	Name:  flagForwarderAddress,
-		// 	Usage: "Forwarder contract address", // TODO: deploy this on goerli
-		// },
 		&cli.StringFlag{
 			Name:  flagLog,
 			Value: "info",
@@ -215,12 +205,15 @@ func run(c *cli.Context) error {
 		return err
 	}
 
+	// TODO: do we need to restrict potential commission values? eg. 1%, 1.25%, 1.5%, etc
 	v := &validator{
 		ctx:               ctx,
 		ec:                ec,
 		relayerCommission: relayerCommission,
 	}
 
+	// TODO: the forwarder contract is fixed here; thus it needs to be the same
+	// as what's hardcoded in the swap contract addr for that network.
 	rcfg := &relayer.Config{
 		Ctx:                     ctx,
 		EthClient:               ec,
@@ -253,7 +246,7 @@ func run(c *cli.Context) error {
 			Relayer: r,
 		}
 
-		server, err := rrpc.NewServer(rpcCfg)
+		server, err := rrpc.NewServer(rpcCfg) //nolint:govet
 		if err != nil {
 			return err
 		}
