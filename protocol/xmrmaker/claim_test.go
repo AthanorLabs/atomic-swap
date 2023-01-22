@@ -51,6 +51,9 @@ func runRelayer(
 		EthClient: ec,
 		Forwarder: fw,
 		Key:       key,
+		ValidateTransactionFunc: func(_ *rcommon.SubmitTransactionRequest) error {
+			return nil
+		},
 	}
 
 	r, err := relayer.NewRelayer(cfg)
