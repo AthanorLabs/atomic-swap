@@ -1,3 +1,9 @@
+// Package main is the entrypoint for the swap-specific Ethereum transaction relayer.
+// It's purpose is to allow swaps users (ETH-takers in particular) to submit calls to the
+// swap contract to claim their ETH from an account that does not have any ETH in it.
+// This improves the swap UX by allowing users to obtain ETH without already having any.
+// In this case, the relayer submits the transaction on the user's behalf, paying their
+// gas fees, and (optionally) receiving a small percentage of the swap's value as payment.
 package main
 
 import (
@@ -216,6 +222,7 @@ func run(c *cli.Context) error {
 	}
 
 	forwarder, forwarderAddr, err := deployOrGetForwarder(
+		ctx,
 		contractAddr,
 		ec,
 		key,
@@ -354,6 +361,7 @@ func setupNetwork(
 }
 
 func deployOrGetForwarder(
+	ctx context.Context,
 	addressString string,
 	ec *ethclient.Client,
 	key *rcommon.Key,
@@ -370,7 +378,7 @@ func deployOrGetForwarder(
 			return nil, ethcommon.Address{}, err
 		}
 
-		_, err = bind.WaitMined(context.Background(), ec, tx)
+		_, err = bind.WaitMined(ctx, ec, tx)
 		if err != nil {
 			return nil, ethcommon.Address{}, err
 		}
