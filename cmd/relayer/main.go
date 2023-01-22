@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -32,7 +33,7 @@ import (
 )
 
 const (
-	flagDataDir          = "datadir"
+	flagDataDir          = "data-dir"
 	flagEndpoint         = "endpoint"
 	flagForwarderAddress = "forwarder-address"
 	flagKey              = "key"
@@ -66,7 +67,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:  flagKey,
-			Value: "eth.key",
+			Value: "{HOME}/.atomicswap/{ENV}/relayer/eth.key",
 			Usage: "Path to file containing Ethereum private key",
 		},
 		&cli.StringFlag{
@@ -81,7 +82,7 @@ var (
 		&cli.BoolFlag{
 			Name:  flagRPC,
 			Value: false,
-			Usage: "Run the relayer RPC server. Defaults false",
+			Usage: "Run the relayer HTTP-RPC server on localhost. Defaults false",
 		},
 		&cli.BoolFlag{
 			Name:  flagDeploy,
@@ -100,7 +101,7 @@ var (
 		&cli.StringFlag{
 			Name:  flagLibp2pKey,
 			Usage: "libp2p private key",
-			Value: fmt.Sprintf("%s/node.key", os.TempDir()),
+			Value: fmt.Sprintf("{DATA_DIR}/%s", common.DefaultLibp2pKeyFileName),
 		},
 		&cli.UintFlag{
 			Name:  flagLibp2pPort,
@@ -227,6 +228,10 @@ func run(c *cli.Context) error {
 	relayerCommission, err := cliutil.ReadUnsignedDecimalFlag(c, flagRelayerCommission)
 	if err != nil {
 		return err
+	}
+
+	if relayerCommission.Cmp(apd.New(1, -1)) > 0 {
+		return errors.New("relayer commission is too high: must be less than 0.1 (10%)")
 	}
 
 	// TODO: do we need to restrict potential commission values? eg. 1%, 1.25%, 1.5%, etc

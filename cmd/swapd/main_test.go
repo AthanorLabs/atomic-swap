@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 
-	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -132,34 +131,6 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	time.Sleep(500 * time.Millisecond) // let the server start
 	cancel()
 	wg.Wait()
-}
-
-func Test_expandBootnodes(t *testing.T) {
-	cliNodes := []string{
-		" node1, node2 ,node3,node4 ",
-		"node5",
-		"\tnode6\n",
-		"node7,node8",
-	}
-	expected := []string{
-		"node1",
-		"node2",
-		"node3",
-		"node4",
-		"node5",
-		"node6",
-		"node7",
-		"node8",
-	}
-	require.EqualValues(t, expected, cliutil.ExpandBootnodes(cliNodes))
-}
-
-func Test_expandBootnodes_noNodes(t *testing.T) {
-	// This can happen when the user specifies a single `--bootnodes ""` flag
-	// to not use the default bootnodes for an environment.
-	cliNodes := []string{""}
-	nodes := cliutil.ExpandBootnodes(cliNodes)
-	require.Zero(t, len(nodes))
 }
 
 func TestDaemon_PersistOffers(t *testing.T) {
