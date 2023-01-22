@@ -80,7 +80,7 @@ func (o *Offer) hash() Hash {
 	b = append(b, []byte(",")...)
 	b = append(b, []byte(o.ExchangeRate.String())...)
 	b = append(b, []byte(",")...)
-	b = append(b, o.EthAsset[:]...)
+	b = append(b, []byte(o.EthAsset.String())...)
 	b = append(b, []byte(",")...)
 	b = append(b, []byte(fmt.Sprintf("%d", o.Nonce))...)
 	return sha3.Sum256(b)
