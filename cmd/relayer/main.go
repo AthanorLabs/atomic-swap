@@ -88,7 +88,7 @@ var (
 		&cli.BoolFlag{
 			Name:  flagRPC,
 			Value: false,
-			Usage: "Run the relayer HTTP-RPC server on localhost. Defaults false",
+			Usage: "Run the relayer HTTP-RPC server on localhost. Defaults to false",
 		},
 		&cli.BoolFlag{
 			Name:  flagDeploy,
@@ -107,7 +107,7 @@ var (
 		&cli.StringFlag{
 			Name:  flagLibp2pKey,
 			Usage: "libp2p private key",
-			Value: fmt.Sprintf("{DATA_DIR}/%s", common.DefaultLibp2pKeyFileName),
+			Value: common.DefaultLibp2pKeyFileName,
 		},
 		&cli.UintFlag{
 			Name:  flagLibp2pPort,
@@ -166,6 +166,7 @@ func setLogLevels(c *cli.Context) error {
 	_ = logging.SetLogLevel("main", level)
 	_ = logging.SetLogLevel("relayer", level)
 	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("p2pnet", "debug")
 	return nil
 }
 
@@ -334,7 +335,7 @@ func setupNetwork(
 		Ctx:        ctx,
 		DataDir:    datadir,
 		Port:       uint16(c.Uint(flagLibp2pPort)),
-		KeyFile:    c.String(flagLibp2pKey),
+		KeyFile:    path.Join(datadir, c.String(flagLibp2pKey)),
 		Bootnodes:  bootnodes,
 		ProtocolID: fmt.Sprintf("/%s/%d/%s", swapnet.ProtocolID, chainID.Int64(), net.ProtocolID),
 		ListenIP:   listenIP,

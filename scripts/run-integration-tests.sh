@@ -46,6 +46,7 @@ start-relayer() {
 	echo "Starting relayer with logs in ${log_file}"
 	./bin/relayer \
 		--deploy \
+		--data-dir="${SWAP_TEST_DATA_DIR}" \
 		--endpoint="http://localhost:${GANACHE_PORT}" \
 		--log-level=debug \
 		--rpc \
@@ -166,7 +167,7 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m -testify.m Test_Success_ClaimRelayer
+TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 
