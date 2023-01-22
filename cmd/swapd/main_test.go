@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 
+	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -150,14 +151,14 @@ func Test_expandBootnodes(t *testing.T) {
 		"node7",
 		"node8",
 	}
-	require.EqualValues(t, expected, expandBootnodes(cliNodes))
+	require.EqualValues(t, expected, cliutil.ExpandBootnodes(cliNodes))
 }
 
 func Test_expandBootnodes_noNodes(t *testing.T) {
 	// This can happen when the user specifies a single `--bootnodes ""` flag
 	// to not use the default bootnodes for an environment.
 	cliNodes := []string{""}
-	nodes := expandBootnodes(cliNodes)
+	nodes := cliutil.ExpandBootnodes(cliNodes)
 	require.Zero(t, len(nodes))
 }
 

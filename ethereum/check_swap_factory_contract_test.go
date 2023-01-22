@@ -52,7 +52,7 @@ func TestCheckForwarderContractCode(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
 	trustedForwarder := deployForwarder(t, ec, pk)
-	err := checkForwarderContractCode(context.Background(), ec, trustedForwarder)
+	err := CheckForwarderContractCode(context.Background(), ec, trustedForwarder)
 	require.NoError(t, err)
 }
 

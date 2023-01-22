@@ -126,3 +126,22 @@ func ReadUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, e
 
 	return bf, nil
 }
+
+// ExpandBootnodes expands the boot nodes passed on the command line that
+// can be specified individually with multiple flags, but can also contain
+// multiple boot nodes passed to single flag separated by commas.
+func ExpandBootnodes(nodesCLI []string) []string {
+	var nodes []string // nodes from all flag values combined
+	for _, flagVal := range nodesCLI {
+		splitNodes := strings.Split(flagVal, ",")
+		for _, n := range splitNodes {
+			n = strings.TrimSpace(n)
+			// Handle the empty string to not use default bootnodes. Doing it here after
+			// the split has the arguably positive side effect of skipping empty entries.
+			if len(n) > 0 {
+				nodes = append(nodes, strings.TrimSpace(n))
+			}
+		}
+	}
+	return nodes
+}

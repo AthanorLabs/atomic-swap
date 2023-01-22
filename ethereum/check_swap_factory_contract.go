@@ -85,7 +85,7 @@ func CheckSwapFactoryContractCode(
 		return forwarderAddress, nil
 	}
 
-	err = checkForwarderContractCode(ctx, ec, forwarderAddress)
+	err = CheckForwarderContractCode(ctx, ec, forwarderAddress)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}
@@ -94,9 +94,9 @@ func CheckSwapFactoryContractCode(
 	return forwarderAddress, nil
 }
 
-// checkSwapFactoryForwarder checks that the trusted forwarder contract used by
+// CheckSwapFactoryForwarder checks that the trusted forwarder contract used by
 // the given swap contract has the expected bytecode.
-func checkForwarderContractCode(
+func CheckForwarderContractCode(
 	ctx context.Context,
 	ec *ethclient.Client,
 	contractAddr ethcommon.Address,

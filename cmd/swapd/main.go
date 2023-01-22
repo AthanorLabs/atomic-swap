@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/ChainSafe/chaindb"
 	p2pnet "github.com/athanorlabs/go-p2p-net"
@@ -347,25 +346,6 @@ func (d *daemon) stop() error {
 	}
 }
 
-// expandBootnodes expands the boot nodes passed on the command line that
-// can be specified individually with multiple flags, but can also contain
-// multiple boot nodes passed to single flag separated by commas.
-func expandBootnodes(nodesCLI []string) []string {
-	var nodes []string // nodes from all flag values combined
-	for _, flagVal := range nodesCLI {
-		splitNodes := strings.Split(flagVal, ",")
-		for _, n := range splitNodes {
-			n = strings.TrimSpace(n)
-			// Handle the empty string to not use default bootnodes. Doing it here after
-			// the split has the arguably positive side effect of skipping empty entries.
-			if len(n) > 0 {
-				nodes = append(nodes, strings.TrimSpace(n))
-			}
-		}
-	}
-	return nodes
-}
-
 func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	env, err := common.NewEnv(c.String(flagEnv))
 	if err != nil {
@@ -399,7 +379,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	}
 
 	if c.IsSet(flagBootnodes) {
-		cfg.Bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
+		cfg.Bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
 	}
 
 	libp2pKey := cfg.LibP2PKeyFile()

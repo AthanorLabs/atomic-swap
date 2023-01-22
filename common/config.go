@@ -1,6 +1,8 @@
 package common
 
 import (
+	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"time"
@@ -30,10 +32,11 @@ type MoneroNode struct {
 
 // Config contains constants that are defaults for various environments
 type Config struct {
-	DataDir         string
-	MoneroNodes     []*MoneroNode
-	ContractAddress ethcommon.Address
-	Bootnodes       []string
+	DataDir                  string
+	MoneroNodes              []*MoneroNode
+	ContractAddress          ethcommon.Address
+	ForwarderContractAddress ethcommon.Address
+	Bootnodes                []string
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration
@@ -76,7 +79,8 @@ var StagenetConfig = Config{
 			Port: 38081,
 		},
 	},
-	ContractAddress: ethcommon.HexToAddress("0x01EeB71A63853fc89Ef26493bbdB7829F72b40d4"),
+	ContractAddress:          ethcommon.HexToAddress("0x01EeB71A63853fc89Ef26493bbdB7829F72b40d4"),
+	ForwarderContractAddress: ethcommon.HexToAddress("0xbb6a65B366251D98cDe86692ff16B54d3d9e804d"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
@@ -156,5 +160,19 @@ func DefaultMoneroPortFromEnv(env Environment) uint {
 		return DefaultMoneroDaemonDevPort
 	default:
 		panic("invalid environment")
+	}
+}
+
+// ConfigFromChainID returns the *Config corresponding to the given chain ID.
+func ConfigFromChainID(chainID *big.Int) (Config, error) {
+	switch chainID.Uint64() {
+	case MainnetChainID:
+		return MainnetConfig, nil
+	case GoerliChainID:
+		return StagenetConfig, nil
+	case GanacheChainID, HardhatChainID:
+		return DevelopmentConfig, nil
+	default:
+		return Config{}, fmt.Errorf("no config for chain ID %d", chainID)
 	}
 }

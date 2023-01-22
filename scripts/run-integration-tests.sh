@@ -3,7 +3,7 @@
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
 
-./scripts/build.sh || exit 1
+ALL=true ./scripts/build.sh || exit 1
 
 source "scripts/testlib.sh"
 check-set-swap-test-data-dir
@@ -48,6 +48,7 @@ start-relayer() {
 		--deploy \
 		--endpoint="http://localhost:${GANACHE_PORT}" \
 		--log-level=debug \
+		--rpc \
 		--rpc-port="${RELAYER_PORT}" \
 		--key="${SWAP_TEST_DATA_DIR}/relayer/eth.key" \
 		&>"${log_file}" &
@@ -165,7 +166,7 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m
+TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m -testify.m Test_Success_ClaimRelayer
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 

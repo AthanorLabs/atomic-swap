@@ -221,6 +221,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
 	// TODO: implement discovery over websockets (#97)
+	time.Sleep(time.Second * 5)
 	peerIDs, err := ac.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))

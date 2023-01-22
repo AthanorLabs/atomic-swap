@@ -27,6 +27,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	swapnet "github.com/athanorlabs/atomic-swap/net"
 
@@ -63,6 +64,10 @@ var (
 			Name:  flagKey,
 			Value: "eth.key",
 			Usage: "Path to file containing Ethereum private key",
+		},
+		&cli.StringFlag{
+			Name:  flagForwarderAddress,
+			Usage: "Address of the forwarder contract to use. Defaults to the forwarder address in the chain's swap contract.",
 		},
 		&cli.UintFlag{
 			Name:  flagRPCPort,
@@ -108,6 +113,7 @@ var (
 			Name: flagRelayerCommission,
 			Usage: "Minimum commission percentage (of the swap value) to receive:" +
 				" eg. --relayer-commission=0.01 for 1% commission",
+			Value: common.DefaultRelayerCommission.Text('f'),
 		},
 	}
 
@@ -175,22 +181,36 @@ func run(c *cli.Context) error {
 
 	log.Infof("starting relayer with ethereum endpoint %s and chain ID %s", endpoint, chainID)
 
+	config, err := common.ConfigFromChainID(chainID)
+	if err != nil {
+		return err
+	}
+
 	key, err := getPrivateKey(c.String(flagKey))
 	if err != nil {
 		return err
 	}
 
-	contractAddr := c.String(flagForwarderAddress)
+	// set the forwarder address from the config, if it exists on that network
+	// however, if the --forwarder-address flag is set, that address takes precedence
+	var contractAddr string
+	if (config.ContractAddress != ethcommon.Address{}) {
+		contractAddr = config.ForwarderContractAddress.String()
+	}
+	addrFromFlag := c.String(flagForwarderAddress)
+	if addrFromFlag != "" {
+		contractAddr = addrFromFlag
+	}
+
 	deploy := c.Bool(flagDeploy)
-	contractSet := contractAddr != ""
-	if deploy && contractSet {
+	if deploy && (addrFromFlag != "") {
 		return fmt.Errorf("flags --%s and --%s are mutually exclusive", flagDeploy, flagForwarderAddress)
 	}
-	if !deploy && !contractSet {
+	if !deploy && (contractAddr == "") {
 		return fmt.Errorf("either --%s or --%s is required", flagDeploy, flagForwarderAddress)
 	}
 
-	forwarder, err := deployOrGetForwarder(
+	forwarder, forwarderAddr, err := deployOrGetForwarder(
 		contractAddr,
 		ec,
 		key,
@@ -206,10 +226,12 @@ func run(c *cli.Context) error {
 	}
 
 	// TODO: do we need to restrict potential commission values? eg. 1%, 1.25%, 1.5%, etc
+	// or should we just require a fixed value to start?
 	v := &validator{
 		ctx:               ctx,
 		ec:                ec,
 		relayerCommission: relayerCommission,
+		forwarderAddress:  forwarderAddr,
 	}
 
 	// TODO: the forwarder contract is fixed here; thus it needs to be the same
@@ -266,6 +288,7 @@ type validator struct {
 	ctx               context.Context
 	ec                *ethclient.Client
 	relayerCommission *apd.Decimal
+	forwarderAddress  ethcommon.Address
 }
 
 func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionRequest) error {
@@ -275,17 +298,24 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 	// 3. the fee passed to `claimRelayer` is equal to or greater
 	// than our desired commission percentage.
 
-	_, err := contracts.CheckSwapFactoryContractCode(
+	forwarderAddr, err := contracts.CheckSwapFactoryContractCode(
 		v.ctx, v.ec, req.To,
 	)
 	if err != nil {
 		return err
 	}
 
+	if forwarderAddr != v.forwarderAddress {
+		return fmt.Errorf("swap contract does not have expected forwarder address: got %s, expected %s",
+			forwarderAddr,
+			v.forwarderAddress,
+		)
+	}
+
 	// hardcoded, from swap_factory.go bindings
-	claimRelayerSig := ethcommon.Hex2Bytes("0x73e4771c")
+	claimRelayerSig := ethcommon.FromHex("0x73e4771c")
 	if !bytes.Equal(claimRelayerSig, req.Data[:4]) {
-		return errors.New("call must be to claimRelayer()")
+		return fmt.Errorf("call must be to claimRelayer(); got call to function with sig 0x%x", req.Data[:4])
 	}
 
 	err = validateRelayerFee(req.Data[4:], v.relayerCommission)
@@ -405,13 +435,13 @@ func setupNetwork(
 
 	var bootnodes []string
 	if c.IsSet(flagBootnodes) {
-		bootnodes = expandBootnodes(c.StringSlice(flagBootnodes))
+		bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
 	}
 
 	listenIP := "0.0.0.0"
 	netCfg := &p2pnet.Config{
 		Ctx:        ctx,
-		DataDir:    os.TempDir(),
+		DataDir:    os.TempDir(), // TODO fix this
 		Port:       uint16(c.Uint(flagLibp2pPort)),
 		KeyFile:    c.String(flagLibp2pKey),
 		Bootnodes:  bootnodes,
@@ -444,34 +474,50 @@ func deployOrGetForwarder(
 	ec *ethclient.Client,
 	key *rcommon.Key,
 	chainID *big.Int,
-) (*rcontracts.IForwarder, error) {
+) (*rcontracts.IForwarder, ethcommon.Address, error) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey(), chainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make transactor: %w", err)
+		return nil, ethcommon.Address{}, fmt.Errorf("failed to make transactor: %w", err)
 	}
 
 	if addressString == "" {
 		address, tx, _, err := rcontracts.DeployForwarder(txOpts, ec)
 		if err != nil {
-			return nil, err
+			return nil, ethcommon.Address{}, err
 		}
 
 		_, err = bind.WaitMined(context.Background(), ec, tx)
 		if err != nil {
-			return nil, err
+			return nil, ethcommon.Address{}, err
 		}
 
 		log.Infof("deployed Forwarder.sol to %s", address)
-		return rcontracts.NewIForwarder(address, ec)
+		f, err := rcontracts.NewIForwarder(address, ec)
+		if err != nil {
+			return nil, ethcommon.Address{}, err
+		}
+
+		return f, address, nil
 	}
 
 	ok := ethcommon.IsHexAddress(addressString)
 	if !ok {
-		return nil, errInvalidAddress
+		return nil, ethcommon.Address{}, errInvalidAddress
 	}
 
-	log.Infof("loaded Forwarder.sol at %s", ethcommon.HexToAddress(addressString))
-	return rcontracts.NewIForwarder(ethcommon.HexToAddress(addressString), ec)
+	address := ethcommon.HexToAddress(addressString)
+	err = contracts.CheckForwarderContractCode(context.Background(), ec, address)
+	if err != nil {
+		return nil, ethcommon.Address{}, err
+	}
+
+	log.Infof("loaded Forwarder.sol at %s", address)
+	f, err := rcontracts.NewIForwarder(address, ec)
+	if err != nil {
+		return nil, ethcommon.Address{}, err
+	}
+
+	return f, address, nil
 }
 
 func getPrivateKey(keyFile string) (*rcommon.Key, error) {
@@ -484,23 +530,4 @@ func getPrivateKey(keyFile string) (*rcommon.Key, error) {
 		return rcommon.NewKeyFromPrivateKeyString(keyHex)
 	}
 	return nil, errNoEthereumPrivateKey
-}
-
-// expandBootnodes expands the boot nodes passed on the command line that
-// can be specified individually with multiple flags, but can also contain
-// multiple boot nodes passed to single flag separated by commas.
-func expandBootnodes(nodesCLI []string) []string {
-	var nodes []string // nodes from all flag values combined
-	for _, flagVal := range nodesCLI {
-		splitNodes := strings.Split(flagVal, ",")
-		for _, n := range splitNodes {
-			n = strings.TrimSpace(n)
-			// Handle the empty string to not use default bootnodes. Doing it here after
-			// the split has the arguably positive side effect of skipping empty entries.
-			if len(n) > 0 {
-				nodes = append(nodes, strings.TrimSpace(n))
-			}
-		}
-	}
-	return nodes
 }
