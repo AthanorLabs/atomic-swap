@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -35,14 +36,16 @@ import (
 )
 
 const (
-	flagEndpoint          = "endpoint"
-	flagForwarderAddress  = "forwarder-address"
-	flagKey               = "key"
-	flagRPC               = "rpc"
-	flagRPCPort           = "rpc-port"
-	flagDeploy            = "deploy"
-	flagLog               = "log-level"
-	flagWithNetwork       = "with-network" // TODO: do we need this?
+	flagDataDir          = "datadir"
+	flagEndpoint         = "endpoint"
+	flagForwarderAddress = "forwarder-address"
+	flagKey              = "key"
+	flagRPC              = "rpc"
+	flagRPCPort          = "rpc-port"
+	flagDeploy           = "deploy"
+	flagLog              = "log-level"
+	// TODO: do we need this, or can we assume all swap relayers will need to be on the p2p network?
+	flagWithNetwork       = "with-network"
 	flagLibp2pKey         = "libp2p-key"
 	flagLibp2pPort        = "libp2p-port"
 	flagBootnodes         = "bootnodes"
@@ -55,6 +58,11 @@ var (
 	log = logging.Logger("main")
 
 	flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:  flagDataDir,
+			Usage: "Path to store swap artifacts",
+			Value: "{HOME}/.atomicswap/{ENV}", // For --help only, actual default replaces variables
+		},
 		&cli.StringFlag{
 			Name:  flagEndpoint,
 			Value: "http://localhost:8545",
@@ -226,7 +234,7 @@ func run(c *cli.Context) error {
 	}
 
 	// TODO: do we need to restrict potential commission values? eg. 1%, 1.25%, 1.5%, etc
-	// or should we just require a fixed value to start?
+	// or should we just require a fixed value for now?
 	v := &validator{
 		ctx:               ctx,
 		ec:                ec,
@@ -234,7 +242,7 @@ func run(c *cli.Context) error {
 		forwarderAddress:  forwarderAddr,
 	}
 
-	// TODO: the forwarder contract is fixed here; thus it needs to be the same
+	// the forwarder contract is fixed here; thus it needs to be the same
 	// as what's hardcoded in the swap contract addr for that network.
 	rcfg := &relayer.Config{
 		Ctx:                     ctx,
@@ -250,7 +258,19 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool(flagWithNetwork) {
-		h, err := setupNetwork(ctx, c, ec, r) //nolint:govet
+		// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
+		var datadir string
+		if c.IsSet(flagDataDir) {
+			datadir = c.String(flagDataDir) // override the value derived from `flagEnv`
+		} else {
+			datadir = config.DataDir
+		}
+		datadir = path.Join(datadir, "relayer")
+		if err = common.MakeDir(datadir); err != nil {
+			return err
+		}
+
+		h, err := setupNetwork(ctx, c, ec, r, datadir) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -427,6 +447,7 @@ func setupNetwork(
 	c *cli.Context,
 	ec *ethclient.Client,
 	r *relayer.Relayer,
+	datadir string,
 ) (*net.Host, error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
@@ -441,7 +462,7 @@ func setupNetwork(
 	listenIP := "0.0.0.0"
 	netCfg := &p2pnet.Config{
 		Ctx:        ctx,
-		DataDir:    os.TempDir(), // TODO fix this
+		DataDir:    datadir,
 		Port:       uint16(c.Uint(flagLibp2pPort)),
 		KeyFile:    c.String(flagLibp2pKey),
 		Bootnodes:  bootnodes,
@@ -481,7 +502,7 @@ func deployOrGetForwarder(
 	}
 
 	if addressString == "" {
-		address, tx, _, err := rcontracts.DeployForwarder(txOpts, ec)
+		address, tx, _, err := rcontracts.DeployForwarder(txOpts, ec) //nolint:govet
 		if err != nil {
 			return nil, ethcommon.Address{}, err
 		}

@@ -94,7 +94,7 @@ func CheckSwapFactoryContractCode(
 	return forwarderAddress, nil
 }
 
-// CheckSwapFactoryForwarder checks that the trusted forwarder contract used by
+// CheckForwarderContractCode checks that the trusted forwarder contract used by
 // the given swap contract has the expected bytecode.
 func CheckForwarderContractCode(
 	ctx context.Context,

@@ -33,4 +33,6 @@ const (
 	HardhatChainID = 31337
 )
 
+// DefaultRelayerCommission is the default commission percentage for swap relayers.
+// It's set to 0.01 or 1%.
 var DefaultRelayerCommission = apd.New(1, -2)
