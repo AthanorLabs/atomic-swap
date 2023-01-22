@@ -73,10 +73,15 @@ func (o *Offer) setID() {
 
 func (o *Offer) hash() Hash {
 	b := append([]byte(o.Version.String()), []byte(o.Provides)...)
+	b = append(b, []byte(",")...)
 	b = append(b, []byte(o.MinAmount.Text('f'))...)
+	b = append(b, []byte(",")...)
 	b = append(b, []byte(o.MaxAmount.Text('f'))...)
+	b = append(b, []byte(",")...)
 	b = append(b, []byte(o.ExchangeRate.String())...)
+	b = append(b, []byte(",")...)
 	b = append(b, o.EthAsset[:]...)
+	b = append(b, []byte(",")...)
 	b = append(b, []byte(fmt.Sprintf("%d", o.Nonce))...)
 	return sha3.Sum256(b)
 }
