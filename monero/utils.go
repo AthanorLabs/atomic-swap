@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common"
-	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-
 	logging "github.com/ipfs/go-log"
+
+	"github.com/athanorlabs/atomic-swap/common"
 )
 
 var (
@@ -52,31 +51,4 @@ func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64,
 			return 0, err
 		}
 	}
-}
-
-// CreateWallet creates a monero wallet from a private keypair.
-func CreateWallet(
-	name string,
-	env common.Environment,
-	client WalletClient,
-	kpAB *mcrypto.PrivateKeyPair,
-	restoreHeight uint64,
-) (WalletClient, error) {
-	conf := client.CreateABWalletConf()
-	abCli, err := CreateSpendWalletFromKeys(conf, kpAB, restoreHeight)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = abCli.Refresh(); err != nil {
-		return nil, err
-	}
-
-	balance, err := abCli.GetBalance(0)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Info("wallet balance: ", balance.Balance)
-	return abCli, nil
 }

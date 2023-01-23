@@ -321,3 +321,24 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	})
 	require.ErrorIs(t, err, context.Canceled)
 }
+
+func TestCreateWalletFromKeys(t *testing.T) {
+	c, err := NewWalletClient(&WalletClientConf{
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
+	})
+	require.NoError(t, err)
+	defer c.Close()
+
+	height, err := c.GetHeight()
+	require.NoError(t, err)
+
+	kp, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	conf := c.CreateABWalletConf()
+	abCli, err := CreateSpendWalletFromKeys(conf, kp, height)
+	require.NoError(t, err)
+	require.Equal(t, kp.Address(common.Development), abCli.PrimaryAddress())
+}
