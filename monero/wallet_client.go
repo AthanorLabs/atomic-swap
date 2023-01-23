@@ -65,9 +65,8 @@ type WalletClientConf struct {
 
 // WaitForReceiptRequest wraps the input parameters for WaitForReceipt
 type WaitForReceiptRequest struct {
-	Ctx  context.Context
-	TxID string
-	//DestAddr         mcrypto.Address
+	Ctx              context.Context
+	TxID             string
 	NumConfirmations uint64
 	AccountIdx       uint64
 }
