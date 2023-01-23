@@ -61,24 +61,22 @@ func CreateWallet(
 	client WalletClient,
 	kpAB *mcrypto.PrivateKeyPair,
 	restoreHeight uint64,
-) (mcrypto.Address, error) {
-	t := time.Now().Format(common.TimeFmtNSecs)
-	walletName := fmt.Sprintf("%s-%s", name, t)
-	if err := client.GenerateFromKeys(kpAB, restoreHeight, walletName, "", env); err != nil {
-		return "", err
-	}
-
-	log.Info("created wallet: ", walletName)
-
-	if err := client.Refresh(); err != nil {
-		return "", err
-	}
-
-	balance, err := client.GetBalance(0)
+) (WalletClient, error) {
+	conf := client.CreateABWalletConf()
+	abCli, err := CreateSpendWalletFromKeys(conf, kpAB, restoreHeight)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+
+	if err = abCli.Refresh(); err != nil {
+		return nil, err
+	}
+
+	balance, err := abCli.GetBalance(0)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Info("wallet balance: ", balance.Balance)
-	return kpAB.Address(env), nil
+	return abCli, nil
 }

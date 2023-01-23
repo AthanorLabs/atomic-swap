@@ -32,7 +32,6 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             tResp.TxHash,
-		DestAddr:         xmrAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
 		AccountIdx:       0,
 	})

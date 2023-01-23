@@ -245,7 +245,6 @@ func lockXMRFunds(
 	transfer, err := wc.WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              ctx,
 		TxID:             transResp.TxHash,
-		DestAddr:         destAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
 		AccountIdx:       0,
 	})

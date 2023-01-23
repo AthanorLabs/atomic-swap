@@ -105,6 +105,12 @@ func (a *PiconeroAmount) AsMonero() *apd.Decimal {
 	return xmrAmt
 }
 
+// FmtPiconeroAmtAsXMR takes piconeros as input and produces a formatted string of the
+// amount in XMR.
+func FmtPiconeroAmtAsXMR(piconeros uint64) string {
+	return NewPiconeroAmount(piconeros).AsMonero().Text('f')
+}
+
 // WeiAmount represents some amount of ether in the smallest denomination (wei)
 type WeiAmount apd.Decimal
 

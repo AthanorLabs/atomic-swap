@@ -5,6 +5,8 @@ package xmrmaker
 import (
 	"context"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -409,6 +411,52 @@ func (s *swapState) exit() error {
 	}
 }
 
+// TODO: Unit test this
+func sweepRefundBack(
+	ctx context.Context,
+	primaryCli monero.WalletClient,
+	abPrivKeyPair *mcrypto.PrivateKeyPair,
+	restoreHeight uint64,
+) error {
+	conf := primaryCli.CreateABWalletConf()
+	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, abPrivKeyPair, restoreHeight)
+	if err != nil {
+		return err
+	}
+	defer abWalletCli.CloseAndRemoveWallet()
+	balance, err := abWalletCli.GetBalance(0)
+	if err != nil {
+		return err
+	}
+	if balance.BlocksToUnlock > 0 {
+		if _, err = monero.WaitForBlocks(ctx, abWalletCli, int(balance.BlocksToUnlock)); err != nil {
+			return err
+		}
+	}
+	log.Infof("Sweeping refund of %s XMR (minus %s XMR TX fees) back to primary address %s",
+		coins.FmtPiconeroAmtAsXMR(balance.Balance), primaryCli.PrimaryAddress())
+	sweepResp, err := abWalletCli.SweepAll(primaryCli.PrimaryAddress(), 0)
+	if err != nil {
+		return err
+	}
+	if len(sweepResp.TxHashList) < 1 {
+		// this shouldn't be possible, but it is not our code that sent the response
+		return errors.New("received invalid monero sweep response with no TX hashes")
+	}
+	transfer, err := abWalletCli.WaitForReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              context.Background(),
+		TxID:             sweepResp.TxHashList[0],
+		NumConfirmations: 2,
+		AccountIdx:       0,
+	})
+	if err != nil {
+		return err
+	}
+	log.Infof("XMRMaker swept refund of %s XMR back to primary wallet, but %s XMR was lost to fees",
+		coins.FmtPiconeroAmtAsXMR(balance.Balance), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
+	return nil
+}
+
 func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
 	vkA, err := skA.View()
 	if err != nil {
@@ -424,9 +472,10 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 		return "", err
 	}
 
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.moneroStartHeight)
+	if err = sweepRefundBack(s.ctx, s.XMRClient(), kpAB, s.moneroStartHeight); err != nil {
+		return "", fmt.Errorf("failed to sweep refund back to primary wallet: %w", err)
+	}
+	return kpAB.Address(s.Env()), nil
 }
 
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
@@ -491,35 +540,27 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // It accepts the amount to lock as the input
 func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
-	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
-
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
+	log.Infof("going to lock XMR funds, amount=%s XMR", amount.AsMonero().Text('f'))
 
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debug("total XMR balance: ", balance.Balance)
-	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
+	log.Debug("total XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.Balance))
+	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.UnlockedBalance))
 
 	transResp, err := s.XMRClient().Transfer(swapDestAddr, 0, amount)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Infof("locked %f XMR, txID=%s fee=%d", amount.AsMonero(), transResp.TxHash, transResp.Fee)
+	log.Infof("locked %s XMR, txID=%s fee=%s",
+		amount.AsMonero().Text('f'), transResp.TxHash, coins.FmtPiconeroAmtAsXMR(transResp.Fee))
 
-	// TODO: It would be friendlier to concurrent swaps if we didn't hold the client lock
-	//       for the entire confirmation period. Options to improve this include creating a
-	//       separate monero-wallet-rpc instance for A+B wallets or carefully releasing the
-	//       lock between confirmations and re-opening the A+B wallet after grabbing the
-	//       lock again.
 	transfer, err := s.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
 		Ctx:              s.ctx,
 		TxID:             transResp.TxHash,
-		DestAddr:         swapDestAddr,
 		NumConfirmations: monero.MinSpendConfirmations,
 		AccountIdx:       0,
 	})

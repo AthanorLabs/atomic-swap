@@ -48,7 +48,7 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	// if this is set, it transfers all xmr received during swaps back to the given wallet.
 	if cfg.TransferBack {
-		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryWalletAddress())
+		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryAddress())
 	}
 
 	inst := &Instance{
@@ -90,7 +90,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (inst *Instance) createOngoingSwap(s swap.Info) error {
+func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, claim XMR from that
 	// otherwise, create new swap state from recovery info
 	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
@@ -99,9 +99,6 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		if err != nil {
 			return err
 		}
-
-		inst.backend.XMRClient().Lock()
-		defer inst.backend.XMRClient().Unlock()
 
 		// TODO: do we want to transfer this back to the original account?
 		addr, err := monero.CreateWallet(
@@ -138,7 +135,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 	defer inst.swapMu.Unlock()
 	ss, err := newSwapStateFromOngoing(
 		inst.backend,
-		&s,
+		s,
 		inst.transferBack,
 		ethSwapInfo,
 		kp,

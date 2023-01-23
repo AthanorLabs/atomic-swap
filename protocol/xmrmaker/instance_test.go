@@ -188,7 +188,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	)
 	offerDB.EXPECT().GetOffer(s.ID).Return(offer, nil)
 
-	err = inst.createOngoingSwap(*s)
+	err = inst.createOngoingSwap(s)
 	require.NoError(t, err)
 
 	inst.swapMu.Lock()

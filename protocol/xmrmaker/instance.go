@@ -9,6 +9,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -114,10 +115,10 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (inst *Instance) abortOngoingSwap(s swap.Info) error {
+func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 	// set status to aborted, delete info from recovery db
 	s.Status = types.CompletedAbort
-	err := inst.backend.SwapManager().CompleteOngoingSwap(&s)
+	err := inst.backend.SwapManager().CompleteOngoingSwap(s)
 	if err != nil {
 		return err
 	}
@@ -125,7 +126,53 @@ func (inst *Instance) abortOngoingSwap(s swap.Info) error {
 	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
 }
 
-func (inst *Instance) createOngoingSwap(s swap.Info) error {
+func (inst *Instance) recoverRefund(s *swap.Info, abWalletKey *mcrypto.PrivateKeyPair) error {
+	primaryCli := inst.backend.XMRClient()
+	conf := primaryCli.CreateABWalletConf()
+	log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, abWalletKey.Address(inst.backend.Env()))
+	abCli, err := monero.CreateSpendWalletFromKeys(conf, abWalletKey, s.MoneroStartHeight)
+	if err != nil {
+		return err
+	}
+	defer abCli.Close()
+	balance, err := abCli.GetBalance(0)
+	if err != nil {
+		return err
+	}
+	log.Infof("refunded XMR from swap %s has balance %s",
+		s.ID, coins.FmtPiconeroAmtAsXMR(balance.Balance))
+	// The balance, in general, should be unlocked, but safety first to make sure we recover the
+	// full amount.
+	if balance.BlocksToUnlock > 0 {
+		log.Infof("Waiting %d blocks for refund to fully unlock", balance.BlocksToUnlock)
+		if _, err = monero.WaitForBlocks(inst.backend.Ctx(), abCli, int(balance.BlocksToUnlock)); err != nil {
+			return err
+		}
+	}
+	sweepResp, err := abCli.SweepAll(primaryCli.PrimaryAddress(), 0)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("refunded XMR from swap %s swept back to primary wallet with tx(es)=%s",
+		s.ID, sweepResp.TxHashList)
+	// Wait for the full max spend confirmations, to make sure we are fully clear before
+	// adjusting the swap state.
+	receipt, err := abCli.WaitForReceipt(&monero.WaitForReceiptRequest{
+		Ctx:              nil,
+		TxID:             sweepResp.TxHashList[0],
+		NumConfirmations: monero.MinSpendConfirmations,
+		AccountIdx:       0,
+	})
+	if err != nil {
+		return err
+	}
+	log.Infof("Refund of swap ID %s for %s (fees %s) XMR complete",
+		s.ID, coins.FmtPiconeroAmtAsXMR(receipt.Amount), coins.FmtPiconeroAmtAsXMR(receipt.Fee))
+	return nil
+}
+
+func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
 	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
@@ -135,22 +182,10 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 			return err
 		}
 
-		inst.backend.XMRClient().Lock()
-		defer inst.backend.XMRClient().Unlock()
-
-		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet(
-			"xmrmaker-swap-wallet",
-			inst.backend.Env(),
-			inst.backend.XMRClient(),
-			kp,
-			s.MoneroStartHeight,
-		)
-		if err != nil {
-			return err
+		if err = inst.recoverRefund(s, kp); err != nil {
+			return fmt.Errorf("failed to recover refund: %w", err)
 		}
 
-		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, addr)
 		return nil
 	}
 
@@ -187,7 +222,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		relayerInfo,
 		inst.offerManager,
 		ethSwapInfo,
-		&s,
+		s,
 		kp,
 	)
 	if err != nil {

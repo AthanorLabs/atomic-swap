@@ -22,21 +22,23 @@ func TestWaitForBlocks(t *testing.T) {
 	require.GreaterOrEqual(t, heightAfter-heightBefore, uint64(2))
 }
 
-func TestCreateMoneroWallet(t *testing.T) {
-	kp, err := mcrypto.GenerateKeys()
-	require.NoError(t, err)
-
+func TestCreateWalletFromKeys(t *testing.T) {
 	c, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
 		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
 		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
+	defer c.Close()
 
 	height, err := c.GetHeight()
 	require.NoError(t, err)
 
-	addr, err := CreateWallet("create-wallet-test", common.Development, c, kp, height)
+	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	require.Equal(t, kp.Address(common.Development), addr)
+
+	conf := c.CreateABWalletConf()
+	abCli, err := CreateSpendWalletFromKeys(conf, kp, height)
+	require.NoError(t, err)
+	require.Equal(t, kp.Address(common.Development), abCli.PrimaryAddress())
 }
