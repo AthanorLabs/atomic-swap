@@ -38,7 +38,7 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 		types.NewOffer("", new(apd.Decimal), new(apd.Decimal), new(coins.ExchangeRate), types.EthAssetETH),
 		&types.OfferExtra{},
 		xmrmaker.offerManager,
-		coins.NewPiconeroAmount(33),
+		coins.MoneroToPiconero(coins.StrToDecimal("0.05")),
 		desiredAmount,
 	)
 	require.NoError(t, err)

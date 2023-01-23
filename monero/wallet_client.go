@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -449,13 +450,22 @@ func (c *walletClient) Endpoint() string {
 // Close kills the monero-wallet-rpc process closing the wallet. It is designed to only be
 // called a single time from a single go process.
 func (c *walletClient) Close() {
-	if c.rpcProcess != nil {
-		p := c.rpcProcess
-		err := p.Kill()
-		if err == nil {
-			_, _ = p.Wait()
-		}
+	if c.rpcProcess == nil {
+		return // no monero-wallet-rpc instance was created
 	}
+	p := c.rpcProcess
+	err := c.wRPC.StopWallet()
+	if err != nil {
+		log.Warnf("StopWallet errored: %s", err)
+		err = p.Kill() // uses, SIG-TERM, which monero-wallet-rpc has a handler for
+	}
+	// If err is nil at this point, the process existed, and we block until the child
+	// process exits. (Note: kill does not error when signaling an exited, but non-reaped
+	// child.)
+	if err == nil {
+		_, _ = p.Wait()
+	}
+
 }
 
 // CloseAndRemoveWallet kills the monero-wallet-rpc process and removes the wallet files. This
@@ -463,18 +473,22 @@ func (c *walletClient) Close() {
 // Call this function at most once from a single go process.
 func (c *walletClient) CloseAndRemoveWallet() {
 	c.Close()
-	walletFiles := []string{
-		c.conf.WalletFilePath,
-		c.conf.WalletFilePath + ".keys",
-		c.conf.WalletFilePath + ".address.txt",
-	}
+
 	// Just log any file removal errors, as there is nothing useful the caller can do
 	// with the errors
-	for _, file := range walletFiles {
-		if err := os.Remove(file); err != nil {
-			log.Errorf("Failed to remove wallet file %q: %s", file, err)
+	if err := os.Remove(c.conf.WalletFilePath); err != nil {
+		log.Errorf("Failed to remove wallet file %q: %s", c.conf.WalletFilePath, err)
+	}
+	if err := os.Remove(c.conf.WalletFilePath + ".keys"); err != nil {
+		log.Errorf("Failed to remove wallet keys file %q: %s", c.conf.WalletFilePath, err)
+	}
+	if err := os.Remove(c.conf.WalletFilePath + ".address.txt"); err != nil {
+		// .address.txt doesn't always exist, only log if it existed and we failed
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Errorf("Failed to remove wallet address file %q: %s", c.conf.WalletFilePath, err)
 		}
 	}
+
 }
 
 func findWorkingNode(env common.Environment, nodes []*common.MoneroNode) (*common.MoneroNode, error) {

@@ -433,7 +433,7 @@ func sweepRefundBack(
 			return err
 		}
 	}
-	log.Infof("Sweeping refund of %s XMR (minus %s XMR TX fees) back to primary address %s",
+	log.Infof("Sweeping refund of %s XMR back to primary address %s",
 		coins.FmtPiconeroAmtAsXMR(balance.Balance), primaryCli.PrimaryAddress())
 	sweepResp, err := abWalletCli.SweepAll(primaryCli.PrimaryAddress(), 0)
 	if err != nil {
