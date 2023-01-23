@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Installs golangci-lint (https://golangci-lint.run) into the user's personal GOPATH bin directory if it is
 # not there already or if the version does not match the value defined below.
 
