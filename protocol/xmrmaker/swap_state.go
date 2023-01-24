@@ -540,7 +540,7 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // It accepts the amount to lock as the input
 func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
-	log.Infof("going to lock XMR funds, amount=%s XMR", amount.AsMonero().Text('f'))
+	log.Infof("going to lock XMR funds, amount=%s XMR", amount.AsMoneroString())
 
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
@@ -550,24 +550,11 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	log.Debug("total XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.Balance))
 	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.UnlockedBalance))
 
-	transResp, err := s.XMRClient().Transfer(swapDestAddr, 0, amount)
+	log.Infof("Starting lock of %s XMR in address %s", amount.AsMoneroString(), swapDestAddr)
+	transfer, err := s.XMRClient().Transfer(s.ctx, swapDestAddr, 0, amount, monero.MinSpendConfirmations)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Infof("locked %s XMR, txID=%s fee=%s",
-		amount.AsMonero().Text('f'), transResp.TxHash, coins.FmtPiconeroAmtAsXMR(transResp.Fee))
-
-	transfer, err := s.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
-		Ctx:              s.ctx,
-		TxID:             transResp.TxHash,
-		NumConfirmations: monero.MinSpendConfirmations,
-		AccountIdx:       0,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
 	return &message.NotifyXMRLock{

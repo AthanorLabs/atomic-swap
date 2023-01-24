@@ -105,6 +105,14 @@ func (a *PiconeroAmount) AsMonero() *apd.Decimal {
 	return xmrAmt
 }
 
+// AsMoneroString converts a PiconeroAmount into a formatted XMR amount string.
+func (a *PiconeroAmount) AsMoneroString() string {
+	xmrAmt := new(apd.Decimal).Set(a.Decimal())
+	decreaseExponent(xmrAmt, NumMoneroDecimals)
+	_, _ = xmrAmt.Reduce(xmrAmt)
+	return xmrAmt.Text('f')
+}
+
 // FmtPiconeroAmtAsXMR takes piconeros as input and produces a formatted string of the
 // amount in XMR.
 func FmtPiconeroAmtAsXMR(piconeros uint64) string {

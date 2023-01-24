@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
@@ -48,19 +49,12 @@ func TestClient_Transfer(t *testing.T) {
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	// Transfer from Bob's account to the Alice+Bob swap account
-	transResp, err := cXMRMaker.Transfer(abAddress, 0, transferAmt)
+	transfer, err := cXMRMaker.Transfer(context.Background(), abAddress, 0, transferAmt, MinSpendConfirmations)
 	require.NoError(t, err)
 	t.Logf("Bob sent %s (+fee %s) XMR to A+B address with TX ID %s",
-		coins.FmtPiconeroAmtAsXMR(transResp.Amount),
-		coins.FmtPiconeroAmtAsXMR(transResp.Fee),
-		transResp.TxHash)
-	require.NoError(t, err)
-	transfer, err := cXMRMaker.WaitForReceipt(&WaitForReceiptRequest{
-		Ctx:              context.Background(),
-		TxID:             transResp.TxHash,
-		NumConfirmations: MinSpendConfirmations,
-		AccountIdx:       0,
-	})
+		coins.FmtPiconeroAmtAsXMR(transfer.Amount),
+		coins.FmtPiconeroAmtAsXMR(transfer.Fee),
+		transfer.TxID)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, transfer.Confirmations, uint64(MinSpendConfirmations))
 	t.Logf("Bob's TX was mined at height %d with %d confirmations", transfer.Height, transfer.Confirmations)
@@ -302,25 +296,20 @@ func Test_validateMonerodConfig_invalidPort(t *testing.T) {
 
 func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	const amount = 10
+	const numConfirmations = 999999999 // won't be achieved before our context is cancelled
+
 	minBal := coins.MoneroToPiconero(coins.StrToDecimal("10.01")) // add a little extra for fees
 	destAddr := mcrypto.Address(blockRewardAddress)
 
 	c := CreateWalletClient(t)
 	MineMinXMRBalance(t, c, minBal)
 
-	transResp, err := c.Transfer(destAddr, 0, coins.NewPiconeroAmount(amount))
-	require.NoError(t, err)
+	// Cancel the context after the transfer has started
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	_, err = c.WaitForReceipt(&WaitForReceiptRequest{
-		Ctx:              ctx,
-		TxID:             transResp.TxHash,
-		NumConfirmations: 999999999, // wait for a number of confirmations that would take a long time
-		AccountIdx:       0,
-	})
-	require.ErrorIs(t, err, context.Canceled)
+	_, err := c.Transfer(ctx, destAddr, 0, coins.NewPiconeroAmount(amount), numConfirmations)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestCreateWalletFromKeys(t *testing.T) {

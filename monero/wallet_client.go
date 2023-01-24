@@ -40,7 +40,13 @@ type WalletClient interface {
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
 	PrimaryAddress() mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
-	Transfer(to mcrypto.Address, accountIdx uint64, amount *coins.PiconeroAmount) (*wallet.TransferResponse, error)
+	Transfer(
+		ctx context.Context,
+		to mcrypto.Address,
+		accountIdx uint64,
+		amount *coins.PiconeroAmount,
+		numConfirmations uint64,
+	) (*wallet.Transfer, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
 	CreateABWalletConf(walletNamePrefix string) *WalletClientConf
@@ -238,21 +244,46 @@ func (c *walletClient) WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Trans
 }
 
 func (c *walletClient) Transfer(
+	ctx context.Context,
 	to mcrypto.Address,
 	accountIdx uint64,
 	amount *coins.PiconeroAmount,
-) (*wallet.TransferResponse, error) {
+	numConfirmations uint64,
+) (*wallet.Transfer, error) {
 	amt, err := amount.Uint64()
 	if err != nil {
 		return nil, err
 	}
-	return c.wRPC.Transfer(&wallet.TransferRequest{
+	amountStr := amount.AsMoneroString()
+	log.Infof("Transferring %s XMR to %s", amountStr, to)
+	reqResp, err := c.wRPC.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
 			Amount:  amt,
 			Address: string(to),
 		}},
 		AccountIndex: accountIdx,
 	})
+	if err != nil {
+		log.Warnf("Transfer of %s XMR failed: %s", amountStr, err)
+		return nil, fmt.Errorf("transfer failed: %w", err)
+	}
+	log.Infof("Transfer of %s XMR initiated, TXID=%s", amountStr, reqResp.TxHash)
+	transfer, err := c.WaitForReceipt(&WaitForReceiptRequest{
+		Ctx:              ctx,
+		TxID:             reqResp.TxHash,
+		NumConfirmations: numConfirmations,
+		AccountIdx:       accountIdx,
+	})
+	log.Warnf("Transfer TXID=%s failed to get receipt: %s", reqResp.TxHash, err)
+	if err != nil {
+		return nil, fmt.Errorf("monero TXID=%s receipt failure: %w", reqResp.TxHash, err)
+	}
+	log.Infof("Transfer TXID=%s succeeded with %d confirmations and fee %s XMR",
+		transfer.TxID,
+		transfer.Confirmations,
+		coins.FmtPiconeroAmtAsXMR(transfer.Fee),
+	)
+	return transfer, nil
 }
 
 func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error) {

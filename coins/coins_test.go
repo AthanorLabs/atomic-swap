@@ -18,7 +18,7 @@ func TestPiconeroAmount(t *testing.T) {
 
 	amount := StrToDecimal(preciseAmount)
 	piconero := MoneroToPiconero(amount)
-	assert.Equal(t, moneroAmount, piconero.AsMonero().String())
+	assert.Equal(t, moneroAmount, piconero.AsMoneroString())
 	assert.Equal(t, piconeroAmount, piconero.String())
 }
 

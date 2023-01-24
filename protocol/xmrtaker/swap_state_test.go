@@ -240,14 +240,7 @@ func lockXMRFunds(
 	amount *coins.PiconeroAmount,
 ) string {
 	monero.MineMinXMRBalance(t, wc, amount)
-	transResp, err := wc.Transfer(destAddr, 0, amount)
-	require.NoError(t, err)
-	transfer, err := wc.WaitForReceipt(&monero.WaitForReceiptRequest{
-		Ctx:              ctx,
-		TxID:             transResp.TxHash,
-		NumConfirmations: monero.MinSpendConfirmations,
-		AccountIdx:       0,
-	})
+	transfer, err := wc.Transfer(ctx, destAddr, 0, amount, monero.MinSpendConfirmations)
 	require.NoError(t, err)
 	return transfer.TxID
 }
