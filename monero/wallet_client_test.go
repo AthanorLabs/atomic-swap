@@ -78,7 +78,7 @@ func TestClient_Transfer(t *testing.T) {
 	alicePrimaryAddr := cXMRTaker.PrimaryAddress()
 
 	// Alice generates a view-only wallet for A+B to confirm that Bob sent the funds
-	conf := cXMRTaker.CreateABWalletConf()
+	conf := cXMRTaker.CreateABWalletConf("alice-view-wallet-to-verify-funds")
 	abViewCli, err := CreateViewOnlyWalletFromKeys(conf, vkABPriv, abAddress, transfer.Height)
 	require.NoError(t, err)
 	defer abViewCli.CloseAndRemoveWallet()
@@ -102,7 +102,8 @@ func TestClient_Transfer(t *testing.T) {
 		mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey()),
 	)
 	require.NoError(t, err)
-	abSpendCli, err := CreateSpendWalletFromKeys(abViewCli.CreateABWalletConf(), abWalletKeyPair, transfer.Height)
+	conf = abViewCli.CreateABWalletConf("alice-spend-wallet-to-claim")
+	abSpendCli, err := CreateSpendWalletFromKeys(conf, abWalletKeyPair, transfer.Height)
 	require.NoError(t, err)
 	defer abSpendCli.CloseAndRemoveWallet()
 	require.Equal(t, abSpendCli.PrimaryAddress(), abViewCli.PrimaryAddress())
@@ -323,22 +324,24 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 }
 
 func TestCreateWalletFromKeys(t *testing.T) {
-	c, err := NewWalletClient(&WalletClientConf{
+	// First wallet is just to get the height and generate the config for the 2nd
+	primaryCli, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
 		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
 		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
-	defer c.Close()
+	defer primaryCli.Close()
 
-	height, err := c.GetHeight()
+	height, err := primaryCli.GetHeight()
 	require.NoError(t, err)
 
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	conf := c.CreateABWalletConf()
+	conf := primaryCli.CreateABWalletConf("ab-wallet")
 	abCli, err := CreateSpendWalletFromKeys(conf, kp, height)
 	require.NoError(t, err)
+	defer abCli.CloseAndRemoveWallet()
 	require.Equal(t, kp.Address(common.Development), abCli.PrimaryAddress())
 }

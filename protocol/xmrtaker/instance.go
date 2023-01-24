@@ -101,7 +101,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		}
 
 		// TODO: do we want to transfer this back to the original account?
-		conf := inst.backend.XMRClient().CreateABWalletConf()
+		conf := inst.backend.XMRClient().CreateABWalletConf("xmrtaker-swap-wallet")
 		abWalletCli, err := monero.CreateSpendWalletFromKeys(
 			conf,
 			kp, // TODO: Fix the key here?

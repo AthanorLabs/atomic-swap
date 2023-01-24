@@ -418,7 +418,7 @@ func sweepRefundBack(
 	abPrivKeyPair *mcrypto.PrivateKeyPair,
 	restoreHeight uint64,
 ) error {
-	conf := primaryCli.CreateABWalletConf()
+	conf := primaryCli.CreateABWalletConf("xmrmaker-swap-wallet-refund")
 	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, abPrivKeyPair, restoreHeight)
 	if err != nil {
 		return err

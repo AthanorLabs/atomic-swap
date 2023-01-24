@@ -43,7 +43,7 @@ type WalletClient interface {
 	Transfer(to mcrypto.Address, accountIdx uint64, amount *coins.PiconeroAmount) (*wallet.TransferResponse, error)
 	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
 	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
-	CreateABWalletConf() *WalletClientConf
+	CreateABWalletConf(walletNamePrefix string) *WalletClientConf
 	WalletName() string
 	GetHeight() (uint64, error)
 	GetChainHeight() (uint64, error)
@@ -262,8 +262,8 @@ func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.
 	})
 }
 
-func (c *walletClient) CreateABWalletConf() *WalletClientConf {
-	walletName := fmt.Sprintf("ab-swap-wallet-%s", time.Now().Format(common.TimeFmtNSecs))
+func (c *walletClient) CreateABWalletConf(walletNamePrefix string) *WalletClientConf {
+	walletName := fmt.Sprintf("%s-%s", walletNamePrefix, time.Now().Format(common.TimeFmtNSecs))
 	walletPath := path.Join(path.Dir(c.conf.WalletFilePath), walletName)
 	conf := &WalletClientConf{
 		Env:                 c.conf.Env,

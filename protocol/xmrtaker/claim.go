@@ -95,7 +95,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
-	conf := s.XMRClient().CreateABWalletConf()
+	conf := s.XMRClient().CreateABWalletConf("xmrtaker-swap-wallet-claim")
 	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, s.walletScanHeight)
 	if err != nil {
 		return "", err
