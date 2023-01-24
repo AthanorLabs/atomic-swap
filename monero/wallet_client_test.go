@@ -23,6 +23,8 @@ func init() {
 }
 
 func TestClient_Transfer(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	transferAmt := coins.MoneroToPiconero(coins.StrToDecimal("10"))
 	transferAmtPlusFees := coins.MoneroToPiconero(coins.StrToDecimal("10.01"))
 
@@ -49,7 +51,7 @@ func TestClient_Transfer(t *testing.T) {
 	vkABPriv := mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey())
 
 	// Transfer from Bob's account to the Alice+Bob swap account
-	transfer, err := cXMRMaker.Transfer(context.Background(), abAddress, 0, transferAmt, MinSpendConfirmations)
+	transfer, err := cXMRMaker.Transfer(ctx, abAddress, 0, transferAmt, MinSpendConfirmations)
 	require.NoError(t, err)
 	t.Logf("Bob sent %s (+fee %s) XMR to A+B address with TX ID %s",
 		coins.FmtPiconeroAmtAsXMR(transfer.Amount),
@@ -90,7 +92,6 @@ func TestClient_Transfer(t *testing.T) {
 
 	// At this point Alice has received the key from Bob to create an A+B spend wallet.
 	// She'll now sweep the funds from the A+B spend wallet into her primary wallet.
-	// TODO: Can we convert View-only wallet into spend wallet if it is the same wallet?
 	abWalletKeyPair := mcrypto.NewPrivateKeyPair(
 		mcrypto.SumPrivateSpendKeys(kpA.SpendKey(), kpB.SpendKey()),
 		mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey()),
@@ -107,27 +108,16 @@ func TestClient_Transfer(t *testing.T) {
 	require.Equal(t, transferAmtU64, balanceABWal.UnlockedBalance)
 
 	// Alice transfers from A+B spend wallet to her primary wallet's address
-	sweepResp, err := abSpendCli.SweepAll(alicePrimaryAddr, 0)
+	transfers, err := abSpendCli.SweepAll(ctx, alicePrimaryAddr, 0, 2)
 	require.NoError(t, err)
-	t.Logf("Alice swept AB wallet funds with %d transfers", len(sweepResp.TxHashList))
-	require.Len(t, sweepResp.TxHashList, 1) // In our case, it should always be a single transaction
-	sweepTxID := sweepResp.TxHashList[0]
-	sweepAmount := sweepResp.AmountList[0]
-	sweepFee := sweepResp.FeeList[0]
+	t.Logf("Alice swept AB wallet funds with %d transfers", len(transfers))
+	require.Len(t, transfers, 1) // In our case, it should always be a single transaction
+	sweepAmount := transfers[0].Amount
+	sweepFee := transfers[0].Fee
 
 	t.Logf("Sweep of A+B wallet sent %s XMR with fees %s XMR to Alice's primary wallet",
 		coins.FmtPiconeroAmtAsXMR(sweepAmount), coins.FmtPiconeroAmtAsXMR(sweepFee))
 	require.Equal(t, transferAmtU64, sweepAmount+sweepFee)
-
-	transfer, err = cXMRTaker.WaitForReceipt(&WaitForReceiptRequest{
-		Ctx:              context.Background(),
-		TxID:             sweepTxID,
-		NumConfirmations: 2,
-		AccountIdx:       0,
-	})
-	require.NoError(t, err)
-	require.Equal(t, sweepFee, transfer.Fee)
-	require.Equal(t, sweepAmount, transfer.Amount)
 	t.Logf("Alice's sweep transactions was mined at height %d with %d confirmations",
 		transfer.Height, transfer.Confirmations)
 
@@ -151,8 +141,8 @@ func Test_walletClient_SweepAll_nothingToSweepReturnsError(t *testing.T) {
 	require.NoError(t, err)
 	destAddr := mcrypto.Address(addrResp.Address)
 
-	_, err = emptyWallet.SweepAll(destAddr, 0)
-	require.ErrorContains(t, err, "No unlocked balance in the specified account")
+	_, err = emptyWallet.SweepAll(context.Background(), destAddr, 0, 1)
+	require.ErrorContains(t, err, "no balance to sweep")
 }
 
 func TestClient_CloseAndRemoveWallet(t *testing.T) {

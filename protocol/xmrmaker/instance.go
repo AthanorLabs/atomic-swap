@@ -128,47 +128,24 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 
 func (inst *Instance) recoverRefund(s *swap.Info, abWalletKey *mcrypto.PrivateKeyPair) error {
 	primaryCli := inst.backend.XMRClient()
+	refundDest := primaryCli.PrimaryAddress()
 	conf := primaryCli.CreateABWalletConf("xmrmaker-swap-wallet-refund")
-	log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, abWalletKey.Address(inst.backend.Env()))
+	log.Infof("Refunding XMR from swap ID %s to wallet address %s", s.ID, abWalletKey.Address(inst.backend.Env()))
 	abCli, err := monero.CreateSpendWalletFromKeys(conf, abWalletKey, s.MoneroStartHeight)
 	if err != nil {
 		return err
 	}
-	defer abCli.Close()
-	balance, err := abCli.GetBalance(0)
-	if err != nil {
-		return err
-	}
-	log.Infof("refunded XMR from swap %s has balance %s",
-		s.ID, coins.FmtPiconeroAmtAsXMR(balance.Balance))
-	// The balance, in general, should be unlocked, but safety first to make sure we recover the
-	// full amount.
-	if balance.BlocksToUnlock > 0 {
-		log.Infof("Waiting %d blocks for refund to fully unlock", balance.BlocksToUnlock)
-		if _, err = monero.WaitForBlocks(inst.backend.Ctx(), abCli, int(balance.BlocksToUnlock)); err != nil {
-			return err
-		}
-	}
-	sweepResp, err := abCli.SweepAll(primaryCli.PrimaryAddress(), 0)
-	if err != nil {
-		return err
-	}
+	defer abCli.CloseAndRemoveWallet()
 
-	log.Infof("refunded XMR from swap %s swept back to primary wallet with tx(es)=%s",
-		s.ID, sweepResp.TxHashList)
-	// Wait for the full max spend confirmations, to make sure we are fully clear before
-	// adjusting the swap state.
-	receipt, err := abCli.WaitForReceipt(&monero.WaitForReceiptRequest{
-		Ctx:              nil,
-		TxID:             sweepResp.TxHashList[0],
-		NumConfirmations: monero.MinSpendConfirmations,
-		AccountIdx:       0,
-	})
+	transfers, err := abCli.SweepAll(inst.backend.Ctx(), refundDest, 0, monero.MinSpendConfirmations)
 	if err != nil {
 		return err
 	}
-	log.Infof("Refund of swap ID %s for %s (fees %s) XMR complete",
-		s.ID, coins.FmtPiconeroAmtAsXMR(receipt.Amount), coins.FmtPiconeroAmtAsXMR(receipt.Fee))
+	for _, transfer := range transfers {
+		// It is unlikely that anyone will ever see more than one of these messages
+		log.Infof("Refunded %s XMR from swap to primary wallet (%s XMR lost to fees)",
+			coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
+	}
 	return nil
 }
 

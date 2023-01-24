@@ -47,8 +47,12 @@ type WalletClient interface {
 		amount *coins.PiconeroAmount,
 		numConfirmations uint64,
 	) (*wallet.Transfer, error)
-	SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error)
-	WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error)
+	SweepAll(
+		ctx context.Context,
+		to mcrypto.Address,
+		accountIdx uint64,
+		numConfirmations uint64,
+	) ([]*wallet.Transfer, error)
 	CreateABWalletConf(walletNamePrefix string) *WalletClientConf
 	WalletName() string
 	GetHeight() (uint64, error)
@@ -70,7 +74,7 @@ type WalletClientConf struct {
 	LogPath             string               // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
 }
 
-// WaitForReceiptRequest wraps the input parameters for WaitForReceipt
+// WaitForReceiptRequest wraps the input parameters for waitForReceipt
 type WaitForReceiptRequest struct {
 	Ctx              context.Context
 	TxID             string
@@ -198,12 +202,12 @@ func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error
 	})
 }
 
-// WaitForReceipt waits for the passed monero transaction ID to receive numConfirmations
+// waitForReceipt waits for the passed monero transaction ID to receive numConfirmations
 // and returns the transfer information. While this function will always wait for the
 // transaction to leave the mem-pool even if zero confirmations are requested, it is the
 // caller's responsibility to request enough confirmations that the returned transfer
 // information will not be invalidated by a block reorg.
-func (c *walletClient) WaitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
+func (c *walletClient) waitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
 	height, err := c.GetHeight()
 	if err != nil {
 		return nil, err
@@ -268,7 +272,7 @@ func (c *walletClient) Transfer(
 		return nil, fmt.Errorf("transfer failed: %w", err)
 	}
 	log.Infof("Transfer of %s XMR initiated, TXID=%s", amountStr, reqResp.TxHash)
-	transfer, err := c.WaitForReceipt(&WaitForReceiptRequest{
+	transfer, err := c.waitForReceipt(&WaitForReceiptRequest{
 		Ctx:              ctx,
 		TxID:             reqResp.TxHash,
 		NumConfirmations: numConfirmations,
@@ -286,11 +290,63 @@ func (c *walletClient) Transfer(
 	return transfer, nil
 }
 
-func (c *walletClient) SweepAll(to mcrypto.Address, accountIdx uint64) (*wallet.SweepAllResponse, error) {
-	return c.wRPC.SweepAll(&wallet.SweepAllRequest{
+func (c *walletClient) SweepAll(
+	ctx context.Context,
+	to mcrypto.Address,
+	accountIdx uint64,
+	numConfirmations uint64,
+) ([]*wallet.Transfer, error) {
+	addrResp, err := c.GetAddress(accountIdx)
+	if err != nil {
+		return nil, fmt.Errorf("sweep operation failed to get address: %w", err)
+	}
+	from := addrResp.Address
+	balance, err := c.GetBalance(accountIdx)
+	if err != nil {
+		return nil, fmt.Errorf("sweep operation failed to get balance: %w", err)
+	}
+	log.Infof("Starting sweep of %s XMR from %s to %s", coins.FmtPiconeroAmtAsXMR(balance.Balance), from, to)
+	if balance.BlocksToUnlock > 0 {
+		log.Infof("Sweep operation waiting %d blocks for balance to fully unlock", balance.BlocksToUnlock)
+		if _, err = WaitForBlocks(ctx, c, int(balance.BlocksToUnlock)); err != nil {
+			log.Warnf("Sweep operation from %s failed waiting to unlock balance", from)
+			return nil, fmt.Errorf("sweep operation failed waiting to unlock balance: %w", err)
+		}
+	}
+	if balance.Balance == 0 {
+		log.Warnf("Sweep operation from %s failed, no balance to sweep", from)
+		return nil, errors.New("no balance to sweep")
+	}
+	reqResp, err := c.wRPC.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
 	})
+	if err != nil {
+		log.Warnf("Sweep transaction(s) from %s failed, %s", from, err)
+		return nil, fmt.Errorf("sweep_all failed: %w", err)
+	}
+	log.Infof("Sweep transaction started, TX IDs: %s", strings.Join(reqResp.TxHashList, ", "))
+	var transfers []*wallet.Transfer
+	for _, txID := range reqResp.TxHashList {
+		receipt, err := c.waitForReceipt(&WaitForReceiptRequest{
+			Ctx:              ctx,
+			TxID:             txID,
+			NumConfirmations: numConfirmations,
+			AccountIdx:       accountIdx,
+		})
+		if err != nil {
+			log.Warnf("Sweep TX ID %s failed waiting for receipt: %s", txID, err)
+			return nil, fmt.Errorf("sweep failed waiting for receipt: %w", err)
+		}
+		log.Infof("Sweep transfer ID=%s of %s XMR (%s XMR fees) completed at height %d",
+			txID,
+			coins.FmtPiconeroAmtAsXMR(receipt.Amount),
+			coins.FmtPiconeroAmtAsXMR(receipt.Fee),
+			receipt.Height,
+		)
+		transfers = append(transfers, receipt)
+	}
+	return transfers, nil
 }
 
 func (c *walletClient) CreateABWalletConf(walletNamePrefix string) *WalletClientConf {

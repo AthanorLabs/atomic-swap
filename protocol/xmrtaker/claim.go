@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -130,11 +131,14 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	_, err = s.XMRClient().SweepAll(depositAddr, 0)
+	transfers, err := s.XMRClient().SweepAll(s.ctx, depositAddr, 0, 2)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
-	// TODO: wait for 2 confirmations
+	for _, transfer := range transfers {
+		log.Infof("Moved %s XMR claimed from swap to primary wallet (%s XMR lost to fees)",
+			coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
+	}
 
 	close(s.claimedCh)
 	return abAddr, nil
