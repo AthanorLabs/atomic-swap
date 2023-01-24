@@ -108,7 +108,7 @@ func newSwapStateFromStart(
 		}
 	}
 
-	moneroStartHeight, err := b.XMRClient().GetChainHeight()
+	moneroStartHeight, err := b.XMRClient().GetHeight()
 	if err != nil {
 		return nil, err
 	}

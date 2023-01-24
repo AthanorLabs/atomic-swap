@@ -56,8 +56,6 @@ type WalletClient interface {
 	CreateABWalletConf(walletNamePrefix string) *WalletClientConf
 	WalletName() string
 	GetHeight() (uint64, error)
-	GetChainHeight() (uint64, error)
-	Refresh() error
 	Endpoint() string // URL on which the wallet is accepting RPC requests
 	Close()           // Close closes the client itself, including any open wallet
 	CloseAndRemoveWallet()
@@ -196,6 +194,9 @@ func (c *walletClient) GetAccounts() (*wallet.GetAccountsResponse, error) {
 }
 
 func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error) {
+	if err := c.refresh(); err != nil {
+		return nil, err
+	}
 	return c.wRPC.GetBalance(&wallet.GetBalanceRequest{
 		AccountIndex: idx,
 	})
@@ -215,7 +216,7 @@ func (c *walletClient) waitForReceipt(req *waitForReceiptRequest) (*wallet.Trans
 	var transfer *wallet.Transfer
 
 	for {
-		if err = c.Refresh(); err != nil {
+		if err = c.refresh(); err != nil {
 			return nil, err
 		}
 		transferResp, err := c.wRPC.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
@@ -416,7 +417,7 @@ func createWalletFromKeys(
 		panic("addresses do not match")
 	}
 
-	err = c.Refresh()
+	err = c.refresh()
 	if err != nil {
 		c.Close()
 		return nil, err
@@ -507,7 +508,7 @@ func (c *walletClient) GetAddress(idx uint64) (*wallet.GetAddressResponse, error
 	})
 }
 
-func (c *walletClient) Refresh() error {
+func (c *walletClient) refresh() error {
 	_, err := c.wRPC.Refresh(&wallet.RefreshRequest{})
 	return err
 }
@@ -529,6 +530,9 @@ func (c *walletClient) PrimaryAddress() mcrypto.Address {
 }
 
 func (c *walletClient) GetHeight() (uint64, error) {
+	if err := c.refresh(); err != nil {
+		return 0, err
+	}
 	res, err := c.wRPC.GetHeight()
 	if err != nil {
 		return 0, err
@@ -536,10 +540,9 @@ func (c *walletClient) GetHeight() (uint64, error) {
 	return res.Height, nil
 }
 
-// GetChainHeight gets the blockchain height directly from the monero daemon instead
-// of the wallet height. Unlike the wallet method GetHeight, this method does not
-// require a wallet to be open and is safe to call without grabbing the client mutex.
-func (c *walletClient) GetChainHeight() (uint64, error) {
+// getChainHeight gets the blockchain height directly from the monero daemon instead
+// of the wallet height.
+func (c *walletClient) getChainHeight() (uint64, error) {
 	res, err := c.dRPC.GetBlockCount()
 	if err != nil {
 		return 0, err

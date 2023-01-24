@@ -235,9 +235,6 @@ func (inst *Instance) GetMoneroBalance() (string, *wallet.GetBalanceResponse, er
 	if err != nil {
 		return "", nil, err
 	}
-	if err = inst.backend.XMRClient().Refresh(); err != nil {
-		return "", nil, err
-	}
 	balance, err := inst.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return "", nil, err

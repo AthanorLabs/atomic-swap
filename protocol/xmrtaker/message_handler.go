@@ -212,10 +212,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	log.Debugf("generated view-only wallet to check funds: %s", abViewCli.WalletName())
 
-	if err = abViewCli.Refresh(); err != nil {
-		return fmt.Errorf("failed to refresh client: %w", err)
-	}
-
 	balance, err := abViewCli.GetBalance(0)
 	if err != nil {
 		return fmt.Errorf("failed to get balance: %w", err)

@@ -21,7 +21,8 @@ var (
 // WaitForBlocks waits for `count` new blocks to arrive.
 // It returns the height of the chain.
 func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64, error) {
-	startHeight, err := client.GetChainHeight()
+	c := client.(*walletClient)
+	startHeight, err := c.getChainHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get height: %w", err)
 	}
@@ -29,16 +30,16 @@ func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64,
 	endHeight := startHeight + uint64(count)
 
 	for {
-		if err := client.Refresh(); err != nil {
-			return 0, err
-		}
-
-		height, err := client.GetChainHeight()
+		height, err := c.getChainHeight()
 		if err != nil {
 			return 0, err
 		}
 
 		if height >= endHeight {
+			// ensure wallet height is refreshed to the chain height
+			if err = client.(*walletClient).refresh(); err != nil {
+				return 0, err
+			}
 			return height, nil
 		}
 
