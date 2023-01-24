@@ -74,8 +74,8 @@ type WalletClientConf struct {
 	LogPath             string               // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
 }
 
-// WaitForReceiptRequest wraps the input parameters for waitForReceipt
-type WaitForReceiptRequest struct {
+// waitForReceiptRequest wraps the input parameters for waitForReceipt
+type waitForReceiptRequest struct {
 	Ctx              context.Context
 	TxID             string
 	NumConfirmations uint64
@@ -146,7 +146,6 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 		return nil, err
 	}
 
-	// TODO: Break off code from here into a separate function
 	c := NewThinWalletClient(validatedNode.Host, validatedNode.Port, conf.WalletPort).(*walletClient)
 	c.rpcProcess = proc
 
@@ -207,7 +206,7 @@ func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error
 // transaction to leave the mem-pool even if zero confirmations are requested, it is the
 // caller's responsibility to request enough confirmations that the returned transfer
 // information will not be invalidated by a block reorg.
-func (c *walletClient) waitForReceipt(req *WaitForReceiptRequest) (*wallet.Transfer, error) {
+func (c *walletClient) waitForReceipt(req *waitForReceiptRequest) (*wallet.Transfer, error) {
 	height, err := c.GetHeight()
 	if err != nil {
 		return nil, err
@@ -272,7 +271,7 @@ func (c *walletClient) Transfer(
 		return nil, fmt.Errorf("transfer failed: %w", err)
 	}
 	log.Infof("Transfer of %s XMR initiated, TXID=%s", amountStr, reqResp.TxHash)
-	transfer, err := c.waitForReceipt(&WaitForReceiptRequest{
+	transfer, err := c.waitForReceipt(&waitForReceiptRequest{
 		Ctx:              ctx,
 		TxID:             reqResp.TxHash,
 		NumConfirmations: numConfirmations,
@@ -328,7 +327,7 @@ func (c *walletClient) SweepAll(
 	log.Infof("Sweep transaction started, TX IDs: %s", strings.Join(reqResp.TxHashList, ", "))
 	var transfers []*wallet.Transfer
 	for _, txID := range reqResp.TxHashList {
-		receipt, err := c.waitForReceipt(&WaitForReceiptRequest{
+		receipt, err := c.waitForReceipt(&waitForReceiptRequest{
 			Ctx:              ctx,
 			TxID:             txID,
 			NumConfirmations: numConfirmations,
@@ -417,6 +416,24 @@ func createWalletFromKeys(
 		panic("addresses do not match")
 	}
 
+	err = c.Refresh()
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	bal, err := c.GetBalance(0)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	log.Infof("Created wallet %s, balance is %s XMR (%d blocks to unlock), address is %s",
+		c.WalletName(),
+		coins.FmtPiconeroAmtAsXMR(bal.Balance),
+		bal.BlocksToUnlock,
+		c.PrimaryAddress(),
+	)
 	return c, err
 }
 
