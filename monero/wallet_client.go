@@ -216,9 +216,7 @@ func (c *walletClient) waitForReceipt(req *waitForReceiptRequest) (*wallet.Trans
 	var transfer *wallet.Transfer
 
 	for {
-		if err = c.refresh(); err != nil {
-			return nil, err
-		}
+		// Wallet is already refreshed here, due to GetHeight above and WaitForBlocks below
 		transferResp, err := c.wRPC.GetTransferByTxid(&wallet.GetTransferByTxidRequest{
 			TxID:         req.TxID,
 			AccountIndex: req.AccountIdx,
@@ -415,12 +413,6 @@ func createWalletFromKeys(
 	c.walletAddr = mcrypto.Address(acctResp.Address)
 	if c.walletAddr != address {
 		panic("addresses do not match")
-	}
-
-	err = c.refresh()
-	if err != nil {
-		c.Close()
-		return nil, err
 	}
 
 	bal, err := c.GetBalance(0)
