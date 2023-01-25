@@ -3,7 +3,7 @@
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
 
-./scripts/build.sh || exit 1
+ALL=true ./scripts/build.sh || exit 1
 
 source "scripts/testlib.sh"
 check-set-swap-test-data-dir
@@ -46,8 +46,10 @@ start-relayer() {
 	echo "Starting relayer with logs in ${log_file}"
 	./bin/relayer \
 		--deploy \
-		--endpoint="http://localhost:${GANACHE_PORT}" \
+		--data-dir="${SWAP_TEST_DATA_DIR}" \
+		--ethereum-endpoint="http://localhost:${GANACHE_PORT}" \
 		--log-level=debug \
+		--rpc \
 		--rpc-port="${RELAYER_PORT}" \
 		--key="${SWAP_TEST_DATA_DIR}/relayer/eth.key" \
 		&>"${log_file}" &
