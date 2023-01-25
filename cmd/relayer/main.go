@@ -70,7 +70,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:  flagKey,
-			Value: "{HOME}/.atomicswap/{ENV}/relayer/eth.key",
+			Value: fmt.Sprintf("{DATA-DIR}/%s", common.DefaultEthKeyFileName),
 			Usage: "Path to file containing Ethereum private key",
 		},
 		&cli.StringFlag{
@@ -104,7 +104,7 @@ var (
 		&cli.StringFlag{
 			Name:  flagLibp2pKey,
 			Usage: "libp2p private key",
-			Value: common.DefaultLibp2pKeyFileName,
+			Value: fmt.Sprintf("{DATA_DIR}/%s", common.DefaultLibp2pKeyFileName),
 		},
 		&cli.UintFlag{
 			Name:  flagLibp2pPort,
@@ -195,7 +195,24 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	key, err := getPrivateKey(c.String(flagKey))
+	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
+	var datadir string
+	if c.IsSet(flagDataDir) {
+		datadir = c.String(flagDataDir) // override the value derived from `flagEnv`
+	} else {
+		datadir = config.DataDir
+	}
+	datadir = path.Join(datadir, "relayer")
+	if err = common.MakeDir(datadir); err != nil {
+		return err
+	}
+
+	keyFile := path.Join(datadir, common.DefaultEthKeyFileName)
+	if c.IsSet(flagKey) {
+		keyFile = c.String(flagKey)
+	}
+
+	key, err := getPrivateKey(keyFile)
 	if err != nil {
 		return err
 	}
@@ -264,18 +281,6 @@ func run(c *cli.Context) error {
 	}
 
 	if c.Bool(flagWithNetwork) {
-		// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
-		var datadir string
-		if c.IsSet(flagDataDir) {
-			datadir = c.String(flagDataDir) // override the value derived from `flagEnv`
-		} else {
-			datadir = config.DataDir
-		}
-		datadir = path.Join(datadir, "relayer")
-		if err = common.MakeDir(datadir); err != nil {
-			return err
-		}
-
 		h, err := setupNetwork(ctx, c, ec, r, datadir) //nolint:govet
 		if err != nil {
 			return err
@@ -327,12 +332,20 @@ func setupNetwork(
 		bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
 	}
 
+	libp2pKey := path.Join(datadir, common.DefaultLibp2pKeyFileName)
+	if c.IsSet(flagLibp2pKey) {
+		libp2pKey = c.String(flagLibp2pKey)
+		if libp2pKey == "" {
+			return nil, errFlagValueEmpty(flagLibp2pKey)
+		}
+	}
+
 	listenIP := "0.0.0.0"
 	netCfg := &p2pnet.Config{
 		Ctx:        ctx,
 		DataDir:    datadir,
 		Port:       uint16(c.Uint(flagLibp2pPort)),
-		KeyFile:    path.Join(datadir, c.String(flagLibp2pKey)),
+		KeyFile:    libp2pKey,
 		Bootnodes:  bootnodes,
 		ProtocolID: fmt.Sprintf("/%s/%d/%s", swapnet.ProtocolID, chainID.Int64(), net.ProtocolID),
 		ListenIP:   listenIP,
@@ -368,4 +381,8 @@ func getPrivateKey(keyFile string) (*rcommon.Key, error) {
 		return rcommon.NewKeyFromPrivateKeyString(keyHex)
 	}
 	return nil, errNoEthereumPrivateKey
+}
+
+func errFlagValueEmpty(flag string) error {
+	return fmt.Errorf("flag %q requires a non-empty value", flag)
 }
