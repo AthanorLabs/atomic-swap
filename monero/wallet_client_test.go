@@ -108,7 +108,7 @@ func TestClient_Transfer(t *testing.T) {
 	require.Equal(t, transferAmtU64, balanceABWal.UnlockedBalance)
 
 	// Alice transfers from A+B spend wallet to her primary wallet's address
-	transfers, err := abSpendCli.SweepAll(ctx, alicePrimaryAddr, 0, 2)
+	transfers, err := abSpendCli.SweepAll(ctx, alicePrimaryAddr, 0, SweepToSelfConfirmations)
 	require.NoError(t, err)
 	t.Logf("Alice swept AB wallet funds with %d transfers", len(transfers))
 	require.Len(t, transfers, 1) // In our case, it should always be a single transaction
@@ -141,7 +141,7 @@ func Test_walletClient_SweepAll_nothingToSweepReturnsError(t *testing.T) {
 	require.NoError(t, err)
 	destAddr := mcrypto.Address(addrResp.Address)
 
-	_, err = emptyWallet.SweepAll(context.Background(), destAddr, 0, 1)
+	_, err = emptyWallet.SweepAll(context.Background(), destAddr, 0, SweepToSelfConfirmations)
 	require.ErrorContains(t, err, "no balance to sweep")
 }
 

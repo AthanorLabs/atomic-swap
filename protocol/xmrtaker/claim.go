@@ -131,7 +131,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	transfers, err := s.XMRClient().SweepAll(s.ctx, depositAddr, 0, 2)
+	transfers, err := s.XMRClient().SweepAll(s.ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}

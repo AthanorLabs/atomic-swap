@@ -32,6 +32,10 @@ const (
 	// MinSpendConfirmations is the number of confirmations required on transaction
 	// outputs before they can be spent again.
 	MinSpendConfirmations = 10
+
+	// SweepToSelfConfirmations is the number of confirmations that we wait for when
+	// sweeping funds from an A+B wallet to our primary wallet.
+	SweepToSelfConfirmations = 2
 )
 
 // WalletClient represents a monero-wallet-rpc client.

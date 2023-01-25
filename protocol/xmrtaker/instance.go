@@ -111,7 +111,20 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		}
 		if inst.transferBack {
 			defer abWalletCli.CloseAndRemoveWallet()
-			// TODO: Do transfer here after key issue are fixed
+			// TODO: Get unit test coverage on these lines when we think the key issues are fixed.
+			transfers, err := abWalletCli.SweepAll(
+				inst.backend.Ctx(),
+				inst.backend.XMRClient().PrimaryAddress(),
+				0,
+				monero.SweepToSelfConfirmations,
+			)
+			if err != nil {
+				return err
+			}
+			for _, transfer := range transfers {
+				log.Infof("Swept %s XMR (%s XMR lost to fees) from restored swap ID %s to primary wallet",
+					coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee), s.ID)
+			}
 		} else {
 			defer abWalletCli.Close() // leave the wallet in place, as funds were not transferred back
 		}

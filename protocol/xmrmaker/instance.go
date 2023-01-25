@@ -137,7 +137,7 @@ func (inst *Instance) recoverRefund(s *swap.Info, abWalletKey *mcrypto.PrivateKe
 	}
 	defer abCli.CloseAndRemoveWallet()
 
-	transfers, err := abCli.SweepAll(inst.backend.Ctx(), refundDest, 0, monero.MinSpendConfirmations)
+	transfers, err := abCli.SweepAll(inst.backend.Ctx(), refundDest, 0, monero.SweepToSelfConfirmations)
 	if err != nil {
 		return err
 	}

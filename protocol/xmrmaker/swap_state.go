@@ -432,7 +432,12 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	}
 	defer abWalletCli.CloseAndRemoveWallet()
 
-	transfers, err := abWalletCli.SweepAll(s.ctx, s.XMRClient().PrimaryAddress(), 0, 2)
+	transfers, err := abWalletCli.SweepAll(
+		s.ctx,
+		s.XMRClient().PrimaryAddress(),
+		0,
+		monero.SweepToSelfConfirmations,
+	)
 	if err != nil {
 		return "", fmt.Errorf("failed to sweep refund back to primary wallet: %w", err)
 	}
