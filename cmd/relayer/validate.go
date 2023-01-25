@@ -103,7 +103,12 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 		return fmt.Errorf("call must be to claimRelayer(); got call to function with sig 0x%x", req.Data[:4])
 	}
 
-	err = validateRelayerFee(req.Data[4:], v.relayerCommission)
+	args, err := unpackData(req.Data[4:])
+	if err != nil {
+		return err
+	}
+
+	err = validateRelayerFee(args, v.relayerCommission)
 	if err != nil {
 		return err
 	}
@@ -111,13 +116,17 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 	return nil
 }
 
-func validateRelayerFee(data []byte, minFeePercentage *apd.Decimal) error {
+func unpackData(data []byte) (map[string]interface{}, error) {
 	args := make(map[string]interface{})
 	err := arguments.UnpackIntoMap(args, data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	return args, nil
+}
+
+func validateRelayerFee(args map[string]interface{}, minFeePercentage *apd.Decimal) error {
 	value, ok := args["value"].(*big.Int)
 	if !ok {
 		// this shouldn't happen afaik
@@ -140,7 +149,7 @@ func validateRelayerFee(data []byte, minFeePercentage *apd.Decimal) error {
 	)
 
 	percentage := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Quo(percentage, feeD, valueD)
+	_, err := coins.DecimalCtx().Quo(percentage, feeD, valueD)
 	if err != nil {
 		return err
 	}

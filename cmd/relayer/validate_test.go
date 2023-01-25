@@ -81,7 +81,12 @@ func TestValidateRelayerFee(t *testing.T) {
 		data, err := swapABI.Pack("claimRelayer", args...)
 		require.NoError(t, err)
 
-		err = validateRelayerFee(data[4:], tc.minFeePercentage)
+		unpacked, err := unpackData(data[4:])
+		require.NoError(t, err)
+		require.Equal(t, unpacked["value"], tc.value)
+		require.Equal(t, unpacked["fee"], tc.fee)
+
+		err = validateRelayerFee(unpacked, tc.minFeePercentage)
 		if tc.expectErr {
 			require.Error(t, err)
 			continue
