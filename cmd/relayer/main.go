@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"os"
 	"path"
@@ -18,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
@@ -32,7 +30,6 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	swapnet "github.com/athanorlabs/atomic-swap/net"
 
 	logging "github.com/ipfs/go-log"
@@ -40,7 +37,7 @@ import (
 
 const (
 	flagDataDir          = "data-dir"
-	flagEndpoint         = "endpoint"
+	flagEthereumEndpoint = "ethereum-endpoint"
 	flagForwarderAddress = "forwarder-address"
 	flagKey              = "key"
 	flagRPC              = "rpc"
@@ -67,7 +64,7 @@ var (
 			Value: "{HOME}/.atomicswap/{ENV}", // For --help only, actual default replaces variables
 		},
 		&cli.StringFlag{
-			Name:  flagEndpoint,
+			Name:  flagEthereumEndpoint,
 			Value: "http://localhost:8545",
 			Usage: "Ethereum RPC endpoint",
 		},
@@ -177,7 +174,7 @@ func run(c *cli.Context) error {
 	}
 
 	port := uint16(c.Uint(flagRPCPort))
-	endpoint := c.String(flagEndpoint)
+	endpoint := c.String(flagEthereumEndpoint)
 	ec, err := ethclient.Dial(endpoint)
 	if err != nil {
 		return err
@@ -359,58 +356,6 @@ func setupNetwork(
 	}
 
 	return h, nil
-}
-
-func deployOrGetForwarder(
-	ctx context.Context,
-	addressString string,
-	ec *ethclient.Client,
-	key *rcommon.Key,
-	chainID *big.Int,
-) (*rcontracts.IForwarder, ethcommon.Address, error) {
-	txOpts, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey(), chainID)
-	if err != nil {
-		return nil, ethcommon.Address{}, fmt.Errorf("failed to make transactor: %w", err)
-	}
-
-	if addressString == "" {
-		address, tx, _, err := rcontracts.DeployForwarder(txOpts, ec) //nolint:govet
-		if err != nil {
-			return nil, ethcommon.Address{}, err
-		}
-
-		_, err = bind.WaitMined(ctx, ec, tx)
-		if err != nil {
-			return nil, ethcommon.Address{}, err
-		}
-
-		log.Infof("deployed Forwarder.sol to %s", address)
-		f, err := rcontracts.NewIForwarder(address, ec)
-		if err != nil {
-			return nil, ethcommon.Address{}, err
-		}
-
-		return f, address, nil
-	}
-
-	ok := ethcommon.IsHexAddress(addressString)
-	if !ok {
-		return nil, ethcommon.Address{}, errInvalidAddress
-	}
-
-	address := ethcommon.HexToAddress(addressString)
-	err = contracts.CheckForwarderContractCode(context.Background(), ec, address)
-	if err != nil {
-		return nil, ethcommon.Address{}, err
-	}
-
-	log.Infof("loaded Forwarder.sol at %s", address)
-	f, err := rcontracts.NewIForwarder(address, ec)
-	if err != nil {
-		return nil, ethcommon.Address{}, err
-	}
-
-	return f, address, nil
 }
 
 func getPrivateKey(keyFile string) (*rcommon.Key, error) {

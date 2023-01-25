@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"math/big"
+	"strings"
 	"testing"
 
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -13,11 +13,7 @@ import (
 )
 
 func TestValidateRelayerFee(t *testing.T) {
-	buf := new(bytes.Buffer)
-	_, err := buf.Write([]byte(contracts.SwapFactoryABI))
-	require.NoError(t, err)
-
-	swapABI, err := abi.JSON(buf)
+	swapABI, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
 	require.NoError(t, err)
 
 	type testCase struct {
