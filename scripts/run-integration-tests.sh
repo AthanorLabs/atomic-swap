@@ -47,7 +47,7 @@ start-relayer() {
 	./bin/relayer \
 		--deploy \
 		--data-dir="${SWAP_TEST_DATA_DIR}" \
-		--endpoint="http://localhost:${GANACHE_PORT}" \
+		--ethereum-endpoint="http://localhost:${GANACHE_PORT}" \
 		--log-level=debug \
 		--rpc \
 		--rpc-port="${RELAYER_PORT}" \
