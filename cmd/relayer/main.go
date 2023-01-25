@@ -1,5 +1,5 @@
 // Package main is the entrypoint for the swap-specific Ethereum transaction relayer.
-// It's purpose is to allow swaps users (ETH-takers in particular) to submit calls to the
+// Its purpose is to allow swaps users (ETH-takers in particular) to submit calls to the
 // swap contract to claim their ETH from an account that does not have any ETH in it.
 // This improves the swap UX by allowing users to obtain ETH without already having any.
 // In this case, the relayer submits the transaction on the user's behalf, paying their
