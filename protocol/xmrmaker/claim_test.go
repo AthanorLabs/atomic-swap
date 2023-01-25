@@ -39,7 +39,6 @@ func runRelayer(
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
 	sk *ecdsa.PrivateKey,
-	chainID *big.Int,
 ) string {
 	iforwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
 	require.NoError(t, err)
@@ -48,12 +47,13 @@ func runRelayer(
 	key := rcommon.NewKeyFromPrivateKey(sk)
 
 	cfg := &relayer.Config{
-		Ctx:                   ctx,
-		EthClient:             ec,
-		Forwarder:             fw,
-		Key:                   key,
-		ChainID:               chainID,
-		NewForwardRequestFunc: gsnforwarder.NewIForwarderForwardRequest,
+		Ctx:       ctx,
+		EthClient: ec,
+		Forwarder: fw,
+		Key:       key,
+		ValidateTransactionFunc: func(_ *rcommon.SubmitTransactionRequest) error {
+			return nil
+		},
 	}
 
 	r, err := relayer.NewRelayer(cfg)
@@ -152,7 +152,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// start relayer
-	relayerEndpoint := runRelayer(t, ctx, conn, forwarderAddress, relayerSk, chainID)
+	relayerEndpoint := runRelayer(t, ctx, conn, forwarderAddress, relayerSk)
 
 	// deploy swap contract with claim key hash
 	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)

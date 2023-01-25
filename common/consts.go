@@ -1,6 +1,8 @@
 // Package common is for miscellaneous constants, types and interfaces used by many packages.
 package common
 
+import "github.com/cockroachdb/apd/v3"
+
 const (
 	DefaultMoneroDaemonMainnetPort  = 18081 //nolint
 	DefaultMoneroDaemonDevPort      = DefaultMoneroDaemonMainnetPort
@@ -30,3 +32,7 @@ const (
 	GanacheChainID = 1337
 	HardhatChainID = 31337
 )
+
+// DefaultRelayerCommission is the default commission percentage for swap relayers.
+// It's set to 0.01 or 1%.
+var DefaultRelayerCommission = apd.New(1, -2)

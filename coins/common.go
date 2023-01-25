@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	// DecimalCtx is the apd context used for math operations on our coins
+	// decimalCtx is the apd context used for math operations on our coins
 	decimalCtx = apd.BaseContext.WithPrecision(MaxCoinPrecision)
 
 	log = logging.Logger("coins")
