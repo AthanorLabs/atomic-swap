@@ -37,7 +37,7 @@ func WaitForBlocks(ctx context.Context, client WalletClient, count int) (uint64,
 
 		if height >= endHeight {
 			// ensure wallet height is refreshed to the chain height
-			if err = client.(*walletClient).refresh(); err != nil {
+			if err = c.refresh(); err != nil {
 				return 0, err
 			}
 			return height, nil

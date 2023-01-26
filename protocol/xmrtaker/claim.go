@@ -101,7 +101,6 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	if err != nil {
 		return "", err
 	}
-	defer abWalletCli.CloseAndRemoveWallet()
 
 	if s.transferBack {
 		defer abWalletCli.CloseAndRemoveWallet()
@@ -122,8 +121,8 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 
 	err = mcrypto.ValidateAddress(string(depositAddr), s.Env())
 	if err != nil {
-		log.Errorf("failed to transfer to original account, address %s is invalid", abAddr)
-		return abAddr, nil
+		log.Errorf("Failed to transfer XMR out of swap wallet, dest address %s is invalid: %s", abAddr, err)
+		return "", err
 	}
 
 	err = waitUntilBalanceUnlocks(s.ctx, abWalletCli)
