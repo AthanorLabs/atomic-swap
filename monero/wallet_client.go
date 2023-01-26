@@ -280,7 +280,6 @@ func (c *walletClient) Transfer(
 		NumConfirmations: numConfirmations,
 		AccountIdx:       accountIdx,
 	})
-	log.Warnf("Transfer TXID=%s failed to get receipt: %s", reqResp.TxHash, err)
 	if err != nil {
 		return nil, fmt.Errorf("monero TXID=%s receipt failure: %w", reqResp.TxHash, err)
 	}
