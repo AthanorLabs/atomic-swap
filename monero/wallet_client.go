@@ -433,7 +433,7 @@ func createWalletFromKeys(
 		bal.BlocksToUnlock,
 		c.PrimaryAddress(),
 	)
-	return c, err
+	return c, nil
 }
 
 // CreateSpendWalletFromKeys creates a new monero-wallet-rpc process and wallet from a given wallet address,
