@@ -161,9 +161,10 @@ func setLogLevels(c *cli.Context) error {
 	}
 
 	_ = logging.SetLogLevel("main", level)
+	_ = logging.SetLogLevel("net", level)
+	_ = logging.SetLogLevel("p2pnet", level)
 	_ = logging.SetLogLevel("relayer", level)
 	_ = logging.SetLogLevel("rpc", level)
-	_ = logging.SetLogLevel("p2pnet", "debug")
 	return nil
 }
 
