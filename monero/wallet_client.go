@@ -57,7 +57,7 @@ type WalletClient interface {
 		accountIdx uint64,
 		numConfirmations uint64,
 	) ([]*wallet.Transfer, error)
-	CreateABWalletConf(walletNamePrefix string) *WalletClientConf
+	CreateWalletConf(walletNamePrefix string) *WalletClientConf
 	WalletName() string
 	GetHeight() (uint64, error)
 	Endpoint() string // URL on which the wallet is accepting RPC requests
@@ -351,7 +351,7 @@ func (c *walletClient) SweepAll(
 	return transfers, nil
 }
 
-func (c *walletClient) CreateABWalletConf(walletNamePrefix string) *WalletClientConf {
+func (c *walletClient) CreateWalletConf(walletNamePrefix string) *WalletClientConf {
 	walletName := fmt.Sprintf("%s-%s", walletNamePrefix, time.Now().Format(common.TimeFmtNSecs))
 	walletPath := path.Join(path.Dir(c.conf.WalletFilePath), walletName)
 	conf := &WalletClientConf{

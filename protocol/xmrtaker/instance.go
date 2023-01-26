@@ -100,7 +100,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 			return err
 		}
 
-		conf := inst.backend.XMRClient().CreateABWalletConf("xmrtaker-swap-wallet-db-restored")
+		conf := inst.backend.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-db-restored")
 		abWalletCli, err := monero.CreateSpendWalletFromKeys(
 			conf,
 			kp, // TODO: Fix the key here?

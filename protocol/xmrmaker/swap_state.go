@@ -425,7 +425,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 		return "", err
 	}
 
-	conf := s.XMRClient().CreateABWalletConf("xmrmaker-swap-wallet-refund")
+	conf := s.XMRClient().CreateWalletConf("xmrmaker-swap-wallet-refund")
 	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, s.moneroStartHeight)
 	if err != nil {
 		return "", err

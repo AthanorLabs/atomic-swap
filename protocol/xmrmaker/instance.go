@@ -129,7 +129,7 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 func (inst *Instance) recoverRefund(s *swap.Info, abWalletKey *mcrypto.PrivateKeyPair) error {
 	primaryCli := inst.backend.XMRClient()
 	refundDest := primaryCli.PrimaryAddress()
-	conf := primaryCli.CreateABWalletConf("xmrmaker-swap-wallet-refund")
+	conf := primaryCli.CreateWalletConf("xmrmaker-swap-wallet-refund")
 	log.Infof("Refunding XMR from swap ID %s to wallet address %s", s.ID, abWalletKey.Address(inst.backend.Env()))
 	abCli, err := monero.CreateSpendWalletFromKeys(conf, abWalletKey, s.MoneroStartHeight)
 	if err != nil {

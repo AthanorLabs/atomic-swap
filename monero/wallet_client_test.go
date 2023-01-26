@@ -74,7 +74,7 @@ func TestClient_Transfer(t *testing.T) {
 	alicePrimaryAddr := cXMRTaker.PrimaryAddress()
 
 	// Alice generates a view-only wallet for A+B to confirm that Bob sent the funds
-	conf := cXMRTaker.CreateABWalletConf("alice-view-wallet-to-verify-funds")
+	conf := cXMRTaker.CreateWalletConf("alice-view-wallet-to-verify-funds")
 	abViewCli, err := CreateViewOnlyWalletFromKeys(conf, vkABPriv, abAddress, transfer.Height)
 	require.NoError(t, err)
 	defer abViewCli.CloseAndRemoveWallet()
@@ -97,7 +97,7 @@ func TestClient_Transfer(t *testing.T) {
 		mcrypto.SumPrivateViewKeys(kpA.ViewKey(), kpB.ViewKey()),
 	)
 	require.NoError(t, err)
-	conf = abViewCli.CreateABWalletConf("alice-spend-wallet-to-claim")
+	conf = abViewCli.CreateWalletConf("alice-spend-wallet-to-claim")
 	abSpendCli, err := CreateSpendWalletFromKeys(conf, abWalletKeyPair, transfer.Height)
 	require.NoError(t, err)
 	defer abSpendCli.CloseAndRemoveWallet()
@@ -317,7 +317,7 @@ func TestCreateWalletFromKeys(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	conf := primaryCli.CreateABWalletConf("ab-wallet")
+	conf := primaryCli.CreateWalletConf("ab-wallet")
 	abCli, err := CreateSpendWalletFromKeys(conf, kp, height)
 	require.NoError(t, err)
 	defer abCli.CloseAndRemoveWallet()

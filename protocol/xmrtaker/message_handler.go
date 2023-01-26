@@ -203,7 +203,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
 
-	conf := s.XMRClient().CreateABWalletConf("xmrtaker-swap-wallet-verify-funds")
+	conf := s.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-verify-funds")
 	abViewCli, err := monero.CreateViewOnlyWalletFromKeys(conf, vk, lockedAddr, s.walletScanHeight)
 	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
