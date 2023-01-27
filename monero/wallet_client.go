@@ -310,21 +310,18 @@ func (c *walletClient) SweepAll(
 	if balance.BlocksToUnlock > 0 {
 		log.Infof("Sweep operation waiting %d blocks for balance to fully unlock", balance.BlocksToUnlock)
 		if _, err = WaitForBlocks(ctx, c, int(balance.BlocksToUnlock)); err != nil {
-			log.Warnf("Sweep operation from %s failed waiting to unlock balance", from)
 			return nil, fmt.Errorf("sweep operation failed waiting to unlock balance: %w", err)
 		}
 	}
 	if balance.Balance == 0 {
-		log.Warnf("Sweep operation from %s failed, no balance to sweep", from)
-		return nil, errors.New("no balance to sweep")
+		return nil, fmt.Errorf("sweep from %s failed, no balance to sweep", from)
 	}
 	reqResp, err := c.wRPC.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
 	})
 	if err != nil {
-		log.Warnf("Sweep transaction(s) from %s failed, %s", from, err)
-		return nil, fmt.Errorf("sweep_all failed: %w", err)
+		return nil, fmt.Errorf("sweep_all from %s failed: %w", from, err)
 	}
 	log.Infof("Sweep transaction started, TX IDs: %s", strings.Join(reqResp.TxHashList, ", "))
 	var transfers []*wallet.Transfer
@@ -336,8 +333,7 @@ func (c *walletClient) SweepAll(
 			AccountIdx:       accountIdx,
 		})
 		if err != nil {
-			log.Warnf("Sweep TX ID %s failed waiting for receipt: %s", txID, err)
-			return nil, fmt.Errorf("sweep failed waiting for receipt: %w", err)
+			return nil, fmt.Errorf("sweep of TXID=%s failed waiting for receipt: %w", txID, err)
 		}
 		log.Infof("Sweep transfer ID=%s of %s XMR (%s XMR fees) completed at height %d",
 			txID,
