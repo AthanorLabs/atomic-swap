@@ -9,8 +9,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -126,29 +124,6 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
 }
 
-func (inst *Instance) recoverRefund(s *swap.Info, abWalletKey *mcrypto.PrivateKeyPair) error {
-	primaryCli := inst.backend.XMRClient()
-	refundDest := primaryCli.PrimaryAddress()
-	conf := primaryCli.CreateWalletConf("xmrmaker-swap-wallet-refund")
-	log.Infof("Refunding XMR from swap ID %s to wallet address %s", s.ID, abWalletKey.Address(inst.backend.Env()))
-	abCli, err := monero.CreateSpendWalletFromKeys(conf, abWalletKey, s.MoneroStartHeight)
-	if err != nil {
-		return err
-	}
-	defer abCli.CloseAndRemoveWallet()
-
-	transfers, err := abCli.SweepAll(inst.backend.Ctx(), refundDest, 0, monero.SweepToSelfConfirmations)
-	if err != nil {
-		return err
-	}
-	for _, transfer := range transfers {
-		// It is unlikely that anyone will ever see more than one of these messages
-		log.Infof("Refunded %s XMR from swap to primary wallet (%s XMR lost to fees)",
-			coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
-	}
-	return nil
-}
-
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
@@ -158,9 +133,12 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		if err != nil {
 			return err
 		}
-
-		if err = inst.recoverRefund(s, kp); err != nil {
-			return fmt.Errorf("failed to recover refund: %w", err)
+		primaryCli := inst.backend.XMRClient()
+		destAddr := primaryCli.PrimaryAddress()
+		conf := primaryCli.CreateWalletConf("xmrmaker-swap-wallet-refund-ongoing")
+		err = sweepRefund(inst.backend.Ctx(), inst.backend.Env(), s.ID, conf, s.MoneroStartHeight, kp, destAddr)
+		if err != nil {
+			return err
 		}
 
 		return nil

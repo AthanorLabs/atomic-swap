@@ -5,7 +5,6 @@ package xmrmaker
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -426,26 +425,12 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 	}
 
 	conf := s.XMRClient().CreateWalletConf("xmrmaker-swap-wallet-refund")
-	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, s.moneroStartHeight)
+	destAddr := s.XMRClient().PrimaryAddress()
+	err = sweepRefund(s.ctx, s.Env(), s.ID(), conf, s.moneroStartHeight, kpAB, destAddr)
 	if err != nil {
 		return "", err
 	}
-	defer abWalletCli.CloseAndRemoveWallet()
 
-	transfers, err := abWalletCli.SweepAll(
-		s.ctx,
-		s.XMRClient().PrimaryAddress(),
-		0,
-		monero.SweepToSelfConfirmations,
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to sweep refund back to primary wallet: %w", err)
-	}
-	for _, transfer := range transfers {
-		// It is unlikely that anyone will ever see more than one of these messages
-		log.Infof("Refunded %s XMR from swap to primary wallet (%s XMR lost to fees)",
-			coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
-	}
 	return kpAB.Address(s.Env()), nil
 }
 

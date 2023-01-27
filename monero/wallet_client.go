@@ -412,8 +412,8 @@ func createWalletFromKeys(
 	c.walletAddr = mcrypto.Address(acctResp.Address)
 	if c.walletAddr != address {
 		c.Close()
-		log.Errorf("Provided address %s does not match wallet computed address %s", address, c.walletAddr)
-		return nil, errors.New("monero address mismatch")
+		return nil, fmt.Errorf("provided address %s does not match monero-wallet-rpc computed address %s",
+			address, c.walletAddr)
 	}
 
 	bal, err := c.GetBalance(0)
