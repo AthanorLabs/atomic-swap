@@ -302,6 +302,7 @@ func (c *walletClient) SweepAll(
 		return nil, fmt.Errorf("sweep operation failed to get address: %w", err)
 	}
 	from := addrResp.Address
+
 	balance, err := c.GetBalance(accountIdx)
 	if err != nil {
 		return nil, fmt.Errorf("sweep operation failed to get balance: %w", err)
@@ -316,6 +317,7 @@ func (c *walletClient) SweepAll(
 			return nil, fmt.Errorf("sweep operation failed waiting to unlock balance: %w", err)
 		}
 	}
+
 	reqResp, err := c.wRPC.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
 		Address:      string(to),
@@ -324,6 +326,7 @@ func (c *walletClient) SweepAll(
 		return nil, fmt.Errorf("sweep_all from %s failed: %w", from, err)
 	}
 	log.Infof("Sweep transaction started, TX IDs: %s", strings.Join(reqResp.TxHashList, ", "))
+
 	var transfers []*wallet.Transfer
 	for _, txID := range reqResp.TxHashList {
 		receipt, err := c.waitForReceipt(&waitForReceiptRequest{
@@ -343,6 +346,7 @@ func (c *walletClient) SweepAll(
 		)
 		transfers = append(transfers, receipt)
 	}
+
 	return transfers, nil
 }
 
