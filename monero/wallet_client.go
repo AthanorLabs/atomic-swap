@@ -393,6 +393,7 @@ func createWalletFromKeys(
 	if err != nil {
 		return nil, err
 	}
+
 	c := NewThinWalletClient(monerodNode.Host, monerodNode.Port, conf.WalletPort).(*walletClient)
 	c.rpcProcess = proc
 	c.conf = conf
@@ -408,6 +409,7 @@ func createWalletFromKeys(
 		c.Close()
 		return nil, err
 	}
+
 	acctResp, err := c.GetAddress(0)
 	if err != nil {
 		c.Close()
@@ -531,10 +533,12 @@ func (c *walletClient) GetHeight() (uint64, error) {
 	if err := c.refresh(); err != nil {
 		return 0, err
 	}
+
 	res, err := c.wRPC.GetHeight()
 	if err != nil {
 		return 0, err
 	}
+
 	return res.Height, nil
 }
 
@@ -545,6 +549,7 @@ func (c *walletClient) getChainHeight() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return res.Count, nil
 }
 
@@ -600,6 +605,7 @@ func findWorkingNode(env common.Environment, nodes []*common.MoneroNode) (*commo
 	if len(nodes) == 0 {
 		return nil, errors.New("no monero nodes")
 	}
+
 	var err error
 	for _, n := range nodes {
 		err = validateMonerodNode(env, n)
@@ -609,6 +615,7 @@ func findWorkingNode(env common.Environment, nodes []*common.MoneroNode) (*commo
 		}
 		return n, nil
 	}
+
 	// err is non-nil if we get here
 	return nil, fmt.Errorf("failed to validate any monerod RPC node, last error: %w", err)
 }
@@ -618,10 +625,12 @@ func findWorkingNode(env common.Environment, nodes []*common.MoneroNode) (*commo
 func validateMonerodNode(env common.Environment, node *common.MoneroNode) error {
 	endpoint := fmt.Sprintf("http://%s:%d/json_rpc", node.Host, node.Port)
 	daemonCli := monerorpc.New(endpoint, nil).Daemon
+
 	info, err := daemonCli.GetInfo()
 	if err != nil {
 		return fmt.Errorf("could not validate monerod endpoint %s: %w", endpoint, err)
 	}
+
 	switch env {
 	case common.Stagenet:
 		if !info.Stagenet {
@@ -639,12 +648,15 @@ func validateMonerodNode(env common.Environment, node *common.MoneroNode) error 
 	default:
 		panic("unhandled environment type")
 	}
+
 	if env != common.Development && info.Offline {
 		return fmt.Errorf("monerod endpoint %s is offline", endpoint)
 	}
+
 	if !info.Synchronized {
 		return fmt.Errorf("monerod endpoint %s is not synchronised", endpoint)
 	}
+
 	return nil
 }
 
@@ -659,7 +671,6 @@ func createWalletRPCService(
 	logFilePath string,
 	moneroNode *common.MoneroNode,
 ) (*os.Process, error) {
-
 	walletRPCBinArgs := getWalletRPCFlags(env, walletPort, walletDir, logFilePath, moneroNode)
 	proc, err := launchMoneroWalletRPCChild(walletRPCBinPath, walletRPCBinArgs...)
 	if err != nil {
@@ -741,10 +752,12 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 			break
 		}
 	}
+
 	if !started {
 		_, _ = cmd.Process.Wait() // shouldn't block, process already exited
 		return nil, errors.New("failed to start monero-wallet-rpc")
 	}
+
 	time.Sleep(200 * time.Millisecond) // additional start time
 
 	// Drain additional output. We are not detaching monero-wallet-rpc so it will
@@ -758,6 +771,7 @@ func launchMoneroWalletRPCChild(walletRPCBin string, walletRPCBinArgs ...string)
 		}
 		log.Warnf("monero-wallet-rpc pid=%d exited", cmd.Process.Pid)
 	}()
+
 	return cmd.Process, nil
 }
 
@@ -800,9 +814,10 @@ func getWalletRPCFlags(
 // allocated ports are randomised to make the risk negligible.
 func getFreeTCPPort() (uint, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	defer func() { _ = ln.Close() }()
 	if err != nil {
 		return 0, err
 	}
+	defer func() { _ = ln.Close() }()
+
 	return uint(ln.Addr().(*net.TCPAddr).Port), nil
 }
