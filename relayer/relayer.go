@@ -68,66 +68,6 @@ func (c *Client) SubmitTransaction(
 	to ethcommon.Address,
 	calldata []byte,
 ) (ethcommon.Hash, error) {
-	// nonce, err := c.forwarder.GetNonce(&bind.CallOpts{}, c.key.Address())
-	// if err != nil {
-	// 	return ethcommon.Hash{}, fmt.Errorf("failed to get nonce from forwarder: %w", err)
-	// }
-
-	// domainSeparator, err := rcommon.GetEIP712DomainSeparator(gsnforwarder.DefaultName,
-	// 	gsnforwarder.DefaultVersion, c.chainID, c.forwarderAddress)
-	// if err != nil {
-	// 	return ethcommon.Hash{}, fmt.Errorf("failed to get EIP712 domain separator: %w", err)
-	// }
-
-	// req := &gsnforwarder.IForwarderForwardRequest{
-	// 	From:           c.key.Address(),
-	// 	To:             to,
-	// 	Value:          big.NewInt(0),
-	// 	Gas:            big.NewInt(200000), // TODO: fetch from ethclient
-	// 	Nonce:          nonce,
-	// 	Data:           calldata,
-	// 	ValidUntilTime: big.NewInt(0),
-	// }
-
-	// digest, err := rcommon.GetForwardRequestDigestToSign(
-	// 	req,
-	// 	domainSeparator,
-	// 	nil,
-	// )
-	// if err != nil {
-	// 	return ethcommon.Hash{}, fmt.Errorf("failed to get forward request digest: %w", err)
-	// }
-
-	// sig, err := c.key.Sign(digest)
-	// if err != nil {
-	// 	return ethcommon.Hash{}, fmt.Errorf("failed to sign forward request digest: %w", err)
-	// }
-
-	// err = c.forwarder.Verify(
-	// 	&bind.CallOpts{},
-	// 	*req,
-	// 	domainSeparator,
-	// 	gsnforwarder.ForwardRequestTypehash,
-	// 	nil,
-	// 	sig,
-	// )
-	// if err != nil {
-	// 	return ethcommon.Hash{}, fmt.Errorf("failed to verify signature: %w", err)
-	// }
-
-	// rpcReq := &rcommon.SubmitTransactionRequest{
-	// 	From:            req.From,
-	// 	To:              req.To,
-	// 	Value:           req.Value,
-	// 	Gas:             req.Gas,
-	// 	Nonce:           req.Nonce,
-	// 	Data:            req.Data,
-	// 	Signature:       sig,
-	// 	ValidUntilTime:  big.NewInt(0),
-	// 	DomainSeparator: domainSeparator,
-	// 	RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
-	// }
-
 	rpcReq, err := createSubmitTransactionRequest(
 		c.key,
 		c.forwarder,
