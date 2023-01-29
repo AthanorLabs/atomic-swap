@@ -22,7 +22,7 @@ type Manager interface {
 	GetPastIDs() ([]types.Hash, error)
 	GetPastSwap(types.Hash) (*Info, error)
 	GetOngoingSwap(types.Hash) (Info, error)
-	GetOngoingSwaps() ([]Info, error)
+	GetOngoingSwaps() ([]*Info, error)
 	CompleteOngoingSwap(info *Info) error
 }
 
@@ -148,13 +148,15 @@ func (m *manager) GetOngoingSwap(id types.Hash) (Info, error) {
 }
 
 // GetOngoingSwaps returns all ongoing swaps.
-func (m *manager) GetOngoingSwaps() ([]Info, error) {
+func (m *manager) GetOngoingSwaps() ([]*Info, error) {
 	m.RLock()
 	defer m.RUnlock()
-	swaps := make([]Info, len(m.ongoing))
+	swaps := make([]*Info, len(m.ongoing))
 	i := 0
 	for _, s := range m.ongoing {
-		swaps[i] = *s
+		sCopy := new(Info)
+		*sCopy = *s
+		swaps[i] = sCopy
 		i++
 	}
 	return swaps, nil

@@ -137,8 +137,6 @@ func newTestInstanceAndDBAndNet(t *testing.T) (*Instance, *offers.MockDatabase, 
 
 	oneXMR := coins.MoneroToPiconero(apd.New(1, 0))
 	monero.MineMinXMRBalance(t, b.XMRClient(), oneXMR)
-	err = b.XMRClient().Refresh()
-	require.NoError(t, err)
 	return xmrmaker, db, net
 }
 
@@ -188,7 +186,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	)
 	offerDB.EXPECT().GetOffer(s.ID).Return(offer, nil)
 
-	err = inst.createOngoingSwap(*s)
+	err = inst.createOngoingSwap(s)
 	require.NoError(t, err)
 
 	inst.swapMu.Lock()

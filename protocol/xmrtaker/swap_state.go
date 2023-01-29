@@ -105,7 +105,7 @@ func newSwapStateFromStart(
 	stage := types.ExpectingKeys
 	statusCh := make(chan types.Status, 16)
 
-	moneroStartNumber, err := b.XMRClient().GetChainHeight()
+	moneroStartNumber, err := b.XMRClient().GetHeight()
 	if err != nil {
 		return nil, err
 	}

@@ -48,7 +48,7 @@ type Config struct {
 func NewInstance(cfg *Config) (*Instance, error) {
 	// if this is set, it transfers all xmr received during swaps back to the given wallet.
 	if cfg.TransferBack {
-		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryWalletAddress())
+		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryAddress())
 	}
 
 	inst := &Instance{
@@ -90,7 +90,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (inst *Instance) createOngoingSwap(s swap.Info) error {
+func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, claim XMR from that
 	// otherwise, create new swap state from recovery info
 	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
@@ -100,22 +100,36 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 			return err
 		}
 
-		inst.backend.XMRClient().Lock()
-		defer inst.backend.XMRClient().Unlock()
-
-		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet(
-			"xmrmaker-swap-wallet",
-			inst.backend.Env(),
-			inst.backend.XMRClient(),
-			kp,
+		conf := inst.backend.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-db-restored")
+		abWalletCli, err := monero.CreateSpendWalletFromKeys(
+			conf,
+			kp, // TODO: Fix the key here?
 			s.MoneroStartHeight,
 		)
 		if err != nil {
 			return err
 		}
+		if inst.transferBack {
+			defer abWalletCli.CloseAndRemoveWallet()
+			// TODO: Get unit test coverage on these lines when we think the key issues are fixed.
+			transfers, err := abWalletCli.SweepAll(
+				inst.backend.Ctx(),
+				inst.backend.XMRClient().PrimaryAddress(),
+				0,
+				monero.SweepToSelfConfirmations,
+			)
+			if err != nil {
+				return err
+			}
+			for _, transfer := range transfers {
+				log.Infof("Swept %s XMR (%s XMR lost to fees) from restored swap ID %s to primary wallet",
+					coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee), s.ID)
+			}
+		} else {
+			defer abWalletCli.Close() // leave the wallet in place, as funds were not transferred back
+		}
 
-		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, addr)
+		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, abWalletCli.PrimaryAddress())
 		return nil
 	}
 
@@ -138,7 +152,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 	defer inst.swapMu.Unlock()
 	ss, err := newSwapStateFromOngoing(
 		inst.backend,
-		&s,
+		s,
 		inst.transferBack,
 		ethSwapInfo,
 		kp,

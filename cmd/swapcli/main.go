@@ -390,9 +390,9 @@ func runBalances(ctx *cli.Context) error {
 	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEther().Text('f'))
 	fmt.Println()
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
-	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMonero().Text('f'))
+	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMoneroString())
 	fmt.Printf("Unlocked XMR balance: %s\n",
-		balances.PiconeroUnlockedBalance.AsMonero().Text('f'))
+		balances.PiconeroUnlockedBalance.AsMoneroString())
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
 	return nil
 }

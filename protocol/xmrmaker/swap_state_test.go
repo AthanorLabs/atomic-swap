@@ -38,7 +38,7 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 		types.NewOffer("", new(apd.Decimal), new(apd.Decimal), new(coins.ExchangeRate), types.EthAssetETH),
 		&types.OfferExtra{},
 		xmrmaker.offerManager,
-		coins.NewPiconeroAmount(33),
+		coins.MoneroToPiconero(coins.StrToDecimal("0.05")),
 		desiredAmount,
 	)
 	require.NoError(t, err)
@@ -311,6 +311,11 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
+	balAfterLock, err := s.XMRClient().GetBalance(0)
+	require.NoError(t, err)
+	t.Logf("Balance after locking funds: %s XMR (%d blocks to unlock)",
+		coins.FmtPiconeroAmtAsXMR(balAfterLock.Balance), balAfterLock.BlocksToUnlock)
+
 	// call refund w/ XMRTaker's secret
 	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
 	var sc [32]byte
@@ -338,9 +343,9 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
-	providedPiconeros, err := coins.MoneroToPiconero(s.info.ProvidedAmount).Uint64()
-	require.NoError(t, err)
-	require.Equal(t, providedPiconeros, balance.Balance)
+	t.Logf("End balance after refund: %s XMR (%d blocks to unlock)",
+		coins.FmtPiconeroAmtAsXMR(balance.Balance), balance.BlocksToUnlock)
+	require.Greater(t, balance.Balance, balAfterLock.Balance) // increased by refund (minus some fees)
 	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
 
