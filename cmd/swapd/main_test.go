@@ -140,6 +140,8 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	wc := monero.CreateWalletClientWithWalletDir(t, dataDir)
 	one := apd.New(1, 0)
 	monero.MineMinXMRBalance(t, wc, coins.MoneroToPiconero(one))
+	walletName := wc.WalletName()
+	wc.Close() // wallet file stays in place with mined monero
 
 	c := newTestContext(t,
 		"test --dev-xmrmaker",
@@ -150,7 +152,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 			flagRPCPort:          uint(0),
 			flagLibp2pPort:       uint(0),
 			flagDataDir:          dataDir,
-			flagMoneroWalletPath: path.Join(dataDir, "test-wallet"),
+			flagMoneroWalletPath: path.Join(dataDir, walletName),
 		},
 	)
 

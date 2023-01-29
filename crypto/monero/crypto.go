@@ -27,7 +27,8 @@ type PrivateKeyPair struct {
 }
 
 // NewPrivateKeyPair returns a new PrivateKeyPair from the given PrivateSpendKey and PrivateViewKey.
-// It does not validate if the view key corresponds to the spend key.
+// Both values must be set, as no assumptions are made that the view key is derived from the spend
+// key with this type.
 func NewPrivateKeyPair(sk *PrivateSpendKey, vk *PrivateViewKey) *PrivateKeyPair {
 	return &PrivateKeyPair{
 		sk: sk,

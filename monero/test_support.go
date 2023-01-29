@@ -60,10 +60,8 @@ func CreateWalletClient(t *testing.T) WalletClient {
 }
 
 // GetBalance is a convenience method for tests that assumes you want the primary
-// address, that you want to refresh, and that errors should fail the test.
+// address and that errors should fail the test.
 func GetBalance(t *testing.T, wc WalletClient) *wallet.GetBalanceResponse {
-	err := wc.Refresh()
-	require.NoError(t, err)
 	balance, err := wc.GetBalance(0)
 	require.NoError(t, err)
 	return balance
@@ -127,7 +125,6 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *coins.Piconero
 	require.NoError(t, err)
 
 	for {
-		require.NoError(t, wc.Refresh())
 		balance, err := wc.GetBalance(0)
 		require.NoError(t, err)
 		if balance.UnlockedBalance > minBalU64 {

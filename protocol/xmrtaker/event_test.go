@@ -20,26 +20,17 @@ import (
 func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Address) {
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
-	err := backend.XMRClient().CreateWallet("test-wallet", "")
-	require.NoError(t, err)
 	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))
 
-	// lock xmr
 	amt := s.expectedPiconeroAmount()
-	tResp, err := backend.XMRClient().Transfer(xmrAddr, 0, amt)
+	amtu64, err := amt.Uint64()
 	require.NoError(t, err)
-	t.Logf("transferred %d pico XMR (fees %d) to account %s", tResp.Amount, tResp.Fee, xmrAddr)
-	require.Equal(t, amt.CmpU64(tResp.Amount), 0)
-
-	transfer, err := backend.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
-		Ctx:              s.ctx,
-		TxID:             tResp.TxHash,
-		DestAddr:         xmrAddr,
-		NumConfirmations: monero.MinSpendConfirmations,
-		AccountIdx:       0,
-	})
+	// lock xmr
+	transfer, err := backend.XMRClient().Transfer(s.ctx, xmrAddr, 0, amt, monero.MinSpendConfirmations)
 	require.NoError(t, err)
-	t.Logf("Transfer mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
+	require.Equal(t, transfer.Amount, amtu64)
+	t.Logf("Transferred %d pico XMR (fees %d) to account %s", transfer.Amount, transfer.Fee, xmrAddr)
+	t.Logf("Transfer was mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
 
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{

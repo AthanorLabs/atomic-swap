@@ -9,7 +9,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -114,10 +113,10 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (inst *Instance) abortOngoingSwap(s swap.Info) error {
+func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 	// set status to aborted, delete info from recovery db
 	s.Status = types.CompletedAbort
-	err := inst.backend.SwapManager().CompleteOngoingSwap(&s)
+	err := inst.backend.SwapManager().CompleteOngoingSwap(s)
 	if err != nil {
 		return err
 	}
@@ -125,7 +124,7 @@ func (inst *Instance) abortOngoingSwap(s swap.Info) error {
 	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
 }
 
-func (inst *Instance) createOngoingSwap(s swap.Info) error {
+func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
 	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
@@ -134,23 +133,14 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		if err != nil {
 			return err
 		}
-
-		inst.backend.XMRClient().Lock()
-		defer inst.backend.XMRClient().Unlock()
-
-		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet(
-			"xmrmaker-swap-wallet",
-			inst.backend.Env(),
-			inst.backend.XMRClient(),
-			kp,
-			s.MoneroStartHeight,
-		)
+		primaryCli := inst.backend.XMRClient()
+		destAddr := primaryCli.PrimaryAddress()
+		conf := primaryCli.CreateWalletConf("xmrmaker-swap-wallet-refund-ongoing")
+		err = sweepRefund(inst.backend.Ctx(), inst.backend.Env(), s.ID, conf, s.MoneroStartHeight, kp, destAddr)
 		if err != nil {
 			return err
 		}
 
-		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, addr)
 		return nil
 	}
 
@@ -187,7 +177,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		relayerInfo,
 		inst.offerManager,
 		ethSwapInfo,
-		&s,
+		s,
 		kp,
 	)
 	if err != nil {
@@ -221,9 +211,6 @@ func (inst *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
 func (inst *Instance) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
 	addr, err := inst.backend.XMRClient().GetAddress(0)
 	if err != nil {
-		return "", nil, err
-	}
-	if err = inst.backend.XMRClient().Refresh(); err != nil {
 		return "", nil, err
 	}
 	balance, err := inst.backend.XMRClient().GetBalance(0)

@@ -9,6 +9,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
@@ -202,25 +203,16 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
 
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
-
-	t := time.Now().Format(common.TimeFmtNSecs)
-	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(
-		vk, lockedAddr, s.walletScanHeight, walletName, "",
-	)
+	conf := s.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-verify-funds")
+	abViewCli, err := monero.CreateViewOnlyWalletFromKeys(conf, vk, lockedAddr, s.walletScanHeight)
 	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
+	defer abViewCli.CloseAndRemoveWallet()
 
-	log.Debugf("generated view-only wallet to check funds: %s", walletName)
+	log.Debugf("generated view-only wallet to check funds: %s", abViewCli.WalletName())
 
-	if err = s.XMRClient().Refresh(); err != nil {
-		return fmt.Errorf("failed to refresh client: %w", err)
-	}
-
-	balance, err := s.XMRClient().GetBalance(0)
+	balance, err := abViewCli.GetBalance(0)
 	if err != nil {
 		return fmt.Errorf("failed to get balance: %w", err)
 	}
@@ -230,8 +222,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
 		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
-			coins.NewPiconeroAmount(balance.Balance).AsMonero().Text('f'),
-			s.ExpectedAmount().Text('f'))
+			coins.FmtPiconeroAmtAsXMR(balance.Balance), s.ExpectedAmount().Text('f'))
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before
@@ -244,10 +235,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	if balance.BlocksToUnlock > 1 {
 		return fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
 			balance.BlocksToUnlock)
-	}
-
-	if err = s.XMRClient().CloseWallet(); err != nil {
-		return fmt.Errorf("failed to close wallet: %w", err)
 	}
 
 	close(s.xmrLockedCh)

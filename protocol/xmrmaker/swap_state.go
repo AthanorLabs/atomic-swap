@@ -107,7 +107,7 @@ func newSwapStateFromStart(
 		}
 	}
 
-	moneroStartHeight, err := b.XMRClient().GetChainHeight()
+	moneroStartHeight, err := b.XMRClient().GetHeight()
 	if err != nil {
 		return nil, err
 	}
@@ -424,9 +424,14 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 		return "", err
 	}
 
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
-	return monero.CreateWallet("xmrmaker-swap-wallet", s.Env(), s.XMRClient(), kpAB, s.moneroStartHeight)
+	conf := s.XMRClient().CreateWalletConf("xmrmaker-swap-wallet-refund")
+	destAddr := s.XMRClient().PrimaryAddress()
+	err = sweepRefund(s.ctx, s.Env(), s.ID(), conf, s.moneroStartHeight, kpAB, destAddr)
+	if err != nil {
+		return "", err
+	}
+
+	return kpAB.Address(s.Env()), nil
 }
 
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
@@ -491,42 +496,21 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // It accepts the amount to lock as the input
 func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
-	log.Infof("going to lock XMR funds, amount(piconero)=%d", amount)
-
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
+	log.Infof("going to lock XMR funds, amount=%s XMR", amount.AsMoneroString())
 
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debug("total XMR balance: ", balance.Balance)
-	log.Info("unlocked XMR balance: ", balance.UnlockedBalance)
+	log.Debug("total XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.Balance))
+	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.UnlockedBalance))
 
-	transResp, err := s.XMRClient().Transfer(swapDestAddr, 0, amount)
+	log.Infof("Starting lock of %s XMR in address %s", amount.AsMoneroString(), swapDestAddr)
+	transfer, err := s.XMRClient().Transfer(s.ctx, swapDestAddr, 0, amount, monero.MinSpendConfirmations)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Infof("locked %f XMR, txID=%s fee=%d", amount.AsMonero(), transResp.TxHash, transResp.Fee)
-
-	// TODO: It would be friendlier to concurrent swaps if we didn't hold the client lock
-	//       for the entire confirmation period. Options to improve this include creating a
-	//       separate monero-wallet-rpc instance for A+B wallets or carefully releasing the
-	//       lock between confirmations and re-opening the A+B wallet after grabbing the
-	//       lock again.
-	transfer, err := s.XMRClient().WaitForReceipt(&monero.WaitForReceiptRequest{
-		Ctx:              s.ctx,
-		TxID:             transResp.TxHash,
-		DestAddr:         swapDestAddr,
-		NumConfirmations: monero.MinSpendConfirmations,
-		AccountIdx:       0,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
 	return &message.NotifyXMRLock{
