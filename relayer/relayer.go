@@ -68,19 +68,108 @@ func (c *Client) SubmitTransaction(
 	to ethcommon.Address,
 	calldata []byte,
 ) (ethcommon.Hash, error) {
-	nonce, err := c.forwarder.GetNonce(&bind.CallOpts{}, c.key.Address())
+	// nonce, err := c.forwarder.GetNonce(&bind.CallOpts{}, c.key.Address())
+	// if err != nil {
+	// 	return ethcommon.Hash{}, fmt.Errorf("failed to get nonce from forwarder: %w", err)
+	// }
+
+	// domainSeparator, err := rcommon.GetEIP712DomainSeparator(gsnforwarder.DefaultName,
+	// 	gsnforwarder.DefaultVersion, c.chainID, c.forwarderAddress)
+	// if err != nil {
+	// 	return ethcommon.Hash{}, fmt.Errorf("failed to get EIP712 domain separator: %w", err)
+	// }
+
+	// req := &gsnforwarder.IForwarderForwardRequest{
+	// 	From:           c.key.Address(),
+	// 	To:             to,
+	// 	Value:          big.NewInt(0),
+	// 	Gas:            big.NewInt(200000), // TODO: fetch from ethclient
+	// 	Nonce:          nonce,
+	// 	Data:           calldata,
+	// 	ValidUntilTime: big.NewInt(0),
+	// }
+
+	// digest, err := rcommon.GetForwardRequestDigestToSign(
+	// 	req,
+	// 	domainSeparator,
+	// 	nil,
+	// )
+	// if err != nil {
+	// 	return ethcommon.Hash{}, fmt.Errorf("failed to get forward request digest: %w", err)
+	// }
+
+	// sig, err := c.key.Sign(digest)
+	// if err != nil {
+	// 	return ethcommon.Hash{}, fmt.Errorf("failed to sign forward request digest: %w", err)
+	// }
+
+	// err = c.forwarder.Verify(
+	// 	&bind.CallOpts{},
+	// 	*req,
+	// 	domainSeparator,
+	// 	gsnforwarder.ForwardRequestTypehash,
+	// 	nil,
+	// 	sig,
+	// )
+	// if err != nil {
+	// 	return ethcommon.Hash{}, fmt.Errorf("failed to verify signature: %w", err)
+	// }
+
+	// rpcReq := &rcommon.SubmitTransactionRequest{
+	// 	From:            req.From,
+	// 	To:              req.To,
+	// 	Value:           req.Value,
+	// 	Gas:             req.Gas,
+	// 	Nonce:           req.Nonce,
+	// 	Data:            req.Data,
+	// 	Signature:       sig,
+	// 	ValidUntilTime:  big.NewInt(0),
+	// 	DomainSeparator: domainSeparator,
+	// 	RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
+	// }
+
+	rpcReq, err := createSubmitTransactionRequest(
+		c.key,
+		c.forwarder,
+		c.forwarderAddress,
+		c.chainID,
+		to,
+		calldata,
+	)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to get nonce from forwarder: %w", err)
+		return ethcommon.Hash{}, err
+	}
+
+	// submit transaction to relayer
+	resp, err := c.c.SubmitTransaction(rpcReq)
+	if err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to submit transaction to relayer: %w", err)
+	}
+
+	return resp.TxHash, nil
+}
+
+func createSubmitTransactionRequest(
+	key *rcommon.Key,
+	forwarder *gsnforwarder.IForwarder,
+	forwarderAddress ethcommon.Address,
+	chainID *big.Int,
+	to ethcommon.Address,
+	calldata []byte,
+) (*rcommon.SubmitTransactionRequest, error) {
+	nonce, err := forwarder.GetNonce(&bind.CallOpts{}, key.Address())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nonce from forwarder: %w", err)
 	}
 
 	domainSeparator, err := rcommon.GetEIP712DomainSeparator(gsnforwarder.DefaultName,
-		gsnforwarder.DefaultVersion, c.chainID, c.forwarderAddress)
+		gsnforwarder.DefaultVersion, chainID, forwarderAddress)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to get EIP712 domain separator: %w", err)
+		return nil, fmt.Errorf("failed to get EIP712 domain separator: %w", err)
 	}
 
 	req := &gsnforwarder.IForwarderForwardRequest{
-		From:           c.key.Address(),
+		From:           key.Address(),
 		To:             to,
 		Value:          big.NewInt(0),
 		Gas:            big.NewInt(200000), // TODO: fetch from ethclient
@@ -95,15 +184,15 @@ func (c *Client) SubmitTransaction(
 		nil,
 	)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to get forward request digest: %w", err)
+		return nil, fmt.Errorf("failed to get forward request digest: %w", err)
 	}
 
-	sig, err := c.key.Sign(digest)
+	sig, err := key.Sign(digest)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to sign forward request digest: %w", err)
+		return nil, fmt.Errorf("failed to sign forward request digest: %w", err)
 	}
 
-	err = c.forwarder.Verify(
+	err = forwarder.Verify(
 		&bind.CallOpts{},
 		*req,
 		domainSeparator,
@@ -112,10 +201,10 @@ func (c *Client) SubmitTransaction(
 		sig,
 	)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to verify signature: %w", err)
+		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
-	rpcReq := &rcommon.SubmitTransactionRequest{
+	return &rcommon.SubmitTransactionRequest{
 		From:            req.From,
 		To:              req.To,
 		Value:           req.Value,
@@ -126,13 +215,35 @@ func (c *Client) SubmitTransaction(
 		ValidUntilTime:  big.NewInt(0),
 		DomainSeparator: domainSeparator,
 		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
-	}
+	}, nil
+}
 
-	// submit transaction to relayer
-	resp, err := c.c.SubmitTransaction(rpcReq)
+// CreateSubmitTransactionRequest fills and returns a SubmitTransactionRequest ready for submission
+// to a relayer.
+func CreateSubmitTransactionRequest(
+	sk *ecdsa.PrivateKey,
+	ec *ethclient.Client,
+	forwarderAddress ethcommon.Address,
+	to ethcommon.Address,
+	calldata []byte,
+) (*rcommon.SubmitTransactionRequest, error) {
+	forwarder, err := forwarderFromAddress(forwarderAddress, ec)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to submit transaction to relayer: %w", err)
+		return nil, err
 	}
 
-	return resp.TxHash, nil
+	chainID, err := ec.ChainID(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	key := rcommon.NewKeyFromPrivateKey(sk)
+	return createSubmitTransactionRequest(
+		key,
+		forwarder,
+		forwarderAddress,
+		chainID,
+		to,
+		calldata,
+	)
 }

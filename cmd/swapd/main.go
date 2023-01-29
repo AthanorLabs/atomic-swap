@@ -30,6 +30,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
+	rnet "github.com/athanorlabs/go-relayer/net"
 )
 
 const (
@@ -433,6 +434,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 	d.host = host
+	rhost := setupRelayerNetwork(d.ctx, host.P2pHost())
 
 	dbCfg := &chaindb.Config{
 		DataDir: path.Join(cfg.DataDir, "db"),
@@ -460,6 +462,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		host,
 		ec,
 		sdb.RecoveryDB(),
+		rhost,
 	)
 	if err != nil {
 		return err
@@ -467,7 +470,9 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 
 	defer swapBackend.XMRClient().Close()
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
-		swapBackend.XMRClient().Endpoint(), ethEndpoint)
+		swapBackend.XMRClient().Endpoint(),
+		ethEndpoint,
+	)
 
 	a, b, err := getProtocolInstances(c, cfg, swapBackend, sdb, host)
 	if err != nil {
@@ -564,6 +569,7 @@ func newBackend(
 	net *net.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
+	rhost *rnet.Host,
 ) (backend.Backend, error) {
 	var (
 		ethPrivKey *ecdsa.PrivateKey
@@ -694,6 +700,7 @@ func newBackend(
 		SwapContractAddress: contractAddr,
 		Net:                 net,
 		RecoveryDB:          rdb,
+		RelayerHost:         rhost,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -749,4 +756,16 @@ func getProtocolInstances(
 	}
 
 	return xmrTaker, xmrMaker, nil
+}
+
+func setupRelayerNetwork(
+	ctx context.Context,
+	host rnet.P2pnetHost,
+) *rnet.Host {
+	cfg := &rnet.Config{
+		Context:   ctx,
+		IsRelayer: false,
+	}
+
+	return rnet.NewHostFromP2pHost(cfg, host)
 }

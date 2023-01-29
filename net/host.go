@@ -74,6 +74,11 @@ func NewHost(cfg *p2pnet.Config) (*Host, error) {
 	}, nil
 }
 
+// P2pHost returns the underlying go-p2p-net host.
+func (h *Host) P2pHost() P2pnetHost {
+	return h.h
+}
+
 // SetHandler sets the Handler instance used by the host.
 func (h *Host) SetHandler(handler Handler) {
 	fn := func() bool {
