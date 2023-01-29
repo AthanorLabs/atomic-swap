@@ -307,14 +307,14 @@ func (c *walletClient) SweepAll(
 		return nil, fmt.Errorf("sweep operation failed to get balance: %w", err)
 	}
 	log.Infof("Starting sweep of %s XMR from %s to %s", coins.FmtPiconeroAmtAsXMR(balance.Balance), from, to)
+	if balance.Balance == 0 {
+		return nil, fmt.Errorf("sweep from %s failed, no balance to sweep", from)
+	}
 	if balance.BlocksToUnlock > 0 {
 		log.Infof("Sweep operation waiting %d blocks for balance to fully unlock", balance.BlocksToUnlock)
 		if _, err = WaitForBlocks(ctx, c, int(balance.BlocksToUnlock)); err != nil {
 			return nil, fmt.Errorf("sweep operation failed waiting to unlock balance: %w", err)
 		}
-	}
-	if balance.Balance == 0 {
-		return nil, fmt.Errorf("sweep from %s failed, no balance to sweep", from)
 	}
 	reqResp, err := c.wRPC.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
