@@ -89,6 +89,36 @@ func (c *Client) SubmitTransaction(
 	return resp.TxHash, nil
 }
 
+// CreateSubmitTransactionRequest fills and returns a SubmitTransactionRequest ready for submission
+// to a relayer.
+func CreateSubmitTransactionRequest(
+	sk *ecdsa.PrivateKey,
+	ec *ethclient.Client,
+	forwarderAddress ethcommon.Address,
+	to ethcommon.Address,
+	calldata []byte,
+) (*rcommon.SubmitTransactionRequest, error) {
+	forwarder, err := forwarderFromAddress(forwarderAddress, ec)
+	if err != nil {
+		return nil, err
+	}
+
+	chainID, err := ec.ChainID(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	key := rcommon.NewKeyFromPrivateKey(sk)
+	return createSubmitTransactionRequest(
+		key,
+		forwarder,
+		forwarderAddress,
+		chainID,
+		to,
+		calldata,
+	)
+}
+
 func createSubmitTransactionRequest(
 	key *rcommon.Key,
 	forwarder *gsnforwarder.IForwarder,
@@ -156,34 +186,4 @@ func createSubmitTransactionRequest(
 		DomainSeparator: domainSeparator,
 		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
 	}, nil
-}
-
-// CreateSubmitTransactionRequest fills and returns a SubmitTransactionRequest ready for submission
-// to a relayer.
-func CreateSubmitTransactionRequest(
-	sk *ecdsa.PrivateKey,
-	ec *ethclient.Client,
-	forwarderAddress ethcommon.Address,
-	to ethcommon.Address,
-	calldata []byte,
-) (*rcommon.SubmitTransactionRequest, error) {
-	forwarder, err := forwarderFromAddress(forwarderAddress, ec)
-	if err != nil {
-		return nil, err
-	}
-
-	chainID, err := ec.ChainID(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	key := rcommon.NewKeyFromPrivateKey(sk)
-	return createSubmitTransactionRequest(
-		key,
-		forwarder,
-		forwarderAddress,
-		chainID,
-		to,
-		calldata,
-	)
 }
