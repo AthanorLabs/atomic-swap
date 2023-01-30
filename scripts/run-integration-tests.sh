@@ -35,10 +35,9 @@ create-eth-keys() {
 		echo "${GANACHE_KEYS[${i}]}" >"${key_file}"
 	done
 }
-
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
-ALICE_MULTIADDR=/ip4/127.0.0.1/udp/9933/quic-v1/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
-ALICE_LIBP2PKEY=./tests/alice-libp2p.key
+RELAYER_MULTIADDR=/ip4/127.0.0.1/udp/10900/quic-v1/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
+RELAYER_LIBP2PKEY=./tests/relayer-libp2p.key
 LOG_LEVEL=debug
 
 start-relayer() {
@@ -52,6 +51,7 @@ start-relayer() {
 		--rpc \
 		--rpc-port="${RELAYER_PORT}" \
 		--key="${SWAP_TEST_DATA_DIR}/relayer/eth.key" \
+		--libp2p-key="${RELAYER_LIBP2PKEY}" \
 		&>"${log_file}" &
 	local relayer_pid="${!}"
 	echo "${relayer_pid}" >"${SWAP_TEST_DATA_DIR}/relayer.pid"
@@ -114,7 +114,7 @@ start-daemons() {
 		--dev-xmrtaker \
 		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
-		"--libp2p-key=${ALICE_LIBP2PKEY}" \
+		"--bootnodes=${RELAYER_MULTIADDR}" \
 		--deploy \
 		"--forwarder-address=${FORWARDER_ADDR}"
 
@@ -139,7 +139,7 @@ start-daemons() {
 		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
 		--libp2p-port=9944 \
-		"--bootnodes=${ALICE_MULTIADDR}" \
+		"--bootnodes=${RELAYER_MULTIADDR}" \
 		"--contract-address=${CONTRACT_ADDR}"
 
 	start-swapd charlie \
@@ -147,7 +147,7 @@ start-daemons() {
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
 		--rpc-port 5002 \
-		"--bootnodes=${ALICE_MULTIADDR}" \
+		"--bootnodes=${RELAYER_MULTIADDR}" \
 		"--contract-address=${CONTRACT_ADDR}"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
@@ -167,7 +167,7 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m
+TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m -testify.m Test_Success_ClaimRelayer_P2p
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 

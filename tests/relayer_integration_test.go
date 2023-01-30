@@ -24,3 +24,8 @@ func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 		relayerCommission,
 	)
 }
+
+func (s *IntegrationTestSuite) Test_Success_ClaimRelayer_P2p() {
+	// use fake endpoint, this will cause the node to fallback to the p2p layer
+	s.testSuccessOneSwap(types.EthAssetETH, "http://127.0.0.1:9090", relayerCommission)
+}

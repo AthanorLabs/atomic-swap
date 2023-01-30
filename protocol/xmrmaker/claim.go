@@ -67,6 +67,13 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		// relayer endpoint is set, claim using relayer
 		// TODO: eventually update when relayer discovery is implemented
 		txHash, err = s.claimRelayer()
+		if err != nil {
+			log.Warnf("failed to claim using relayer at %s, trying relayers via p2p: err: %s",
+				s.offerExtra.RelayerEndpoint,
+				err,
+			)
+			txHash, err = s.discoverRelayersAndClaim()
+		}
 	} else if ethBalance.Uint64() == 0 {
 		txHash, err = s.discoverRelayersAndClaim()
 	} else {
@@ -101,6 +108,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	return txHash, nil
 }
 
+// discoverRelayersAndClaim discovers available relayers on the network,
 func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 	relayers, err := s.Backend.DiscoverRelayers()
 	if err != nil {
@@ -131,7 +139,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 	for _, relayer := range relayers {
 		resp, err := s.Backend.SubmitTransactionToRelayer(relayer, req)
 		if err != nil {
-			log.Warnf("failed to submit tx to relayer with peer ID %s, trying next relayer", relayer)
+			log.Warnf("failed to submit tx to relayer with peer ID %s, trying next relayer: err: %s", relayer, err)
 			continue
 		}
 
@@ -161,7 +169,7 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 	)
 }
 
-// claimRelayer claims the ETH funds via relayer.
+// claimRelayer claims the ETH funds via relayer RPC endpoint.
 func claimRelayer(
 	ctx context.Context,
 	sk *ecdsa.PrivateKey,

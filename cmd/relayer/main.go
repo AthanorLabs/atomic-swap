@@ -348,7 +348,7 @@ func setupNetwork(
 		Port:       uint16(c.Uint(flagLibp2pPort)),
 		KeyFile:    libp2pKey,
 		Bootnodes:  bootnodes,
-		ProtocolID: fmt.Sprintf("/%s/%d/%s", swapnet.ProtocolID, chainID.Int64(), net.ProtocolID),
+		ProtocolID: fmt.Sprintf("%s/%d", swapnet.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
 	}
 

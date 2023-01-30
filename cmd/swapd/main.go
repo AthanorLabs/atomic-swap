@@ -425,7 +425,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		Port:       libp2pPort,
 		KeyFile:    libp2pKey,
 		Bootnodes:  cfg.Bootnodes,
-		ProtocolID: fmt.Sprintf("/%s/%s/%d", net.ProtocolID, env.String(), chainID.Int64()),
+		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
 	}
 
