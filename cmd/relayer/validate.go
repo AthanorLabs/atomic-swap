@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/athanorlabs/atomic-swap/coins"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	rcommon "github.com/athanorlabs/go-relayer/common"
-
 	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+
+	"github.com/athanorlabs/atomic-swap/coins"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
 var (

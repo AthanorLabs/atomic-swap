@@ -12,6 +12,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	rcommon "github.com/athanorlabs/go-relayer/common"
@@ -253,18 +254,34 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 }
 
 func TestCalculateRelayerCommissionValue(t *testing.T) {
-	swapValueEther, _, err := apd.NewFromString("4.567")
-	require.NoError(t, err)
-
+	swapValueEther := coins.StrToDecimal("4.567")
 	swapValueWei := coins.EtherToWei(swapValueEther).BigInt()
 	require.Equal(t, "4567000000000000000", swapValueWei.Text(10))
 
-	commissionRate, _, err := apd.NewFromString("0.01398")
-	require.NoError(t, err)
+	commissionRate := coins.StrToDecimal("0.01398")
+	const expectedCommissionETH = "0.06384666" // 4.567 * 0.01398
 
-	expectedCommission := "0.06384666"
-
-	val, err := calculateRelayerCommission(swapValueWei, commissionRate)
+	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
 	require.NoError(t, err)
-	require.Equal(t, expectedCommission, coins.NewWeiAmount(val).AsEther().Text('f'))
+	require.Equal(t, expectedCommissionETH, coins.NewWeiAmount(fee).AsEther().Text('f'))
+}
+
+func TestCalculateRelayerCommissionValue_roundUp(t *testing.T) {
+	commissionRate := coins.StrToDecimal("0.10")
+	swapValueWei := big.NewInt(9999999995)     // 10% is 999999999.5
+	const expectedCommissionWei = "1000000000" // ceil(999999999.5)
+
+	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
+	require.NoError(t, err)
+	assert.Equal(t, expectedCommissionWei, fee.String())
+}
+
+func TestCalculateRelayerCommissionValue_roundDown(t *testing.T) {
+	commissionRate := coins.StrToDecimal("0.10")
+	swapValueWei := big.NewInt(9999999994)    // 10% is 999999999.4
+	const expectedCommissionWei = "999999999" // floor(999999999.4)
+
+	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
+	require.NoError(t, err)
+	assert.Equal(t, expectedCommissionWei, fee.String())
 }
