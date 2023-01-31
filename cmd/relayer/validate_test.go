@@ -5,11 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
+
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
 func TestValidateRelayerFee(t *testing.T) {

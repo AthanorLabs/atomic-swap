@@ -178,7 +178,7 @@ func (a *WeiAmount) BigInt() *big.Int {
 	if err != nil {
 		panic(err)
 	}
-	if cond.Rounded() {
+	if cond.Inexact() {
 		// We round when converting from Ether to Wei, so we shouldn't see this
 		log.Warnf("converting WeiAmount=%s to big.Int required rounding", a.String())
 	}
@@ -252,7 +252,7 @@ func (a *ERC20TokenAmount) BigInt() *big.Int {
 	if err != nil {
 		panic(err)
 	}
-	if cond.Rounded() {
+	if cond.Inexact() {
 		log.Warn("Converting ERC20TokenAmount=%s (digits=%d) to big.Int required rounding", a.amount, a.numDecimals)
 	}
 	return new(big.Int).SetBytes(wholeTokenUnits.Coeff.Bytes())
