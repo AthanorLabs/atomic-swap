@@ -33,12 +33,16 @@ func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 func (s *IntegrationTestSuite) TestXMRMaker_DiscoverRelayer() {
 	ctx := context.Background()
 	c := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
+	// the sleep for 30 seconds here is because the integration tests start the relayer first,
+	// but since it has no peers, it's unable to advertise in the DHT.
+	// the next time it'll advertise is after 30 seconds, so this is needed
+	// when running this test alone so that the relayer has enough time
+	// to try advertising again.
 	time.Sleep(time.Second * 30)
 
 	// see https://github.com/AthanorLabs/go-relayer/blob/master/net/host.go#L20
 	peerIDs, err := c.Discover("", defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
-	s.T().Log(len(peerIDs))
 	peerIDs, err = c.Discover("isrelayer", defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))

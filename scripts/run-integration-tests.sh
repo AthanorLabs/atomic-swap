@@ -167,7 +167,7 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m -testify.m TestXMRMaker_DiscoverRelayer
+TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 
