@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
@@ -138,8 +137,8 @@ func (h *Host) Advertise(strs []string) {
 
 // Discover searches the DHT for peers that advertise that they provide the given coin..
 // It searches for up to `searchTime` duration of time.
-func (h *Host) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
-	return h.h.Discover(string(provides), searchTime)
+func (h *Host) Discover(provides string, searchTime time.Duration) ([]peer.ID, error) {
+	return h.h.Discover(provides, searchTime)
 }
 
 // AddrInfo returns the host's AddrInfo.

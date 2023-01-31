@@ -1,8 +1,13 @@
 package tests
 
 import (
+	"context"
+	"time"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -23,6 +28,20 @@ func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 		defaultRelayerEndpoint,
 		relayerCommission,
 	)
+}
+
+func (s *IntegrationTestSuite) TestXMRMaker_DiscoverRelayer() {
+	ctx := context.Background()
+	c := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
+	time.Sleep(time.Second * 30)
+
+	// see https://github.com/AthanorLabs/go-relayer/blob/master/net/host.go#L20
+	peerIDs, err := c.Discover("", defaultDiscoverTimeout)
+	require.NoError(s.T(), err)
+	s.T().Log(len(peerIDs))
+	peerIDs, err = c.Discover("isrelayer", defaultDiscoverTimeout)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), 1, len(peerIDs))
 }
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer_P2p() {

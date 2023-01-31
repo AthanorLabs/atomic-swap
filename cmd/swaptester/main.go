@@ -340,7 +340,7 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	defer wsc.Close()
 
 	const defaultDiscoverTimeout = uint64(3) // 3s
-	peerIDs, err := wsc.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := wsc.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	if err != nil {
 		d.errCh <- err
 		return
