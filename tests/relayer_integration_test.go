@@ -41,9 +41,7 @@ func (s *IntegrationTestSuite) TestXMRMaker_DiscoverRelayer() {
 	time.Sleep(time.Second * 30)
 
 	// see https://github.com/AthanorLabs/go-relayer/blob/master/net/host.go#L20
-	peerIDs, err := c.Discover("", defaultDiscoverTimeout)
-	require.NoError(s.T(), err)
-	peerIDs, err = c.Discover("isrelayer", defaultDiscoverTimeout)
+	peerIDs, err := c.Discover("isrelayer", defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
 }

@@ -25,8 +25,8 @@ const (
 
 var log = logging.Logger("host")
 
-// P2pnetHost contains libp2p functionality used by the Host.
-type P2pnetHost interface {
+// P2pHost contains libp2p functionality used by the Host.
+type P2pHost interface {
 	Start() error
 	Stop() error
 
@@ -49,7 +49,7 @@ type P2pnetHost interface {
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
 	ctx     context.Context
-	h       P2pnetHost
+	h       P2pHost
 	handler Handler
 
 	// swap instance info
@@ -74,7 +74,7 @@ func NewHost(cfg *p2pnet.Config) (*Host, error) {
 }
 
 // P2pHost returns the underlying go-p2p-net host.
-func (h *Host) P2pHost() P2pnetHost {
+func (h *Host) P2pHost() P2pHost {
 	return h.h
 }
 
