@@ -40,13 +40,13 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 	}
 
-	ethBalance, err := s.ETHClient().Balance(s.ctx)
+	weiBalance, err := s.ETHClient().Balance(s.ctx)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		log.Infof("balance before claim: %s ETH", coins.NewWeiAmount(ethBalance).AsEther())
+		log.Infof("balance before claim: %s ETH", coins.NewWeiAmount(weiBalance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
@@ -65,7 +65,6 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	if s.offerExtra.RelayerEndpoint != "" {
 		// relayer endpoint is set, claim using relayer
-		// TODO: eventually update when relayer discovery is implemented
 		txHash, err = s.claimRelayer()
 		if err != nil {
 			log.Warnf("failed to claim using relayer at %s, trying relayers via p2p: err: %s",
@@ -74,7 +73,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 			)
 			txHash, err = s.discoverRelayersAndClaim()
 		}
-	} else if ethBalance.Uint64() == 0 {
+	} else if weiBalance.Cmp(big.NewInt(0)) == 0 {
 		txHash, err = s.discoverRelayersAndClaim()
 	} else {
 		// claim and wait for tx to be included
@@ -115,7 +114,9 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{})
+	forwarderAddress, err := s.Contract().TrustedForwarder(
+		&bind.CallOpts{Context: s.ctx},
+	)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -214,10 +215,6 @@ func waitAndCheck(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Ha
 	receipt, err := block.WaitForReceipt(ctx, ec, txHash)
 	if err != nil {
 		return err
-	}
-
-	if receipt.Status == 0 {
-		return fmt.Errorf("transaction failed")
 	}
 
 	if len(receipt.Logs) == 0 {

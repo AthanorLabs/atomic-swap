@@ -434,7 +434,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 	d.host = host
-	rhost := setupRelayerNetwork(d.ctx, host.P2pHost())
+	relayerHost := setupRelayerNetwork(d.ctx, host.P2pHost())
 
 	dbCfg := &chaindb.Config{
 		DataDir: path.Join(cfg.DataDir, "db"),
@@ -462,7 +462,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		host,
 		ec,
 		sdb.RecoveryDB(),
-		rhost,
+		relayerHost,
 	)
 	if err != nil {
 		return err
