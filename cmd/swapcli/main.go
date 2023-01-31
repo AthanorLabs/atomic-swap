@@ -398,11 +398,6 @@ func runBalances(ctx *cli.Context) error {
 }
 
 func runDiscover(ctx *cli.Context) error {
-	// provides, err := providesStrToVal(ctx.String(flagProvides))
-	// if err != nil {
-	// 	return err
-	// }
-
 	c := newRRPClient(ctx)
 	provides := ctx.String(flagProvides)
 	peerIDs, err := c.Discover(provides, ctx.Uint64(flagSearchTime))
