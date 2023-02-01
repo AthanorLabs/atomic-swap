@@ -2,6 +2,7 @@
 
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
+./scripts/cleanup-test-processes.sh
 
 source "scripts/testlib.sh"
 start-monerod-regtest
