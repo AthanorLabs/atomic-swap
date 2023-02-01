@@ -2,6 +2,7 @@ package pricefeed
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"testing"
 
@@ -17,16 +18,21 @@ func init() {
 	logging.SetLogLevel("pricefeed", "debug")
 }
 
-func getMainnetEndpoint() string {
+func getMainnetEndpoint(t *testing.T) string {
 	endpoint := os.Getenv("ETH_MAINNET_ENDPOINT")
 	if endpoint == "" {
 		endpoint = mainnetEndpoint
 	}
+	eURL, err := url.Parse(endpoint)
+	require.NoError(t, err)
+	// path and fragments may have API keys, so don't log them
+	t.Logf("mainnet endpoint is %s://%s", eURL.Scheme, eURL.Host)
+
 	return endpoint
 }
 
 func TestGetETHUSDPrice_mainnet(t *testing.T) {
-	ec, err := ethclient.Dial(getMainnetEndpoint())
+	ec, err := ethclient.Dial(getMainnetEndpoint(t))
 	require.NoError(t, err)
 	defer ec.Close()
 
@@ -47,7 +53,7 @@ func TestGetETHUSDPrice_dev(t *testing.T) {
 }
 
 func TestGetXMRUSDPrice_mainnet(t *testing.T) {
-	ec, err := ethclient.Dial(getMainnetEndpoint())
+	ec, err := ethclient.Dial(getMainnetEndpoint(t))
 	require.NoError(t, err)
 	defer ec.Close()
 
