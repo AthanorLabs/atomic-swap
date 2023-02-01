@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ./monero-bin/
-          key: monero-download-${{ hashFiles('monero-bin/monerod', 'monero-bin/monero-wallet-rpc') }}
+          key: monero-download
 
       - name: Install monero
         if: steps.monero-download.outputs.cache-hit != 'true'
