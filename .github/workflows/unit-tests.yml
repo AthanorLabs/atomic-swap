@@ -44,7 +44,9 @@ jobs:
         id: monero-download
         uses: actions/cache@v3
         with:
-          path: ./monero-bin/
+          path: |
+            ./monero-bin
+            ./monero-x86_64-linux-gnu-*
           key: monero-download
 
       - name: Install monero
