@@ -142,8 +142,8 @@ start-daemons() {
 stop-daemons() {
 	stop-swapd charlie
 	stop-swapd bob
-	stop-swapd alice
 	stop-relayer
+	stop-swapd alice
 	stop-monerod-regtest
 	stop-ganache
 }

@@ -113,7 +113,7 @@ func deploySwapFactory(
 
 // writeContractAddressToFile writes the contract address to the given file
 func writeContractAddressToFile(filePath string, addresses *contractAddresses) error {
-	jsonData, err := json.MarshalIndent(addresses, "", "\t")
+	jsonData, err := json.MarshalIndent(addresses, "", "  ")
 	if err != nil {
 		return err
 	}
