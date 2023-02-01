@@ -21,6 +21,11 @@ var (
 	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
 )
 
+type contractAddresses struct {
+	SwapFactory ethcommon.Address `json:"swapFactory"`
+	Forwarder   ethcommon.Address `json:"forwarder"`
+}
+
 func getOrDeploySwapFactory(
 	ctx context.Context,
 	address ethcommon.Address,
@@ -79,37 +84,38 @@ func deploySwapFactory(
 
 	if (forwarderAddress == ethcommon.Address{}) {
 		// deploy forwarder contract as well
-		address, err := contracts.DeployGSNForwarderWithKey(ctx, ec, privkey)
+		var err error
+		forwarderAddress, err = contracts.DeployGSNForwarderWithKey(ctx, ec, privkey)
 		if err != nil {
 			return ethcommon.Address{}, nil, err
 		}
-		forwarderAddress = address
 	}
 
-	address, sf, err := contracts.DeploySwapFactoryWithKey(ctx, ec, privkey, forwarderAddress)
+	swapFactoryAddress, sf, err := contracts.DeploySwapFactoryWithKey(ctx, ec, privkey, forwarderAddress)
 	if err != nil {
 		return ethcommon.Address{}, nil, err
 	}
 
 	// store the contract address on disk
-	fp := path.Join(dataDir, "contract-address.json")
-	if err = writeContractAddressToFile(fp, address.String()); err != nil {
+	err = writeContractAddressToFile(
+		path.Join(dataDir, "contract-addresses.json"),
+		&contractAddresses{
+			SwapFactory: swapFactoryAddress,
+			Forwarder:   forwarderAddress,
+		},
+	)
+	if err != nil {
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	return address, sf, nil
+	return swapFactoryAddress, sf, nil
 }
 
 // writeContractAddressToFile writes the contract address to the given file
-func writeContractAddressToFile(fp, addr string) error {
-	bz, err := json.MarshalIndent(&struct {
-		ContractAddress string
-	}{
-		ContractAddress: addr,
-	}, "", "\t")
+func writeContractAddressToFile(filePath string, addresses *contractAddresses) error {
+	jsonData, err := json.MarshalIndent(addresses, "", "  ")
 	if err != nil {
 		return err
 	}
-
-	return os.WriteFile(filepath.Clean(fp), bz, 0600)
+	return os.WriteFile(filepath.Clean(filePath), jsonData, 0600)
 }

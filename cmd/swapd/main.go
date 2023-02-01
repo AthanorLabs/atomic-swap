@@ -14,6 +14,7 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 	p2pnet "github.com/athanorlabs/go-p2p-net"
+	rnet "github.com/athanorlabs/go-relayer/net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
@@ -30,7 +31,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/rpc"
-	rnet "github.com/athanorlabs/go-relayer/net"
 )
 
 const (

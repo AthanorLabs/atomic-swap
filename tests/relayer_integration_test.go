@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/stretchr/testify/require"
 )
 
 const (
