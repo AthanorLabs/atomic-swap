@@ -11,7 +11,7 @@ fi
 
 echo "Stopping any swapd instances"
 if "${pkill_cmd[@]}" '/swapd '; then
-	# If swapd instances were killed, give dependant monero-wallet-rpc instances
+	# If swapd instances were killed, give dependent monero-wallet-rpc instances
 	# some time to shutdown.
 	sleep 4 # Give time for wallet to shutdown
 fi
