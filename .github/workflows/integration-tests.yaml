@@ -42,9 +42,9 @@ jobs:
           restore-keys: ${{ runner.os }}-go-mod
 
       - name: Cache monero download
+        id: monero-download
         uses: actions/cache@v3
         with:
-          id: monero-download
           path: ./monero-bin/
           key: monero-download-${{ hashFiles('monero-bin/monerod', 'monero-bin/monero-wallet-rpc') }}
 
