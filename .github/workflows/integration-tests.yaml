@@ -41,17 +41,17 @@ jobs:
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-mod
 
-      - name: Cache monero download
-        id: monero-download
+      - name: Cache monero install
+        id: monero-install
         uses: actions/cache@v3
         with:
           path: |
             ./monero-bin
             ./monero-x86_64-linux-gnu-*
-          key: monero-download
+          key: monero-install
 
       - name: Install monero
-        if: steps.monero-download.outputs.cache-hit != 'true'
+        if: steps.monero-install.outputs.cache-hit != 'true'
         run: ./scripts/install-monero-linux.sh
 
       - name: Run build
