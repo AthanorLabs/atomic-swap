@@ -3,17 +3,23 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
+
+	"github.com/ChainSafe/chaindb"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
-
-	"github.com/ChainSafe/chaindb"
 )
 
 const (
 	offerPrefix = "offer"
 	swapPrefix  = "swap"
-	idLength    = 32
+	idLength    = len(types.Hash{})
+)
+
+var (
+	log = logging.Logger("db")
 )
 
 // Database is the persistent datastore used by swapd.
@@ -108,20 +114,24 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 
 	var offers []*types.Offer
 	for iter.Valid() {
-		key := iter.Key()
+		id := iter.Key()
 
-		// if the key becomes longer than 32, we're not iterating over offers
-		if len(key) > idLength {
+		// if the key/offerID becomes longer than 32, we're not iterating over offers
+		if len(id) > idLength {
 			break
 		}
 
 		encodedOffer := iter.Value()
 		offer, err := types.UnmarshalOffer(encodedOffer)
 		if err != nil {
-			return nil, err
+			log.Warnf("removing invalid offer with ID=0x%X from database: %s", id, err)
+			log.Warnf("invalid offer JSON was: %s", string(encodedOffer))
+			if err = db.offerTable.Del(id[:]); err != nil {
+				return nil, fmt.Errorf("failed to remove invalid offer from database: %w", err)
+			}
+		} else {
+			offers = append(offers, offer)
 		}
-
-		offers = append(offers, offer)
 		iter.Next()
 	}
 
@@ -186,10 +196,10 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 
 	var swaps []*swap.Info
 	for iter.Valid() {
-		key := iter.Key()
+		id := iter.Key()
 
 		// if the key becomes longer than 32, we're not iterating over swaps
-		if len(key) > idLength {
+		if len(id) > idLength {
 			break
 		}
 
@@ -197,10 +207,15 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 		encodedSwap := iter.Value()
 		s, err := swap.UnmarshalInfo(encodedSwap)
 		if err != nil {
-			return nil, err
+			log.Warnf("removing invalid swap info with offerID=0x%X from database: %s", id, err)
+			log.Warnf("invalid offer JSON was: %s", string(encodedSwap))
+			if err = db.swapTable.Del(id[:]); err != nil {
+				return nil, fmt.Errorf("failed to remove invalid offer from database: %w", err)
+			}
+		} else {
+			swaps = append(swaps, s)
 		}
 
-		swaps = append(swaps, s)
 		iter.Next()
 	}
 
