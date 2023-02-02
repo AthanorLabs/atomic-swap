@@ -12,13 +12,15 @@ import (
 )
 
 // EventType ...
+// TODO: Describe this so the reader understands the difference between an event and a status.
 type EventType byte
 
+// EventType values
 const (
-	EventKeysReceivedType EventType = iota //nolint:revive
+	EventKeysReceivedType EventType = iota
 	EventXMRLockedType
 	EventETHClaimedType
-	EventShouldRefundType
+	EventShouldRefundType // TODO: I can't find this used in the protocol
 	EventExitType
 	EventNoneType
 )
@@ -110,7 +112,7 @@ func newEventXMRLocked(msg *message.NotifyXMRLock) *EventXMRLocked {
 }
 
 // EventETHClaimed is the third expected event. It represents the ETH being claimed
-// tbyo the counterparty, and thus we can also claim the XMR.
+// by the counterparty, and thus we can also claim the XMR.
 type EventETHClaimed struct {
 	sk    *mcrypto.PrivateSpendKey
 	errCh chan error

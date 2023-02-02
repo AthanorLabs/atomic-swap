@@ -11,8 +11,9 @@ import (
 // EventType ...
 type EventType byte
 
+// ...
 const (
-	EventETHLockedType EventType = iota //nolint:revive
+	EventETHLockedType EventType = iota
 	EventContractReadyType
 	EventETHRefundedType
 	EventExitType
@@ -55,7 +56,7 @@ func (t EventType) getStatus() types.Status {
 	case EventContractReadyType:
 		return types.XMRLocked
 	default:
-		return types.UnknownStatus
+		return types.UnknownStatus // TODO: I think we need some kind of comment here
 	}
 }
 

@@ -4,11 +4,22 @@ package types
 // Status represents the stage that a swap is at.
 type Status byte
 
+// Status values
 const (
-	ExpectingKeys Status = iota //nolint:revive
+	// ExpectingKeys is the status of the XMR Taker between accepting an offer and receiving
+	// a response with keys from the XMR Maker. It is also the Maker's status after creating
+	// an offer up until receiving keys from a Taker accepting the offer.
+	ExpectingKeys Status = iota
+	// KeysExchanged is the status of the XMR Maker after an XMR Taker accepts his offer
 	KeysExchanged
+	// ETHLocked is the Taker status after locking her ETH up until confirming that the Maker
+	// locked his XMR.
 	ETHLocked
+	// XMRLocked is the XMR Maker's state after locking the XMR up until he confirms that the
+	// the Taker has set the contract to ready.
 	XMRLocked
+	// ContractReady is the XMR Taker state after verifying the locked XMR and setting the contract
+	// to ready.
 	ContractReady
 	// CompletedSuccess represents a successful swap.
 	CompletedSuccess
@@ -16,6 +27,8 @@ const (
 	CompletedRefund
 	// CompletedAbort represents the case where the swap aborts before any funds are locked.
 	CompletedAbort
+	// UnknownStatus is a placeholder for unmatched status strings.
+	// TODO: Why is it an indicator that a swap is ongoing?
 	UnknownStatus
 )
 
