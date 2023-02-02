@@ -13,12 +13,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
+// Identifiers for our p2p message types. The first byte of a message has the
+// identifier below telling us which type to decode the JSON message as.
 const (
-	QueryResponseType byte = iota //nolint
+	QueryResponseType byte = iota
 	SendKeysType
 	NotifyETHLockedType
 	NotifyXMRLockType
-	NilType
 )
 
 // TypeToString converts a message type into a string.
