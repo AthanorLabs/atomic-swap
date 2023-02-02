@@ -10,6 +10,9 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	rnet "github.com/athanorlabs/go-relayer/net"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -20,8 +23,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
-	rcommon "github.com/athanorlabs/go-relayer/common"
-	rnet "github.com/athanorlabs/go-relayer/net"
 )
 
 // MessageSender is implemented by a Host
