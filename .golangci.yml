@@ -59,7 +59,6 @@ linters:
     - staticcheck
     - unconvert
     - unparam
-    - varcheck
 
   fast: false
 
