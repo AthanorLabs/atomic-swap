@@ -21,7 +21,8 @@ lint: lint-go lint-shell lint-solidity
 
 .PHONY: format-go
 format-go:
-	go fmt ./...
+	test -x $(GOPATH)/bin/goimports || go install golang.org/x/tools/cmd/goimports@latest
+	$(GOPATH)/bin/goimports -local github.com/athanorlabs/atomic-swap -w .
 
 .PHONY: format-shell
 format-shell:
@@ -73,9 +74,9 @@ bindings:
 .PHONY: mock
 mock:
 	go generate -run mockgen ./...
+	$(MAKE) format-go
 
 # Deletes all executables matching the directory names in cmd/
 .PHONY: clean
 clean:
 	rm -r bin/
-	

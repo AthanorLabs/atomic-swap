@@ -40,10 +40,25 @@ jobs:
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-mod
 
+      - name: Cache monero install
+        id: monero-install
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./monero-bin
+            ./monero-x86_64-linux-gnu-*
+          key: monero-install
+
+      - name: Install monero
+        if: steps.monero-install.outputs.cache-hit != 'true'
+        run: ./scripts/install-monero-linux.sh
+
       - name: Run build
         run: make build
         
       - name: Run unit tests
+        env:
+          ETH_MAINNET_ENDPOINT: ${{ secrets.ETH_MAINNET_ENDPOINT }}
         run: ./scripts/run-unit-tests.sh
 
       - name: Run coverage
