@@ -22,6 +22,7 @@ var (
 	errRelayerCommissionRateTooHigh = errors.New("relayer commission must be less than 0.1 (10%)")
 	errInvalidT0                    = errors.New("invalid t0 value; asset was locked too far in the past")
 	errInvalidT1                    = errors.New("invalid swap timeout set by counterparty")
+	errRelayedTransactionTimeout    = errors.New("relayed transaction was not included within one minute")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

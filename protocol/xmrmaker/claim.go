@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -18,7 +20,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
@@ -211,8 +212,42 @@ func claimRelayer(
 }
 
 func waitAndCheck(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Hash) error {
+	waitDuration := time.Second
+	maxNotFound := 5
+	start := time.Now()
+
+	var notFoundCount int
 	// wait for inclusion
-	receipt, err := block.WaitForReceipt(ctx, ec, txHash)
+	for {
+		// sleep before the first check, b/c we want to give the tx some time to propagate
+		// into the node we're using
+		err := common.SleepWithContext(ctx, waitDuration)
+		if err != nil {
+			return err
+		}
+
+		_, isPending, err := ec.TransactionByHash(ctx, txHash)
+		if err != nil {
+			// allow up to 5 NotFound errors, in case there's some network problems
+			if errors.Is(err, ethereum.NotFound) && notFoundCount != maxNotFound {
+				notFoundCount++
+				continue
+			}
+
+			return err
+		}
+
+		if time.Since(start) > time.Minute {
+			// the tx is taking too long, return an error so we try with another relayer
+			return errRelayedTransactionTimeout
+		}
+
+		if !isPending {
+			break
+		}
+	}
+
+	receipt, err := ec.TransactionReceipt(ctx, txHash)
 	if err != nil {
 		return err
 	}
