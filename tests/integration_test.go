@@ -222,7 +222,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 
 	// TODO: implement discovery over websockets (#97)
 	// this sleep was added for running the test independently, as it needs
-	// a small amount of extra time to advertise.
+	// a small amount of extra time for the offer advertisement to propagate.
 	time.Sleep(time.Second * 3)
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
