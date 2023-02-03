@@ -3,7 +3,7 @@ package db
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 
 	"github.com/ChainSafe/chaindb"
 	logging "github.com/ipfs/go-log"
@@ -97,7 +97,8 @@ func (db *Database) DeleteOffer(id types.Hash) error {
 	return db.offerTable.Del(id[:])
 }
 
-// GetOffer returns the given offer from the db, if it exists.
+// GetOffer returns the given offer from the db, if it exists. Returns
+// the error chaindb.ErrKeyNotFound if the entry does not exist.
 func (db *Database) GetOffer(id types.Hash) (*types.Offer, error) {
 	val, err := db.offerTable.Get(id[:])
 	if err != nil {
@@ -105,6 +106,29 @@ func (db *Database) GetOffer(id types.Hash) (*types.Offer, error) {
 	}
 
 	return types.UnmarshalOffer(val)
+}
+
+// purgeInvalidOffer purges an offer after its JSON entry failed to decode when GetAllOffers
+// is called on start. We also purge any swap entry with the same offer ID.
+func (db *Database) purgeInvalidOffer(id []byte, encodedOffer string, reasonErr error) error {
+	log.Warnf("removing invalid offer with ID=0x%X from database: %s", id, reasonErr)
+	log.Warnf("invalid offer JSON was: %s", encodedOffer)
+	if err := db.offerTable.Del(id[:]); err != nil {
+		return err
+	}
+	swapEncoded, err := db.swapTable.Get(id[:])
+	if err != nil {
+		if errors.Is(chaindb.ErrKeyNotFound, err) {
+			return nil // no swap entry to remove, we are done
+		}
+		return err
+	}
+	log.Warnf("removing invalid offer's swap entry: %s", swapEncoded)
+	if err := db.swapTable.Del(id[:]); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetAllOffers returns all offers in the database.
@@ -124,10 +148,8 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 		encodedOffer := iter.Value()
 		offer, err := types.UnmarshalOffer(encodedOffer)
 		if err != nil {
-			log.Warnf("removing invalid offer with ID=0x%X from database: %s", id, err)
-			log.Warnf("invalid offer JSON was: %s", string(encodedOffer))
-			if err = db.offerTable.Del(id[:]); err != nil {
-				return nil, fmt.Errorf("failed to remove invalid offer from database: %w", err)
+			if err = db.purgeInvalidOffer(id, string(encodedOffer), err); err != nil {
+				return nil, err
 			}
 		} else {
 			offers = append(offers, offer)
@@ -172,8 +194,8 @@ func (db *Database) HasSwap(id types.Hash) (bool, error) {
 	return db.swapTable.Has(id[:])
 }
 
-// GetSwap returns a swap with the given ID, if it exists.
-// It returns an error if it doesn't exist.
+// GetSwap returns a swap with the given ID, if it exists. Returns
+// // the error chaindb.ErrKeyNotFound if the entry does not exist.
 func (db *Database) GetSwap(id types.Hash) (*swap.Info, error) {
 	value, err := db.swapTable.Get(id[:])
 	if err != nil {
@@ -207,10 +229,10 @@ func (db *Database) GetAllSwaps() ([]*swap.Info, error) {
 		encodedSwap := iter.Value()
 		s, err := swap.UnmarshalInfo(encodedSwap)
 		if err != nil {
-			log.Warnf("removing invalid swap info with offerID=0x%X from database: %s", id, err)
-			log.Warnf("invalid offer JSON was: %s", string(encodedSwap))
+			log.Warnf("removing invalid swap info with offerID=0x%X: %s", id, err)
+			log.Warnf("invalid swap info JSON was: %s", string(encodedSwap))
 			if err = db.swapTable.Del(id[:]); err != nil {
-				return nil, fmt.Errorf("failed to remove invalid offer from database: %w", err)
+				return nil, err
 			}
 		} else {
 			swaps = append(swaps, s)

@@ -63,8 +63,8 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 	defer func() { require.NoError(t, db.Close()) }()
 
 	// Put a bad offer that won't deserialize in the database
-	badOfferKey := types.Hash{0x1, 0x2, 0x3}
-	err = db.offerTable.Put(badOfferKey[:], []byte(`{"key":"value"}`))
+	badOfferID := types.Hash{0x1, 0x2, 0x3}
+	err = db.offerTable.Put(badOfferID[:], []byte(`{"key":"value"}`))
 	require.NoError(t, err)
 
 	// Put a good offer in the database
@@ -78,12 +78,24 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 	err = db.PutOffer(goodOffer)
 	require.NoError(t, err)
 
+	// Put a swap entry tied to the bad offer in the database
+	swapEntry := &swap.Info{
+		ID:       badOfferID,
+		Provides: coins.ProvidesXMR,
+	}
+	err = db.PutSwap(swapEntry)
+	require.NoError(t, err)
+
 	// Establish a baseline that both the good and bad entries exist before calling GetAllOffers
 	exists, err := db.offerTable.Has(goodOffer.ID[:])
 	require.NoError(t, err)
 	require.True(t, exists)
 
-	exists, err = db.offerTable.Has(badOfferKey[:])
+	exists, err = db.offerTable.Has(badOfferID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	exists, err = db.swapTable.Has(badOfferID[:])
 	require.NoError(t, err)
 	require.True(t, exists)
 
@@ -98,9 +110,13 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, exists)
 
-	exists, err = db.offerTable.Has(badOfferKey[:])
+	exists, err = db.offerTable.Has(badOfferID[:])
 	require.NoError(t, err)
-	require.False(t, exists) // entry was pruned
+	require.False(t, exists) // offer entry was pruned
+
+	exists, err = db.swapTable.Has(badOfferID[:])
+	require.NoError(t, err)
+	require.False(t, exists) // swap info tied to removed offer pruned
 }
 
 func TestDatabase_SwapTable(t *testing.T) {
