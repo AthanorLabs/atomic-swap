@@ -148,6 +148,8 @@ func (db *Database) GetAllOffers() ([]*types.Offer, error) {
 		encodedOffer := iter.Value()
 		offer, err := types.UnmarshalOffer(encodedOffer)
 		if err != nil {
+			// Assuming logging and purging succeeds, don't propagate the error up,
+			// so swapd can continue running.
 			if err = db.purgeInvalidOffer(id, string(encodedOffer), err); err != nil {
 				return nil, err
 			}
@@ -195,7 +197,7 @@ func (db *Database) HasSwap(id types.Hash) (bool, error) {
 }
 
 // GetSwap returns a swap with the given ID, if it exists. Returns
-// // the error chaindb.ErrKeyNotFound if the entry does not exist.
+// the error chaindb.ErrKeyNotFound if the entry does not exist.
 func (db *Database) GetSwap(id types.Hash) (*swap.Info, error) {
 	value, err := db.swapTable.Get(id[:])
 	if err != nil {
