@@ -2,14 +2,14 @@ package protocol
 
 import (
 	"fmt"
-	"strings"
+	//"strings"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
+	//"github.com/ethereum/go-ethereum/accounts/abi"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -45,24 +45,31 @@ func AssetSymbol(b backend.Backend, asset types.EthAsset) (string, error) {
 }
 
 // CheckSwapID checks if the given log is for the given swap ID.
-func CheckSwapID(log *ethtypes.Log, eventName string, contractSwapID types.Hash) error {
-	abiSF, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
-	if err != nil {
-		return err
-	}
+func CheckSwapID(log *ethtypes.Log, eventNameTopic [32]byte, contractSwapID types.Hash) error {
+	// abiSF, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
+	// if err != nil {
+	// 	return err
+	// }
 
-	data := log.Data
-	res, err := abiSF.Unpack(eventName, data)
-	if err != nil {
-		return err
-	}
+	// data := log.Data
+	// res, err := abiSF.Unpack(eventName, data)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if len(res) < 1 {
+	// if len(res) < 1 {
+	// 	return errLogMissingParams
+	// }
+
+	if len(log.Topics) < 2 {
 		return errLogMissingParams
 	}
 
-	swapID := res[0].([32]byte)
-	if swapID != contractSwapID {
+	if log.Topics[0] != eventNameTopic {
+		return errInvalidEventTopic
+	}
+
+	if log.Topics[1] != contractSwapID {
 		return ErrLogNotForUs
 	}
 
