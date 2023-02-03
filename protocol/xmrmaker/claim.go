@@ -145,7 +145,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 			continue
 		}
 
-		err = waitAndCheck(s.ctx, s.ETHClient().Raw(), resp.TxHash)
+		err = waitForClaimReceipt(s.ctx, s.ETHClient().Raw(), resp.TxHash)
 		if err != nil {
 			log.Warnf("tx %s submitted by relayer with peer ID %s failed, trying next relayer", resp.TxHash, relayer)
 			continue
@@ -203,7 +203,7 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	err = waitAndCheck(ctx, ec, txHash)
+	err = waitForClaimReceipt(ctx, ec, txHash)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -211,9 +211,13 @@ func claimRelayer(
 	return txHash, nil
 }
 
-func waitAndCheck(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Hash) error {
-	waitDuration := time.Second
-	maxNotFound := 5
+func waitForClaimReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Hash) error {
+	const (
+		checkInterval = time.Second // time between transaction polls
+		maxWait       = time.Minute // max wait for the tx to be included in a block
+		maxNotFound   = 5           // max failures where the tx is not even found in the mempool
+	)
+
 	start := time.Now()
 
 	var notFoundCount int
@@ -221,15 +225,15 @@ func waitAndCheck(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Ha
 	for {
 		// sleep before the first check, b/c we want to give the tx some time to propagate
 		// into the node we're using
-		err := common.SleepWithContext(ctx, waitDuration)
+		err := common.SleepWithContext(ctx, checkInterval)
 		if err != nil {
 			return err
 		}
 
-		_, isPending, err := ec.TransactionByHash(ctx, txHash)
+		tx, isPending, err := ec.TransactionByHash(ctx, txHash)
 		if err != nil {
 			// allow up to 5 NotFound errors, in case there's some network problems
-			if errors.Is(err, ethereum.NotFound) && notFoundCount != maxNotFound {
+			if errors.Is(err, ethereum.NotFound) && notFoundCount >= maxNotFound {
 				notFoundCount++
 				continue
 			}
@@ -237,7 +241,12 @@ func waitAndCheck(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Ha
 			return err
 		}
 
-		if time.Since(start) > time.Minute {
+		err = checkTxCalldata(tx.Data())
+		if err != nil {
+			return err
+		}
+
+		if time.Since(start) > maxWait {
 			// the tx is taking too long, return an error so we try with another relayer
 			return errRelayedTransactionTimeout
 		}
@@ -302,4 +311,60 @@ func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal
 	}
 
 	return coins.ToWeiAmount(feeValue).BigInt(), nil
+}
+
+var (
+	uint256Ty, _ = abi.NewType("uint256", "", nil)
+	bytes32Ty, _ = abi.NewType("bytes32", "", nil)
+	addressTy, _ = abi.NewType("address", "", nil)
+	arguments    = abi.Arguments{
+		{
+			Name: "owner",
+			Type: addressTy,
+		},
+		{
+			Name: "claimer",
+			Type: addressTy,
+		},
+		{
+			Name: "pubKeyClaim",
+			Type: bytes32Ty,
+		},
+		{
+			Name: "pubKeyRefund",
+			Type: bytes32Ty,
+		},
+		{
+			Name: "timeout0",
+			Type: uint256Ty,
+		},
+		{
+			Name: "timeout1",
+			Type: uint256Ty,
+		},
+		{
+			Name: "asset",
+			Type: addressTy,
+		},
+		{
+			Name: "value",
+			Type: uint256Ty,
+		},
+		{
+			Name: "nonce",
+			Type: uint256Ty,
+		},
+		{
+			Name: "_s",
+			Type: bytes32Ty,
+		},
+		{
+			Name: "fee",
+			Type: uint256Ty,
+		},
+	}
+)
+
+func checkTxCalldata(data, expected []byte) error {
+
 }
