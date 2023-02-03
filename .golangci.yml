@@ -11,6 +11,12 @@ linters-settings:
   govet:
     # report about shadowed variables
     check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment
+
+  goimports:
+    local-prefixes: github.com/athanorlabs/atomic-swap
 
   maligned:
     # print struct with more effective memory layout or not, false by default
@@ -37,13 +43,14 @@ linters-settings:
 
 linters:
   enable:
+    - bidichk
     - bodyclose
     - depguard
     - errcheck
+    - exportloopref
     - goconst
     - gocyclo
     - gofmt
-    - goimports
     - goimports
     - goprintffuncname
     - gosec
@@ -52,13 +59,16 @@ linters:
     - ineffassign
     - lll
     - megacheck
-    - megacheck
     - misspell
     - nolintlint
+    - predeclared
     - revive
     - staticcheck
+    - typecheck
     - unconvert
     - unparam
+    - unused
+    - usestdlibvars
 
   fast: false
 
