@@ -33,6 +33,7 @@ import (
 
 var (
 	readyTopic    = common.GetTopic(common.ReadyEventSignature)
+	claimedTopic  = common.GetTopic(common.ClaimedEventSignature)
 	refundedTopic = common.GetTopic(common.RefundedEventSignature)
 )
 

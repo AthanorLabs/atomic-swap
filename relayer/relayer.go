@@ -182,7 +182,7 @@ func createSubmitTransactionRequest(
 		Nonce:           req.Nonce,
 		Data:            req.Data,
 		Signature:       sig,
-		ValidUntilTime:  big.NewInt(0),
+		ValidUntilTime:  req.ValidUntilTime,
 		DomainSeparator: domainSeparator,
 		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
 	}, nil

@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -145,7 +146,14 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 			continue
 		}
 
-		err = waitForClaimReceipt(s.ctx, s.ETHClient().Raw(), resp.TxHash)
+		err = waitForClaimReceipt(
+			s.ctx,
+			s.ETHClient().Raw(),
+			resp.TxHash,
+			s.contractAddr,
+			s.contractSwapID,
+			s.getSecret(),
+		)
 		if err != nil {
 			log.Warnf("tx %s submitted by relayer with peer ID %s failed, trying next relayer", resp.TxHash, relayer)
 			continue
@@ -167,6 +175,7 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 		s.offerExtra.RelayerEndpoint,
 		s.offerExtra.RelayerCommission,
 		&s.contractSwap,
+		s.contractSwapID,
 		s.getSecret(),
 	)
 }
@@ -181,7 +190,7 @@ func claimRelayer(
 	relayerEndpoint string,
 	relayerCommission *apd.Decimal,
 	contractSwap *contracts.SwapFactorySwap,
-	secret [32]byte,
+	contractSwapID, secret [32]byte,
 ) (ethcommon.Hash, error) {
 	forwarderAddress, err := contract.TrustedForwarder(&bind.CallOpts{})
 	if err != nil {
@@ -203,7 +212,14 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	err = waitForClaimReceipt(ctx, ec, txHash)
+	err = waitForClaimReceipt(
+		ctx,
+		ec,
+		txHash,
+		contractAddr,
+		contractSwapID,
+		secret,
+	)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -211,7 +227,13 @@ func claimRelayer(
 	return txHash, nil
 }
 
-func waitForClaimReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.Hash) error {
+func waitForClaimReceipt(
+	ctx context.Context,
+	ec *ethclient.Client,
+	txHash ethcommon.Hash,
+	contractAddr ethcommon.Address,
+	contractSwapID, secret [32]byte,
+) error {
 	const (
 		checkInterval = time.Second // time between transaction polls
 		maxWait       = time.Minute // max wait for the tx to be included in a block
@@ -230,7 +252,7 @@ func waitForClaimReceipt(ctx context.Context, ec *ethclient.Client, txHash ethco
 			return err
 		}
 
-		tx, isPending, err := ec.TransactionByHash(ctx, txHash)
+		_, isPending, err := ec.TransactionByHash(ctx, txHash)
 		if err != nil {
 			// allow up to 5 NotFound errors, in case there's some network problems
 			if errors.Is(err, ethereum.NotFound) && notFoundCount >= maxNotFound {
@@ -238,11 +260,6 @@ func waitForClaimReceipt(ctx context.Context, ec *ethclient.Client, txHash ethco
 				continue
 			}
 
-			return err
-		}
-
-		err = checkTxCalldata(tx.Data())
-		if err != nil {
 			return err
 		}
 
@@ -263,6 +280,30 @@ func waitForClaimReceipt(ctx context.Context, ec *ethclient.Client, txHash ethco
 
 	if len(receipt.Logs) == 0 {
 		return fmt.Errorf("claim transaction had no logs")
+	}
+
+	return checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret)
+}
+
+func checkClaimedLog(log *ethtypes.Log, contractAddr ethcommon.Address, contractSwapID, secret [32]byte) error {
+	if log.Address != contractAddr {
+		return errClaimedLogInvalidContractAddr
+	}
+
+	if len(log.Topics) != 3 {
+		return errClaimedLogWrongTopicLength
+	}
+
+	if log.Topics[0] != claimedTopic {
+		return errClaimedLogWrongEvent
+	}
+
+	if log.Topics[1] != contractSwapID {
+		return errClaimedLogWrongSwapID
+	}
+
+	if log.Topics[2] != secret {
+		return errClaimedLogWrongSecret
 	}
 
 	return nil
@@ -311,60 +352,4 @@ func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal
 	}
 
 	return coins.ToWeiAmount(feeValue).BigInt(), nil
-}
-
-var (
-	uint256Ty, _ = abi.NewType("uint256", "", nil)
-	bytes32Ty, _ = abi.NewType("bytes32", "", nil)
-	addressTy, _ = abi.NewType("address", "", nil)
-	arguments    = abi.Arguments{
-		{
-			Name: "owner",
-			Type: addressTy,
-		},
-		{
-			Name: "claimer",
-			Type: addressTy,
-		},
-		{
-			Name: "pubKeyClaim",
-			Type: bytes32Ty,
-		},
-		{
-			Name: "pubKeyRefund",
-			Type: bytes32Ty,
-		},
-		{
-			Name: "timeout0",
-			Type: uint256Ty,
-		},
-		{
-			Name: "timeout1",
-			Type: uint256Ty,
-		},
-		{
-			Name: "asset",
-			Type: addressTy,
-		},
-		{
-			Name: "value",
-			Type: uint256Ty,
-		},
-		{
-			Name: "nonce",
-			Type: uint256Ty,
-		},
-		{
-			Name: "_s",
-			Type: bytes32Ty,
-		},
-		{
-			Name: "fee",
-			Type: uint256Ty,
-		},
-	}
-)
-
-func checkTxCalldata(data, expected []byte) error {
-
 }

@@ -233,6 +233,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		relayerEndpoint,
 		relayerCommission,
 		&swap,
+		id,
 		s,
 	)
 	require.NoError(t, err)
