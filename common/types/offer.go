@@ -49,6 +49,13 @@ func NewOffer(
 		panic(err)
 	}
 
+	// We want the coefficients of apd decimals to be reduced before computing the
+	// hash at the end. Otherwise an apd value like apd.New(10, -2) will print 0.10
+	// instead of 0.1. The reduced form is apd.New(1, -1).
+	_, _ = minAmount.Reduce(minAmount)
+	_, _ = maxAmount.Reduce(maxAmount)
+	_, _ = exRate.Decimal().Reduce(exRate.Decimal())
+
 	offer := &Offer{
 		Version:      *CurOfferVersion,
 		Provides:     coin,
