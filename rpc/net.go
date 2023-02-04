@@ -23,7 +23,7 @@ type Net interface {
 	PeerID() peer.ID
 	ConnectedPeers() []string
 	Addresses() []string
-	Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error)
+	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*message.QueryResponse, error)
 	Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error
 	CloseProtocolStream(types.Hash)

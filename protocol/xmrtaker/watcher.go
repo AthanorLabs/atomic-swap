@@ -24,7 +24,7 @@ func (s *swapState) runContractEventWatcher() {
 }
 
 func (s *swapState) handleClaimedLogs(l *ethtypes.Log) error {
-	err := pcommon.CheckSwapID(l, "Claimed", s.contractSwapID)
+	err := pcommon.CheckSwapID(l, claimedTopic, s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (s *swapState) handleClaimedLogs(l *ethtypes.Log) error {
 		return err
 	}
 
-	sk, err := contracts.GetSecretFromLog(l, "Claimed")
+	sk, err := contracts.GetSecretFromLog(l, claimedTopic)
 	if err != nil {
 		return err
 	}

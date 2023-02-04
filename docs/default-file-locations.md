@@ -59,7 +59,7 @@ It is safe to delete this directory if `swapd` is not running.
 
 Stores information on a swap when it reaches the stage where ethereum is locked.
 
-### {DATA_DIR}/contract-address.json
+### {DATA_DIR}/contract-addresses.json
 
 Only written when `--deploy` is passed to swapd. This file stores the address
 that the contract was deployed to along with other data.

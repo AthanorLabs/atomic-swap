@@ -180,7 +180,7 @@ func (a *WeiAmount) BigInt() *big.Int {
 	}
 	if cond.Inexact() {
 		// We round when converting from Ether to Wei, so we shouldn't see this
-		log.Warn("Converting WeiAmount=%s to big.Int required rounding", a)
+		log.Warnf("converting WeiAmount=%s to big.Int required rounding", a.String())
 	}
 	return new(big.Int).SetBytes(wholeWeiVal.Coeff.Bytes())
 }
