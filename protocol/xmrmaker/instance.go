@@ -127,12 +127,8 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
-	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
+	kp, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKeyPair(s.ID)
 	if err == nil {
-		kp, err := sharedKey.AsPrivateKeyPair() //nolint:govet
-		if err != nil {
-			return err
-		}
 		primaryCli := inst.backend.XMRClient()
 		destAddr := primaryCli.PrimaryAddress()
 		conf := primaryCli.CreateWalletConf("xmrmaker-swap-wallet-refund-ongoing")
@@ -159,7 +155,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.ID, err)
 	}
 
-	kp, err := sk.AsPrivateKeyPair()
+	kp, err = sk.AsPrivateKeyPair()
 	if err != nil {
 		return err
 	}

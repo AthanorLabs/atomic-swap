@@ -86,7 +86,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb := backend.NewMockRecoveryDB(ctrl)
 	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutSharedSwapPrivateKeyPair(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapRelayerInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
@@ -172,7 +172,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	require.NoError(t, err)
 
 	rdb.EXPECT().GetSwapRelayerInfo(s.ID).Return(nil, errors.New("some error"))
-	rdb.EXPECT().GetSharedSwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
+	rdb.EXPECT().GetSharedSwapPrivateKeyPair(s.ID).Return(nil, errors.New("some error"))
 	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),
