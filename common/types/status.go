@@ -30,7 +30,6 @@ const (
 	// are locked.
 	CompletedAbort
 	// UnknownStatus is a placeholder for unmatched status strings.
-	// TODO: Why is it an indicator that a swap is ongoing?
 	UnknownStatus
 )
 
@@ -112,8 +111,10 @@ func (s Status) Info() string {
 // IsOngoing returns true if the status means the swap has not completed
 func (s Status) IsOngoing() bool {
 	switch s {
-	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady, UnknownStatus:
+	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady:
 		return true
+	case UnknownStatus:
+		panic("swap should not have UnknownStatus")
 	default:
 		return false
 	}
