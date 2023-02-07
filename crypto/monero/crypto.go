@@ -160,11 +160,6 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	}, nil
 }
 
-// Hash returns the keccak256 of the secret key bytes
-func (k *PrivateSpendKey) Hash() [32]byte {
-	return crypto.Keccak256(k.key.Bytes())
-}
-
 // Bytes returns the PrivateSpendKey as canonical bytes
 func (k *PrivateSpendKey) Bytes() []byte {
 	return k.key.Bytes()
