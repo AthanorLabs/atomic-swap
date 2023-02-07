@@ -11,17 +11,53 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// EventType ...
-// TODO: Describe this so the reader understands the difference between an event and a status.
+// EventType represents an event that occurs which moves the swap
+// "state machine" to its next state.
 type EventType byte
 
-// EventType values
 const (
+	// EventKeysReceivedType is triggered when we receive the counterparty's
+	// swap keys, allowing us to initiate the swap on-chain.
+	// It causes us to lock our ETH (and store keys) in the smart contract.
+	// After this event, the other possible events are EventXMRLockedType
+	// (success path) or EventExitType (abort path).
 	EventKeysReceivedType EventType = iota
+
+	// EventXMRLockedType is triggered when we receive notice of the
+	// counterparty locking XMR for the swap.
+	// It causes us to set the contract to "ready" so that the counterparty
+	// can claim.
+	// After this event, the other possible events are EventETHClaimedType (success
+	// path), EventShouldRefundType (refund path), or EventExitType (refund path).
 	EventXMRLockedType
+
+	// EventETHClaimedType is triggered when the counterparty claims their
+	// ETH from the contract.
+	// It causes us to claim the XMR.
+	// After this event, the other possible event is EventExitType (success path).
 	EventETHClaimedType
-	EventShouldRefundType // TODO: I can't find this used in the protocol
+
+	// EventShouldRefundType is triggered when we should refund, either because we are
+	// reaching timeout0 and the counterparty hasn't locked XMR, or because we've reached
+	// timeout1 and the counterparty hasn't claimed.
+	// It causes us to refund our ETH from the contract.
+	// After this event, the other possible event is EventExitType (refund path).
+	// Note: this type is not actually used in the code, only the actually
+	// event `EventShouldRefund` is. This is left here for clarity.
+	EventShouldRefundType
+
+	// EventExitType is triggered by the protocol "exiting", which may
+	// happen via a swap cancellation via RPC endpoint, or from the
+	// counterparty disconnecting from us on the p2p network.
+	// It causes us to attempt to gracefully exit from the swap,
+	// which causes either an abort, refund, or claim, depending
+	// on the state we're currently in.
+	// No other events can occur after this.
 	EventExitType
+
+	// EventNoneType is set as the "nextExpectedEvent" once the swap
+	// has exited. It does not trigger any action.
+	// No other events can occur after this.
 	EventNoneType
 )
 
@@ -65,6 +101,8 @@ func (t EventType) getStatus() types.Status {
 	case EventETHClaimedType:
 		return types.ContractReady
 	default:
+		// the only possible nextExpectedEvents are EventXMRLockedType
+		// and EventETHClaimedType, so this case shouldn't be hit.
 		return types.UnknownStatus
 	}
 }
@@ -241,7 +279,8 @@ func (s *swapState) handleEvent(event Event) {
 
 		// either EventXMRLocked or EventETHClaimed next is ok
 		if s.nextExpectedEvent != EventXMRLockedType &&
-			s.nextExpectedEvent != EventETHClaimedType {
+			s.nextExpectedEvent != EventETHClaimedType &&
+			s.nextExpectedEvent != EventKeysReceivedType {
 			e.errCh <- fmt.Errorf("nextExpectedEvent was %s", e.Type())
 		}
 

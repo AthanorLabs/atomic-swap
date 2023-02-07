@@ -6,11 +6,11 @@ type Status byte
 
 // Status values
 const (
-	// ExpectingKeys is the status of the XMR Taker between accepting an offer and receiving
-	// a response with keys from the XMR Maker. It is also the Maker's status after creating
+	// ExpectingKeys is the status of the XMR Taker between taking an offer and receiving
+	// a response with swap keys from the XMR Maker. It is also the Maker's status after creating
 	// an offer up until receiving keys from a Taker accepting the offer.
 	ExpectingKeys Status = iota
-	// KeysExchanged is the status of the XMR Maker after an XMR Taker accepts his offer
+	// KeysExchanged is the status of the XMR Maker after an XMR Taker accepts his offer.
 	KeysExchanged
 	// ETHLocked is the Taker status after locking her ETH up until confirming that the Maker
 	// locked his XMR.
