@@ -16,48 +16,46 @@ import (
 type EventType byte
 
 const (
-	// EventKeysReceivedType is triggered when we receive the counterparty's
-	// swap keys, allowing us to initiate the swap on-chain.
-	// It causes us to lock our ETH (and store keys) in the smart contract.
-	// After this event, the other possible events are EventXMRLockedType
-	// (success path) or EventExitType (abort path).
+	// EventKeysReceivedType is triggered when we receive the XMR maker's
+	// swap keys, allowing us to initiate the swap on-chain. It causes us to
+	// lock our ETH and store keys in the smart contract. After this event,
+	// the other possible events are EventXMRLockedType (success path) or
+	// EventExitType (abort path).
 	EventKeysReceivedType EventType = iota
 
-	// EventXMRLockedType is triggered when we receive notice of the
-	// counterparty locking XMR for the swap.
-	// It causes us to set the contract to "ready" so that the counterparty
-	// can claim.
-	// After this event, the other possible events are EventETHClaimedType (success
-	// path), EventShouldRefundType (refund path), or EventExitType (refund path).
+	// EventXMRLockedType is triggered after we verify that the maker locked the
+	// XMR for the swap. It causes us to set the contract to "ready", so that
+	// the maker can claim his ETH. After this event, the other possible events
+	// are EventETHClaimedType (success path), EventShouldRefundType (refund
+	// path), or EventExitType (refund path).
 	EventXMRLockedType
 
-	// EventETHClaimedType is triggered when the counterparty claims their
-	// ETH from the contract.
-	// It causes us to claim the XMR.
-	// After this event, the other possible event is EventExitType (success path).
+	// EventETHClaimedType is triggered when the maker claims their ETH from the
+	// contract. It causes us to claim the XMR. After this event, the other
+	// possible event is EventExitType (success path).
 	EventETHClaimedType
 
-	// EventShouldRefundType is triggered when we should refund, either because we are
-	// reaching timeout0 and the counterparty hasn't locked XMR, or because we've reached
-	// timeout1 and the counterparty hasn't claimed.
-	// It causes us to refund our ETH from the contract.
-	// After this event, the other possible event is EventExitType (refund path).
-	// Note: this type is not actually used in the code, only the actually
-	// event `EventShouldRefund` is. This is left here for clarity.
+	// EventShouldRefundType is triggered when we should refund, either because
+	// we are nearing the timeout0 threshold and the maker hasn't locked XMR, or
+	// because we've reached the timeout1 threshold and the maker hasn't claimed
+	// the ETH. It causes us to refund the contract locked ETH locked to
+	// ourselves. After this event, the only possible event is EventExitType
+	// (refund path).
+	//
+	// Note: this constant is a placeholder for clarity. While the event it
+	// represents is used, we never actually use the constant for its type.
 	EventShouldRefundType
 
-	// EventExitType is triggered by the protocol "exiting", which may
-	// happen via a swap cancellation via RPC endpoint, or from the
-	// counterparty disconnecting from us on the p2p network.
-	// It causes us to attempt to gracefully exit from the swap,
-	// which causes either an abort, refund, or claim, depending
-	// on the state we're currently in.
-	// No other events can occur after this.
+	// EventExitType is triggered by the protocol "exiting", which may happen
+	// via a swap cancellation via the RPC endpoint, or from the counterparty
+	// disconnecting from us on the p2p network. It causes us to attempt to
+	// gracefully exit from the swap, which causes either an abort, refund, or
+	// claim, depending on the state we're currently in. No other events can
+	// occur after this.
 	EventExitType
 
-	// EventNoneType is set as the "nextExpectedEvent" once the swap
-	// has exited. It does not trigger any action.
-	// No other events can occur after this.
+	// EventNoneType is set as the "nextExpectedEvent" once the swap has exited.
+	// It does not trigger any action. No other events can occur after this.
 	EventNoneType
 )
 

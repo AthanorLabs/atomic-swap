@@ -13,40 +13,35 @@ import (
 type EventType byte
 
 const (
-	// EventETHLockedType is triggered when the counterparty
-	// locks ETH in the smart contract.
-	// It causes us to lock our XMR.
-	// After this event, the other possible events are
-	// EventContractReadyType (success), EventETHRefundedType (abort),
-	// or EventExitType (abort).
+	// EventETHLockedType is triggered when the taker notifies us that the ETH
+	// is locked in the smart contract. Upon verification, it causes us to lock
+	// our XMR. After this event, the other possible events are
+	// EventContractReadyType (success), EventETHRefundedType (abort), or
+	// EventExitType (abort).
 	EventETHLockedType EventType = iota
 
-	// EventContractReadyType is triggered when the counterparty
-	// sets the contract to "ready" or timeout0 is reached.
-	// ie. when this event occurs, we can claim ETH from the contract.
-	// After this event, the other possible events are EventETHRefundedType
-	// (which would only happen if we go offline until timeout1, causing us
-	// to refund), or EventExitType (refund).
+	// EventContractReadyType is triggered when the taker sets the contract to
+	// "ready" or timeout0 is reached. When this event occurs, we can claim ETH
+	// from the contract. After this event, the other possible events are
+	// EventETHRefundedType (which would only happen if we go offline until
+	// timeout1, causing us to refund), or EventExitType (refund).
 	EventContractReadyType
 
-	// EventETHRefundedType is triggered when the counterparty refunds
-	// their ETH from the contract back to themselves.
-	// It causes use to try to refund our XMR.
-	// Ater this event, the only possible event is EventExitType.
+	// EventETHRefundedType is triggered when the taker refunds the
+	// contract-locked ETH back to themselves. It causes use to try to refund
+	// our XMR. After this event, the only possible event is EventExitType.
 	EventETHRefundedType
 
-	// EventExitType is triggered by the protocol "exiting", which may
-	// happen via a swap cancellation via RPC endpoint, or from the
-	// counterparty disconnecting from us on the p2p network.
-	// It causes us to attempt to gracefully exit from the swap,
-	// which causes either an abort, refund, or claim, depending
-	// on the state we're currently in.
-	// No other events can occur after this.
+	// EventExitType is triggered by the protocol "exiting", which may happen
+	// via a swap cancellation via the RPC endpoint, or from the counterparty
+	// disconnecting from us on the p2p network. It causes us to attempt to
+	// gracefully exit from the swap, which leads to an abort, refund, or claim,
+	// depending on the state we're currently in. No other events can occur
+	// after this.
 	EventExitType
 
-	// EventNoneType is set as the "nextExpectedEvent" once the swap
-	// has exited. It does not trigger any action.
-	// No other events can occur after this.
+	// EventNoneType is set as the "nextExpectedEvent" once the swap has exited.
+	// It does not trigger any action. No other events can occur after this.
 	EventNoneType
 )
 

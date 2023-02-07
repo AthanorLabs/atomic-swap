@@ -6,26 +6,29 @@ type Status byte
 
 // Status values
 const (
-	// ExpectingKeys is the status of the XMR Taker between taking an offer and receiving
-	// a response with swap keys from the XMR Maker. It is also the Maker's status after creating
-	// an offer up until receiving keys from a Taker accepting the offer.
+	// ExpectingKeys is the status of the XMR taker between taking an offer and
+	// receiving a response with swap keys from the XMR maker. It is also the
+	// maker's status after creating an offer up until receiving keys from a
+	// taker accepting the offer.
 	ExpectingKeys Status = iota
-	// KeysExchanged is the status of the XMR Maker after an XMR Taker accepts his offer.
+	// KeysExchanged is the status of the XMR maker after an XMR taker accepts
+	// his offer.
 	KeysExchanged
-	// ETHLocked is the Taker status after locking her ETH up until confirming that the Maker
-	// locked his XMR.
+	// ETHLocked is the taker status after locking her ETH up until confirming
+	// that the maker locked his XMR.
 	ETHLocked
-	// XMRLocked is the XMR Maker's state after locking the XMR up until he confirms that the
-	// the Taker has set the contract to ready.
+	// XMRLocked is the XMR maker's state after locking the XMR up until he
+	// confirms that the the taker has set the contract to ready.
 	XMRLocked
-	// ContractReady is the XMR Taker state after verifying the locked XMR and setting the contract
-	// to ready.
+	// ContractReady is the XMR taker state after verifying the locked XMR and
+	// setting the contract to ready.
 	ContractReady
 	// CompletedSuccess represents a successful swap.
 	CompletedSuccess
 	// CompletedRefund represents a swap that was refunded.
 	CompletedRefund
-	// CompletedAbort represents the case where the swap aborts before any funds are locked.
+	// CompletedAbort represents the case where the swap aborts before any funds
+	// are locked.
 	CompletedAbort
 	// UnknownStatus is a placeholder for unmatched status strings.
 	// TODO: Why is it an indicator that a swap is ongoing?
