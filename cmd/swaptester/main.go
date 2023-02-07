@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -413,7 +413,10 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 }
 
 func getRandomInt(max int) int {
-	i, _ := rand.Int(rand.Reader, big.NewInt(int64(max))) //nolint:gosec
+	i, err := crand.Int(crand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		panic(err)
+	}
 	return int(i.Int64())
 }
 
