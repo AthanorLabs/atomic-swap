@@ -58,7 +58,7 @@ func (c *Client) Post(method string, request any, response any) error {
 		return err
 	}
 
-	httpReq, err := http.NewRequest("POST", c.endpoint, bytes.NewReader(data))
+	httpReq, err := http.NewRequest(http.MethodPost, c.endpoint, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}

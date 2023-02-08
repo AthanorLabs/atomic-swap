@@ -1,3 +1,5 @@
+// Package pricefeed implements routines to retrieve on-chain price feeds from chainlink's
+// decentralized oracle network.
 package pricefeed
 
 import (

@@ -24,7 +24,7 @@ var log = logging.Logger("rpcclient")
 // WsClient ...
 type WsClient interface {
 	Close()
-	Discover(provides coins.ProvidesCoin, searchTime uint64) ([]peer.ID, error)
+	Discover(provides string, searchTime uint64) ([]peer.ID, error)
 	Query(who peer.ID) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
 	TakeOfferAndSubscribe(peerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
@@ -84,7 +84,7 @@ func (c *wsClient) read() ([]byte, error) {
 	return message, nil
 }
 
-func (c *wsClient) Discover(provides coins.ProvidesCoin, searchTime uint64) ([]peer.ID, error) {
+func (c *wsClient) Discover(provides string, searchTime uint64) ([]peer.ID, error) {
 	params := &rpctypes.DiscoverRequest{
 		Provides:   provides,
 		SearchTime: searchTime,

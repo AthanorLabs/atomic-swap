@@ -330,7 +330,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	receipt := tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
 	require.Equal(t, 1, len(receipt.Logs))
-	require.Equal(t, 1, len(receipt.Logs[0].Topics))
+	require.Equal(t, 3, len(receipt.Logs[0].Topics))
 	require.Equal(t, refundedTopic, receipt.Logs[0].Topics[0])
 
 	// runContractEventWatcher will trigger EventETHRefunded,

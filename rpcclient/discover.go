@@ -8,7 +8,7 @@ import (
 )
 
 // Discover calls net_discover.
-func (c *Client) Discover(provides coins.ProvidesCoin, searchTime uint64) ([]peer.ID, error) {
+func (c *Client) Discover(provides string, searchTime uint64) ([]peer.ID, error) {
 	const (
 		method = "net_discover"
 	)
@@ -33,7 +33,7 @@ func (c *Client) QueryAll(provides coins.ProvidesCoin, searchTime uint64) ([]*rp
 	)
 
 	req := &rpctypes.QueryAllRequest{
-		Provides:   provides,
+		Provides:   string(provides),
 		SearchTime: searchTime,
 	}
 	res := &rpctypes.QueryAllResponse{}

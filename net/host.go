@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
@@ -26,8 +25,8 @@ const (
 
 var log = logging.Logger("host")
 
-// P2pnetHost contains libp2p functionality used by the Host.
-type P2pnetHost interface {
+// P2pHost contains libp2p functionality used by the Host.
+type P2pHost interface {
 	Start() error
 	Stop() error
 
@@ -50,7 +49,7 @@ type P2pnetHost interface {
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
 	ctx     context.Context
-	h       P2pnetHost
+	h       P2pHost
 	handler Handler
 
 	// swap instance info
@@ -72,6 +71,11 @@ func NewHost(cfg *p2pnet.Config) (*Host, error) {
 		h:     h,
 		swaps: make(map[types.Hash]*swap),
 	}, nil
+}
+
+// P2pHost returns the underlying go-p2p-net host.
+func (h *Host) P2pHost() P2pHost {
+	return h.h
 }
 
 // SetHandler sets the Handler instance used by the host.
@@ -133,8 +137,8 @@ func (h *Host) Advertise(strs []string) {
 
 // Discover searches the DHT for peers that advertise that they provide the given coin..
 // It searches for up to `searchTime` duration of time.
-func (h *Host) Discover(provides coins.ProvidesCoin, searchTime time.Duration) ([]peer.ID, error) {
-	return h.h.Discover(string(provides), searchTime)
+func (h *Host) Discover(provides string, searchTime time.Duration) ([]peer.ID, error) {
+	return h.h.Discover(provides, searchTime)
 }
 
 // AddrInfo returns the host's AddrInfo.

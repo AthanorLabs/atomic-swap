@@ -10,7 +10,6 @@ fi
 
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
 "${SCRIPTS_DIR}/cleanup-test-processes.sh"
-sleep 2 # give monerod time to fully shutdown
 source "${SCRIPTS_DIR}/testlib.sh"
 
 start-monerod-regtest

@@ -8,6 +8,10 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	rnet "github.com/athanorlabs/go-relayer/net"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -25,6 +29,13 @@ import (
 type MessageSender interface {
 	SendSwapMessage(message.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
+}
+
+// RelayerHost contains required network functionality for discovering
+// and messaging relayers.
+type RelayerHost interface {
+	Discover(time.Duration) ([]peer.ID, error)
+	SubmitTransaction(who peer.ID, msg *rnet.TransactionRequest) (*rcommon.SubmitTransactionResponse, error)
 }
 
 // RecoveryDB is implemented by *db.RecoveryDB
@@ -71,6 +82,10 @@ type Backend interface {
 	SetXMRDepositAddress(mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	SetBaseXMRDepositAddress(mcrypto.Address)
+
+	// relayer functions
+	DiscoverRelayers() ([]peer.ID, error)
+	SubmitTransactionToRelayer(peer.ID, *rcommon.SubmitTransactionRequest) (*rcommon.SubmitTransactionResponse, error)
 }
 
 type backend struct {
@@ -95,6 +110,9 @@ type backend struct {
 
 	// network interface
 	MessageSender
+
+	// relayer network interface
+	rnet RelayerHost
 }
 
 // Config is the config for the Backend
@@ -111,7 +129,8 @@ type Config struct {
 
 	RecoveryDB RecoveryDB
 
-	Net MessageSender
+	Net         MessageSender
+	RelayerHost RelayerHost
 }
 
 // NewBackend returns a new Backend
@@ -132,6 +151,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		MessageSender:   cfg.Net,
 		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
 		recoveryDB:      cfg.RecoveryDB,
+		rnet:            cfg.RelayerHost,
 	}, nil
 }
 
@@ -223,4 +243,20 @@ func (b *backend) ClearXMRDepositAddress(id types.Hash) {
 	b.Lock()
 	defer b.Unlock()
 	delete(b.xmrDepositAddrs, id)
+}
+
+func (b *backend) DiscoverRelayers() ([]peer.ID, error) {
+	const defaultDiscoverTime = time.Second * 3
+	return b.rnet.Discover(defaultDiscoverTime)
+}
+
+func (b *backend) SubmitTransactionToRelayer(
+	to peer.ID,
+	req *rcommon.SubmitTransactionRequest,
+) (*rcommon.SubmitTransactionResponse, error) {
+	msg := &rnet.TransactionRequest{
+		SubmitTransactionRequest: *req,
+	}
+
+	return b.rnet.SubmitTransaction(to, msg)
 }

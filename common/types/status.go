@@ -4,18 +4,32 @@ package types
 // Status represents the stage that a swap is at.
 type Status byte
 
+// Status values
 const (
-	ExpectingKeys Status = iota //nolint:revive
+	// ExpectingKeys is the status of the taker between taking an offer and
+	// receiving a response with swap keys from the maker. It is also the
+	// maker's status after creating an offer up until receiving keys from a
+	// taker accepting the offer.
+	ExpectingKeys Status = iota
+	// KeysExchanged is the status of the maker after a taker accepts his offer.
 	KeysExchanged
+	// ETHLocked is the taker status after locking her ETH up until confirming
+	// that the maker locked his XMR.
 	ETHLocked
+	// XMRLocked is the maker's state after locking the XMR up until he confirms
+	// that the the taker has set the contract to ready.
 	XMRLocked
+	// ContractReady is the taker's state after verifying the locked XMR and
+	// setting the contract to ready.
 	ContractReady
 	// CompletedSuccess represents a successful swap.
 	CompletedSuccess
 	// CompletedRefund represents a swap that was refunded.
 	CompletedRefund
-	// CompletedAbort represents the case where the swap aborts before any funds are locked.
+	// CompletedAbort represents the case where the swap aborts before any funds
+	// are locked.
 	CompletedAbort
+	// UnknownStatus is a placeholder for unmatched status strings.
 	UnknownStatus
 )
 
@@ -97,8 +111,10 @@ func (s Status) Info() string {
 // IsOngoing returns true if the status means the swap has not completed
 func (s Status) IsOngoing() bool {
 	switch s {
-	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady, UnknownStatus:
+	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady:
 		return true
+	case UnknownStatus:
+		panic("swap should not have UnknownStatus")
 	default:
 		return false
 	}

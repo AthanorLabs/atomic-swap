@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -206,7 +206,7 @@ var (
 )
 
 func getRandomExchangeRate() *coins.ExchangeRate {
-	rateFl := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
+	rateFl := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate)
 	rate, _, err := new(apd.Decimal).SetString(strconv.FormatFloat(rateFl, 'f', -1, 64))
 	if err != nil {
 		panic(err) // shouldn't be possible
@@ -215,7 +215,7 @@ func getRandomExchangeRate() *coins.ExchangeRate {
 }
 
 func getRndOfferAmount(xRate *coins.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) (*apd.Decimal, error) {
-	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64()) //nolint:gosec
+	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64())
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 	defer wsc.Close()
 
 	const defaultDiscoverTimeout = uint64(3) // 3s
-	peerIDs, err := wsc.Discover(coins.ProvidesXMR, defaultDiscoverTimeout)
+	peerIDs, err := wsc.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	if err != nil {
 		d.errCh <- err
 		return
@@ -413,7 +413,10 @@ func (d *daemon) takeOffer(done <-chan struct{}) {
 }
 
 func getRandomInt(max int) int {
-	i, _ := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	i, err := crand.Int(crand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		panic(err)
+	}
 	return int(i.Int64())
 }
 
