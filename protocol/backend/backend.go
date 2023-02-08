@@ -44,8 +44,8 @@ type RecoveryDB interface {
 	GetContractSwapInfo(id types.Hash) (*db.EthereumSwapInfo, error)
 	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey) error
 	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
-	PutSharedSwapPrivateKeyPair(id types.Hash, keys *mcrypto.PrivateKeyPair) error
-	GetSharedSwapPrivateKeyPair(id types.Hash) (*mcrypto.PrivateKeyPair, error)
+	PutSwapWalletPrivateKeyPair(id types.Hash, keys *mcrypto.PrivateKeyPair) error
+	GetSwapWalletPrivateKeyPair(id types.Hash) (*mcrypto.PrivateKeyPair, error)
 	PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error
 	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
 	PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error

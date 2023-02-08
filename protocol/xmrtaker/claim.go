@@ -89,7 +89,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	abAddr := kpAB.PublicKeyPair().Address(s.Env())
 
 	// write keys to file in case something goes wrong
-	err := s.Backend.RecoveryDB().PutSharedSwapPrivateKeyPair(s.ID(), kpAB)
+	err := s.Backend.RecoveryDB().PutSwapWalletPrivateKeyPair(s.ID(), kpAB)
 	if err != nil {
 		return "", err
 	}

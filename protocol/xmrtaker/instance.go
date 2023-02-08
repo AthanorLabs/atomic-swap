@@ -93,7 +93,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, claim XMR from that
 	// otherwise, create new swap state from recovery info
-	kp, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKeyPair(s.ID)
+	kp, err := inst.backend.RecoveryDB().GetSwapWalletPrivateKeyPair(s.ID)
 	if err == nil {
 		conf := inst.backend.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-db-restored")
 		abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kp, s.MoneroStartHeight) //nolint:govet

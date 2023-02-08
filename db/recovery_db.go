@@ -13,7 +13,7 @@ const (
 	recoveryPrefix                 = "recv"
 	contractSwapInfoPrefix         = "ethinfo"
 	swapPrivateKeyPrefix           = "privkey"
-	sharedSwapPrivateKeyPairPrefix = "sprivkey"
+	swapWalletPrivateKeyPairPrefix = "swprivkp"
 	relayerInfoPrefix              = "relayer"
 	xmrmakerKeysPrefix             = "xmrmaker"
 )
@@ -125,20 +125,20 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
 }
 
-// PutSharedSwapPrivateKeyPair stores the shared swap private key for the given swap ID.
-func (db *RecoveryDB) PutSharedSwapPrivateKeyPair(id types.Hash, kp *mcrypto.PrivateKeyPair) error {
+// PutSwapWalletPrivateKeyPair stores the shared swap private key for the given swap ID.
+func (db *RecoveryDB) PutSwapWalletPrivateKeyPair(id types.Hash, kp *mcrypto.PrivateKeyPair) error {
 	val, err := json.Marshal(kp)
 	if err != nil {
 		return err
 	}
 
-	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPairPrefix)
+	key := getRecoveryDBKey(id, swapWalletPrivateKeyPairPrefix)
 	return db.db.Put(key[:], val)
 }
 
-// GetSharedSwapPrivateKeyPair returns the private key pair for the shared swap wallet, if it exists.
-func (db *RecoveryDB) GetSharedSwapPrivateKeyPair(id types.Hash) (*mcrypto.PrivateKeyPair, error) {
-	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPairPrefix)
+// GetSwapWalletPrivateKeyPair returns the private key pair for the shared swap wallet, if it exists.
+func (db *RecoveryDB) GetSwapWalletPrivateKeyPair(id types.Hash) (*mcrypto.PrivateKeyPair, error) {
+	key := getRecoveryDBKey(id, swapWalletPrivateKeyPairPrefix)
 	value, err := db.db.Get(key[:])
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 		getRecoveryDBKey(id, relayerInfoPrefix),
 		getRecoveryDBKey(id, contractSwapInfoPrefix),
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
-		getRecoveryDBKey(id, sharedSwapPrivateKeyPairPrefix),
+		getRecoveryDBKey(id, swapWalletPrivateKeyPairPrefix),
 		getRecoveryDBKey(id, xmrmakerKeysPrefix),
 	}
 

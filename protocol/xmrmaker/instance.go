@@ -127,7 +127,7 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
-	kp, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKeyPair(s.ID)
+	kp, err := inst.backend.RecoveryDB().GetSwapWalletPrivateKeyPair(s.ID)
 	if err == nil {
 		primaryCli := inst.backend.XMRClient()
 		destAddr := primaryCli.PrimaryAddress()
