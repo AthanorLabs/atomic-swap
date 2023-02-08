@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
@@ -639,7 +640,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 			select {
 			case status := <-statusCh:
 				s.T().Log("> XMRMaker got status:", status)
-				s.T().Log("> XMRMaker cancelled swap!")
+				s.T().Log("> XMRMaker cancelling swap!")
 				exitStatus, err := bcli.Cancel(offerResp.OfferID) //nolint:govet
 				if err != nil {
 					errCh <- err
@@ -696,6 +697,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	default:
 	}
 
+	common.SleepWithContext(ctx, 2*time.Second) // give some extra time for the offer to be re-added
 	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))

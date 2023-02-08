@@ -11,15 +11,51 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// EventType ...
+// EventType represents an event that occurs which moves the swap
+// "state machine" to its next state.
 type EventType byte
 
 const (
-	EventKeysReceivedType EventType = iota //nolint:revive
+	// EventKeysReceivedType is triggered when we receive the XMR maker's
+	// swap keys, allowing us to initiate the swap on-chain. It causes us to
+	// lock our ETH and store keys in the smart contract. After this event,
+	// the other possible events are EventXMRLockedType (success path) or
+	// EventExitType (abort path).
+	EventKeysReceivedType EventType = iota
+
+	// EventXMRLockedType is triggered after we verify that the maker locked the
+	// XMR for the swap. It causes us to set the contract to "ready", so that
+	// the maker can claim his ETH. After this event, the other possible events
+	// are EventETHClaimedType (success path), EventShouldRefundType (refund
+	// path), or EventExitType (refund path).
 	EventXMRLockedType
+
+	// EventETHClaimedType is triggered when the maker claims their ETH from the
+	// contract. It causes us to claim the XMR. After this event, the other
+	// possible event is EventExitType (success path).
 	EventETHClaimedType
+
+	// EventShouldRefundType is triggered when we should refund, either because
+	// we are nearing the timeout0 threshold and the maker hasn't locked XMR, or
+	// because we've reached the timeout1 threshold and the maker hasn't claimed
+	// the ETH. It causes us to refund the contract locked ETH locked to
+	// ourselves. After this event, the only possible event is EventExitType
+	// (refund path).
+	//
+	// Note: this constant is a placeholder for clarity. While the event it
+	// represents is used, we never actually use the constant for its type.
 	EventShouldRefundType
+
+	// EventExitType is triggered by the protocol "exiting", which may happen
+	// via a swap cancellation via the RPC endpoint, or from the counterparty
+	// disconnecting from us on the p2p network. It causes us to attempt to
+	// gracefully exit from the swap, which causes either an abort, refund, or
+	// claim, depending on the state we're currently in. No other events can
+	// occur after this.
 	EventExitType
+
+	// EventNoneType is set as the "nextExpectedEvent" once the swap has exited.
+	// It does not trigger any action. No other events can occur after this.
 	EventNoneType
 )
 
@@ -63,6 +99,8 @@ func (t EventType) getStatus() types.Status {
 	case EventETHClaimedType:
 		return types.ContractReady
 	default:
+		// the only possible nextExpectedEvents are EventXMRLockedType
+		// and EventETHClaimedType, so this case shouldn't be hit.
 		return types.UnknownStatus
 	}
 }
@@ -110,7 +148,7 @@ func newEventXMRLocked(msg *message.NotifyXMRLock) *EventXMRLocked {
 }
 
 // EventETHClaimed is the third expected event. It represents the ETH being claimed
-// tbyo the counterparty, and thus we can also claim the XMR.
+// by the counterparty, and thus we can also claim the XMR.
 type EventETHClaimed struct {
 	sk    *mcrypto.PrivateSpendKey
 	errCh chan error
@@ -239,7 +277,8 @@ func (s *swapState) handleEvent(event Event) {
 
 		// either EventXMRLocked or EventETHClaimed next is ok
 		if s.nextExpectedEvent != EventXMRLockedType &&
-			s.nextExpectedEvent != EventETHClaimedType {
+			s.nextExpectedEvent != EventETHClaimedType &&
+			s.nextExpectedEvent != EventKeysReceivedType {
 			e.errCh <- fmt.Errorf("nextExpectedEvent was %s", e.Type())
 		}
 

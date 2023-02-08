@@ -11,8 +11,6 @@ import (
 	"github.com/ChainSafe/chaindb"
 )
 
-var _ Manager = &manager{}
-
 var errNoSwapWithID = errors.New("unable to find swap with given ID")
 
 // Manager tracks current and past swaps.
@@ -37,10 +35,12 @@ type manager struct {
 	past    map[types.Hash]*Info
 }
 
+var _ Manager = (*manager)(nil)
+
 // NewManager returns a new Manager that uses the given database.
 // It loads all ongoing swaps into memory on construction.
 // Completed swaps are not loaded into memory.
-func NewManager(db Database) (*manager, error) {
+func NewManager(db Database) (Manager, error) {
 	ongoing := make(map[types.Hash]*Info)
 
 	stored, err := db.GetAllSwaps()

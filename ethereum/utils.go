@@ -16,8 +16,10 @@ import (
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
+// Swap stage values that match the names and indexes of the Stage enum in
+// the SwapFactory contract
 const (
-	StageInvalid byte = iota //nolint:revive
+	StageInvalid byte = iota
 	StagePending
 	StageReady
 	StageCompleted

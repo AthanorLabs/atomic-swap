@@ -11,8 +11,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
+// JSON RPC method names that we serve on the localhost server
 const (
-	NetDiscover         = "net_discover" //nolint:revive
+	NetDiscover         = "net_discover"
 	NetQueryPeer        = "net_queryPeer"
 	SubscribeNewPeer    = "net_subscribeNewPeer"
 	SubscribeMakeOffer  = "net_makeOfferAndSubscribe"

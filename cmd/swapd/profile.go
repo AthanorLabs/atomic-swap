@@ -21,8 +21,14 @@ func maybeStartProfiler(c *cli.Context) error {
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
+	server := &http.Server{
+		Addr:              bindIPAndPort,
+		ReadHeaderTimeout: time.Second,
+		Handler:           mux,
+	}
+
 	go func() {
-		err := http.ListenAndServe(bindIPAndPort, mux)
+		err := server.ListenAndServe()
 		log.Fatalf("Profiling server failed: %s", err)
 	}()
 	time.Sleep(100 * time.Millisecond) // let the profiler start
