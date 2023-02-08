@@ -409,6 +409,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	if err != nil {
 		return err
 	}
+	defer ec.Close()
 	chainID, err := ec.ChainID(d.ctx)
 	if err != nil {
 		return err
