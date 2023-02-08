@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -137,6 +137,12 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	startupTimeout := time.Millisecond * 100
 
 	dataDir := t.TempDir()
+	defer func() {
+		// CI has issues with the filesystem still being written to when it is
+		// recursively deleting dataDir. Can't be replicated outside of CI.
+		unix.Sync()
+		time.Sleep(500 * time.Millisecond)
+	}()
 	wc := monero.CreateWalletClientWithWalletDir(t, dataDir)
 	one := apd.New(1, 0)
 	monero.MineMinXMRBalance(t, wc, coins.MoneroToPiconero(one))
