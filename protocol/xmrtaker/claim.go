@@ -36,8 +36,6 @@ func (s *swapState) tryClaim() error {
 }
 
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
-	const claimedEvent = "Claimed"
-
 	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
@@ -56,7 +54,7 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	)
 
 	for _, log := range logs {
-		matches, err := contracts.CheckIfLogIDMatches(log, claimedEvent, s.contractSwapID) //nolint:govet
+		matches, err := contracts.CheckIfLogIDMatches(log, claimedTopic, s.contractSwapID) //nolint:govet
 		if err != nil {
 			continue
 		}
@@ -72,7 +70,7 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoClaimLogsFound
 	}
 
-	sa, err := contracts.GetSecretFromLog(&foundLog, claimedEvent)
+	sa, err := contracts.GetSecretFromLog(&foundLog, claimedTopic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}

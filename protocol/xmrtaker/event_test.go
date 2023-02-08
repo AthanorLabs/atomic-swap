@@ -63,7 +63,9 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 
 	select {
 	case log := <-logReadyCh:
-		err = pcommon.CheckSwapID(&log, "Ready", s.contractSwapID)
+		t.Log(log)
+		t.Log(log.Topics)
+		err = pcommon.CheckSwapID(&log, readyTopic, s.contractSwapID)
 		require.NoError(t, err)
 	case <-time.After(time.Second * 2):
 		t.Fatalf("didn't get ready logs in time")

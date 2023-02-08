@@ -91,7 +91,7 @@ Now get the ethereum contract address that Alice deployed to. This can be pulled
 the file ..., or if you have `jq` installed (available via `sudo apt install jq`), you can set a
 variable like this:
 ```bash
-CONTRACT_ADDR=$(jq -r .ContractAddress "${TMPDIR-/tmp}"/xmrtaker-*/contract-address.json)
+CONTRACT_ADDR=$(jq -r .swapFactory "${TMPDIR-/tmp}"/xmrtaker-*/contract-addresses.json)
 ```
 
 Now start Bob's swapd instance:

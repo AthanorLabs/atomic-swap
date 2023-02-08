@@ -25,6 +25,11 @@ const (
 	StageCompleted
 )
 
+var (
+	claimedTopic  = common.GetTopic(common.ClaimedEventSignature)
+	refundedTopic = common.GetTopic(common.RefundedEventSignature)
+)
+
 // StageToString converts a contract Stage enum value to a string
 func StageToString(stage byte) string {
 	switch stage {
@@ -42,27 +47,27 @@ func StageToString(stage byte) string {
 }
 
 // GetSecretFromLog returns the secret from a Claimed or Refunded log
-func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey, error) {
-	if event != "Refunded" && event != "Claimed" {
-		return nil, errors.New("invalid event name, must be one of Claimed or Refunded")
+func GetSecretFromLog(log *ethtypes.Log, eventTopic [32]byte) (*mcrypto.PrivateSpendKey, error) {
+	if eventTopic != claimedTopic && eventTopic != refundedTopic {
+		return nil, errors.New("invalid event, must be one of Claimed or Refunded")
 	}
 
-	abiSF, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
-	if err != nil {
-		return nil, err
-	}
+	// abiSF, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	data := log.Data
-	res, err := abiSF.Unpack(event, data)
-	if err != nil {
-		return nil, err
-	}
+	// data := log.Data
+	// res, err := abiSF.Unpack(event, data)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if len(res) < 2 {
+	if len(log.Topics) < 3 {
 		return nil, errors.New("log had not enough parameters")
 	}
 
-	s := res[1].([32]byte)
+	s := log.Topics[2]
 	if s == [32]byte{} {
 		return nil, errors.New("got zero secret key from contract")
 	}
@@ -76,27 +81,27 @@ func GetSecretFromLog(log *ethtypes.Log, event string) (*mcrypto.PrivateSpendKey
 }
 
 // CheckIfLogIDMatches returns true if the swap ID in the log matches the given ID, false otherwise.
-func CheckIfLogIDMatches(log ethtypes.Log, event string, id [32]byte) (bool, error) {
-	if event != "Refunded" && event != "Claimed" {
-		return false, errors.New("invalid event name, must be one of Claimed or Refunded")
+func CheckIfLogIDMatches(log ethtypes.Log, eventTopic, id [32]byte) (bool, error) {
+	if eventTopic != claimedTopic && eventTopic != refundedTopic {
+		return false, errors.New("invalid event, must be one of Claimed or Refunded")
 	}
 
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
-	if err != nil {
-		return false, err
-	}
+	// abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
+	// if err != nil {
+	// 	return false, err
+	// }
 
-	data := log.Data
-	res, err := abi.Unpack(event, data)
-	if err != nil {
-		return false, err
-	}
+	// data := log.Data
+	// res, err := abi.Unpack(event, data)
+	// if err != nil {
+	// 	return false, err
+	// }
 
-	if len(res) < 2 {
+	if len(log.Topics) < 2 {
 		return false, errors.New("log had not enough parameters")
 	}
 
-	eventID := res[0].([32]byte)
+	eventID := log.Topics[1]
 	if !bytes.Equal(eventID[:], id[:]) {
 		return false, nil
 	}

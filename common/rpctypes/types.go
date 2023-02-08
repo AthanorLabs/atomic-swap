@@ -34,8 +34,8 @@ type SubscribeSwapStatusResponse struct {
 
 // DiscoverRequest ...
 type DiscoverRequest struct {
-	Provides   coins.ProvidesCoin `json:"provides"`
-	SearchTime uint64             `json:"searchTime"` // in seconds
+	Provides   string `json:"provides"`
+	SearchTime uint64 `json:"searchTime"` // in seconds
 }
 
 // DiscoverResponse ...
