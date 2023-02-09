@@ -421,6 +421,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 		return err
 	}
 
+	// TODO: generate address from counterparty public keys and pass to ClaimMoneroWithAddress
 	kpAB := pcommon.GetClaimKeypair(
 		skA, s.privkeys.SpendKey(),
 		vkA, s.privkeys.ViewKey(),
