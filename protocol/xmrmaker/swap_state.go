@@ -440,29 +440,8 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address
 		return "", err
 	}
 
-	// skAB := mcrypto.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
-	// vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-	// kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-
-	// conf := s.XMRClient().CreateWalletConf("xmrmaker-swap-wallet-refund")
-	// destAddr := s.XMRClient().PrimaryAddress()
-	// err = sweepRefund(s.ctx, s.Env(), s.ID(), conf, s.moneroStartHeight, kpAB, destAddr)
-	// if err != nil {
-	// 	return "", err
-	// }
-
 	return addrAB, nil
 }
-
-// func reclaimMonero(
-// 	ctx context.Background,
-// 	env common.Environment,
-// 	xmrClient monero.WalletClient,
-// 	walletScanHeight uint64,
-// 	skA, skB *mcrypto.PrivateSpendKey,
-// 	vkA, vkB *mcrypto.PrivateViewKey,
-// 	depositAddr mcrypto.Address,
-// ) (mcrypto.Address, err)
 
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)
 // It returns XMRMaker's public spend key and his private view key, so that XMRTaker can see
