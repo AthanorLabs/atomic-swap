@@ -9,6 +9,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -127,17 +129,9 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
-	kp, err := inst.backend.RecoveryDB().GetSwapWalletPrivateKeyPair(s.ID)
+	skA, err := inst.backend.RecoveryDB().GetCounterpartySwapPrivateKey(s.ID)
 	if err == nil {
-		primaryCli := inst.backend.XMRClient()
-		destAddr := primaryCli.PrimaryAddress()
-		conf := primaryCli.CreateWalletConf("xmrmaker-swap-wallet-refund-ongoing")
-		err = sweepRefund(inst.backend.Ctx(), inst.backend.Env(), s.ID, conf, s.MoneroStartHeight, kp, destAddr)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return inst.completeSwap(s, skA)
 	}
 
 	offer, err := inst.offerManager.GetOfferFromDB(s.ID)
@@ -155,7 +149,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.ID, err)
 	}
 
-	kp, err = sk.AsPrivateKeyPair()
+	kp, err := sk.AsPrivateKeyPair()
 	if err != nil {
 		return err
 	}
@@ -190,6 +184,48 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		defer inst.swapMu.Unlock()
 		delete(inst.swapStates, offer.ID)
 	}()
+
+	return nil
+}
+
+func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
+	// calc counterparty's swap private view key
+	// TODO: if the counterparty sends a non-standard public view key, does this work?
+	vkA, err := skA.View()
+	if err != nil {
+		return err
+	}
+
+	// fetch our swap private spend key
+	skB, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
+	if err != nil {
+		return err
+	}
+
+	// fetch our swap private view key
+	vkB, err := skB.View()
+	if err != nil {
+		return err
+	}
+
+	kpAB := pcommon.GetClaimKeypair(
+		skA, skB,
+		vkA, vkB,
+	)
+
+	_, err = pcommon.ClaimMonero(
+		inst.backend.Ctx(),
+		inst.backend.Env(),
+		s.ID,
+		inst.backend.XMRClient(),
+		s.MoneroStartHeight,
+		kpAB,
+		inst.backend.XMRClient().PrimaryAddress(),
+		true, // always speed back to our primary address
+	)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

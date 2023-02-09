@@ -1,14 +1,12 @@
 package xmrtaker
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	eth "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -83,29 +81,10 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", errSwapCompleted
 	}
 
-	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-	vkAB := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
-	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-	abAddr := kpAB.PublicKeyPair().Address(s.Env())
-
-	// write keys to file in case something goes wrong
-	err := s.Backend.RecoveryDB().PutSwapWalletPrivateKeyPair(s.ID(), kpAB)
+	// write counterparty swap privkey to file in case something goes wrong
+	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skB)
 	if err != nil {
 		return "", err
-	}
-
-	conf := s.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-claim")
-	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, s.walletScanHeight)
-	if err != nil {
-		return "", err
-	}
-
-	if s.transferBack {
-		defer abWalletCli.CloseAndRemoveWallet()
-	} else {
-		abWalletCli.Close()
-		log.Infof("monero claimed in account %s with wallet file %s", abAddr, conf.WalletFilePath)
-		return abAddr, nil
 	}
 
 	id := s.ID()
@@ -114,51 +93,25 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		return "", err
 	}
 
-	log.Infof("monero claimed in account %s; transferring to original account %s",
-		abAddr, depositAddr)
+	kpAB := pcommon.GetClaimKeypair(
+		skB, s.privkeys.SpendKey(),
+		s.xmrmakerPrivateViewKey, s.privkeys.ViewKey(),
+	)
 
-	err = mcrypto.ValidateAddress(string(depositAddr), s.Env())
+	abAddr, err := pcommon.ClaimMonero(
+		s.ctx,
+		s.Env(),
+		s.info.ID,
+		s.XMRClient(),
+		s.walletScanHeight,
+		kpAB,
+		depositAddr,
+		s.transferBack,
+	)
 	if err != nil {
-		log.Errorf("Failed to transfer XMR out of swap wallet, dest address %s is invalid: %s", abAddr, err)
 		return "", err
-	}
-
-	err = waitUntilBalanceUnlocks(s.ctx, abWalletCli)
-	if err != nil {
-		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
-	}
-
-	transfers, err := s.XMRClient().SweepAll(s.ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
-	if err != nil {
-		return "", fmt.Errorf("failed to send funds to original account: %w", err)
-	}
-	for _, transfer := range transfers {
-		log.Infof("Moved %s XMR claimed from swap to primary wallet (%s XMR lost to fees)",
-			coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
 	}
 
 	close(s.claimedCh)
 	return abAddr, nil
-}
-
-// TODO: Put this in monero package?  Unit test.
-func waitUntilBalanceUnlocks(ctx context.Context, walletCli monero.WalletClient) error {
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		log.Infof("checking if balance unlocked...")
-		balance, err := walletCli.GetBalance(0)
-		if err != nil {
-			return fmt.Errorf("failed to get balance: %w", err)
-		}
-
-		if balance.Balance == balance.UnlockedBalance {
-			return nil
-		}
-		if _, err = monero.WaitForBlocks(ctx, walletCli, int(balance.BlocksToUnlock)); err != nil {
-			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
-		}
-	}
 }
