@@ -16,6 +16,7 @@ const (
 	counterpartySwapPrivateKeyPrefix = "cspriv"
 	relayerInfoPrefix                = "relayer"
 	xmrmakerKeysPrefix               = "xmrmaker"
+	xmrtakerKeysPrefix               = "xmrtaker"
 )
 
 // RecoveryDB contains information about ongoing swaps required for recovery
@@ -200,6 +201,35 @@ func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *m
 	return sk, vk, nil
 }
 
+// PutXMRTakerSwapKeys is called by the xmrmaker to store the counterparty's swap keys.
+func (db *RecoveryDB) PutXMRTakerSwapKeys(id types.Hash, kp *mcrypto.PublicKeyPair) error {
+	val, err := json.Marshal(kp)
+	if err != nil {
+		return err
+	}
+
+	key := getRecoveryDBKey(id, xmrtakerKeysPrefix)
+	return db.db.Put(key[:], val)
+}
+
+// GetXMRTakerSwapKeys is called by the xmrtaker during recovery to retrieve the counterparty's
+// swap keys.
+func (db *RecoveryDB) GetXMRTakerSwapKeys(id types.Hash) (*mcrypto.PublicKeyPair, error) {
+	key := getRecoveryDBKey(id, xmrtakerKeysPrefix)
+	value, err := db.db.Get(key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	var kp *mcrypto.PublicKeyPair
+	err = json.Unmarshal(value, &kp)
+	if err != nil {
+		return nil, err
+	}
+
+	return kp, nil
+}
+
 // DeleteSwap deletes all recovery info from the db for the given swap.
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 	keys := [][]byte{
@@ -208,6 +238,7 @@ func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
 		getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix),
 		getRecoveryDBKey(id, xmrmakerKeysPrefix),
+		getRecoveryDBKey(id, xmrtakerKeysPrefix),
 	}
 
 	for _, key := range keys {

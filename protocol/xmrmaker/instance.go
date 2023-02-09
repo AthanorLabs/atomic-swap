@@ -190,7 +190,6 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 
 func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
 	// calc counterparty's swap private view key
-	// TODO: if the counterparty sends a non-standard public view key, does this work?
 	vkA, err := skA.View()
 	if err != nil {
 		return err
@@ -213,21 +212,27 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 		vkA, vkB,
 	)
 
-	_, err = pcommon.ClaimMonero(
+	// we save the counterparty's public keys in case they send public keys derived
+	// in a non-standard way.
+	xmrtakerPublicKeys, err := inst.backend.RecoveryDB().GetXMRTakerSwapKeys(s.ID)
+	if err != nil {
+		return err
+	}
+
+	address := mcrypto.SumSpendAndViewKeys(
+		xmrtakerPublicKeys, kpAB.PublicKeyPair()).Address(inst.backend.Env())
+
+	return pcommon.ClaimMoneroInAddress(
 		inst.backend.Ctx(),
 		inst.backend.Env(),
 		s.ID,
 		inst.backend.XMRClient(),
 		s.MoneroStartHeight,
 		kpAB,
+		address,
 		inst.backend.XMRClient().PrimaryAddress(),
 		true, // always speed back to our primary address
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // GetOngoingSwapState ...

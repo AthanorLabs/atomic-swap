@@ -228,6 +228,44 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	t.Logf("Address %s", addr.Address)
 }
 
+func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
+	kp, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	kp2, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	// create keypair with priv spend key of kp, but a different priv view key
+	// use the address of this keypair in the call to `generateFromKeys`
+	kp3 := mcrypto.NewPrivateKeyPair(kp.SpendKey(), kp2.ViewKey())
+
+	c, err := NewWalletClient(&WalletClientConf{
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
+	})
+	require.NoError(t, err)
+	defer c.Close()
+
+	height, err := c.GetHeight()
+	require.NoError(t, err)
+
+	// initial wallet automatically closed when a new wallet is opened
+	err = c.(*walletClient).generateFromKeys(
+		kp.SpendKey(),
+		kp.ViewKey(),
+		kp3.Address(common.Mainnet),
+		height,
+		"swap-deposit-wallet",
+		"",
+	)
+	require.NoError(t, err)
+
+	addr, err := c.GetAddress(0)
+	require.NoError(t, err)
+	t.Logf("Address %s", addr.Address)
+}
+
 func Test_getMoneroWalletRPCBin(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)

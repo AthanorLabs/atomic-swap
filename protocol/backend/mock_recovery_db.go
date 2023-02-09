@@ -128,6 +128,21 @@ func (mr *MockRecoveryDBMockRecorder) GetXMRMakerSwapKeys(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetXMRMakerSwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).GetXMRMakerSwapKeys), arg0)
 }
 
+// GetXMRTakerSwapKeys mocks base method.
+func (m *MockRecoveryDB) GetXMRTakerSwapKeys(arg0 common.Hash) (*mcrypto.PublicKeyPair, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetXMRTakerSwapKeys", arg0)
+	ret0, _ := ret[0].(*mcrypto.PublicKeyPair)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetXMRTakerSwapKeys indicates an expected call of GetXMRTakerSwapKeys.
+func (mr *MockRecoveryDBMockRecorder) GetXMRTakerSwapKeys(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetXMRTakerSwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).GetXMRTakerSwapKeys), arg0)
+}
+
 // PutContractSwapInfo mocks base method.
 func (m *MockRecoveryDB) PutContractSwapInfo(arg0 common.Hash, arg1 *db.EthereumSwapInfo) error {
 	m.ctrl.T.Helper()
@@ -196,4 +211,18 @@ func (m *MockRecoveryDB) PutXMRMakerSwapKeys(arg0 common.Hash, arg1 *mcrypto.Pub
 func (mr *MockRecoveryDBMockRecorder) PutXMRMakerSwapKeys(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutXMRMakerSwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).PutXMRMakerSwapKeys), arg0, arg1, arg2)
+}
+
+// PutXMRTakerSwapKeys mocks base method.
+func (m *MockRecoveryDB) PutXMRTakerSwapKeys(arg0 common.Hash, arg1 *mcrypto.PublicKeyPair) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutXMRTakerSwapKeys", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PutXMRTakerSwapKeys indicates an expected call of PutXMRTakerSwapKeys.
+func (mr *MockRecoveryDBMockRecorder) PutXMRTakerSwapKeys(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutXMRTakerSwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).PutXMRTakerSwapKeys), arg0, arg1)
 }
