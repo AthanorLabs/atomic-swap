@@ -112,55 +112,6 @@ func ClaimMonero(
 		return "", err
 	}
 
-	// conf := xmrClient.CreateWalletConf(fmt.Sprintf("swap-wallet-claim-%s", id))
-	// abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, walletScanHeight)
-	// if err != nil {
-	// 	return "", err
-	// }
-
-	// addr, err := abWalletCli.GetAddress(0)
-	// if err != nil {
-	// 	return "", err
-	// }
-
-	// if transferBack {
-	// 	defer abWalletCli.CloseAndRemoveWallet()
-	// } else {
-	// 	abWalletCli.Close()
-	// 	log.Infof("monero claimed in account %s with wallet file %s", abAddr, conf.WalletFilePath)
-	// 	return abAddr, nil
-	// }
-
-	// log.Infof("monero claimed in account %s; transferring to deposit account %s",
-	// 	abAddr, depositAddr)
-
-	// err = mcrypto.ValidateAddress(string(depositAddr), env)
-	// if err != nil {
-	// 	log.Errorf(
-	// 		"failed to transfer XMR out of swap wallet, dest address %s is invalid: %s",
-	// 		abAddr,
-	// 		err,
-	// 	)
-	// 	return "", err
-	// }
-
-	// err = waitUntilBalanceUnlocks(ctx, abWalletCli)
-	// if err != nil {
-	// 	return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
-	// }
-
-	// transfers, err := abWalletCli.SweepAll(ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
-	// if err != nil {
-	// 	return "", fmt.Errorf("failed to send funds to deposit account: %w", err)
-	// }
-
-	// for _, transfer := range transfers {
-	// 	log.Infof("transferred %s XMR to primary wallet (%s XMR lost to fees)",
-	// 		coins.FmtPiconeroAmtAsXMR(transfer.Amount),
-	// 		coins.FmtPiconeroAmtAsXMR(transfer.Fee),
-	// 	)
-	// }
-
 	return abAddr, nil
 }
 
