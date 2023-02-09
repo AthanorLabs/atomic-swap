@@ -15,7 +15,6 @@ import (
 
 var (
 	log = logging.Logger("protocol")
-	_   = logging.SetLogLevel("protocol", "debug")
 )
 
 // GetClaimKeypair returns the private key pair required for a monero claim.
@@ -55,8 +54,6 @@ func ClaimMonero(
 	if err != nil {
 		return "", err
 	}
-
-	fmt.Println(addr)
 
 	if transferBack {
 		defer abWalletCli.CloseAndRemoveWallet()
