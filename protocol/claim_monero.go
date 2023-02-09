@@ -51,6 +51,13 @@ func ClaimMonero(
 		return "", err
 	}
 
+	addr, err := abWalletCli.GetAddress(0)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println(addr)
+
 	if transferBack {
 		defer abWalletCli.CloseAndRemoveWallet()
 	} else {
@@ -59,7 +66,7 @@ func ClaimMonero(
 		return abAddr, nil
 	}
 
-	log.Infof("monero claimed in account %s; transferring to original account %s",
+	log.Infof("monero claimed in account %s; transferring to deposit account %s",
 		abAddr, depositAddr)
 
 	err = mcrypto.ValidateAddress(string(depositAddr), env)
@@ -79,12 +86,14 @@ func ClaimMonero(
 
 	transfers, err := abWalletCli.SweepAll(ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
 	if err != nil {
-		return "", fmt.Errorf("failed to send funds to original account: %w", err)
+		return "", fmt.Errorf("failed to send funds to deposit account: %w", err)
 	}
 
 	for _, transfer := range transfers {
 		log.Infof("transferred %s XMR to primary wallet (%s XMR lost to fees)",
-			coins.FmtPiconeroAmtAsXMR(transfer.Amount), coins.FmtPiconeroAmtAsXMR(transfer.Fee))
+			coins.FmtPiconeroAmtAsXMR(transfer.Amount),
+			coins.FmtPiconeroAmtAsXMR(transfer.Fee),
+		)
 	}
 
 	return abAddr, nil
