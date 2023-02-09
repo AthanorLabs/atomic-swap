@@ -50,11 +50,6 @@ func ClaimMonero(
 		return "", err
 	}
 
-	addr, err := abWalletCli.GetAddress(0)
-	if err != nil {
-		return "", err
-	}
-
 	if transferBack {
 		defer abWalletCli.CloseAndRemoveWallet()
 	} else {
