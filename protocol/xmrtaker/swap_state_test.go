@@ -30,6 +30,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
+var _ = logging.SetLogLevel("protocol", "debug")
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
 type mockNet struct {

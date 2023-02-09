@@ -15,6 +15,7 @@ import (
 
 var (
 	log = logging.Logger("protocol")
+	_   = logging.SetLogLevel("protocol", "debug")
 )
 
 // GetClaimKeypair returns the private key pair required for a monero claim.
@@ -76,7 +77,7 @@ func ClaimMonero(
 		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
 	}
 
-	transfers, err := xmrClient.SweepAll(ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
+	transfers, err := abWalletCli.SweepAll(ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to original account: %w", err)
 	}
@@ -107,7 +108,7 @@ func waitUntilBalanceUnlocks(ctx context.Context, walletCli monero.WalletClient)
 		}
 
 		if _, err = monero.WaitForBlocks(ctx, walletCli, int(balance.BlocksToUnlock)); err != nil {
-			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
+			log.Warnf("waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
 		}
 	}
 }

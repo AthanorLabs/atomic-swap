@@ -25,6 +25,7 @@ import (
 )
 
 var (
+	_                         = logging.SetLogLevel("protocol", "debug")
 	_                         = logging.SetLogLevel("xmrmaker", "debug")
 	desiredAmount             = coins.EtherToWei(apd.New(33, -2)) // "0.33"
 	defaultTimeoutDuration, _ = time.ParseDuration("86400s")      // 1 day = 60s * 60min * 24hr
