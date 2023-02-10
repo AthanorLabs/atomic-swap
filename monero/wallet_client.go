@@ -150,34 +150,6 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 
 	isNewWallet := !walletExists
 
-	// if conf.MoneroWalletRPCPath == "" {
-	// 	conf.MoneroWalletRPCPath, err = getMoneroWalletRPCBin()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
-	// if len(conf.MonerodNodes) == 0 {
-	// 	conf.MonerodNodes = common.ConfigDefaultsForEnv(conf.Env).MoneroNodes
-	// }
-	// validatedNode, err := findWorkingNode(conf.Env, conf.MonerodNodes)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// conf.MonerodNodes = []*common.MoneroNode{validatedNode}
-
-	// if conf.LogPath == "" {
-	// 	// default to the folder above the wallet
-	// 	conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
-	// }
-
-	// if conf.WalletPort == 0 {
-	// 	conf.WalletPort, err = getFreeTCPPort()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	err = conf.Fill()
 	if err != nil {
 		return nil, err
