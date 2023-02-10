@@ -221,7 +221,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 		s.MoneroStartHeight,
 		kpAB,
 		inst.backend.XMRClient().PrimaryAddress(),
-		true, // always speed back to our primary address
+		true, // always sweep back to our primary address
 	)
 	if err != nil {
 		return err

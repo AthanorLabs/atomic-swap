@@ -76,6 +76,46 @@ type WalletClientConf struct {
 	LogPath             string               // optional, default is dir(WalletFilePath)/../monero-wallet-rpc.log
 }
 
+// Fill fills in the optional configuration values (Port, MonerodNodes, MoneroWalletRPCPath,
+// and LogPath) if they are not set.
+func (conf *WalletClientConf) Fill() error {
+	if conf.WalletFilePath == "" {
+		panic("WalletFilePath is a required conf field") // should have been caught before we were invoked
+	}
+
+	var err error
+	if conf.MoneroWalletRPCPath == "" {
+		conf.MoneroWalletRPCPath, err = getMoneroWalletRPCBin()
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(conf.MonerodNodes) == 0 {
+		conf.MonerodNodes = common.ConfigDefaultsForEnv(conf.Env).MoneroNodes
+	}
+
+	validatedNode, err := findWorkingNode(conf.Env, conf.MonerodNodes)
+	if err != nil {
+		return err
+	}
+	conf.MonerodNodes = []*common.MoneroNode{validatedNode}
+
+	if conf.LogPath == "" {
+		// default to the folder above the wallet
+		conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
+	}
+
+	if conf.WalletPort == 0 {
+		conf.WalletPort, err = getFreeTCPPort()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // waitForReceiptRequest wraps the input parameters for waitForReceipt
 type waitForReceiptRequest struct {
 	Ctx              context.Context
@@ -107,35 +147,43 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	isNewWallet := !walletExists
 
-	if conf.MoneroWalletRPCPath == "" {
-		conf.MoneroWalletRPCPath, err = getMoneroWalletRPCBin()
-		if err != nil {
-			return nil, err
-		}
-	}
+	// if conf.MoneroWalletRPCPath == "" {
+	// 	conf.MoneroWalletRPCPath, err = getMoneroWalletRPCBin()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
-	if len(conf.MonerodNodes) == 0 {
-		conf.MonerodNodes = common.ConfigDefaultsForEnv(conf.Env).MoneroNodes
-	}
-	validatedNode, err := findWorkingNode(conf.Env, conf.MonerodNodes)
+	// if len(conf.MonerodNodes) == 0 {
+	// 	conf.MonerodNodes = common.ConfigDefaultsForEnv(conf.Env).MoneroNodes
+	// }
+	// validatedNode, err := findWorkingNode(conf.Env, conf.MonerodNodes)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// conf.MonerodNodes = []*common.MoneroNode{validatedNode}
+
+	// if conf.LogPath == "" {
+	// 	// default to the folder above the wallet
+	// 	conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
+	// }
+
+	// if conf.WalletPort == 0 {
+	// 	conf.WalletPort, err = getFreeTCPPort()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	err = conf.Fill()
 	if err != nil {
 		return nil, err
 	}
-	conf.MonerodNodes = []*common.MoneroNode{validatedNode}
 
-	if conf.LogPath == "" {
-		// default to the folder above the wallet
-		conf.LogPath = path.Join(path.Dir(path.Dir(conf.WalletFilePath)), "monero-wallet-rpc.log")
-	}
-
-	if conf.WalletPort == 0 {
-		conf.WalletPort, err = getFreeTCPPort()
-		if err != nil {
-			return nil, err
-		}
-	}
+	validatedNode := conf.MonerodNodes[0]
 
 	proc, err := createWalletRPCService(
 		conf.Env,

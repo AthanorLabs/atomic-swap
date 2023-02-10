@@ -18,7 +18,7 @@ var (
 )
 
 // GetClaimKeypair returns the private key pair required for a monero claim.
-// The key pair is the summation of each party's spend and view keys:
+// The key pair is the summation of each party's private spend and view keys:
 // (s_a + s_b) and (v_a + v_b).
 func GetClaimKeypair(
 	skA, skB *mcrypto.PrivateSpendKey,
