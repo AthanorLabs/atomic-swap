@@ -30,25 +30,29 @@ const (
 	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
 )
 
-// CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
-func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
+// GetWalletRPCDirectory returns the directory path of monero-wallet-rpc.
+func GetWalletRPCDirectory(t *testing.T) string {
 	_, filename, _, ok := runtime.Caller(0) // this test file path
 	require.True(t, ok)
 	packageDir := path.Dir(filename)
 	repoBaseDir := path.Dir(packageDir)
-	moneroWalletRPCPath := path.Join(repoBaseDir, "monero-bin", "monero-wallet-rpc")
+	return path.Join(repoBaseDir, "monero-bin", "monero-wallet-rpc")
+}
 
+// CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
+func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
+	moneroWalletRPCPath := GetWalletRPCDirectory(t)
 	c, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
 		WalletFilePath:      path.Join(walletDir, "test-wallet"),
 		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
+
 	t.Cleanup(func() {
 		c.Close()
 	})
 	TestBackgroundMineBlocks(t)
-
 	return c
 }
 

@@ -27,7 +27,7 @@ func TestClaimMonero_NoTransferBack(t *testing.T) {
 
 	conf := &monero.WalletClientConf{
 		Env:            env,
-		WalletFilePath: path.Join(t.TempDir(), "test-wallet-tcm"),
+		WalletFilePath: path.Join(monero.GetWalletRPCDirectory(t), "test-wallet-tcm"),
 	}
 	err = conf.Fill()
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestClaimMonero_WithTransferBack(t *testing.T) {
 
 	conf := &monero.WalletClientConf{
 		Env:            env,
-		WalletFilePath: path.Join(t.TempDir(), "test-wallet-tcm"),
+		WalletFilePath: path.Join(monero.GetWalletRPCDirectory(t), "test-wallet-tcm"),
 	}
 	err = conf.Fill()
 	require.NoError(t, err)
