@@ -188,6 +188,15 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	return nil
 }
 
+// completeSwap is called in the case where we find an ongoing swap in the db on startup,
+// and the swap already has the counterpary's swap secret stored.
+// In this case, we simply re-claim the XMR we locked, as we have both secrets required.
+// It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
+// us finding the counterparty's secret and claiming the XMR.
+//
+// Note: this will use the current value of `transferBack `(verses whatever value was set when
+// the swap was started). It will also only only recover to the primary wallet address,
+// not whatever address was used when the swap was started.
 func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
 	// calc counterparty's swap private view key
 	// TODO: if the counterparty sends a non-standard public view key, does this work?
@@ -225,6 +234,12 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 	)
 	if err != nil {
 		return err
+	}
+
+	s.Status = types.CompletedSuccess
+	err = inst.backend.SwapManager().CompleteOngoingSwap(s)
+	if err != nil {
+		return fmt.Errorf("failed to mark swap %s as completed: %w", s.ID, err)
 	}
 
 	return nil

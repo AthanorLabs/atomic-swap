@@ -91,7 +91,6 @@ func ClaimMonero(
 	return abAddr, nil
 }
 
-// TODO: Put this in monero package? Unit test.
 func waitUntilBalanceUnlocks(ctx context.Context, walletCli monero.WalletClient) error {
 	for {
 		if ctx.Err() != nil {

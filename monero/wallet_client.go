@@ -78,6 +78,7 @@ type WalletClientConf struct {
 
 // Fill fills in the optional configuration values (Port, MonerodNodes, MoneroWalletRPCPath,
 // and LogPath) if they are not set.
+// If empty, MonerodNodes is set to the first validated node.
 func (conf *WalletClientConf) Fill() error {
 	if conf.WalletFilePath == "" {
 		panic("WalletFilePath is a required conf field") // should have been caught before we were invoked
@@ -135,12 +136,13 @@ type walletClient struct {
 
 // NewWalletClient returns a WalletClient for a newly created monero-wallet-rpc process.
 func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
-	if conf.WalletFilePath == "" {
-		panic("WalletFilePath is a required conf field") // should have been caught before we were invoked
-	}
-
 	if path.Dir(conf.WalletFilePath) == "." {
 		return nil, errors.New("wallet file cannot be in the current working directory")
+	}
+
+	err := conf.Fill()
+	if err != nil {
+		return nil, err
 	}
 
 	walletExists, err := common.FileExists(conf.WalletFilePath)
@@ -149,12 +151,6 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 	}
 
 	isNewWallet := !walletExists
-
-	err = conf.Fill()
-	if err != nil {
-		return nil, err
-	}
-
 	validatedNode := conf.MonerodNodes[0]
 
 	proc, err := createWalletRPCService(

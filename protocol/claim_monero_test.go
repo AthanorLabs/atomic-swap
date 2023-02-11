@@ -37,9 +37,9 @@ func TestClaimMonero_NoTransferBack(t *testing.T) {
 	require.NoError(t, err)
 	height, err := moneroCli.GetHeight()
 	require.NoError(t, err)
-	amt := coins.StrToDecimal("1")
-	pnamt := coins.PiconeroAmount(*amt)
-	monero.MineMinXMRBalance(t, moneroCli, &pnamt)
+	xmrAmt := coins.StrToDecimal("1")
+	pnAmt := coins.MoneroToPiconero(xmrAmt)
+	monero.MineMinXMRBalance(t, moneroCli, pnAmt)
 
 	_, err = ClaimMonero(
 		context.Background(),
@@ -73,9 +73,9 @@ func TestClaimMonero_WithTransferBack(t *testing.T) {
 	require.NoError(t, err)
 	height, err := moneroCli.GetHeight()
 	require.NoError(t, err)
-	amt := coins.StrToDecimal("1")
-	pnamt := coins.PiconeroAmount(*amt)
-	monero.MineMinXMRBalance(t, moneroCli, &pnamt)
+	xmrAmt := coins.StrToDecimal("1")
+	pnAmt := coins.MoneroToPiconero(xmrAmt)
+	monero.MineMinXMRBalance(t, moneroCli, pnAmt)
 
 	kp2, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)

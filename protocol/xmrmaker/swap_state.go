@@ -411,7 +411,7 @@ func (s *swapState) exit() error {
 }
 
 func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
-	// write counterparty swap privkey to file in case something goes wrong
+	// write counterparty swap privkey to disk in case something goes wrong
 	if err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skA); err != nil {
 		return err
 	}
