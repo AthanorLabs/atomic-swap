@@ -428,7 +428,8 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 
 	// generate address using counterparty public keys to pass to ClaimMoneroWithAddress
 	address := mcrypto.SumSpendAndViewKeys(
-		s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
+		s.xmrtakerPublicKeys, s.pubkeys,
+	).Address(s.Env())
 
 	return pcommon.ClaimMoneroInAddress(
 		s.ctx,
