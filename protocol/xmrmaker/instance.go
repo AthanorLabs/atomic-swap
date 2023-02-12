@@ -228,8 +228,10 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 		return err
 	}
 
+	// generate address from counterparty public keys to pass to ClaimMoneroWithAddress
+	kpB := mcrypto.NewPrivateKeyPair(skB, vkB)
 	address := mcrypto.SumSpendAndViewKeys(
-		xmrtakerPublicKeys, kpAB.PublicKeyPair()).Address(inst.backend.Env())
+		xmrtakerPublicKeys, kpB.PublicKeyPair()).Address(inst.backend.Env())
 
 	err = pcommon.ClaimMoneroInAddress(
 		inst.backend.Ctx(),
