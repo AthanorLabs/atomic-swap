@@ -76,7 +76,11 @@ func (inst *Instance) checkForOngoingSwaps() error {
 		}
 
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
-			// TODO: set status to aborted, delete info from recovery db
+			// set status to aborted, delete info from recovery db
+			err = inst.abortOngoingSwap(s)
+			if err != nil {
+				log.Warnf("failed to abort ongoing swap %s: %s", s.ID, err)
+			}
 			continue
 		}
 
@@ -87,6 +91,17 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	}
 
 	return nil
+}
+
+func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
+	// set status to aborted, delete info from recovery db
+	s.Status = types.CompletedAbort
+	err := inst.backend.SwapManager().CompleteOngoingSwap(s)
+	if err != nil {
+		return err
+	}
+
+	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
 }
 
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
@@ -137,6 +152,15 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	return nil
 }
 
+// completeSwap is called in the case where we find an ongoing swap in the db on startup,
+// and the swap already has the counterpary's swap secret stored.
+// In this case, we simply claim the XMR, as we have both secrets required.
+// It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
+// us finding the counterparty's secret and claiming the XMR.
+//
+// Note: this will use the current value of `transferBack `(verses whatever value was set when
+// the swap was started). It will also only only recover to the primary wallet address,
+// not whatever address was used when the swap was started.
 func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) error {
 	// fetch our swap private spend key
 	skA, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
@@ -173,6 +197,12 @@ func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) e
 	)
 	if err != nil {
 		return err
+	}
+
+	s.Status = types.CompletedSuccess
+	err = inst.backend.SwapManager().CompleteOngoingSwap(s)
+	if err != nil {
+		return fmt.Errorf("failed to mark swap %s as completed: %w", s.ID, err)
 	}
 
 	return nil
