@@ -71,11 +71,6 @@ func ClaimMonero(
 		return "", err
 	}
 
-	err = waitUntilBalanceUnlocks(ctx, abWalletCli)
-	if err != nil {
-		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
-	}
-
 	transfers, err := abWalletCli.SweepAll(ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
 	if err != nil {
 		return "", fmt.Errorf("failed to send funds to deposit account: %w", err)
@@ -89,26 +84,4 @@ func ClaimMonero(
 	}
 
 	return abAddr, nil
-}
-
-func waitUntilBalanceUnlocks(ctx context.Context, walletCli monero.WalletClient) error {
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		log.Infof("checking if balance unlocked...")
-		balance, err := walletCli.GetBalance(0)
-		if err != nil {
-			return fmt.Errorf("failed to get balance: %w", err)
-		}
-
-		if balance.Balance == balance.UnlockedBalance {
-			return nil
-		}
-
-		if _, err = monero.WaitForBlocks(ctx, walletCli, int(balance.BlocksToUnlock)); err != nil {
-			log.Warnf("waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
-		}
-	}
 }
