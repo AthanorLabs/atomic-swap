@@ -78,7 +78,7 @@ type WalletClientConf struct {
 
 // Fill fills in the optional configuration values (Port, MonerodNodes, MoneroWalletRPCPath,
 // and LogPath) if they are not set.
-// If empty, MonerodNodes is set to the first validated node.
+// Note: MonerodNodes is set to the first validated node.
 func (conf *WalletClientConf) Fill() error {
 	if conf.WalletFilePath == "" {
 		panic("WalletFilePath is a required conf field") // should have been caught before we were invoked

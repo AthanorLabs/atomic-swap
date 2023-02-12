@@ -236,7 +236,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 		return err
 	}
 
-	s.Status = types.CompletedSuccess
+	s.Status = types.CompletedRefund
 	err = inst.backend.SwapManager().CompleteOngoingSwap(s)
 	if err != nil {
 		return fmt.Errorf("failed to mark swap %s as completed: %w", s.ID, err)
