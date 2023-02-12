@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	ed25519 "filippo.io/edwards25519"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,4 +65,35 @@ func TestPrivateSpendKey_UnmarshalText_nil(t *testing.T) {
 	psk := &PrivateSpendKey{}
 	err := psk.UnmarshalText([]byte(""))
 	require.ErrorContains(t, err, "invalid scalar length")
+}
+
+func TestPrivateKeyPair_Marshal(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+
+	// serialize, deserialize, and make sure the result is the same as the original
+	jsonData, err := json.Marshal(kp)
+	require.NoError(t, err)
+	kp2 := new(PrivateKeyPair)
+	err = json.Unmarshal(jsonData, kp2)
+	require.NoError(t, err)
+
+	assert.Equal(t, kp.SpendKey().Hex(), kp2.SpendKey().Hex())
+	assert.Equal(t, kp.ViewKey().Hex(), kp2.ViewKey().Hex())
+}
+
+func TestPublicKeyPair_Marshal(t *testing.T) {
+	kp, err := GenerateKeys()
+	require.NoError(t, err)
+	pubKP1 := kp.PublicKeyPair()
+
+	// serialize, deserialize, and make sure the result is the same as the original
+	jsonData, err := json.Marshal(pubKP1)
+	require.NoError(t, err)
+	pubKP2 := new(PublicKeyPair)
+	err = json.Unmarshal(jsonData, pubKP2)
+	require.NoError(t, err)
+
+	assert.Equal(t, pubKP1.SpendKey().Hex(), pubKP2.SpendKey().Hex())
+	assert.Equal(t, pubKP1.ViewKey().Hex(), pubKP2.ViewKey().Hex())
 }

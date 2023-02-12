@@ -281,13 +281,12 @@ func (s *swapState) handleEventContractReady() error {
 
 func (s *swapState) handleEventETHRefunded(e *EventETHRefunded) error {
 	// generate monero wallet, regaining control over locked funds
-	addr, err := s.reclaimMonero(e.sk)
+	err := s.reclaimMonero(e.sk)
 	if err != nil {
 		return err
 	}
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
-	log.Infof("regained control over monero account %s", addr)
 	s.CloseProtocolStream(s.ID())
 	return nil
 }

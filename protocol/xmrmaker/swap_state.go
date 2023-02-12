@@ -410,29 +410,37 @@ func (s *swapState) exit() error {
 	}
 }
 
-func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
+func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
+	// write counterparty swap privkey to disk in case something goes wrong
+	if err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skA); err != nil {
+		return err
+	}
+
 	vkA, err := skA.View()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	skAB := mcrypto.SumPrivateSpendKeys(skA, s.privkeys.SpendKey())
-	vkAB := mcrypto.SumPrivateViewKeys(vkA, s.privkeys.ViewKey())
-	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
+	kpAB := pcommon.GetClaimKeypair(
+		skA, s.privkeys.SpendKey(),
+		vkA, s.privkeys.ViewKey(),
+	)
 
-	// write keys to file in case something goes wrong
-	if err = s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey()); err != nil {
-		return "", err
-	}
-
-	conf := s.XMRClient().CreateWalletConf("xmrmaker-swap-wallet-refund")
-	destAddr := s.XMRClient().PrimaryAddress()
-	err = sweepRefund(s.ctx, s.Env(), s.ID(), conf, s.moneroStartHeight, kpAB, destAddr)
+	_, err = pcommon.ClaimMonero(
+		s.ctx,
+		s.Env(),
+		s.ID(),
+		s.XMRClient(),
+		s.moneroStartHeight,
+		kpAB,
+		s.XMRClient().PrimaryAddress(),
+		true, // always sweep back to our primary address
+	)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return kpAB.Address(s.Env()), nil
+	return nil
 }
 
 // generateKeys generates XMRMaker's spend and view keys (s_b, v_b)

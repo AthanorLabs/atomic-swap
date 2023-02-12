@@ -67,19 +67,19 @@ func (mr *MockRecoveryDBMockRecorder) GetContractSwapInfo(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).GetContractSwapInfo), arg0)
 }
 
-// GetSharedSwapPrivateKey mocks base method.
-func (m *MockRecoveryDB) GetSharedSwapPrivateKey(arg0 common.Hash) (*mcrypto.PrivateSpendKey, error) {
+// GetCounterpartySwapPrivateKey mocks base method.
+func (m *MockRecoveryDB) GetCounterpartySwapPrivateKey(arg0 common.Hash) (*mcrypto.PrivateSpendKey, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSharedSwapPrivateKey", arg0)
+	ret := m.ctrl.Call(m, "GetCounterpartySwapPrivateKey", arg0)
 	ret0, _ := ret[0].(*mcrypto.PrivateSpendKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSharedSwapPrivateKey indicates an expected call of GetSharedSwapPrivateKey.
-func (mr *MockRecoveryDBMockRecorder) GetSharedSwapPrivateKey(arg0 interface{}) *gomock.Call {
+// GetCounterpartySwapPrivateKey indicates an expected call of GetCounterpartySwapPrivateKey.
+func (mr *MockRecoveryDBMockRecorder) GetCounterpartySwapPrivateKey(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSharedSwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).GetSharedSwapPrivateKey), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterpartySwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).GetCounterpartySwapPrivateKey), arg0)
 }
 
 // GetSwapPrivateKey mocks base method.
@@ -142,18 +142,18 @@ func (mr *MockRecoveryDBMockRecorder) PutContractSwapInfo(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).PutContractSwapInfo), arg0, arg1)
 }
 
-// PutSharedSwapPrivateKey mocks base method.
-func (m *MockRecoveryDB) PutSharedSwapPrivateKey(arg0 common.Hash, arg1 *mcrypto.PrivateSpendKey) error {
+// PutCounterpartySwapPrivateKey mocks base method.
+func (m *MockRecoveryDB) PutCounterpartySwapPrivateKey(arg0 common.Hash, arg1 *mcrypto.PrivateSpendKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutSharedSwapPrivateKey", arg0, arg1)
+	ret := m.ctrl.Call(m, "PutCounterpartySwapPrivateKey", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// PutSharedSwapPrivateKey indicates an expected call of PutSharedSwapPrivateKey.
-func (mr *MockRecoveryDBMockRecorder) PutSharedSwapPrivateKey(arg0, arg1 interface{}) *gomock.Call {
+// PutCounterpartySwapPrivateKey indicates an expected call of PutCounterpartySwapPrivateKey.
+func (mr *MockRecoveryDBMockRecorder) PutCounterpartySwapPrivateKey(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutSharedSwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).PutSharedSwapPrivateKey), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutCounterpartySwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).PutCounterpartySwapPrivateKey), arg0, arg1)
 }
 
 // PutSwapPrivateKey mocks base method.

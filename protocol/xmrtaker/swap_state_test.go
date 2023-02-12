@@ -30,6 +30,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
+var _ = logging.SetLogLevel("protocol", "debug")
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
 type mockNet struct {
@@ -85,8 +86,9 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb := backend.NewMockRecoveryDB(ctrl)
 	rdb.EXPECT().PutContractSwapInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().PutSharedSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutCounterpartySwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutXMRMakerSwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
 	require.NoError(t, err)
@@ -116,8 +118,8 @@ func newBackend(t *testing.T) backend.Backend {
 
 func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	b, net := newBackendAndNet(t)
-	providedAmt := coins.EtherToWei(coins.StrToDecimal("0.0001"))
-	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("0.0001"))
+	providedAmt := coins.EtherToWei(coins.StrToDecimal("1"))
+	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("1"))
 	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
 	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
 		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)

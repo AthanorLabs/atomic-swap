@@ -60,7 +60,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	makerKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	rdb.EXPECT().GetSharedSwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
+	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
 	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),

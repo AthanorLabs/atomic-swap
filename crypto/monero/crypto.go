@@ -30,6 +30,9 @@ type PrivateKeyPair struct {
 // Both values must be set, as no assumptions are made that the view key is derived from the spend
 // key with this type.
 func NewPrivateKeyPair(sk *PrivateSpendKey, vk *PrivateViewKey) *PrivateKeyPair {
+	if sk == nil || vk == nil {
+		panic("NewPrivateKeyPair requires a key pair")
+	}
 	return &PrivateKeyPair{
 		sk: sk,
 		vk: vk,
@@ -57,22 +60,6 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 		sk: &PrivateSpendKey{key: sk},
 		vk: &PrivateViewKey{key: vk},
 	}, nil
-}
-
-// NewPrivateKeyPairFromHex returns a PrivateKeyPair from the given hex-encoded byte
-// representation of a private spend and view key.
-func NewPrivateKeyPairFromHex(skHex, vkHex string) (*PrivateKeyPair, error) {
-	skBytes, err := hex.DecodeString(skHex)
-	if err != nil {
-		return nil, err
-	}
-
-	vkBytes, err := hex.DecodeString(vkHex)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewPrivateKeyPairFromBytes(skBytes, vkBytes)
 }
 
 // SpendKeyBytes returns the canonical byte encoding of the private spend key.
@@ -171,11 +158,6 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	return &PrivateViewKey{
 		key: vk,
 	}, nil
-}
-
-// Hash returns the keccak256 of the secret key bytes
-func (k *PrivateSpendKey) Hash() [32]byte {
-	return crypto.Keccak256(k.key.Bytes())
 }
 
 // Bytes returns the PrivateSpendKey as canonical bytes

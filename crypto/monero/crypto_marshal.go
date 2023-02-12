@@ -2,6 +2,7 @@ package mcrypto
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 
 	ed25519 "filippo.io/edwards25519"
@@ -73,6 +74,7 @@ func (k *PrivateViewKey) MarshalText() ([]byte, error) {
 
 // UnmarshalText assigns k from LE hex input (64 symbols, 32 bytes).
 func (k *PrivateViewKey) UnmarshalText(input []byte) error {
+	k.key = ed25519.NewScalar()
 	return (*mScalar)(k.key).UnmarshalText(input)
 }
 
@@ -83,5 +85,82 @@ func (k *PublicKey) MarshalText() ([]byte, error) {
 
 // UnmarshalText assigns k from LE hex input (64 symbols, 32 bytes).
 func (k *PublicKey) UnmarshalText(input []byte) error {
+	k.key = new(ed25519.Point)
 	return (*mPoint)(k.key).UnmarshalText(input)
+}
+
+// _PrivateKeyPair is a non-exported type with exported fields so it can be marshaled.
+// Underscore used so name is mostly identical in error messages.
+type _PrivateKeyPair struct {
+	SK *PrivateSpendKey `json:"privateSpendKey"`
+	VK *PrivateViewKey  `json:"privateViewKey"`
+}
+
+// MarshalJSON provides JSON marshalling for PrivateKeyPair
+func (kp *PrivateKeyPair) MarshalJSON() ([]byte, error) {
+	if kp.sk == nil {
+		return nil, errors.New("private spend key missing")
+	}
+	if kp.vk == nil {
+		return nil, errors.New("private view key missing")
+	}
+	return json.Marshal(&_PrivateKeyPair{SK: kp.sk, VK: kp.vk})
+}
+
+// UnmarshalJSON provides JSON unmarshalling for PrivateKeyPair
+func (kp *PrivateKeyPair) UnmarshalJSON(data []byte) error {
+	kpm := new(_PrivateKeyPair)
+
+	if err := json.Unmarshal(data, kpm); err != nil {
+		return err
+	}
+
+	if kpm.SK == nil {
+		return errors.New("private spend key missing")
+	}
+	if kpm.VK == nil {
+		return errors.New("private view key missing")
+	}
+
+	kp.sk = kpm.SK
+	kp.vk = kpm.VK
+	return nil
+}
+
+// _PublicKeyPair is a non-exported type with exported fields so it can be marshaled.
+// Underscore used so name is mostly identical in error messages.
+type _PublicKeyPair struct {
+	SK *PublicKey `json:"publicSpendKey"`
+	VK *PublicKey `json:"publicViewKey"`
+}
+
+// MarshalJSON provides JSON marshalling for PublicKeyPair
+func (kp *PublicKeyPair) MarshalJSON() ([]byte, error) {
+	if kp.sk == nil {
+		return nil, errors.New("public spend key missing")
+	}
+	if kp.vk == nil {
+		return nil, errors.New("public view key missing")
+	}
+	return json.Marshal(&_PublicKeyPair{SK: kp.sk, VK: kp.vk})
+}
+
+// UnmarshalJSON provides JSON unmarshalling for PublicKeyPair
+func (kp *PublicKeyPair) UnmarshalJSON(data []byte) error {
+	kpm := new(_PublicKeyPair)
+
+	if err := json.Unmarshal(data, kpm); err != nil {
+		return err
+	}
+
+	if kpm.SK == nil {
+		return errors.New("public spend key missing")
+	}
+	if kpm.VK == nil {
+		return errors.New("public view key missing")
+	}
+
+	kp.sk = kpm.SK
+	kp.vk = kpm.VK
+	return nil
 }

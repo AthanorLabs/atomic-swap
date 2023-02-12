@@ -347,6 +347,11 @@ func (s *swapState) exit() error {
 			return
 		}
 
+		err = s.Backend.RecoveryDB().DeleteSwap(s.ID())
+		if err != nil {
+			log.Warnf("failed to delete temporary swap info %s from db: %s", s.ID(), err)
+		}
+
 		// Stop all per-swap goroutines
 		s.cancel()
 		close(s.done)

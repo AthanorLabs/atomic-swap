@@ -117,10 +117,10 @@ func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	err = rdb.PutSharedSwapPrivateKey(offerID, kp.SpendKey())
+	err = rdb.PutCounterpartySwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)
 
-	res, err := rdb.GetSharedSwapPrivateKey(offerID)
+	res, err := rdb.GetCounterpartySwapPrivateKey(offerID)
 	require.NoError(t, err)
 	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
 }
@@ -176,7 +176,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	require.NoError(t, err)
 	err = rdb.PutSwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)
-	err = rdb.PutSharedSwapPrivateKey(offerID, kp.SpendKey())
+	err = rdb.PutCounterpartySwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)
 	err = rdb.PutXMRMakerSwapKeys(offerID, kp.SpendKey().Public(), kp.ViewKey())
 	require.NoError(t, err)
@@ -189,7 +189,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
 	_, err = rdb.GetSwapPrivateKey(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
-	_, err = rdb.GetSharedSwapPrivateKey(offerID)
+	_, err = rdb.GetCounterpartySwapPrivateKey(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
 	_, _, err = rdb.GetXMRMakerSwapKeys(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())

@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	recoveryPrefix             = "recv"
-	contractSwapInfoPrefix     = "ethinfo"
-	swapPrivateKeyPrefix       = "privkey"
-	sharedSwapPrivateKeyPrefix = "sprivkey"
-	relayerInfoPrefix          = "relayer"
-	xmrmakerKeysPrefix         = "xmrmaker"
+	recoveryPrefix                   = "recv"
+	contractSwapInfoPrefix           = "ethinfo"
+	swapPrivateKeyPrefix             = "privkey"
+	counterpartySwapPrivateKeyPrefix = "cspriv"
+	relayerInfoPrefix                = "relayer"
+	xmrmakerKeysPrefix               = "xmrmaker"
 )
 
 // RecoveryDB contains information about ongoing swaps required for recovery
@@ -125,35 +125,32 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
 }
 
-// PutSharedSwapPrivateKey stores the shared swap private key for the given swap ID.
-func (db *RecoveryDB) PutSharedSwapPrivateKey(
-	id types.Hash,
-	sk *mcrypto.PrivateSpendKey,
-) error {
-	val, err := json.Marshal(sk.Hex())
+// PutCounterpartySwapPrivateKey stores the counterparty's swap private key for the given swap ID.
+func (db *RecoveryDB) PutCounterpartySwapPrivateKey(id types.Hash, kp *mcrypto.PrivateSpendKey) error {
+	val, err := json.Marshal(kp)
 	if err != nil {
 		return err
 	}
 
-	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
+	key := getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix)
 	return db.db.Put(key[:], val)
 }
 
-// GetSharedSwapPrivateKey returns the shared swap private key, if it exists.
-func (db *RecoveryDB) GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error) {
-	key := getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix)
+// GetCounterpartySwapPrivateKey returns the counterparty's swap private key, if it exists.
+func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error) {
+	key := getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix)
 	value, err := db.db.Get(key[:])
 	if err != nil {
 		return nil, err
 	}
 
-	var skHex string
-	err = json.Unmarshal(value, &skHex)
+	sk := new(mcrypto.PrivateSpendKey)
+	err = json.Unmarshal(value, sk)
 	if err != nil {
 		return nil, err
 	}
 
-	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
+	return sk, nil
 }
 
 type xmrmakerKeys struct {
@@ -209,7 +206,7 @@ func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 		getRecoveryDBKey(id, relayerInfoPrefix),
 		getRecoveryDBKey(id, contractSwapInfoPrefix),
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
-		getRecoveryDBKey(id, sharedSwapPrivateKeyPrefix),
+		getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix),
 		getRecoveryDBKey(id, xmrmakerKeysPrefix),
 	}
 

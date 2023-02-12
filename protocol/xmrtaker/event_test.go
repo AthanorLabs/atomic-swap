@@ -63,8 +63,6 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 
 	select {
 	case log := <-logReadyCh:
-		t.Log(log)
-		t.Log(log.Topics)
 		err = pcommon.CheckSwapID(&log, readyTopic, s.contractSwapID)
 		require.NoError(t, err)
 	case <-time.After(time.Second * 2):
@@ -76,6 +74,10 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
+
+	// test transferBack functionality
+	s.transferBack = true
+	s.Backend.SetBaseXMRDepositAddress(s.Backend.XMRClient().PrimaryAddress())
 
 	// invalid SendKeysMessage should result in an error
 	msg := &message.SendKeysMessage{}
