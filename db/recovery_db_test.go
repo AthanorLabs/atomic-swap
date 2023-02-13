@@ -141,6 +141,22 @@ func TestRecoveryDB_XMRMakerSwapKeys(t *testing.T) {
 	require.Equal(t, kp.ViewKey().Hex(), resVk.Hex())
 }
 
+func TestRecoveryDB_XMRTakerSwapKeys(t *testing.T) {
+	rdb := newTestRecoveryDB(t)
+	offerID := types.Hash{5, 6, 7, 8}
+
+	kp, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	err = rdb.PutXMRTakerSwapKeys(offerID, kp.PublicKeyPair())
+	require.NoError(t, err)
+
+	res, err := rdb.GetXMRTakerSwapKeys(offerID)
+	require.NoError(t, err)
+	require.Equal(t, res.SpendKey().Hex(), kp.SpendKey().Public().Hex())
+	require.Equal(t, res.ViewKey().Hex(), kp.ViewKey().Public().Hex())
+}
+
 func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	rdb := newTestRecoveryDB(t)
 	offerID := types.Hash{5, 6, 7, 8}

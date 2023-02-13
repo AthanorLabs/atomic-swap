@@ -229,6 +229,9 @@ func TestCallGenerateFromKeys(t *testing.T) {
 }
 
 func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
+	// this tests calling generateFromkeys passing an address derived in
+	// a non-standard manner (ie. the view keys aren't a hash of the spend
+	// key). the view key is actually a completely different key altogether.
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
@@ -261,9 +264,8 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	addr, err := c.GetAddress(0)
+	_, err := c.GetAddress(0)
 	require.NoError(t, err)
-	t.Logf("Address %s", addr.Address)
 }
 
 func Test_getMoneroWalletRPCBin(t *testing.T) {
