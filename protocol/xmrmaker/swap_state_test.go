@@ -264,6 +264,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	db.EXPECT().PutOffer(s.offer)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().DeleteSwap(s.ID()).Return(nil)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -310,6 +311,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	db.EXPECT().PutOffer(s.offer)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().DeleteSwap(s.ID()).Return(nil)
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
