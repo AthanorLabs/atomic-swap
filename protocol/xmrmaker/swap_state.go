@@ -522,8 +522,14 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	}
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
+
+	txID, err := types.HexToHash(transfer.TxID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &message.NotifyXMRLock{
 		Address: string(swapDestAddr),
-		TxID:    transfer.TxID,
+		TxID:    txID,
 	}, nil
 }

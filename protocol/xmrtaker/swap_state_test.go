@@ -240,11 +240,15 @@ func lockXMRFunds(
 	wc monero.WalletClient,
 	destAddr mcrypto.Address,
 	amount *coins.PiconeroAmount,
-) string {
+) types.Hash {
 	monero.MineMinXMRBalance(t, wc, amount)
 	transfer, err := wc.Transfer(ctx, destAddr, 0, amount, monero.MinSpendConfirmations)
 	require.NoError(t, err)
-	return transfer.TxID
+
+	txID, err := types.HexToHash(transfer.TxID)
+	require.NoError(t, err)
+
+	return txID
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {

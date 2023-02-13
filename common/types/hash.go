@@ -8,7 +8,8 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// Hash represents a 32-byte hash
+// Hash represents a 32-byte hash used as transaction IDs both by
+// Ethereum and Monero.
 type Hash = ethcommon.Hash
 
 // EmptyHash is an empty Hash

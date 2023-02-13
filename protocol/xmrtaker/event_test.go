@@ -32,10 +32,13 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	t.Logf("Transferred %d pico XMR (fees %d) to account %s", transfer.Amount, transfer.Fee, xmrAddr)
 	t.Logf("Transfer was mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
 
+	txID, err := types.HexToHash(transfer.TxID)
+	require.NoError(t, err)
+
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
-		TxID:    transfer.TxID,
+		TxID:    txID,
 	}
 
 	// assert that ready() is called, setup contract watcher
