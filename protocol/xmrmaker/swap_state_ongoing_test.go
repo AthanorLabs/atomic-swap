@@ -13,7 +13,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/tests"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,8 +66,6 @@ func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 func TestSwapStateOngoing_Refund(t *testing.T) {
 	inst, s, offerDB := newTestSwapStateAndDB(t)
 	offerDB.EXPECT().PutOffer(s.offer)
-	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
-	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
@@ -111,8 +108,8 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 	}
 
 	s.info.Status = types.XMRLocked
+	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 	rdb.EXPECT().GetXMRTakerSwapKeys(s.ID()).Return(xmrtakerKeysAndProof.PublicKeyPair, nil)
-	rdb.EXPECT().DeleteSwap(s.ID()).Return(nil)
 
 	t.Log("creating swap state again...")
 	ss, err := newSwapStateFromOngoing(
