@@ -88,7 +88,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 }
 
 func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (message.Message, error) {
-	if msg.Address == "" {
+	if msg.Address == (ethcommon.Address{}) {
 		return nil, errMissingAddress
 	}
 
@@ -106,12 +106,12 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (message
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = convertContractSwap(msg.ContractSwap)
 
-	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, ethcommon.HexToHash(msg.TxHash))
+	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, msg.TxHash)
 	if err != nil {
 		return nil, err
 	}
 
-	contractAddr := ethcommon.HexToAddress(msg.Address)
+	contractAddr := msg.Address
 	// note: this function verifies the forwarder code as well, even if we aren't using a relayer,
 	// in which case it's not relevant to us and we don't need to verify it.
 	// doesn't hurt though I suppose.
@@ -135,7 +135,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (message
 		return nil, err
 	}
 
-	if err = s.checkContract(ethcommon.HexToHash(msg.TxHash)); err != nil {
+	if err = s.checkContract(msg.TxHash); err != nil {
 		return nil, err
 	}
 

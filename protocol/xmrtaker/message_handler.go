@@ -142,8 +142,8 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message
 	go s.runT0ExpirationHandler()
 
 	out := &message.NotifyETHLocked{
-		Address:        s.ContractAddr().String(),
-		TxHash:         txHash.String(),
+		Address:        s.ContractAddr(),
+		TxHash:         txHash,
 		ContractSwapID: s.contractSwapID,
 		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}

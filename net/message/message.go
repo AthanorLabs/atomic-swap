@@ -162,10 +162,10 @@ type ContractSwap struct {
 // NotifyETHLocked is sent by XMRTaker to XMRMaker after deploying the swap contract
 // and locking her ether in it
 type NotifyETHLocked struct {
-	Address        string
-	TxHash         string
-	ContractSwapID types.Hash
-	ContractSwap   *ContractSwap
+	Address        ethcommon.Address `json:"address"`
+	TxHash         types.Hash        `json:"txHash"`
+	ContractSwapID types.Hash        `json:"contractSwapID"`
+	ContractSwap   *ContractSwap     `json:"contractSwap"`
 }
 
 // String ...

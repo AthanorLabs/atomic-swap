@@ -197,9 +197,9 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	addr := s.ContractAddr()
 
 	msg = &message.NotifyETHLocked{
-		Address:        addr.String(),
+		Address:        addr,
 		ContractSwapID: s.contractSwapID,
-		TxHash:         hash.String(),
+		TxHash:         hash,
 		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
 	}
 
