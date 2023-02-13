@@ -214,6 +214,5 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
 		return fmt.Errorf("failed to generate XMRTaker's public keys: %w", err)
 	}
 
-	s.setXMRTakerPublicKeys(kp, verifyResult.Secp256k1PublicKey)
-	return nil
+	return s.setXMRTakerPublicKeys(kp, verifyResult.Secp256k1PublicKey)
 }

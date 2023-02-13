@@ -16,10 +16,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 )
@@ -179,13 +181,16 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
-	_, s, net := newTestSwapStateAndNet(t)
+	inst, s, net := newTestSwapStateAndNet(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
+	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
+	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	require.NoError(t, err)
 
 	msg := &message.NotifyETHLocked{}
 	err = s.HandleProtocolMessage(msg)
@@ -214,12 +219,15 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
-	_, s := newTestSwapState(t)
+	inst, s := newTestSwapState(t)
 	defer s.cancel()
+	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
+	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	require.NoError(t, err)
 
 	msg := &message.NotifyETHLocked{}
 	err = s.HandleProtocolMessage(msg)
@@ -252,12 +260,15 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 }
 
 func TestSwapState_handleRefund(t *testing.T) {
-	_, s, db := newTestSwapStateAndDB(t)
+	inst, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
+	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
+	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
@@ -295,12 +306,15 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 // test that if the protocol exits early, and XMRTaker refunds, XMRMaker can reclaim his monero
 func TestSwapState_Exit_Reclaim(t *testing.T) {
-	_, s, db := newTestSwapStateAndDB(t)
+	inst, s, db := newTestSwapStateAndDB(t)
 	db.EXPECT().PutOffer(s.offer)
+	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
+	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)

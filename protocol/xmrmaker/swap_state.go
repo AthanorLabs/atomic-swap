@@ -5,6 +5,7 @@ package xmrmaker
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -426,6 +427,13 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 		vkA, s.privkeys.ViewKey(),
 	)
 
+	if s.xmrtakerPublicKeys == nil {
+		s.xmrtakerPublicKeys, err = s.RecoveryDB().GetXMRTakerSwapKeys(s.ID())
+		if err != nil {
+			return fmt.Errorf("failed to get counterparty public keypair: %w", err)
+		}
+	}
+
 	// generate address using counterparty public keys to pass to ClaimMoneroWithAddress
 	address := mcrypto.SumSpendAndViewKeys(
 		s.xmrtakerPublicKeys, s.pubkeys,
@@ -481,9 +489,13 @@ func (s *swapState) getSecret() [32]byte {
 }
 
 // setXMRTakerPublicKeys sets XMRTaker's public spend and view keys
-func (s *swapState) setXMRTakerPublicKeys(sk *mcrypto.PublicKeyPair, secp256k1Pub *secp256k1.PublicKey) {
+func (s *swapState) setXMRTakerPublicKeys(
+	sk *mcrypto.PublicKeyPair,
+	secp256k1Pub *secp256k1.PublicKey,
+) error {
 	s.xmrtakerPublicKeys = sk
 	s.xmrtakerSecp256K1PublicKey = secp256k1Pub
+	return s.RecoveryDB().PutXMRTakerSwapKeys(s.ID(), sk)
 }
 
 // setContract sets the contract in which XMRTaker has locked her ETH.
