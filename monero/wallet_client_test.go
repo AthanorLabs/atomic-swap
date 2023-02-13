@@ -264,7 +264,7 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err := c.GetAddress(0)
+	_, err = c.GetAddress(0)
 	require.NoError(t, err)
 }
 
