@@ -154,15 +154,15 @@ func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.Pri
 }
 
 type xmrmakerKeys struct {
-	PublicSpendKey string `json:"publicSpendKey"`
-	PrivateViewKey string `json:"privateViewKey"`
+	PublicSpendKey mcrypto.PublicKey      `json:"publicSpendKey"`
+	PrivateViewKey mcrypto.PrivateViewKey `json:"privateViewKey"`
 }
 
 // PutXMRMakerSwapKeys is called by the xmrtaker to store the counterparty's swap keys.
 func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
 	val, err := json.Marshal(&xmrmakerKeys{
-		PublicSpendKey: sk.Hex(),
-		PrivateViewKey: vk.Hex(),
+		PublicSpendKey: *sk,
+		PrivateViewKey: *vk,
 	})
 	if err != nil {
 		return err
@@ -187,17 +187,7 @@ func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *m
 		return nil, nil, err
 	}
 
-	sk, err := mcrypto.NewPublicKeyFromHex(info.PublicSpendKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	vk, err := mcrypto.NewPrivateViewKeyFromHex(info.PrivateViewKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return sk, vk, nil
+	return &info.PublicSpendKey, &info.PrivateViewKey, nil
 }
 
 // DeleteSwap deletes all recovery info from the db for the given swap.
