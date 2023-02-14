@@ -142,7 +142,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 		Address:        s.ContractAddr(),
 		TxHash:         txHash,
 		ContractSwapID: s.contractSwapID,
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
+		ContractSwap:   s.contractSwap,
 	}
 
 	return out, nil

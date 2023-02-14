@@ -59,7 +59,7 @@ type swapState struct {
 	contract       *contracts.SwapFactory
 	contractAddr   ethcommon.Address
 	contractSwapID [32]byte
-	contractSwap   contracts.SwapFactorySwap
+	contractSwap   *contracts.SwapFactorySwap
 	t0, t1         time.Time
 
 	// XMRTaker's keys for this session

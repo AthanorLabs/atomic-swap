@@ -118,7 +118,7 @@ func newSwap(
 	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	ss.contractSwap = contracts.SwapFactorySwap{
+	ss.contractSwap = &contracts.SwapFactorySwap{
 		Owner:        ethAddr,
 		Claimer:      ethAddr,
 		PubKeyClaim:  claimKey,
@@ -150,7 +150,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 
 	txOpts, err := swapState.ETHClient().TxOpts(swapState.ctx)
 	require.NoError(t, err)
-	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
+	tx, err := swapState.Contract().SetReady(txOpts, *swapState.contractSwap)
 	require.NoError(t, err)
 	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
@@ -200,7 +200,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 		Address:        addr,
 		ContractSwapID: s.contractSwapID,
 		TxHash:         hash,
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
+		ContractSwap:   s.contractSwap,
 	}
 
 	err = s.HandleProtocolMessage(msg)
@@ -276,7 +276,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(txOpts, *s.contractSwap, sc)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.ETHClient().Raw(), tx.Hash())
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(txOpts, *s.contractSwap, sc)
 	require.NoError(t, err)
 	receipt := tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 

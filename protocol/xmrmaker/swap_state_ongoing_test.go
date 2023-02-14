@@ -28,7 +28,7 @@ func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 
 	txOpts, err := swapState.ETHClient().TxOpts(swapState.Backend.Ctx())
 	require.NoError(t, err)
-	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
+	tx, err := swapState.Contract().SetReady(txOpts, *swapState.contractSwap)
 	require.NoError(t, err)
 	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
@@ -92,7 +92,7 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 	ctx := s.Backend.Ctx()
 	txOpts, err := s.ETHClient().TxOpts(ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(txOpts, *s.contractSwap, sc)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(ctx, s.ETHClient().Raw(), tx.Hash())
 	require.NoError(t, err)

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -14,6 +13,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
 // Identifiers for our p2p message types. The first byte of a message has the
@@ -142,26 +142,13 @@ func (m *SendKeysMessage) Type() byte {
 	return SendKeysType
 }
 
-// ContractSwap is the same as contracts.SwapFactorySwap
-type ContractSwap struct {
-	Owner        ethcommon.Address
-	Claimer      ethcommon.Address
-	PubKeyClaim  [32]byte
-	PubKeyRefund [32]byte
-	Timeout0     *big.Int
-	Timeout1     *big.Int
-	Asset        ethcommon.Address
-	Value        *big.Int
-	Nonce        *big.Int
-}
-
 // NotifyETHLocked is sent by XMRTaker to XMRMaker after deploying the swap contract
 // and locking her ether in it
 type NotifyETHLocked struct {
-	Address        ethcommon.Address `json:"address"`
-	TxHash         types.Hash        `json:"txHash"`
-	ContractSwapID types.Hash        `json:"contractSwapID"`
-	ContractSwap   *ContractSwap     `json:"contractSwap"`
+	Address        ethcommon.Address          `json:"address"`
+	TxHash         types.Hash                 `json:"txHash"`
+	ContractSwapID types.Hash                 `json:"contractSwapID"`
+	ContractSwap   *contracts.SwapFactorySwap `json:"contractSwap"`
 }
 
 // String ...

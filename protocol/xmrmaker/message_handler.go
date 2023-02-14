@@ -104,7 +104,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (common.
 	}
 
 	s.contractSwapID = msg.ContractSwapID
-	s.contractSwap = convertContractSwap(msg.ContractSwap)
+	s.contractSwap = msg.ContractSwap
 
 	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, msg.TxHash)
 	if err != nil {

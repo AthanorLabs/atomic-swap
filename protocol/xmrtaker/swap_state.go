@@ -72,7 +72,7 @@ type swapState struct {
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
-	contractSwap   contracts.SwapFactorySwap
+	contractSwap   *contracts.SwapFactorySwap
 	t0, t1         time.Time
 
 	// tracks the state of the swap
@@ -619,7 +619,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 
 	s.setTimeouts(t0, t1)
 
-	s.contractSwap = contracts.SwapFactorySwap{
+	s.contractSwap = &contracts.SwapFactorySwap{
 		Owner:        s.ETHClient().Address(),
 		Claimer:      s.xmrmakerAddress,
 		PubKeyClaim:  cmtXMRMaker,

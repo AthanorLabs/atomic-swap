@@ -23,7 +23,7 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
+	tx, err := s.Contract().SetReady(txOpts, *s.contractSwap)
 	require.NoError(t, err)
 	tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
