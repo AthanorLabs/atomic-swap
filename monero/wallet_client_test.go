@@ -241,6 +241,7 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	// create keypair with priv spend key of kp, but a different priv view key
 	// use the address of this keypair in the call to `generateFromKeys`
 	kp3 := mcrypto.NewPrivateKeyPair(kp.SpendKey(), kp2.ViewKey())
+	address := kp3.PublicKeyPair().Address(common.Development)
 
 	c, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
@@ -264,8 +265,9 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = c.GetAddress(0)
+	res, err := c.GetAddress(0)
 	require.NoError(t, err)
+	require.Equal(t, string(address), res.Address)
 }
 
 func Test_getMoneroWalletRPCBin(t *testing.T) {
