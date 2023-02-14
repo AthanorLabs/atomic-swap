@@ -100,8 +100,8 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
-	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.String())
-	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.String())
+	require.Equal(t, msg.PublicSpendKey.String(), s.xmrmakerPublicSpendKey.String())
+	require.Equal(t, msg.PrivateViewKey.String(), s.xmrmakerPrivateViewKey.String())
 
 	// simulate xmrmaker locking xmr
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)

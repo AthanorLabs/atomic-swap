@@ -167,7 +167,7 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
-		EthAddress:         ethcommon.Address{},
+		EthAddress:         ethcommon.Address{0x1},
 		ProvidedAmount:     apd.New(1, 0),
 	}
 
@@ -259,8 +259,12 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
-		xmrmakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -289,8 +293,12 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
-		xmrmakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -342,8 +350,12 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
-		xmrmakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -364,8 +376,12 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
-		xmrmakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -387,8 +403,12 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
 
-	s.setXMRMakerKeys(xmrmakerKeysAndProof.PublicKeyPair.SpendKey(), xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
-		xmrmakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
