@@ -20,7 +20,7 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg message.Message) error {
+func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 	if s == nil {
 		return errNilSwapState
 	}
@@ -87,7 +87,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
-func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (message.Message, error) {
+func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (common.Message, error) {
 	if msg.Address == (ethcommon.Address{}) {
 		return nil, errMissingAddress
 	}
@@ -199,7 +199,7 @@ func (s *swapState) handleT0Expired() {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
-	if msg.PublicSpendKey == "" || msg.PublicViewKey == "" {
+	if msg.PublicSpendKey == nil || msg.PublicViewKey == nil {
 		return errMissingKeys
 	}
 
@@ -209,10 +209,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
 		return err
 	}
 
-	kp, err := mcrypto.NewPublicKeyPairFromHex(msg.PublicSpendKey, msg.PublicViewKey)
-	if err != nil {
-		return fmt.Errorf("failed to generate XMRTaker's public keys: %w", err)
-	}
+	kp := mcrypto.NewPublicKeyPair(msg.PublicSpendKey, msg.PublicViewKey)
 
 	s.setXMRTakerPublicKeys(kp, verifyResult.Secp256k1PublicKey)
 	return nil

@@ -18,7 +18,6 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -35,17 +34,17 @@ var (
 )
 
 type mockNet struct {
-	msgMu sync.Mutex      // lock needed, as SendSwapMessage is called async from timeout handlers
-	msg   message.Message // last value passed to SendSwapMessage
+	msgMu sync.Mutex     // lock needed, as SendSwapMessage is called async from timeout handlers
+	msg   common.Message // last value passed to SendSwapMessage
 }
 
-func (n *mockNet) LastSentMessage() message.Message {
+func (n *mockNet) LastSentMessage() common.Message {
 	n.msgMu.Lock()
 	defer n.msgMu.Unlock()
 	return n.msg
 }
 
-func (n *mockNet) SendSwapMessage(msg message.Message, _ types.Hash) error {
+func (n *mockNet) SendSwapMessage(msg common.Message, _ types.Hash) error {
 	n.msgMu.Lock()
 	defer n.msgMu.Unlock()
 	n.msg = msg

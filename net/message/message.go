@@ -10,7 +10,10 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 )
 
 // Identifiers for our p2p message types. The first byte of a message has the
@@ -38,15 +41,8 @@ func TypeToString(t byte) string {
 	}
 }
 
-// Message must be implemented by all network messages
-type Message interface {
-	String() string
-	Encode() ([]byte, error)
-	Type() byte
-}
-
 // DecodeMessage decodes the given bytes into a Message
-func DecodeMessage(b []byte) (Message, error) {
+func DecodeMessage(b []byte) (common.Message, error) {
 	// 1-byte type followed by at least 2-bytes of JSON (`{}`)
 	if len(b) < 3 {
 		return nil, errors.New("invalid message bytes")
@@ -54,7 +50,7 @@ func DecodeMessage(b []byte) (Message, error) {
 
 	msgType := b[0]
 	msgJSON := b[1:]
-	var msg Message
+	var msg common.Message
 
 	switch msgType {
 	case QueryResponseType:
@@ -107,14 +103,14 @@ func (m *QueryResponse) Type() byte {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            types.Hash   `json:"offerID"`
-	ProvidedAmount     *apd.Decimal `json:"providedAmount"`
-	PublicSpendKey     string       `json:"publicSpendKey"`
-	PublicViewKey      string       `json:"publicViewKey"`
-	PrivateViewKey     string       `json:"privateViewKey"`
-	DLEqProof          string       `json:"dleqProof"`
-	Secp256k1PublicKey string       `json:"secp256k1PublicKey"`
-	EthAddress         string       `json:"ethAddress"`
+	OfferID            types.Hash              `json:"offerID"`
+	ProvidedAmount     *apd.Decimal            `json:"providedAmount"`
+	PublicSpendKey     *mcrypto.PublicKey      `json:"publicSpendKey"`
+	PublicViewKey      *mcrypto.PublicKey      `json:"publicViewKey"`
+	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey"`
+	DLEqProof          string                  `json:"dleqProof"`
+	Secp256k1PublicKey *secp256k1.PublicKey    `json:"secp256k1PublicKey"`
+	EthAddress         ethcommon.Address       `json:"ethAddress"`
 }
 
 // String ...

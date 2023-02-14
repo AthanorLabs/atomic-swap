@@ -34,17 +34,17 @@ var _ = logging.SetLogLevel("protocol", "debug")
 var _ = logging.SetLogLevel("xmrtaker", "debug")
 
 type mockNet struct {
-	msgMu sync.Mutex      // lock needed, as SendSwapMessage is called async from timeout handlers
-	msg   message.Message // last value passed to SendSwapMessage
+	msgMu sync.Mutex     // lock needed, as SendSwapMessage is called async from timeout handlers
+	msg   common.Message // last value passed to SendSwapMessage
 }
 
-func (n *mockNet) LastSentMessage() message.Message {
+func (n *mockNet) LastSentMessage() common.Message {
 	n.msgMu.Lock()
 	defer n.msgMu.Unlock()
 	return n.msg
 }
 
-func (n *mockNet) SendSwapMessage(msg message.Message, _ types.Hash) error {
+func (n *mockNet) SendSwapMessage(msg common.Message, _ types.Hash) error {
 	n.msgMu.Lock()
 	defer n.msgMu.Unlock()
 	n.msg = msg
@@ -163,11 +163,11 @@ func newTestXMRMakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 	require.NoError(t, err)
 
 	msg := &message.SendKeysMessage{
-		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
-		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey().Hex(),
+		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
+		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
-		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
-		EthAddress:         "0x",
+		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
+		EthAddress:         ethcommon.Address{},
 		ProvidedAmount:     apd.New(1, 0),
 	}
 
@@ -190,8 +190,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage(t *testing.T) {
 	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, s.SwapTimeout(), s.t1.Sub(s.t0))
-	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.xmrmakerPublicSpendKey.Hex())
-	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.xmrmakerPrivateViewKey.Hex())
+	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().String(), s.xmrmakerPublicSpendKey.String())
+	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().String(), s.xmrmakerPrivateViewKey.String())
 }
 
 // test the case where XMRTaker deploys and locks her eth, but XMRMaker never locks his monero.
@@ -210,8 +210,8 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, s.SwapTimeout(), s.t1.Sub(s.t0))
-	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().Hex(), s.xmrmakerPublicSpendKey.Hex())
-	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().Hex(), s.xmrmakerPrivateViewKey.Hex())
+	require.Equal(t, xmrmakerKeysAndProof.PublicKeyPair.SpendKey().String(), s.xmrmakerPublicSpendKey.String())
+	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().String(), s.xmrmakerPrivateViewKey.String())
 
 	// ensure we refund before t0
 	for status := range s.statusCh {

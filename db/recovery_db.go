@@ -99,7 +99,7 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
 func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey) error {
-	val, err := json.Marshal(sk.Hex())
+	val, err := json.Marshal(sk)
 	if err != nil {
 		return err
 	}
@@ -116,13 +116,13 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 		return nil, err
 	}
 
-	var skHex string
-	err = json.Unmarshal(value, &skHex)
+	privSpendKey := new(mcrypto.PrivateSpendKey)
+	err = json.Unmarshal(value, privSpendKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
+	return privSpendKey, nil
 }
 
 // PutCounterpartySwapPrivateKey stores the counterparty's swap private key for the given swap ID.

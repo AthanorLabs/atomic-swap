@@ -13,7 +13,7 @@ type SwapState = common.SwapStateNet //nolint:revive
 //nolint:revive
 type (
 	MessageType     = byte
-	Message         = message.Message
+	Message         = common.Message
 	QueryResponse   = message.QueryResponse
 	SendKeysMessage = message.SendKeysMessage
 )

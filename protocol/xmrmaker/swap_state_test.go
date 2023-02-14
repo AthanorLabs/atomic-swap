@@ -77,10 +77,10 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 	require.NoError(t, err)
 
 	msg := &message.SendKeysMessage{
-		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
-		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey().Hex(),
+		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
+		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
-		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
+		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
 	}
 
 	return msg, keysAndProof
@@ -173,8 +173,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
 	require.Equal(t, EventETHLockedType, s.nextExpectedEvent)
-	require.Equal(t, xmrtakerPubKeys.SpendKey().Hex(), s.xmrtakerPublicKeys.SpendKey().Hex())
-	require.Equal(t, xmrtakerPubKeys.ViewKey().Hex(), s.xmrtakerPublicKeys.ViewKey().Hex())
+	require.Equal(t, xmrtakerPubKeys.SpendKey().String(), s.xmrtakerPublicKeys.SpendKey().String())
+	require.Equal(t, xmrtakerPubKeys.ViewKey().String(), s.xmrtakerPublicKeys.ViewKey().String())
 	require.True(t, s.info.Status.IsOngoing())
 }
 
@@ -397,10 +397,11 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	b.MakeOffer(s.offer, "", nil)
+	_, err := b.MakeOffer(s.offer, "", nil)
+	require.NoError(t, err)
 
 	s.info.SetStatus(types.CompletedRefund)
-	err := s.Exit()
+	err = s.Exit()
 	require.NoError(t, err)
 
 	// since the swap was not successful, the offer should be re-added to the offer manager.

@@ -107,7 +107,7 @@ func TestRecoveryDB_SwapPrivateKey(t *testing.T) {
 
 	res, err := rdb.GetSwapPrivateKey(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
+	require.Equal(t, kp.SpendKey().String(), res.String())
 }
 
 func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
@@ -122,7 +122,7 @@ func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
 
 	res, err := rdb.GetCounterpartySwapPrivateKey(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
+	require.Equal(t, kp.SpendKey().String(), res.String())
 }
 
 func TestRecoveryDB_XMRMakerSwapKeys(t *testing.T) {
@@ -137,8 +137,8 @@ func TestRecoveryDB_XMRMakerSwapKeys(t *testing.T) {
 
 	resSk, resVk, err := rdb.GetXMRMakerSwapKeys(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Public().Hex(), resSk.Hex())
-	require.Equal(t, kp.ViewKey().Hex(), resVk.Hex())
+	require.Equal(t, kp.SpendKey().Public().String(), resSk.String())
+	require.Equal(t, kp.ViewKey().String(), resVk.String())
 }
 
 func TestRecoveryDB_DeleteSwap(t *testing.T) {

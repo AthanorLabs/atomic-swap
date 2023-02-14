@@ -306,12 +306,12 @@ func (s *swapState) waitForSendKeysMessage() {
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
-		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
-		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
+		PublicSpendKey:     s.pubkeys.SpendKey(),
+		PublicViewKey:      s.pubkeys.ViewKey(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
-		Secp256k1PublicKey: s.secp256k1Pub.String(),
+		Secp256k1PublicKey: s.secp256k1Pub,
 	}
 }
 

@@ -297,14 +297,14 @@ func newSwapState(
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
 		ProvidedAmount:     s.info.ProvidedAmount,
-		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
-		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
+		PublicSpendKey:     s.pubkeys.SpendKey(),
+		PrivateViewKey:     s.privkeys.ViewKey(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
-		Secp256k1PublicKey: s.secp256k1Pub.String(),
-		EthAddress:         s.ETHClient().Address().String(),
+		Secp256k1PublicKey: s.secp256k1Pub,
+		EthAddress:         s.ETHClient().Address(),
 	}
 }
 

@@ -6,6 +6,7 @@ package monero
 import (
 	"bufio"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -492,14 +493,14 @@ func (c *walletClient) generateFromKeys(
 
 	spendKey := "" // not used when only generating a view key
 	if sk != nil {
-		spendKey = sk.Hex()
+		spendKey = hex.EncodeToString(sk.Bytes())
 	}
 
 	res, err := c.wRPC.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
 		Filename:      filename,
 		Address:       string(address),
 		RestoreHeight: restoreHeight,
-		Viewkey:       vk.Hex(),
+		Viewkey:       hex.EncodeToString(vk.Bytes()),
 		Spendkey:      spendKey,
 		Password:      password,
 	})
