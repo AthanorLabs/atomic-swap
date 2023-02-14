@@ -73,7 +73,7 @@ func DecodeMessage(b []byte) (common.Message, error) {
 
 // QueryResponse ...
 type QueryResponse struct {
-	Offers []*types.Offer
+	Offers []*types.Offer `json:"offers"`
 }
 
 // String ...
