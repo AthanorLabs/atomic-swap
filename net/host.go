@@ -20,7 +20,7 @@ import (
 
 const (
 	// ProtocolID is the base atomic swap network protocol ID.
-	ProtocolID     = "/atomic-swap/0.1"
+	ProtocolID     = "/atomic-swap/0.2"
 	maxMessageSize = 1 << 17
 )
 
