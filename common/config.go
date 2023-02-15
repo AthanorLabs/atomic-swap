@@ -79,8 +79,8 @@ var StagenetConfig = Config{
 			Port: 38081,
 		},
 	},
-	ContractAddress:          ethcommon.HexToAddress("0x55c29ed1D31FC511c425308A03c060238b7aC35A"),
-	ForwarderContractAddress: ethcommon.HexToAddress("0xbb6a65B366251D98cDe86692ff16B54d3d9e804d"),
+	ContractAddress:          ethcommon.HexToAddress("0xaec2db3b24fab372ae93ba56f55f01b522c1ee13"),
+	ForwarderContractAddress: ethcommon.HexToAddress("0xd215f8d0faf0b2a4fe0e657d28e6ec22399acff6"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
