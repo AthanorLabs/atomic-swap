@@ -546,7 +546,7 @@ func runMake(ctx *cli.Context) error {
 		printOfferSummary(resp)
 
 		for stage := range statusCh {
-			fmt.Printf("> Stage updated: %s\n", stage)
+			fmt.Printf("%s > Stage updated: %s\n", time.Now().Format("2006-01-02T15:04:05"), stage)
 			if !stage.IsOngoing() {
 				return nil
 			}
@@ -594,7 +594,7 @@ func runTake(ctx *cli.Context) error {
 		fmt.Printf("Initiated swap with offer ID %s\n", offerID)
 
 		for stage := range statusCh {
-			fmt.Printf("%s > Stage updated: %s\n", time.Now().Format("2006-01-02T15:04:05 -07:00:00"), stage)
+			fmt.Printf("%s > Stage updated: %s\n", time.Now().Format("2006-01-02T15:04:05"), stage)
 			if !stage.IsOngoing() {
 				return nil
 			}
