@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MarinX/monerorpc/wallet"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -241,33 +242,54 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	// create keypair with priv spend key of kp, but a different priv view key
 	// use the address of this keypair in the call to `generateFromKeys`
 	kp3 := mcrypto.NewPrivateKeyPair(kp.SpendKey(), kp2.ViewKey())
-	address := kp3.PublicKeyPair().Address(common.Development)
+	address := kp3.PublicKeyPair().Address(common.Mainnet)
+	t.Log("address", address)
 
-	c, err := NewWalletClient(&WalletClientConf{
-		Env:                 common.Development,
-		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
-		MoneroWalletRPCPath: moneroWalletRPCPath,
-	})
+	// c, err := NewWalletClient(&WalletClientConf{
+	// 	Env:                 common.Development,
+	// 	WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+	// 	MoneroWalletRPCPath: moneroWalletRPCPath,
+	// })
+	// require.NoError(t, err)
+
+	// height, err := c.GetHeight()
+	// require.NoError(t, err)
+
+	// conf := c.CreateWalletConf("testingggg")
+
+	conf := &WalletClientConf{
+		Env:            common.Development,
+		WalletFilePath: path.Join(t.TempDir(), "wallet", "not-used"),
+	}
+	err = conf.Fill()
 	require.NoError(t, err)
-	defer c.Close()
 
-	height, err := c.GetHeight()
-	require.NoError(t, err)
-
-	// initial wallet automatically closed when a new wallet is opened
-	err = c.(*walletClient).generateFromKeys(
+	c, err := createWalletFromKeys(
+		conf,
+		0,
 		kp.SpendKey(),
 		kp.ViewKey(),
 		kp3.Address(common.Mainnet),
-		height,
-		"swap-deposit-wallet",
-		"",
 	)
 	require.NoError(t, err)
 
 	res, err := c.GetAddress(0)
 	require.NoError(t, err)
 	require.Equal(t, string(address), res.Address)
+
+	oneXMR := coins.MoneroToPiconero(coins.StrToDecimal("1.0"))
+	MineMinXMRBalance(t, c, oneXMR)
+
+	transferAmt, err := coins.MoneroToPiconero(coins.StrToDecimal("0.01")).Uint64()
+	require.NoError(t, err)
+
+	_, err = c.(*walletClient).wRPC.Transfer(&wallet.TransferRequest{
+		Destinations: []wallet.Destination{{
+			Amount:  transferAmt,
+			Address: "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5",
+		}},
+	})
+	require.ErrorContains(t, err, "not enough money")
 }
 
 func Test_getMoneroWalletRPCBin(t *testing.T) {

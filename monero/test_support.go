@@ -134,6 +134,7 @@ func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *coins.Piconero
 		if balance.UnlockedBalance > minBalU64 {
 			break
 		}
+		t.Log(balance)
 		_, err = daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
 			AmountOfBlocks: 32,
 			WalletAddress:  addr.Address,
