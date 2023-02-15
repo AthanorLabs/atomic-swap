@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -593,7 +594,7 @@ func runTake(ctx *cli.Context) error {
 		fmt.Printf("Initiated swap with offer ID %s\n", offerID)
 
 		for stage := range statusCh {
-			fmt.Printf("> Stage updated: %s\n", stage)
+			fmt.Printf("%s > Stage updated: %s\n", time.Now().Format("2006-01-02T15:04:05 -07:00:00"), stage)
 			if !stage.IsOngoing() {
 				return nil
 			}
