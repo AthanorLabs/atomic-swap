@@ -27,11 +27,11 @@ func (h *mockHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockHandler) HandleInitiateMessage(_ *message.SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockHandler) HandleInitiateMessage(msg *message.SendKeysMessage) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
-		return &mockSwapState{h.id}, &SendKeysMessage{}, nil
+		return &mockSwapState{h.id}, msg, nil
 	}
-	return &mockSwapState{}, &SendKeysMessage{}, nil
+	return &mockSwapState{}, msg, nil
 }
 
 type mockSwapState struct {

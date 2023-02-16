@@ -6,6 +6,8 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// Documentation on the validator package is here:
+// https://pkg.go.dev/github.com/go-playground/validator/v10
 var validate = validator.New()
 
 // MarshalStruct adds additional validation on top of json.Marshal. Input type
