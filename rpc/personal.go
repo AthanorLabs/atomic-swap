@@ -50,7 +50,7 @@ func (s *PersonalService) GetSwapTimeout(_ *http.Request, _ *interface{}, resp *
 
 // SetGasPriceRequest ...
 type SetGasPriceRequest struct {
-	GasPrice uint64
+	GasPrice uint64 `json:"gasPrice"`
 }
 
 // SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.

@@ -5,7 +5,9 @@ package secp256k1
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/athanorlabs/atomic-swap/crypto"
 )
@@ -47,28 +49,6 @@ func NewPublicKeyFromBigInt(x, y *big.Int) *PublicKey {
 	return NewPublicKey(xArray, yArray)
 }
 
-// NewPublicKeyFromHex returns a public key from a 64-byte hex encoded string
-func NewPublicKeyFromHex(s string) (*PublicKey, error) {
-	k, err := hex.DecodeString(s)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewPublicKeyFromBytes(k)
-}
-
-// NewPublicKeyFromBytes returns a public key from a 64-byte encoded public key
-func NewPublicKeyFromBytes(k []byte) (*PublicKey, error) {
-	if len(k) != 64 {
-		return nil, errInvalidPubkeyLength
-	}
-
-	pk := &PublicKey{}
-	copy(pk.x[:], k[:32])
-	copy(pk.y[:], k[32:])
-	return pk, nil
-}
-
 // Keccak256 returns the heccak256 hash of the x and y coordinates concatenated
 func (k *PublicKey) Keccak256() [32]byte {
 	return crypto.Keccak256(append(k.x[:], k.y[:]...))
@@ -89,9 +69,32 @@ func (k *PublicKey) Bytes() []byte {
 	return append(k.x[:], k.y[:]...)
 }
 
-// String returns the key as a 64-byte hex encoded string
+// String returns the key as a 64-byte hex encoded string with a leading 0x
 func (k *PublicKey) String() string {
-	return hex.EncodeToString(k.Bytes())
+	return fmt.Sprintf("0x%x", k.Bytes())
+}
+
+// MarshalText converts the public key a string for JSON marshalling
+func (k *PublicKey) MarshalText() ([]byte, error) {
+	return []byte(k.String()), nil
+}
+
+// UnmarshalText converts a 64 byte hex string, with or without a 0x prefix,
+// into the PublicKey type during JSON unmarshalling.
+func (k *PublicKey) UnmarshalText(keyData []byte) error {
+	keyHex := strings.TrimPrefix(string(keyData), "0x")
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return err
+	}
+
+	if len(keyBytes) != 64 {
+		return errInvalidPubkeyLength
+	}
+
+	copy(k.x[:], keyBytes[:32])
+	copy(k.y[:], keyBytes[32:])
+	return nil
 }
 
 // Compress returns the 33-byte compressed public key

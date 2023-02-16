@@ -20,14 +20,13 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
 
 // MessageSender is implemented by a Host
 type MessageSender interface {
-	SendSwapMessage(message.Message, types.Hash) error
+	SendSwapMessage(common.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
 }
 

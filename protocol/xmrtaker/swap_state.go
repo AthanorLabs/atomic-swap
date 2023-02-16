@@ -72,7 +72,7 @@ type swapState struct {
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
-	contractSwap   contracts.SwapFactorySwap
+	contractSwap   *contracts.SwapFactorySwap
 	t0, t1         time.Time
 
 	// tracks the state of the swap
@@ -306,12 +306,12 @@ func (s *swapState) waitForSendKeysMessage() {
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
-		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
-		PublicViewKey:      s.pubkeys.ViewKey().Hex(),
+		PublicSpendKey:     s.pubkeys.SpendKey(),
+		PublicViewKey:      s.pubkeys.ViewKey(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
-		Secp256k1PublicKey: s.secp256k1Pub.String(),
+		Secp256k1PublicKey: s.secp256k1Pub,
 	}
 }
 
@@ -619,7 +619,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 
 	s.setTimeouts(t0, t1)
 
-	s.contractSwap = contracts.SwapFactorySwap{
+	s.contractSwap = &contracts.SwapFactorySwap{
 		Owner:        s.ETHClient().Address(),
 		Claimer:      s.xmrmakerAddress,
 		PubKeyClaim:  cmtXMRMaker,

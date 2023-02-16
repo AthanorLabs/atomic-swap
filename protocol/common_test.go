@@ -13,10 +13,10 @@ func TestKeysAndProof(t *testing.T) {
 
 	res, err := VerifyKeysAndProof(
 		hex.EncodeToString(kp.DLEqProof.Proof()),
-		kp.Secp256k1PublicKey.String(),
-		kp.PublicKeyPair.SpendKey().Hex(),
+		kp.Secp256k1PublicKey,
+		kp.PublicKeyPair.SpendKey(),
 	)
 	require.NoError(t, err)
 	require.Equal(t, kp.Secp256k1PublicKey.String(), res.Secp256k1PublicKey.String())
-	require.Equal(t, kp.PublicKeyPair.SpendKey().Hex(), res.Ed25519PublicKey.Hex())
+	require.Equal(t, kp.PublicKeyPair.SpendKey().String(), res.Ed25519PublicKey.String())
 }

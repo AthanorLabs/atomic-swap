@@ -54,7 +54,7 @@ func (*mockNet) Query(who peer.ID) (*message.QueryResponse, error) {
 	return &message.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
-func (*mockNet) Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error {
+func (*mockNet) Initiate(who peer.AddrInfo, msg common.Message, s common.SwapStateNet) error {
 	return nil
 }
 
@@ -164,7 +164,7 @@ func (*mockXMRMaker) GetMoneroBalance() (string, *wallet.GetBalanceResponse, err
 
 type mockSwapState struct{}
 
-func (*mockSwapState) HandleProtocolMessage(msg message.Message) error {
+func (*mockSwapState) HandleProtocolMessage(msg common.Message) error {
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (*mockSwapState) Exit() error {
 	return nil
 }
 
-func (*mockSwapState) SendKeysMessage() *message.SendKeysMessage {
+func (*mockSwapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{}
 }
 
