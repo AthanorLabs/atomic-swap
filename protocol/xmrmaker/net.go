@@ -6,6 +6,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -89,7 +90,7 @@ func (inst *Instance) initiate(
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.SwapState, message.Message, error) {
+func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.SwapState, common.Message, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 

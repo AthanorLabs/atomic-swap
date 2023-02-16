@@ -77,10 +77,10 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 	require.NoError(t, err)
 
 	msg := &message.SendKeysMessage{
-		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey().Hex(),
-		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey().Hex(),
+		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
+		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
-		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey.String(),
+		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
 	}
 
 	return msg, keysAndProof
@@ -118,7 +118,7 @@ func newSwap(
 	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	ss.contractSwap = contracts.SwapFactorySwap{
+	ss.contractSwap = &contracts.SwapFactorySwap{
 		Owner:        ethAddr,
 		Claimer:      ethAddr,
 		PubKeyClaim:  claimKey,
@@ -150,7 +150,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 
 	txOpts, err := swapState.ETHClient().TxOpts(swapState.ctx)
 	require.NoError(t, err)
-	tx, err := swapState.Contract().SetReady(txOpts, swapState.contractSwap)
+	tx, err := swapState.Contract().SetReady(txOpts, *swapState.contractSwap)
 	require.NoError(t, err)
 	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
@@ -173,8 +173,8 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
 	require.Equal(t, EventETHLockedType, s.nextExpectedEvent)
-	require.Equal(t, xmrtakerPubKeys.SpendKey().Hex(), s.xmrtakerPublicKeys.SpendKey().Hex())
-	require.Equal(t, xmrtakerPubKeys.ViewKey().Hex(), s.xmrtakerPublicKeys.ViewKey().Hex())
+	require.Equal(t, xmrtakerPubKeys.SpendKey().String(), s.xmrtakerPublicKeys.SpendKey().String())
+	require.Equal(t, xmrtakerPubKeys.ViewKey().String(), s.xmrtakerPublicKeys.ViewKey().String())
 	require.True(t, s.info.Status.IsOngoing())
 }
 
@@ -197,10 +197,10 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	addr := s.ContractAddr()
 
 	msg = &message.NotifyETHLocked{
-		Address:        addr.String(),
+		Address:        addr,
 		ContractSwapID: s.contractSwapID,
-		TxHash:         hash.String(),
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
+		TxHash:         hash,
+		ContractSwap:   s.contractSwap,
 	}
 
 	err = s.HandleProtocolMessage(msg)
@@ -276,7 +276,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(txOpts, *s.contractSwap, sc)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(s.Backend.Ctx(), s.ETHClient().Raw(), tx.Hash())
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, s.contractSwap, sc)
+	tx, err := s.Contract().Refund(txOpts, *s.contractSwap, sc)
 	require.NoError(t, err)
 	receipt := tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
@@ -397,10 +397,11 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	b.MakeOffer(s.offer, "", nil)
+	_, err := b.MakeOffer(s.offer, "", nil)
+	require.NoError(t, err)
 
 	s.info.SetStatus(types.CompletedRefund)
-	err := s.Exit()
+	err = s.Exit()
 	require.NoError(t, err)
 
 	// since the swap was not successful, the offer should be re-added to the offer manager.

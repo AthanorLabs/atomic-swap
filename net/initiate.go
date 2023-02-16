@@ -23,7 +23,7 @@ const (
 
 // Initiate attempts to initiate a swap with the given peer by sending a SendKeysMessage,
 // the first message of the swap protocol.
-func (h *Host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapStateNet) error {
+func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s common.SwapStateNet) error {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
@@ -52,7 +52,7 @@ func (h *Host) Initiate(who peer.AddrInfo, msg *SendKeysMessage, s common.SwapSt
 		"opened protocol stream, peer=", who.ID,
 	)
 
-	if err := p2pnet.WriteStreamMessage(stream, msg, who.ID); err != nil {
+	if err := p2pnet.WriteStreamMessage(stream, sendKeysMessage, who.ID); err != nil {
 		log.Warnf("failed to send initial SendKeysMessage to peer: err=%s", err)
 		return err
 	}

@@ -59,7 +59,7 @@ type swapState struct {
 	contract       *contracts.SwapFactory
 	contractAddr   ethcommon.Address
 	contractSwapID [32]byte
-	contractSwap   contracts.SwapFactorySwap
+	contractSwap   *contracts.SwapFactorySwap
 	t0, t1         time.Time
 
 	// XMRTaker's keys for this session
@@ -297,14 +297,14 @@ func newSwapState(
 }
 
 // SendKeysMessage ...
-func (s *swapState) SendKeysMessage() *message.SendKeysMessage {
+func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
 		ProvidedAmount:     s.info.ProvidedAmount,
-		PublicSpendKey:     s.pubkeys.SpendKey().Hex(),
-		PrivateViewKey:     s.privkeys.ViewKey().Hex(),
+		PublicSpendKey:     s.pubkeys.SpendKey(),
+		PrivateViewKey:     s.privkeys.ViewKey(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
-		Secp256k1PublicKey: s.secp256k1Pub.String(),
-		EthAddress:         s.ETHClient().Address().String(),
+		Secp256k1PublicKey: s.secp256k1Pub,
+		EthAddress:         s.ETHClient().Address(),
 	}
 }
 
@@ -475,7 +475,7 @@ func (s *swapState) getSecret() [32]byte {
 	}
 
 	var secret [32]byte
-	copy(secret[:], common.Reverse(s.privkeys.SpendKey().Bytes()))
+	copy(secret[:], common.Reverse(s.privkeys.SpendKeyBytes()))
 	return secret
 }
 
@@ -522,8 +522,14 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	}
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
+
+	txID, err := types.HexToHash(transfer.TxID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &message.NotifyXMRLock{
 		Address: string(swapDestAddr),
-		TxID:    transfer.TxID,
+		TxID:    txID,
 	}, nil
 }

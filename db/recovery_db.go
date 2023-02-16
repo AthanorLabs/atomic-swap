@@ -99,7 +99,7 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
 func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey) error {
-	val, err := json.Marshal(sk.Hex())
+	val, err := json.Marshal(sk)
 	if err != nil {
 		return err
 	}
@@ -116,13 +116,13 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 		return nil, err
 	}
 
-	var skHex string
-	err = json.Unmarshal(value, &skHex)
+	privSpendKey := new(mcrypto.PrivateSpendKey)
+	err = json.Unmarshal(value, privSpendKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
+	return privSpendKey, nil
 }
 
 // PutCounterpartySwapPrivateKey stores the counterparty's swap private key for the given swap ID.
@@ -154,15 +154,15 @@ func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.Pri
 }
 
 type xmrmakerKeys struct {
-	PublicSpendKey string `json:"publicSpendKey"`
-	PrivateViewKey string `json:"privateViewKey"`
+	PublicSpendKey mcrypto.PublicKey      `json:"publicSpendKey"`
+	PrivateViewKey mcrypto.PrivateViewKey `json:"privateViewKey"`
 }
 
 // PutXMRMakerSwapKeys is called by the xmrtaker to store the counterparty's swap keys.
 func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
 	val, err := json.Marshal(&xmrmakerKeys{
-		PublicSpendKey: sk.Hex(),
-		PrivateViewKey: vk.Hex(),
+		PublicSpendKey: *sk,
+		PrivateViewKey: *vk,
 	})
 	if err != nil {
 		return err
@@ -187,17 +187,7 @@ func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *m
 		return nil, nil, err
 	}
 
-	sk, err := mcrypto.NewPublicKeyFromHex(info.PublicSpendKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	vk, err := mcrypto.NewPrivateViewKeyFromHex(info.PrivateViewKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return sk, vk, nil
+	return &info.PublicSpendKey, &info.PrivateViewKey, nil
 }
 
 // DeleteSwap deletes all recovery info from the db for the given swap.

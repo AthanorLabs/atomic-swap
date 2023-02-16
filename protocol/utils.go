@@ -4,29 +4,12 @@ import (
 	"fmt"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 const etherSymbol = "ETH"
-
-// ConvertContractSwapToMsg converts a contracts.SwapFactorySwap to a *message.ContractSwap
-func ConvertContractSwapToMsg(swap contracts.SwapFactorySwap) *message.ContractSwap {
-	return &message.ContractSwap{
-		Owner:        swap.Owner,
-		Claimer:      swap.Claimer,
-		PubKeyClaim:  swap.PubKeyClaim,
-		PubKeyRefund: swap.PubKeyRefund,
-		Timeout0:     swap.Timeout0,
-		Timeout1:     swap.Timeout1,
-		Asset:        swap.Asset,
-		Value:        swap.Value,
-		Nonce:        swap.Nonce,
-	}
-}
 
 // AssetSymbol returns the symbol for the given asset.
 func AssetSymbol(b backend.Backend, asset types.EthAsset) (string, error) {

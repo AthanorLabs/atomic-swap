@@ -123,7 +123,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	calldata, err := getClaimTxCalldata(common.DefaultRelayerCommission, &s.contractSwap, s.getSecret())
+	calldata, err := getClaimTxCalldata(common.DefaultRelayerCommission, s.contractSwap, s.getSecret())
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -174,7 +174,7 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 		s.ETHClient().Raw(),
 		s.offerExtra.RelayerEndpoint,
 		s.offerExtra.RelayerCommission,
-		&s.contractSwap,
+		s.contractSwap,
 		s.contractSwapID,
 		s.getSecret(),
 	)
