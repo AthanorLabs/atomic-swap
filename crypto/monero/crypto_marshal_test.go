@@ -16,9 +16,9 @@ func TestKey_Marshal_success(t *testing.T) {
 	}
 
 	const (
-		expectedPrivSpendKey = "0xab0000000000000000000000000000000000000000000000000000000000cd00"
-		expectedPrivViewKey  = "0xcd0000000000000000000000000000000000000000000000000000000000ef00"
-		expectedPubKey       = "0x5866666666666666666666666666666666666666666666666666666666666666" // generator point
+		expectedPrivSpendKey = "ab0000000000000000000000000000000000000000000000000000000000cd00"
+		expectedPrivViewKey  = "cd0000000000000000000000000000000000000000000000000000000000ef00"
+		expectedPubKey       = "5866666666666666666666666666666666666666666666666666666666666666" // generator point
 		expectJSON           = `{
 			"privSpendKey": "0xab0000000000000000000000000000000000000000000000000000000000cd00",
 			"privViewKey":  "0xcd0000000000000000000000000000000000000000000000000000000000ef00",
@@ -50,9 +50,9 @@ func TestKey_Marshal_success(t *testing.T) {
 	err = json.Unmarshal(data, s)
 	require.NoError(t, err)
 
-	require.Equal(t, expectedPrivSpendKey, s.PrivSpendKey.String())
-	require.Equal(t, expectedPrivViewKey, s.PrivateViewKey.String())
-	require.Equal(t, expectedPubKey, s.PublicSpendKey.String())
+	require.Equal(t, expectedPrivSpendKey, s.PrivSpendKey.Hex())
+	require.Equal(t, expectedPrivViewKey, s.PrivateViewKey.Hex())
+	require.Equal(t, expectedPubKey, s.PublicSpendKey.Hex())
 }
 
 func TestPrivateSpendKey_MarshalText_uninitialized(t *testing.T) {
@@ -78,8 +78,8 @@ func TestPrivateKeyPair_Marshal(t *testing.T) {
 	err = json.Unmarshal(jsonData, kp2)
 	require.NoError(t, err)
 
-	assert.Equal(t, kp.SpendKey().String(), kp2.SpendKey().String())
-	assert.Equal(t, kp.ViewKey().String(), kp2.ViewKey().String())
+	assert.Equal(t, kp.SpendKey().Hex(), kp2.SpendKey().Hex())
+	assert.Equal(t, kp.ViewKey().Hex(), kp2.ViewKey().Hex())
 }
 
 func TestPublicKeyPair_Marshal(t *testing.T) {
@@ -94,6 +94,6 @@ func TestPublicKeyPair_Marshal(t *testing.T) {
 	err = json.Unmarshal(jsonData, pubKP2)
 	require.NoError(t, err)
 
-	assert.Equal(t, pubKP1.SpendKey().String(), pubKP2.SpendKey().String())
-	assert.Equal(t, pubKP1.ViewKey().String(), pubKP2.ViewKey().String())
+	assert.Equal(t, pubKP1.SpendKey().Hex(), pubKP2.SpendKey().Hex())
+	assert.Equal(t, pubKP1.ViewKey().Hex(), pubKP2.ViewKey().Hex())
 }

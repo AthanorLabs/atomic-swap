@@ -5,6 +5,7 @@ package mcrypto
 import (
 	"crypto/rand"
 	"crypto/sha512"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -113,10 +114,14 @@ func (k *PrivateSpendKey) Public() *PublicKey {
 	}
 }
 
-// String returns the hex-encoded canonical byte representation of the PrivateSpendKey
-// with a 0x prefix.
+// Hex formats the key as a hex string
+func (k *PrivateSpendKey) Hex() string {
+	return hex.EncodeToString(k.key.Bytes())
+}
+
+// String formats the key as a 0x-prefixed hex string
 func (k *PrivateSpendKey) String() string {
-	return fmt.Sprintf("0x%x", k.key.Bytes())
+	return "0x" + k.Hex()
 }
 
 // AsPrivateKeyPair returns the PrivateSpendKey as a PrivateKeyPair.
@@ -172,9 +177,14 @@ func (k *PrivateViewKey) Bytes() []byte {
 	return k.key.Bytes()
 }
 
-// String converts the key to hex
+// Hex formats the key as a hex string
+func (k *PrivateViewKey) Hex() string {
+	return hex.EncodeToString(k.key.Bytes())
+}
+
+// String formats the key as a 0x-prefixed hex string
 func (k *PrivateViewKey) String() string {
-	return fmt.Sprintf("0x%x", k.key.Bytes())
+	return "0x" + k.Hex()
 }
 
 // PublicKey represents a monero public spend or view key.
@@ -194,14 +204,19 @@ func NewPublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	}, nil
 }
 
-// String proves the key as hex
-func (k *PublicKey) String() string {
-	return fmt.Sprintf("0x%x", k.Bytes())
-}
-
-// Bytes returns the canonical byte representation of the PublicKey.
+// Bytes returns the canonical 32-byte, little-endian encoding of PublicKey.
 func (k *PublicKey) Bytes() []byte {
 	return k.key.Bytes()
+}
+
+// Hex formats the key as a hex string
+func (k *PublicKey) Hex() string {
+	return hex.EncodeToString(k.key.Bytes())
+}
+
+// String formats the key as a 0x-prefixed hex string
+func (k *PublicKey) String() string {
+	return "0x" + k.Hex()
 }
 
 // PublicKeyPair contains a public SpendKey and ViewKey

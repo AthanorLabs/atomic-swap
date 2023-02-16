@@ -475,7 +475,7 @@ func (s *swapState) getSecret() [32]byte {
 	}
 
 	var secret [32]byte
-	copy(secret[:], common.Reverse(s.privkeys.SpendKey().Bytes()))
+	copy(secret[:], common.Reverse(s.privkeys.SpendKeyBytes()))
 	return secret
 }
 
