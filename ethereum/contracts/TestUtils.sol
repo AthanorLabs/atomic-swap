@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.5 .0;
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract TestUtils {
     function uint2hexstr(uint256 i) public pure returns (string memory) {
