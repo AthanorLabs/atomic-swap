@@ -128,19 +128,6 @@ func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, err
 	return offer.offer, offer.extra, nil
 }
 
-// GetOfferFrom returns an offer from memory or the database, if it exists.
-func (m *Manager) GetOfferFrom(id types.Hash) (*types.Offer, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	offer, has := m.offers[id]
-	if has {
-		return offer.offer, nil
-	}
-
-	return m.db.GetOffer(id)
-}
-
 // GetOffers returns all current offers. The returned slice is in random order and will not
 // be the same from one invocation to the next.
 func (m *Manager) GetOffers() []*types.Offer {
