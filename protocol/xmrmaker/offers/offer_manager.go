@@ -168,7 +168,8 @@ func (m *Manager) ClearOfferIDs(ids []types.Hash) error {
 	return nil
 }
 
-// DeleteOffer deletes the offer with the given ID, if it exists.
+// DeleteOffer deletes the offer with the given ID, if it exists. No error
+// is returned if there was no matching offer to delete.
 func (m *Manager) DeleteOffer(id types.Hash) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
