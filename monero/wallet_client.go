@@ -189,7 +189,13 @@ func NewWalletClient(conf *WalletClientConf) (WalletClient, error) {
 		c.Close()
 		return nil, err
 	}
-	c.walletAddr = mcrypto.Address(acctResp.Address)
+
+	c.walletAddr, err = mcrypto.NewAddress(acctResp.Address, conf.Env)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+
 	c.conf = conf
 	return c, nil
 }
@@ -281,7 +287,7 @@ func (c *walletClient) Transfer(
 	reqResp, err := c.wRPC.Transfer(&wallet.TransferRequest{
 		Destinations: []wallet.Destination{{
 			Amount:  amt,
-			Address: string(to),
+			Address: to.String(),
 		}},
 		AccountIndex: accountIdx,
 	})
@@ -336,7 +342,7 @@ func (c *walletClient) SweepAll(
 
 	reqResp, err := c.wRPC.SweepAll(&wallet.SweepAllRequest{
 		AccountIndex: accountIdx,
-		Address:      string(to),
+		Address:      to.String(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("sweep_all from %s failed: %w", from, err)
@@ -431,7 +437,13 @@ func createWalletFromKeys(
 		c.Close()
 		return nil, err
 	}
-	c.walletAddr = mcrypto.Address(acctResp.Address)
+
+	c.walletAddr, err = mcrypto.NewAddress(acctResp.Address, conf.Env)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+
 	if c.walletAddr != address {
 		c.Close()
 		return nil, fmt.Errorf("provided address %s does not match monero-wallet-rpc computed address %s",
@@ -462,7 +474,7 @@ func CreateSpendWalletFromKeys(
 ) (WalletClient, error) {
 	privateViewKey := privateKeyPair.ViewKey()
 	privateSpendKey := privateKeyPair.SpendKey()
-	address := privateKeyPair.Address(conf.Env)
+	address := privateKeyPair.PublicKeyPair().Address(conf.Env)
 	return createWalletFromKeys(conf, restoreHeight, privateSpendKey, privateViewKey, address)
 }
 
@@ -497,7 +509,7 @@ func (c *walletClient) generateFromKeys(
 
 	res, err := c.wRPC.GenerateFromKeys(&wallet.GenerateFromKeysRequest{
 		Filename:      filename,
-		Address:       string(address),
+		Address:       address.String(),
 		RestoreHeight: restoreHeight,
 		Viewkey:       vk.Hex(),
 		Spendkey:      spendKey,
@@ -538,7 +550,7 @@ func (c *walletClient) CreateWallet(filename, password string) error {
 }
 
 func (c *walletClient) PrimaryAddress() mcrypto.Address {
-	if c.walletAddr == "" {
+	if c.walletAddr == (mcrypto.Address{}) {
 		// Initialised in constructor function, so this shouldn't ever happen
 		panic("primary wallet address was not initialised")
 	}

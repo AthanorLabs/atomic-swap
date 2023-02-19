@@ -30,9 +30,9 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	pvk, err := hex.DecodeString(pvkBytes)
 	require.NoError(t, err)
 
-	// test MoneroAddrBase58ToBytes
-	address := "49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB"
-	addressBytes, err := MoneroAddrBase58ToBytes(address)
+	// test moneroAddrBase58ToBytes
+	addressStr := "49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB"
+	addressBytes, err := moneroAddrBase58ToBytes(addressStr)
 	require.NoError(t, err)
 	require.Equal(t, psk, addressBytes[1:33])
 	require.Equal(t, pvk, addressBytes[33:65])
@@ -42,8 +42,10 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	// give the correct public keys
 	kp, err := NewPrivateKeyPairFromBytes(sk, vk)
 	require.NoError(t, err)
-	require.Equal(t, addressBytes, kp.AddressBytes(common.Mainnet))
-	require.Equal(t, Address(address), kp.Address(common.Mainnet))
+	address := kp.PublicKeyPair().Address(common.Mainnet)
+
+	require.EqualValues(t, addressBytes, address[:])
+	require.Equal(t, addressStr, address.String())
 
 	// check public key derivation
 	require.Equal(t, "0x"+pskBytes, kp.sk.Public().String())

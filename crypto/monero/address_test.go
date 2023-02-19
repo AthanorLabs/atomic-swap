@@ -1,8 +1,6 @@
 package mcrypto
 
 import (
-	"encoding/hex"
-	"errors"
 	"testing"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -13,20 +11,16 @@ import (
 func TestValidateAddress(t *testing.T) {
 	kp, err := GenerateKeys()
 	require.NoError(t, err)
-	addr := kp.Address(common.Mainnet)
-	err = ValidateAddress(string(addr), common.Mainnet)
-	require.NoError(t, err)
-	err = ValidateAddress(string(addr), common.Stagenet)
-	require.Equal(t, err, errInvalidPrefixGotMainnet)
+	addr := kp.PublicKeyPair().Address(common.Mainnet)
+	require.NoError(t, addr.Validate(common.Mainnet))
+	require.ErrorIs(t, addr.Validate(common.Stagenet), errInvalidPrefixGotMainnet)
 
-	addr = kp.Address(common.Stagenet)
-	err = ValidateAddress(string(addr), common.Stagenet)
-	require.NoError(t, err)
-	err = ValidateAddress(string(addr), common.Mainnet)
-	require.Equal(t, err, errInvalidPrefixGotStagenet)
+	addr = kp.PublicKeyPair().Address(common.Stagenet)
+	require.NoError(t, addr.Validate(common.Stagenet))
+	require.ErrorIs(t, addr.Validate(common.Mainnet), errInvalidPrefixGotStagenet)
 
-	err = ValidateAddress("fake", common.Mainnet)
-	require.True(t, errors.Is(err, errInvalidAddressLength))
+	_, err = NewAddress("fake", common.Mainnet)
+	require.ErrorIs(t, err, errInvalidAddressLength)
 }
 
 func TestValidateAddress_loop(t *testing.T) {
@@ -34,9 +28,12 @@ func TestValidateAddress_loop(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		kp, err := GenerateKeys() // create random key
 		require.NoError(t, err)
-		addrHex := hex.EncodeToString(kp.AddressBytes(common.Mainnet))
-		addr := kp.Address(common.Mainnet)                  // generates a base58 encoded address
-		err = ValidateAddress(string(addr), common.Mainnet) // decodes base58 as part of validation
-		require.NoError(t, err, addrHex)                    // save this hex address if the test fails!
+		// Generate the address, convert it to its base58 string form,
+		// then convert the base58 form back into a new address, then
+		// verify that the bytes of the 2 addresses are identical.
+		addr1 := kp.PublicKeyPair().Address(common.Mainnet)
+		addr2, err := NewAddress(addr1.String(), common.Mainnet)
+		require.NoError(t, err)
+		require.EqualValues(t, addr1[:], addr2[:])
 	}
 }

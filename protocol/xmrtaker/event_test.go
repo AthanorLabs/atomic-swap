@@ -37,7 +37,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
-		Address: string(xmrAddr),
+		Address: xmrAddr,
 		TxID:    txID,
 	}
 

@@ -184,7 +184,7 @@ type XMRMaker interface {
 	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission *apd.Decimal) (*types.OfferExtra, error)
 	GetOffers() []*types.Offer
 	ClearOffers([]types.Hash) error
-	GetMoneroBalance() (string, *wallet.GetBalanceResponse, error)
+	GetMoneroBalance() (mcrypto.Address, *wallet.GetBalanceResponse, error)
 }
 
 // SwapManager ...

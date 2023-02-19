@@ -421,7 +421,7 @@ func runETHAddress(ctx *cli.Context) error {
 		return err
 	}
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
-	code, err := qrcode.New(balances.EthAddress, qrcode.Medium)
+	code, err := qrcode.New(balances.EthAddress.String(), qrcode.Medium)
 	if err != nil {
 		return err
 	}
@@ -436,7 +436,7 @@ func runXMRAddress(ctx *cli.Context) error {
 		return err
 	}
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
-	code, err := qrcode.New(balances.MoneroAddress, qrcode.Medium)
+	code, err := qrcode.New(balances.MoneroAddress.String(), qrcode.Medium)
 	if err != nil {
 		return err
 	}

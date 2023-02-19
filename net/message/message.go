@@ -176,8 +176,8 @@ func (m *NotifyETHLocked) Type() byte {
 
 // NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
 type NotifyXMRLock struct {
-	Address string     `json:"address" validate:"required"` // address the monero was sent to
-	TxID    types.Hash `json:"txID"`                        // Monero transaction ID (transaction hash in hex)
+	Address mcrypto.Address `json:"address" validate:"required"` // address the monero was sent to
+	TxID    types.Hash      `json:"txID"`                        // Monero transaction ID (transaction hash in hex)
 }
 
 // String ...

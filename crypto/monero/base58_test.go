@@ -73,14 +73,14 @@ func TestMoneroAddrBytesToBase58(t *testing.T) {
 	for _, tt := range addressEncodingTests {
 		addrBytes, err := hex.DecodeString(tt.addressHex)
 		require.NoError(t, err, tt.name)
-		addr := MoneroAddrBytesToBase58(addrBytes)
+		addr := moneroAddrBytesToBase58(addrBytes)
 		require.Equal(t, tt.address, addr, tt.name)
 	}
 }
 
 func TestMoneroAddrBase58ToBytes(t *testing.T) {
 	for _, tt := range addressEncodingTests {
-		addrBytes, err := MoneroAddrBase58ToBytes(tt.address)
+		addrBytes, err := moneroAddrBase58ToBytes(tt.address)
 		require.NoError(t, err, tt.name)
 		addrHex := hex.EncodeToString(addrBytes)
 		require.Equal(t, tt.addressHex, addrHex, tt.name)
@@ -88,12 +88,12 @@ func TestMoneroAddrBase58ToBytes(t *testing.T) {
 }
 
 func TestMoneroAddrBase58ToBytes_BadLength(t *testing.T) {
-	_, err := MoneroAddrBase58ToBytes("")
+	_, err := moneroAddrBase58ToBytes("")
 	require.ErrorIs(t, err, errInvalidAddressLength)
 }
 
 func TestMoneroAddrBase58ToBytes_BadEncoding(t *testing.T) {
-	_, err := MoneroAddrBase58ToBytes("")
+	_, err := moneroAddrBase58ToBytes("")
 	require.ErrorIs(t, err, errInvalidAddressLength)
 
 	// Different code handles invalid encoding in the last block, so we add a non-valid base58
@@ -102,9 +102,9 @@ func TestMoneroAddrBase58ToBytes_BadEncoding(t *testing.T) {
 	firstBlockBad := "l" + validAddr[1:]
 	lastBlockBad := validAddr[:EncodedAddressLen-1] + "l"
 
-	_, err = MoneroAddrBase58ToBytes(firstBlockBad)
+	_, err = moneroAddrBase58ToBytes(firstBlockBad)
 	require.ErrorIs(t, err, errInvalidAddressEncoding)
 
-	_, err = MoneroAddrBase58ToBytes(lastBlockBad)
+	_, err = moneroAddrBase58ToBytes(lastBlockBad)
 	require.ErrorIs(t, err, errInvalidAddressEncoding)
 }

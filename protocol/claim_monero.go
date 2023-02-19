@@ -60,7 +60,7 @@ func ClaimMonero(
 	log.Infof("monero claimed in account %s; transferring to deposit account %s",
 		address, depositAddr)
 
-	err = mcrypto.ValidateAddress(string(depositAddr), env)
+	err = depositAddr.Validate(env)
 	if err != nil {
 		log.Errorf(
 			"failed to transfer XMR out of swap wallet, dest address %s is invalid: %s",

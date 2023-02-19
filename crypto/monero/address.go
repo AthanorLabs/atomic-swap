@@ -9,9 +9,39 @@ import (
 	"github.com/athanorlabs/atomic-swap/crypto"
 )
 
+// Network is the Monero network type
+type Network string
+
+// Monero networks
 const (
-	addressPrefixMainnet  byte = 18
-	addressPrefixStagenet byte = 24
+	Mainnet  Network = "mainnet"
+	Stagenet Network = "stagenet"
+	Testnet  Network = "testnet"
+)
+
+// AddressType is the type of Monero address: Standard, Integrated, Subaddress
+type AddressType string
+
+// Monero address types
+const (
+	Standard   AddressType = "standard"
+	Integrated AddressType = "integrated"
+	Subaddress AddressType = "subaddress"
+)
+
+// Network prefix byte. The 1st decoded byte of a monero address defines both
+// the network (mainnet, stagenet, testnet) and the type of address (standard,
+// integrated, and subaddress).
+const (
+	netPrefixStdAddrMainnet     = 18
+	netPrefixIntegrAddrMainnet  = 19
+	netPrefixSubAddrMainnet     = 42
+	netPrefixStdAddrStagenet    = 24
+	netPrefixIntegrAddrStagenet = 25
+	netPrefixSubAddrStagenet    = 36
+	netPrefixStdAddrTestnet     = 53
+	netPrefixIntegrAddrTestnet  = 54
+	netPrefixSubAddrTestnet     = 63
 )
 
 var (
@@ -20,31 +50,88 @@ var (
 	errInvalidAddressEncoding   = errors.New("invalid monero address encoding")
 	errInvalidPrefixGotMainnet  = errors.New("invalid monero address: expected stagenet, got mainnet")
 	errInvalidPrefixGotStagenet = errors.New("invalid monero address: expected mainnet, got stagenet")
+	errInvalidPrefixGotTestnet  = errors.New("invalid monero address: monero testnet not yet supported")
 )
 
 // Address represents a base58-encoded string
-type Address string
+type Address [AddressBytesLen]byte
 
-// ValidateAddress checks if the given address is valid
-func ValidateAddress(addr string, env common.Environment) error {
-	b, err := MoneroAddrBase58ToBytes(addr)
+// NewAddress converts a string to a monero Address with validation.
+func NewAddress(addrStr string, env common.Environment) (Address, error) {
+	b58Bytes, err := moneroAddrBase58ToBytes(addrStr)
 	if err != nil {
-		return err
+		return Address{}, err
 	}
+	addr := Address(*(*[AddressBytesLen]byte)(b58Bytes))
+	return addr, addr.Validate(env)
+}
 
-	switch env {
-	case common.Mainnet, common.Development:
-		if b[0] != addressPrefixMainnet {
-			return errInvalidPrefixGotStagenet
-		}
-	case common.Stagenet:
-		if b[0] != addressPrefixStagenet {
+func (a Address) String() string {
+	return moneroAddrBytesToBase58(a[:])
+}
+
+// Network returns the Monero network of the address
+func (a Address) Network() Network {
+	switch a[0] {
+	case netPrefixStdAddrMainnet,
+		netPrefixIntegrAddrMainnet,
+		netPrefixSubAddrMainnet:
+		return Mainnet
+	case netPrefixStdAddrStagenet,
+		netPrefixIntegrAddrStagenet,
+		netPrefixSubAddrStagenet:
+		return Stagenet
+	case netPrefixStdAddrTestnet,
+		netPrefixIntegrAddrTestnet,
+		netPrefixSubAddrTestnet:
+		return Testnet
+	default:
+		// Our methods to deserialize and create Address values all verify
+		// that the address byte is valid
+		panic("address has invalid network prefix")
+	}
+}
+
+// Type returns the Address type
+func (a Address) Type() AddressType {
+	switch a[0] {
+	case netPrefixStdAddrMainnet,
+		netPrefixStdAddrStagenet,
+		netPrefixStdAddrTestnet:
+		return Standard
+	case netPrefixIntegrAddrMainnet,
+		netPrefixIntegrAddrStagenet,
+		netPrefixIntegrAddrTestnet:
+		return Integrated
+	case netPrefixSubAddrTestnet,
+		netPrefixSubAddrStagenet,
+		netPrefixSubAddrMainnet:
+		return Subaddress
+	default:
+		// Our methods to deserialize and create Address values all verify
+		// that the address byte is valid
+		panic("address has invalid network prefix")
+	}
+}
+
+// Validate validates that the monero network matches the passed environment.
+func (a Address) Validate(env common.Environment) error {
+	moneroNet := a.Network()
+	switch moneroNet {
+	case Mainnet:
+		if env != common.Mainnet && env != common.Development {
 			return errInvalidPrefixGotMainnet
 		}
+	case Stagenet:
+		if env != common.Stagenet {
+			return errInvalidPrefixGotStagenet
+		}
+	case Testnet:
+		return errInvalidPrefixGotTestnet
 	}
 
-	checksum := getChecksum(b[:65])
-	if !bytes.Equal(checksum[:], b[65:69]) {
+	checksum := getChecksum(a[:65])
+	if !bytes.Equal(checksum[:], a[65:69]) {
 		return errChecksumMismatch
 	}
 
@@ -57,28 +144,16 @@ func getChecksum(data ...[]byte) (result [4]byte) {
 	return
 }
 
-// AddressBytes returns the address as bytes for a PrivateKeyPair with the given environment (ie. mainnet or stagenet)
-func (kp *PrivateKeyPair) AddressBytes(env common.Environment) []byte {
-	return kp.PublicKeyPair().AddressBytes(env)
-}
-
-// Address returns the base58-encoded address for a PrivateKeyPair with the given environment
-// (ie. mainnet or stagenet)
-func (kp *PrivateKeyPair) Address(env common.Environment) Address {
-	return Address(MoneroAddrBytesToBase58(kp.AddressBytes(env)))
-}
-
-// AddressBytes returns the address as bytes for a PublicKeyPair with the given environment (ie. mainnet or stagenet)
-func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
-	psk := kp.sk.key.Bytes()
-	pvk := kp.vk.key.Bytes()
+// Address returns the address as bytes for a PublicKeyPair with the given environment (ie. mainnet or stagenet)
+func (kp *PublicKeyPair) Address(env common.Environment) Address {
+	var address Address
 
 	var prefix byte
 	switch env {
 	case common.Mainnet, common.Development:
-		prefix = addressPrefixMainnet
+		prefix = netPrefixStdAddrMainnet
 	case common.Stagenet:
-		prefix = addressPrefixStagenet
+		prefix = netPrefixStdAddrStagenet
 	default:
 		panic(fmt.Sprintf("unhandled env %d", env))
 	}
@@ -86,17 +161,11 @@ func (kp *PublicKeyPair) AddressBytes(env common.Environment) []byte {
 	// address encoding is:
 	// (network_prefix) + (32-byte public spend key) + (32-byte-byte public view key)
 	// + first_4_Bytes(Hash(network_prefix + (32-byte public spend key) + (32-byte public view key)))
-	addr := append(append([]byte{prefix}, psk...), pvk...)
-	checksum := getChecksum(addr)
-	addrWithChecksum := append(addr, checksum[:4]...)
-	if len(addrWithChecksum) != 69 { // 1 (prefix) + 32 (pub spend key) + 32 (pub view key) + 4 (checksum)
-		panic(fmt.Sprintf("monero address %d instead of 69", len(addrWithChecksum)))
-	}
-	return addrWithChecksum
-}
+	address[0] = prefix                 // 1-byte network prefix
+	copy(address[1:33], kp.sk.Bytes())  // 32-byte public spend key
+	copy(address[33:65], kp.vk.Bytes()) // 32-byte public view key
+	checksum := getChecksum(address[0:65])
+	copy(address[65:69], checksum[:])
 
-// Address returns the base58-encoded address for a PublicKeyPair with the given environment
-// (ie. mainnet or stagenet)
-func (kp *PublicKeyPair) Address(env common.Environment) Address {
-	return Address(MoneroAddrBytesToBase58(kp.AddressBytes(env)))
+	return address
 }

@@ -78,13 +78,13 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 
 func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
 	if !s.info.Status.IsOngoing() {
-		return "", errSwapCompleted
+		return mcrypto.Address{}, errSwapCompleted
 	}
 
 	// write counterparty swap privkey to disk in case something goes wrong
 	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skB)
 	if err != nil {
-		return "", err
+		return mcrypto.Address{}, err
 	}
 
 	var depositAddr mcrypto.Address
@@ -92,7 +92,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		id := s.ID()
 		depositAddr, err = s.XMRDepositAddress(&id)
 		if err != nil {
-			return "", err
+			return mcrypto.Address{}, err
 		}
 	}
 
@@ -112,7 +112,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		s.transferBack,
 	)
 	if err != nil {
-		return "", err
+		return mcrypto.Address{}, err
 	}
 
 	close(s.claimedCh)

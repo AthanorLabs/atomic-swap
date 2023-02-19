@@ -48,7 +48,7 @@ func TestClaimMonero_NoTransferBack(t *testing.T) {
 		moneroCli,
 		height,
 		kp,
-		"",
+		mcrypto.Address{}, // TODO: How does this test work?
 		false,
 	)
 	require.NoError(t, err)

@@ -77,7 +77,7 @@ func (s *PersonalService) Balances(_ *http.Request, _ *interface{}, resp *rpctyp
 		PiconeroBalance:         coins.NewPiconeroAmount(mBal.Balance),
 		PiconeroUnlockedBalance: coins.NewPiconeroAmount(mBal.UnlockedBalance),
 		BlocksToUnlock:          mBal.BlocksToUnlock,
-		EthAddress:              s.pb.ETHClient().Address().String(),
+		EthAddress:              s.pb.ETHClient().Address(),
 		WeiBalance:              coins.NewWeiAmount(eBal),
 	}
 	return nil
