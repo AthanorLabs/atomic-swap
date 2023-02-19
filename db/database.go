@@ -2,13 +2,13 @@
 package db
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/ChainSafe/chaindb"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
@@ -83,7 +83,7 @@ func (db *Database) RecoveryDB() *RecoveryDB {
 
 // PutOffer puts an offer in the database.
 func (db *Database) PutOffer(offer *types.Offer) error {
-	val, err := json.Marshal(offer)
+	val, err := vjson.MarshalStruct(offer)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (db *Database) ClearAllOffers() error {
 // PutSwap puts the given swap in the database.
 // If a swap with the same ID is already in the database, it overwrites it.
 func (db *Database) PutSwap(s *swap.Info) error {
-	val, err := json.Marshal(s)
+	val, err := vjson.MarshalStruct(s)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (db *Database) GetSwap(id types.Hash) (*swap.Info, error) {
 	}
 
 	var s swap.Info
-	err = json.Unmarshal(value, &s)
+	err = vjson.UnmarshalStruct(value, &s)
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ func init() {
 var testID = types.Hash{99}
 
 type mockHandler struct {
+	t  *testing.T
 	id types.Hash
 }
 
@@ -27,11 +28,11 @@ func (h *mockHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockHandler) HandleInitiateMessage(_ *message.SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockHandler) HandleInitiateMessage(msg *message.SendKeysMessage) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
-		return &mockSwapState{h.id}, &SendKeysMessage{}, nil
+		return &mockSwapState{h.id}, createSendKeysMessage(h.t), nil
 	}
-	return &mockSwapState{}, &SendKeysMessage{}, nil
+	return &mockSwapState{}, msg, nil
 }
 
 type mockSwapState struct {
@@ -71,7 +72,7 @@ func basicTestConfig(t *testing.T) *p2pnet.Config {
 func newHost(t *testing.T, cfg *p2pnet.Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
-	h.SetHandler(&mockHandler{})
+	h.SetHandler(&mockHandler{t: t})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)
