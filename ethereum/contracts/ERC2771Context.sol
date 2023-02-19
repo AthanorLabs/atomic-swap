@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.9 .0;
 
-import "./Context.sol";
+import {Context} from "./Context.sol";
 
 /**
  * @dev Context variant with ERC2771 support.
