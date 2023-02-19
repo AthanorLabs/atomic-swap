@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 
 	"github.com/ChainSafe/chaindb"
@@ -41,7 +42,7 @@ func (db *RecoveryDB) close() error {
 
 // PutSwapRelayerInfo ...
 func (db *RecoveryDB) PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error {
-	val, err := json.Marshal(info)
+	val, err := vjson.MarshalStruct(info)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func (db *RecoveryDB) GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, erro
 	}
 
 	var s types.OfferExtra
-	err = json.Unmarshal(value, &s)
+	err = vjson.UnmarshalStruct(value, &s)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +72,7 @@ func (db *RecoveryDB) GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, erro
 // swap ID, but is instead a hash of the `SwapFactorySwap` structure)
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo) error {
-	val, err := json.Marshal(info)
+	val, err := vjson.MarshalStruct(info)
 	if err != nil {
 		return err
 	}
@@ -90,7 +91,7 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 	}
 
 	var s EthereumSwapInfo
-	err = json.Unmarshal(value, &s)
+	err = vjson.UnmarshalStruct(value, &s)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +101,7 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
 func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey) error {
-	val, err := json.Marshal(sk.Hex())
+	val, err := vjson.MarshalStruct(sk)
 	if err != nil {
 		return err
 	}
@@ -117,18 +118,18 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 		return nil, err
 	}
 
-	var skHex string
-	err = json.Unmarshal(value, &skHex)
+	privSpendKey := new(mcrypto.PrivateSpendKey)
+	err = vjson.UnmarshalStruct(value, privSpendKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return mcrypto.NewPrivateSpendKeyFromHex(skHex)
+	return privSpendKey, nil
 }
 
 // PutCounterpartySwapPrivateKey stores the counterparty's swap private key for the given swap ID.
 func (db *RecoveryDB) PutCounterpartySwapPrivateKey(id types.Hash, kp *mcrypto.PrivateSpendKey) error {
-	val, err := json.Marshal(kp)
+	val, err := vjson.MarshalStruct(kp)
 	if err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.Pri
 	}
 
 	sk := new(mcrypto.PrivateSpendKey)
-	err = json.Unmarshal(value, sk)
+	err = vjson.UnmarshalStruct(value, sk)
 	if err != nil {
 		return nil, err
 	}
@@ -155,15 +156,15 @@ func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.Pri
 }
 
 type xmrmakerKeys struct {
-	PublicSpendKey string `json:"publicSpendKey"`
-	PrivateViewKey string `json:"privateViewKey"`
+	PublicSpendKey *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
+	PrivateViewKey *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
 }
 
 // PutXMRMakerSwapKeys is called by the xmrtaker to store the counterparty's swap keys.
 func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
-	val, err := json.Marshal(&xmrmakerKeys{
-		PublicSpendKey: sk.Hex(),
-		PrivateViewKey: vk.Hex(),
+	val, err := vjson.MarshalStruct(&xmrmakerKeys{
+		PublicSpendKey: sk,
+		PrivateViewKey: vk,
 	})
 	if err != nil {
 		return err
@@ -177,28 +178,18 @@ func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, 
 // swap keys.
 func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
 	key := getRecoveryDBKey(id, xmrmakerKeysPrefix)
-	value, err := db.db.Get(key[:])
+	value, err := db.db.Get(key)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var info xmrmakerKeys
-	err = json.Unmarshal(value, &info)
+	err = vjson.UnmarshalStruct(value, &info)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	sk, err := mcrypto.NewPublicKeyFromHex(info.PublicSpendKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	vk, err := mcrypto.NewPrivateViewKeyFromHex(info.PrivateViewKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return sk, vk, nil
+	return info.PublicSpendKey, info.PrivateViewKey, nil
 }
 
 // PutXMRTakerSwapKeys is called by the xmrmaker to store the counterparty's swap keys.

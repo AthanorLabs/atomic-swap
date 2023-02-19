@@ -13,17 +13,18 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
 	// ProtocolID is the base atomic swap network protocol ID.
-	ProtocolID     = "/atomic-swap/0.1"
+	ProtocolID     = "/atomic-swap/0.2"
 	maxMessageSize = 1 << 17
 )
 
-var log = logging.Logger("host")
+var log = logging.Logger("net")
 
 // P2pHost contains libp2p functionality used by the Host.
 type P2pHost interface {
@@ -161,7 +162,7 @@ func (h *Host) PeerID() peer.ID {
 	return h.h.AddrInfo().ID
 }
 
-func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (message.Message, error) {
+func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (common.Message, error) {
 	msgBytes, err := p2pnet.ReadStreamMessage(stream, maxMessageSize)
 	if err != nil {
 		return nil, err

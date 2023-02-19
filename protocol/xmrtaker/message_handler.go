@@ -20,7 +20,7 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg message.Message) error {
+func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 	switch msg := msg.(type) {
 	case *message.SendKeysMessage:
 		event := newEventKeysReceived(msg)
@@ -81,7 +81,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
-func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message.Message, error) {
+func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.Message, error) {
 	if msg.ProvidedAmount == nil {
 		return nil, errMissingProvidedAmount
 	}
@@ -93,18 +93,15 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message
 		)
 	}
 
-	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
+	if msg.PublicSpendKey == nil || msg.PrivateViewKey == nil {
 		return nil, errMissingKeys
 	}
 
-	if msg.EthAddress == "" {
+	if msg.EthAddress == (ethcommon.Address{}) {
 		return nil, errMissingAddress
 	}
 
-	vk, err := mcrypto.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate XMRMaker's private view keys: %w", err)
-	}
+	vk := msg.PrivateViewKey
 
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
 	verificationRes, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey, msg.PublicSpendKey)
@@ -112,7 +109,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message
 		return nil, err
 	}
 
-	s.xmrmakerAddress = ethcommon.HexToAddress(msg.EthAddress)
+	s.xmrmakerAddress = msg.EthAddress
 	log.Debugf("got XMRMaker's keys and address: address=%s", s.xmrmakerAddress)
 
 	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
@@ -142,10 +139,10 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (message
 	go s.runT0ExpirationHandler()
 
 	out := &message.NotifyETHLocked{
-		Address:        s.ContractAddr().String(),
-		TxHash:         txHash.String(),
+		Address:        s.ContractAddr(),
+		TxHash:         txHash,
 		ContractSwapID: s.contractSwapID,
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
+		ContractSwap:   s.contractSwap,
 	}
 
 	return out, nil

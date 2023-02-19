@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
 func TestSwapFactorySwap_JSON(t *testing.T) {
@@ -36,7 +37,7 @@ func TestSwapFactorySwap_JSON(t *testing.T) {
 		"value": 9876000000000000000000,
 		"nonce": 1234
 	}`
-	jsonData, err := json.Marshal(sf)
+	jsonData, err := vjson.MarshalStruct(sf)
 	require.NoError(t, err)
 	require.JSONEq(t, expectedJSON, string(jsonData))
 

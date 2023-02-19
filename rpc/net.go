@@ -25,7 +25,7 @@ type Net interface {
 	Addresses() []string
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*message.QueryResponse, error)
-	Initiate(who peer.AddrInfo, msg *message.SendKeysMessage, s common.SwapStateNet) error
+	Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s common.SwapStateNet) error
 	CloseProtocolStream(types.Hash)
 }
 
@@ -168,7 +168,7 @@ func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *
 		return nil, fmt.Errorf("failed to initiate protocol: %w", err)
 	}
 
-	skm := swapState.SendKeysMessage()
+	skm := swapState.SendKeysMessage().(*message.SendKeysMessage)
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
 

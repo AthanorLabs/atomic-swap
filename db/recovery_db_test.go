@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/json"
 	"math/big"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
@@ -35,7 +35,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 	si := &EthereumSwapInfo{
 		StartNumber: big.NewInt(12345),
 		SwapID:      types.Hash{1, 2, 3, 4},
-		Swap: contracts.SwapFactorySwap{
+		Swap: &contracts.SwapFactorySwap{
 			Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 			Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 			PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),
@@ -65,7 +65,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 		},
 		"contract_address": "0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"
 	}`
-	jsonData, err := json.Marshal(si)
+	jsonData, err := vjson.MarshalStruct(si)
 	require.NoError(t, err)
 	require.JSONEq(t, expectedStr, string(jsonData))
 
@@ -107,7 +107,7 @@ func TestRecoveryDB_SwapPrivateKey(t *testing.T) {
 
 	res, err := rdb.GetSwapPrivateKey(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
+	require.Equal(t, kp.SpendKey().String(), res.String())
 }
 
 func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
@@ -122,7 +122,7 @@ func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
 
 	res, err := rdb.GetCounterpartySwapPrivateKey(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
+	require.Equal(t, kp.SpendKey().String(), res.String())
 }
 
 func TestRecoveryDB_XMRMakerSwapKeys(t *testing.T) {
@@ -137,8 +137,8 @@ func TestRecoveryDB_XMRMakerSwapKeys(t *testing.T) {
 
 	resSk, resVk, err := rdb.GetXMRMakerSwapKeys(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Public().Hex(), resSk.Hex())
-	require.Equal(t, kp.ViewKey().Hex(), resVk.Hex())
+	require.Equal(t, kp.SpendKey().Public().String(), resSk.String())
+	require.Equal(t, kp.ViewKey().String(), resVk.String())
 }
 
 func TestRecoveryDB_XMRTakerSwapKeys(t *testing.T) {
@@ -167,7 +167,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	si := &EthereumSwapInfo{
 		StartNumber: big.NewInt(12345),
 		SwapID:      types.Hash{1, 2, 3, 4},
-		Swap: contracts.SwapFactorySwap{
+		Swap: &contracts.SwapFactorySwap{
 			Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 			Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 			PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),

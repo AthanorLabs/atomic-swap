@@ -197,7 +197,7 @@ func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetS
 
 // GetOffersResponse ...
 type GetOffersResponse struct {
-	PeerID peer.ID
+	PeerID peer.ID        `json:"peerID"`
 	Offers []*types.Offer `json:"offers"`
 }
 

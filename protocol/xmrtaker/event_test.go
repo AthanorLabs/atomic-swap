@@ -32,10 +32,13 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 	t.Logf("Transferred %d pico XMR (fees %d) to account %s", transfer.Amount, transfer.Fee, xmrAddr)
 	t.Logf("Transfer was mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
 
+	txID, err := types.HexToHash(transfer.TxID)
+	require.NoError(t, err)
+
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
 		Address: string(xmrAddr),
-		TxID:    transfer.TxID,
+		TxID:    txID,
 	}
 
 	// assert that ready() is called, setup contract watcher
@@ -85,9 +88,9 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	require.ErrorIs(t, err, errMissingProvidedAmount)
 
 	// handle valid SendKeysMessage
-	msg = s.SendKeysMessage()
-	msg.PrivateViewKey = s.privkeys.ViewKey().Hex()
-	msg.EthAddress = s.ETHClient().Address().String()
+	msg = s.SendKeysMessage().(*message.SendKeysMessage)
+	msg.PrivateViewKey = s.privkeys.ViewKey()
+	msg.EthAddress = s.ETHClient().Address()
 	msg.ProvidedAmount = s.providedAmount.AsStandard()
 
 	err = s.HandleProtocolMessage(msg)
@@ -97,8 +100,8 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
 	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
-	require.Equal(t, msg.PublicSpendKey, s.xmrmakerPublicSpendKey.Hex())
-	require.Equal(t, msg.PrivateViewKey, s.xmrmakerPrivateViewKey.Hex())
+	require.Equal(t, msg.PublicSpendKey.Hex(), s.xmrmakerPublicSpendKey.Hex())
+	require.Equal(t, msg.PrivateViewKey.Hex(), s.xmrmakerPrivateViewKey.Hex())
 
 	// simulate xmrmaker locking xmr
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)

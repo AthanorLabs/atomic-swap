@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	ed25519 "filippo.io/edwards25519"
 )
@@ -18,14 +20,14 @@ func (s *mScalar) MarshalText() ([]byte, error) {
 		return nil, errors.New("cannot marshal uninitialized scalar")
 	}
 	sBytes := (*ed25519.Scalar)(s).Bytes()
-	return []byte(hex.EncodeToString(sBytes)), nil
+	return []byte(fmt.Sprintf("0x%x", sBytes)), nil
 }
 
 // UnmarshalText assigns the scalar from hex input in little endian that is exactly 32
 // bytes (64 hex symbols). The input is an ed25519 scalar and must already be reduced or
 // we return an error.
 func (s *mScalar) UnmarshalText(hexStr []byte) error {
-	sBytes, err := hex.DecodeString(string(hexStr))
+	sBytes, err := hex.DecodeString(strings.TrimPrefix(string(hexStr), "0x"))
 	if err != nil {
 		return err
 	}
@@ -41,14 +43,14 @@ func (s *mScalar) UnmarshalText(hexStr []byte) error {
 // MarshalText returns the 64-symbol hex representation of the 32-byte k in little endian.
 func (p *mPoint) MarshalText() ([]byte, error) {
 	pBytes := (*ed25519.Point)(p).Bytes()
-	return []byte(hex.EncodeToString(pBytes)), nil
+	return []byte(fmt.Sprintf("0x%x", pBytes)), nil
 }
 
 // UnmarshalText assigns the scalar from hex input in little endian that is exactly 32
 // bytes (64 hex symbols). The input is an ed25519 scalar and must already be reduced or
 // we return an error.
 func (p *mPoint) UnmarshalText(hexStr []byte) error {
-	pointBytes, err := hex.DecodeString(string(hexStr))
+	pointBytes, err := hex.DecodeString(strings.TrimPrefix(string(hexStr), "0x"))
 	if err != nil {
 		return err
 	}
