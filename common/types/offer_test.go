@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
 func TestOffer_MarshalJSON(t *testing.T) {
@@ -31,7 +32,7 @@ func TestOffer_MarshalJSON(t *testing.T) {
 		"ethAsset": "ETH",
 		"nonce": %d
 	}`, offer.ID, offer.Nonce)
-	jsonData, err := json.Marshal(offer)
+	jsonData, err := vjson.MarshalStruct(offer)
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(jsonData))
 }
@@ -105,7 +106,7 @@ func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
 	max := apd.New(200, 0)
 	rate := coins.ToExchangeRate(apd.New(15, -1)) // 1.5
 	offer1 := NewOffer(coins.ProvidesXMR, min, max, rate, EthAssetETH)
-	offerJSON, err := json.Marshal(offer1)
+	offerJSON, err := vjson.MarshalStruct(offer1)
 	require.NoError(t, err)
 	var offer2 Offer
 	err = json.Unmarshal(offerJSON, &offer2)

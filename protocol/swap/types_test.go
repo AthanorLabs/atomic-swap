@@ -1,7 +1,6 @@
 package swap
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
 func Test_InfoMarshal(t *testing.T) {
@@ -27,7 +27,7 @@ func Test_InfoMarshal(t *testing.T) {
 		200,
 		make(chan types.Status),
 	)
-	infoBytes, err := json.Marshal(info)
+	infoBytes, err := vjson.MarshalStruct(info)
 	require.NoError(t, err)
 	expectedJSON := `{
 		"version": "0.2.0",

@@ -697,7 +697,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	default:
 	}
 
-	common.SleepWithContext(ctx, 2*time.Second) // give some extra time for the offer to be re-added
+	common.SleepWithContext(ctx, 3*time.Second) // give some extra time for the offer to be re-added
 	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
