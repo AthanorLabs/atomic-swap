@@ -1,12 +1,12 @@
 package contracts
 
 import (
-	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
 // swap is the same as the auto-generated SwapFactorySwap type, but with some type
@@ -16,16 +16,16 @@ type swap struct {
 	Claimer      common.Address `json:"claimer"`
 	PubKeyClaim  types.Hash     `json:"pub_key_claim"`
 	PubKeyRefund types.Hash     `json:"pub_key_refund"`
-	Timeout0     *big.Int       `json:"timeout0"`
-	Timeout1     *big.Int       `json:"timeout1"`
+	Timeout0     *big.Int       `json:"timeout0" validate:"required"`
+	Timeout1     *big.Int       `json:"timeout1" validate:"required"`
 	Asset        common.Address `json:"asset"`
-	Value        *big.Int       `json:"value"`
-	Nonce        *big.Int       `json:"nonce"`
+	Value        *big.Int       `json:"value" validate:"required"`
+	Nonce        *big.Int       `json:"nonce" validate:"required"`
 }
 
 // MarshalJSON provides JSON marshalling for SwapFactorySwap
 func (sfs *SwapFactorySwap) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&swap{
+	return vjson.MarshalStruct(&swap{
 		Owner:        sfs.Owner,
 		Claimer:      sfs.Claimer,
 		PubKeyClaim:  sfs.PubKeyClaim,
@@ -41,7 +41,7 @@ func (sfs *SwapFactorySwap) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON provides JSON unmarshalling for SwapFactorySwap
 func (sfs *SwapFactorySwap) UnmarshalJSON(data []byte) error {
 	s := &swap{}
-	if err := json.Unmarshal(data, s); err != nil {
+	if err := vjson.UnmarshalStruct(data, s); err != nil {
 		return err
 	}
 	*sfs = SwapFactorySwap{

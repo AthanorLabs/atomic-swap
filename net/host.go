@@ -24,7 +24,7 @@ const (
 	maxMessageSize = 1 << 17
 )
 
-var log = logging.Logger("host")
+var log = logging.Logger("net")
 
 // P2pHost contains libp2p functionality used by the Host.
 type P2pHost interface {

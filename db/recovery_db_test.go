@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/json"
 	"math/big"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
@@ -65,7 +65,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 		},
 		"contract_address": "0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"
 	}`
-	jsonData, err := json.Marshal(si)
+	jsonData, err := vjson.MarshalStruct(si)
 	require.NoError(t, err)
 	require.JSONEq(t, expectedStr, string(jsonData))
 

@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -62,8 +62,8 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var req *rpctypes.Request
-		err = json.Unmarshal(message, &req)
+		req := new(rpctypes.Request)
+		err = vjson.UnmarshalStruct(message, req)
 		if err != nil {
 			_ = writeError(conn, err)
 			continue
@@ -80,8 +80,8 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) error {
 	switch req.Method {
 	case rpctypes.SubscribeSigner:
-		var params *rpctypes.SignerRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
+		params := new(rpctypes.SignerRequest)
+		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
@@ -89,8 +89,8 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	case rpctypes.SubscribeNewPeer:
 		return errUnimplemented
 	case rpctypes.NetDiscover:
-		var params *rpctypes.DiscoverRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
+		params := new(rpctypes.DiscoverRequest)
+		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
@@ -102,8 +102,8 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 		return writeResponse(conn, resp)
 	case rpctypes.NetQueryPeer:
-		var params *rpctypes.QueryPeerRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
+		params := new(rpctypes.QueryPeerRequest)
+		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
@@ -115,15 +115,15 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 		return writeResponse(conn, resp)
 	case rpctypes.SubscribeSwapStatus:
-		var params *rpctypes.SubscribeSwapStatusRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
+		params := new(rpctypes.SubscribeSwapStatusRequest)
+		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
 		return s.subscribeSwapStatus(s.ctx, conn, params.OfferID)
 	case rpctypes.SubscribeTakeOffer:
-		var params *rpctypes.TakeOfferRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
+		params := new(rpctypes.TakeOfferRequest)
+		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
@@ -134,8 +134,8 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 		return s.subscribeTakeOffer(s.ctx, conn, ch)
 	case rpctypes.SubscribeMakeOffer:
-		var params *rpctypes.MakeOfferRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
+		params := new(rpctypes.MakeOfferRequest)
+		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
@@ -203,8 +203,8 @@ func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offer
 				return err
 			}
 
-			var params *rpctypes.SignerTxSigned
-			if err := json.Unmarshal(message, &params); err != nil {
+			params := new(rpctypes.SignerTxSigned)
+			if err := vjson.UnmarshalStruct(message, &params); err != nil {
 				return fmt.Errorf("failed to unmarshal parameters: %w", err)
 			}
 
@@ -332,7 +332,7 @@ func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) erro
 }
 
 func writeResponse(conn *websocket.Conn, result interface{}) error {
-	bz, err := json.Marshal(result)
+	bz, err := vjson.MarshalStruct(result)
 	if err != nil {
 		return err
 	}
