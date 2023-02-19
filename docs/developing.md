@@ -33,7 +33,7 @@ If you update the `Swap.sol` contract for some reason, you will need to re-gener
 for the contract. **Note:** you do *not* need to do this to try out the swap; only if you want to
 edit the contract for development purposes.
 
-Download solc v0.8.16: https://github.com/ethereum/solidity/releases/tag/v0.8.16
+Download solc v0.8.17: https://github.com/ethereum/solidity/releases/tag/v0.8.17
 
 If `solc` with the needed version is not in your path (or not first in your path), set the
 `SOLC_BIN` environment variable to the correct version:
