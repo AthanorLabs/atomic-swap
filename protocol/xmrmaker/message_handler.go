@@ -10,7 +10,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/db"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -199,7 +198,7 @@ func (s *swapState) handleT0Expired() {
 }
 
 func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
-	if msg.PublicSpendKey == nil || msg.PublicViewKey == nil {
+	if msg.PublicSpendKey == nil || msg.PrivateViewKey == nil {
 		return errMissingKeys
 	}
 
@@ -209,8 +208,5 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) error {
 		return err
 	}
 
-	kp := mcrypto.NewPublicKeyPair(msg.PublicSpendKey, msg.PublicViewKey)
-
-	s.setXMRTakerPublicKeys(kp, verifyResult.Secp256k1PublicKey)
-	return nil
+	return s.setXMRTakerKeys(msg.PublicSpendKey, msg.PrivateViewKey, verifyResult.Secp256k1PublicKey)
 }

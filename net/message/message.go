@@ -106,8 +106,7 @@ type SendKeysMessage struct {
 	OfferID            types.Hash              `json:"offerID"`
 	ProvidedAmount     *apd.Decimal            `json:"providedAmount" validate:"required"`
 	PublicSpendKey     *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
-	PublicViewKey      *mcrypto.PublicKey      `json:"publicViewKey"`
-	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey"`
+	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
 	DLEqProof          string                  `json:"dleqProof" validate:"required"`
 	Secp256k1PublicKey *secp256k1.PublicKey    `json:"secp256k1PublicKey" validate:"required"`
 	EthAddress         ethcommon.Address       `json:"ethAddress"`
@@ -115,11 +114,10 @@ type SendKeysMessage struct {
 
 // String ...
 func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
+	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
 		m.OfferID,
 		m.ProvidedAmount,
 		m.PublicSpendKey,
-		m.PublicViewKey,
 		m.PrivateViewKey,
 		m.DLEqProof,
 		m.Secp256k1PublicKey,

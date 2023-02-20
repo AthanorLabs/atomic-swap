@@ -175,7 +175,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) e
 	}
 
 	// fetch counterparty's private view key
-	_, vkB, err := inst.backend.RecoveryDB().GetXMRMakerSwapKeys(s.ID)
+	_, vkB, err := inst.backend.RecoveryDB().GetCounterpartySwapKeys(s.ID)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) e
 		vkA, vkB,
 	)
 
-	_, err = pcommon.ClaimMonero(
+	err = pcommon.ClaimMonero(
 		inst.backend.Ctx(),
 		inst.backend.Env(),
 		s.ID,
