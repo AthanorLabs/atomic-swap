@@ -24,10 +24,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
-var (
-	maxRelayerCommissionRate, _, _ = apd.NewFromString("0.1") // 10%
-)
-
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	var (
@@ -123,7 +119,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	calldata, err := getClaimTxCalldata(common.DefaultRelayerCommission, s.contractSwap, s.getSecret())
+	calldata, err := getClaimTxCalldata(common.DefaultRelayerFee, s.contractSwap, s.getSecret())
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -310,7 +306,7 @@ func checkClaimedLog(log *ethtypes.Log, contractAddr ethcommon.Address, contract
 }
 
 func getClaimTxCalldata(
-	relayerCommission *apd.Decimal,
+	fee *apd.Decimal,
 	contractSwap *contracts.SwapFactorySwap,
 	secret [32]byte,
 ) ([]byte, error) {
@@ -319,37 +315,11 @@ func getClaimTxCalldata(
 		return nil, err
 	}
 
-	feeValue, err := calculateRelayerCommission(contractSwap.Value, relayerCommission)
-	if err != nil {
-		return nil, err
-	}
-
-	calldata, err := abi.Pack("claimRelayer", *contractSwap, secret, feeValue)
+	feeWei := coins.EtherToWei(fee).BigInt()
+	calldata, err := abi.Pack("claimRelayer", *contractSwap, secret, feeWei)
 	if err != nil {
 		return nil, err
 	}
 
 	return calldata, nil
-}
-
-// calculateRelayerCommission calculates and returns the amount of wei that the relayer
-// will receive as commission. The commissionRate is a multiplier (multiply by 100 to get
-// the percent) that must be greater than zero and less than or equal to the 10% maximum.
-// The 10% max is an arbitrary sanity check and may be adjusted in the future.
-func calculateRelayerCommission(swapWeiAmt *big.Int, commissionRate *apd.Decimal) (*big.Int, error) {
-	if commissionRate.Cmp(maxRelayerCommissionRate) > 0 {
-		return nil, errRelayerCommissionRateTooHigh
-	}
-
-	decimalCtx := coins.DecimalCtx()
-	feeValue := new(apd.Decimal)
-	_, err := decimalCtx.Mul(feeValue, coins.NewWeiAmount(swapWeiAmt).Decimal(), commissionRate)
-	if err != nil {
-		return nil, err
-	}
-	if _, err = decimalCtx.RoundToIntegralValue(feeValue, feeValue); err != nil {
-		return nil, err
-	}
-
-	return coins.ToWeiAmount(feeValue).BigInt(), nil
 }

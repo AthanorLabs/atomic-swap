@@ -12,7 +12,6 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	rcommon "github.com/athanorlabs/go-relayer/common"
@@ -20,7 +19,6 @@ import (
 	"github.com/athanorlabs/go-relayer/relayer"
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -252,37 +250,4 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, contracts.StageCompleted, stage)
-}
-
-func TestCalculateRelayerCommissionValue(t *testing.T) {
-	swapValueEther := coins.StrToDecimal("4.567")
-	swapValueWei := coins.EtherToWei(swapValueEther).BigInt()
-	require.Equal(t, "4567000000000000000", swapValueWei.Text(10))
-
-	commissionRate := coins.StrToDecimal("0.01398")
-	const expectedCommissionETH = "0.06384666" // 4.567 * 0.01398
-
-	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
-	require.NoError(t, err)
-	require.Equal(t, expectedCommissionETH, coins.NewWeiAmount(fee).AsEther().Text('f'))
-}
-
-func TestCalculateRelayerCommissionValue_roundUp(t *testing.T) {
-	commissionRate := coins.StrToDecimal("0.10")
-	swapValueWei := big.NewInt(9999999995)     // 10% is 999999999.5
-	const expectedCommissionWei = "1000000000" // ceil(999999999.5)
-
-	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
-	require.NoError(t, err)
-	assert.Equal(t, expectedCommissionWei, fee.String())
-}
-
-func TestCalculateRelayerCommissionValue_roundDown(t *testing.T) {
-	commissionRate := coins.StrToDecimal("0.10")
-	swapValueWei := big.NewInt(9999999994)    // 10% is 999999999.4
-	const expectedCommissionWei = "999999999" // floor(999999999.4)
-
-	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
-	require.NoError(t, err)
-	assert.Equal(t, expectedCommissionWei, fee.String())
 }

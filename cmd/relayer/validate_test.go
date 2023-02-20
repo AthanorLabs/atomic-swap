@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
@@ -18,48 +17,47 @@ func TestValidateRelayerFee(t *testing.T) {
 	require.NoError(t, err)
 
 	type testCase struct {
-		value, fee       *big.Int
-		minFeePercentage *apd.Decimal
-		expectErr        bool
+		value, fee, minFee *big.Int
+		expectErr          bool
 	}
 
 	testCases := []testCase{
 		{
-			value:            big.NewInt(100),
-			fee:              big.NewInt(1),
-			minFeePercentage: apd.New(1, -2),
+			value:  big.NewInt(100),
+			fee:    big.NewInt(1),
+			minFee: big.NewInt(1),
 		},
 		{
-			value:            big.NewInt(100),
-			fee:              big.NewInt(2),
-			minFeePercentage: apd.New(1, -2),
+			value:  big.NewInt(100),
+			fee:    big.NewInt(2),
+			minFee: big.NewInt(1),
 		},
 		{
-			value:            big.NewInt(1000),
-			fee:              big.NewInt(1),
-			minFeePercentage: apd.New(1, -2),
-			expectErr:        true,
+			value:     big.NewInt(1000),
+			fee:       big.NewInt(1),
+			minFee:    big.NewInt(2),
+			expectErr: true,
 		},
 		{
-			value:            big.NewInt(100),
-			fee:              big.NewInt(100),
-			minFeePercentage: apd.New(1, 0),
+			value:  big.NewInt(100),
+			fee:    big.NewInt(100),
+			minFee: big.NewInt(1),
 		},
 		{
-			value:            big.NewInt(100),
-			fee:              big.NewInt(10),
-			minFeePercentage: apd.New(1, -1),
+			value:  big.NewInt(100),
+			fee:    big.NewInt(10),
+			minFee: big.NewInt(10),
 		},
 		{
-			value:            big.NewInt(10000),
-			fee:              big.NewInt(99),
-			minFeePercentage: apd.New(1, -2),
-			expectErr:        true,
+			value:     big.NewInt(10000),
+			fee:       big.NewInt(99),
+			minFee:    big.NewInt(100),
+			expectErr: true,
 		},
 		{
-			value:            big.NewInt(10000),
-			fee:              big.NewInt(101),
-			minFeePercentage: apd.New(1, -2),
+			value:  big.NewInt(10000),
+			fee:    big.NewInt(101),
+			minFee: big.NewInt(1),
 		},
 	}
 
@@ -87,7 +85,7 @@ func TestValidateRelayerFee(t *testing.T) {
 		require.Equal(t, unpacked["value"], tc.value)
 		require.Equal(t, unpacked["fee"], tc.fee)
 
-		err = validateRelayerFee(unpacked, tc.minFeePercentage)
+		err = validateRelayerFee(unpacked, tc.minFee)
 		if tc.expectErr {
 			require.Error(t, err)
 			continue
