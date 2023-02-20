@@ -630,7 +630,7 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 			fmt.Printf("---\n")
 		}
 
-		fmt.Printf("ID: %s\n", id)
+		fmt.Printf("ID: %s\n", id.ID)
 		fmt.Printf("Start time: %s\n", id.StartTime)
 		fmt.Printf("End time: %s\n", id.EndTime)
 	}
@@ -642,21 +642,33 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 	offerID := ctx.String(flagOfferID)
 
 	c := newRRPClient(ctx)
-	info, err := c.GetOngoingSwap(offerID)
+	resp, err := c.GetOngoingSwap(offerID)
 	if err != nil {
 		return err
 	}
 
-	receivedCoin := "ETH"
-	if info.Provided == coins.ProvidesETH {
-		receivedCoin = "XMR"
+	fmt.Println("Ongoing swaps:")
+	if len(resp.Swaps) == 0 {
+		fmt.Println("[none]")
+		return nil
 	}
 
-	fmt.Printf("Start time: %s\n", info.StartTime)
-	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
-	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
-	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
-	fmt.Printf("Status: %s\n", info.Status)
+	for i, info := range resp.Swaps {
+		if i > 0 {
+			fmt.Printf("---\n")
+		}
+
+		receivedCoin := "ETH"
+		if info.Provided == coins.ProvidesETH {
+			receivedCoin = "XMR"
+		}
+
+		fmt.Printf("Start time: %s\n", info.StartTime)
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
+		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+		fmt.Printf("Status: %s\n", info.Status)
+	}
 
 	return nil
 }

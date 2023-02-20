@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/pricefeed"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 // SwapService handles information about ongoing or past swaps.
@@ -124,14 +125,19 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	return nil
 }
 
-// GetOngoingResponse ...
-type GetOngoingResponse struct {
+// OngoingSwap represents an ongoing swap returned by swap_getOngoing.
+type OngoingSwap struct {
 	Provided       coins.ProvidesCoin  `json:"provided"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
 	StartTime      time.Time           `json:"startTime"`
+}
+
+// GetOngoingResponse ...
+type GetOngoingResponse struct {
+	Swaps []*OngoingSwap `json:"swaps"`
 }
 
 // GetOngoingRequest ...
@@ -141,22 +147,40 @@ type GetOngoingRequest struct {
 
 // GetOngoing returns information about the ongoing swap with the given ID, if there is one.
 func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
+	var (
+		swaps []*swap.Info
+		err   error
+	)
+
+	if req.OfferID == "" {
+		swaps, err = s.sm.GetOngoingSwaps()
+		if err != nil {
+			return err
+		}
+	} else {
+		offerID, err := offerIDStringToHash(req.OfferID)
+		if err != nil {
+			return err
+		}
+
+		info, err := s.sm.GetOngoingSwap(offerID)
+		if err != nil {
+			return err
+		}
+
+		swaps = []*swap.Info{&info}
 	}
 
-	info, err := s.sm.GetOngoingSwap(offerID)
-	if err != nil {
-		return err
+	resp.Swaps = make([]*OngoingSwap, len(swaps))
+	for i, info := range swaps {
+		resp.Swaps[i].Provided = info.Provides
+		resp.Swaps[i].ProvidedAmount = info.ProvidedAmount
+		resp.Swaps[i].ExpectedAmount = info.ExpectedAmount
+		resp.Swaps[i].ExchangeRate = info.ExchangeRate
+		resp.Swaps[i].Status = info.Status.String()
+		resp.Swaps[i].StartTime = info.StartTime
 	}
 
-	resp.Provided = info.Provides
-	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ExpectedAmount = info.ExpectedAmount
-	resp.ExchangeRate = info.ExchangeRate
-	resp.Status = info.Status.String()
-	resp.StartTime = info.StartTime
 	return nil
 }
 
