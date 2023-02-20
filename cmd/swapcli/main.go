@@ -206,13 +206,12 @@ var (
 			},
 			{
 				Name:   "get-ongoing-swap",
-				Usage:  "Get information about ongoing swap, if there is one",
+				Usage:  "Get information about ongoing swap(s).",
 				Action: runGetOngoingSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap to retrieve info for",
-						Required: true,
+						Name:  flagOfferID,
+						Usage: "ID of swap to retrieve info for",
 					},
 					swapdPortFlag,
 				},

@@ -173,6 +173,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 	resp.Swaps = make([]*OngoingSwap, len(swaps))
 	for i, info := range swaps {
+		resp.Swaps[i] = new(OngoingSwap)
 		resp.Swaps[i].Provided = info.Provides
 		resp.Swaps[i].ProvidedAmount = info.ProvidedAmount
 		resp.Swaps[i].ExpectedAmount = info.ExpectedAmount
