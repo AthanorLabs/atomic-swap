@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/ChainSafe/chaindb"
 	"github.com/cockroachdb/apd/v3"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -33,8 +34,8 @@ type offerWithExtra struct {
 	extra *types.OfferExtra
 }
 
-// NewManager creates a new offers manager. The passed in dataDir is the directory where the
-// recovery file is for each individual swap is stored.
+// NewManager creates a new offer manager. The passed in dataDir is the
+// directory where the recovery file is for each individual swap is stored.
 func NewManager(dataDir string, db Database) (*Manager, error) {
 	log.Infof("loading offers from db...")
 	// load offers from the database, if there are any
@@ -127,24 +128,6 @@ func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, err
 	return offer.offer, offer.extra, nil
 }
 
-// DeleteOfferFromDB deletes the offer from the database.
-func (m *Manager) DeleteOfferFromDB(id types.Hash) error {
-	return m.db.DeleteOffer(id)
-}
-
-// GetOfferFromDB returns an offer from memory or the database, if it exists.
-func (m *Manager) GetOfferFromDB(id types.Hash) (*types.Offer, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	offer, has := m.offers[id]
-	if has {
-		return offer.offer, nil
-	}
-
-	return m.db.GetOffer(id)
-}
-
 // GetOffers returns all current offers. The returned slice is in random order and will not
 // be the same from one invocation to the next.
 func (m *Manager) GetOffers() []*types.Offer {
@@ -172,21 +155,30 @@ func (m *Manager) ClearAllOffers() error {
 }
 
 // ClearOfferIDs clears the passed in offer IDs if they exist.
-func (m *Manager) ClearOfferIDs(ids []types.Hash) {
+func (m *Manager) ClearOfferIDs(ids []types.Hash) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, id := range ids {
-		_ = m.db.DeleteOffer(id)
 		delete(m.offers, id)
+		err := m.db.DeleteOffer(id)
+		if err != nil && !errors.Is(chaindb.ErrKeyNotFound, err) {
+			return err
+		}
 	}
+	return nil
 }
 
-// DeleteOffer deletes the offer with the given ID, if it exists.
-func (m *Manager) DeleteOffer(id types.Hash) {
+// DeleteOffer deletes the offer with the given ID, if it exists. No error
+// is returned if there was no matching offer to delete.
+func (m *Manager) DeleteOffer(id types.Hash) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	_ = m.db.DeleteOffer(id)
 	delete(m.offers, id)
+	err := m.db.DeleteOffer(id)
+	if err != nil && !errors.Is(chaindb.ErrKeyNotFound, err) {
+		return err
+	}
+	return nil
 }
 
 // NumOffers returns the current number of offers.

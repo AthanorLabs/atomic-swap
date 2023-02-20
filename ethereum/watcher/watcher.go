@@ -96,7 +96,7 @@ func (f *EventFilter) Start() error {
 			}
 
 			// the filter is inclusive of the latest block when `ToBlock` is nil, so we add 1
-			f.filterQuery.FromBlock = big.NewInt(0).Add(currHeader.Number, big.NewInt(1))
+			f.filterQuery.FromBlock = new(big.Int).Add(currHeader.Number, big.NewInt(1))
 			header = currHeader
 		}
 	}()
