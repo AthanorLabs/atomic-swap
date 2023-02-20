@@ -466,19 +466,6 @@ func CreateSpendWalletFromKeys(
 	return createWalletFromKeys(conf, restoreHeight, privateSpendKey, privateViewKey, address)
 }
 
-// CreateSpendWalletFromKeysAndAddress creates a new monero-wallet-rpc process, wallet client and
-// spend wallet for the passed private key pair (view key and spend key).
-func CreateSpendWalletFromKeysAndAddress(
-	conf *WalletClientConf,
-	privateKeyPair *mcrypto.PrivateKeyPair,
-	address mcrypto.Address,
-	restoreHeight uint64,
-) (WalletClient, error) {
-	privateViewKey := privateKeyPair.ViewKey()
-	privateSpendKey := privateKeyPair.SpendKey()
-	return createWalletFromKeys(conf, restoreHeight, privateSpendKey, privateViewKey, address)
-}
-
 // CreateViewOnlyWalletFromKeys creates a new monero-wallet-rpc process, wallet client and
 // view-only wallet for the passed private view key and address.
 func CreateViewOnlyWalletFromKeys(

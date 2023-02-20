@@ -185,7 +185,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) e
 		vkA, vkB,
 	)
 
-	_, err = pcommon.ClaimMonero(
+	err = pcommon.ClaimMonero(
 		inst.backend.Ctx(),
 		inst.backend.Env(),
 		s.ID,

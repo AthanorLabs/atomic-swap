@@ -30,26 +30,25 @@ func GetClaimKeypair(
 	return kpAB
 }
 
-// ClaimMoneroInAddress claims the XMR located in the wallet controlled by the private keypair `kpAB`
-// with the given address.
+// ClaimMonero claims the XMR located in the wallet controlled by the private keypair `kpAB`.
 // If transferBack is true, it sweeps the XMR to `depositAddr`.
-func ClaimMoneroInAddress(
+func ClaimMonero(
 	ctx context.Context,
 	env common.Environment,
 	id types.Hash,
 	xmrClient monero.WalletClient,
 	walletScanHeight uint64,
 	kpAB *mcrypto.PrivateKeyPair,
-	address mcrypto.Address,
 	depositAddr mcrypto.Address,
 	transferBack bool,
 ) error {
 	conf := xmrClient.CreateWalletConf(fmt.Sprintf("swap-wallet-claim-%s", id))
-	abWalletCli, err := monero.CreateSpendWalletFromKeysAndAddress(conf, kpAB, address, walletScanHeight)
+	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, walletScanHeight)
 	if err != nil {
 		return err
 	}
 
+	address := kpAB.PublicKeyPair().Address(env)
 	if transferBack {
 		defer abWalletCli.CloseAndRemoveWallet()
 	} else {
@@ -86,26 +85,26 @@ func ClaimMoneroInAddress(
 	return nil
 }
 
-// ClaimMonero claims the XMR located in the wallet controlled by the private keypair `kpAB`.
-// If transferBack is true, it sweeps the XMR to `depositAddr`.
-func ClaimMonero(
-	ctx context.Context,
-	env common.Environment,
-	id types.Hash,
-	xmrClient monero.WalletClient,
-	walletScanHeight uint64,
-	kpAB *mcrypto.PrivateKeyPair,
-	depositAddr mcrypto.Address,
-	transferBack bool,
-) (mcrypto.Address, error) {
-	abAddr := kpAB.PublicKeyPair().Address(env)
+// // ClaimMonero claims the XMR located in the wallet controlled by the private keypair `kpAB`.
+// // If transferBack is true, it sweeps the XMR to `depositAddr`.
+// func ClaimMonero(
+// 	ctx context.Context,
+// 	env common.Environment,
+// 	id types.Hash,
+// 	xmrClient monero.WalletClient,
+// 	walletScanHeight uint64,
+// 	kpAB *mcrypto.PrivateKeyPair,
+// 	depositAddr mcrypto.Address,
+// 	transferBack bool,
+// ) (mcrypto.Address, error) {
+// 	abAddr := kpAB.PublicKeyPair().Address(env)
 
-	err := ClaimMoneroInAddress(
-		ctx, env, id, xmrClient, walletScanHeight, kpAB, abAddr, depositAddr, transferBack,
-	)
-	if err != nil {
-		return "", err
-	}
+// 	err := ClaimMoneroInAddress(
+// 		ctx, env, id, xmrClient, walletScanHeight, kpAB, abAddr, depositAddr, transferBack,
+// 	)
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	return abAddr, nil
-}
+// 	return abAddr, nil
+// }

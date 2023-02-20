@@ -245,18 +245,6 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	address := kp3.PublicKeyPair().Address(common.Mainnet)
 	t.Log("address", address)
 
-	// c, err := NewWalletClient(&WalletClientConf{
-	// 	Env:                 common.Development,
-	// 	WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
-	// 	MoneroWalletRPCPath: moneroWalletRPCPath,
-	// })
-	// require.NoError(t, err)
-
-	// height, err := c.GetHeight()
-	// require.NoError(t, err)
-
-	// conf := c.CreateWalletConf("testingggg")
-
 	conf := &WalletClientConf{
 		Env:            common.Development,
 		WalletFilePath: path.Join(t.TempDir(), "wallet", "not-used"),
