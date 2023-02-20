@@ -64,7 +64,7 @@ func NewInfo(
 		Status:            status,
 		MoneroStartHeight: moneroStartHeight,
 		statusCh:          statusCh,
-		StartTime: time.Now(),
+		StartTime:         time.Now(),
 	}
 	return info
 }

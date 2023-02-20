@@ -47,9 +47,9 @@ func NewSwapService(
 
 // PastSwapInfo contains a swap ID and its start and end time.
 type PastSwapInfo struct {
-	ID string `json:"id"`
+	ID        string    `json:"id"`
 	StartTime time.Time `json:"startTime"`
-	EndTime time.Time `json:"endTime"`
+	EndTime   time.Time `json:"endTime"`
 }
 
 // GetPastIDsResponse ...
@@ -73,9 +73,9 @@ func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastI
 		}
 
 		resp.IDs[i] = &PastSwapInfo{
-			ID: id.String(),
+			ID:        id.String(),
 			StartTime: info.StartTime,
-			EndTime: info.EndTime,
+			EndTime:   info.EndTime,
 		}
 	}
 
@@ -98,8 +98,8 @@ type GetPastResponse struct {
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
-	StartTime time.Time `json:"startTime"`
-	EndTime time.Time `json:"endTime"`
+	StartTime      time.Time           `json:"startTime"`
+	EndTime        time.Time           `json:"endTime"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -131,7 +131,7 @@ type GetOngoingResponse struct {
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
-	StartTime time.Time `json:"startTime"`
+	StartTime      time.Time           `json:"startTime"`
 }
 
 // GetOngoingRequest ...
@@ -203,8 +203,8 @@ type GetStageRequest struct {
 
 // GetStageResponse ...
 type GetStageResponse struct {
-	Stage string `json:"stage"`
-	Info  string `json:"info"`
+	Stage     string    `json:"stage"`
+	Info      string    `json:"info"`
 	StartTime time.Time `json:"startTime"`
 }
 
