@@ -198,13 +198,6 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 // the swap was started). It will also only only recover to the primary wallet address,
 // not whatever address was used when the swap was started.
 func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
-	// calc counterparty's swap private view key
-	// TODO: if the counterparty sends a non-standard public view key, does this work?
-	vkA, err := skA.View()
-	if err != nil {
-		return err
-	}
-
 	// fetch our swap private spend key
 	skB, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
 	if err != nil {
@@ -217,12 +210,19 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 		return err
 	}
 
+	// we save the counterparty's public keys in case they send public keys derived
+	// in a non-standard way.
+	_, vkA, err := inst.backend.RecoveryDB().GetCounterpartySwapKeys(s.ID)
+	if err != nil {
+		return err
+	}
+
 	kpAB := pcommon.GetClaimKeypair(
 		skA, skB,
 		vkA, vkB,
 	)
 
-	_, err = pcommon.ClaimMonero(
+	err = pcommon.ClaimMonero(
 		inst.backend.Ctx(),
 		inst.backend.Env(),
 		s.ID,

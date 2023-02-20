@@ -14,7 +14,7 @@ const (
 	swapPrivateKeyPrefix             = "privkey"
 	counterpartySwapPrivateKeyPrefix = "cspriv"
 	relayerInfoPrefix                = "relayer"
-	xmrmakerKeysPrefix               = "xmrmaker"
+	counterpartySwapKeysPrefix       = "cskeys"
 )
 
 // RecoveryDB contains information about ongoing swaps required for recovery
@@ -152,14 +152,14 @@ func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.Pri
 	return sk, nil
 }
 
-type xmrmakerKeys struct {
+type counterpartyKeys struct {
 	PublicSpendKey *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
 	PrivateViewKey *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
 }
 
-// PutXMRMakerSwapKeys is called by the xmrtaker to store the counterparty's swap keys.
-func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
-	val, err := vjson.MarshalStruct(&xmrmakerKeys{
+// PutCounterpartySwapKeys is used to store the counterparty's swap keys.
+func (db *RecoveryDB) PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
+	val, err := vjson.MarshalStruct(&counterpartyKeys{
 		PublicSpendKey: sk,
 		PrivateViewKey: vk,
 	})
@@ -167,20 +167,19 @@ func (db *RecoveryDB) PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, 
 		return err
 	}
 
-	key := getRecoveryDBKey(id, xmrmakerKeysPrefix)
+	key := getRecoveryDBKey(id, counterpartySwapKeysPrefix)
 	return db.db.Put(key[:], val)
 }
 
-// GetXMRMakerSwapKeys is called by the xmrtaker during recovery to retrieve the counterparty's
-// swap keys.
-func (db *RecoveryDB) GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
-	key := getRecoveryDBKey(id, xmrmakerKeysPrefix)
+// GetCounterpartySwapKeys is called during recovery to retrieve the counterparty's swap keys.
+func (db *RecoveryDB) GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
+	key := getRecoveryDBKey(id, counterpartySwapKeysPrefix)
 	value, err := db.db.Get(key)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var info xmrmakerKeys
+	var info counterpartyKeys
 	err = vjson.UnmarshalStruct(value, &info)
 	if err != nil {
 		return nil, nil, err
@@ -196,7 +195,7 @@ func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 		getRecoveryDBKey(id, contractSwapInfoPrefix),
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
 		getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix),
-		getRecoveryDBKey(id, xmrmakerKeysPrefix),
+		getRecoveryDBKey(id, counterpartySwapKeysPrefix),
 	}
 
 	for _, key := range keys {
