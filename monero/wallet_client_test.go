@@ -228,10 +228,10 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	t.Logf("Address %s", addr.Address)
 }
 
+// this tests calling generateFromkeys passing an address derived in
+// a non-standard manner; ie. the public view key in the address doesn't
+// match the private view key passed in.
 func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
-	// this tests calling generateFromkeys passing an address derived in
-	// a non-standard manner (ie. the view keys aren't a hash of the spend
-	// key). the view key is actually a completely different key altogether.
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
