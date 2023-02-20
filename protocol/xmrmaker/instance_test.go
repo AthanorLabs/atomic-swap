@@ -159,6 +159,10 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rate := coins.ToExchangeRate(apd.New(1, 0)) // 100% relayer commission
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
+	offerDB.EXPECT().PutOffer(offer).Return(nil)
+	_, err := inst.offerManager.AddOffer(offer, "", nil)
+	require.NoError(t, err)
+
 	s := &pswap.Info{
 		ID:             offer.ID,
 		Provides:       coins.ProvidesXMR,

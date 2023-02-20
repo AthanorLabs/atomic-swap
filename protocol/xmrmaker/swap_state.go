@@ -351,7 +351,7 @@ func (s *swapState) exit() error {
 
 			log.Debugf("re-added offer %s", s.offer.ID)
 		} else if s.info.Status == types.CompletedSuccess {
-			err = s.offerManager.DeleteOfferFromDB(s.offer.ID)
+			err = s.offerManager.DeleteOffer(s.offer.ID)
 			if err != nil {
 				log.Warnf("failed to delete offer %s from db: %s", s.offer.ID, err)
 			}
