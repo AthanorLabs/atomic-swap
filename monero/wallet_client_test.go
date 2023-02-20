@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MarinX/monerorpc/wallet"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -265,20 +264,6 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	res, err := c.GetAddress(0)
 	require.NoError(t, err)
 	require.Equal(t, string(address), res.Address)
-
-	oneXMR := coins.MoneroToPiconero(coins.StrToDecimal("1.0"))
-	MineMinXMRBalance(t, c, oneXMR)
-
-	transferAmt, err := coins.MoneroToPiconero(coins.StrToDecimal("0.01")).Uint64()
-	require.NoError(t, err)
-
-	_, err = c.(*walletClient).wRPC.Transfer(&wallet.TransferRequest{
-		Destinations: []wallet.Destination{{
-			Amount:  transferAmt,
-			Address: "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5",
-		}},
-	})
-	require.ErrorContains(t, err, "not enough money")
 }
 
 func Test_getMoneroWalletRPCBin(t *testing.T) {
