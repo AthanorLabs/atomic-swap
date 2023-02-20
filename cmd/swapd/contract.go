@@ -34,6 +34,7 @@ func getOrDeploySwapFactory(
 	privkey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
+	withCodeCheck bool,
 ) (*contracts.SwapFactory, ethcommon.Address, error) {
 	var (
 		sf  *contracts.SwapFactory
@@ -57,10 +58,14 @@ func getOrDeploySwapFactory(
 		}
 		log.Infof("loaded SwapFactory.sol from address %s", address)
 
-		// _, err = contracts.CheckSwapFactoryContractCode(ctx, ec, address)
-		// if err != nil {
-		// 	return nil, ethcommon.Address{}, err
-		// }
+		if !withCodeCheck {
+			return sf, address, nil
+		}
+
+		_, err = contracts.CheckSwapFactoryContractCode(ctx, ec, address)
+		if err != nil {
+			return nil, ethcommon.Address{}, err
+		}
 	}
 
 	return sf, address, nil

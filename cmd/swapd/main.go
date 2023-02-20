@@ -76,6 +76,7 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
+	flagWithCodeCheck        = "check-code"
 
 	flagDevXMRTaker      = "dev-xmrtaker"
 	flagDevXMRMaker      = "dev-xmrmaker"
@@ -207,6 +208,11 @@ var (
 				Name:   flagProfile,
 				Usage:  "BIND_IP:PORT to provide profiling information on",
 				Hidden: true, // flag is only for developers
+			},
+			&cli.BoolFlag{
+				Name:  flagWithCodeCheck,
+				Usage: "Check if contract code matches expected code at startup. Defaults to true.",
+				Value: true,
 			},
 		},
 	}
@@ -646,6 +652,7 @@ func newBackend(
 		ethPrivKey,
 		ec,
 		forwarderAddress,
+		c.Bool(flagWithCodeCheck),
 	)
 	if err != nil {
 		return nil, err

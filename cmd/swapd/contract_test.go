@@ -28,6 +28,7 @@ func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 		pk,
 		ec,
 		forwarder,
+		true,
 	)
 	require.NoError(t, err)
 }
@@ -45,6 +46,7 @@ func TestGetOrDeploySwapFactory_DeployForwarderAlso(t *testing.T) {
 		pk,
 		ec,
 		ethcommon.Address{},
+		true,
 	)
 	require.NoError(t, err)
 }
@@ -67,6 +69,7 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 		pk,
 		ec,
 		forwarder,
+		true,
 	)
 	require.NoError(t, err)
 
@@ -78,6 +81,7 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 		pk,
 		ec,
 		ethcommon.Address{},
+		true,
 	)
 	require.NoError(t, err)
 	require.Equal(t, address, addr2)
