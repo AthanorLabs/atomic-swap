@@ -84,27 +84,3 @@ func ClaimMonero(
 
 	return nil
 }
-
-// // ClaimMonero claims the XMR located in the wallet controlled by the private keypair `kpAB`.
-// // If transferBack is true, it sweeps the XMR to `depositAddr`.
-// func ClaimMonero(
-// 	ctx context.Context,
-// 	env common.Environment,
-// 	id types.Hash,
-// 	xmrClient monero.WalletClient,
-// 	walletScanHeight uint64,
-// 	kpAB *mcrypto.PrivateKeyPair,
-// 	depositAddr mcrypto.Address,
-// 	transferBack bool,
-// ) (mcrypto.Address, error) {
-// 	abAddr := kpAB.PublicKeyPair().Address(env)
-
-// 	err := ClaimMoneroInAddress(
-// 		ctx, env, id, xmrClient, walletScanHeight, kpAB, abAddr, depositAddr, transferBack,
-// 	)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	return abAddr, nil
-// }
