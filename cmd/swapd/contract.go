@@ -57,10 +57,10 @@ func getOrDeploySwapFactory(
 		}
 		log.Infof("loaded SwapFactory.sol from address %s", address)
 
-		_, err = contracts.CheckSwapFactoryContractCode(ctx, ec, address)
-		if err != nil {
-			return nil, ethcommon.Address{}, err
-		}
+		// _, err = contracts.CheckSwapFactoryContractCode(ctx, ec, address)
+		// if err != nil {
+		// 	return nil, ethcommon.Address{}, err
+		// }
 	}
 
 	return sf, address, nil
