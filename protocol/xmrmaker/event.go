@@ -190,15 +190,15 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.handleEventETHLocked(e)
+		err := s.setNextExpectedEvent(EventContractReadyType)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventContractReadyType: %w", err)
 			return
 		}
 
-		err = s.setNextExpectedEvent(EventContractReadyType)
+		err = s.handleEventETHLocked(e)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to set next expected event to EventContractReadyType: %w", err)
+			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
 			return
 		}
 	case *EventContractReady:
