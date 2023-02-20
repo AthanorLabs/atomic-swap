@@ -121,7 +121,7 @@ var (
 		&cli.StringFlag{
 			Name: flagRelayerFee,
 			Usage: "Minimum commission fee to receive in ETH:" +
-				" eg. --relayer-commission=0.01 for a fee of 0.01 ETH",
+				" eg. --relayer-fee=0.01 for a fee of 0.01 ETH",
 			Value: common.DefaultRelayerFee.Text('f'),
 		},
 	}
@@ -255,7 +255,7 @@ func run(c *cli.Context) error {
 	}
 
 	if relayerFee.Cmp(apd.New(1, -1)) > 0 {
-		return errors.New("relayer commission is too high: must be less than 0.1 ETH")
+		return errors.New("relayer fee is too high: must be less than 0.1 ETH")
 	}
 
 	feeWei := coins.EtherToWei(relayerFee).BigInt()

@@ -181,7 +181,7 @@ Parameters:
   zero address for regular ETH. default: regular ETH
 - `relayerEndpoint`: (optional) RPC endpoint of the relayer to use for submitting claim
   transactions.
-- `relayerCommission`: (optional) Commission in percentage that the relayer receives for
+- `relayerFee`: (optional) Fee in ETH that the relayer receives for
   submitting the claim transaction.
 
 Returns:

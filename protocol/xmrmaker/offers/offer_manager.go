@@ -82,7 +82,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 func (m *Manager) AddOffer(
 	offer *types.Offer,
 	relayerEndpoint string,
-	relayerCommission *apd.Decimal,
+	relayerFee *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -99,9 +99,9 @@ func (m *Manager) AddOffer(
 	}
 
 	extra := &types.OfferExtra{
-		StatusCh:          make(chan types.Status, statusChSize),
-		RelayerEndpoint:   relayerEndpoint,
-		RelayerCommission: relayerCommission,
+		StatusCh:        make(chan types.Status, statusChSize),
+		RelayerEndpoint: relayerEndpoint,
+		RelayerFee:      relayerFee,
 	}
 
 	m.offers[id] = &offerWithExtra{

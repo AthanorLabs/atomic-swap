@@ -169,7 +169,7 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 		s.contractAddr,
 		s.ETHClient().Raw(),
 		s.offerExtra.RelayerEndpoint,
-		s.offerExtra.RelayerCommission,
+		s.offerExtra.RelayerFee,
 		s.contractSwap,
 		s.contractSwapID,
 		s.getSecret(),
@@ -184,7 +184,7 @@ func claimRelayer(
 	contractAddr ethcommon.Address,
 	ec *ethclient.Client,
 	relayerEndpoint string,
-	relayerCommission *apd.Decimal,
+	relayerFee *apd.Decimal,
 	contractSwap *contracts.SwapFactorySwap,
 	contractSwapID, secret [32]byte,
 ) (ethcommon.Hash, error) {
@@ -198,7 +198,7 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	calldata, err := getClaimTxCalldata(relayerCommission, contractSwap, secret)
+	calldata, err := getClaimTxCalldata(relayerFee, contractSwap, secret)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -316,6 +316,10 @@ func getClaimTxCalldata(
 	}
 
 	feeWei := coins.EtherToWei(fee).BigInt()
+	if contractSwap.Value.Cmp(feeWei) <= 0 {
+		return nil, errSwapValueTooLow
+	}
+
 	calldata, err := abi.Pack("claimRelayer", *contractSwap, secret, feeWei)
 	if err != nil {
 		return nil, err

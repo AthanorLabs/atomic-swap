@@ -79,7 +79,7 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 	// 1. the `to` address is a swap contract;
 	// 2. the function being called is `claimRelayer`;
 	// 3. the fee passed to `claimRelayer` is equal to or greater
-	// than our desired commission percentage.
+	// than our desired fee.
 
 	forwarderAddr, err := contracts.CheckSwapFactoryContractCode(
 		v.ctx, v.ec, req.To,
