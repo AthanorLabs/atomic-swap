@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
@@ -44,22 +45,44 @@ func NewSwapService(
 	}
 }
 
-// GetPastIDsResponse ...
-type GetPastIDsResponse struct {
-	IDs []string `json:"ids"`
+// PastSwapInfo contains a swap ID and its start and end time.
+type PastSwapInfo struct {
+	ID string `json:"id"`
+	StartTime time.Time `json:"startTime"`
+	EndTime time.Time `json:"endTime"`
 }
 
-// GetPastIDs returns all past swap IDs
+// GetPastIDsResponse ...
+type GetPastIDsResponse struct {
+	IDs []*PastSwapInfo `json:"ids"`
+}
+
+// GetPastIDs returns all past swap IDs and their start and end times.
+// It sorts them in order from oldest to newest.
 func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastIDsResponse) error {
 	ids, err := s.sm.GetPastIDs()
 	if err != nil {
 		return err
 	}
 
-	resp.IDs = make([]string, len(ids))
-	for i := range resp.IDs {
-		resp.IDs[i] = ids[i].String()
+	resp.IDs = make([]*PastSwapInfo, len(ids))
+	for i, id := range ids {
+		info, err := s.sm.GetPastSwap(id)
+		if err != nil {
+			return fmt.Errorf("failed to get past swap %s: %w", id, err)
+		}
+
+		resp.IDs[i] = &PastSwapInfo{
+			ID: id.String(),
+			StartTime: info.StartTime,
+			EndTime: info.EndTime,
+		}
 	}
+
+	sort.Slice(resp.IDs, func(i, j int) bool {
+		return resp.IDs[i].StartTime.UnixNano() > resp.IDs[j].StartTime.UnixNano()
+	})
+
 	return nil
 }
 
@@ -75,6 +98,8 @@ type GetPastResponse struct {
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
+	StartTime time.Time `json:"startTime"`
+	EndTime time.Time `json:"endTime"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -94,6 +119,8 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
 	resp.Status = info.Status.String()
+	resp.StartTime = info.StartTime
+	resp.EndTime = info.EndTime
 	return nil
 }
 
@@ -104,6 +131,7 @@ type GetOngoingResponse struct {
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         string              `json:"status"`
+	StartTime time.Time `json:"startTime"`
 }
 
 // GetOngoingRequest ...
@@ -111,7 +139,7 @@ type GetOngoingRequest struct {
 	OfferID string `json:"offerID"`
 }
 
-// GetOngoing returns information about the ongoing swap, if there is one.
+// GetOngoing returns information about the ongoing swap with the given ID, if there is one.
 func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
 	offerID, err := offerIDStringToHash(req.OfferID)
 	if err != nil {
@@ -128,6 +156,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
 	resp.Status = info.Status.String()
+	resp.StartTime = info.StartTime
 	return nil
 }
 
@@ -176,6 +205,7 @@ type GetStageRequest struct {
 type GetStageResponse struct {
 	Stage string `json:"stage"`
 	Info  string `json:"info"`
+	StartTime time.Time `json:"startTime"`
 }
 
 // GetStage returns the stage of the ongoing swap, if there is one.
@@ -192,6 +222,7 @@ func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetS
 
 	resp.Stage = info.Status.String()
 	resp.Info = info.Status.Info()
+	resp.StartTime = info.StartTime
 	return nil
 }
 
@@ -201,7 +232,7 @@ type GetOffersResponse struct {
 	Offers []*types.Offer `json:"offers"`
 }
 
-// GetOffers returns the currently available offers.
+// GetOffers returns our currently available offers.
 func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffersResponse) error {
 	resp.PeerID = s.net.PeerID()
 	resp.Offers = s.xmrmaker.GetOffers()
@@ -213,7 +244,7 @@ type ClearOffersRequest struct {
 	OfferIDs []types.Hash `json:"offerIDs"`
 }
 
-// ClearOffers clears the provided offers. If there are no offers provided, it clears all offers.
+// ClearOffers clears our provided offers. If there are no offers provided, it clears all offers.
 func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *interface{}) error {
 	err := s.xmrmaker.ClearOffers(req.OfferIDs)
 	if err != nil {

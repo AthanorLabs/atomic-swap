@@ -8,7 +8,7 @@ import (
 )
 
 // GetPastSwapIDs calls swap_getPastIDs
-func (c *Client) GetPastSwapIDs() ([]string, error) {
+func (c *Client) GetPastSwapIDs() ([]*rpc.PastSwapInfo, error) {
 	const (
 		method = "swap_getPastIDs"
 	)

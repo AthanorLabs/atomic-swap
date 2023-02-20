@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/cockroachdb/apd/v3"
@@ -35,6 +36,8 @@ type Info struct {
 	Status         Status              `json:"status"`
 	// MoneroStartHeight is the Monero block number when the swap begins.
 	MoneroStartHeight uint64            `json:"moneroStartHeight"`
+	StartTime         time.Time         `json:"startTime"`
+	EndTime           time.Time         `json:"endTime"`
 	statusCh          chan types.Status `json:"-"`
 }
 
@@ -61,6 +64,7 @@ func NewInfo(
 		Status:            status,
 		MoneroStartHeight: moneroStartHeight,
 		statusCh:          statusCh,
+		StartTime: time.Now(),
 	}
 	return info
 }

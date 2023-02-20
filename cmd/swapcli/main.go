@@ -620,12 +620,21 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 	}
 
 	fmt.Println("Past swap offer IDs:")
-	for i, id := range ids {
-		fmt.Printf("%d: %s\n", i, id)
-	}
 	if len(ids) == 0 {
 		fmt.Println("[none]")
+		return nil
 	}
+
+	for i, id := range ids {
+		if i > 0 {
+			fmt.Printf("---\n")
+		}
+
+		fmt.Printf("ID: %s\n", id)
+		fmt.Printf("Start time: %s\n", id.StartTime)
+		fmt.Printf("End time: %s\n", id.EndTime)
+	}
+
 	return nil
 }
 
@@ -643,6 +652,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		receivedCoin = "XMR"
 	}
 
+	fmt.Printf("Start time: %s\n", info.StartTime)
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
 	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
@@ -665,6 +675,8 @@ func runGetPastSwap(ctx *cli.Context) error {
 		receivedCoin = "XMR"
 	}
 
+	fmt.Printf("Start time: %s\n", info.StartTime)
+	fmt.Printf("End time: %s\n", info.EndTime)
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
 	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
@@ -764,6 +776,7 @@ func runGetStage(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Printf("Start time: %s\n", resp.StartTime)
 	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Info)
 	return nil
 }
