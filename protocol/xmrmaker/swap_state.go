@@ -64,7 +64,8 @@ type swapState struct {
 	t0, t1         time.Time
 
 	// XMRTaker's keys for this session
-	xmrtakerPublicKeys         *mcrypto.PublicKeyPair
+	xmrtakerPublicSpendKey     *mcrypto.PublicKey
+	xmrtakerPrivateViewKey     *mcrypto.PrivateViewKey
 	xmrtakerSecp256K1PublicKey *secp256k1.PublicKey
 	moneroStartHeight          uint64 // height of the monero blockchain when the swap is started
 
@@ -413,30 +414,28 @@ func (s *swapState) exit() error {
 
 func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 	// write counterparty swap privkey to disk in case something goes wrong
-	if err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skA); err != nil {
-		return err
-	}
-
-	vkA, err := skA.View()
+	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skA)
 	if err != nil {
 		return err
 	}
 
-	kpAB := pcommon.GetClaimKeypair(
-		skA, s.privkeys.SpendKey(),
-		vkA, s.privkeys.ViewKey(),
-	)
-
-	if s.xmrtakerPublicKeys == nil {
-		s.xmrtakerPublicKeys, err = s.RecoveryDB().GetXMRTakerSwapKeys(s.ID())
+	if s.xmrtakerPublicSpendKey == nil || s.xmrtakerPrivateViewKey == nil {
+		s.xmrtakerPublicSpendKey, s.xmrtakerPrivateViewKey, err = s.RecoveryDB().GetCounterpartySwapKeys(s.ID())
 		if err != nil {
 			return fmt.Errorf("failed to get counterparty public keypair: %w", err)
 		}
 	}
 
+	kpAB := pcommon.GetClaimKeypair(
+		skA, s.privkeys.SpendKey(),
+		s.xmrtakerPrivateViewKey, s.privkeys.ViewKey(),
+	)
+
+	kpA := mcrypto.NewPrivateKeyPair(skA, s.xmrtakerPrivateViewKey)
+
 	// generate address using counterparty public keys to pass to ClaimMoneroWithAddress
 	address := mcrypto.SumSpendAndViewKeys(
-		s.xmrtakerPublicKeys, s.pubkeys,
+		kpA.PublicKeyPair(), s.pubkeys,
 	).Address(s.Env())
 
 	return pcommon.ClaimMoneroInAddress(
@@ -488,14 +487,16 @@ func (s *swapState) getSecret() [32]byte {
 	return secret
 }
 
-// setXMRTakerPublicKeys sets XMRTaker's public spend and view keys
-func (s *swapState) setXMRTakerPublicKeys(
-	sk *mcrypto.PublicKeyPair,
+// setXMRTakerKeys sets XMRTaker's public spend and private view key
+func (s *swapState) setXMRTakerKeys(
+	sk *mcrypto.PublicKey,
+	vk *mcrypto.PrivateViewKey,
 	secp256k1Pub *secp256k1.PublicKey,
 ) error {
-	s.xmrtakerPublicKeys = sk
+	s.xmrtakerPublicSpendKey = sk
+	s.xmrtakerPrivateViewKey = vk
 	s.xmrtakerSecp256K1PublicKey = secp256k1Pub
-	return s.RecoveryDB().PutXMRTakerSwapKeys(s.ID(), sk)
+	return s.RecoveryDB().PutCounterpartySwapKeys(s.ID(), sk, vk)
 }
 
 // setContract sets the contract in which XMRTaker has locked her ETH.
@@ -517,7 +518,8 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
 func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
-	swapDestAddr := mcrypto.SumSpendAndViewKeys(s.xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
+	xmrtakerPublicKeys := mcrypto.NewPublicKeyPair(s.xmrtakerPublicSpendKey, s.xmrtakerPrivateViewKey.Public())
+	swapDestAddr := mcrypto.SumSpendAndViewKeys(xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount=%s XMR", amount.AsMoneroString())
 
 	balance, err := s.XMRClient().GetBalance(0)

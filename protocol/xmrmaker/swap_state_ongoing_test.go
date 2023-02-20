@@ -69,7 +69,11 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
 	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
@@ -109,7 +113,11 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 
 	s.info.Status = types.XMRLocked
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
-	rdb.EXPECT().GetXMRTakerSwapKeys(s.ID()).Return(xmrtakerKeysAndProof.PublicKeyPair, nil)
+	rdb.EXPECT().GetCounterpartySwapKeys(s.ID()).Return(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		nil,
+	)
 
 	t.Log("creating swap state again...")
 	ss, err := newSwapStateFromOngoing(

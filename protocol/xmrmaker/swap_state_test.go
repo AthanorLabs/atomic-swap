@@ -78,7 +78,7 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 
 	msg := &message.SendKeysMessage{
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
-		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey(),
+		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
 	}
@@ -168,13 +168,12 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 	require.Equal(t, errMissingKeys, err)
 
 	msg, xmrtakerKeysAndProof := newTestXMRTakerSendKeysMessage(t)
-	xmrtakerPubKeys := xmrtakerKeysAndProof.PublicKeyPair
 
 	err = s.handleSendKeysMessage(msg)
 	require.NoError(t, err)
 	require.Equal(t, EventETHLockedType, s.nextExpectedEvent)
-	require.Equal(t, xmrtakerPubKeys.SpendKey().String(), s.xmrtakerPublicKeys.SpendKey().String())
-	require.Equal(t, xmrtakerPubKeys.ViewKey().String(), s.xmrtakerPublicKeys.ViewKey().String())
+	require.Equal(t, xmrtakerKeysAndProof.PublicKeyPair.SpendKey().String(), s.xmrtakerPublicSpendKey.String())
+	require.Equal(t, xmrtakerKeysAndProof.PrivateKeyPair.ViewKey().String(), s.xmrtakerPrivateViewKey.String())
 	require.True(t, s.info.Status.IsOngoing())
 }
 
@@ -185,7 +184,11 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
 	require.NoError(t, err)
 
 	msg := &message.NotifyETHLocked{}
@@ -220,7 +223,11 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
 	require.NoError(t, err)
 
 	msg := &message.NotifyETHLocked{}
@@ -259,7 +266,11 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
 	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
@@ -303,7 +314,11 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	err = s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
 	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")

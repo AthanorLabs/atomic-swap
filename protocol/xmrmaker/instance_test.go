@@ -88,7 +88,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutCounterpartySwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapRelayerInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	rdb.EXPECT().PutXMRTakerSwapKeys(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
@@ -211,7 +211,7 @@ func TestInstance_CompleteSwap(t *testing.T) {
 	// counterparty's keypair
 	kpOther, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
-	rdb.EXPECT().GetXMRTakerSwapKeys(id).Return(kpOther.PublicKeyPair(), nil)
+	rdb.EXPECT().GetCounterpartySwapKeys(id).Return(kpOther.SpendKey().Public(), kpOther.ViewKey(), nil)
 
 	height, err := inst.backend.XMRClient().GetHeight()
 	require.NoError(t, err)
