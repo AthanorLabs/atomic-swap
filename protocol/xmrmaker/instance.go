@@ -134,7 +134,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		return inst.completeSwap(s, skA)
 	}
 
-	offer, err := inst.offerManager.GetOfferFromDB(s.ID)
+	offer, _, err := inst.offerManager.GetOffer(s.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
 	}
