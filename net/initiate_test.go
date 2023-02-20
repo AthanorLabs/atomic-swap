@@ -22,7 +22,6 @@ func createSendKeysMessage(t *testing.T) *message.SendKeysMessage {
 		OfferID:            types.Hash{},
 		ProvidedAmount:     new(apd.Decimal),
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
-		PublicViewKey:      keysAndProof.PublicKeyPair.ViewKey(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,

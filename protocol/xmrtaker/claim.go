@@ -101,7 +101,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 		s.xmrmakerPrivateViewKey, s.privkeys.ViewKey(),
 	)
 
-	abAddr, err := pcommon.ClaimMonero(
+	err = pcommon.ClaimMonero(
 		s.ctx,
 		s.Env(),
 		s.info.ID,
@@ -116,5 +116,5 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, 
 	}
 
 	close(s.claimedCh)
-	return abAddr, nil
+	return kpAB.PublicKeyPair().Address(s.Env()), nil
 }

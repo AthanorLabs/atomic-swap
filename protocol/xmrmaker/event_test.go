@@ -44,7 +44,12 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)

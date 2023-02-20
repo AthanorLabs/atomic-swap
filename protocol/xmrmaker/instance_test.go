@@ -18,6 +18,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -87,6 +88,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutCounterpartySwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutSwapRelayerInfo(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
 	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
@@ -195,4 +197,68 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 	close(inst.swapStates[s.ID].done)
+}
+
+func TestInstance_CompleteSwap(t *testing.T) {
+	monero.TestBackgroundMineBlocks(t)
+
+	inst, _ := newTestInstanceAndDB(t)
+	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
+
+	// our keypair
+	kp, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	id := [32]byte{9, 9, 9}
+	rdb.EXPECT().GetSwapPrivateKey(id).Return(kp.SpendKey(), nil)
+
+	// counterparty's keypair
+	kpOther, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+	rdb.EXPECT().GetCounterpartySwapKeys(id).Return(kpOther.SpendKey().Public(), kpOther.ViewKey(), nil)
+
+	height, err := inst.backend.XMRClient().GetHeight()
+	require.NoError(t, err)
+	sinfo := &pswap.Info{
+		ID:                id,
+		MoneroStartHeight: height,
+		Status:            types.XMRLocked,
+	}
+	err = inst.backend.SwapManager().AddSwap(sinfo)
+	require.NoError(t, err)
+
+	// the address of the "shared swap wallet"
+	address := mcrypto.SumSpendAndViewKeys(
+		kp.PublicKeyPair(), kpOther.PublicKeyPair(),
+	).Address(common.Development)
+
+	conf := &monero.WalletClientConf{
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "test-wallet-tcm"),
+		MoneroWalletRPCPath: monero.GetWalletRPCDirectory(t),
+	}
+	err = conf.Fill()
+	require.NoError(t, err)
+
+	// mine some xmr to the "shared swap wallet"
+	kpAB := pcommon.GetClaimKeypair(
+		kp.SpendKey(), kpOther.SpendKey(),
+		kp.ViewKey(), kpOther.ViewKey(),
+	)
+	moneroCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, 0)
+	require.NoError(t, err)
+	xmrAmt := coins.StrToDecimal("1")
+	pnAmt := coins.MoneroToPiconero(xmrAmt)
+	monero.MineMinXMRBalance(t, moneroCli, pnAmt)
+
+	addrRes, err := moneroCli.GetAddress(0)
+	require.NoError(t, err)
+	require.Equal(t, string(address), addrRes.Address)
+
+	err = inst.completeSwap(sinfo, kpOther.SpendKey())
+	require.NoError(t, err)
+
+	balance, err := moneroCli.GetBalance(0)
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), balance.Balance)
 }
