@@ -664,7 +664,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 
 	peerIDs, err := c.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), 1, len(peerIDs))
+	require.Equalf(s.T(), 1, len(peerIDs), "peer count mismatch")
 
 	providesAmount := coins.StrToDecimal("0.05")
 	takerStatusCh, err := wsc.TakeOfferAndSubscribe(offerResp.PeerID, offerResp.OfferID, providesAmount)
@@ -700,7 +700,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	common.SleepWithContext(ctx, 3*time.Second) // give some extra time for the offer to be re-added
 	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
+	require.Equalf(s.T(), len(beforeResp.Offers), len(afterResp.Offers), "offer count mismatch")
 }
 
 // TestError_ShouldOnlyTakeOfferOnce tests the case where two takers try to take the same offer concurrently.

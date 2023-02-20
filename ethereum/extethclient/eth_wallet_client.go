@@ -162,7 +162,7 @@ func (c *ethClient) SetGasPrice(gasPrice uint64) {
 		c.gasPrice = nil
 		return
 	}
-	c.gasPrice = big.NewInt(0).SetUint64(gasPrice)
+	c.gasPrice = new(big.Int).SetUint64(gasPrice)
 }
 
 // SetGasLimit sets the ethereum gas limit to use (in wei). In most cases you should not

@@ -40,16 +40,9 @@ func (b *Instance) GetOffers() []*types.Offer {
 }
 
 // ClearOffers clears all offers.
-// If the offer list is empty, it clears all offers.
 func (b *Instance) ClearOffers(offerIDs []types.Hash) error {
-	l := len(offerIDs)
-	if l == 0 {
-		err := b.offerManager.ClearAllOffers()
-		if err != nil {
-			return err
-		}
+	if len(offerIDs) == 0 {
+		return b.offerManager.ClearAllOffers()
 	}
-
-	b.offerManager.ClearOfferIDs(offerIDs)
-	return nil
+	return b.offerManager.ClearOfferIDs(offerIDs)
 }
