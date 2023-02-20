@@ -215,7 +215,6 @@ var (
 func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 }
 
@@ -276,9 +275,10 @@ func setLogLevels(level string) {
 }
 
 func runDaemon(c *cli.Context) error {
-	ctx, cancel := context.WithCancel(c.Context)
-	defer cancel()
-	go signalHandler(ctx, cancel)
+	// Fail if any non-flag arguments were passed
+	if c.Args().Present() {
+		return fmt.Errorf("unknown command %q", c.Args().First())
+	}
 
 	if err := setLogLevelsFromContext(c); err != nil {
 		return err
@@ -287,6 +287,10 @@ func runDaemon(c *cli.Context) error {
 	if err := maybeStartProfiler(c); err != nil {
 		return err
 	}
+
+	ctx, cancel := context.WithCancel(c.Context)
+	defer cancel()
+	go signalHandler(ctx, cancel)
 
 	d := newEmptyDaemon(ctx, cancel)
 	if err := d.make(c); err != nil {
