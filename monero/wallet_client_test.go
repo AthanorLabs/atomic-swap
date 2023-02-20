@@ -248,6 +248,7 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 	conf := &WalletClientConf{
 		Env:            common.Development,
 		WalletFilePath: path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
 	}
 	err = conf.Fill()
 	require.NoError(t, err)
