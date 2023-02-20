@@ -41,7 +41,7 @@ func TestClaimMonero_NoTransferBack(t *testing.T) {
 	pnAmt := coins.MoneroToPiconero(xmrAmt)
 	monero.MineMinXMRBalance(t, moneroCli, pnAmt)
 
-	_, err = ClaimMonero(
+	err = ClaimMonero(
 		context.Background(),
 		common.Development,
 		[32]byte{},
@@ -81,7 +81,7 @@ func TestClaimMonero_WithTransferBack(t *testing.T) {
 	require.NoError(t, err)
 	depositAddr := kp2.PublicKeyPair().Address(env)
 
-	_, err = ClaimMonero(
+	err = ClaimMonero(
 		context.Background(),
 		common.Development,
 		[32]byte{},

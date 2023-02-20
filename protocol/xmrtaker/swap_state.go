@@ -161,7 +161,7 @@ func newSwapStateFromOngoing(
 		return nil, errInvalidStageForRecovery
 	}
 
-	makerSk, makerVk, err := b.RecoveryDB().GetXMRMakerSwapKeys(info.ID)
+	makerSk, makerVk, err := b.RecoveryDB().GetCounterpartySwapKeys(info.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get xmrmaker swap keys from db: %w", err)
 	}
@@ -309,7 +309,7 @@ func (s *swapState) waitForSendKeysMessage() {
 func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey(),
-		PublicViewKey:      s.pubkeys.ViewKey(),
+		PrivateViewKey:     s.privkeys.ViewKey(),
 		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
 		Secp256k1PublicKey: s.secp256k1Pub,
 	}
@@ -535,7 +535,7 @@ func (s *swapState) setXMRMakerKeys(
 	s.xmrmakerPublicSpendKey = sk
 	s.xmrmakerPrivateViewKey = vk
 	s.xmrmakerSecp256k1PublicKey = secp256k1Pub
-	return s.Backend.RecoveryDB().PutXMRMakerSwapKeys(s.info.ID, sk, vk)
+	return s.Backend.RecoveryDB().PutCounterpartySwapKeys(s.info.ID, sk, vk)
 }
 
 func (s *swapState) approveToken() error {
@@ -691,8 +691,8 @@ func generateKeys() (*pcommon.KeysAndProof, error) {
 }
 
 func generateNonce() *big.Int {
-	u256PlusOne := big.NewInt(0).Lsh(big.NewInt(1), 256)
-	maxU256 := big.NewInt(0).Sub(u256PlusOne, big.NewInt(1))
+	u256PlusOne := new(big.Int).Lsh(big.NewInt(1), 256)
+	maxU256 := new(big.Int).Sub(u256PlusOne, big.NewInt(1))
 	n, _ := rand.Int(rand.Reader, maxU256)
 	return n
 }

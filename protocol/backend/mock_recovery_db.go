@@ -67,6 +67,22 @@ func (mr *MockRecoveryDBMockRecorder) GetContractSwapInfo(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).GetContractSwapInfo), arg0)
 }
 
+// GetCounterpartySwapKeys mocks base method.
+func (m *MockRecoveryDB) GetCounterpartySwapKeys(arg0 common.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCounterpartySwapKeys", arg0)
+	ret0, _ := ret[0].(*mcrypto.PublicKey)
+	ret1, _ := ret[1].(*mcrypto.PrivateViewKey)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetCounterpartySwapKeys indicates an expected call of GetCounterpartySwapKeys.
+func (mr *MockRecoveryDBMockRecorder) GetCounterpartySwapKeys(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterpartySwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).GetCounterpartySwapKeys), arg0)
+}
+
 // GetCounterpartySwapPrivateKey mocks base method.
 func (m *MockRecoveryDB) GetCounterpartySwapPrivateKey(arg0 common.Hash) (*mcrypto.PrivateSpendKey, error) {
 	m.ctrl.T.Helper()
@@ -112,22 +128,6 @@ func (mr *MockRecoveryDBMockRecorder) GetSwapRelayerInfo(arg0 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSwapRelayerInfo", reflect.TypeOf((*MockRecoveryDB)(nil).GetSwapRelayerInfo), arg0)
 }
 
-// GetXMRMakerSwapKeys mocks base method.
-func (m *MockRecoveryDB) GetXMRMakerSwapKeys(arg0 common.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetXMRMakerSwapKeys", arg0)
-	ret0, _ := ret[0].(*mcrypto.PublicKey)
-	ret1, _ := ret[1].(*mcrypto.PrivateViewKey)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetXMRMakerSwapKeys indicates an expected call of GetXMRMakerSwapKeys.
-func (mr *MockRecoveryDBMockRecorder) GetXMRMakerSwapKeys(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetXMRMakerSwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).GetXMRMakerSwapKeys), arg0)
-}
-
 // PutContractSwapInfo mocks base method.
 func (m *MockRecoveryDB) PutContractSwapInfo(arg0 common.Hash, arg1 *db.EthereumSwapInfo) error {
 	m.ctrl.T.Helper()
@@ -140,6 +140,20 @@ func (m *MockRecoveryDB) PutContractSwapInfo(arg0 common.Hash, arg1 *db.Ethereum
 func (mr *MockRecoveryDBMockRecorder) PutContractSwapInfo(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutContractSwapInfo", reflect.TypeOf((*MockRecoveryDB)(nil).PutContractSwapInfo), arg0, arg1)
+}
+
+// PutCounterpartySwapKeys mocks base method.
+func (m *MockRecoveryDB) PutCounterpartySwapKeys(arg0 common.Hash, arg1 *mcrypto.PublicKey, arg2 *mcrypto.PrivateViewKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutCounterpartySwapKeys", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PutCounterpartySwapKeys indicates an expected call of PutCounterpartySwapKeys.
+func (mr *MockRecoveryDBMockRecorder) PutCounterpartySwapKeys(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutCounterpartySwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).PutCounterpartySwapKeys), arg0, arg1, arg2)
 }
 
 // PutCounterpartySwapPrivateKey mocks base method.
@@ -182,18 +196,4 @@ func (m *MockRecoveryDB) PutSwapRelayerInfo(arg0 common.Hash, arg1 *types.OfferE
 func (mr *MockRecoveryDBMockRecorder) PutSwapRelayerInfo(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutSwapRelayerInfo", reflect.TypeOf((*MockRecoveryDB)(nil).PutSwapRelayerInfo), arg0, arg1)
-}
-
-// PutXMRMakerSwapKeys mocks base method.
-func (m *MockRecoveryDB) PutXMRMakerSwapKeys(arg0 common.Hash, arg1 *mcrypto.PublicKey, arg2 *mcrypto.PrivateViewKey) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutXMRMakerSwapKeys", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// PutXMRMakerSwapKeys indicates an expected call of PutXMRMakerSwapKeys.
-func (mr *MockRecoveryDBMockRecorder) PutXMRMakerSwapKeys(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutXMRMakerSwapKeys", reflect.TypeOf((*MockRecoveryDB)(nil).PutXMRMakerSwapKeys), arg0, arg1, arg2)
 }
