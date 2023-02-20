@@ -228,6 +228,44 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	t.Logf("Address %s", addr.Address)
 }
 
+// this tests calling generateFromkeys passing an address derived in
+// a non-standard manner; ie. the public view key in the address doesn't
+// match the private view key passed in.
+func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
+	kp, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	kp2, err := mcrypto.GenerateKeys()
+	require.NoError(t, err)
+
+	// create keypair with priv spend key of kp, but a different priv view key
+	// use the address of this keypair in the call to `generateFromKeys`
+	kp3 := mcrypto.NewPrivateKeyPair(kp.SpendKey(), kp2.ViewKey())
+	address := kp3.PublicKeyPair().Address(common.Mainnet)
+	t.Log("address", address)
+
+	conf := &WalletClientConf{
+		Env:                 common.Development,
+		WalletFilePath:      path.Join(t.TempDir(), "wallet", "not-used"),
+		MoneroWalletRPCPath: moneroWalletRPCPath,
+	}
+	err = conf.Fill()
+	require.NoError(t, err)
+
+	c, err := createWalletFromKeys(
+		conf,
+		0,
+		kp.SpendKey(),
+		kp.ViewKey(),
+		kp3.Address(common.Mainnet),
+	)
+	require.NoError(t, err)
+
+	res, err := c.GetAddress(0)
+	require.NoError(t, err)
+	require.Equal(t, string(address), res.Address)
+}
+
 func Test_getMoneroWalletRPCBin(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)

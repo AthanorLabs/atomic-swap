@@ -40,7 +40,7 @@ func setupSwapStateUntilETHLocked(t *testing.T) (*swapState, uint64) {
 	// shutdown swap state, re-create from ongoing
 	s.cancel()
 
-	rdb.EXPECT().GetXMRMakerSwapKeys(s.info.ID).Return(
+	rdb.EXPECT().GetCounterpartySwapKeys(s.info.ID).Return(
 		makerKeys.PublicKeyPair.SpendKey(),
 		makerKeys.PrivateKeyPair.ViewKey(),
 		nil,
