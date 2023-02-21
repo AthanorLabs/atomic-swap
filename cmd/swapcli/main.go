@@ -811,7 +811,7 @@ func runGetStage(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Info)
+	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Description)
 	return nil
 }
 

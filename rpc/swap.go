@@ -74,7 +74,7 @@ type GetPastResponse struct {
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
-	Status         string              `json:"status"`
+	Status         types.Status        `json:"status" validate:"required"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -93,7 +93,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	resp.ProvidedAmount = info.ProvidedAmount
 	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
-	resp.Status = info.Status.String()
+	resp.Status = info.Status
 	return nil
 }
 
@@ -103,7 +103,7 @@ type GetOngoingResponse struct {
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
-	Status         string              `json:"status"`
+	Status         types.Status        `json:"status" validate:"required"`
 }
 
 // GetOngoingRequest ...
@@ -127,7 +127,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	resp.ProvidedAmount = info.ProvidedAmount
 	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
-	resp.Status = info.Status.String()
+	resp.Status = info.Status
 	return nil
 }
 
@@ -174,8 +174,8 @@ type GetStageRequest struct {
 
 // GetStageResponse ...
 type GetStageResponse struct {
-	Stage string `json:"stage"`
-	Info  string `json:"info"`
+	Stage       types.Status `json:"stage" validate:"required"`
+	Description string       `json:"description" validate:"required"`
 }
 
 // GetStage returns the stage of the ongoing swap, if there is one.
@@ -190,8 +190,8 @@ func (s *SwapService) GetStage(_ *http.Request, req *GetStageRequest, resp *GetS
 		return err
 	}
 
-	resp.Stage = info.Status.String()
-	resp.Info = info.Status.Info()
+	resp.Stage = info.Status
+	resp.Description = info.Status.Description()
 	return nil
 }
 

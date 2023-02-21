@@ -224,15 +224,15 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			status := new(rpctypes.SubscribeSwapStatusResponse)
-			if err := vjson.UnmarshalStruct(resp.Result, status); err != nil {
+			statusResp := new(rpctypes.SubscribeSwapStatusResponse)
+			if err := vjson.UnmarshalStruct(resp.Result, statusResp); err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
 			}
 
-			s := types.NewStatus(status.Status)
-			respCh <- s
-			if !s.IsOngoing() {
+			status := statusResp.Status
+			respCh <- status
+			if !status.IsOngoing() {
 				return
 			}
 		}
@@ -276,50 +276,49 @@ func (c *wsClient) TakeOfferAndSubscribe(
 
 	respCh := make(chan types.Status)
 
-	go func() {
+	go func(s types.Status) {
 		defer close(respCh)
 
 		for {
-			s := types.NewStatus(status)
 			respCh <- s
 			if !s.IsOngoing() {
 				return
 			}
 
-			status, err = c.readTakeOfferResponse()
+			_, err = c.readTakeOfferResponse()
 			if err != nil {
 				log.Warnf("%s", err)
 				break
 			}
 		}
-	}()
+	}(status)
 
 	return respCh, nil
 }
 
-func (c *wsClient) readTakeOfferResponse() (string, error) {
+func (c *wsClient) readTakeOfferResponse() (types.Status, error) {
 	message, err := c.read()
 	if err != nil {
-		return "", fmt.Errorf("failed to read websockets message: %s", err)
+		return 0, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
 	resp := new(rpctypes.Response)
 	err = vjson.UnmarshalStruct(message, resp)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Error != nil {
-		return "", fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return 0, fmt.Errorf("websocket server returned error: %w", resp.Error)
 	}
 
 	log.Debugf("received message over websockets: %s", message)
-	status := new(rpctypes.SubscribeSwapStatusResponse)
-	if err := vjson.UnmarshalStruct(resp.Result, status); err != nil {
-		return "", fmt.Errorf("failed to unmarshal swap status response: %w", err)
+	statusResp := new(rpctypes.SubscribeSwapStatusResponse)
+	if err := vjson.UnmarshalStruct(resp.Result, statusResp); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal swap status response: %w", err)
 	}
 
-	return status.Status, nil
+	return statusResp.Status, nil
 }
 
 func (c *wsClient) MakeOfferAndSubscribe(
@@ -402,13 +401,13 @@ func (c *wsClient) MakeOfferAndSubscribe(
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			status := new(rpctypes.SubscribeSwapStatusResponse)
-			if err := vjson.UnmarshalStruct(resp.Result, status); err != nil {
+			statusResp := new(rpctypes.SubscribeSwapStatusResponse)
+			if err := vjson.UnmarshalStruct(resp.Result, statusResp); err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
 			}
 
-			s := types.NewStatus(status.Status)
+			s := statusResp.Status
 			respCh <- s
 			if !s.IsOngoing() {
 				return

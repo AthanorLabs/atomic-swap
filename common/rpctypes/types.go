@@ -29,7 +29,7 @@ type SubscribeSwapStatusRequest struct {
 
 // SubscribeSwapStatusResponse ...
 type SubscribeSwapStatusResponse struct {
-	Status string `json:"status"`
+	Status types.Status `json:"status"`
 }
 
 // DiscoverRequest ...

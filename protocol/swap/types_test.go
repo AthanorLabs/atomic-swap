@@ -13,6 +13,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
+func TestLa(t *testing.T) {
+	t.Logf("%s", coins.StrToDecimal("0.001"))
+}
+
 func Test_InfoMarshal(t *testing.T) {
 	offerIDStr := "0x0102030405060708091011121314151617181920212223242526272829303132"
 	offerID := ethcommon.HexToHash(offerIDStr)
