@@ -24,6 +24,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.24.2
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.24.3
 	golang.org/x/crypto v0.5.0
