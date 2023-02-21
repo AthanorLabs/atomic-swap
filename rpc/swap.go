@@ -127,6 +127,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // OngoingSwap represents an ongoing swap returned by swap_getOngoing.
 type OngoingSwap struct {
+	ID             types.Hash          `json:"id"`
 	Provided       coins.ProvidesCoin  `json:"provided"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
@@ -173,14 +174,20 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 	resp.Swaps = make([]*OngoingSwap, len(swaps))
 	for i, info := range swaps {
-		resp.Swaps[i] = new(OngoingSwap)
-		resp.Swaps[i].Provided = info.Provides
-		resp.Swaps[i].ProvidedAmount = info.ProvidedAmount
-		resp.Swaps[i].ExpectedAmount = info.ExpectedAmount
-		resp.Swaps[i].ExchangeRate = info.ExchangeRate
-		resp.Swaps[i].Status = info.Status.String()
-		resp.Swaps[i].StartTime = info.StartTime
+		swap := new(OngoingSwap)
+		swap.ID = info.ID
+		swap.Provided = info.Provides
+		swap.ProvidedAmount = info.ProvidedAmount
+		swap.ExpectedAmount = info.ExpectedAmount
+		swap.ExchangeRate = info.ExchangeRate
+		swap.Status = info.Status.String()
+		swap.StartTime = info.StartTime
+		resp.Swaps[i] = swap
 	}
+
+	sort.Slice(resp.Swaps, func(i, j int) bool {
+		return resp.Swaps[i].StartTime.UnixNano() > resp.Swaps[j].StartTime.UnixNano()
+	})
 
 	return nil
 }

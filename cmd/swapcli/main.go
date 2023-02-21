@@ -662,6 +662,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 			receivedCoin = "XMR"
 		}
 
+		fmt.Printf("ID: %s\n", info.ID)
 		fmt.Printf("Start time: %s\n", info.StartTime)
 		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
