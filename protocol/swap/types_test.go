@@ -38,7 +38,7 @@ func Test_InfoMarshal(t *testing.T) {
 		"exchangeRate": "0.33",
 		"ethAsset": "ETH",
 		"moneroStartHeight": 200,
-		"status": 5
+		"status": "Success"
 	}`
 	require.JSONEq(t, expectedJSON, string(infoBytes))
 }
