@@ -74,6 +74,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 
 	offer, has := m.offers[id]
 	if !has {
+
 		return nil, nil, errOfferDoesNotExist
 	}
 	return offer.offer, offer.extra, nil

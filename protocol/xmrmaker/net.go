@@ -51,8 +51,9 @@ func (inst *Instance) initiate(
 		}
 	}
 
-	// checks passed, delete the offer for now
-	if err = inst.offerManager.DeleteOffer(offer.ID); err != nil {
+	// checks passed, delete the offer from memory for now
+	_, _, err = inst.offerManager.TakeOffer(offer.ID)
+	if err != nil {
 		return nil, err
 	}
 
