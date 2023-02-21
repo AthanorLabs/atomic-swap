@@ -276,22 +276,22 @@ func (c *wsClient) TakeOfferAndSubscribe(
 
 	respCh := make(chan types.Status)
 
-	go func(s types.Status) {
+	go func() {
 		defer close(respCh)
 
 		for {
-			respCh <- s
-			if !s.IsOngoing() {
+			respCh <- status
+			if !status.IsOngoing() {
 				return
 			}
 
-			_, err = c.readTakeOfferResponse()
+			status, err = c.readTakeOfferResponse()
 			if err != nil {
 				log.Warnf("%s", err)
 				break
 			}
 		}
-	}(status)
+	}()
 
 	return respCh, nil
 }
