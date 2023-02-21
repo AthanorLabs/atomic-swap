@@ -77,7 +77,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
 			// set status to aborted, delete info from recovery db
-			log.Info("found ongoing swap %s in DB, aborting since no funds were locked", s.ID)
+			log.Infof("found ongoing swap %s in DB, aborting since no funds were locked", s.ID)
 			err = inst.abortOngoingSwap(s)
 			if err != nil {
 				log.Warnf("failed to abort ongoing swap %s: %s", s.ID, err)
@@ -106,7 +106,7 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 }
 
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
-	log.Info("found ongoing swap %s in DB, restarting swap", s.ID)
+	log.Infof("found ongoing swap %s in DB, restarting swap", s.ID)
 
 	// check if we have shared secret key in db; if so, claim XMR from that
 	// otherwise, create new swap state from recovery info
