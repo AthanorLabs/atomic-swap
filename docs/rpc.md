@@ -9,7 +9,7 @@ with the swap network and make/take swap offers.
 
 Get the local libp2p listening addresses of the node. Unless you have a public IP
 directly attached to your host, these are not the addresses that remote hosts will
-directly connect to.- `startTime`: the start time of the swap.
+directly connect to.
 
 
 Parameters:
@@ -392,7 +392,7 @@ Returns:
 
 Each items in `swaps` contains:
 - `id`: the swap ID.
-- `startTime`: the start time of the swap.
+- `startTime`: the start time of the swap (in RFC 3339 format).
 - `provided`: the coin provided during the swap.
 - `providedAmount`: the amount of coin provided during the swap.
 - `receivedAmount`: the amount of coin expected to be received during the swap.
@@ -471,8 +471,8 @@ Returns:
 
 Each item in `ids` contains:
 - `id`: the ID of the swap.
-- `startTime`: the start time of the swap.
-- `endTime`: the end time of the swap.
+- `startTime`: the start time of the swap (in RFC 3339 format).
+- `endTime`: the end time of the swap (in RFC 3339 format).
 
 Example:
 ```bash
@@ -535,9 +535,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 }
 ```
 
-### `swap_getStage`
+### `swap_getStatus`
 
-Gets the stage of an ongoing swap.
+Gets the status of an ongoing swap.
 
 Parameters:
 - `id`: id of the swap to get the stage of
@@ -545,20 +545,20 @@ Parameters:
 Returns:
 - `stage`: stage of the swap
 - `info`: description of the swap's stage
-- `startTime`: the start time of the swap.
+- `startTime`: the start time of the swap (in RFC 3339 format).
 
 Example:
 ```bash
 curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
-'{"jsonrpc":"2.0","id":"0","method":"swap_getStage",
-"params":{"offerID": "0xbe6cb622906510e69339fa5d8e7d60c90bad762deb8d06985466dd9144809040"}}' \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getStatus",
+"params":{"id": "0xbe6cb622906510e69339fa5d8e7d60c90bad762deb8d06985466dd9144809040"}}' \
 | jq
 ```
 ```json
 {
   "jsonrpc": "2.0",
   "result": {
-    "stage": "ETHLocked",
+    "status": "ETHLocked",
     "info": "the ETH provider has locked their ether, but no XMR has been locked",
     "startTime": "2023-02-20T23:52:28.826764666Z"
   },
@@ -574,9 +574,9 @@ Parameters:
 - none
 
 Returns:
-- `ethUpdatedAt`: time when the ETH price was last updated (RFC 3339 format).
+- `ethUpdatedAt`: time when the ETH price was last updated (in RFC 3339 format).
 - `ethPrice`: current ETH/USD price (max 8 decimal points).
-- `xmrUpdatedAt`: time when the XMR price was last updated (RFC 3339 format).
+- `xmrUpdatedAt`: time when the XMR price was last updated (in RFC 3339 format).
 - `xmrPrice`: the current XMR/USD price (max 8 decimal points).
 - `exchangeRate`: the exchange rate expressed as the XMR/ETH price ratio.
 

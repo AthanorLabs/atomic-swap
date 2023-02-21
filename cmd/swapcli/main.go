@@ -292,9 +292,9 @@ var (
 				},
 			},
 			{
-				Name:   "get-stage",
-				Usage:  "Get the stage of a current swap.",
-				Action: runGetStage,
+				Name:   "get-status",
+				Usage:  "Get the status of a current swap.",
+				Action: runGetStatus,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     flagOfferID,
@@ -677,8 +677,8 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 		}
 
 		fmt.Printf("ID: %s\n", id.ID)
-		fmt.Printf("Start time: %s\n", id.StartTime)
-		fmt.Printf("End time: %s\n", id.EndTime)
+		fmt.Printf("Start time: %s\n", id.StartTime.Format(common.TimeFmtSecs))
+		fmt.Printf("End time: %s\n", id.EndTime.Format(common.TimeFmtSecs))
 	}
 
 	return nil
@@ -710,8 +710,8 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		}
 
 		fmt.Printf("ID: %s\n", info.ID)
-		fmt.Printf("Start time: %s\n", info.StartTime)
-		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount, info.Provided)
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
@@ -734,9 +734,9 @@ func runGetPastSwap(ctx *cli.Context) error {
 		receivedCoin = "XMR"
 	}
 
-	fmt.Printf("Start time: %s\n", info.StartTime)
-	fmt.Printf("End time: %s\n", info.EndTime)
-	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+	fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
+	fmt.Printf("End time: %s\n", info.EndTime.Format(common.TimeFmtSecs))
+	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount, info.Provided)
 	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 	fmt.Printf("Status: %s\n", info.Status)
@@ -826,17 +826,20 @@ func runGetOffers(ctx *cli.Context) error {
 	return nil
 }
 
-func runGetStage(ctx *cli.Context) error {
-	offerID := ctx.String(flagOfferID)
+func runGetStatus(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
 
 	c := newRRPClient(ctx)
-	resp, err := c.GetStage(offerID)
+	resp, err := c.GetStatus(offerID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Start time: %s\n", resp.StartTime)
-	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Info)
+	fmt.Printf("Start time: %s\n", resp.StartTime.Format(common.TimeFmtSecs))
+	fmt.Printf("Status=%s: %s\n", resp.Status, resp.Info)
 	return nil
 }
 
