@@ -11,6 +11,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/skip2/go-qrcode"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -71,6 +72,22 @@ var (
 				Aliases: []string{"b"},
 				Usage:   "Show our monero and ethereum account balances",
 				Action:  runBalances,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "eth-address",
+				Usage:  "Show our ethereum address with its QR code",
+				Action: runETHAddress,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "xmr-address",
+				Usage:  "Show our Monero address with its QR code",
+				Action: runXMRAddress,
 				Flags: []cli.Flag{
 					swapdPortFlag,
 				},
@@ -394,6 +411,36 @@ func runBalances(ctx *cli.Context) error {
 	fmt.Printf("Unlocked XMR balance: %s\n",
 		balances.PiconeroUnlockedBalance.AsMoneroString())
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
+	return nil
+}
+
+func runETHAddress(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	balances, err := c.Balances()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
+	code, err := qrcode.New(balances.EthAddress, qrcode.Medium)
+	if err != nil {
+		return err
+	}
+	fmt.Println(code.ToString(false))
+	return nil
+}
+
+func runXMRAddress(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	balances, err := c.Balances()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
+	code, err := qrcode.New(balances.MoneroAddress, qrcode.Medium)
+	if err != nil {
+		return err
+	}
+	fmt.Println(code.ToString(true))
 	return nil
 }
 
