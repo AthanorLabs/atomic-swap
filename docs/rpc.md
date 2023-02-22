@@ -385,7 +385,7 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 Gets information for the specified ongoing swap.
 
 Parameters:
-- `offerID`: optional: the swap's ID.
+- `offerID`: (optional) the swap's ID.
 
 Returns:
 - `swaps`: a list of ongoing swaps. If an offerID is provided, this returns only the swap with that ID, if it exists.
