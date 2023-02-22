@@ -5,6 +5,7 @@ package swap
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 
@@ -170,6 +171,8 @@ func (m *manager) CompleteOngoingSwap(info *Info) error {
 	if !has {
 		return errNoSwapWithID
 	}
+
+	info.EndTime = time.Now()
 
 	m.past[info.ID] = info
 	delete(m.ongoing, info.ID)
