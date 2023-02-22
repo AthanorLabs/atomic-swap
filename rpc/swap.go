@@ -81,7 +81,7 @@ func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastI
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() > resp.Swaps[j].StartTime.UnixNano()
+		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
 	})
 
 	return nil
@@ -186,7 +186,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() > resp.Swaps[j].StartTime.UnixNano()
+		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
 	})
 
 	return nil
