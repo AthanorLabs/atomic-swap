@@ -98,7 +98,7 @@ type GetPastResponse struct {
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
-	Status         string              `json:"status"`
+	Status         types.Status        `json:"status" validate:"required"`
 	StartTime      time.Time           `json:"startTime"`
 	EndTime        time.Time           `json:"endTime"`
 }
@@ -119,7 +119,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	resp.ProvidedAmount = info.ProvidedAmount
 	resp.ExpectedAmount = info.ExpectedAmount
 	resp.ExchangeRate = info.ExchangeRate
-	resp.Status = info.Status.String()
+	resp.Status = info.Status
 	resp.StartTime = info.StartTime
 	resp.EndTime = info.EndTime
 	return nil
@@ -132,7 +132,7 @@ type OngoingSwap struct {
 	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
-	Status         string              `json:"status"`
+	Status         types.Status        `json:"status" validate:"required"`
 	StartTime      time.Time           `json:"startTime"`
 }
 
@@ -180,7 +180,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.ProvidedAmount = info.ProvidedAmount
 		swap.ExpectedAmount = info.ExpectedAmount
 		swap.ExchangeRate = info.ExchangeRate
-		swap.Status = info.Status.String()
+		swap.Status = info.Status
 		swap.StartTime = info.StartTime
 		resp.Swaps[i] = swap
 	}
@@ -235,9 +235,9 @@ type GetStatusRequest struct {
 
 // GetStatusResponse ...
 type GetStatusResponse struct {
-	Status    string    `json:"status"`
-	Info      string    `json:"info"`
-	StartTime time.Time `json:"startTime"`
+	Status      types.Status `json:"status" validate:"required"`
+	Description string       `json:"info" validate:"required"`
+	StartTime   time.Time    `json:"startTime" validate:"required"`
 }
 
 // GetStatus returns the status of the ongoing swap, if there is one.
@@ -247,8 +247,8 @@ func (s *SwapService) GetStatus(_ *http.Request, req *GetStatusRequest, resp *Ge
 		return err
 	}
 
-	resp.Status = info.Status.String()
-	resp.Info = info.Status.Info()
+	resp.Status = info.Status
+	resp.Description = info.Status.Description()
 	resp.StartTime = info.StartTime
 	return nil
 }

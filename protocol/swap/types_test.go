@@ -42,7 +42,7 @@ func Test_InfoMarshal(t *testing.T) {
 		"exchangeRate": "0.33",
 		"ethAsset": "ETH",
 		"moneroStartHeight": 200,
-		"status": 5,
+		"status": "Success",
 		"startTime": "2023-02-20T17:29:43.471020297-05:00",
 		"endTime":"0001-01-01T00:00:00Z"
 	}`
