@@ -11,6 +11,7 @@ Get the local libp2p listening addresses of the node. Unless you have a public I
 directly attached to your host, these are not the addresses that remote hosts will
 directly connect to.
 
+
 Parameters:
 - none
 
@@ -384,9 +385,14 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 Gets information for the specified ongoing swap.
 
 Parameters:
-- `offerID`: the swap's ID.
+- `offerID`: (optional) the swap's ID.
 
 Returns:
+- `swaps`: a list of ongoing swaps. If an offerID is provided, this returns only the swap with that ID, if it exists.
+
+Each items in `swaps` contains:
+- `id`: the swap ID.
+- `startTime`: the start time of the swap (in RFC 3339 format).
 - `provided`: the coin provided during the swap.
 - `providedAmount`: the amount of coin provided during the swap.
 - `receivedAmount`: the amount of coin expected to be received during the swap.
@@ -403,11 +409,51 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 {
   "jsonrpc": "2.0",
   "result": {
-    "provided": "ETH",
-    "providedAmount": "0.01",
-    "receivedAmount": "1",
-    "exchangeRate": "0.01",
-    "status": "ETHLocked"
+    "swaps": [
+      {
+        "id": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+        "provided": "ETH",
+        "providedAmount": "0.18",
+        "expectedAmount": "0.18",
+        "exchangeRate": "1",
+        "status": "ETHLocked",
+        "startTime": "2023-02-20T23:52:28.826764666Z"
+      }
+    ]
+  },
+  "id": "0"
+}
+```
+
+To get all ongoing swaps:
+```bash
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getOngoing","params":{}}' | jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "swaps": [
+      {
+        "id": "0xea9e976d11871627c8fed3f15e0ec3857364d61c632cbf9f1da4dca603397c4f",
+        "provided": "ETH",
+        "providedAmount": "0.14",
+        "expectedAmount": "0.14",
+        "exchangeRate": "1",
+        "status": "ETHLocked",
+        "startTime": "2023-02-20T22:01:24.145265256Z"
+      },
+      {
+        "id": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+        "provided": "ETH",
+        "providedAmount": "0.18",
+        "expectedAmount": "0.18",
+        "exchangeRate": "1",
+        "status": "ETHLocked",
+        "startTime": "2023-02-20T23:52:28.826764666Z"
+      }
+    ]
   },
   "id": "0"
 }
@@ -423,6 +469,11 @@ Parameters:
 Returns:
 - `ids`: a list of all past swap IDs.
 
+Each item in `ids` contains:
+- `id`: the ID of the swap.
+- `startTime`: the start time of the swap (in RFC 3339 format).
+- `endTime`: the end time of the swap (in RFC 3339 format).
+
 Example:
 ```bash
 curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
@@ -433,11 +484,16 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
   "jsonrpc": "2.0",
   "result": {
     "ids": [
-      "0x6ca19b496426bfbb97ccab16473db4cf50faf77074809701c8478afe7d8370d9",
-      "0x9549685d15cd9a136111db755e5440b4c95e266ba39dc0c84834714d185dc6f0",
-      "0xa55ba276c4c6bc77713776cd50fa2d20d31b8b26ed67be458e0c1a5794721587",
-      "0x2ed05e12ecd45d992b523ee52a516f51d15480d4b7805a29733f9f000efc17d3",
-      "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381"
+      {
+        "id": "0x25d567ce6d963750e17946905bb334580b9e469c8f23e724ab98df535277dcc2",
+        "startTime": "2023-02-20T21:56:44.006075694Z",
+        "endTime": "2023-02-20T21:56:47.023332658Z"
+      },
+      {
+        "id": "0x38083ead32b9278c71ec6225b11d12aa6aaa677992afe415f26b4648572b4206",
+        "startTime": "2023-02-20T21:14:02.04949932Z",
+        "endTime": "2023-02-20T21:36:21.362943839Z"
+      }
     ]
   },
   "id": "0"
@@ -479,9 +535,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 }
 ```
 
-### `swap_getStage`
+### `swap_getStatus`
 
-Gets the stage of an ongoing swap.
+Gets the status of an ongoing swap.
 
 Parameters:
 - `id`: id of the swap to get the stage of
@@ -489,20 +545,22 @@ Parameters:
 Returns:
 - `stage`: stage of the swap
 - `info`: description of the swap's stage
+- `startTime`: the start time of the swap (in RFC 3339 format).
 
 Example:
 ```bash
-curl -s -X POST http://127.0.0.1:5001 -H 'Content-Type: application/json' -d \
-'{"jsonrpc":"2.0","id":"0","method":"swap_getStage",
-"params":{"offerID": "0xbe6cb622906510e69339fa5d8e7d60c90bad762deb8d06985466dd9144809040"}}' \
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_getStatus",
+"params":{"id": "0xbe6cb622906510e69339fa5d8e7d60c90bad762deb8d06985466dd9144809040"}}' \
 | jq
 ```
 ```json
 {
   "jsonrpc": "2.0",
   "result": {
-    "stage": "KeysExchanged",
-    "info": "keys have been exchanged, but no value has been locked"
+    "status": "ETHLocked",
+    "info": "the ETH provider has locked their ether, but no XMR has been locked",
+    "startTime": "2023-02-20T23:52:28.826764666Z"
   },
   "id": "0"
 }
@@ -516,9 +574,9 @@ Parameters:
 - none
 
 Returns:
-- `ethUpdatedAt`: time when the ETH price was last updated (RFC 3339 format).
+- `ethUpdatedAt`: time when the ETH price was last updated (in RFC 3339 format).
 - `ethPrice`: current ETH/USD price (max 8 decimal points).
-- `xmrUpdatedAt`: time when the XMR price was last updated (RFC 3339 format).
+- `xmrUpdatedAt`: time when the XMR price was last updated (in RFC 3339 format).
 - `xmrPrice`: the current XMR/USD price (max 8 decimal points).
 - `exchangeRate`: the exchange rate expressed as the XMR/ETH price ratio.
 
