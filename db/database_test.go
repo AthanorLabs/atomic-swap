@@ -28,6 +28,7 @@ func TestDatabase_OfferTable(t *testing.T) {
 	infoA := &swap.Info{
 		ID:       types.Hash{0x1},
 		Provides: coins.ProvidesXMR,
+		Status:   types.ExpectingKeys,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
@@ -82,6 +83,7 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 	swapEntry := &swap.Info{
 		ID:       badOfferID,
 		Provides: coins.ProvidesXMR,
+		Status:   types.KeysExchanged,
 	}
 	err = db.PutSwap(swapEntry)
 	require.NoError(t, err)
@@ -139,6 +141,7 @@ func TestDatabase_SwapTable(t *testing.T) {
 		ID:       types.Hash{0x1},
 		Version:  swap.CurInfoVersion,
 		Provides: coins.ProvidesXMR,
+		Status:   types.ContractReady,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
@@ -147,6 +150,7 @@ func TestDatabase_SwapTable(t *testing.T) {
 		ID:       types.Hash{0x2},
 		Version:  swap.CurInfoVersion,
 		Provides: coins.ProvidesXMR,
+		Status:   types.XMRLocked,
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
@@ -175,7 +179,7 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 		ExpectedAmount:    coins.StrToDecimal("0.15"),
 		ExchangeRate:      coins.ToExchangeRate(coins.StrToDecimal("0.1")),
 		EthAsset:          types.EthAsset{},
-		Status:            0,
+		Status:            types.ETHLocked,
 		MoneroStartHeight: 0,
 	}
 	err = db.PutSwap(goodInfo)
@@ -224,14 +228,15 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 	infoA := &swap.Info{
 		ID:       id,
 		Provides: coins.ProvidesXMR,
+		Status:   types.XMRLocked,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
 		ID:       id,
-		Status:   types.CompletedSuccess,
 		Provides: coins.ProvidesXMR,
+		Status:   types.CompletedSuccess,
 	}
 
 	err = db.PutSwap(infoB)

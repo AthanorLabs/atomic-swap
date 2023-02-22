@@ -11,6 +11,7 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/skip2/go-qrcode"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -71,6 +72,22 @@ var (
 				Aliases: []string{"b"},
 				Usage:   "Show our monero and ethereum account balances",
 				Action:  runBalances,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "eth-address",
+				Usage:  "Show our ethereum address with its QR code",
+				Action: runETHAddress,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "xmr-address",
+				Usage:  "Show our Monero address with its QR code",
+				Action: runXMRAddress,
 				Flags: []cli.Flag{
 					swapdPortFlag,
 				},
@@ -206,13 +223,12 @@ var (
 			},
 			{
 				Name:   "get-ongoing-swap",
-				Usage:  "Get information about ongoing swap, if there is one",
+				Usage:  "Get information about ongoing swap(s).",
 				Action: runGetOngoingSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap to retrieve info for",
-						Required: true,
+						Name:  flagOfferID,
+						Usage: "ID of swap to retrieve info for",
 					},
 					swapdPortFlag,
 				},
@@ -276,9 +292,9 @@ var (
 				},
 			},
 			{
-				Name:   "get-stage",
-				Usage:  "Get the stage of a current swap.",
-				Action: runGetStage,
+				Name:   "get-status",
+				Usage:  "Get the status of a current swap.",
+				Action: runGetStatus,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     flagOfferID,
@@ -395,6 +411,36 @@ func runBalances(ctx *cli.Context) error {
 	fmt.Printf("Unlocked XMR balance: %s\n",
 		balances.PiconeroUnlockedBalance.AsMoneroString())
 	fmt.Printf("Blocks to unlock: %d\n", balances.BlocksToUnlock)
+	return nil
+}
+
+func runETHAddress(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	balances, err := c.Balances()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
+	code, err := qrcode.New(balances.EthAddress, qrcode.Medium)
+	if err != nil {
+		return err
+	}
+	fmt.Println(code.ToString(false))
+	return nil
+}
+
+func runXMRAddress(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	balances, err := c.Balances()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
+	code, err := qrcode.New(balances.MoneroAddress, qrcode.Medium)
+	if err != nil {
+		return err
+	}
+	fmt.Println(code.ToString(true))
 	return nil
 }
 
@@ -620,12 +666,21 @@ func runGetPastSwapIDs(ctx *cli.Context) error {
 	}
 
 	fmt.Println("Past swap offer IDs:")
-	for i, id := range ids {
-		fmt.Printf("%d: %s\n", i, id)
-	}
 	if len(ids) == 0 {
 		fmt.Println("[none]")
+		return nil
 	}
+
+	for i, id := range ids {
+		if i > 0 {
+			fmt.Printf("---\n")
+		}
+
+		fmt.Printf("ID: %s\n", id.ID)
+		fmt.Printf("Start time: %s\n", id.StartTime.Format(common.TimeFmtSecs))
+		fmt.Printf("End time: %s\n", id.EndTime.Format(common.TimeFmtSecs))
+	}
+
 	return nil
 }
 
@@ -633,20 +688,34 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 	offerID := ctx.String(flagOfferID)
 
 	c := newRRPClient(ctx)
-	info, err := c.GetOngoingSwap(offerID)
+	resp, err := c.GetOngoingSwap(offerID)
 	if err != nil {
 		return err
 	}
 
-	receivedCoin := "ETH"
-	if info.Provided == coins.ProvidesETH {
-		receivedCoin = "XMR"
+	fmt.Println("Ongoing swaps:")
+	if len(resp.Swaps) == 0 {
+		fmt.Println("[none]")
+		return nil
 	}
 
-	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
-	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
-	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
-	fmt.Printf("Status: %s\n", info.Status)
+	for i, info := range resp.Swaps {
+		if i > 0 {
+			fmt.Printf("---\n")
+		}
+
+		receivedCoin := "ETH"
+		if info.Provided == coins.ProvidesETH {
+			receivedCoin = "XMR"
+		}
+
+		fmt.Printf("ID: %s\n", info.ID)
+		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
+		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+		fmt.Printf("Status: %s\n", info.Status)
+	}
 
 	return nil
 }
@@ -665,8 +734,10 @@ func runGetPastSwap(ctx *cli.Context) error {
 		receivedCoin = "XMR"
 	}
 
+	fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
+	fmt.Printf("End time: %s\n", info.EndTime.Format(common.TimeFmtSecs))
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
-	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount, receivedCoin)
+	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 	fmt.Printf("Status: %s\n", info.Status)
 
@@ -755,16 +826,20 @@ func runGetOffers(ctx *cli.Context) error {
 	return nil
 }
 
-func runGetStage(ctx *cli.Context) error {
-	offerID := ctx.String(flagOfferID)
+func runGetStatus(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
 
 	c := newRRPClient(ctx)
-	resp, err := c.GetStage(offerID)
+	resp, err := c.GetStatus(offerID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Stage=%s: %s\n", resp.Stage, resp.Info)
+	fmt.Printf("Start time: %s\n", resp.StartTime.Format(common.TimeFmtSecs))
+	fmt.Printf("Status=%s: %s\n", resp.Status, resp.Description)
 	return nil
 }
 

@@ -227,7 +227,7 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 			}
 
 			resp := &rpctypes.SubscribeSwapStatusResponse{
-				Status: status.String(),
+				Status: status,
 			}
 
 			if err := writeResponse(conn, resp); err != nil {
@@ -262,7 +262,7 @@ func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
 			}
 
 			resp := &rpctypes.SubscribeSwapStatusResponse{
-				Status: status.String(),
+				Status: status,
 			}
 
 			if err := writeResponse(conn, resp); err != nil {
@@ -298,7 +298,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 			}
 
 			resp := &rpctypes.SubscribeSwapStatusResponse{
-				Status: status.String(),
+				Status: status,
 			}
 
 			if err := writeResponse(conn, resp); err != nil {
@@ -321,7 +321,7 @@ func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) erro
 	}
 
 	resp := &rpctypes.SubscribeSwapStatusResponse{
-		Status: info.Status.String(),
+		Status: info.Status,
 	}
 
 	if err := writeResponse(conn, resp); err != nil {

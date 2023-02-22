@@ -27,8 +27,12 @@ func Test_InfoMarshal(t *testing.T) {
 		200,
 		make(chan types.Status),
 	)
+	err := info.StartTime.UnmarshalJSON([]byte("\"2023-02-20T17:29:43.471020297-05:00\""))
+	require.NoError(t, err)
+
 	infoBytes, err := vjson.MarshalStruct(info)
 	require.NoError(t, err)
+
 	expectedJSON := `{
 		"version": "0.2.0",
 		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303132",
@@ -38,7 +42,9 @@ func Test_InfoMarshal(t *testing.T) {
 		"exchangeRate": "0.33",
 		"ethAsset": "ETH",
 		"moneroStartHeight": 200,
-		"status": 5
+		"status": "Success",
+		"startTime": "2023-02-20T17:29:43.471020297-05:00",
+		"endTime":"0001-01-01T00:00:00Z"
 	}`
 	require.JSONEq(t, expectedJSON, string(infoBytes))
 }

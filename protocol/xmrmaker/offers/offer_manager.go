@@ -76,6 +76,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 	if !has {
 		return nil, nil, errOfferDoesNotExist
 	}
+
 	return offer.offer, offer.extra, nil
 }
 
@@ -113,8 +114,9 @@ func (m *Manager) AddOffer(
 	return extra, nil
 }
 
-// TakeOffer returns any offer with the matching id and removes the offer from the manager. Nil
-// for both values is returned when the passed offer id is not currently managed.
+// TakeOffer returns any offer with the matching id and removes the offer from the cache,
+// but leaves it in the database (unlike the Clear/DeleteOffer methods.)
+// Nil for both values is returned when the passed offer id is not currently managed.
 func (m *Manager) TakeOffer(id types.Hash) (*types.Offer, *types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

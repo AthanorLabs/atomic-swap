@@ -1,16 +1,23 @@
 // Package types is for types that are shared by multiple packages
 package types
 
+import (
+	"fmt"
+)
+
 // Status represents the stage that a swap is at.
 type Status byte
 
 // Status values
 const (
+	// UnknownStatus is a placeholder for unmatched status strings and
+	// uninitialized variables
+	UnknownStatus Status = iota
 	// ExpectingKeys is the status of the taker between taking an offer and
 	// receiving a response with swap keys from the maker. It is also the
 	// maker's status after creating an offer up until receiving keys from a
 	// taker accepting the offer.
-	ExpectingKeys Status = iota
+	ExpectingKeys
 	// KeysExchanged is the status of the maker after a taker accepts his offer.
 	KeysExchanged
 	// ETHLocked is the taker status after locking her ETH up until confirming
@@ -29,8 +36,6 @@ const (
 	// CompletedAbort represents the case where the swap aborts before any funds
 	// are locked.
 	CompletedAbort
-	// UnknownStatus is a placeholder for unmatched status strings.
-	UnknownStatus
 )
 
 const unknownString string = "unknown"
@@ -60,7 +65,7 @@ func NewStatus(str string) Status {
 	}
 }
 
-// String ...
+// String returns the status as a text string.
 func (s Status) String() string {
 	switch s {
 	case ExpectingKeys:
@@ -84,8 +89,27 @@ func (s Status) String() string {
 	}
 }
 
-// Info returns a description of the swap stage.
-func (s Status) Info() string {
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (s *Status) UnmarshalText(data []byte) error {
+	newStatus := NewStatus(string(data))
+	if newStatus == UnknownStatus {
+		return fmt.Errorf("unknown status %q", string(data))
+	}
+	*s = newStatus
+	return nil
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s Status) MarshalText() ([]byte, error) {
+	textStr := s.String()
+	if textStr == unknownString {
+		return nil, fmt.Errorf("unknown status %d", s)
+	}
+	return []byte(textStr), nil
+}
+
+// Description returns a description of the swap stage.
+func (s Status) Description() string {
 	switch s {
 	case ExpectingKeys:
 		return "keys have not yet been exchanged"
