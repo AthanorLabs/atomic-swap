@@ -187,7 +187,7 @@ func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *
 
 // TakeOfferSyncResponse ...
 type TakeOfferSyncResponse struct {
-	Status string `json:"status"`
+	Status types.Status `json:"status" validate:"required"`
 }
 
 // TakeOfferSync initiates a swap with the given peer by taking an offer they've made.
@@ -216,7 +216,7 @@ func (s *NetService) TakeOfferSync(
 			continue
 		}
 
-		resp.Status = info.Status.String()
+		resp.Status = info.Status
 		break
 	}
 
