@@ -165,7 +165,7 @@ type ProtocolBackend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SwapTimeout() time.Duration
 	SwapManager() swap.Manager
-	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	ETHClient() extethclient.EthClient
 }
@@ -184,7 +184,7 @@ type XMRMaker interface {
 	MakeOffer(offer *types.Offer, relayerEndpoint string, relayerCommission *apd.Decimal) (*types.OfferExtra, error)
 	GetOffers() []*types.Offer
 	ClearOffers([]types.Hash) error
-	GetMoneroBalance() (mcrypto.Address, *wallet.GetBalanceResponse, error)
+	GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceResponse, error)
 }
 
 // SwapManager ...

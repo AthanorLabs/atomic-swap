@@ -1,8 +1,8 @@
 package mcrypto
 
 // MarshalText serializes the Monero Address type with some extra validation.
-func (a Address) MarshalText() ([]byte, error) {
-	return []byte(moneroAddrBytesToBase58(a[:])), nil
+func (a *Address) MarshalText() ([]byte, error) {
+	return []byte(moneroAddrBytesToBase58(a.decoded[:])), nil
 }
 
 // UnmarshalText validates that the string represents a properly formatted
@@ -16,7 +16,7 @@ func (a *Address) UnmarshalText(base58Input []byte) error {
 	if err != nil {
 		return err
 	}
-	n := copy(a[:], addrBytes)
+	n := copy(a.decoded[:], addrBytes)
 	if n != AddressBytesLen {
 		panic("bytes to address conversion is broken")
 	}

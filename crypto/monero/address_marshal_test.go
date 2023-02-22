@@ -15,7 +15,7 @@ func TestAddress_MarshalText_roundTrip(t *testing.T) {
 	addr := keys.PublicKeyPair().Address(common.Development)
 
 	type MyStruct struct {
-		XMRAddress Address `json:"xmrAddress"`
+		XMRAddress *Address `json:"xmrAddress"`
 	}
 
 	s1 := &MyStruct{XMRAddress: addr}

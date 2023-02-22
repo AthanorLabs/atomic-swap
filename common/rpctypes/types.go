@@ -88,15 +88,15 @@ type MakeOfferRequest struct {
 
 // MakeOfferResponse ...
 type MakeOfferResponse struct {
-	PeerID  peer.ID    `json:"peerID"`
-	OfferID types.Hash `json:"offerID"`
+	PeerID  peer.ID    `json:"peerID" validate:"required"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // SignerRequest initiates the signer_subscribe handler from the front-end
 type SignerRequest struct {
-	OfferID    types.Hash        `json:"offerID"`
-	EthAddress ethcommon.Address `json:"ethAddress"`
-	XMRAddress mcrypto.Address   `json:"xmrAddress"`
+	OfferID    types.Hash        `json:"offerID" validate:"required"`
+	EthAddress ethcommon.Address `json:"ethAddress" validate:"required"`
+	XMRAddress *mcrypto.Address  `json:"xmrAddress" validate:"required"`
 }
 
 // SignerResponse sends a tx to be signed to the front-end
@@ -115,12 +115,12 @@ type SignerTxSigned struct {
 
 // BalancesResponse holds the response for the combined Monero and Ethereum Balances request
 type BalancesResponse struct {
-	MoneroAddress           mcrypto.Address       `json:"moneroAddress"`
-	PiconeroBalance         *coins.PiconeroAmount `json:"piconeroBalance"`
-	PiconeroUnlockedBalance *coins.PiconeroAmount `json:"piconeroUnlockedBalance"`
+	MoneroAddress           *mcrypto.Address      `json:"moneroAddress" validate:"required"`
+	PiconeroBalance         *coins.PiconeroAmount `json:"piconeroBalance" validate:"required"`
+	PiconeroUnlockedBalance *coins.PiconeroAmount `json:"piconeroUnlockedBalance" validate:"required"`
 	BlocksToUnlock          uint64                `json:"blocksToUnlock"`
-	EthAddress              ethcommon.Address     `json:"ethAddress"`
-	WeiBalance              *coins.WeiAmount      `json:"weiBalance"`
+	EthAddress              ethcommon.Address     `json:"ethAddress" validate:"required"`
+	WeiBalance              *coins.WeiAmount      `json:"weiBalance" validate:"required"`
 }
 
 // AddressesResponse ...

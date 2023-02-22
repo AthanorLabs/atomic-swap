@@ -42,18 +42,18 @@ const (
 type WalletClient interface {
 	GetAccounts() (*wallet.GetAccountsResponse, error)
 	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
-	PrimaryAddress() mcrypto.Address
+	PrimaryAddress() *mcrypto.Address
 	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
 	Transfer(
 		ctx context.Context,
-		to mcrypto.Address,
+		to *mcrypto.Address,
 		accountIdx uint64,
 		amount *coins.PiconeroAmount,
 		numConfirmations uint64,
 	) (*wallet.Transfer, error)
 	SweepAll(
 		ctx context.Context,
-		to mcrypto.Address,
+		to *mcrypto.Address,
 		accountIdx uint64,
 		numConfirmations uint64,
 	) ([]*wallet.Transfer, error)
@@ -129,7 +129,7 @@ type walletClient struct {
 	wRPC       wallet.Wallet       // full monero-wallet-rpc API (larger than the WalletClient interface)
 	dRPC       monerodaemon.Daemon // full monerod RPC API
 	endpoint   string
-	walletAddr mcrypto.Address
+	walletAddr *mcrypto.Address
 	conf       *WalletClientConf
 	rpcProcess *os.Process // monero-wallet-rpc process that we create
 }
@@ -273,7 +273,7 @@ func (c *walletClient) waitForReceipt(req *waitForReceiptRequest) (*wallet.Trans
 
 func (c *walletClient) Transfer(
 	ctx context.Context,
-	to mcrypto.Address,
+	to *mcrypto.Address,
 	accountIdx uint64,
 	amount *coins.PiconeroAmount,
 	numConfirmations uint64,
@@ -315,7 +315,7 @@ func (c *walletClient) Transfer(
 
 func (c *walletClient) SweepAll(
 	ctx context.Context,
-	to mcrypto.Address,
+	to *mcrypto.Address,
 	accountIdx uint64,
 	numConfirmations uint64,
 ) ([]*wallet.Transfer, error) {
@@ -392,7 +392,7 @@ func createWalletFromKeys(
 	walletRestoreHeight uint64,
 	privateSpendKey *mcrypto.PrivateSpendKey, // nil for a view-only wallet
 	privateViewKey *mcrypto.PrivateViewKey,
-	address mcrypto.Address,
+	address *mcrypto.Address,
 ) (WalletClient, error) {
 	if conf.WalletPort == 0 { // swap wallets need randomized ports, so we expect this to be zero
 		var err error
@@ -483,7 +483,7 @@ func CreateSpendWalletFromKeys(
 func CreateViewOnlyWalletFromKeys(
 	conf *WalletClientConf,
 	privateViewKey *mcrypto.PrivateViewKey,
-	address mcrypto.Address,
+	address *mcrypto.Address,
 	restoreHeight uint64,
 ) (WalletClient, error) {
 	return createWalletFromKeys(conf, restoreHeight, nil, privateViewKey, address)
@@ -492,7 +492,7 @@ func CreateViewOnlyWalletFromKeys(
 func (c *walletClient) generateFromKeys(
 	sk *mcrypto.PrivateSpendKey,
 	vk *mcrypto.PrivateViewKey,
-	address mcrypto.Address,
+	address *mcrypto.Address,
 	restoreHeight uint64,
 	filename,
 	password string,
@@ -549,8 +549,8 @@ func (c *walletClient) CreateWallet(filename, password string) error {
 	})
 }
 
-func (c *walletClient) PrimaryAddress() mcrypto.Address {
-	if c.walletAddr == (mcrypto.Address{}) {
+func (c *walletClient) PrimaryAddress() *mcrypto.Address {
+	if c.walletAddr == nil {
 		// Initialised in constructor function, so this shouldn't ever happen
 		panic("primary wallet address was not initialised")
 	}

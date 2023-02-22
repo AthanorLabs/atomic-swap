@@ -155,7 +155,7 @@ func (s *wsServer) handleSigner(
 	conn *websocket.Conn,
 	offerID types.Hash,
 	ethAddress ethcommon.Address,
-	xmrAddr mcrypto.Address,
+	xmrAddr *mcrypto.Address,
 ) error {
 	signer, err := s.taker.ExternalSender(offerID)
 	if err != nil {

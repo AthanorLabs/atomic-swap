@@ -17,7 +17,7 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
-func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Address) {
+func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Address) {
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
 	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))

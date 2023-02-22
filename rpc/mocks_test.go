@@ -158,7 +158,7 @@ func (*mockXMRMaker) ClearOffers(_ []types.Hash) error {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) GetMoneroBalance() (mcrypto.Address, *wallet.GetBalanceResponse, error) {
+func (*mockXMRMaker) GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceResponse, error) {
 	panic("not implemented")
 }
 
@@ -206,7 +206,7 @@ func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }
 
-func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {
+func (*mockProtocolBackend) SetXMRDepositAddress(*mcrypto.Address, types.Hash) {
 	panic("not implemented")
 }
 

@@ -34,6 +34,6 @@ func TestValidateAddress_loop(t *testing.T) {
 		addr1 := kp.PublicKeyPair().Address(common.Mainnet)
 		addr2, err := NewAddress(addr1.String(), common.Mainnet)
 		require.NoError(t, err)
-		require.EqualValues(t, addr1[:], addr2[:])
+		require.Equal(t, addr1.String(), addr2.String())
 	}
 }

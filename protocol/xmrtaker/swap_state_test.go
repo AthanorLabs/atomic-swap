@@ -238,7 +238,7 @@ func lockXMRFunds(
 	t *testing.T,
 	ctx context.Context, //nolint:revive
 	wc monero.WalletClient,
-	destAddr mcrypto.Address,
+	destAddr *mcrypto.Address,
 	amount *coins.PiconeroAmount,
 ) types.Hash {
 	monero.MineMinXMRBalance(t, wc, amount)

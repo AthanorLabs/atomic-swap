@@ -39,7 +39,7 @@ func ClaimMonero(
 	xmrClient monero.WalletClient,
 	walletScanHeight uint64,
 	kpAB *mcrypto.PrivateKeyPair,
-	depositAddr mcrypto.Address,
+	depositAddr *mcrypto.Address,
 	transferBack bool,
 ) error {
 	conf := xmrClient.CreateWalletConf(fmt.Sprintf("swap-wallet-claim-%s", id))

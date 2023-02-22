@@ -44,7 +44,7 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	require.NoError(t, err)
 	address := kp.PublicKeyPair().Address(common.Mainnet)
 
-	require.EqualValues(t, addressBytes, address[:])
+	require.EqualValues(t, addressBytes, address.decoded[:])
 	require.Equal(t, addressStr, address.String())
 
 	// check public key derivation

@@ -54,25 +54,27 @@ var (
 )
 
 // Address represents a base58-encoded string
-type Address [AddressBytesLen]byte
+type Address struct {
+	decoded [AddressBytesLen]byte
+}
 
 // NewAddress converts a string to a monero Address with validation.
-func NewAddress(addrStr string, env common.Environment) (Address, error) {
-	b58Bytes, err := moneroAddrBase58ToBytes(addrStr)
-	if err != nil {
-		return Address{}, err
+func NewAddress(addrStr string, env common.Environment) (*Address, error) {
+	addr := &Address{}
+	if err := addr.UnmarshalText([]byte(addrStr)); err != nil {
+		return nil, err
 	}
-	addr := Address(*(*[AddressBytesLen]byte)(b58Bytes))
+
 	return addr, addr.Validate(env)
 }
 
-func (a Address) String() string {
-	return moneroAddrBytesToBase58(a[:])
+func (a *Address) String() string {
+	return moneroAddrBytesToBase58(a.decoded[:])
 }
 
 // Network returns the Monero network of the address
-func (a Address) Network() Network {
-	switch a[0] {
+func (a *Address) Network() Network {
+	switch a.decoded[0] {
 	case netPrefixStdAddrMainnet,
 		netPrefixIntegrAddrMainnet,
 		netPrefixSubAddrMainnet:
@@ -93,8 +95,8 @@ func (a Address) Network() Network {
 }
 
 // Type returns the Address type
-func (a Address) Type() AddressType {
-	switch a[0] {
+func (a *Address) Type() AddressType {
+	switch a.decoded[0] {
 	case netPrefixStdAddrMainnet,
 		netPrefixStdAddrStagenet,
 		netPrefixStdAddrTestnet:
@@ -115,7 +117,7 @@ func (a Address) Type() AddressType {
 }
 
 // Validate validates that the monero network matches the passed environment.
-func (a Address) Validate(env common.Environment) error {
+func (a *Address) Validate(env common.Environment) error {
 	moneroNet := a.Network()
 	switch moneroNet {
 	case Mainnet:
@@ -130,8 +132,8 @@ func (a Address) Validate(env common.Environment) error {
 		return errInvalidPrefixGotTestnet
 	}
 
-	checksum := getChecksum(a[:65])
-	if !bytes.Equal(checksum[:], a[65:69]) {
+	checksum := getChecksum(a.decoded[:65])
+	if !bytes.Equal(checksum[:], a.decoded[65:69]) {
 		return errChecksumMismatch
 	}
 
@@ -145,8 +147,8 @@ func getChecksum(data ...[]byte) (result [4]byte) {
 }
 
 // Address returns the address as bytes for a PublicKeyPair with the given environment (ie. mainnet or stagenet)
-func (kp *PublicKeyPair) Address(env common.Environment) Address {
-	var address Address
+func (kp *PublicKeyPair) Address(env common.Environment) *Address {
+	address := new(Address)
 
 	var prefix byte
 	switch env {
@@ -161,11 +163,11 @@ func (kp *PublicKeyPair) Address(env common.Environment) Address {
 	// address encoding is:
 	// (network_prefix) + (32-byte public spend key) + (32-byte-byte public view key)
 	// + first_4_Bytes(Hash(network_prefix + (32-byte public spend key) + (32-byte public view key)))
-	address[0] = prefix                 // 1-byte network prefix
-	copy(address[1:33], kp.sk.Bytes())  // 32-byte public spend key
-	copy(address[33:65], kp.vk.Bytes()) // 32-byte public view key
-	checksum := getChecksum(address[0:65])
-	copy(address[65:69], checksum[:])
+	address.decoded[0] = prefix                 // 1-byte network prefix
+	copy(address.decoded[1:33], kp.sk.Bytes())  // 32-byte public spend key
+	copy(address.decoded[33:65], kp.vk.Bytes()) // 32-byte public view key
+	checksum := getChecksum(address.decoded[0:65])
+	copy(address.decoded[65:69], checksum[:])
 
 	return address
 }

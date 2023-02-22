@@ -183,14 +183,14 @@ func (s *swapState) runT0ExpirationHandler() {
 	}
 }
 
-func (s *swapState) expectedXMRLockAccount() (mcrypto.Address, *mcrypto.PrivateViewKey) {
+func (s *swapState) expectedXMRLockAccount() (*mcrypto.Address, *mcrypto.PrivateViewKey) {
 	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
 	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
 	return mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env()), vk
 }
 
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
-	if msg.Address == (mcrypto.Address{}) {
+	if msg.Address == (nil) {
 		return errNoLockedXMRAddress
 	}
 
