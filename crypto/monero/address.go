@@ -131,10 +131,9 @@ func (a *Address) Equal(b *Address) bool {
 	return a.decoded == b.decoded
 }
 
-// ValidateEnv validates that the monero network matches the passed environment. This
-// is a validation that can't be performed when decoding JSON, as the environment is
-// not known at that time. We also validate that the address is not an integrated
-// address.
+// ValidateEnv validates that the monero network matches the passed environment.
+// This validation can't be performed when decoding JSON, as the environment is
+// not known at that time.
 func (a *Address) ValidateEnv(env common.Environment) error {
 	switch a.Network() {
 	case Mainnet:
