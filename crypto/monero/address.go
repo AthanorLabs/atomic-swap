@@ -49,8 +49,11 @@ var (
 	errInvalidPrefixGotTestnet  = errors.New("invalid monero address: monero testnet not yet supported")
 )
 
-// Address represents a base58-encoded string
+// Address represents a Monero address
 type Address struct {
+	// decoded is the bytes (prefix, pub spend key, pub view key, checksum) that
+	// get base58 encoded. Package private, as it is a semi-arbitrary
+	// implementation detail.
 	decoded [addressBytesLen]byte
 }
 
