@@ -190,7 +190,7 @@ func (s *swapState) expectedXMRLockAccount() (*mcrypto.Address, *mcrypto.Private
 }
 
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
-	if msg.Address == (nil) {
+	if msg.Address == nil {
 		return errNoLockedXMRAddress
 	}
 
