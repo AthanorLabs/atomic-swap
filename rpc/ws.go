@@ -162,7 +162,7 @@ func (s *wsServer) handleSigner(
 		return err
 	}
 
-	if err = xmrAddr.Validate(s.backend.Env()); err != nil {
+	if err = xmrAddr.ValidateEnv(s.backend.Env()); err != nil {
 		return err
 	}
 

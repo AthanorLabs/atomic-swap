@@ -196,7 +196,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	// check that XMR was locked in expected account, and confirm amount
 	lockedAddr, vk := s.expectedXMRLockAccount()
-	if msg.Address != lockedAddr {
+	if !msg.Address.Equal(lockedAddr) {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
 

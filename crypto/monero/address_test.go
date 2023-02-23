@@ -12,12 +12,12 @@ func TestValidateAddress(t *testing.T) {
 	kp, err := GenerateKeys()
 	require.NoError(t, err)
 	addr := kp.PublicKeyPair().Address(common.Mainnet)
-	require.NoError(t, addr.Validate(common.Mainnet))
-	require.ErrorIs(t, addr.Validate(common.Stagenet), errInvalidPrefixGotMainnet)
+	require.NoError(t, addr.ValidateEnv(common.Mainnet))
+	require.ErrorIs(t, addr.ValidateEnv(common.Stagenet), errInvalidPrefixGotMainnet)
 
 	addr = kp.PublicKeyPair().Address(common.Stagenet)
-	require.NoError(t, addr.Validate(common.Stagenet))
-	require.ErrorIs(t, addr.Validate(common.Mainnet), errInvalidPrefixGotStagenet)
+	require.NoError(t, addr.ValidateEnv(common.Stagenet))
+	require.ErrorIs(t, addr.ValidateEnv(common.Mainnet), errInvalidPrefixGotStagenet)
 
 	_, err = NewAddress("fake", common.Mainnet)
 	require.ErrorIs(t, err, errInvalidAddressLength)

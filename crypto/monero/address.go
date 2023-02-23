@@ -19,13 +19,12 @@ const (
 	Testnet  Network = "testnet"
 )
 
-// AddressType is the type of Monero address: Standard, Integrated, Subaddress
+// AddressType is the type of Monero address: Standard or Subaddress
 type AddressType string
 
-// Monero address types
+// Monero address types. We don't support Integrated.
 const (
 	Standard   AddressType = "standard"
-	Integrated AddressType = "integrated"
 	Subaddress AddressType = "subaddress"
 )
 
@@ -33,15 +32,12 @@ const (
 // the network (mainnet, stagenet, testnet) and the type of address (standard,
 // integrated, and subaddress).
 const (
-	netPrefixStdAddrMainnet     = 18
-	netPrefixIntegrAddrMainnet  = 19
-	netPrefixSubAddrMainnet     = 42
-	netPrefixStdAddrStagenet    = 24
-	netPrefixIntegrAddrStagenet = 25
-	netPrefixSubAddrStagenet    = 36
-	netPrefixStdAddrTestnet     = 53
-	netPrefixIntegrAddrTestnet  = 54
-	netPrefixSubAddrTestnet     = 63
+	netPrefixStdAddrMainnet  = 18
+	netPrefixSubAddrMainnet  = 42
+	netPrefixStdAddrStagenet = 24
+	netPrefixSubAddrStagenet = 36
+	netPrefixStdAddrTestnet  = 53
+	netPrefixSubAddrTestnet  = 63
 )
 
 var (
@@ -55,17 +51,17 @@ var (
 
 // Address represents a base58-encoded string
 type Address struct {
-	decoded [AddressBytesLen]byte
+	decoded [addressBytesLen]byte
 }
 
 // NewAddress converts a string to a monero Address with validation.
 func NewAddress(addrStr string, env common.Environment) (*Address, error) {
-	addr := &Address{}
+	addr := new(Address)
 	if err := addr.UnmarshalText([]byte(addrStr)); err != nil {
 		return nil, err
 	}
 
-	return addr, addr.Validate(env)
+	return addr, addr.ValidateEnv(env)
 }
 
 func (a *Address) String() string {
@@ -75,17 +71,11 @@ func (a *Address) String() string {
 // Network returns the Monero network of the address
 func (a *Address) Network() Network {
 	switch a.decoded[0] {
-	case netPrefixStdAddrMainnet,
-		netPrefixIntegrAddrMainnet,
-		netPrefixSubAddrMainnet:
+	case netPrefixStdAddrMainnet, netPrefixSubAddrMainnet:
 		return Mainnet
-	case netPrefixStdAddrStagenet,
-		netPrefixIntegrAddrStagenet,
-		netPrefixSubAddrStagenet:
+	case netPrefixStdAddrStagenet, netPrefixSubAddrStagenet:
 		return Stagenet
-	case netPrefixStdAddrTestnet,
-		netPrefixIntegrAddrTestnet,
-		netPrefixSubAddrTestnet:
+	case netPrefixStdAddrTestnet, netPrefixSubAddrTestnet:
 		return Testnet
 	default:
 		// Our methods to deserialize and create Address values all verify
@@ -97,17 +87,9 @@ func (a *Address) Network() Network {
 // Type returns the Address type
 func (a *Address) Type() AddressType {
 	switch a.decoded[0] {
-	case netPrefixStdAddrMainnet,
-		netPrefixStdAddrStagenet,
-		netPrefixStdAddrTestnet:
+	case netPrefixStdAddrMainnet, netPrefixStdAddrStagenet, netPrefixStdAddrTestnet:
 		return Standard
-	case netPrefixIntegrAddrMainnet,
-		netPrefixIntegrAddrStagenet,
-		netPrefixIntegrAddrTestnet:
-		return Integrated
-	case netPrefixSubAddrTestnet,
-		netPrefixSubAddrStagenet,
-		netPrefixSubAddrMainnet:
+	case netPrefixSubAddrTestnet, netPrefixSubAddrStagenet, netPrefixSubAddrMainnet:
 		return Subaddress
 	default:
 		// Our methods to deserialize and create Address values all verify
@@ -116,10 +98,42 @@ func (a *Address) Type() AddressType {
 	}
 }
 
-// Validate validates that the monero network matches the passed environment.
-func (a *Address) Validate(env common.Environment) error {
-	moneroNet := a.Network()
-	switch moneroNet {
+// validateDecoded ensures that the checksum and network prefix of the address
+// are valid. The Network() and Type() methods are not safe to use until
+// this base level validation is performed.
+func (a *Address) validateDecoded() error {
+	checksum := getChecksum(a.decoded[:65])
+	if !bytes.Equal(checksum[:], a.decoded[65:69]) {
+		return errChecksumMismatch
+	}
+
+	netPrefix := a.decoded[0]
+	switch netPrefix {
+	case netPrefixStdAddrMainnet, netPrefixSubAddrMainnet,
+		netPrefixStdAddrStagenet, netPrefixSubAddrStagenet,
+		netPrefixStdAddrTestnet, netPrefixSubAddrTestnet:
+		// we are good, do nothing
+	default:
+		return fmt.Errorf("monero address has unknown network prefix %d", netPrefix)
+	}
+
+	return nil
+}
+
+// Equal returns true if the addresses are identical, otherwise false.
+func (a *Address) Equal(b *Address) bool {
+	if b == nil {
+		return false
+	}
+	return a.decoded == b.decoded
+}
+
+// ValidateEnv validates that the monero network matches the passed environment. This
+// is a validation that can't be performed when decoding JSON, as the environment is
+// not known at that time. We also validate that the address is not an integrated
+// address.
+func (a *Address) ValidateEnv(env common.Environment) error {
+	switch a.Network() {
 	case Mainnet:
 		if env != common.Mainnet && env != common.Development {
 			return errInvalidPrefixGotMainnet
@@ -130,11 +144,8 @@ func (a *Address) Validate(env common.Environment) error {
 		}
 	case Testnet:
 		return errInvalidPrefixGotTestnet
-	}
-
-	checksum := getChecksum(a.decoded[:65])
-	if !bytes.Equal(checksum[:], a.decoded[65:69]) {
-		return errChecksumMismatch
+	default:
+		panic("unhandled network")
 	}
 
 	return nil

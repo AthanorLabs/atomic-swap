@@ -30,5 +30,11 @@ func TestAddress_MarshalText_roundTrip(t *testing.T) {
 }
 
 func TestAddress_UnmarshalText(t *testing.T) {
-
+	for _, test := range addressEncodingTests {
+		address := new(Address)
+		err := address.UnmarshalText([]byte(test.address))
+		require.NoError(t, err)
+		require.Equal(t, test.network, address.Network())
+		require.Equal(t, test.addressType, address.Type())
+	}
 }

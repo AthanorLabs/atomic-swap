@@ -444,7 +444,7 @@ func createWalletFromKeys(
 		return nil, err
 	}
 
-	if c.walletAddr != address {
+	if !c.walletAddr.Equal(address) {
 		c.Close()
 		return nil, fmt.Errorf("provided address %s does not match monero-wallet-rpc computed address %s",
 			address, c.walletAddr)
