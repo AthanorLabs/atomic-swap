@@ -65,7 +65,7 @@ func NewAddress(addrStr string, env common.Environment) (*Address, error) {
 }
 
 func (a *Address) String() string {
-	return moneroAddrBytesToBase58(a.decoded[:])
+	return addrBytesToBase58(a.decoded[:])
 }
 
 // Network returns the Monero network of the address

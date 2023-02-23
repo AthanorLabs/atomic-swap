@@ -27,12 +27,12 @@ const (
 	encodedIntegratedAddrLen = encodedAddressLen + 11
 )
 
-// moneroAddrBytesToBase58 takes a 69-byte binary monero address (including the 4-byte
+// addrBytesToBase58 takes a 69-byte binary monero address (including the 4-byte
 // checksum) and returns it encoded using Monero's unique base58 algorithm. It is the
 // caller's responsibility to only pass 65 byte input slices.
-func moneroAddrBytesToBase58(addrBytes []byte) string {
+func addrBytesToBase58(addrBytes []byte) string {
 	if len(addrBytes) != addressBytesLen {
-		panic("moneroAddrBytesToBase58 passed non-addrBytes value")
+		panic("addrBytesToBase58 passed non-addrBytes value")
 	}
 
 	var encodedAddr string
@@ -66,9 +66,9 @@ func moneroAddrBytesToBase58(addrBytes []byte) string {
 	return encodedAddr
 }
 
-// moneroAddrBase58ToBytes decodes a monero base58 encoded address into a byte slice.
+// addrBase58ToBytes decodes a monero base58 encoded address into a byte slice.
 // Only decoding is done here, the checksum should be verified after this decoding.
-func moneroAddrBase58ToBytes(encodedAddress string) ([]byte, error) {
+func addrBase58ToBytes(encodedAddress string) ([]byte, error) {
 	if len(encodedAddress) != encodedAddressLen {
 		err := errInvalidAddressLength
 		if len(encodedAddress) == encodedIntegratedAddrLen {

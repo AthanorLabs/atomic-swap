@@ -52,7 +52,7 @@ func TestAddress_UnmarshalText_badChecksum(t *testing.T) {
 	// Generate a good address, then change the checksum to create
 	// a new address with a bad checksum
 	address := keys.PublicKeyPair().Address(common.Development)
-	address.decoded[addressBytesLen-1] += 1 // overflow fine, 255 goes to 0
+	address.decoded[addressBytesLen-1]++ // overflow fine, 255 goes to 0
 	badChecksumAddr := address.String()
 
 	err = address.UnmarshalText([]byte(badChecksumAddr))

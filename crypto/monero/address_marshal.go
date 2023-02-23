@@ -5,7 +5,7 @@ func (a *Address) MarshalText() ([]byte, error) {
 	if err := a.validateDecoded(); err != nil {
 		return nil, err
 	}
-	return []byte(moneroAddrBytesToBase58(a.decoded[:])), nil
+	return []byte(addrBytesToBase58(a.decoded[:])), nil
 }
 
 // UnmarshalText validates that the string represents a properly formatted
@@ -15,7 +15,7 @@ func (a *Address) MarshalText() ([]byte, error) {
 // optional.
 func (a *Address) UnmarshalText(base58Input []byte) error {
 	base58Str := string(base58Input)
-	addrBytes, err := moneroAddrBase58ToBytes(base58Str)
+	addrBytes, err := addrBase58ToBytes(base58Str)
 	if err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func (a *Address) UnmarshalText(base58Input []byte) error {
 	newAddr := new(Address)
 	n := copy(newAddr.decoded[:], addrBytes)
 	if n != addressBytesLen {
-		// moneroAddrBase58ToBytes already verified the decoded length
+		// addrBase58ToBytes already verified the decoded length
 		panic("bytes to address conversion is broken")
 	}
 
