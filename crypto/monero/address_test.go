@@ -25,20 +25,24 @@ func TestValidateAddress(t *testing.T) {
 	require.NoError(t, err)
 	pubKeys := kp.PublicKeyPair()
 
+	// mainnet address checks
 	addr := pubKeys.Address(common.Mainnet)
 	require.NoError(t, addr.ValidateEnv(common.Mainnet))
 	require.ErrorIs(t, addr.ValidateEnv(common.Stagenet), errInvalidPrefixGotMainnet)
 
+	// stagenet address checks
 	addr = pubKeys.Address(common.Stagenet)
 	require.NoError(t, addr.ValidateEnv(common.Stagenet))
 	require.ErrorIs(t, addr.ValidateEnv(common.Mainnet), errInvalidPrefixGotStagenet)
 
-	// Have to use a different technique to generate the testnet address
+	// testnet address check
 	const testnetAddress = "9ujeXrjzf7bfeK3KZdCqnYaMwZVFuXemPU8Ubw335rj2FN1CdMiWNyFV3ksEfMFvRp9L9qum5UxkP5rN9aLcPxbH1au4WAB" //nolint:lll
-	addr = new(Address)
-	err = addr.UnmarshalText([]byte(testnetAddress))
-	require.NoError(t, err)
+	require.NoError(t, addr.UnmarshalText([]byte(testnetAddress)))
 	require.ErrorIs(t, addr.ValidateEnv(common.Mainnet), errInvalidPrefixGotTestnet)
+
+	// uninitialized address validation
+	addr = new(Address) // empty
+	require.ErrorIs(t, addr.ValidateEnv(common.Development), errAddressNotInitialized)
 }
 
 func TestValidateAddress_loop(t *testing.T) {

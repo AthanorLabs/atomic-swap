@@ -41,6 +41,7 @@ const (
 )
 
 var (
+	errAddressNotInitialized    = errors.New("monero address is not initialized")
 	errChecksumMismatch         = errors.New("invalid address checksum")
 	errInvalidAddressLength     = errors.New("invalid monero address length")
 	errInvalidAddressEncoding   = errors.New("invalid monero address encoding")
@@ -135,6 +136,10 @@ func (a *Address) Equal(b *Address) bool {
 // This validation can't be performed when decoding JSON, as the environment is
 // not known at that time.
 func (a *Address) ValidateEnv(env common.Environment) error {
+	if a == nil || a.decoded == new(Address).decoded {
+		return errAddressNotInitialized
+	}
+
 	switch a.Network() {
 	case Mainnet:
 		if env != common.Mainnet && env != common.Development {
