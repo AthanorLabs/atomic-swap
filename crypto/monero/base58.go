@@ -77,7 +77,7 @@ func moneroAddrBase58ToBytes(encodedAddress string) ([]byte, error) {
 		return nil, err
 	}
 
-	result := make([]byte, 0, encodedAddressLen)
+	result := make([]byte, 0, addressBytesLen)
 
 	// Handle the first 88 bytes in 11-byte base58 chunks. Each 11 byte chunk converts to
 	// 8 binary bytes.
@@ -103,7 +103,7 @@ func moneroAddrBase58ToBytes(encodedAddress string) ([]byte, error) {
 	result = append(result, lastBlock...)
 
 	if len(result) != addressBytesLen {
-		return nil, errInvalidAddressLength
+		panic("base58 address decoder is broken")
 	}
 
 	return result, nil
