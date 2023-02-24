@@ -3,10 +3,11 @@ package txsender
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -28,8 +29,8 @@ var (
 // Transaction represents a transaction to be signed by the front-end
 type Transaction struct {
 	To    ethcommon.Address
-	Data  string
-	Value string
+	Data  []byte
+	Value *apd.Decimal // ETH (or ETH asset), not WEI
 }
 
 // ExternalSender represents a transaction signer and sender that is external to the daemon (ie. a front-end)
@@ -127,8 +128,8 @@ func (s *ExternalSender) NewSwap(
 	valueWei := coins.NewWeiAmount(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
-		Data:  fmt.Sprintf("0x%x", input),
-		Value: fmt.Sprintf("%v", valueWei.AsEther()),
+		Data:  input,
+		Value: valueWei.AsEther(),
 	}
 
 	s.Lock()
@@ -187,10 +188,7 @@ func (s *ExternalSender) Refund(
 }
 
 func (s *ExternalSender) sendAndReceive(input []byte, to ethcommon.Address) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	tx := &Transaction{
-		To:   to,
-		Data: fmt.Sprintf("0x%x", input),
-	}
+	tx := &Transaction{To: to, Data: input}
 
 	s.Lock()
 	defer s.Unlock()

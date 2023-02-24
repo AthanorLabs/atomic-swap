@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
 var (
@@ -27,13 +28,13 @@ var (
 // Offer represents a swap offer
 type Offer struct {
 	Version      semver.Version      `json:"version"`
-	ID           Hash                `json:"offerID"`
-	Provides     coins.ProvidesCoin  `json:"provides"`
-	MinAmount    *apd.Decimal        `json:"minAmount"` // Min XMR amount
-	MaxAmount    *apd.Decimal        `json:"maxAmount"` // Max XMR amount
-	ExchangeRate *coins.ExchangeRate `json:"exchangeRate"`
+	ID           Hash                `json:"offerID" validate:"required"`
+	Provides     coins.ProvidesCoin  `json:"provides" validate:"required"`
+	MinAmount    *apd.Decimal        `json:"minAmount" validate:"required"` // Min XMR amount
+	MaxAmount    *apd.Decimal        `json:"maxAmount" validate:"required"` // Max XMR amount
+	ExchangeRate *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 	EthAsset     EthAsset            `json:"ethAsset"`
-	Nonce        uint64              `json:"nonce"`
+	Nonce        uint64              `json:"nonce" validate:"required"`
 }
 
 // NewOffer creates and returns an Offer with an initialised ID and Version fields
@@ -154,22 +155,29 @@ type OfferExtra struct {
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before
 // attempting to deserialize the whole blob.
 func UnmarshalOffer(jsonData []byte) (*Offer, error) {
+	// First unmarshal into a struct that only has the version. Then, if we ever
+	// have to support multiple versions, you can use the version to pick which
+	// offer structure to deserialize the full data into.
 	ov := struct {
 		Version *semver.Version `json:"version"`
 	}{}
 	if err := json.Unmarshal(jsonData, &ov); err != nil {
 		return nil, err
 	}
+
 	if ov.Version == nil {
 		return nil, errOfferVersionMissing
 	}
+
 	if ov.Version.GreaterThan(CurOfferVersion) {
 		return nil, fmt.Errorf("offer version %q not supported, latest is %q", ov.Version, CurOfferVersion)
 	}
-	o := &Offer{}
-	if err := json.Unmarshal(jsonData, o); err != nil {
+
+	o := new(Offer)
+	if err := vjson.UnmarshalStruct(jsonData, o); err != nil {
 		return nil, err
 	}
+
 	return o, nil
 }
 
@@ -180,14 +188,14 @@ func (o *Offer) MarshalJSON() ([]byte, error) {
 	}
 	// Do standard JSON marshal without recursion
 	type _Offer Offer
-	return json.Marshal((*_Offer)(o))
+	return vjson.MarshalStruct((*_Offer)(o))
 }
 
 // UnmarshalJSON provides JSON unmarshalling the Offer type
 func (o *Offer) UnmarshalJSON(data []byte) error {
 	// Do standard JSON marshal without recursion
 	type _Offer Offer
-	if err := json.Unmarshal(data, (*_Offer)(o)); err != nil {
+	if err := vjson.UnmarshalStruct(data, (*_Offer)(o)); err != nil {
 		return err
 	}
 	return o.validate()

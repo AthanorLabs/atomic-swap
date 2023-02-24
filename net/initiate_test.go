@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/apd/v3"
-	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
+	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/stretchr/testify/require"
 )
@@ -18,14 +19,15 @@ import (
 func createSendKeysMessage(t *testing.T) *message.SendKeysMessage {
 	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
+
 	return &message.SendKeysMessage{
-		OfferID:            types.Hash{},
-		ProvidedAmount:     new(apd.Decimal),
+		OfferID:            types.Hash{0x1},
+		ProvidedAmount:     coins.StrToDecimal("0.5"),
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
 		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
-		EthAddress:         ethcommon.Address{},
+		EthAddress:         crypto.PubkeyToAddress(tests.GetMakerTestKey(t).PublicKey),
 	}
 }
 

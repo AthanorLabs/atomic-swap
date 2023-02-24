@@ -6,13 +6,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
 func TestKey_Marshal_success(t *testing.T) {
 	type SomeStruct struct {
-		PrivSpendKey   *PrivateSpendKey `json:"privSpendKey"`
-		PrivateViewKey *PrivateViewKey  `json:"privViewKey"`
-		PublicSpendKey *PublicKey       `json:"pubSpendKey"`
+		PrivSpendKey   *PrivateSpendKey `json:"privSpendKey" validate:"required"`
+		PrivateViewKey *PrivateViewKey  `json:"privViewKey" validate:"required"`
+		PublicSpendKey *PublicKey       `json:"pubSpendKey" validate:"required"`
 	}
 
 	const (
@@ -38,7 +40,7 @@ func TestKey_Marshal_success(t *testing.T) {
 	err = pubKey.UnmarshalText([]byte(expectedPubKey))
 	require.NoError(t, err)
 
-	data, err := json.Marshal(&SomeStruct{
+	data, err := vjson.MarshalStruct(&SomeStruct{
 		PrivSpendKey:   spendKey,
 		PrivateViewKey: viewKey,
 		PublicSpendKey: pubKey,
@@ -47,7 +49,7 @@ func TestKey_Marshal_success(t *testing.T) {
 	require.JSONEq(t, expectJSON, string(data))
 
 	s := new(SomeStruct)
-	err = json.Unmarshal(data, s)
+	err = vjson.UnmarshalStruct(data, s)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedPrivSpendKey, s.PrivSpendKey.Hex())
@@ -75,7 +77,7 @@ func TestPrivateKeyPair_Marshal(t *testing.T) {
 	jsonData, err := json.Marshal(kp)
 	require.NoError(t, err)
 	kp2 := new(PrivateKeyPair)
-	err = json.Unmarshal(jsonData, kp2)
+	err = vjson.UnmarshalStruct(jsonData, kp2)
 	require.NoError(t, err)
 
 	assert.Equal(t, kp.SpendKey().Hex(), kp2.SpendKey().Hex())
@@ -88,10 +90,10 @@ func TestPublicKeyPair_Marshal(t *testing.T) {
 	pubKP1 := kp.PublicKeyPair()
 
 	// serialize, deserialize, and make sure the result is the same as the original
-	jsonData, err := json.Marshal(pubKP1)
+	jsonData, err := vjson.MarshalStruct(pubKP1)
 	require.NoError(t, err)
 	pubKP2 := new(PublicKeyPair)
-	err = json.Unmarshal(jsonData, pubKP2)
+	err = vjson.UnmarshalStruct(jsonData, pubKP2)
 	require.NoError(t, err)
 
 	assert.Equal(t, pubKP1.SpendKey().Hex(), pubKP2.SpendKey().Hex())

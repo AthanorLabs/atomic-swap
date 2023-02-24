@@ -25,7 +25,7 @@ const (
 
 // SubscribeSwapStatusRequest ...
 type SubscribeSwapStatusRequest struct {
-	OfferID types.Hash `json:"offerID"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // SubscribeSwapStatusResponse ...
@@ -41,24 +41,24 @@ type DiscoverRequest struct {
 
 // DiscoverResponse ...
 type DiscoverResponse struct {
-	PeerIDs []peer.ID `json:"peerIDs"`
+	PeerIDs []peer.ID `json:"peerIDs" validate:"dive,required"`
 }
 
 // QueryPeerRequest ...
 type QueryPeerRequest struct {
 	// Peer ID of peer to query
-	PeerID peer.ID `json:"peerID"`
+	PeerID peer.ID `json:"peerID" validate:"required"`
 }
 
 // QueryPeerResponse ...
 type QueryPeerResponse struct {
-	Offers []*types.Offer `json:"offers"`
+	Offers []*types.Offer `json:"offers" validate:"dive,required"`
 }
 
 // PeerWithOffers ...
 type PeerWithOffers struct {
-	PeerID peer.ID        `json:"peerID"`
-	Offers []*types.Offer `json:"offers"`
+	PeerID peer.ID        `json:"peerID" validate:"required"`
+	Offers []*types.Offer `json:"offers" validate:"dive,required"`
 }
 
 // QueryAllRequest ...
@@ -66,22 +66,22 @@ type QueryAllRequest = DiscoverRequest
 
 // QueryAllResponse ...
 type QueryAllResponse struct {
-	PeersWithOffers []*PeerWithOffers `json:"peersWithOffers"`
+	PeersWithOffers []*PeerWithOffers `json:"peersWithOffers" validate:"dive,required"`
 }
 
 // TakeOfferRequest ...
 type TakeOfferRequest struct {
-	PeerID         peer.ID      `json:"peerID"`
-	OfferID        types.Hash   `json:"offerID"`
-	ProvidesAmount *apd.Decimal `json:"providesAmount"` // ether amount
+	PeerID         peer.ID      `json:"peerID" validate:"required"`
+	OfferID        types.Hash   `json:"offerID" validate:"required"`
+	ProvidesAmount *apd.Decimal `json:"providesAmount" validate:"required"` // eth asset amount
 }
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinAmount         *apd.Decimal        `json:"minAmount"`
-	MaxAmount         *apd.Decimal        `json:"maxAmount"`
-	ExchangeRate      *coins.ExchangeRate `json:"exchangeRate"`
-	EthAsset          string              `json:"ethAsset,omitempty"`
+	MinAmount         *apd.Decimal        `json:"minAmount" validate:"required"`
+	MaxAmount         *apd.Decimal        `json:"maxAmount" validate:"required"`
+	ExchangeRate      *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
+	EthAsset          types.EthAsset      `json:"ethAsset"`
 	RelayerEndpoint   string              `json:"relayerEndpoint,omitempty"`
 	RelayerCommission *apd.Decimal        `json:"relayerCommission,omitempty"`
 }
@@ -101,16 +101,16 @@ type SignerRequest struct {
 
 // SignerResponse sends a tx to be signed to the front-end
 type SignerResponse struct {
-	OfferID types.Hash `json:"offerID"`
-	To      string     `json:"to"`
-	Data    string     `json:"data"`
-	Value   string     `json:"value"`
+	OfferID types.Hash        `json:"offerID" validate:"required"`
+	To      ethcommon.Address `json:"to" validate:"required"`
+	Data    []byte            `json:"data" validate:"required"`
+	Value   *apd.Decimal      `json:"value" validate:"required"` // In ETH (or other ETH asset) not WEI
 }
 
 // SignerTxSigned is a response from the front-end saying the given tx has been submitted successfully
 type SignerTxSigned struct {
-	OfferID types.Hash     `json:"offerID"`
-	TxHash  ethcommon.Hash `json:"txHash"`
+	OfferID types.Hash     `json:"offerID" validate:"required"`
+	TxHash  ethcommon.Hash `json:"txHash" validate:"required"`
 }
 
 // BalancesResponse holds the response for the combined Monero and Ethereum Balances request
@@ -125,10 +125,10 @@ type BalancesResponse struct {
 
 // AddressesResponse ...
 type AddressesResponse struct {
-	Addrs []string `json:"addresses"`
+	Addrs []string `json:"addresses" validate:"dive,required"`
 }
 
 // PeersResponse ...
 type PeersResponse struct {
-	Addrs []string `json:"addresses"`
+	Addrs []string `json:"addresses" validate:"dive,required"`
 }

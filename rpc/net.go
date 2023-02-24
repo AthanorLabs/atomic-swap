@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -239,12 +238,6 @@ func (s *NetService) MakeOffer(
 
 func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOfferResponse, *types.OfferExtra, error) {
 	ethAsset := types.EthAssetETH
-	if req.EthAsset != "" {
-		if !ethcommon.IsHexAddress(req.EthAsset) {
-			return nil, nil, errEthAssetIncorrectFormat
-		}
-		ethAsset = types.EthAsset(ethcommon.HexToAddress(req.EthAsset))
-	}
 
 	offer := types.NewOffer(
 		coins.ProvidesXMR,

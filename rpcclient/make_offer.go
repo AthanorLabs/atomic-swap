@@ -2,7 +2,6 @@ package rpcclient
 
 import (
 	"github.com/cockroachdb/apd/v3"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
@@ -25,7 +24,7 @@ func (c *Client) MakeOffer(
 		MinAmount:         min,
 		MaxAmount:         max,
 		ExchangeRate:      exchangeRate,
-		EthAsset:          ethcommon.Address(ethAsset).Hex(),
+		EthAsset:          ethAsset,
 		RelayerEndpoint:   relayerEndpoint,
 		RelayerCommission: relayerCommission,
 	}

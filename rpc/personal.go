@@ -27,7 +27,7 @@ func NewPersonalService(ctx context.Context, xmrmaker XMRMaker, pb ProtocolBacke
 
 // SetSwapTimeoutRequest ...
 type SetSwapTimeoutRequest struct {
-	Timeout uint64 `json:"timeout"` // timeout in seconds
+	Timeout uint64 `json:"timeout" validate:"required"` // timeout in seconds
 }
 
 // SetSwapTimeout ...
@@ -50,7 +50,7 @@ func (s *PersonalService) GetSwapTimeout(_ *http.Request, _ *interface{}, resp *
 
 // SetGasPriceRequest ...
 type SetGasPriceRequest struct {
-	GasPrice uint64 `json:"gasPrice"`
+	GasPrice uint64 `json:"gasPrice" validate:"required"`
 }
 
 // SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.

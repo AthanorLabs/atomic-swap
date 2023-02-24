@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -22,8 +22,8 @@ var (
 )
 
 type contractAddresses struct {
-	SwapFactory ethcommon.Address `json:"swapFactory"`
-	Forwarder   ethcommon.Address `json:"forwarder"`
+	SwapFactory ethcommon.Address `json:"swapFactory" validate:"required"`
+	Forwarder   ethcommon.Address `json:"forwarder" validate:"required"`
 }
 
 func getOrDeploySwapFactory(
@@ -113,7 +113,7 @@ func deploySwapFactory(
 
 // writeContractAddressToFile writes the contract address to the given file
 func writeContractAddressToFile(filePath string, addresses *contractAddresses) error {
-	jsonData, err := json.MarshalIndent(addresses, "", "  ")
+	jsonData, err := vjson.MarshalIndentStruct(addresses, "", "  ")
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/ChainSafe/chaindb"
 	logging "github.com/ipfs/go-log"
@@ -10,11 +11,21 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 func init() {
 	_ = logging.SetLogLevel("db", "debug")
+}
+
+// infoAsJSON converts an Info object to a JSON string. Converting
+// the struct to JSON is the easiest way to compare 2 structs for
+// equality, as there are many pointer fields.
+func infoAsJSON(t *testing.T, info *swap.Info) string {
+	jsonData, err := vjson.MarshalStruct(info)
+	require.NoError(t, err)
+	return string(jsonData)
 }
 
 func TestDatabase_OfferTable(t *testing.T) {
@@ -26,10 +37,19 @@ func TestDatabase_OfferTable(t *testing.T) {
 
 	// put swap to ensure iterator over offers is ok
 	infoA := &swap.Info{
-		ID:       types.Hash{0x1},
-		Provides: coins.ProvidesXMR,
-		Status:   types.ExpectingKeys,
+		Version:           swap.CurInfoVersion,
+		ID:                types.Hash{0x1},
+		Provides:          coins.ProvidesXMR,
+		ProvidedAmount:    coins.StrToDecimal("0.1"),
+		ExpectedAmount:    coins.StrToDecimal("1"),
+		ExchangeRate:      coins.StrToExchangeRate("0.1"),
+		EthAsset:          types.EthAsset{},
+		Status:            types.ExpectingKeys,
+		MoneroStartHeight: 12345,
+		StartTime:         time.Now().Add(-30 * time.Minute),
+		EndTime:           time.Time{},
 	}
+
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
@@ -81,9 +101,17 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 
 	// Put a swap entry tied to the bad offer in the database
 	swapEntry := &swap.Info{
-		ID:       badOfferID,
-		Provides: coins.ProvidesXMR,
-		Status:   types.KeysExchanged,
+		Version:           swap.CurInfoVersion,
+		ID:                badOfferID,
+		Provides:          coins.ProvidesXMR,
+		ProvidedAmount:    coins.StrToDecimal("0.1"),
+		ExpectedAmount:    coins.StrToDecimal("1"),
+		ExchangeRate:      coins.StrToExchangeRate("0.1"),
+		EthAsset:          types.EthAsset{},
+		Status:            types.ExpectingKeys,
+		MoneroStartHeight: 12345,
+		StartTime:         time.Now().Add(-30 * time.Minute),
+		EndTime:           time.Time{},
 	}
 	err = db.PutSwap(swapEntry)
 	require.NoError(t, err)
@@ -138,26 +166,40 @@ func TestDatabase_SwapTable(t *testing.T) {
 	require.NoError(t, err)
 
 	infoA := &swap.Info{
-		ID:       types.Hash{0x1},
-		Version:  swap.CurInfoVersion,
-		Provides: coins.ProvidesXMR,
-		Status:   types.ContractReady,
+		Version:           swap.CurInfoVersion,
+		ID:                offerA.ID,
+		Provides:          offerA.Provides,
+		ProvidedAmount:    offerA.MinAmount,
+		ExpectedAmount:    offerA.MinAmount,
+		ExchangeRate:      offerA.ExchangeRate,
+		EthAsset:          offerA.EthAsset,
+		Status:            types.ContractReady,
+		MoneroStartHeight: 12345,
+		StartTime:         time.Now().Add(-30 * time.Minute),
+		EndTime:           time.Time{},
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		ID:       types.Hash{0x2},
-		Version:  swap.CurInfoVersion,
-		Provides: coins.ProvidesXMR,
-		Status:   types.XMRLocked,
+		Version:           swap.CurInfoVersion,
+		ID:                types.Hash{0x2},
+		Provides:          coins.ProvidesXMR,
+		ProvidedAmount:    coins.StrToDecimal("1.5"),
+		ExpectedAmount:    coins.StrToDecimal("0.15"),
+		ExchangeRate:      coins.ToExchangeRate(coins.StrToDecimal("0.1")),
+		EthAsset:          types.EthAsset{},
+		Status:            types.XMRLocked,
+		MoneroStartHeight: 12345,
+		StartTime:         time.Now().Add(-30 * time.Minute),
+		EndTime:           time.Time{},
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
 
-	res, err := db.GetSwap(types.Hash{0x1})
+	res, err := db.GetSwap(offerA.ID)
 	require.NoError(t, err)
-	require.Equal(t, infoA, res)
+	require.Equal(t, infoAsJSON(t, infoA), infoAsJSON(t, res))
 
 	swaps, err := db.GetAllSwaps()
 	require.NoError(t, err)
@@ -180,7 +222,9 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 		ExchangeRate:      coins.ToExchangeRate(coins.StrToDecimal("0.1")),
 		EthAsset:          types.EthAsset{},
 		Status:            types.ETHLocked,
-		MoneroStartHeight: 0,
+		MoneroStartHeight: 12345,
+		StartTime:         time.Now().Add(-30 * time.Minute),
+		EndTime:           time.Time{},
 	}
 	err = db.PutSwap(goodInfo)
 	require.NoError(t, err)
@@ -226,25 +270,34 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 
 	id := types.Hash{0x1}
 	infoA := &swap.Info{
-		ID:       id,
-		Provides: coins.ProvidesXMR,
-		Status:   types.XMRLocked,
+		Version:           swap.CurInfoVersion,
+		ID:                id,
+		Provides:          coins.ProvidesXMR,
+		ProvidedAmount:    coins.StrToDecimal("0.1"),
+		ExpectedAmount:    coins.StrToDecimal("1"),
+		ExchangeRate:      coins.StrToExchangeRate("0.1"),
+		EthAsset:          types.EthAsset{},
+		Status:            types.XMRLocked,
+		MoneroStartHeight: 12345,
+		StartTime:         time.Now().Add(-30 * time.Minute),
+		EndTime:           time.Time{},
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
-	infoB := &swap.Info{
-		ID:       id,
-		Provides: coins.ProvidesXMR,
-		Status:   types.CompletedSuccess,
-	}
+	// infoB mostly the same as infoA (same ID, importantly), but with
+	// a couple updated fields.
+	infoB := new(swap.Info)
+	*infoB = *infoA
+	infoB.Status = types.CompletedSuccess
+	infoB.EndTime = time.Now()
 
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
 
 	res, err := db.GetSwap(id)
 	require.NoError(t, err)
-	require.Equal(t, infoB, res)
+	require.Equal(t, infoAsJSON(t, infoB), infoAsJSON(t, res))
 }
 
 func TestDatabase_SwapTable_GetSwap_err(t *testing.T) {
