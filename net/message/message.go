@@ -103,13 +103,13 @@ func (m *QueryResponse) Type() byte {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            types.Hash              `json:"offerID" validate:"required"`
+	OfferID            types.Hash              `json:"offerID"` // Not set by XMR Maker
 	ProvidedAmount     *apd.Decimal            `json:"providedAmount" validate:"required"`
 	PublicSpendKey     *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
 	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
 	DLEqProof          string                  `json:"dleqProof" validate:"required"`
 	Secp256k1PublicKey *secp256k1.PublicKey    `json:"secp256k1PublicKey" validate:"required"`
-	EthAddress         ethcommon.Address       `json:"ethAddress" validate:"required"`
+	EthAddress         ethcommon.Address       `json:"ethAddress"` // not set by XMR Taker
 }
 
 // String ...
