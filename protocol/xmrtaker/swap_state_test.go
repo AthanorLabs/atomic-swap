@@ -238,7 +238,7 @@ func lockXMRFunds(
 	t *testing.T,
 	ctx context.Context, //nolint:revive
 	wc monero.WalletClient,
-	destAddr mcrypto.Address,
+	destAddr *mcrypto.Address,
 	amount *coins.PiconeroAmount,
 ) types.Hash {
 	monero.MineMinXMRBalance(t, wc, amount)
@@ -273,7 +273,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	xmrAddr := kp.Address(common.Development)
 
 	msg := &message.NotifyXMRLock{
-		Address: string(xmrAddr),
+		Address: xmrAddr,
 		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
 	}
 
@@ -307,7 +307,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	xmrAddr := kp.Address(common.Development)
 
 	msg := &message.NotifyXMRLock{
-		Address: string(xmrAddr),
+		Address: xmrAddr,
 		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
 	}
 

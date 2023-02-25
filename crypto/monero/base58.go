@@ -1,31 +1,38 @@
 package mcrypto
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcutil/base58"
 )
 
 const (
-	// AddressBytesLen is the length (69) of a Monero address in raw bytes:
+	// addressBytesLen is the length (69) of a Monero address in raw bytes:
 	//  1 - Network byte
 	// 32 - Public spend key
 	// 32 - Public view key
 	//  4 - First 4 bytes of keccak-256 checksum of previous bytes
-	AddressBytesLen = 1 + 32 + 32 + 4
+	addressBytesLen = 1 + 32 + 32 + 4
 
-	// EncodedAddressLen is the length (95) of a base58 encoded Monero address:
+	// encodedAddressLen is the length (95) of a base58 encoded Monero address:
 	// 88 - Eight, 11-symbol base58 blocks each representing 8 binary bytes (64 binary bytes total)
 	//  7 - Remaining base58 block representing 5 binary bytes
-	EncodedAddressLen = 8*11 + 1*7
+	encodedAddressLen = 8*11 + 1*7
+
+	// encodedIntegratedAddrLen is only for giving better error messages. We don't support
+	// integrated addresses. In the byte form, they have an additional 8-byte payment ID
+	// between the public view key and the checksum. The additional 8 bytes converts to
+	// an additional 11 bytes in base58.
+	encodedIntegratedAddrLen = encodedAddressLen + 11
 )
 
-// MoneroAddrBytesToBase58 takes a 69-byte binary monero address (including the 4-byte
+// addrBytesToBase58 takes a 69-byte binary monero address (including the 4-byte
 // checksum) and returns it encoded using Monero's unique base58 algorithm. It is the
 // caller's responsibility to only pass 65 byte input slices.
-func MoneroAddrBytesToBase58(addrBytes []byte) string {
-	if len(addrBytes) != AddressBytesLen {
-		panic("MoneroAddrBytesToBase58 passed non-addrBytes value")
+func addrBytesToBase58(addrBytes []byte) string {
+	if len(addrBytes) != addressBytesLen {
+		panic("addrBytesToBase58 passed non-addrBytes value")
 	}
 
 	var encodedAddr string
@@ -33,7 +40,7 @@ func MoneroAddrBytesToBase58(addrBytes []byte) string {
 	// Handle the first 64 binary bytes in 8 byte chunks yielding exactly 88 (8 * 11)
 	// base58 characters.
 	for i := 0; i < 8; i++ {
-		// Encoded block will be 11 characters or fewer. If less, we pad to 11 characters.
+		// Each encoded block will be 11 characters or fewer. If less, we pad to 11.
 		block := base58.Encode(addrBytes[i*8 : i*8+8]) // yields 11 or fewer characters
 		if len(block) < 11 {
 			// Prepend "1"'s (zero in base58) as padding to get exactly 11 characters.
@@ -59,14 +66,18 @@ func MoneroAddrBytesToBase58(addrBytes []byte) string {
 	return encodedAddr
 }
 
-// MoneroAddrBase58ToBytes decodes a monero base58 encoded address into a byte slice
-func MoneroAddrBase58ToBytes(encodedAddress string) ([]byte, error) {
-	if len(encodedAddress) != EncodedAddressLen {
+// addrBase58ToBytes decodes a monero base58 encoded address into a byte slice.
+// Only decoding is done here, the checksum should be verified after this decoding.
+func addrBase58ToBytes(encodedAddress string) ([]byte, error) {
+	if len(encodedAddress) != encodedAddressLen {
 		err := errInvalidAddressLength
+		if len(encodedAddress) == encodedIntegratedAddrLen {
+			err = fmt.Errorf("integrated addresses not supported: %w", err)
+		}
 		return nil, err
 	}
 
-	result := make([]byte, 0, EncodedAddressLen)
+	result := make([]byte, 0, addressBytesLen)
 
 	// Handle the first 88 bytes in 11-byte base58 chunks. Each 11 byte chunk converts to
 	// 8 binary bytes.
@@ -90,6 +101,10 @@ func MoneroAddrBase58ToBytes(encodedAddress string) ([]byte, error) {
 	// See above. We can decode up to 7 bytes with leading zeros, but never less than 5.
 	lastBlock = lastBlock[len(lastBlock)-5:] // strip any leading zeros
 	result = append(result, lastBlock...)
+
+	if len(result) != addressBytesLen {
+		panic("base58 address decoder is broken")
+	}
 
 	return result, nil
 }
