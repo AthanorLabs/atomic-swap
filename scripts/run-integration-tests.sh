@@ -137,7 +137,7 @@ start-daemons() {
 
 	# Give time for Bob and Charlie's swapd instances to fully start
 	# and do peer discovery.
-	sleep 20
+	sleep 30
 }
 
 stop-daemons() {

@@ -47,9 +47,6 @@ type Config struct {
 // It accepts an endpoint to a monero-wallet-rpc instance where XMRTaker will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
-	// if TransferBack == true, all xmr received during swaps is transferred to the given wallet.
-	cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryAddress())
-
 	inst := &Instance{
 		backend:    cfg.Backend,
 		dataDir:    cfg.DataDir,
