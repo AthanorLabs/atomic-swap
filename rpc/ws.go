@@ -20,7 +20,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: checkOriginFunc,
 }
 
-func checkOriginFunc(r *http.Request) bool {
+func checkOriginFunc(_ *http.Request) bool {
 	return true
 }
 
@@ -53,7 +53,7 @@ func (s *wsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer conn.Close() //nolint:errcheck
+	defer func() { _ = conn.Close() }()
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -150,20 +150,24 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	}
 }
 
-func (s *wsServer) handleSigner(ctx context.Context, conn *websocket.Conn, offerID types.Hash, ethAddress,
-	xmrAddr string) error {
-
+func (s *wsServer) handleSigner(
+	ctx context.Context,
+	conn *websocket.Conn,
+	offerID types.Hash,
+	ethAddress ethcommon.Address,
+	xmrAddr *mcrypto.Address,
+) error {
 	signer, err := s.taker.ExternalSender(offerID)
 	if err != nil {
 		return err
 	}
 
-	if err = mcrypto.ValidateAddress(xmrAddr, s.backend.Env()); err != nil {
+	if err = xmrAddr.ValidateEnv(s.backend.Env()); err != nil {
 		return err
 	}
 
-	s.backend.ETHClient().SetAddress(ethcommon.HexToAddress(ethAddress))
-	s.backend.SetXMRDepositAddress(mcrypto.Address(xmrAddr), offerID)
+	s.backend.ETHClient().SetAddress(ethAddress)
+	s.backend.SetXMRDepositAddress(xmrAddr, offerID)
 	defer s.backend.ClearXMRDepositAddress(offerID)
 
 	txsOutCh := signer.OngoingCh(offerID)

@@ -39,7 +39,7 @@ func ClaimMonero(
 	xmrClient monero.WalletClient,
 	walletScanHeight uint64,
 	kpAB *mcrypto.PrivateKeyPair,
-	depositAddr mcrypto.Address,
+	depositAddr *mcrypto.Address,
 	transferBack bool,
 ) error {
 	conf := xmrClient.CreateWalletConf(fmt.Sprintf("swap-wallet-claim-%s", id))
@@ -60,7 +60,7 @@ func ClaimMonero(
 	log.Infof("monero claimed in account %s; transferring to deposit account %s",
 		address, depositAddr)
 
-	err = mcrypto.ValidateAddress(string(depositAddr), env)
+	err = depositAddr.ValidateEnv(env)
 	if err != nil {
 		log.Errorf(
 			"failed to transfer XMR out of swap wallet, dest address %s is invalid: %s",

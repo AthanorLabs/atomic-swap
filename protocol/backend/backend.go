@@ -74,13 +74,13 @@ type Backend interface {
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
 	SwapTimeout() time.Duration
-	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
+	XMRDepositAddress(id *types.Hash) (*mcrypto.Address, error)
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
-	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
-	SetBaseXMRDepositAddress(mcrypto.Address)
+	SetBaseXMRDepositAddress(*mcrypto.Address)
 
 	// relayer functions
 	DiscoverRelayers() ([]peer.ID, error)
@@ -100,7 +100,7 @@ type backend struct {
 	// monero deposit address (used if xmrtaker has transferBack set to true)
 	sync.RWMutex
 	baseXMRDepositAddr *mcrypto.Address
-	xmrDepositAddrs    map[types.Hash]mcrypto.Address
+	xmrDepositAddrs    map[types.Hash]*mcrypto.Address
 
 	// swap contract
 	contract     *contracts.SwapFactory
@@ -148,7 +148,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		swapManager:     cfg.SwapManager,
 		swapTimeout:     common.SwapTimeoutFromEnv(cfg.Environment),
 		MessageSender:   cfg.Net,
-		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
+		xmrDepositAddrs: make(map[types.Hash]*mcrypto.Address),
 		recoveryDB:      cfg.RecoveryDB,
 		rnet:            cfg.RelayerHost,
 	}, nil
@@ -204,21 +204,21 @@ func (b *backend) SetSwapTimeout(timeout time.Duration) {
 	b.swapTimeout = timeout
 }
 
-func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
+func (b *backend) XMRDepositAddress(id *types.Hash) (*mcrypto.Address, error) {
 	b.RLock()
 	defer b.RUnlock()
 
 	if id == nil && b.baseXMRDepositAddr == nil {
-		return "", errNoXMRDepositAddress
+		return nil, errNoXMRDepositAddress
 	} else if id == nil {
-		return *b.baseXMRDepositAddr, nil
+		return b.baseXMRDepositAddr, nil
 	}
 
 	addr, has := b.xmrDepositAddrs[*id]
 	if !has && b.baseXMRDepositAddr == nil {
-		return "", errNoXMRDepositAddress
+		return nil, errNoXMRDepositAddress
 	} else if !has {
-		return *b.baseXMRDepositAddr, nil
+		return nil, nil
 	}
 
 	return addr, nil
@@ -228,11 +228,11 @@ func (b *backend) NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory
 	return contracts.NewSwapFactory(addr, b.ethClient.Raw())
 }
 
-func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {
-	b.baseXMRDepositAddr = &addr
+func (b *backend) SetBaseXMRDepositAddress(addr *mcrypto.Address) {
+	b.baseXMRDepositAddr = addr
 }
 
-func (b *backend) SetXMRDepositAddress(addr mcrypto.Address, id types.Hash) {
+func (b *backend) SetXMRDepositAddress(addr *mcrypto.Address, id types.Hash) {
 	b.Lock()
 	defer b.Unlock()
 	b.xmrDepositAddrs[id] = addr
