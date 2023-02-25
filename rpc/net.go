@@ -172,7 +172,9 @@ func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *
 	skm.ProvidedAmount = providesAmount
 
 	if err = s.net.Initiate(peer.AddrInfo{ID: who}, skm, swapState); err != nil {
-		_ = swapState.Exit()
+		if err = swapState.Exit(); err != nil {
+			log.Warnf("Swap exit failure: %s", err)
+		}
 		return nil, err
 	}
 

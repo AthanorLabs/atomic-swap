@@ -298,7 +298,9 @@ func (s *swapState) waitForSendKeysMessage() {
 	}
 
 	// if not, just exit the swap
-	_ = s.Exit()
+	if err := s.Exit(); err != nil {
+		log.Warnf("Swap exit failure: %s", err)
+	}
 }
 
 // SendKeysMessage ...
