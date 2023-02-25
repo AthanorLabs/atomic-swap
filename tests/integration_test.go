@@ -94,7 +94,7 @@ func mineMinXMRMakerBalance(t *testing.T, minBalance *coins.PiconeroAmount) {
 		}
 		_, err = daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
 			AmountOfBlocks: 32,
-			WalletAddress:  balances.MoneroAddress,
+			WalletAddress:  balances.MoneroAddress.String(),
 		})
 		if err != nil && err.Error() == "Block not accepted" {
 			continue

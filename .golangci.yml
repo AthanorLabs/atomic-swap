@@ -21,6 +21,7 @@ linters-settings:
   maligned:
     # print struct with more effective memory layout or not, false by default
     suggest-new: true
+
   dupl:
     # tokens count to trigger issue, 150 by default
     threshold: 100
@@ -29,12 +30,19 @@ linters-settings:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.
     # Setting locale to US will correct the British spelling of 'colour' to 'color'.
+
+  tagliatelle:
+    # Check the struct tag name case.
+    case:
+      rules:
+        # See https://github.com/ldez/tagliatelle for values and examples:
+        json: goCamel
+
   gocritic:
     # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint` run to see all tags and checks.
     # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
     enabled-tags:
       - performance
-
     settings: # settings passed to gocritic
       captLocal: # must be valid enabled check name
         paramsOnly: true
@@ -64,6 +72,7 @@ linters:
     - predeclared
     - revive
     - staticcheck
+    - tagliatelle
     - typecheck
     - unconvert
     - unparam

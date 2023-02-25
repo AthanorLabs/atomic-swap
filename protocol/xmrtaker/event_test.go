@@ -17,7 +17,7 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
-func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Address) {
+func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Address) {
 	// backend simulates the xmrmaker's instance
 	backend := newBackend(t)
 	monero.MineMinXMRBalance(t, backend.XMRClient(), coins.MoneroToPiconero(coins.StrToDecimal("1")))
@@ -37,7 +37,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr mcrypto.Addr
 
 	// send notification that monero was locked
 	lmsg := &message.NotifyXMRLock{
-		Address: string(xmrAddr),
+		Address: xmrAddr,
 		TxID:    txID,
 	}
 
@@ -80,7 +80,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 
 	// test transferBack functionality
 	s.transferBack = true
-	s.Backend.SetBaseXMRDepositAddress(s.Backend.XMRClient().PrimaryAddress())
+	s.Backend.SetXMRDepositAddress(s.Backend.XMRClient().PrimaryAddress(), s.ID())
 
 	// invalid SendKeysMessage should result in an error
 	msg := &message.SendKeysMessage{}

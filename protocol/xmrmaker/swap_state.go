@@ -539,7 +539,7 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	}
 
 	return &message.NotifyXMRLock{
-		Address: string(swapDestAddr),
+		Address: swapDestAddr,
 		TxID:    txID,
 	}, nil
 }
