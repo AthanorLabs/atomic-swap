@@ -226,15 +226,17 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.setNextExpectedEvent(EventXMRLockedType)
-		if err != nil {
-			e.errCh <- fmt.Errorf("failed to set next expected event to EventXMRLockedType: %w", err)
-			return
-		}
-
-		err = s.handleEventKeysReceived(e)
+		err := s.handleEventKeysReceived(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
+			if !s.fundsLocked {
+				return
+			}
+		}
+
+		err = s.setNextExpectedEvent(EventXMRLockedType)
+		if err != nil {
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventXMRLockedType: %w", err)
 			return
 		}
 	case *EventXMRLocked:
@@ -246,15 +248,15 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.setNextExpectedEvent(EventETHClaimedType)
+		err := s.handleEventXMRLocked(e)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to set next expected event to EventETHClaimedType: %w", err)
+			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 			return
 		}
 
-		err = s.handleEventXMRLocked(e)
+		err = s.setNextExpectedEvent(EventETHClaimedType)
 		if err != nil {
-			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
+			e.errCh <- fmt.Errorf("failed to set next expected event to EventETHClaimedType: %w", err)
 			return
 		}
 	case *EventETHClaimed:
