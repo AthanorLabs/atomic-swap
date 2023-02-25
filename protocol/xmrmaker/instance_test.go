@@ -156,7 +156,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
 	one := apd.New(1, 0)
-	rate := coins.ToExchangeRate(apd.New(1, 0)) // 100% relayer commission
+	rate := coins.ToExchangeRate(apd.New(1, 0))
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
 	offerDB.EXPECT().PutOffer(offer).Return(nil)

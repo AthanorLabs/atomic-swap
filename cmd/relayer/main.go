@@ -29,6 +29,7 @@ import (
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	swapnet "github.com/athanorlabs/atomic-swap/net"
 
@@ -45,11 +46,11 @@ const (
 	flagDeploy           = "deploy"
 	flagLog              = "log-level"
 	// TODO: do we need this, or can we assume all swap relayers will need to be on the p2p network?
-	flagWithNetwork       = "with-network"
-	flagLibp2pKey         = "libp2p-key"
-	flagLibp2pPort        = "libp2p-port"
-	flagBootnodes         = "bootnodes"
-	flagRelayerCommission = "relayer-commission"
+	flagWithNetwork = "with-network"
+	flagLibp2pKey   = "libp2p-key"
+	flagLibp2pPort  = "libp2p-port"
+	flagBootnodes   = "bootnodes"
+	flagMinFee      = "min-fee"
 
 	defaultLibp2pPort = 10900
 )
@@ -118,10 +119,10 @@ var (
 			EnvVars: []string{"SWAPD_BOOTNODES"},
 		},
 		&cli.StringFlag{
-			Name: flagRelayerCommission,
-			Usage: "Minimum commission percentage (of the swap value) to receive:" +
-				" eg. --relayer-commission=0.01 for 1% commission",
-			Value: common.DefaultRelayerCommission.Text('f'),
+			Name: flagMinFee,
+			Usage: "Minimum fee to receive for relaying a transaction (in ETH):" +
+				" eg. --min-fee=0.01 rejects any transactions with fee <0.01 ETH",
+			Value: common.DefaultRelayerFee.Text('f'),
 		},
 	}
 
@@ -248,22 +249,21 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	relayerCommission, err := cliutil.ReadUnsignedDecimalFlag(c, flagRelayerCommission)
+	minFee, err := cliutil.ReadUnsignedDecimalFlag(c, flagMinFee)
 	if err != nil {
 		return err
 	}
 
-	if relayerCommission.Cmp(apd.New(1, -1)) > 0 {
-		return errors.New("relayer commission is too high: must be less than 0.1 (10%)")
+	if minFee.Cmp(apd.New(1, -1)) > 0 {
+		return errors.New("relayer fee is too high: must be less than 0.1 ETH")
 	}
 
-	// TODO: do we need to restrict potential commission values? eg. 1%, 1.25%, 1.5%, etc
-	// or should we just require a fixed value for now?
+	feeWei := coins.EtherToWei(minFee).BigInt()
 	v := &validator{
-		ctx:               ctx,
-		ec:                ec,
-		relayerCommission: relayerCommission,
-		forwarderAddress:  forwarderAddr,
+		ctx:              ctx,
+		ec:               ec,
+		minFee:           feeWei,
+		forwarderAddress: forwarderAddr,
 	}
 
 	// the forwarder contract is fixed here; thus it needs to be the same
