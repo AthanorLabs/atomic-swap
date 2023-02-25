@@ -183,20 +183,20 @@ func (s *swapState) runT0ExpirationHandler() {
 	}
 }
 
-func (s *swapState) expectedXMRLockAccount() (mcrypto.Address, *mcrypto.PrivateViewKey) {
+func (s *swapState) expectedXMRLockAccount() (*mcrypto.Address, *mcrypto.PrivateViewKey) {
 	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
 	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
 	return mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env()), vk
 }
 
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
-	if msg.Address == "" {
+	if msg.Address == nil {
 		return errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
 	lockedAddr, vk := s.expectedXMRLockAccount()
-	if msg.Address != string(lockedAddr) {
+	if !msg.Address.Equal(lockedAddr) {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
 

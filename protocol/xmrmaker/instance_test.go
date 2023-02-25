@@ -253,7 +253,7 @@ func TestInstance_CompleteSwap(t *testing.T) {
 
 	addrRes, err := moneroCli.GetAddress(0)
 	require.NoError(t, err)
-	require.Equal(t, string(address), addrRes.Address)
+	require.Equal(t, address.String(), addrRes.Address)
 
 	err = inst.completeSwap(sinfo, kpOther.SpendKey())
 	require.NoError(t, err)

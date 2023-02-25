@@ -139,7 +139,9 @@ func Test_walletClient_SweepAll_nothingToSweepReturnsError(t *testing.T) {
 
 	addrResp, err := takerWallet.GetAddress(0)
 	require.NoError(t, err)
-	destAddr := mcrypto.Address(addrResp.Address)
+
+	destAddr, err := mcrypto.NewAddress(addrResp.Address, common.Development)
+	require.NoError(t, err)
 
 	_, err = emptyWallet.SweepAll(context.Background(), destAddr, 0, SweepToSelfConfirmations)
 	require.ErrorContains(t, err, "no balance to sweep")
@@ -216,7 +218,7 @@ func TestCallGenerateFromKeys(t *testing.T) {
 	err = c.(*walletClient).generateFromKeys(
 		kp.SpendKey(),
 		kp.ViewKey(),
-		kp.Address(common.Mainnet),
+		kp.PublicKeyPair().Address(common.Mainnet),
 		height,
 		"swap-deposit-wallet",
 		"",
@@ -257,13 +259,13 @@ func TestCallGenerateFromKeys_UnusualAddress(t *testing.T) {
 		0,
 		kp.SpendKey(),
 		kp.ViewKey(),
-		kp3.Address(common.Mainnet),
+		kp3.PublicKeyPair().Address(common.Mainnet),
 	)
 	require.NoError(t, err)
 
 	res, err := c.GetAddress(0)
 	require.NoError(t, err)
-	require.Equal(t, string(address), res.Address)
+	require.Equal(t, address.String(), res.Address)
 }
 
 func Test_getMoneroWalletRPCBin(t *testing.T) {
@@ -326,7 +328,8 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	const numConfirmations = 999999999 // won't be achieved before our context is cancelled
 
 	minBal := coins.MoneroToPiconero(coins.StrToDecimal("10.01")) // add a little extra for fees
-	destAddr := mcrypto.Address(blockRewardAddress)
+	destAddr, err := mcrypto.NewAddress(blockRewardAddress, common.Development)
+	require.NoError(t, err)
 
 	c := CreateWalletClient(t)
 	MineMinXMRBalance(t, c, minBal)
@@ -335,7 +338,7 @@ func Test_walletClient_waitForConfirmations_contextCancelled(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := c.Transfer(ctx, destAddr, 0, coins.NewPiconeroAmount(amount), numConfirmations)
+	_, err = c.Transfer(ctx, destAddr, 0, coins.NewPiconeroAmount(amount), numConfirmations)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
@@ -359,5 +362,5 @@ func TestCreateWalletFromKeys(t *testing.T) {
 	abCli, err := CreateSpendWalletFromKeys(conf, kp, height)
 	require.NoError(t, err)
 	defer abCli.CloseAndRemoveWallet()
-	require.Equal(t, kp.Address(common.Development), abCli.PrimaryAddress())
+	require.Equal(t, kp.PublicKeyPair().Address(common.Development).String(), abCli.PrimaryAddress().String())
 }
