@@ -148,7 +148,7 @@ func (o *Offer) validate() error {
 type OfferExtra struct {
 	StatusCh        chan Status  `json:"-"`
 	RelayerEndpoint string       `json:"relayerEndpoint"`
-	RelayerFee      *apd.Decimal `json:"RelayerFee"`
+	RelayerFee      *apd.Decimal `json:"relayerFee"`
 }
 
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before
