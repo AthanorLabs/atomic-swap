@@ -172,7 +172,8 @@ func (m *manager) CompleteOngoingSwap(info *Info) error {
 		return errNoSwapWithID
 	}
 
-	info.EndTime = time.Now()
+	now := time.Now()
+	info.EndTime = &now
 
 	m.past[info.ID] = info
 	delete(m.ongoing, info.ID)

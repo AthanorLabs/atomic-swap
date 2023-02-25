@@ -37,7 +37,9 @@ type Info struct {
 	// MoneroStartHeight is the Monero block number when the swap begins.
 	MoneroStartHeight uint64            `json:"moneroStartHeight"`
 	StartTime         time.Time         `json:"startTime"`
-	EndTime           time.Time         `json:"endTime"`
+	EndTime           *time.Time        `json:"endTime,omitempty"`
+	Timeout0          *time.Time        `json:"timeout0,omitempty"`
+	Timeout1          *time.Time        `json:"timeout1,omitempty"`
 	statusCh          chan types.Status `json:"-"`
 }
 

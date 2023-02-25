@@ -715,6 +715,10 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
+		if info.Timeout0 != nil && info.Timeout1 != nil {
+			fmt.Printf("First timeout: %s\n", info.Timeout0.Format(common.TimeFmtSecs))
+			fmt.Printf("Second timeout: %s\n", info.Timeout1.Format(common.TimeFmtSecs))
+		}
 	}
 
 	return nil
