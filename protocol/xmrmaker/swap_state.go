@@ -346,7 +346,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
-			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
+			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerFee)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.ID, err)
 			}

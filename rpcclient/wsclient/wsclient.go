@@ -37,7 +37,7 @@ type WsClient interface {
 		exchangeRate *coins.ExchangeRate,
 		ethAsset types.EthAsset,
 		relayerEndpoint string,
-		relayerCommission *apd.Decimal,
+		relayerFee *apd.Decimal,
 	) (*rpctypes.MakeOfferResponse, <-chan types.Status, error)
 }
 
@@ -327,15 +327,15 @@ func (c *wsClient) MakeOfferAndSubscribe(
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission *apd.Decimal,
+	relayerFee *apd.Decimal,
 ) (*rpctypes.MakeOfferResponse, <-chan types.Status, error) {
 	params := &rpctypes.MakeOfferRequest{
-		MinAmount:         min,
-		MaxAmount:         max,
-		ExchangeRate:      exchangeRate,
-		EthAsset:          ethAsset.Address().String(),
-		RelayerEndpoint:   relayerEndpoint,
-		RelayerCommission: relayerCommission,
+		MinAmount:       min,
+		MaxAmount:       max,
+		ExchangeRate:    exchangeRate,
+		EthAsset:        ethAsset.Address().String(),
+		RelayerEndpoint: relayerEndpoint,
+		RelayerFee:      relayerFee,
 	}
 
 	bz, err := vjson.MarshalStruct(params)
