@@ -80,7 +80,6 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 
 	// test transferBack functionality
 	s.transferBack = true
-	s.Backend.SetXMRDepositAddress(s.Backend.XMRClient().PrimaryAddress(), s.ID())
 
 	// invalid SendKeysMessage should result in an error
 	msg := &message.SendKeysMessage{}

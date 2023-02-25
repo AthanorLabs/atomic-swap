@@ -8,12 +8,10 @@ import (
 	"math/big"
 
 	rcommon "github.com/athanorlabs/go-relayer/common"
-	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
@@ -70,10 +68,10 @@ var (
 )
 
 type validator struct {
-	ctx               context.Context
-	ec                *ethclient.Client
-	relayerCommission *apd.Decimal
-	forwarderAddress  ethcommon.Address
+	ctx              context.Context
+	ec               *ethclient.Client
+	minFee           *big.Int
+	forwarderAddress ethcommon.Address
 }
 
 func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionRequest) error {
@@ -81,7 +79,7 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 	// 1. the `to` address is a swap contract;
 	// 2. the function being called is `claimRelayer`;
 	// 3. the fee passed to `claimRelayer` is equal to or greater
-	// than our desired commission percentage.
+	// than our desired fee.
 
 	forwarderAddr, err := contracts.CheckSwapFactoryContractCode(
 		v.ctx, v.ec, req.To,
@@ -108,7 +106,7 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 		return err
 	}
 
-	err = validateRelayerFee(args, v.relayerCommission)
+	err = validateFee(args, v.minFee)
 	if err != nil {
 		return err
 	}
@@ -126,38 +124,17 @@ func unpackData(data []byte) (map[string]interface{}, error) {
 	return args, nil
 }
 
-func validateRelayerFee(args map[string]interface{}, minFeePercentage *apd.Decimal) error {
-	value, ok := args["value"].(*big.Int)
-	if !ok {
-		// this shouldn't happen afaik
-		return errors.New("value argument was not marshalled into a *big.Int")
-	}
-
+func validateFee(args map[string]interface{}, minFee *big.Int) error {
 	fee, ok := args["fee"].(*big.Int)
 	if !ok {
 		// this shouldn't happen afaik
 		return errors.New("fee argument was not marshalled into a *big.Int")
 	}
 
-	valueD := apd.NewWithBigInt(
-		new(apd.BigInt).SetMathBigInt(value), // swap value, in wei
-		0,
-	)
-	feeD := apd.NewWithBigInt(
-		new(apd.BigInt).SetMathBigInt(fee), // fee, in wei
-		0,
-	)
-
-	percentage := new(apd.Decimal)
-	_, err := coins.DecimalCtx().Quo(percentage, feeD, valueD)
-	if err != nil {
-		return err
-	}
-
-	if percentage.Cmp(minFeePercentage) < 0 {
-		return fmt.Errorf("fee too low: percentage is %s, expected minimum %s",
-			percentage,
-			minFeePercentage,
+	if fee.Cmp(minFee) < 0 {
+		return fmt.Errorf("fee too low: got %s, expected minimum %s",
+			fee,
+			minFee,
 		)
 	}
 

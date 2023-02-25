@@ -14,19 +14,19 @@ func (c *Client) MakeOffer(
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission *apd.Decimal,
+	relayerFee *apd.Decimal,
 ) (*rpctypes.MakeOfferResponse, error) {
 	const (
 		method = "net_makeOffer"
 	)
 
 	req := &rpctypes.MakeOfferRequest{
-		MinAmount:         min,
-		MaxAmount:         max,
-		ExchangeRate:      exchangeRate,
-		EthAsset:          ethAsset,
-		RelayerEndpoint:   relayerEndpoint,
-		RelayerCommission: relayerCommission,
+		MinAmount:       min,
+		MaxAmount:       max,
+		ExchangeRate:    exchangeRate,
+		EthAsset:        ethAsset,
+		RelayerEndpoint: relayerEndpoint,
+		RelayerFee:      relayerFee,
 	}
 	res := &rpctypes.MakeOfferResponse{}
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 )
@@ -15,18 +15,18 @@ const (
 )
 
 var (
-	relayerCommission = coins.StrToDecimal("0.01")
+	relayerFee = common.DefaultRelayerFee
 )
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {
-	s.testSuccessOneSwap(types.EthAssetETH, defaultRelayerEndpoint, relayerCommission)
+	s.testSuccessOneSwap(types.EthAssetETH, defaultRelayerEndpoint, relayerFee)
 }
 
 func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 	s.testSuccessOneSwap(
 		types.EthAsset(deployERC20Mock(s.T())),
 		defaultRelayerEndpoint,
-		relayerCommission,
+		relayerFee,
 	)
 }
 
@@ -42,5 +42,5 @@ func (s *IntegrationTestSuite) TestXMRMaker_DiscoverRelayer() {
 
 func (s *IntegrationTestSuite) Test_Success_ClaimRelayer_P2p() {
 	// use fake endpoint, this will cause the node to fallback to the p2p layer
-	s.testSuccessOneSwap(types.EthAssetETH, "http://127.0.0.1:9090", relayerCommission)
+	s.testSuccessOneSwap(types.EthAssetETH, "http://127.0.0.1:9090", relayerFee)
 }

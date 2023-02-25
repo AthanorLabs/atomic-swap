@@ -245,7 +245,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOf
 		req.EthAsset,
 	)
 
-	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerCommission)
+	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerFee)
 	if err != nil {
 		return nil, nil, err
 	}
