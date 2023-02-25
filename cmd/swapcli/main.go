@@ -26,19 +26,19 @@ import (
 const (
 	defaultDiscoverSearchTimeSecs = 12
 
-	flagSwapdPort         = "swapd-port"
-	flagMinAmount         = "min-amount"
-	flagMaxAmount         = "max-amount"
-	flagPeerID            = "peer-id"
-	flagOfferID           = "offer-id"
-	flagOfferIDs          = "offer-ids"
-	flagExchangeRate      = "exchange-rate"
-	flagProvides          = "provides"
-	flagProvidesAmount    = "provides-amount"
-	flagRelayerCommission = "relayer-commission"
-	flagRelayerEndpoint   = "relayer-endpoint"
-	flagSearchTime        = "search-time"
-	flagSubscribe         = "subscribe"
+	flagSwapdPort       = "swapd-port"
+	flagMinAmount       = "min-amount"
+	flagMaxAmount       = "max-amount"
+	flagPeerID          = "peer-id"
+	flagOfferID         = "offer-id"
+	flagOfferIDs        = "offer-ids"
+	flagExchangeRate    = "exchange-rate"
+	flagProvides        = "provides"
+	flagProvidesAmount  = "provides-amount"
+	flagRelayerFee      = "relayer-fee"
+	flagRelayerEndpoint = "relayer-endpoint"
+	flagSearchTime      = "search-time"
+	flagSubscribe       = "subscribe"
 )
 
 var (
@@ -180,9 +180,9 @@ var (
 						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
 					},
 					&cli.StringFlag{
-						Name: flagRelayerCommission,
-						Usage: "Commission to pay the relayer in percentage of the swap value:" +
-							" eg. --relayer-commission=0.01 for 1% commission",
+						Name: flagRelayerFee,
+						Usage: "Fee to pay the relayer in ETH:" +
+							" eg. --relayer-fee=0.009 to pay 0.0009 ETH",
 					},
 					swapdPortFlag,
 				},
@@ -550,16 +550,16 @@ func runMake(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
 
 	relayerEndpoint := ctx.String(flagRelayerEndpoint)
-	relayerCommission := new(apd.Decimal)
+	relayerFee := new(apd.Decimal)
 	if relayerEndpoint != "" {
-		if relayerCommission, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerCommission); err != nil {
+		if relayerFee, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee); err != nil {
 			return err
 		}
-	} else if ctx.IsSet(flagRelayerCommission) {
+	} else if ctx.IsSet(flagRelayerFee) {
 		return errMustSetRelayerEndpoint
 	}
-	if relayerCommission.Cmp(apd.New(1, 0)) > 0 {
-		return errCannotHaveGreaterThan100Commission
+	if relayerFee.Cmp(apd.New(1, 0)) > 0 {
+		return errRelayerFeeTooHigh
 	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
@@ -583,7 +583,7 @@ func runMake(ctx *cli.Context) error {
 			exchangeRate,
 			ethAsset,
 			relayerEndpoint,
-			relayerCommission,
+			relayerFee,
 		)
 		if err != nil {
 			return err
@@ -601,7 +601,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerCommission)
+	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerFee)
 	if err != nil {
 		return err
 	}
