@@ -50,7 +50,7 @@ const (
 	flagLibp2pKey   = "libp2p-key"
 	flagLibp2pPort  = "libp2p-port"
 	flagBootnodes   = "bootnodes"
-	flagRelayerFee  = "relayer-fee"
+	flagMinFee      = "min-fee"
 
 	defaultLibp2pPort = 10900
 )
@@ -119,9 +119,9 @@ var (
 			EnvVars: []string{"SWAPD_BOOTNODES"},
 		},
 		&cli.StringFlag{
-			Name: flagRelayerFee,
-			Usage: "Minimum commission fee to receive in ETH:" +
-				" eg. --relayer-fee=0.01 for a fee of 0.01 ETH",
+			Name: flagMinFee,
+			Usage: "Minimum fee to receive for relaying a transaction (in ETH):" +
+				" eg. --min-fee=0.01 rejects any transactions with fee <0.01 ETH",
 			Value: common.DefaultRelayerFee.Text('f'),
 		},
 	}
@@ -249,20 +249,20 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	relayerFee, err := cliutil.ReadUnsignedDecimalFlag(c, flagRelayerFee)
+	minFee, err := cliutil.ReadUnsignedDecimalFlag(c, flagMinFee)
 	if err != nil {
 		return err
 	}
 
-	if relayerFee.Cmp(apd.New(1, -1)) > 0 {
+	if minFee.Cmp(apd.New(1, -1)) > 0 {
 		return errors.New("relayer fee is too high: must be less than 0.1 ETH")
 	}
 
-	feeWei := coins.EtherToWei(relayerFee).BigInt()
+	feeWei := coins.EtherToWei(minFee).BigInt()
 	v := &validator{
 		ctx:              ctx,
 		ec:               ec,
-		relayerFee:       feeWei,
+		minFee:           feeWei,
 		forwarderAddress: forwarderAddr,
 	}
 

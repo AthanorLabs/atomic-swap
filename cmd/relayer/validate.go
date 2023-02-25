@@ -70,7 +70,7 @@ var (
 type validator struct {
 	ctx              context.Context
 	ec               *ethclient.Client
-	relayerFee       *big.Int
+	minFee           *big.Int
 	forwarderAddress ethcommon.Address
 }
 
@@ -106,7 +106,7 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 		return err
 	}
 
-	err = validateRelayerFee(args, v.relayerFee)
+	err = validateFee(args, v.minFee)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func unpackData(data []byte) (map[string]interface{}, error) {
 	return args, nil
 }
 
-func validateRelayerFee(args map[string]interface{}, minFee *big.Int) error {
+func validateFee(args map[string]interface{}, minFee *big.Int) error {
 	fee, ok := args["fee"].(*big.Int)
 	if !ok {
 		// this shouldn't happen afaik

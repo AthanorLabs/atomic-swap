@@ -559,7 +559,7 @@ func runMake(ctx *cli.Context) error {
 		return errMustSetRelayerEndpoint
 	}
 	if relayerFee.Cmp(apd.New(1, 0)) > 0 {
-		return errCannotHaveGreaterThan100Fee
+		return errRelayerFeeTooHigh
 	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {

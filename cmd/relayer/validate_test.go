@@ -85,7 +85,7 @@ func TestValidateRelayerFee(t *testing.T) {
 		require.Equal(t, unpacked["value"], tc.value)
 		require.Equal(t, unpacked["fee"], tc.fee)
 
-		err = validateRelayerFee(unpacked, tc.minFee)
+		err = validateFee(unpacked, tc.minFee)
 		if tc.expectErr {
 			require.Error(t, err)
 			continue
