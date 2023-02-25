@@ -81,7 +81,7 @@ type MakeOfferRequest struct {
 	MinAmount         *apd.Decimal        `json:"minAmount" validate:"required"`
 	MaxAmount         *apd.Decimal        `json:"maxAmount" validate:"required"`
 	ExchangeRate      *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
-	EthAsset          types.EthAsset      `json:"ethAsset"`
+	EthAsset          types.EthAsset      `json:"ethAsset,omitempty"`
 	RelayerEndpoint   string              `json:"relayerEndpoint,omitempty"`
 	RelayerCommission *apd.Decimal        `json:"relayerCommission,omitempty"`
 }

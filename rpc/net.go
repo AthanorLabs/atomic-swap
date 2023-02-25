@@ -237,14 +237,12 @@ func (s *NetService) MakeOffer(
 }
 
 func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOfferResponse, *types.OfferExtra, error) {
-	ethAsset := types.EthAssetETH
-
 	offer := types.NewOffer(
 		coins.ProvidesXMR,
 		req.MinAmount,
 		req.MaxAmount,
 		req.ExchangeRate,
-		ethAsset,
+		req.EthAsset,
 	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerCommission)
