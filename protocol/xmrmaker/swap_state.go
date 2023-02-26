@@ -70,6 +70,8 @@ type swapState struct {
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
+	// set to true once funds are locked
+	fundsLocked bool
 
 	// channels
 
@@ -528,6 +530,7 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	}
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
+	s.fundsLocked = true
 
 	txID, err := types.HexToHash(transfer.TxID)
 	if err != nil {

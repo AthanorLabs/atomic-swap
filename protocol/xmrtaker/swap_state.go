@@ -76,6 +76,8 @@ type swapState struct {
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
+	// set to true once funds are locked
+	fundsLocked bool
 
 	// channels
 
@@ -614,6 +616,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, fmt.Errorf("timeouts not found in transaction receipt's logs: %w", err)
 	}
 
+	s.fundsLocked = true
 	s.setTimeouts(t0, t1)
 
 	s.contractSwap = &contracts.SwapFactorySwap{

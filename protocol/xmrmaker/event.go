@@ -193,7 +193,9 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleEventETHLocked(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
-			return
+			if !s.fundsLocked {
+				return
+			}
 		}
 
 		err = s.setNextExpectedEvent(EventContractReadyType)
