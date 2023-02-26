@@ -4,7 +4,6 @@ package xmrmaker
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
@@ -304,7 +303,7 @@ func (s *swapState) SendKeysMessage() common.Message {
 		ProvidedAmount:     s.info.ProvidedAmount,
 		PublicSpendKey:     s.pubkeys.SpendKey(),
 		PrivateViewKey:     s.privkeys.ViewKey(),
-		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
+		DLEqProof:          s.dleqProof.Proof(),
 		Secp256k1PublicKey: s.secp256k1Pub,
 		EthAddress:         s.ETHClient().Address(),
 	}

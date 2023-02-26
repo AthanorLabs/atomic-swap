@@ -5,7 +5,6 @@ package xmrtaker
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -308,7 +307,7 @@ func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey(),
 		PrivateViewKey:     s.privkeys.ViewKey(),
-		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
+		DLEqProof:          s.dleqProof.Proof(),
 		Secp256k1PublicKey: s.secp256k1Pub,
 	}
 }

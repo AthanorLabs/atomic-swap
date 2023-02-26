@@ -107,7 +107,7 @@ type SendKeysMessage struct {
 	ProvidedAmount     *apd.Decimal            `json:"providedAmount" validate:"required"`
 	PublicSpendKey     *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
 	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
-	DLEqProof          string                  `json:"dleqProof" validate:"required"`
+	DLEqProof          []byte                  `json:"dleqProof" validate:"required"`
 	Secp256k1PublicKey *secp256k1.PublicKey    `json:"secp256k1PublicKey" validate:"required"`
 	EthAddress         ethcommon.Address       `json:"ethAddress"` // not set by XMR Taker
 }

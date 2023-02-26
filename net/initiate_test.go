@@ -1,7 +1,6 @@
 package net
 
 import (
-	"encoding/hex"
 	"testing"
 	"time"
 
@@ -25,7 +24,7 @@ func createSendKeysMessage(t *testing.T) *message.SendKeysMessage {
 		ProvidedAmount:     coins.StrToDecimal("0.5"),
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
-		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
+		DLEqProof:          keysAndProof.DLEqProof.Proof(),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
 		EthAddress:         crypto.PubkeyToAddress(tests.GetMakerTestKey(t).PublicKey),
 	}

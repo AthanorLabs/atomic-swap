@@ -1,7 +1,6 @@
 package xmrmaker
 
 import (
-	"encoding/hex"
 	"errors"
 	"math/big"
 	"testing"
@@ -79,7 +78,7 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 	msg := &message.SendKeysMessage{
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
-		DLEqProof:          hex.EncodeToString(keysAndProof.DLEqProof.Proof()),
+		DLEqProof:          keysAndProof.DLEqProof.Proof(),
 		Secp256k1PublicKey: keysAndProof.Secp256k1PublicKey,
 	}
 

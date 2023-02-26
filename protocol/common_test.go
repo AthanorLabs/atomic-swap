@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,7 +11,7 @@ func TestKeysAndProof(t *testing.T) {
 	require.NoError(t, err)
 
 	res, err := VerifyKeysAndProof(
-		hex.EncodeToString(kp.DLEqProof.Proof()),
+		kp.DLEqProof.Proof(),
 		kp.Secp256k1PublicKey,
 		kp.PublicKeyPair.SpendKey(),
 	)
