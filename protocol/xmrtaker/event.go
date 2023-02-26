@@ -229,7 +229,9 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleEventKeysReceived(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
-			return
+			if !s.fundsLocked {
+				return
+			}
 		}
 
 		err = s.setNextExpectedEvent(EventXMRLockedType)
