@@ -77,6 +77,8 @@ type swapState struct {
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
+	// set to true once funds are locked
+	fundsLocked bool
 
 	// channels
 
@@ -198,11 +200,6 @@ func newSwapState(
 	ethStartNumber *big.Int,
 	moneroStartNumber uint64,
 ) (*swapState, error) {
-	_, err := b.XMRDepositAddress(nil)
-	if transferBack && err != nil {
-		return nil, errMustProvideWalletAddress
-	}
-
 	// If the user specified `--external-signer=true` (no private eth key in the client) and
 	// explicitly set `--transfer-back=false` (overriding the default behaviour), we override
 	// their decision and set it back to `true` because an external signer (UI) must be used,
@@ -213,7 +210,7 @@ func newSwapState(
 
 	var sender txsender.Sender
 	if info.EthAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(info.EthAsset.Address(), b.ETHClient().Raw()) //nolint:govet
+		erc20Contract, err := contracts.NewIERC20(info.EthAsset.Address(), b.ETHClient().Raw())
 		if err != nil {
 			return nil, err
 		}
@@ -223,6 +220,7 @@ func newSwapState(
 			return nil, err
 		}
 	} else {
+		var err error
 		sender, err = b.NewTxSender(info.EthAsset.Address(), nil)
 		if err != nil {
 			return nil, err
@@ -244,7 +242,7 @@ func newSwapState(
 		logClaimedCh,
 	)
 
-	err = claimedWatcher.Start()
+	err := claimedWatcher.Start()
 	if err != nil {
 		cancel()
 		return nil, err
@@ -619,6 +617,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, fmt.Errorf("timeouts not found in transaction receipt's logs: %w", err)
 	}
 
+	s.fundsLocked = true
 	s.setTimeouts(t0, t1)
 
 	s.contractSwap = &contracts.SwapFactorySwap{

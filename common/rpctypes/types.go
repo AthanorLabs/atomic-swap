@@ -78,12 +78,12 @@ type TakeOfferRequest struct {
 
 // MakeOfferRequest ...
 type MakeOfferRequest struct {
-	MinAmount         *apd.Decimal        `json:"minAmount"`
-	MaxAmount         *apd.Decimal        `json:"maxAmount"`
-	ExchangeRate      *coins.ExchangeRate `json:"exchangeRate"`
-	EthAsset          string              `json:"ethAsset,omitempty"`
-	RelayerEndpoint   string              `json:"relayerEndpoint,omitempty"`
-	RelayerCommission *apd.Decimal        `json:"relayerCommission,omitempty"`
+	MinAmount       *apd.Decimal        `json:"minAmount"`
+	MaxAmount       *apd.Decimal        `json:"maxAmount"`
+	ExchangeRate    *coins.ExchangeRate `json:"exchangeRate"`
+	EthAsset        string              `json:"ethAsset,omitempty"`
+	RelayerEndpoint string              `json:"relayerEndpoint,omitempty"`
+	RelayerFee      *apd.Decimal        `json:"relayerFee,omitempty"`
 }
 
 // MakeOfferResponse ...

@@ -172,7 +172,7 @@ func (s *IntegrationTestSuite) TestSuccess_OneSwap() {
 func (s *IntegrationTestSuite) testSuccessOneSwap(
 	asset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission *apd.Decimal,
+	relayerFee *apd.Decimal,
 ) {
 	const testTimeout = time.Second * 90
 
@@ -182,7 +182,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 	min := coins.StrToDecimal("0.1")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
-		exchangeRate, asset, relayerEndpoint, relayerCommission)
+		exchangeRate, asset, relayerEndpoint, relayerFee)
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)

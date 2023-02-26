@@ -7,12 +7,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	rcommon "github.com/athanorlabs/go-relayer/common"
@@ -20,7 +18,7 @@ import (
 	"github.com/athanorlabs/go-relayer/relayer"
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
-	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -30,7 +28,6 @@ import (
 
 var (
 	defaultTestTimeoutDuration = big.NewInt(60 * 5)
-	relayerCommission, _, _    = apd.NewFromString("0.01")
 )
 
 // runRelayer starts the relayer and returns the endpoint URL
@@ -84,7 +81,7 @@ func runRelayer(
 }
 
 func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
-	initialBalance := big.NewInt(100000000000)
+	initialBalance := big.NewInt(90000000000000000)
 
 	sk := tests.GetMakerTestKey(t)
 	conn, chainID := tests.NewEthClient(t)
@@ -176,7 +173,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		require.NoError(t, err)
 	}
 
-	value := big.NewInt(100000000000)
+	value := big.NewInt(90000000000000000)
 	nonce := big.NewInt(0)
 	txOpts.Value = value
 
@@ -231,7 +228,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		contractAddr,
 		conn,
 		relayerEndpoint,
-		relayerCommission,
+		common.DefaultRelayerFee,
 		&swap,
 		id,
 		s,
@@ -252,37 +249,4 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, contracts.StageCompleted, stage)
-}
-
-func TestCalculateRelayerCommissionValue(t *testing.T) {
-	swapValueEther := coins.StrToDecimal("4.567")
-	swapValueWei := coins.EtherToWei(swapValueEther).BigInt()
-	require.Equal(t, "4567000000000000000", swapValueWei.Text(10))
-
-	commissionRate := coins.StrToDecimal("0.01398")
-	const expectedCommissionETH = "0.06384666" // 4.567 * 0.01398
-
-	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
-	require.NoError(t, err)
-	require.Equal(t, expectedCommissionETH, coins.NewWeiAmount(fee).AsEther().Text('f'))
-}
-
-func TestCalculateRelayerCommissionValue_roundUp(t *testing.T) {
-	commissionRate := coins.StrToDecimal("0.10")
-	swapValueWei := big.NewInt(9999999995)     // 10% is 999999999.5
-	const expectedCommissionWei = "1000000000" // ceil(999999999.5)
-
-	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
-	require.NoError(t, err)
-	assert.Equal(t, expectedCommissionWei, fee.String())
-}
-
-func TestCalculateRelayerCommissionValue_roundDown(t *testing.T) {
-	commissionRate := coins.StrToDecimal("0.10")
-	swapValueWei := big.NewInt(9999999994)    // 10% is 999999999.4
-	const expectedCommissionWei = "999999999" // floor(999999999.4)
-
-	fee, err := calculateRelayerCommission(swapValueWei, commissionRate)
-	require.NoError(t, err)
-	assert.Equal(t, expectedCommissionWei, fee.String())
 }

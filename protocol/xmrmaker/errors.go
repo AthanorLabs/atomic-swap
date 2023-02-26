@@ -19,7 +19,6 @@ var (
 	errSwapIDMismatch                = errors.New("hash of swap struct does not match swap ID")
 	errLockTxReverted                = errors.New("other party failed to lock ETH asset (transaction reverted)")
 	errInvalidETHLockedTransaction   = errors.New("eth locked tx was not to correct contract address")
-	errRelayerCommissionRateTooHigh  = errors.New("relayer commission must be less than 0.1 (10%)")
 	errInvalidT0                     = errors.New("invalid t0 value; asset was locked too far in the past")
 	errInvalidT1                     = errors.New("invalid swap timeout set by counterparty")
 	errRelayedTransactionTimeout     = errors.New("relayed transaction was not included within one minute")
@@ -28,6 +27,7 @@ var (
 	errClaimedLogWrongEvent          = errors.New("log did not have the Claimed event as its first topic")
 	errClaimedLogWrongSwapID         = errors.New("log did not have the correct swap ID as its second topic")
 	errClaimedLogWrongSecret         = errors.New("log did not have the correct secret as its third topic")
+	errSwapValueTooLow               = errors.New("swap value is less than relayer fee")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

@@ -74,13 +74,12 @@ type Backend interface {
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
 	SwapTimeout() time.Duration
-	XMRDepositAddress(id *types.Hash) (*mcrypto.Address, error)
+	XMRDepositAddress(offerID *types.Hash) *mcrypto.Address
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
 	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
-	SetBaseXMRDepositAddress(*mcrypto.Address)
 
 	// relayer functions
 	DiscoverRelayers() ([]peer.ID, error)
@@ -97,10 +96,13 @@ type backend struct {
 	moneroWallet monero.WalletClient
 	ethClient    extethclient.EthClient
 
-	// monero deposit address (used if xmrtaker has transferBack set to true)
-	sync.RWMutex
-	baseXMRDepositAddr *mcrypto.Address
-	xmrDepositAddrs    map[types.Hash]*mcrypto.Address
+	// Monero deposit address. When the XMR xmrtaker has transferBack set to
+	// true (default), claimed funds are swept back to the primary XMR wallet
+	// address used by swapd. This sweep destination address can be overridden
+	// on a per-swap basis, by setting an address indexed by the offerID/swapID
+	// in the map below.
+	perSwapXMRDepositAddrRWMu sync.RWMutex
+	perSwapXMRDepositAddr     map[types.Hash]*mcrypto.Address
 
 	// swap contract
 	contract     *contracts.SwapFactory
@@ -139,18 +141,18 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}
 
 	return &backend{
-		ctx:             cfg.Ctx,
-		env:             cfg.Environment,
-		moneroWallet:    cfg.MoneroClient,
-		ethClient:       cfg.EthereumClient,
-		contract:        cfg.SwapContract,
-		contractAddr:    cfg.SwapContractAddress,
-		swapManager:     cfg.SwapManager,
-		swapTimeout:     common.SwapTimeoutFromEnv(cfg.Environment),
-		MessageSender:   cfg.Net,
-		xmrDepositAddrs: make(map[types.Hash]*mcrypto.Address),
-		recoveryDB:      cfg.RecoveryDB,
-		rnet:            cfg.RelayerHost,
+		ctx:                   cfg.Ctx,
+		env:                   cfg.Environment,
+		moneroWallet:          cfg.MoneroClient,
+		ethClient:             cfg.EthereumClient,
+		contract:              cfg.SwapContract,
+		contractAddr:          cfg.SwapContractAddress,
+		swapManager:           cfg.SwapManager,
+		swapTimeout:           common.SwapTimeoutFromEnv(cfg.Environment),
+		MessageSender:         cfg.Net,
+		perSwapXMRDepositAddr: make(map[types.Hash]*mcrypto.Address),
+		recoveryDB:            cfg.RecoveryDB,
+		rnet:                  cfg.RelayerHost,
 	}, nil
 }
 
@@ -204,44 +206,43 @@ func (b *backend) SetSwapTimeout(timeout time.Duration) {
 	b.swapTimeout = timeout
 }
 
-func (b *backend) XMRDepositAddress(id *types.Hash) (*mcrypto.Address, error) {
-	b.RLock()
-	defer b.RUnlock()
-
-	if id == nil && b.baseXMRDepositAddr == nil {
-		return nil, errNoXMRDepositAddress
-	} else if id == nil {
-		return b.baseXMRDepositAddr, nil
-	}
-
-	addr, has := b.xmrDepositAddrs[*id]
-	if !has && b.baseXMRDepositAddr == nil {
-		return nil, errNoXMRDepositAddress
-	} else if !has {
-		return nil, nil
-	}
-
-	return addr, nil
-}
-
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error) {
 	return contracts.NewSwapFactory(addr, b.ethClient.Raw())
 }
 
-func (b *backend) SetBaseXMRDepositAddress(addr *mcrypto.Address) {
-	b.baseXMRDepositAddr = addr
+// XMRDepositAddress returns the per-swap override deposit address, if a
+// per-swap address was set. Otherwise the primary swapd Monero wallet address
+// is returned.
+func (b *backend) XMRDepositAddress(offerID *types.Hash) *mcrypto.Address {
+	b.perSwapXMRDepositAddrRWMu.RLock()
+	defer b.perSwapXMRDepositAddrRWMu.RUnlock()
+
+	if offerID != nil {
+		addr, ok := b.perSwapXMRDepositAddr[*offerID]
+		if ok {
+			return addr
+		}
+	}
+
+	return b.XMRClient().PrimaryAddress()
 }
 
-func (b *backend) SetXMRDepositAddress(addr *mcrypto.Address, id types.Hash) {
-	b.Lock()
-	defer b.Unlock()
-	b.xmrDepositAddrs[id] = addr
+// SetXMRDepositAddress sets a per-swap override deposit address to use when
+// sweeping funds out of the shared swap wallet. When transferBack is set
+// (default), funds will be swept to this override address instead of to swap's
+// primary monero wallet.
+func (b *backend) SetXMRDepositAddress(addr *mcrypto.Address, offerID types.Hash) {
+	b.perSwapXMRDepositAddrRWMu.Lock()
+	defer b.perSwapXMRDepositAddrRWMu.Unlock()
+	b.perSwapXMRDepositAddr[offerID] = addr
 }
 
-func (b *backend) ClearXMRDepositAddress(id types.Hash) {
-	b.Lock()
-	defer b.Unlock()
-	delete(b.xmrDepositAddrs, id)
+// ClearXMRDepositAddress clears the per-swap, override deposit address from the
+// map if a value was set.
+func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
+	b.perSwapXMRDepositAddrRWMu.Lock()
+	defer b.perSwapXMRDepositAddrRWMu.Unlock()
+	delete(b.perSwapXMRDepositAddr, offerID)
 }
 
 func (b *backend) DiscoverRelayers() ([]peer.ID, error) {

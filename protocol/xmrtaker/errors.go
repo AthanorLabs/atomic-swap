@@ -23,10 +23,9 @@ var (
 	errSwapInstantiationNoLogs = errors.New("expected 1 log, got 0")
 	errSwapCompleted           = errors.New("swap is already completed")
 
-	// inititation errors
+	// initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
 	errBalanceTooLow             = errors.New("eth balance lower than amount to be provided")
-	errMustProvideWalletAddress  = errors.New("must provide wallet address if transfer back is set")
 	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not ETHLocked or ContractReady") //nolint:lll
 )
 

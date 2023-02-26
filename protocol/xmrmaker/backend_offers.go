@@ -11,7 +11,7 @@ import (
 func (b *Instance) MakeOffer(
 	o *types.Offer,
 	relayerEndpoint string,
-	relayerCommissionRate *apd.Decimal,
+	relayerFee *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	// get monero balance
 	balance, err := b.backend.XMRClient().GetBalance(0)
@@ -24,7 +24,7 @@ func (b *Instance) MakeOffer(
 		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
 	}
 
-	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerCommissionRate)
+	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerFee)
 	if err != nil {
 		return nil, err
 	}

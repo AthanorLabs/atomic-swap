@@ -71,6 +71,8 @@ type swapState struct {
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
+	// set to true once funds are locked
+	fundsLocked bool
 
 	// channels
 
@@ -344,7 +346,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
-			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerCommission)
+			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerFee)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.ID, err)
 			}
@@ -529,6 +531,7 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	}
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
+	s.fundsLocked = true
 
 	txID, err := types.HexToHash(transfer.TxID)
 	if err != nil {
