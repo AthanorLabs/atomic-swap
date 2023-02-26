@@ -90,10 +90,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address,
 	var depositAddr *mcrypto.Address
 	if s.transferBack {
 		id := s.ID()
-		depositAddr, err = s.XMRDepositAddress(&id)
-		if err != nil {
-			return nil, err
-		}
+		depositAddr = s.XMRDepositAddress(&id)
 	}
 
 	kpAB := pcommon.GetClaimKeypair(
