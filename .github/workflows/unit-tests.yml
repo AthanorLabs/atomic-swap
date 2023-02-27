@@ -61,5 +61,10 @@ jobs:
           ETH_MAINNET_ENDPOINT: ${{ secrets.ETH_MAINNET_ENDPOINT }}
         run: ./scripts/run-unit-tests.sh
 
-      - name: Run coverage
-        run: bash <(curl -s https://codecov.io/bash)
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.out
+          flags: unittests
+          verbose: true
+          fail_ci_if_error: true
