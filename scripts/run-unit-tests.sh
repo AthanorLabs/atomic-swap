@@ -10,12 +10,12 @@ start-ganache
 
 # run unit tests
 echo "running unit tests..."
-rm -f coverage.out
-go test ./... -v -short -timeout=30m -count=1 -covermode=atomic -coverprofile=coverage.out
+rm -f coverage.txt
+go test ./... -v -short -timeout=30m -count=1 -covermode=atomic -coverprofile=coverage.txt
 OK=$?
 
-if [[ -e coverage.out ]]; then
-	go tool cover -html=coverage.out -o coverage.html
+if [[ -e coverage.txt ]]; then
+	go tool cover -html=coverage.txt -o coverage.html
 fi
 
 stop-monerod-regtest

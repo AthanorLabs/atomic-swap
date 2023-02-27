@@ -64,7 +64,5 @@ jobs:
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage.out
-          flags: unittests
           verbose: true
           fail_ci_if_error: true
