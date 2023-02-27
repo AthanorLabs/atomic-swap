@@ -136,8 +136,7 @@ start-daemons() {
 		"--contract-address=${SWAP_FACTORY_ADDR}"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
-	# and do peer discovery.
-	sleep 30
+	sleep 5
 }
 
 stop-daemons() {
