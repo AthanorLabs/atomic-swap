@@ -1,0 +1,7 @@
+# Don't calculate code coverage percentages on generated abigen files
+ignore:
+  - ethereum/swap_factory.go
+  - ethereum/aggregator_v3_interface.go
+  - ethereum/erc20_mock.go
+  - ethereum/ierc20.go
+  - ethereum/block/ut_contract_test.go

@@ -16,7 +16,7 @@
 *.test
 
 # Output of the go coverage tool
-/coverage.out
+/coverage.txt
 /coverage.html
 
 # Logs from make targets
