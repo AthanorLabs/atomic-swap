@@ -560,7 +560,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	// namespace (the namespace for swapd hosts providing XMR offers). We need
 	// to wait a little extra before Alice calls Discover to ensure that the
 	// advertisement went out.
-	common.SleepWithContext(ctx, time.Millisecond*500)
+	common.SleepWithContext(ctx, time.Second)
 
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
