@@ -33,8 +33,8 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := ethcrypto.PubkeyToAddress(*pub)
 
-	decimals := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil)
-	balance := big.NewInt(0).Mul(big.NewInt(9999999), decimals)
+	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	balance := new(big.Int).Mul(big.NewInt(9999999), decimals)
 	erc20Addr, erc20Tx, _, err := contracts.DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, balance)
 	require.NoError(t, err)
 	_, err = block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
@@ -47,7 +47,7 @@ func (s *IntegrationTestSuite) TestXMRTaker_ERC20_Query() {
 }
 
 func (s *IntegrationTestSuite) TestSuccess_ERC20_OneSwap() {
-	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), "", 0)
+	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), "", nil)
 }
 
 func (s *IntegrationTestSuite) TestRefund_ERC20_XMRTakerCancels() {

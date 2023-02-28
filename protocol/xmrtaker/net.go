@@ -3,6 +3,9 @@ package xmrtaker
 import (
 	"math/big"
 
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -14,19 +17,21 @@ import (
 // EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthereumAssetAmount interface {
 	BigInt() *big.Int
-	AsStandard() float64
+	AsStandard() *apd.Decimal
 }
 
 // Provides returns types.ProvidesETH
-func (inst *Instance) Provides() types.ProvidesCoin {
-	return types.ProvidesETH
+func (inst *Instance) Provides() coins.ProvidesCoin {
+	return coins.ProvidesETH
 }
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
-func (inst *Instance) InitiateProtocol(providesAmount float64, offer *types.Offer) (common.SwapState, error) {
-	receivedAmount := offer.ExchangeRate.ToXMR(providesAmount)
-
+func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error) {
+	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
+	if err != nil {
+		return nil, err
+	}
 	providedAmount, err := pcommon.GetEthereumAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
@@ -37,7 +42,7 @@ func (inst *Instance) InitiateProtocol(providesAmount float64, offer *types.Offe
 		return nil, err
 	}
 
-	state, err := inst.initiate(providedAmount, common.MoneroToPiconero(receivedAmount),
+	state, err := inst.initiate(providedAmount, coins.MoneroToPiconero(expectedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -46,8 +51,8 @@ func (inst *Instance) InitiateProtocol(providesAmount float64, offer *types.Offe
 	return state, nil
 }
 
-func (inst *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmount common.PiconeroAmount,
-	exchangeRate types.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
+func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmount *coins.PiconeroAmount,
+	exchangeRate *coins.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 
@@ -87,7 +92,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, receivedAmoun
 		offerID,
 		inst.transferBack,
 		providesAmount,
-		receivedAmount,
+		expectedAmount,
 		exchangeRate,
 		ethAsset,
 	)

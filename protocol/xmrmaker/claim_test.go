@@ -18,7 +18,7 @@ import (
 	"github.com/athanorlabs/go-relayer/relayer"
 	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
-	//"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -28,7 +28,6 @@ import (
 
 var (
 	defaultTestTimeoutDuration = big.NewInt(60 * 5)
-	relayerCommission          = float64(0.01)
 )
 
 // runRelayer starts the relayer and returns the endpoint URL
@@ -38,7 +37,6 @@ func runRelayer(
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
 	sk *ecdsa.PrivateKey,
-	chainID *big.Int,
 ) string {
 	iforwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
 	require.NoError(t, err)
@@ -47,12 +45,13 @@ func runRelayer(
 	key := rcommon.NewKeyFromPrivateKey(sk)
 
 	cfg := &relayer.Config{
-		Ctx:                   ctx,
-		EthClient:             ec,
-		Forwarder:             fw,
-		Key:                   key,
-		ChainID:               chainID,
-		NewForwardRequestFunc: gsnforwarder.NewIForwarderForwardRequest,
+		Ctx:       ctx,
+		EthClient: ec,
+		Forwarder: fw,
+		Key:       key,
+		ValidateTransactionFunc: func(_ *rcommon.SubmitTransactionRequest) error {
+			return nil
+		},
 	}
 
 	r, err := relayer.NewRelayer(cfg)
@@ -82,7 +81,7 @@ func runRelayer(
 }
 
 func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
-	initialBalance := big.NewInt(100000000000)
+	initialBalance := big.NewInt(90000000000000000)
 
 	sk := tests.GetMakerTestKey(t)
 	conn, chainID := tests.NewEthClient(t)
@@ -151,7 +150,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// start relayer
-	relayerEndpoint := runRelayer(t, ctx, conn, forwarderAddress, relayerSk, chainID)
+	relayerEndpoint := runRelayer(t, ctx, conn, forwarderAddress, relayerSk)
 
 	// deploy swap contract with claim key hash
 	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)
@@ -174,7 +173,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		require.NoError(t, err)
 	}
 
-	value := big.NewInt(100000000000)
+	value := big.NewInt(90000000000000000)
 	nonce := big.NewInt(0)
 	txOpts.Value = value
 
@@ -229,8 +228,9 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		contractAddr,
 		conn,
 		relayerEndpoint,
-		relayerCommission,
+		common.DefaultRelayerFee,
 		&swap,
+		id,
 		s,
 	)
 	require.NoError(t, err)
@@ -249,18 +249,4 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	stage, err := contract.Swaps(nil, id)
 	require.NoError(t, err)
 	require.Equal(t, contracts.StageCompleted, stage)
-}
-
-func TestCalculateRelayerCommissionValue(t *testing.T) {
-	swapValueF := big.NewFloat(0).Mul(big.NewFloat(4.567), numEtherUnitsFloat)
-	swapValue, _ := swapValueF.Int(nil)
-
-	relayerCommission := float64(0.01398)
-
-	expectedF := big.NewFloat(0).Mul(big.NewFloat(0.06384666), numEtherUnitsFloat)
-	expected, _ := expectedF.Int(nil)
-
-	val, err := calculateRelayerCommissionValue(swapValue, relayerCommission)
-	require.NoError(t, err)
-	require.Equal(t, expected, val)
 }

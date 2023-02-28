@@ -3,16 +3,17 @@ package cliutil
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	logging "github.com/ipfs/go-log"
+	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/common"
 )
@@ -20,8 +21,6 @@ import (
 var (
 	// Only use this logger in functions called by programs that use formatted logs like swapd (not swapcli)
 	log = logging.Logger("cmd")
-
-	errInvalidEnv = errors.New("--env must be one of mainnet, stagenet, or dev")
 )
 
 func createAndWriteEthKeyFile(ethPrivKeyFile string, env common.Environment, devXMRMaker, devXMRTaker bool) error {
@@ -79,25 +78,6 @@ func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMR
 	return ethcrypto.HexToECDSA(ethPrivKeyHex)
 }
 
-// GetEnvironment returns a common.Environment from the CLI options.
-func GetEnvironment(envStr string) (env common.Environment, cfg common.Config, err error) {
-	switch envStr {
-	case "mainnet":
-		env = common.Mainnet
-		cfg = common.MainnetConfig
-	case "stagenet":
-		env = common.Stagenet
-		cfg = common.StagenetConfig
-	case "dev":
-		env = common.Development
-		cfg = common.DevelopmentConfig
-	default:
-		return 0, common.Config{}, errInvalidEnv
-	}
-
-	return env, cfg, nil
-}
-
 // GetVersion returns our version string for an executable
 func GetVersion() string {
 	info, ok := debug.ReadBuildInfo()
@@ -125,4 +105,43 @@ func GetVersion() string {
 		dirty,             // add "-dirty" to commit hash if repo was not clean
 		info.GoVersion,
 	)
+}
+
+// ReadUnsignedDecimalFlag reads a string flag and parses it into an *apd.Decimal.
+func ReadUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
+	s := ctx.String(flagName)
+	if s == "" {
+		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
+	}
+	bf, _, err := new(apd.Decimal).SetString(s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
+	}
+	if bf.IsZero() {
+		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
+	}
+	if bf.Negative {
+		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
+	}
+
+	return bf, nil
+}
+
+// ExpandBootnodes expands the boot nodes passed on the command line that
+// can be specified individually with multiple flags, but can also contain
+// multiple boot nodes passed to single flag separated by commas.
+func ExpandBootnodes(nodesCLI []string) []string {
+	var nodes []string // nodes from all flag values combined
+	for _, flagVal := range nodesCLI {
+		splitNodes := strings.Split(flagVal, ",")
+		for _, n := range splitNodes {
+			n = strings.TrimSpace(n)
+			// Handle the empty string to not use default bootnodes. Doing it here after
+			// the split has the arguably positive side effect of skipping empty entries.
+			if len(n) > 0 {
+				nodes = append(nodes, strings.TrimSpace(n))
+			}
+		}
+	}
+	return nodes
 }

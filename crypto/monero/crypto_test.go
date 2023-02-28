@@ -2,6 +2,7 @@ package mcrypto
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -29,9 +30,9 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	pvk, err := hex.DecodeString(pvkBytes)
 	require.NoError(t, err)
 
-	// test MoneroAddrBase58ToBytes
-	address := "49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB"
-	addressBytes, err := MoneroAddrBase58ToBytes(address)
+	// test addrBase58ToBytes
+	addressStr := "49oFJna6jrkJYvmupQktXKXmhnktf1aCvUmwp8HJGvY7fdXpLMTVeqmZLWQLkyHXuU9Z8mZ78LordCmp3Nqx5T9GFdEGueB"
+	addressBytes, err := addrBase58ToBytes(addressStr)
 	require.NoError(t, err)
 	require.Equal(t, psk, addressBytes[1:33])
 	require.Equal(t, pvk, addressBytes[33:65])
@@ -41,12 +42,14 @@ func TestPrivateKeyPairToAddress(t *testing.T) {
 	// give the correct public keys
 	kp, err := NewPrivateKeyPairFromBytes(sk, vk)
 	require.NoError(t, err)
-	require.Equal(t, addressBytes, kp.AddressBytes(common.Mainnet))
-	require.Equal(t, Address(address), kp.Address(common.Mainnet))
+	address := kp.PublicKeyPair().Address(common.Mainnet)
+
+	require.EqualValues(t, addressBytes, address.decoded[:])
+	require.Equal(t, addressStr, address.String())
 
 	// check public key derivation
-	require.Equal(t, pskBytes, kp.sk.Public().Hex())
-	require.Equal(t, pvkBytes, kp.vk.Public().Hex())
+	require.Equal(t, "0x"+pskBytes, kp.sk.Public().String())
+	require.Equal(t, "0x"+pvkBytes, kp.vk.Public().String())
 }
 
 func TestGeneratePrivateKeyPair(t *testing.T) {
@@ -67,34 +70,6 @@ func TestNewPrivateSpendKey(t *testing.T) {
 	sk, err := NewPrivateSpendKey(kp.sk.Bytes())
 	require.NoError(t, err)
 	require.Equal(t, kp.sk.key, sk.key)
-}
-
-func TestNewPrivateViewKeyFromHex(t *testing.T) {
-	kp, err := GenerateKeys()
-	require.NoError(t, err)
-
-	vk, err := NewPrivateViewKeyFromHex(kp.vk.Hex())
-	require.NoError(t, err)
-	require.Equal(t, kp.vk.key, vk.key)
-}
-
-func TestNewPublicKeyFromHex(t *testing.T) {
-	kp, err := GenerateKeys()
-	require.NoError(t, err)
-
-	pk, err := NewPublicKeyFromHex(kp.sk.Public().Hex())
-	require.NoError(t, err)
-	require.Equal(t, kp.sk.Public().key.Bytes(), pk.key.Bytes())
-}
-
-func TestNewPublicKeyPairFromHex(t *testing.T) {
-	kp, err := GenerateKeys()
-	require.NoError(t, err)
-
-	kp2, err := NewPublicKeyPairFromHex(kp.sk.Public().Hex(), kp.vk.Public().Hex())
-	require.NoError(t, err)
-	require.Equal(t, kp.sk.Public().key.Bytes(), kp2.sk.key.Bytes())
-	require.Equal(t, kp.vk.Public().key.Bytes(), kp2.vk.key.Bytes())
 }
 
 func TestPrivateSpendKey_View(t *testing.T) {
@@ -151,6 +126,6 @@ func TestPrivateSpendKey_View(t *testing.T) {
 		require.NoError(t, err)
 		vk, err := psk.View()
 		require.NoError(t, err)
-		require.Equal(t, tt.viewKey, vk.Hex())
+		require.Equal(t, tt.viewKey, strings.TrimPrefix(vk.String(), "0x"))
 	}
 }

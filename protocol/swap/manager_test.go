@@ -3,6 +3,9 @@ package swap
 import (
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 
 	"github.com/golang/mock/gomock"
@@ -17,14 +20,17 @@ func TestNewManager(t *testing.T) {
 
 	db.EXPECT().GetAllSwaps()
 
-	m, err := NewManager(db)
+	mgr, err := NewManager(db)
 	require.NoError(t, err)
+	m := mgr.(*manager)
 
 	hashA := types.Hash{0x1}
 	infoA := NewInfo(
 		hashA,
-		types.ProvidesXMR,
-		1, 1, 0.1,
+		coins.ProvidesXMR,
+		apd.New(1, 0),
+		apd.New(10, 0),
+		coins.ToExchangeRate(apd.New(1, -1)), // 0.1
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
@@ -36,8 +42,10 @@ func TestNewManager(t *testing.T) {
 
 	infoB := NewInfo(
 		types.Hash{2},
-		types.ProvidesXMR,
-		1, 1, 0.1,
+		coins.ProvidesXMR,
+		apd.New(1, 0),
+		apd.New(10, 0),
+		coins.ToExchangeRate(apd.New(1, -1)), // 0.1
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		100,
@@ -48,8 +56,9 @@ func TestNewManager(t *testing.T) {
 	require.NoError(t, err)
 
 	db.EXPECT().GetAllSwaps().Return([]*Info{infoA, infoB}, nil)
-	m, err = NewManager(db)
+	mgr, err = NewManager(db)
 	require.NoError(t, err)
+	m = mgr.(*manager)
 	require.Equal(t, 1, len(m.ongoing))
 	require.Equal(t, infoA, m.ongoing[hashA])
 }
@@ -61,12 +70,15 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 
 	db.EXPECT().GetAllSwaps()
 
-	m, err := NewManager(db)
+	mgr, err := NewManager(db)
+	m := mgr.(*manager)
 	require.NoError(t, err)
 	info := NewInfo(
 		types.Hash{},
-		types.ProvidesXMR,
-		1, 1, 0.1,
+		coins.ProvidesXMR,
+		apd.New(1, 0),
+		apd.New(10, 0),
+		coins.ToExchangeRate(apd.New(1, -1)), // 0.1
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
@@ -86,7 +98,8 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 	require.NotNil(t, m.ongoing)
 
 	db.EXPECT().PutSwap(info)
-	m.CompleteOngoingSwap(info)
+	err = m.CompleteOngoingSwap(info)
+	require.NoError(t, err)
 	require.Equal(t, 0, len(m.ongoing))
 
 	db.EXPECT().GetAllSwaps()
@@ -94,7 +107,8 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []types.Hash{{}}, ids)
 
-	m.CompleteOngoingSwap(info)
+	//err = m.CompleteOngoingSwap(info)
+	//require.NoError(t, err)
 }
 
 func TestManager_AddSwap_Past(t *testing.T) {

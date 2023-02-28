@@ -8,9 +8,9 @@ Follow the [build instructions](./build.md) to ensure you have Go installed and 
 
 Follow the instructions [here](local.md) to set up your local Alice (ETH-holder, XMR-wanter) and Bob (XMR-holder, ETH-wanter) nodes. 
 
-See the instructions in `scripts/testlib.sh` to quickly set up the local Monerod and ganache environment.
-If you need to later kill `ganache`, `monerod`, `monero-wallet-rpc`, `swapd`, you can use the script
-`scripts/cleanup-test-processes.sh`.
+You can use the script `scripts/setup-env.sh` to quickly set up local monerod-test and
+ganache instances. If you need to later kill `ganache`, `monerod`, `monero-wallet-rpc`, or
+`swapd` instances, you can use `scripts/cleanup-test-processes.sh`.
 
 ## Deploying or using deployed SwapFactory.sol
 
@@ -27,24 +27,13 @@ $ ./swapd --dev-xmrtaker --contract-address 0x3F2aF34E4250de94242Ac2B8A38550fd45
 # 2022-01-26T18:56:31.627-0500	INFO	cmd	daemon/contract.go:42	loaded SwapFactory.sol from address 0x3F2aF34E4250de94242Ac2B8A38550fd4503696d
 ```
 
-## Compiling DLEq binaries
-
-The program utilizes a Rust DLEq library implemented by Farcaster.
-
-To compile the farcaster-dleq binaries used, you can run:
-```
-make build-dleq
-```
-
-This will install Rust (if it isn't already installed) and build the binaries. The resulting binaries will be in `./farcaster-dleq/target/release/`.
-
 ## Compiling contract bindings
 
 If you update the `Swap.sol` contract for some reason, you will need to re-generate the Go bindings
 for the contract. **Note:** you do *not* need to do this to try out the swap; only if you want to
 edit the contract for development purposes.
 
-Download solc v0.8.16: https://github.com/ethereum/solidity/releases/tag/v0.8.16
+Download solc v0.8.17: https://github.com/ethereum/solidity/releases/tag/v0.8.17
 
 If `solc` with the needed version is not in your path (or not first in your path), set the
 `SOLC_BIN` environment variable to the correct version:

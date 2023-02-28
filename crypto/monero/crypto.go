@@ -27,8 +27,12 @@ type PrivateKeyPair struct {
 }
 
 // NewPrivateKeyPair returns a new PrivateKeyPair from the given PrivateSpendKey and PrivateViewKey.
-// It does not validate if the view key corresponds to the spend key.
+// Both values must be set, as no assumptions are made that the view key is derived from the spend
+// key with this type.
 func NewPrivateKeyPair(sk *PrivateSpendKey, vk *PrivateViewKey) *PrivateKeyPair {
+	if sk == nil || vk == nil {
+		panic("NewPrivateKeyPair requires a key pair")
+	}
 	return &PrivateKeyPair{
 		sk: sk,
 		vk: vk,
@@ -56,22 +60,6 @@ func NewPrivateKeyPairFromBytes(skBytes, vkBytes []byte) (*PrivateKeyPair, error
 		sk: &PrivateSpendKey{key: sk},
 		vk: &PrivateViewKey{key: vk},
 	}, nil
-}
-
-// NewPrivateKeyPairFromHex returns a PrivateKeyPair from the given hex-encoded byte
-// representation of a private spend and view key.
-func NewPrivateKeyPairFromHex(skHex, vkHex string) (*PrivateKeyPair, error) {
-	skBytes, err := hex.DecodeString(skHex)
-	if err != nil {
-		return nil, err
-	}
-
-	vkBytes, err := hex.DecodeString(vkHex)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewPrivateKeyPairFromBytes(skBytes, vkBytes)
 }
 
 // SpendKeyBytes returns the canonical byte encoding of the private spend key.
@@ -118,17 +106,6 @@ func NewPrivateSpendKey(b []byte) (*PrivateSpendKey, error) {
 	}, nil
 }
 
-// NewPrivateSpendKeyFromHex returns a PrivateKeyPair from the given hex-encoded byte
-// representation of a private spend key.
-func NewPrivateSpendKeyFromHex(skHex string) (*PrivateSpendKey, error) {
-	skBytes, err := hex.DecodeString(skHex)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewPrivateSpendKey(skBytes)
-}
-
 // Public returns the public key corresponding to the private key.
 func (k *PrivateSpendKey) Public() *PublicKey {
 	pk := ed25519.NewIdentityPoint().ScalarBaseMult(k.key)
@@ -137,9 +114,14 @@ func (k *PrivateSpendKey) Public() *PublicKey {
 	}
 }
 
-// Hex returns the hex-encoded canonical byte representation of the PrivateSpendKey.
+// Hex formats the key as a hex string
 func (k *PrivateSpendKey) Hex() string {
 	return hex.EncodeToString(k.key.Bytes())
+}
+
+// String formats the key as a 0x-prefixed hex string
+func (k *PrivateSpendKey) String() string {
+	return "0x" + k.Hex()
 }
 
 // AsPrivateKeyPair returns the PrivateSpendKey as a PrivateKeyPair.
@@ -172,11 +154,6 @@ func (k *PrivateSpendKey) View() (*PrivateViewKey, error) {
 	}, nil
 }
 
-// Hash returns the keccak256 of the secret key bytes
-func (k *PrivateSpendKey) Hash() [32]byte {
-	return crypto.Keccak256(k.key.Bytes())
-}
-
 // Bytes returns the PrivateSpendKey as canonical bytes
 func (k *PrivateSpendKey) Bytes() []byte {
 	return k.key.Bytes()
@@ -195,41 +172,24 @@ func (k *PrivateViewKey) Public() *PublicKey {
 	}
 }
 
-// Hex returns the hex-encoded canonical byte representation of the PrivateViewKey.
+// Bytes returns the canonical 32-byte little-endian encoding of PrivateViewKey.
+func (k *PrivateViewKey) Bytes() []byte {
+	return k.key.Bytes()
+}
+
+// Hex formats the key as a hex string
 func (k *PrivateViewKey) Hex() string {
 	return hex.EncodeToString(k.key.Bytes())
 }
 
-// NewPrivateViewKeyFromHex returns a new PrivateViewKey from the given canonically- and hex-encoded scalar.
-func NewPrivateViewKeyFromHex(vkHex string) (*PrivateViewKey, error) {
-	vkBytes, err := hex.DecodeString(vkHex)
-	if err != nil {
-		return nil, err
-	}
-
-	vk, err := ed25519.NewScalar().SetCanonicalBytes(vkBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PrivateViewKey{
-		key: vk,
-	}, nil
+// String formats the key as a 0x-prefixed hex string
+func (k *PrivateViewKey) String() string {
+	return "0x" + k.Hex()
 }
 
 // PublicKey represents a monero public spend or view key.
 type PublicKey struct {
 	key *ed25519.Point
-}
-
-// NewPublicKeyFromHex returns a new PublicKey from the given canonically- and hex-encoded point.
-func NewPublicKeyFromHex(s string) (*PublicKey, error) {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewPublicKeyFromBytes(b)
 }
 
 // NewPublicKeyFromBytes returns a new PublicKey from the given canonically-encoded point.
@@ -244,48 +204,25 @@ func NewPublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	}, nil
 }
 
-// Hex returns the hex-encoded canonical byte representation of the PublicKey.
+// Bytes returns the canonical 32-byte, little-endian encoding of PublicKey.
+func (k *PublicKey) Bytes() []byte {
+	return k.key.Bytes()
+}
+
+// Hex formats the key as a hex string
 func (k *PublicKey) Hex() string {
 	return hex.EncodeToString(k.key.Bytes())
 }
 
-// Bytes returns the canonical byte representation of the PublicKey.
-func (k *PublicKey) Bytes() []byte {
-	return k.key.Bytes()
+// String formats the key as a 0x-prefixed hex string
+func (k *PublicKey) String() string {
+	return "0x" + k.Hex()
 }
 
 // PublicKeyPair contains a public SpendKey and ViewKey
 type PublicKeyPair struct {
 	sk *PublicKey
 	vk *PublicKey
-}
-
-// NewPublicKeyPairFromHex returns a new PublicKeyPair from the given canonically- and hex-encoded points.
-func NewPublicKeyPairFromHex(skHex, vkHex string) (*PublicKeyPair, error) {
-	skBytes, err := hex.DecodeString(skHex)
-	if err != nil {
-		return nil, err
-	}
-
-	vkBytes, err := hex.DecodeString(vkHex)
-	if err != nil {
-		return nil, err
-	}
-
-	sk, err := ed25519.NewIdentityPoint().SetBytes(skBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	vk, err := ed25519.NewIdentityPoint().SetBytes(vkBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PublicKeyPair{
-		sk: &PublicKey{key: sk},
-		vk: &PublicKey{key: vk},
-	}, nil
 }
 
 // NewPublicKeyPair returns a new PublicKeyPair from the given public spend and view keys.

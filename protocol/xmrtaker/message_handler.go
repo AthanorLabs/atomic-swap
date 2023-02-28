@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
@@ -19,9 +20,9 @@ import (
 // HandleProtocolMessage is called by the network to handle an incoming message.
 // If the message received is not the expected type for the point in the protocol we're at,
 // this function will return an error.
-func (s *swapState) HandleProtocolMessage(msg net.Message) error {
+func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 	switch msg := msg.(type) {
-	case *net.SendKeysMessage:
+	case *message.SendKeysMessage:
 		event := newEventKeysReceived(msg)
 		s.eventCh <- event
 		err := <-event.errCh
@@ -80,26 +81,27 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
-func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message, error) {
-	if msg.ProvidedAmount < s.info.ReceivedAmount {
-		return nil, fmt.Errorf("receiving amount is not the same as expected: got %v, expected %v",
-			msg.ProvidedAmount,
-			s.info.ReceivedAmount,
+func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.Message, error) {
+	if msg.ProvidedAmount == nil {
+		return nil, errMissingProvidedAmount
+	}
+
+	if msg.ProvidedAmount.Cmp(s.info.ExpectedAmount) < 0 {
+		return nil, fmt.Errorf("provided amount is not the same as expected: got %s, expected %s",
+			msg.ProvidedAmount.Text('f'),
+			s.info.ExpectedAmount.Text('f'),
 		)
 	}
 
-	if msg.PublicSpendKey == "" || msg.PrivateViewKey == "" {
+	if msg.PublicSpendKey == nil || msg.PrivateViewKey == nil {
 		return nil, errMissingKeys
 	}
 
-	if msg.EthAddress == "" {
+	if msg.EthAddress == (ethcommon.Address{}) {
 		return nil, errMissingAddress
 	}
 
-	vk, err := mcrypto.NewPrivateViewKeyFromHex(msg.PrivateViewKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate XMRMaker's private view keys: %w", err)
-	}
+	vk := msg.PrivateViewKey
 
 	// verify counterparty's DLEq proof and ensure the resulting secp256k1 key is correct
 	verificationRes, err := pcommon.VerifyKeysAndProof(msg.DLEqProof, msg.Secp256k1PublicKey, msg.PublicSpendKey)
@@ -107,7 +109,7 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 		return nil, err
 	}
 
-	s.xmrmakerAddress = ethcommon.HexToAddress(msg.EthAddress)
+	s.xmrmakerAddress = msg.EthAddress
 	log.Debugf("got XMRMaker's keys and address: address=%s", s.xmrmakerAddress)
 
 	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
@@ -137,10 +139,10 @@ func (s *swapState) handleSendKeysMessage(msg *net.SendKeysMessage) (net.Message
 	go s.runT0ExpirationHandler()
 
 	out := &message.NotifyETHLocked{
-		Address:        s.ContractAddr().String(),
-		TxHash:         txHash.String(),
+		Address:        s.ContractAddr(),
+		TxHash:         txHash,
 		ContractSwapID: s.contractSwapID,
-		ContractSwap:   pcommon.ConvertContractSwapToMsg(s.contractSwap),
+		ContractSwap:   s.contractSwap,
 	}
 
 	return out, nil
@@ -181,42 +183,33 @@ func (s *swapState) runT0ExpirationHandler() {
 	}
 }
 
-func (s *swapState) expectedXMRLockAccount() (mcrypto.Address, *mcrypto.PrivateViewKey) {
+func (s *swapState) expectedXMRLockAccount() (*mcrypto.Address, *mcrypto.PrivateViewKey) {
 	vk := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
 	sk := mcrypto.SumPublicKeys(s.xmrmakerPublicSpendKey, s.pubkeys.SpendKey())
 	return mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env()), vk
 }
 
 func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
-	if msg.Address == "" {
+	if msg.Address == nil {
 		return errNoLockedXMRAddress
 	}
 
 	// check that XMR was locked in expected account, and confirm amount
 	lockedAddr, vk := s.expectedXMRLockAccount()
-	if msg.Address != string(lockedAddr) {
+	if !msg.Address.Equal(lockedAddr) {
 		return fmt.Errorf("address received in message does not match expected address")
 	}
 
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
-
-	t := time.Now().Format(common.TimeFmtNSecs)
-	walletName := fmt.Sprintf("xmrtaker-viewonly-wallet-%s", t)
-	err := s.XMRClient().GenerateViewOnlyWalletFromKeys(
-		vk, lockedAddr, s.walletScanHeight, walletName, "",
-	)
+	conf := s.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-verify-funds")
+	abViewCli, err := monero.CreateViewOnlyWalletFromKeys(conf, vk, lockedAddr, s.walletScanHeight)
 	if err != nil {
 		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
 	}
+	defer abViewCli.CloseAndRemoveWallet()
 
-	log.Debugf("generated view-only wallet to check funds: %s", walletName)
+	log.Debugf("generated view-only wallet to check funds: %s", abViewCli.WalletName())
 
-	if err = s.XMRClient().Refresh(); err != nil {
-		return fmt.Errorf("failed to refresh client: %w", err)
-	}
-
-	balance, err := s.XMRClient().GetBalance(0)
+	balance, err := abViewCli.GetBalance(0)
 	if err != nil {
 		return fmt.Errorf("failed to get balance: %w", err)
 	}
@@ -224,9 +217,9 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 		lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
-	if balance.Balance < uint64(s.receivedAmountInPiconero()) {
-		return fmt.Errorf("locked XMR amount is less than expected: got %v, expected %v",
-			balance.Balance, float64(s.receivedAmountInPiconero()))
+	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
+		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
+			coins.FmtPiconeroAmtAsXMR(balance.Balance), s.ExpectedAmount().Text('f'))
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before
@@ -239,10 +232,6 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 	if balance.BlocksToUnlock > 1 {
 		return fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
 			balance.BlocksToUnlock)
-	}
-
-	if err = s.XMRClient().CloseWallet(); err != nil {
-		return fmt.Errorf("failed to close wallet: %w", err)
 	}
 
 	close(s.xmrLockedCh)

@@ -7,9 +7,11 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/monero"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
@@ -45,11 +47,6 @@ type Config struct {
 // It accepts an endpoint to a monero-wallet-rpc instance where XMRTaker will generate
 // the account in which the XMR will be deposited.
 func NewInstance(cfg *Config) (*Instance, error) {
-	// if this is set, it transfers all xmr received during swaps back to the given wallet.
-	if cfg.TransferBack {
-		cfg.Backend.SetBaseXMRDepositAddress(cfg.Backend.XMRClient().PrimaryWalletAddress())
-	}
-
 	inst := &Instance{
 		backend:    cfg.Backend,
 		dataDir:    cfg.DataDir,
@@ -71,12 +68,17 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	}
 
 	for _, s := range swaps {
-		if s.Provides != types.ProvidesETH {
+		if s.Provides != coins.ProvidesETH {
 			continue
 		}
 
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
-			// TODO: set status to aborted, delete info from recovery db
+			// set status to aborted, delete info from recovery db
+			log.Infof("found ongoing swap %s in DB, aborting since no funds were locked", s.ID)
+			err = inst.abortOngoingSwap(s)
+			if err != nil {
+				log.Warnf("failed to abort ongoing swap %s: %s", s.ID, err)
+			}
 			continue
 		}
 
@@ -89,33 +91,25 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (inst *Instance) createOngoingSwap(s swap.Info) error {
+func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
+	// set status to aborted, delete info from recovery db
+	s.Status = types.CompletedAbort
+	err := inst.backend.SwapManager().CompleteOngoingSwap(s)
+	if err != nil {
+		return err
+	}
+
+	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
+}
+
+func (inst *Instance) createOngoingSwap(s *swap.Info) error {
+	log.Infof("found ongoing swap %s in DB, restarting swap", s.ID)
+
 	// check if we have shared secret key in db; if so, claim XMR from that
 	// otherwise, create new swap state from recovery info
-	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
+	skB, err := inst.backend.RecoveryDB().GetCounterpartySwapPrivateKey(s.ID)
 	if err == nil {
-		kp, err := sharedKey.AsPrivateKeyPair() //nolint:govet
-		if err != nil {
-			return err
-		}
-
-		inst.backend.XMRClient().Lock()
-		defer inst.backend.XMRClient().Unlock()
-
-		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet(
-			"xmrmaker-swap-wallet",
-			inst.backend.Env(),
-			inst.backend.XMRClient(),
-			kp,
-			s.MoneroStartHeight,
-		)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, addr)
-		return nil
+		return inst.completeSwap(s, skB)
 	}
 
 	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.ID)
@@ -137,7 +131,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 	defer inst.swapMu.Unlock()
 	ss, err := newSwapStateFromOngoing(
 		inst.backend,
-		&s,
+		s,
 		inst.transferBack,
 		ethSwapInfo,
 		kp,
@@ -154,6 +148,62 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		defer inst.swapMu.Unlock()
 		delete(inst.swapStates, s.ID)
 	}()
+
+	return nil
+}
+
+// completeSwap is called in the case where we find an ongoing swap in the db on startup,
+// and the swap already has the counterpary's swap secret stored.
+// In this case, we simply claim the XMR, as we have both secrets required.
+// It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
+// us finding the counterparty's secret and claiming the XMR.
+//
+// Note: this will use the current value of `transferBack `(verses whatever value was set when
+// the swap was started). It will also only only recover to the primary wallet address,
+// not whatever address was used when the swap was started.
+func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) error {
+	// fetch our swap private spend key
+	skA, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
+	if err != nil {
+		return err
+	}
+
+	// fetch our swap private view key
+	vkA, err := skA.View()
+	if err != nil {
+		return err
+	}
+
+	// fetch counterparty's private view key
+	_, vkB, err := inst.backend.RecoveryDB().GetCounterpartySwapKeys(s.ID)
+	if err != nil {
+		return err
+	}
+
+	kpAB := pcommon.GetClaimKeypair(
+		skA, skB,
+		vkA, vkB,
+	)
+
+	err = pcommon.ClaimMonero(
+		inst.backend.Ctx(),
+		inst.backend.Env(),
+		s.ID,
+		inst.backend.XMRClient(),
+		s.MoneroStartHeight,
+		kpAB,
+		inst.backend.XMRClient().PrimaryAddress(),
+		inst.transferBack,
+	)
+	if err != nil {
+		return err
+	}
+
+	s.Status = types.CompletedSuccess
+	err = inst.backend.SwapManager().CompleteOngoingSwap(s)
+	if err != nil {
+		return fmt.Errorf("failed to mark swap %s as completed: %w", s.ID, err)
+	}
 
 	return nil
 }

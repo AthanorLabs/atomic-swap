@@ -1,14 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
 cd "${PROJECT_ROOT}" || exit 1
+./scripts/cleanup-test-processes.sh
 
-./scripts/build.sh || exit 1
+ALL=true ./scripts/build.sh || exit 1
 
 source "scripts/testlib.sh"
 check-set-swap-test-data-dir
-
-RELAYER_PORT=7799
 
 # The first 5 ganache keys are reserved for use by integration tests and dev swapd
 # instances. For now, we are only using 4: Alice, Bob, Charlie and the relayer.
@@ -35,22 +34,16 @@ create-eth-keys() {
 		echo "${GANACHE_KEYS[${i}]}" >"${key_file}"
 	done
 }
-
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
 ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 LOG_LEVEL=debug
 
 start-relayer() {
+	local relayer_flags=("${@}")
 	local log_file="${SWAP_TEST_DATA_DIR}/relayer.log"
 	echo "Starting relayer with logs in ${log_file}"
-	./bin/relayer \
-		--deploy \
-		--endpoint="http://localhost:${GANACHE_PORT}" \
-		--log-level=debug \
-		--rpc-port="${RELAYER_PORT}" \
-		--key="${SWAP_TEST_DATA_DIR}/relayer/eth.key" \
-		&>"${log_file}" &
+	./bin/relayer "${relayer_flags[@]}" &>"${log_file}" &
 	local relayer_pid="${!}"
 	echo "${relayer_pid}" >"${SWAP_TEST_DATA_DIR}/relayer.pid"
 	sleep 1
@@ -61,19 +54,6 @@ start-relayer() {
 		echo "============================================"
 		exit 1
 	fi
-	local matched_line=""
-	for _ in {1..60}; do
-		if matched_line=$(grep --max-count=1 'deployed Forwarder' "${log_file}"); then
-			break
-		fi
-		sleep 1
-	done
-	if [[ -z "${matched_line}" ]]; then
-		echo "Failed to parse deployed forwarder address from ${log_file}"
-		exit 1
-	fi
-	FORWARDER_ADDR=${matched_line/* 0x/}
-	echo "Relayer has forwarder address 0x${FORWARDER_ADDR}"
 }
 
 stop-relayer() {
@@ -106,31 +86,38 @@ stop-swapd() {
 start-daemons() {
 	start-monerod-regtest
 	start-ganache
-	start-relayer
 
 	start-swapd alice \
 		--dev-xmrtaker \
 		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
 		"--libp2p-key=${ALICE_LIBP2PKEY}" \
-		--deploy \
-		"--forwarder-address=${FORWARDER_ADDR}"
+		--deploy
 
 	#
 	# Wait up to 60 seconds for Alice's swapd instance to start and deploy the swap contract
 	#
-	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-address.json"
+	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-addresses.json"
 	for _ in {1..60}; do
 		if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
 			break
 		fi
 		sleep 1
 	done
-	if ! CONTRACT_ADDR="$(jq -r .ContractAddress "${SWAP_TEST_DATA_DIR}/alice/contract-address.json")"; then
-		echo "Failed to get Alice's deployed contract address"
+	SWAP_FACTORY_ADDR="$(jq -r .swapFactory "${CONTRACT_ADDR_FILE}")"
+	FORWARDER_ADDR="$(jq -r .forwarder "${CONTRACT_ADDR_FILE}")"
+	if [[ -z "${SWAP_FACTORY_ADDR}" ]] || [[ -z "${FORWARDER_ADDR}" ]]; then
+		echo "Failed to get Alice's deployed contract addresses"
 		stop-daemons
 		exit 1
 	fi
+
+	start-relayer \
+		"--log-level=${LOG_LEVEL}" \
+		--data-dir="${SWAP_TEST_DATA_DIR}" \
+		--rpc \
+		--bootnodes="${ALICE_MULTIADDR}" \
+		--forwarder-address="${FORWARDER_ADDR}"
 
 	start-swapd bob \
 		--dev-xmrmaker \
@@ -138,24 +125,24 @@ start-daemons() {
 		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
 		--libp2p-port=9944 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${CONTRACT_ADDR}"
+		"--contract-address=${SWAP_FACTORY_ADDR}"
 
 	start-swapd charlie \
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
-		--rpc-port 5003 \
+		--rpc-port 5002 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${CONTRACT_ADDR}"
+		"--contract-address=${SWAP_FACTORY_ADDR}"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
-	sleep 10
+	sleep 5
 }
 
 stop-daemons() {
-	stop-relayer
 	stop-swapd charlie
 	stop-swapd bob
+	stop-relayer
 	stop-swapd alice
 	stop-monerod-regtest
 	stop-ganache
@@ -165,16 +152,16 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${CONTRACT_ADDR} go test ./tests -v -count=1 -timeout=30m
+TESTS=integration CONTRACT_ADDR=${SWAP_FACTORY_ADDR} go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 
 # Cleanup test files if we succeeded
 if [[ "${OK}" -eq 0 ]]; then
 	rm -f "${CHARLIE_ETH_KEY}"
-	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-address.json,info-*.json,monero-wallet-rpc.log}
+	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-addresses.json,monero-wallet-rpc.log}
 	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{net,eth}.key
-	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore}
+	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore,db}
 	rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}
 	remove-test-data-dir
 fi

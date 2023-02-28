@@ -52,7 +52,7 @@ func TestCheckForwarderContractCode(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
 	trustedForwarder := deployForwarder(t, ec, pk)
-	err := checkForwarderContractCode(context.Background(), ec, trustedForwarder)
+	err := CheckForwarderContractCode(context.Background(), ec, trustedForwarder)
 	require.NoError(t, err)
 }
 
@@ -62,8 +62,8 @@ func TestCheckForwarderContractCode(t *testing.T) {
 func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
 	allZeroTrustedForwarder := ethcommon.Address{}
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t, allZeroTrustedForwarder))
-	require.Equal(t, codeHex, expectedSwapFactoryBytecodeHex,
-		"update the expectedSwapFactoryBytecodeHex constant with the expected value to fix this test")
+	require.Equal(t, expectedSwapFactoryBytecodeHex, codeHex,
+		"update the expectedSwapFactoryBytecodeHex constant with the actual value to fix this test")
 }
 
 // This test will fail if the compiled SwapFactory contract is updated, but the

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.16 .0;
 
-import "./ERC2771Context.sol";
-import "./IERC20.sol";
-import "./Secp256k1.sol";
+import {ERC2771Context} from "./ERC2771Context.sol";
+import {IERC20} from "./IERC20.sol";
+import {Secp256k1} from "./Secp256k1.sol";
 
 contract SwapFactory is ERC2771Context, Secp256k1 {
     // Swap state is PENDING when the swap is first created and funded
@@ -53,9 +53,9 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         address asset,
         uint256 value
     );
-    event Ready(bytes32 swapID);
-    event Claimed(bytes32 swapID, bytes32 s);
-    event Refunded(bytes32 swapID, bytes32 s);
+    event Ready(bytes32 indexed swapID);
+    event Claimed(bytes32 indexed swapID, bytes32 indexed s);
+    event Refunded(bytes32 indexed swapID, bytes32 indexed s);
 
     constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {} // solhint-disable-line
 

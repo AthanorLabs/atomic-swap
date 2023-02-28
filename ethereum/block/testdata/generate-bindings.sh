@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Generate the UTContract.sol Go bindings into a file named ut_contract_test.go of the
 # parent directory for use by unit tests.
 
 # Use the contract's directory (where this script is) as the current working directory:
-cd "$(dirname "$(readlink -f "$0")")"
+cd "$(dirname "$(realpath "$0")")"
 
 ABIGEN="$(go env GOPATH)/bin/abigen"
 

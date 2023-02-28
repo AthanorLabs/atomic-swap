@@ -2,28 +2,31 @@
 package message
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
-// Type represents the type of a network message
-type Type byte
-
+// Identifiers for our p2p message types. The first byte of a message has the
+// identifier below telling us which type to decode the JSON message as.
 const (
-	QueryResponseType Type = iota //nolint
+	QueryResponseType byte = iota
 	SendKeysType
 	NotifyETHLockedType
 	NotifyXMRLockType
-	NilType
 )
 
-func (t Type) String() string {
+// TypeToString converts a message type into a string.
+func TypeToString(t byte) string {
 	switch t {
 	case QueryResponseType:
 		return "QueryResponse"
@@ -38,52 +41,39 @@ func (t Type) String() string {
 	}
 }
 
-// Message must be implemented by all network messages
-type Message interface {
-	String() string
-	Encode() ([]byte, error)
-	Type() Type
-}
-
 // DecodeMessage decodes the given bytes into a Message
-func DecodeMessage(b []byte) (Message, error) {
-	if len(b) == 0 {
+func DecodeMessage(b []byte) (common.Message, error) {
+	// 1-byte type followed by at least 2-bytes of JSON (`{}`)
+	if len(b) < 3 {
 		return nil, errors.New("invalid message bytes")
 	}
 
-	switch Type(b[0]) {
+	msgType := b[0]
+	msgJSON := b[1:]
+	var msg common.Message
+
+	switch msgType {
 	case QueryResponseType:
-		var m *QueryResponse
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &QueryResponse{}
 	case SendKeysType:
-		var m *SendKeysMessage
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &SendKeysMessage{}
 	case NotifyETHLockedType:
-		var m *NotifyETHLocked
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &NotifyETHLocked{}
 	case NotifyXMRLockType:
-		var m *NotifyXMRLock
-		if err := json.Unmarshal(b[1:], &m); err != nil {
-			return nil, err
-		}
-		return m, nil
+		msg = &NotifyXMRLock{}
 	default:
-		return nil, errors.New("invalid message type")
+		return nil, fmt.Errorf("invalid message type=%d", msgType)
 	}
+
+	if err := vjson.UnmarshalStruct(msgJSON, msg); err != nil {
+		return nil, fmt.Errorf("failed to decode %s message: %w", TypeToString(msg.Type()), err)
+	}
+	return msg, nil
 }
 
 // QueryResponse ...
 type QueryResponse struct {
-	Offers []*types.Offer
+	Offers []*types.Offer `json:"offers" validate:"dive,required"`
 }
 
 // String ...
@@ -95,16 +85,16 @@ func (m *QueryResponse) String() string {
 
 // Encode ...
 func (m *QueryResponse) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
+	b, err := vjson.MarshalStruct(m)
 	if err != nil {
 		return nil, err
 	}
 
-	return append([]byte{byte(QueryResponseType)}, b...), nil
+	return append([]byte{QueryResponseType}, b...), nil
 }
 
 // Type ...
-func (m *QueryResponse) Type() Type {
+func (m *QueryResponse) Type() byte {
 	return QueryResponseType
 }
 
@@ -113,23 +103,21 @@ func (m *QueryResponse) Type() Type {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            string
-	ProvidedAmount     float64
-	PublicSpendKey     string
-	PublicViewKey      string
-	PrivateViewKey     string
-	DLEqProof          string
-	Secp256k1PublicKey string
-	EthAddress         string
+	OfferID            types.Hash              `json:"offerID"`
+	ProvidedAmount     *apd.Decimal            `json:"providedAmount" validate:"required"`
+	PublicSpendKey     *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
+	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
+	DLEqProof          string                  `json:"dleqProof" validate:"required"`
+	Secp256k1PublicKey *secp256k1.PublicKey    `json:"secp256k1PublicKey" validate:"required"`
+	EthAddress         ethcommon.Address       `json:"ethAddress"`
 }
 
 // String ...
 func (m *SendKeysMessage) String() string {
-	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PublicViewKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
+	return fmt.Sprintf("SendKeysMessage OfferID=%s ProvidedAmount=%v PublicSpendKey=%s PrivateViewKey=%s DLEqProof=%s Secp256k1PublicKey=%s EthAddress=%s", //nolint:lll
 		m.OfferID,
 		m.ProvidedAmount,
 		m.PublicSpendKey,
-		m.PublicViewKey,
 		m.PrivateViewKey,
 		m.DLEqProof,
 		m.Secp256k1PublicKey,
@@ -139,39 +127,26 @@ func (m *SendKeysMessage) String() string {
 
 // Encode ...
 func (m *SendKeysMessage) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
+	b, err := vjson.MarshalStruct(m)
 	if err != nil {
 		return nil, err
 	}
 
-	return append([]byte{byte(SendKeysType)}, b...), nil
+	return append([]byte{SendKeysType}, b...), nil
 }
 
 // Type ...
-func (m *SendKeysMessage) Type() Type {
+func (m *SendKeysMessage) Type() byte {
 	return SendKeysType
-}
-
-// ContractSwap is the same as contracts.SwapFactorySwap
-type ContractSwap struct {
-	Owner        ethcommon.Address
-	Claimer      ethcommon.Address
-	PubKeyClaim  [32]byte
-	PubKeyRefund [32]byte
-	Timeout0     *big.Int
-	Timeout1     *big.Int
-	Asset        ethcommon.Address
-	Value        *big.Int
-	Nonce        *big.Int
 }
 
 // NotifyETHLocked is sent by XMRTaker to XMRMaker after deploying the swap contract
 // and locking her ether in it
 type NotifyETHLocked struct {
-	Address        string
-	TxHash         string
-	ContractSwapID types.Hash
-	ContractSwap   *ContractSwap
+	Address        ethcommon.Address          `json:"address"`
+	TxHash         types.Hash                 `json:"txHash"`
+	ContractSwapID types.Hash                 `json:"contractSwapID"`
+	ContractSwap   *contracts.SwapFactorySwap `json:"contractSwap" validate:"required"`
 }
 
 // String ...
@@ -186,23 +161,23 @@ func (m *NotifyETHLocked) String() string {
 
 // Encode ...
 func (m *NotifyETHLocked) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
+	b, err := vjson.MarshalStruct(m)
 	if err != nil {
 		return nil, err
 	}
 
-	return append([]byte{byte(NotifyETHLockedType)}, b...), nil
+	return append([]byte{NotifyETHLockedType}, b...), nil
 }
 
 // Type ...
-func (m *NotifyETHLocked) Type() Type {
+func (m *NotifyETHLocked) Type() byte {
 	return NotifyETHLockedType
 }
 
 // NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
 type NotifyXMRLock struct {
-	Address string // address the monero was sent to
-	TxID    string // Monero transaction ID (transaction hash in hex)
+	Address *mcrypto.Address `json:"address" validate:"required"` // address the monero was sent to
+	TxID    types.Hash       `json:"txID"`                        // Monero transaction ID (transaction hash in hex)
 }
 
 // String ...
@@ -212,15 +187,15 @@ func (m *NotifyXMRLock) String() string {
 
 // Encode ...
 func (m *NotifyXMRLock) Encode() ([]byte, error) {
-	b, err := json.Marshal(m)
+	b, err := vjson.MarshalStruct(m)
 	if err != nil {
 		return nil, err
 	}
 
-	return append([]byte{byte(NotifyXMRLockType)}, b...), nil
+	return append([]byte{NotifyXMRLockType}, b...), nil
 }
 
 // Type ...
-func (m *NotifyXMRLock) Type() Type {
+func (m *NotifyXMRLock) Type() byte {
 	return NotifyXMRLockType
 }

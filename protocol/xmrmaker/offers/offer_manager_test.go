@@ -3,10 +3,14 @@ package offers
 import (
 	"testing"
 
+	"github.com/ChainSafe/chaindb"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/db"
 )
 
 func Test_Manager(t *testing.T) {
@@ -25,10 +29,16 @@ func Test_Manager(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < numAdd; i++ {
-		offer := types.NewOffer(types.ProvidesXMR, float64(i), float64(i), types.ExchangeRate(i),
-			types.EthAssetETH)
+		iDecimal := apd.New(int64(i), 0)
+		offer := types.NewOffer(
+			coins.ProvidesXMR,
+			iDecimal,
+			iDecimal,
+			coins.ToExchangeRate(iDecimal),
+			types.EthAssetETH,
+		)
 		db.EXPECT().PutOffer(offer)
-		offerExtra, err := mgr.AddOffer(offer, "", 0)
+		offerExtra, err := mgr.AddOffer(offer, "", nil)
 		require.NoError(t, err)
 		require.NotNil(t, offerExtra)
 	}
@@ -56,4 +66,55 @@ func Test_Manager(t *testing.T) {
 	mgr.ClearAllOffers()
 	offers = mgr.GetOffers()
 	require.Len(t, offers, 0)
+}
+
+func Test_Manager_NoErrorDeletingOfferNotOnDisk(t *testing.T) {
+	dataDir := t.TempDir()
+	testDB, err := db.NewDatabase(&chaindb.Config{DataDir: dataDir})
+	require.NoError(t, err)
+
+	mgr, err := NewManager(dataDir, testDB)
+	require.NoError(t, err)
+
+	offer := types.NewOffer(
+		coins.ProvidesXMR,
+		coins.StrToDecimal("1"),
+		coins.StrToDecimal("2"),
+		coins.ToExchangeRate(coins.StrToDecimal("0.1")),
+		types.EthAssetETH,
+	)
+	offerExtra, err := mgr.AddOffer(offer, "", nil)
+	require.NoError(t, err)
+	require.NotNil(t, offerExtra)
+
+	// First time we verify that we can trigger a real database error
+	err = testDB.Close()
+	require.NoError(t, err)
+	err = mgr.DeleteOffer(offer.ID)
+	require.ErrorContains(t, err, "Closed")
+
+	// Recreate the database and the manager. The offer still exists,
+	// because the code above did not succeed in deleting it from disk.
+	testDB, err = db.NewDatabase(&chaindb.Config{DataDir: dataDir})
+	require.NoError(t, err)
+	mgr, err = NewManager(dataDir, testDB)
+	require.NoError(t, err)
+
+	// Verify that the entry still exists after restart
+	offer2, offer2Extras, err := mgr.GetOffer(offer.ID)
+	require.NoError(t, err)
+	require.Equal(t, offer.ID, offer2.ID)
+	require.NotNil(t, offer2Extras)
+
+	// Deleting the offer should produce no error
+	err = mgr.DeleteOffer(offer.ID)
+	require.NoError(t, err)
+
+	// Getting the offer fails
+	_, _, err = mgr.GetOffer(offer.ID)
+	require.ErrorIs(t, err, errOfferDoesNotExist)
+
+	// Double deletion is not an error
+	err = mgr.DeleteOffer(offer.ID)
+	require.NoError(t, err)
 }

@@ -4,12 +4,16 @@ package wsclient
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
+	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"
@@ -20,17 +24,21 @@ var log = logging.Logger("rpcclient")
 // WsClient ...
 type WsClient interface {
 	Close()
-	Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error)
-	Query(maddr string) (*rpctypes.QueryPeerResponse, error)
+	Discover(provides string, searchTime uint64) ([]peer.ID, error)
+	Query(who peer.ID) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
-	TakeOfferAndSubscribe(multiaddr, offerID string, providesAmount float64) (ch <-chan types.Status, err error)
+	TakeOfferAndSubscribe(peerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
+		ch <-chan types.Status,
+		err error,
+	)
 	MakeOfferAndSubscribe(
-		min, max float64,
-		exchangeRate types.ExchangeRate,
+		min *apd.Decimal,
+		max *apd.Decimal,
+		exchangeRate *coins.ExchangeRate,
 		ethAsset types.EthAsset,
 		relayerEndpoint string,
-		relayerCommission float64,
-	) (string, <-chan types.Status, error)
+		relayerFee *apd.Decimal,
+	) (*rpctypes.MakeOfferResponse, <-chan types.Status, error)
 }
 
 type wsClient struct {
@@ -76,13 +84,13 @@ func (c *wsClient) read() ([]byte, error) {
 	return message, nil
 }
 
-func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][]string, error) {
+func (c *wsClient) Discover(provides string, searchTime uint64) ([]peer.ID, error) {
 	params := &rpctypes.DiscoverRequest{
 		Provides:   provides,
 		SearchTime: searchTime,
 	}
 
-	bz, err := json.Marshal(params)
+	bz, err := vjson.MarshalStruct(params)
 	if err != nil {
 		return nil, err
 	}
@@ -103,8 +111,8 @@ func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][
 		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
-	var resp *rpctypes.Response
-	err = json.Unmarshal(message, &resp)
+	resp := new(rpctypes.Response)
+	err = vjson.UnmarshalStruct(message, resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -114,20 +122,20 @@ func (c *wsClient) Discover(provides types.ProvidesCoin, searchTime uint64) ([][
 	}
 
 	log.Debugf("received message over websockets: %s", message)
-	var dresp *rpctypes.DiscoverResponse
-	if err := json.Unmarshal(resp.Result, &dresp); err != nil {
+	dresp := new(rpctypes.DiscoverResponse)
+	if err := vjson.UnmarshalStruct(resp.Result, dresp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
 	}
 
-	return dresp.Peers, nil
+	return dresp.PeerIDs, nil
 }
 
-func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
+func (c *wsClient) Query(id peer.ID) (*rpctypes.QueryPeerResponse, error) {
 	params := &rpctypes.QueryPeerRequest{
-		Multiaddr: maddr,
+		PeerID: id,
 	}
 
-	bz, err := json.Marshal(params)
+	bz, err := vjson.MarshalStruct(params)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +157,8 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
-	var resp *rpctypes.Response
-	err = json.Unmarshal(message, &resp)
+	resp := new(rpctypes.Response)
+	err = vjson.UnmarshalStruct(message, resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -160,8 +168,8 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 	}
 
 	log.Debugf("received message over websockets: %s", message)
-	var dresp *rpctypes.QueryPeerResponse
-	if err := json.Unmarshal(resp.Result, &dresp); err != nil {
+	dresp := new(rpctypes.QueryPeerResponse)
+	if err := vjson.UnmarshalStruct(resp.Result, dresp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
 	}
 
@@ -172,10 +180,10 @@ func (c *wsClient) Query(maddr string) (*rpctypes.QueryPeerResponse, error) {
 // If there is no swap with the given ID, it returns an error.
 func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error) {
 	params := &rpctypes.SubscribeSwapStatusRequest{
-		ID: id,
+		OfferID: id,
 	}
 
-	bz, err := json.Marshal(params)
+	bz, err := vjson.MarshalStruct(params)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +211,8 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 				break
 			}
 
-			var resp *rpctypes.Response
-			err = json.Unmarshal(message, &resp)
+			resp := new(rpctypes.Response)
+			err = vjson.UnmarshalStruct(message, resp)
 			if err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
@@ -216,15 +224,15 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			var status *rpctypes.SubscribeSwapStatusResponse
-			if err := json.Unmarshal(resp.Result, &status); err != nil {
+			statusResp := new(rpctypes.SubscribeSwapStatusResponse)
+			if err := vjson.UnmarshalStruct(resp.Result, statusResp); err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
 			}
 
-			s := types.NewStatus(status.Status)
-			respCh <- s
-			if !s.IsOngoing() {
+			status := statusResp.Status
+			respCh <- status
+			if !status.IsOngoing() {
 				return
 			}
 		}
@@ -234,16 +242,17 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 }
 
 func (c *wsClient) TakeOfferAndSubscribe(
-	multiaddr, offerID string,
-	providesAmount float64,
+	peerID peer.ID,
+	offerID types.Hash,
+	providesAmount *apd.Decimal,
 ) (ch <-chan types.Status, err error) {
 	params := &rpctypes.TakeOfferRequest{
-		Multiaddr:      multiaddr,
+		PeerID:         peerID,
 		OfferID:        offerID,
 		ProvidesAmount: providesAmount,
 	}
 
-	bz, err := json.Marshal(params)
+	bz, err := vjson.MarshalStruct(params)
 	if err != nil {
 		return nil, err
 	}
@@ -271,9 +280,8 @@ func (c *wsClient) TakeOfferAndSubscribe(
 		defer close(respCh)
 
 		for {
-			s := types.NewStatus(status)
-			respCh <- s
-			if !s.IsOngoing() {
+			respCh <- status
+			if !status.IsOngoing() {
 				return
 			}
 
@@ -288,50 +296,51 @@ func (c *wsClient) TakeOfferAndSubscribe(
 	return respCh, nil
 }
 
-func (c *wsClient) readTakeOfferResponse() (string, error) {
+func (c *wsClient) readTakeOfferResponse() (types.Status, error) {
 	message, err := c.read()
 	if err != nil {
-		return "", fmt.Errorf("failed to read websockets message: %s", err)
+		return 0, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
-	var resp *rpctypes.Response
-	err = json.Unmarshal(message, &resp)
+	resp := new(rpctypes.Response)
+	err = vjson.UnmarshalStruct(message, resp)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Error != nil {
-		return "", fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return 0, fmt.Errorf("websocket server returned error: %w", resp.Error)
 	}
 
 	log.Debugf("received message over websockets: %s", message)
-	var status *rpctypes.SubscribeSwapStatusResponse
-	if err := json.Unmarshal(resp.Result, &status); err != nil {
-		return "", fmt.Errorf("failed to unmarshal swap status response: %w", err)
+	statusResp := new(rpctypes.SubscribeSwapStatusResponse)
+	if err := vjson.UnmarshalStruct(resp.Result, statusResp); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal swap status response: %w", err)
 	}
 
-	return status.Status, nil
+	return statusResp.Status, nil
 }
 
 func (c *wsClient) MakeOfferAndSubscribe(
-	min, max float64,
-	exchangeRate types.ExchangeRate,
+	min *apd.Decimal,
+	max *apd.Decimal,
+	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	relayerEndpoint string,
-	relayerCommission float64,
-) (string, <-chan types.Status, error) {
+	relayerFee *apd.Decimal,
+) (*rpctypes.MakeOfferResponse, <-chan types.Status, error) {
 	params := &rpctypes.MakeOfferRequest{
-		MinimumAmount:     min,
-		MaximumAmount:     max,
-		ExchangeRate:      exchangeRate,
-		EthAsset:          ethAsset.Address().String(),
-		RelayerEndpoint:   relayerEndpoint,
-		RelayerCommission: relayerCommission,
+		MinAmount:       min,
+		MaxAmount:       max,
+		ExchangeRate:    exchangeRate,
+		EthAsset:        ethAsset.Address().String(),
+		RelayerEndpoint: relayerEndpoint,
+		RelayerFee:      relayerFee,
 	}
 
-	bz, err := json.Marshal(params)
+	bz, err := vjson.MarshalStruct(params)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	req := &rpctypes.Request{
@@ -342,29 +351,29 @@ func (c *wsClient) MakeOfferAndSubscribe(
 	}
 
 	if err = c.writeJSON(req); err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	// read ID from connection
 	message, err := c.read()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to read websockets message: %s", err)
+		return nil, nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
-	var resp *rpctypes.Response
-	err = json.Unmarshal(message, &resp)
+	resp := new(rpctypes.Response)
+	err = vjson.UnmarshalStruct(message, resp)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Error != nil {
-		return "", nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return nil, nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
 	}
 
 	// read synchronous response (offer ID)
-	var respData *rpctypes.MakeOfferResponse
-	if err := json.Unmarshal(resp.Result, &respData); err != nil {
-		return "", nil, fmt.Errorf("failed to unmarshal response: %s", err)
+	respData := new(rpctypes.MakeOfferResponse)
+	if err := vjson.UnmarshalStruct(resp.Result, respData); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal response: %s", err)
 	}
 
 	respCh := make(chan types.Status)
@@ -379,8 +388,8 @@ func (c *wsClient) MakeOfferAndSubscribe(
 				break
 			}
 
-			var resp *rpctypes.Response
-			err = json.Unmarshal(message, &resp)
+			resp := new(rpctypes.Response)
+			err = vjson.UnmarshalStruct(message, resp)
 			if err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
@@ -392,13 +401,13 @@ func (c *wsClient) MakeOfferAndSubscribe(
 			}
 
 			log.Debugf("received message over websockets: %s", message)
-			var status *rpctypes.SubscribeSwapStatusResponse
-			if err := json.Unmarshal(resp.Result, &status); err != nil {
+			statusResp := new(rpctypes.SubscribeSwapStatusResponse)
+			if err := vjson.UnmarshalStruct(resp.Result, statusResp); err != nil {
 				log.Warnf("failed to unmarshal response: %s", err)
 				break
 			}
 
-			s := types.NewStatus(status.Status)
+			s := statusResp.Status
 			respCh <- s
 			if !s.IsOngoing() {
 				return
@@ -406,5 +415,5 @@ func (c *wsClient) MakeOfferAndSubscribe(
 		}
 	}()
 
-	return respData.ID, respCh, nil
+	return respData, respCh, nil
 }

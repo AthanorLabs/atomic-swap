@@ -30,6 +30,17 @@ jobs:
       - name: Run linters
         run: make lint
 
+  mockgen-check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.19.x'
+      - uses: actions/checkout@v3
+
+      - name: Generate mocks and verify no changes
+        run: make mock && diff -u <(echo -n) <(git status --short --untracked-files=no)
+
   vet-check:
     runs-on: ubuntu-22.04
     steps:

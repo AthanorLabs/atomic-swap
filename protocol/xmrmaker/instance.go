@@ -6,10 +6,11 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -21,13 +22,18 @@ var (
 	log = logging.Logger("xmrmaker")
 )
 
+// Host contains required network functionality.
+type Host interface {
+	Advertise([]string)
+}
+
 // Instance implements the functionality that will be needed by a user who owns XMR
 // and wishes to swap for ETH.
 type Instance struct {
 	backend backend.Backend
 	dataDir string
 
-	net net.Host
+	net Host
 
 	walletFile, walletPassword string
 
@@ -44,7 +50,7 @@ type Config struct {
 	DataDir                    string
 	WalletFile, WalletPassword string
 	ExternalSender             bool
-	Network                    net.Host
+	Network                    Host
 }
 
 // NewInstance returns a new *xmrmaker.Instance.
@@ -57,7 +63,7 @@ func NewInstance(cfg *Config) (*Instance, error) {
 
 	if om.NumOffers() > 0 {
 		// this is blocking if the network service hasn't started yet
-		go cfg.Network.Advertise()
+		go cfg.Network.Advertise([]string{string(coins.ProvidesXMR)})
 	}
 
 	inst := &Instance{
@@ -85,11 +91,13 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	}
 
 	for _, s := range swaps {
-		if s.Provides != types.ProvidesXMR {
+		if s.Provides != coins.ProvidesXMR {
 			continue
 		}
 
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
+			log.Infof("found ongoing swap %s in DB, aborting since no funds were locked", s.ID)
+
 			// for these two cases, no funds have been locked, so we can safely
 			// abort the swap.
 			err = inst.abortOngoingSwap(s)
@@ -109,10 +117,10 @@ func (inst *Instance) checkForOngoingSwaps() error {
 	return nil
 }
 
-func (inst *Instance) abortOngoingSwap(s swap.Info) error {
+func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 	// set status to aborted, delete info from recovery db
 	s.Status = types.CompletedAbort
-	err := inst.backend.SwapManager().CompleteOngoingSwap(&s)
+	err := inst.backend.SwapManager().CompleteOngoingSwap(s)
 	if err != nil {
 		return err
 	}
@@ -120,36 +128,17 @@ func (inst *Instance) abortOngoingSwap(s swap.Info) error {
 	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
 }
 
-func (inst *Instance) createOngoingSwap(s swap.Info) error {
+func (inst *Instance) createOngoingSwap(s *swap.Info) error {
+	log.Infof("found ongoing swap %s in DB, restarting swap", s.ID)
+
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
-	sharedKey, err := inst.backend.RecoveryDB().GetSharedSwapPrivateKey(s.ID)
+	skA, err := inst.backend.RecoveryDB().GetCounterpartySwapPrivateKey(s.ID)
 	if err == nil {
-		kp, err := sharedKey.AsPrivateKeyPair() //nolint:govet
-		if err != nil {
-			return err
-		}
-
-		inst.backend.XMRClient().Lock()
-		defer inst.backend.XMRClient().Unlock()
-
-		// TODO: do we want to transfer this back to the original account?
-		addr, err := monero.CreateWallet(
-			"xmrmaker-swap-wallet",
-			inst.backend.Env(),
-			inst.backend.XMRClient(),
-			kp,
-			s.MoneroStartHeight,
-		)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("refunded XMR from swap %s: wallet addr is %s", s.ID, addr)
-		return nil
+		return inst.completeSwap(s, skA)
 	}
 
-	offer, err := inst.offerManager.GetOfferFromDB(s.ID)
+	offer, _, err := inst.offerManager.GetOffer(s.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
 	}
@@ -182,7 +171,7 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 		relayerInfo,
 		inst.offerManager,
 		ethSwapInfo,
-		&s,
+		s,
 		kp,
 	)
 	if err != nil {
@@ -203,6 +192,63 @@ func (inst *Instance) createOngoingSwap(s swap.Info) error {
 	return nil
 }
 
+// completeSwap is called in the case where we find an ongoing swap in the db on startup,
+// and the swap already has the counterpary's swap secret stored.
+// In this case, we simply re-claim the XMR we locked, as we have both secrets required.
+// It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
+// us finding the counterparty's secret and claiming the XMR.
+//
+// Note: this will use the current value of `transferBack `(verses whatever value was set when
+// the swap was started). It will also only only recover to the primary wallet address,
+// not whatever address was used when the swap was started.
+func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
+	// fetch our swap private spend key
+	skB, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
+	if err != nil {
+		return err
+	}
+
+	// fetch our swap private view key
+	vkB, err := skB.View()
+	if err != nil {
+		return err
+	}
+
+	// we save the counterparty's public keys in case they send public keys derived
+	// in a non-standard way.
+	_, vkA, err := inst.backend.RecoveryDB().GetCounterpartySwapKeys(s.ID)
+	if err != nil {
+		return err
+	}
+
+	kpAB := pcommon.GetClaimKeypair(
+		skA, skB,
+		vkA, vkB,
+	)
+
+	err = pcommon.ClaimMonero(
+		inst.backend.Ctx(),
+		inst.backend.Env(),
+		s.ID,
+		inst.backend.XMRClient(),
+		s.MoneroStartHeight,
+		kpAB,
+		inst.backend.XMRClient().PrimaryAddress(),
+		true, // always sweep back to our primary address
+	)
+	if err != nil {
+		return err
+	}
+
+	s.Status = types.CompletedRefund
+	err = inst.backend.SwapManager().CompleteOngoingSwap(s)
+	if err != nil {
+		return fmt.Errorf("failed to mark swap %s as completed: %w", s.ID, err)
+	}
+
+	return nil
+}
+
 // GetOngoingSwapState ...
 func (inst *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
 	inst.swapMu.Lock()
@@ -213,17 +259,21 @@ func (inst *Instance) GetOngoingSwapState(id types.Hash) common.SwapState {
 
 // GetMoneroBalance returns the primary wallet address, and current balance of the user's monero
 // wallet.
-func (inst *Instance) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
-	addr, err := inst.backend.XMRClient().GetAddress(0)
+func (inst *Instance) GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceResponse, error) {
+	addrResp, err := inst.backend.XMRClient().GetAddress(0)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
-	if err = inst.backend.XMRClient().Refresh(); err != nil {
-		return "", nil, err
-	}
-	balance, err := inst.backend.XMRClient().GetBalance(0)
+
+	addr, err := mcrypto.NewAddress(addrResp.Address, inst.backend.Env())
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
-	return addr.Address, balance, nil
+
+	balanceResp, err := inst.backend.XMRClient().GetBalance(0)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return addr, balanceResp, nil
 }

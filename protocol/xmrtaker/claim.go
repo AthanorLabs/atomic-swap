@@ -6,7 +6,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/monero"
+	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	eth "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -34,8 +34,6 @@ func (s *swapState) tryClaim() error {
 }
 
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
-	const claimedEvent = "Claimed"
-
 	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
 		Addresses: []ethcommon.Address{s.ContractAddr()},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
@@ -54,7 +52,7 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	)
 
 	for _, log := range logs {
-		matches, err := contracts.CheckIfLogIDMatches(log, claimedEvent, s.contractSwapID) //nolint:govet
+		matches, err := contracts.CheckIfLogIDMatches(log, claimedTopic, s.contractSwapID) //nolint:govet
 		if err != nil {
 			continue
 		}
@@ -70,7 +68,7 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 		return nil, errNoClaimLogsFound
 	}
 
-	sa, err := contracts.GetSecretFromLog(&foundLog, claimedEvent)
+	sa, err := contracts.GetSecretFromLog(&foundLog, claimedTopic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from log: %w", err)
 	}
@@ -78,80 +76,42 @@ func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	return sa, nil
 }
 
-func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (mcrypto.Address, error) {
+func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address, error) {
 	if !s.info.Status.IsOngoing() {
-		return "", errSwapCompleted
+		return nil, errSwapCompleted
 	}
 
-	skAB := mcrypto.SumPrivateSpendKeys(skB, s.privkeys.SpendKey())
-	vkAB := mcrypto.SumPrivateViewKeys(s.xmrmakerPrivateViewKey, s.privkeys.ViewKey())
-	kpAB := mcrypto.NewPrivateKeyPair(skAB, vkAB)
-
-	// write keys to file in case something goes wrong
-	err := s.Backend.RecoveryDB().PutSharedSwapPrivateKey(s.ID(), kpAB.SpendKey())
+	// write counterparty swap privkey to disk in case something goes wrong
+	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skB)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	s.XMRClient().Lock()
-	defer s.XMRClient().Unlock()
+	var depositAddr *mcrypto.Address
+	if s.transferBack {
+		id := s.ID()
+		depositAddr = s.XMRDepositAddress(&id)
+	}
 
-	addr, err := monero.CreateWallet("xmrtaker-swap-wallet", s.Env(), s.Backend.XMRClient(), kpAB, s.walletScanHeight)
+	kpAB := pcommon.GetClaimKeypair(
+		skB, s.privkeys.SpendKey(),
+		s.xmrmakerPrivateViewKey, s.privkeys.ViewKey(),
+	)
+
+	err = pcommon.ClaimMonero(
+		s.ctx,
+		s.Env(),
+		s.info.ID,
+		s.XMRClient(),
+		s.walletScanHeight,
+		kpAB,
+		depositAddr,
+		s.transferBack,
+	)
 	if err != nil {
-		return "", err
-	}
-
-	if !s.transferBack {
-		log.Infof("monero claimed in account %s", addr)
-		return addr, nil
-	}
-
-	id := s.ID()
-	depositAddr, err := s.XMRDepositAddress(&id)
-	if err != nil {
-		return "", err
-	}
-
-	log.Infof("monero claimed in account %s; transferring to original account %s",
-		addr, depositAddr)
-
-	err = mcrypto.ValidateAddress(string(depositAddr), s.Env())
-	if err != nil {
-		log.Errorf("failed to transfer to original account, address %s is invalid", addr)
-		return addr, nil
-	}
-
-	err = s.waitUntilBalanceUnlocks()
-	if err != nil {
-		return "", fmt.Errorf("failed to wait for balance to unlock: %w", err)
-	}
-
-	_, err = s.XMRClient().SweepAll(depositAddr, 0)
-	if err != nil {
-		return "", fmt.Errorf("failed to send funds to original account: %w", err)
+		return nil, err
 	}
 
 	close(s.claimedCh)
-	return addr, nil
-}
-
-func (s *swapState) waitUntilBalanceUnlocks() error {
-	for {
-		if s.ctx.Err() != nil {
-			return s.ctx.Err()
-		}
-
-		log.Infof("checking if balance unlocked...")
-		balance, err := s.XMRClient().GetBalance(0)
-		if err != nil {
-			return fmt.Errorf("failed to get balance: %w", err)
-		}
-
-		if balance.Balance == balance.UnlockedBalance {
-			return nil
-		}
-		if _, err = monero.WaitForBlocks(s.ctx, s.XMRClient(), int(balance.BlocksToUnlock)); err != nil {
-			log.Warnf("Waiting for %d monero blocks failed: %s", balance.BlocksToUnlock, err)
-		}
-	}
+	return kpAB.PublicKeyPair().Address(s.Env()), nil
 }

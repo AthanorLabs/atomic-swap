@@ -153,20 +153,20 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("swap value and event value don't match: got %v, expected %v", event.Value, s.contractSwap.Value)
 	}
 
-	receivedAmount, err := pcommon.GetEthereumAssetAmount(
+	expectedAmount, err := pcommon.GetEthereumAssetAmount(
 		s.ctx,
 		s.ETHClient(),
-		s.info.ReceivedAmount,
+		s.info.ExpectedAmount,
 		types.EthAsset(s.contractSwap.Asset),
 	)
 	if err != nil {
 		return err
 	}
 
-	if s.contractSwap.Value.Cmp(receivedAmount.BigInt()) != 0 {
+	if s.contractSwap.Value.Cmp(expectedAmount.BigInt()) != 0 {
 		return fmt.Errorf("swap value is not expected: got %v, expected %v",
 			s.contractSwap.Value,
-			receivedAmount.BigInt(),
+			expectedAmount.BigInt(),
 		)
 	}
 
@@ -187,7 +187,7 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 		return nil
 	}
 
-	expectedTimeout := common.SwapTimeoutFromEnvironment(s.Backend.Env())
+	expectedTimeout := common.SwapTimeoutFromEnv(s.Backend.Env())
 	allowableTimeDiff := expectedTimeout / 20
 
 	if s.t1.Sub(s.t0) != expectedTimeout {

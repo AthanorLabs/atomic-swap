@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/cockroachdb/apd/v3"
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
 )
 
 func newTestContext(t *testing.T, description string, flags map[string]any) *cli.Context {
@@ -68,12 +70,15 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		"test --dev-xmrtaker",
 		map[string]any{
 			flagEnv:         "dev",
+			flagDeploy:      true,
 			flagDevXMRTaker: true,
 			flagDataDir:     t.TempDir(),
+			flagRPCPort:     uint(0),
+			flagLibp2pPort:  uint(0),
 		},
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(c.Context)
 	defer cancel()
 
 	d := &daemon{
@@ -85,9 +90,9 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	wg.Add(1)
 
 	go func() {
+		defer wg.Done()
 		err := d.make(c) // blocks on RPC server start
 		require.ErrorIs(t, err, context.Canceled)
-		wg.Done()
 	}()
 	time.Sleep(500 * time.Millisecond) // let the server start
 	cancel()
@@ -102,6 +107,8 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 			flagDevXMRMaker: true,
 			flagDeploy:      true,
 			flagDataDir:     t.TempDir(),
+			flagRPCPort:     uint(0),
+			flagLibp2pPort:  uint(0),
 		},
 	)
 
@@ -126,33 +133,21 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_expandBootnodes(t *testing.T) {
-	cliNodes := []string{
-		" node1, node2 ,node3,node4 ",
-		"node5",
-		"\tnode6\n",
-		"node7,node8",
-	}
-	expected := []string{
-		"node1",
-		"node2",
-		"node3",
-		"node4",
-		"node5",
-		"node6",
-		"node7",
-		"node8",
-	}
-	require.EqualValues(t, expected, expandBootnodes(cliNodes))
-}
-
 func TestDaemon_PersistOffers(t *testing.T) {
-	defaultXMRMakerSwapdEndpoint := fmt.Sprintf("http://localhost:%d", defaultXMRMakerRPCPort)
 	startupTimeout := time.Millisecond * 100
 
 	dataDir := t.TempDir()
+	defer func() {
+		// CI has issues with the filesystem still being written to when it is
+		// recursively deleting dataDir. Can't be replicated outside of CI.
+		unix.Sync()
+		time.Sleep(500 * time.Millisecond)
+	}()
 	wc := monero.CreateWalletClientWithWalletDir(t, dataDir)
-	monero.MineMinXMRBalance(t, wc, common.MoneroToPiconero(1))
+	one := apd.New(1, 0)
+	monero.MineMinXMRBalance(t, wc, coins.MoneroToPiconero(one))
+	walletName := wc.WalletName()
+	wc.Close() // wallet file stays in place with mined monero
 
 	c := newTestContext(t,
 		"test --dev-xmrmaker",
@@ -160,8 +155,10 @@ func TestDaemon_PersistOffers(t *testing.T) {
 			flagEnv:              "dev",
 			flagDevXMRMaker:      true,
 			flagDeploy:           true,
+			flagRPCPort:          uint(0),
+			flagLibp2pPort:       uint(0),
 			flagDataDir:          dataDir,
-			flagMoneroWalletPath: path.Join(dataDir, "test-wallet"),
+			flagMoneroWalletPath: path.Join(dataDir, walletName),
 		},
 	)
 
@@ -182,12 +179,16 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	time.Sleep(startupTimeout) // let the server start
 
 	// make an offer
-	client := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
+	client := rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
 	balance, err := client.Balances()
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance, common.MoneroToPiconero(1))
+	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance.Cmp(coins.MoneroToPiconero(one)), 0)
 
-	offerID, err := client.MakeOffer(0.1, 1, float64(1), types.EthAssetETH, "", 0)
+	minXMRAmt := coins.StrToDecimal("0.1")
+	maxXMRAmt := one
+	xRate := coins.ToExchangeRate(one)
+
+	offerResp, err := client.MakeOffer(minXMRAmt, maxXMRAmt, xRate, types.EthAssetETH, "", nil)
 	require.NoError(t, err)
 
 	// shut down daemon
@@ -206,7 +207,6 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	defer func() {
 		require.NoError(t, d.stop())
 	}()
-	client = rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
 
 	wg.Add(1)
 	go func() {
@@ -218,8 +218,10 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	<-d.startedCh
 	time.Sleep(startupTimeout) // let the server start
 
-	offers, err := client.GetOffers()
+	client = rpcclient.NewClient(ctx, d.rpcServer.HttpURL())
+	resp, err := client.GetOffers()
 	require.NoError(t, err)
-	require.Equal(t, 1, len(offers))
-	require.Equal(t, offerID, offers[0].ID.String())
+	require.Equal(t, offerResp.PeerID, resp.PeerID)
+	require.Equal(t, 1, len(resp.Offers))
+	require.Equal(t, offerResp.OfferID, resp.Offers[0].ID)
 }

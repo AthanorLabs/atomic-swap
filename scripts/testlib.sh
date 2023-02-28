@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script is designed to be sourced by other test scripts, or by the shell
 # on the command line if you are using bash. Here is an example:
 #
@@ -22,10 +22,10 @@
 MONEROD_PORT=18081
 GANACHE_PORT=8545
 
-PROJECT_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+PROJECT_ROOT="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 MONERO_BIN_DIR="${PROJECT_ROOT}/monero-bin"
 
-# return 0 (true) if the passed port is open, otherwise non-zero (false)
+# return 0 (true) if the passed TCP port is open, otherwise non-zero (false)
 is-port-open() {
 	local port="${1:?}"
 	: &>/dev/null <"/dev/tcp/127.0.0.1/${port}"
@@ -62,7 +62,7 @@ mine-monero-for-swapd() {
 
 check-set-swap-test-data-dir() {
 	if [[ -z "${SWAP_TEST_DATA_DIR}" ]]; then
-		SWAP_TEST_DATA_DIR="$(mktemp --tmpdir -d atomic-swap-test-data-XXXXXXXXXX)"
+		SWAP_TEST_DATA_DIR="$(mktemp -d "${TMPDIR:-/tmp}/atomic-swap-test-data-XXXXXXXXXX")"
 		echo "Swap test data dir is ${SWAP_TEST_DATA_DIR}"
 	else
 		mkdir -p "${SWAP_TEST_DATA_DIR}" # make sure it exists if the variable was already set
@@ -143,13 +143,13 @@ install-ganache() {
 	if [[ -x "${ganache_exec}" ]]; then
 		return 0 # ganache already installed
 	fi
-	echo "installing ganache"
+	echo "installing ganache in ${npm_install_dir}/bin"
 	if [[ -d "${npm_install_dir}/bin" ]] && [[ ! -w "${npm_install_dir}/bin" ]]; then
 		echo "${npm_install_dir}[/bin] is not writable"
 		echo "You can use 'npm config set prefix DIRNAME' to pick a different install directory"
 		return 1
 	fi
-	npm install --location=global ganache
+	npm install --global ganache
 }
 
 start-ganache() {
@@ -165,7 +165,11 @@ start-ganache() {
 	# shellcheck disable=SC2155
 	local ganache_exec="$(npm config get prefix)/bin/ganache"
 	check-set-swap-test-data-dir
-	NODE_OPTIONS="--max_old_space_size=8192" nohup \
+	local nohup_cmd=nohup
+	if [[ "$(uname)" == 'Darwin' ]]; then
+		nohup_cmd=
+	fi
+	NODE_OPTIONS="--max_old_space_size=8192" ${nohup_cmd} \
 		"${ganache_exec}" --deterministic \
 		--accounts=50 \
 		--miner.blockTime=1 \

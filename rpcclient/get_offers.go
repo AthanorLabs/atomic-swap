@@ -1,21 +1,20 @@
 package rpcclient
 
 import (
-	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
 // GetOffers calls swap_getOffers.
-func (c *Client) GetOffers() ([]*types.Offer, error) {
+func (c *Client) GetOffers() (*rpc.GetOffersResponse, error) {
 	const (
 		method = "swap_getOffers"
 	)
 
-	res := &rpc.GetOffersResponse{}
+	resp := &rpc.GetOffersResponse{}
 
-	if err := c.Post(method, nil, res); err != nil {
+	if err := c.Post(method, nil, resp); err != nil {
 		return nil, err
 	}
 
-	return res.Offers, nil
+	return resp, nil
 }

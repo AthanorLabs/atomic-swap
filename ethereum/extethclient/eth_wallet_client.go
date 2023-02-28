@@ -5,6 +5,7 @@ package extethclient
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -63,9 +64,18 @@ type ethClient struct {
 
 // NewEthClient creates and returns our extended ethereum client/wallet. The passed context
 // is only used for creation.
-func NewEthClient(ctx context.Context, ec *ethclient.Client, privKey *ecdsa.PrivateKey) (EthClient, error) {
+func NewEthClient(
+	ctx context.Context,
+	env common.Environment,
+	ec *ethclient.Client,
+	privKey *ecdsa.PrivateKey,
+) (EthClient, error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = validateChainID(env, chainID); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +162,7 @@ func (c *ethClient) SetGasPrice(gasPrice uint64) {
 		c.gasPrice = nil
 		return
 	}
-	c.gasPrice = big.NewInt(0).SetUint64(gasPrice)
+	c.gasPrice = new(big.Int).SetUint64(gasPrice)
 }
 
 // SetGasLimit sets the ethereum gas limit to use (in wei). In most cases you should not
@@ -229,4 +239,25 @@ func (c *ethClient) Unlock() {
 
 func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
+}
+
+func validateChainID(env common.Environment, chainID *big.Int) error {
+	switch env {
+	case common.Mainnet:
+		if chainID.Cmp(big.NewInt(common.MainnetChainID)) != 0 {
+			return fmt.Errorf("expected Mainnet chain ID (%d), but found %s", common.MainnetChainID, chainID)
+		}
+	case common.Stagenet:
+		if chainID.Cmp(big.NewInt(common.GoerliChainID)) != 0 {
+			return fmt.Errorf("expected Goerli chain ID (%d), but found %s", common.GoerliChainID, chainID)
+		}
+	case common.Development:
+		if chainID.Cmp(big.NewInt(common.GanacheChainID)) != 0 {
+			return fmt.Errorf("expected Ganache chain ID (%d), but found %s", common.GanacheChainID, chainID)
+		}
+	default:
+		panic("unhandled environment type")
+	}
+
+	return nil
 }

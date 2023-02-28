@@ -4,14 +4,16 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
+	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
@@ -21,28 +23,42 @@ import (
 // This file only contains mock definitions used by other test files
 //
 
-type mockNet struct{}
+type mockNet struct {
+	peerID peer.ID
+}
 
 func (*mockNet) Addresses() []string {
 	panic("not implemented")
 }
 
-func (*mockNet) Advertise() {
+func (m *mockNet) PeerID() peer.ID {
+	if m.peerID == "" {
+		var err error
+		m.peerID, err = libp2ptest.RandPeerID()
+		if err != nil {
+			panic(err)
+		}
+	}
+	return m.peerID
 }
 
-func (*mockNet) Discover(provides types.ProvidesCoin, searchTime time.Duration) ([]peer.AddrInfo, error) {
+func (*mockNet) ConnectedPeers() []string {
+	panic("not implemented")
+}
+
+func (*mockNet) Discover(_ string, _ time.Duration) ([]peer.ID, error) {
 	return nil, nil
 }
 
-func (*mockNet) Query(who peer.AddrInfo) (*net.QueryResponse, error) {
-	return &net.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
+func (*mockNet) Query(_ peer.ID) (*message.QueryResponse, error) {
+	return &message.QueryResponse{Offers: []*types.Offer{{ID: testSwapID}}}, nil
 }
 
-func (*mockNet) Initiate(who peer.AddrInfo, msg *net.SendKeysMessage, s common.SwapStateNet) error {
+func (*mockNet) Initiate(_ peer.AddrInfo, _ common.Message, _ common.SwapStateNet) error {
 	return nil
 }
 
-func (*mockNet) CloseProtocolStream(types.Hash) {
+func (*mockNet) CloseProtocolStream(_ types.Hash) {
 	panic("not implemented")
 }
 
@@ -56,11 +72,11 @@ func (*mockSwapManager) GetPastIDs() ([]types.Hash, error) {
 	panic("not implemented")
 }
 
-func (*mockSwapManager) GetPastSwap(id types.Hash) (*swap.Info, error) {
+func (*mockSwapManager) GetPastSwap(_ types.Hash) (*swap.Info, error) {
 	return &swap.Info{}, nil
 }
 
-func (*mockSwapManager) GetOngoingSwaps() ([]swap.Info, error) {
+func (*mockSwapManager) GetOngoingSwaps() ([]*swap.Info, error) {
 	return nil, nil
 }
 
@@ -68,12 +84,13 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	statusCh := make(chan types.Status, 1)
 	statusCh <- types.CompletedSuccess
 
+	one := apd.New(1, 0)
 	return *swap.NewInfo(
 		id,
-		types.ProvidesETH,
-		1,
-		1,
-		1,
+		coins.ProvidesETH,
+		one,
+		one,
+		coins.ToExchangeRate(one),
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		1,
@@ -81,29 +98,29 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 	), nil
 }
 
-func (*mockSwapManager) AddSwap(*swap.Info) error {
+func (*mockSwapManager) AddSwap(_ *swap.Info) error {
 	panic("not implemented")
 }
 
-func (*mockSwapManager) CompleteOngoingSwap(*swap.Info) error {
+func (*mockSwapManager) CompleteOngoingSwap(_ *swap.Info) error {
 	panic("not implemented")
 }
 
 type mockXMRTaker struct{}
 
-func (*mockXMRTaker) Provides() types.ProvidesCoin {
+func (*mockXMRTaker) Provides() coins.ProvidesCoin {
 	panic("not implemented")
 }
 
-func (*mockXMRTaker) GetOngoingSwapState(types.Hash) common.SwapState {
+func (*mockXMRTaker) GetOngoingSwapState(_ types.Hash) common.SwapState {
 	return new(mockSwapState)
 }
 
-func (*mockXMRTaker) InitiateProtocol(providesAmount float64, _ *types.Offer) (common.SwapState, error) {
+func (*mockXMRTaker) InitiateProtocol(_ *apd.Decimal, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
 
-func (*mockXMRTaker) Refund(types.Hash) (ethcommon.Hash, error) {
+func (*mockXMRTaker) Refund(_ types.Hash) (ethcommon.Hash, error) {
 	panic("not implemented")
 }
 
@@ -117,15 +134,15 @@ func (*mockXMRTaker) ExternalSender(_ types.Hash) (*txsender.ExternalSender, err
 
 type mockXMRMaker struct{}
 
-func (m *mockXMRMaker) Provides() types.ProvidesCoin {
+func (m *mockXMRMaker) Provides() coins.ProvidesCoin {
 	panic("not implemented")
 }
 
-func (m *mockXMRMaker) GetOngoingSwapState(hash types.Hash) common.SwapState {
+func (m *mockXMRMaker) GetOngoingSwapState(_ types.Hash) common.SwapState {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) MakeOffer(offer *types.Offer, _ string, _ float64) (*types.OfferExtra, error) {
+func (*mockXMRMaker) MakeOffer(_ *types.Offer, _ string, _ *apd.Decimal) (*types.OfferExtra, error) {
 	offerExtra := &types.OfferExtra{
 		StatusCh: make(chan types.Status, 1),
 	}
@@ -137,17 +154,17 @@ func (*mockXMRMaker) GetOffers() []*types.Offer {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) ClearOffers([]string) error {
+func (*mockXMRMaker) ClearOffers(_ []types.Hash) error {
 	panic("not implemented")
 }
 
-func (*mockXMRMaker) GetMoneroBalance() (string, *wallet.GetBalanceResponse, error) {
+func (*mockXMRMaker) GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceResponse, error) {
 	panic("not implemented")
 }
 
 type mockSwapState struct{}
 
-func (*mockSwapState) HandleProtocolMessage(msg message.Message) error {
+func (*mockSwapState) HandleProtocolMessage(_ common.Message) error {
 	return nil
 }
 
@@ -155,7 +172,7 @@ func (*mockSwapState) Exit() error {
 	return nil
 }
 
-func (*mockSwapState) SendKeysMessage() *message.SendKeysMessage {
+func (*mockSwapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{}
 }
 
@@ -177,7 +194,11 @@ func (*mockProtocolBackend) Env() common.Environment {
 	return common.Development
 }
 
-func (*mockProtocolBackend) SetSwapTimeout(timeout time.Duration) {
+func (*mockProtocolBackend) SetSwapTimeout(_ time.Duration) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) SwapTimeout() time.Duration {
 	panic("not implemented")
 }
 
@@ -185,7 +206,7 @@ func (b *mockProtocolBackend) SwapManager() swap.Manager {
 	return b.sm
 }
 
-func (*mockProtocolBackend) SetXMRDepositAddress(mcrypto.Address, types.Hash) {
+func (*mockProtocolBackend) SetXMRDepositAddress(*mcrypto.Address, types.Hash) {
 	panic("not implemented")
 }
 

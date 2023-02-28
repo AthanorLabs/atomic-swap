@@ -8,17 +8,45 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
-// EventType ...
+// EventType represents an event that occurs which moves the swap
+// "state machine" to its next state.
 type EventType byte
 
 const (
-	EventETHLockedType EventType = iota //nolint:revive
+	// EventETHLockedType is triggered when the taker notifies us that the ETH
+	// is locked in the smart contract. Upon verification, it causes us to lock
+	// our XMR. After this event, the other possible events are
+	// EventContractReadyType (success), EventETHRefundedType (abort), or
+	// EventExitType (abort).
+	EventETHLockedType EventType = iota
+
+	// EventContractReadyType is triggered when the taker sets the contract to
+	// "ready" or timeout0 is reached. When this event occurs, we can claim ETH
+	// from the contract. After this event, the other possible events are
+	// EventETHRefundedType (which would only happen if we go offline until
+	// timeout1, causing us to refund), or EventExitType (refund).
 	EventContractReadyType
+
+	// EventETHRefundedType is triggered when the taker refunds the
+	// contract-locked ETH back to themselves. It causes use to try to refund
+	// our XMR. After this event, the only possible event is EventExitType.
 	EventETHRefundedType
+
+	// EventExitType is triggered by the protocol "exiting", which may happen
+	// via a swap cancellation via the RPC endpoint, or from the counterparty
+	// disconnecting from us on the p2p network. It causes us to attempt to
+	// gracefully exit from the swap, which leads to an abort, refund, or claim,
+	// depending on the state we're currently in. No other events can occur
+	// after this.
 	EventExitType
+
+	// EventNoneType is set as the "nextExpectedEvent" once the swap has exited.
+	// It does not trigger any action. No other events can occur after this.
 	EventNoneType
 )
 
+// nextExpectedEventFromStatus returns the next expected event given the current
+// swap status.
 func nextExpectedEventFromStatus(s types.Status) EventType {
 	switch s {
 	case types.ExpectingKeys, types.KeysExchanged:
@@ -55,6 +83,8 @@ func (t EventType) getStatus() types.Status {
 	case EventContractReadyType:
 		return types.XMRLocked
 	default:
+		// the only possible nextExpectedEvents are EventETHLockedType
+		// and EventContractReadyType, so this case shouldn't be hit.
 		return types.UnknownStatus
 	}
 }
@@ -163,7 +193,9 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleEventETHLocked(e)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
-			return
+			if !s.fundsLocked {
+				return
+			}
 		}
 
 		err = s.setNextExpectedEvent(EventContractReadyType)
@@ -251,13 +283,12 @@ func (s *swapState) handleEventContractReady() error {
 
 func (s *swapState) handleEventETHRefunded(e *EventETHRefunded) error {
 	// generate monero wallet, regaining control over locked funds
-	addr, err := s.reclaimMonero(e.sk)
+	err := s.reclaimMonero(e.sk)
 	if err != nil {
 		return err
 	}
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
-	log.Infof("regained control over monero account %s", addr)
 	s.CloseProtocolStream(s.ID())
 	return nil
 }

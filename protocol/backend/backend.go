@@ -8,6 +8,10 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	rcommon "github.com/athanorlabs/go-relayer/common"
+	rnet "github.com/athanorlabs/go-relayer/net"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -16,10 +20,22 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
+
+// MessageSender is implemented by a Host
+type MessageSender interface {
+	SendSwapMessage(common.Message, types.Hash) error
+	CloseProtocolStream(id types.Hash)
+}
+
+// RelayerHost contains required network functionality for discovering
+// and messaging relayers.
+type RelayerHost interface {
+	Discover(time.Duration) ([]peer.ID, error)
+	SubmitTransaction(who peer.ID, msg *rnet.TransactionRequest) (*rcommon.SubmitTransactionResponse, error)
+}
 
 // RecoveryDB is implemented by *db.RecoveryDB
 type RecoveryDB interface {
@@ -27,12 +43,12 @@ type RecoveryDB interface {
 	GetContractSwapInfo(id types.Hash) (*db.EthereumSwapInfo, error)
 	PutSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey) error
 	GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
-	PutSharedSwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey) error
-	GetSharedSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
+	PutCounterpartySwapPrivateKey(id types.Hash, keys *mcrypto.PrivateSpendKey) error
+	GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error)
 	PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error
 	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
-	PutXMRMakerSwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error
-	GetXMRMakerSwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error)
+	PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error
+	GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error)
 	DeleteSwap(id types.Hash) error
 }
 
@@ -41,7 +57,7 @@ type RecoveryDB interface {
 type Backend interface {
 	XMRClient() monero.WalletClient
 	ETHClient() extethclient.EthClient
-	net.MessageSender
+	MessageSender
 
 	RecoveryDB() RecoveryDB
 
@@ -57,15 +73,17 @@ type Backend interface {
 	SwapManager() swap.Manager
 	Contract() *contracts.SwapFactory
 	ContractAddr() ethcommon.Address
-	Net() net.MessageSender
 	SwapTimeout() time.Duration
-	XMRDepositAddress(id *types.Hash) (mcrypto.Address, error)
+	XMRDepositAddress(offerID *types.Hash) *mcrypto.Address
 
 	// setters
 	SetSwapTimeout(timeout time.Duration)
-	SetXMRDepositAddress(mcrypto.Address, types.Hash)
+	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
-	SetBaseXMRDepositAddress(mcrypto.Address)
+
+	// relayer functions
+	DiscoverRelayers() ([]peer.ID, error)
+	SubmitTransactionToRelayer(peer.ID, *rcommon.SubmitTransactionRequest) (*rcommon.SubmitTransactionResponse, error)
 }
 
 type backend struct {
@@ -78,10 +96,13 @@ type backend struct {
 	moneroWallet monero.WalletClient
 	ethClient    extethclient.EthClient
 
-	// monero deposit address (used if xmrtaker has transferBack set to true)
-	sync.RWMutex
-	baseXMRDepositAddr *mcrypto.Address
-	xmrDepositAddrs    map[types.Hash]mcrypto.Address
+	// Monero deposit address. When the XMR xmrtaker has transferBack set to
+	// true (default), claimed funds are swept back to the primary XMR wallet
+	// address used by swapd. This sweep destination address can be overridden
+	// on a per-swap basis, by setting an address indexed by the offerID/swapID
+	// in the map below.
+	perSwapXMRDepositAddrRWMu sync.RWMutex
+	perSwapXMRDepositAddr     map[types.Hash]*mcrypto.Address
 
 	// swap contract
 	contract     *contracts.SwapFactory
@@ -89,7 +110,10 @@ type backend struct {
 	swapTimeout  time.Duration
 
 	// network interface
-	net.MessageSender
+	MessageSender
+
+	// relayer network interface
+	rnet RelayerHost
 }
 
 // Config is the config for the Backend
@@ -106,7 +130,8 @@ type Config struct {
 
 	RecoveryDB RecoveryDB
 
-	Net net.MessageSender
+	Net         MessageSender
+	RelayerHost RelayerHost
 }
 
 // NewBackend returns a new Backend
@@ -116,17 +141,18 @@ func NewBackend(cfg *Config) (Backend, error) {
 	}
 
 	return &backend{
-		ctx:             cfg.Ctx,
-		env:             cfg.Environment,
-		moneroWallet:    cfg.MoneroClient,
-		ethClient:       cfg.EthereumClient,
-		contract:        cfg.SwapContract,
-		contractAddr:    cfg.SwapContractAddress,
-		swapManager:     cfg.SwapManager,
-		swapTimeout:     common.SwapTimeoutFromEnvironment(cfg.Environment),
-		MessageSender:   cfg.Net,
-		xmrDepositAddrs: make(map[types.Hash]mcrypto.Address),
-		recoveryDB:      cfg.RecoveryDB,
+		ctx:                   cfg.Ctx,
+		env:                   cfg.Environment,
+		moneroWallet:          cfg.MoneroClient,
+		ethClient:             cfg.EthereumClient,
+		contract:              cfg.SwapContract,
+		contractAddr:          cfg.SwapContractAddress,
+		swapManager:           cfg.SwapManager,
+		swapTimeout:           common.SwapTimeoutFromEnv(cfg.Environment),
+		MessageSender:         cfg.Net,
+		perSwapXMRDepositAddr: make(map[types.Hash]*mcrypto.Address),
+		recoveryDB:            cfg.RecoveryDB,
+		rnet:                  cfg.RelayerHost,
 	}, nil
 }
 
@@ -166,10 +192,6 @@ func (b *backend) Env() common.Environment {
 	return b.env
 }
 
-func (b *backend) Net() net.MessageSender {
-	return b.MessageSender
-}
-
 func (b *backend) SwapManager() swap.Manager {
 	return b.swapManager
 }
@@ -184,42 +206,57 @@ func (b *backend) SetSwapTimeout(timeout time.Duration) {
 	b.swapTimeout = timeout
 }
 
-func (b *backend) XMRDepositAddress(id *types.Hash) (mcrypto.Address, error) {
-	b.RLock()
-	defer b.RUnlock()
-
-	if id == nil && b.baseXMRDepositAddr == nil {
-		return "", errNoXMRDepositAddress
-	} else if id == nil {
-		return *b.baseXMRDepositAddr, nil
-	}
-
-	addr, has := b.xmrDepositAddrs[*id]
-	if !has && b.baseXMRDepositAddr == nil {
-		return "", errNoXMRDepositAddress
-	} else if !has {
-		return *b.baseXMRDepositAddr, nil
-	}
-
-	return addr, nil
-}
-
 func (b *backend) NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error) {
 	return contracts.NewSwapFactory(addr, b.ethClient.Raw())
 }
 
-func (b *backend) SetBaseXMRDepositAddress(addr mcrypto.Address) {
-	b.baseXMRDepositAddr = &addr
+// XMRDepositAddress returns the per-swap override deposit address, if a
+// per-swap address was set. Otherwise the primary swapd Monero wallet address
+// is returned.
+func (b *backend) XMRDepositAddress(offerID *types.Hash) *mcrypto.Address {
+	b.perSwapXMRDepositAddrRWMu.RLock()
+	defer b.perSwapXMRDepositAddrRWMu.RUnlock()
+
+	if offerID != nil {
+		addr, ok := b.perSwapXMRDepositAddr[*offerID]
+		if ok {
+			return addr
+		}
+	}
+
+	return b.XMRClient().PrimaryAddress()
 }
 
-func (b *backend) SetXMRDepositAddress(addr mcrypto.Address, id types.Hash) {
-	b.Lock()
-	defer b.Unlock()
-	b.xmrDepositAddrs[id] = addr
+// SetXMRDepositAddress sets a per-swap override deposit address to use when
+// sweeping funds out of the shared swap wallet. When transferBack is set
+// (default), funds will be swept to this override address instead of to swap's
+// primary monero wallet.
+func (b *backend) SetXMRDepositAddress(addr *mcrypto.Address, offerID types.Hash) {
+	b.perSwapXMRDepositAddrRWMu.Lock()
+	defer b.perSwapXMRDepositAddrRWMu.Unlock()
+	b.perSwapXMRDepositAddr[offerID] = addr
 }
 
-func (b *backend) ClearXMRDepositAddress(id types.Hash) {
-	b.Lock()
-	defer b.Unlock()
-	delete(b.xmrDepositAddrs, id)
+// ClearXMRDepositAddress clears the per-swap, override deposit address from the
+// map if a value was set.
+func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
+	b.perSwapXMRDepositAddrRWMu.Lock()
+	defer b.perSwapXMRDepositAddrRWMu.Unlock()
+	delete(b.perSwapXMRDepositAddr, offerID)
+}
+
+func (b *backend) DiscoverRelayers() ([]peer.ID, error) {
+	const defaultDiscoverTime = time.Second * 3
+	return b.rnet.Discover(defaultDiscoverTime)
+}
+
+func (b *backend) SubmitTransactionToRelayer(
+	to peer.ID,
+	req *rcommon.SubmitTransactionRequest,
+) (*rcommon.SubmitTransactionResponse, error) {
+	msg := &rnet.TransactionRequest{
+		SubmitTransactionRequest: *req,
+	}
+
+	return b.rnet.SubmitTransaction(to, msg)
 }

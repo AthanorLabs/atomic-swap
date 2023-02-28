@@ -5,9 +5,11 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/db"
@@ -30,7 +32,7 @@ func newTestInstance(t *testing.T) *Instance {
 func TestNewInstance(t *testing.T) {
 	inst := newTestInstance(t)
 	assert.Nil(t, inst.GetOngoingSwapState(types.EmptyHash))
-	assert.Equal(t, inst.Provides(), types.ProvidesETH)
+	assert.Equal(t, inst.Provides(), coins.ProvidesETH)
 	_, err := inst.Refund(types.EmptyHash)
 	assert.ErrorIs(t, err, errNoOngoingSwap)
 }
@@ -39,20 +41,15 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst := newTestInstance(t)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
-	offer := types.NewOffer(
-		types.ProvidesXMR,
-		1,
-		1,
-		1,
-		types.EthAssetETH,
-	)
+	one := apd.New(1, 0)
+	offer := types.NewOffer(coins.ProvidesXMR, one, one, coins.ToExchangeRate(one), types.EthAssetETH)
 
 	s := &pswap.Info{
 		ID:             offer.ID,
-		Provides:       types.ProvidesXMR,
-		ProvidedAmount: 1,
-		ReceivedAmount: 1,
-		ExchangeRate:   types.ExchangeRate(1),
+		Provides:       coins.ProvidesXMR,
+		ProvidedAmount: one,
+		ExpectedAmount: one,
+		ExchangeRate:   coins.ToExchangeRate(one),
 		EthAsset:       types.EthAssetETH,
 		Status:         types.ETHLocked,
 	}
@@ -63,11 +60,11 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	makerKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	rdb.EXPECT().GetSharedSwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
+	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
 	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),
-		Swap: contracts.SwapFactorySwap{
+		Swap: &contracts.SwapFactorySwap{
 			Timeout0: big.NewInt(1),
 			Timeout1: big.NewInt(2),
 		},
@@ -75,11 +72,11 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb.EXPECT().GetSwapPrivateKey(s.ID).Return(
 		sk.SpendKey(), nil,
 	)
-	rdb.EXPECT().GetXMRMakerSwapKeys(s.ID).Return(
+	rdb.EXPECT().GetCounterpartySwapKeys(s.ID).Return(
 		makerKeys.SpendKey().Public(), makerKeys.ViewKey(), nil,
 	)
 
-	err = inst.createOngoingSwap(*s)
+	err = inst.createOngoingSwap(s)
 	require.NoError(t, err)
 
 	inst.swapMu.Lock()

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -48,8 +49,13 @@ type ExternalSender struct {
 }
 
 // NewExternalSender returns a new ExternalSender
-func NewExternalSender(ctx context.Context, env common.Environment, ec *ethclient.Client,
-	contractAddr ethcommon.Address, erc20Addr ethcommon.Address) (*ExternalSender, error) {
+func NewExternalSender(
+	ctx context.Context,
+	env common.Environment,
+	ec *ethclient.Client,
+	contractAddr ethcommon.Address,
+	erc20Addr ethcommon.Address,
+) (*ExternalSender, error) {
 	abi, err := contracts.SwapFactoryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -90,8 +96,10 @@ func (s *ExternalSender) IncomingCh(id types.Hash) chan<- ethcommon.Hash {
 }
 
 // Approve prompts the external sender to sign an ERC20 Approve transaction
-func (s *ExternalSender) Approve(spender ethcommon.Address,
-	amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *ExternalSender) Approve(
+	spender ethcommon.Address,
+	amount *big.Int,
+) (ethcommon.Hash, *ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("approve", spender, amount)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
@@ -101,19 +109,26 @@ func (s *ExternalSender) Approve(spender ethcommon.Address,
 }
 
 // NewSwap prompts the external sender to sign a new_swap transaction
-func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
-	_claimer ethcommon.Address, _timeoutDuration *big.Int, _nonce *big.Int, _ethAsset types.EthAsset,
-	value *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	input, err := s.abi.Pack("new_swap", _pubKeyClaim, _pubKeyRefund, _claimer, _timeoutDuration,
-		_ethAsset, value, _nonce)
+func (s *ExternalSender) NewSwap(
+	pubKeyClaim [32]byte,
+	pubKeyRefund [32]byte,
+	claimer ethcommon.Address,
+	timeoutDuration *big.Int,
+	nonce *big.Int,
+	ethAsset types.EthAsset,
+	value *big.Int,
+) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
+		ethAsset, value, nonce)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
 
+	valueWei := coins.NewWeiAmount(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  fmt.Sprintf("0x%x", input),
-		Value: fmt.Sprintf("%v", common.WeiAmount(*value).AsEther()),
+		Value: fmt.Sprintf("%v", valueWei.AsEther()),
 	}
 
 	s.Lock()
@@ -136,8 +151,8 @@ func (s *ExternalSender) NewSwap(_pubKeyClaim [32]byte, _pubKeyRefund [32]byte,
 }
 
 // SetReady prompts the external sender to sign a set_ready transaction
-func (s *ExternalSender) SetReady(_swap contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	input, err := s.abi.Pack("set_ready", _swap)
+func (s *ExternalSender) SetReady(swap *contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input, err := s.abi.Pack("set_ready", swap)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
@@ -146,9 +161,11 @@ func (s *ExternalSender) SetReady(_swap contracts.SwapFactorySwap) (ethcommon.Ha
 }
 
 // Claim prompts the external sender to sign a claim transaction
-func (s *ExternalSender) Claim(_swap contracts.SwapFactorySwap,
-	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	input, err := s.abi.Pack("claim", _swap, _s)
+func (s *ExternalSender) Claim(
+	swap *contracts.SwapFactorySwap,
+	secret [32]byte,
+) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input, err := s.abi.Pack("claim", swap, secret)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}
@@ -157,9 +174,11 @@ func (s *ExternalSender) Claim(_swap contracts.SwapFactorySwap,
 }
 
 // Refund prompts the external sender to sign a refund transaction
-func (s *ExternalSender) Refund(_swap contracts.SwapFactorySwap,
-	_s [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error) {
-	input, err := s.abi.Pack("refund", _swap, _s)
+func (s *ExternalSender) Refund(
+	swap *contracts.SwapFactorySwap,
+	secret [32]byte,
+) (ethcommon.Hash, *ethtypes.Receipt, error) {
+	input, err := s.abi.Pack("refund", swap, secret)
 	if err != nil {
 		return ethcommon.Hash{}, nil, err
 	}

@@ -32,7 +32,7 @@ func (s *swapState) runContractEventWatcher() {
 }
 
 func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
-	err := pcommon.CheckSwapID(l, "Ready", s.contractSwapID)
+	err := pcommon.CheckSwapID(l, readyTopic, s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		log.Infof("log not for us")
 		return nil
@@ -48,7 +48,7 @@ func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
 }
 
 func (s *swapState) handleRefundLogs(log *ethtypes.Log) error {
-	err := pcommon.CheckSwapID(log, "Refunded", s.contractSwapID)
+	err := pcommon.CheckSwapID(log, refundedTopic, s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
 		return nil
 	}
@@ -56,7 +56,7 @@ func (s *swapState) handleRefundLogs(log *ethtypes.Log) error {
 		return err
 	}
 
-	sk, err := contracts.GetSecretFromLog(log, "Refunded")
+	sk, err := contracts.GetSecretFromLog(log, refundedTopic)
 	if err != nil {
 		return err
 	}

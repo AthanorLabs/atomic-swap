@@ -21,6 +21,7 @@ import (
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 )
 
@@ -29,25 +30,29 @@ const (
 	blockRewardAddress = "4BKjy1uVRTPiz4pHyaXXawb82XpzLiowSDd8rEQJGqvN6AD6kWosLQ6VJXW9sghopxXgQSh1RTd54JdvvCRsXiF41xvfeW5"
 )
 
-// CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
-func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
+// GetWalletRPCDirectory returns the directory path of monero-wallet-rpc.
+func GetWalletRPCDirectory(t *testing.T) string {
 	_, filename, _, ok := runtime.Caller(0) // this test file path
 	require.True(t, ok)
 	packageDir := path.Dir(filename)
 	repoBaseDir := path.Dir(packageDir)
-	moneroWalletRPCPath := path.Join(repoBaseDir, "monero-bin", "monero-wallet-rpc")
+	return path.Join(repoBaseDir, "monero-bin", "monero-wallet-rpc")
+}
 
+// CreateWalletClientWithWalletDir creates a WalletClient with the given wallet directory.
+func CreateWalletClientWithWalletDir(t *testing.T, walletDir string) WalletClient {
+	moneroWalletRPCPath := GetWalletRPCDirectory(t)
 	c, err := NewWalletClient(&WalletClientConf{
 		Env:                 common.Development,
 		WalletFilePath:      path.Join(walletDir, "test-wallet"),
 		MoneroWalletRPCPath: moneroWalletRPCPath,
 	})
 	require.NoError(t, err)
+
 	t.Cleanup(func() {
 		c.Close()
 	})
 	TestBackgroundMineBlocks(t)
-
 	return c
 }
 
@@ -59,10 +64,8 @@ func CreateWalletClient(t *testing.T) WalletClient {
 }
 
 // GetBalance is a convenience method for tests that assumes you want the primary
-// address, that you want to refresh, and that errors should fail the test.
+// address and that errors should fail the test.
 func GetBalance(t *testing.T, wc WalletClient) *wallet.GetBalanceResponse {
-	err := wc.Refresh()
-	require.NoError(t, err)
 	balance, err := wc.GetBalance(0)
 	require.NoError(t, err)
 	return balance
@@ -116,19 +119,22 @@ func TestBackgroundMineBlocks(t *testing.T) {
 
 // MineMinXMRBalance enables mining for the passed wc wallet until it has an unlocked balance greater
 // than or equal to minBalance.
-func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance common.PiconeroAmount) {
+func MineMinXMRBalance(t *testing.T, wc WalletClient, minBalance *coins.PiconeroAmount) {
 	daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 	addr, err := wc.GetAddress(0)
 	require.NoError(t, err)
 	t.Log("mining to address:", addr.Address)
 
+	minBalU64, err := minBalance.Uint64()
+	require.NoError(t, err)
+
 	for {
-		require.NoError(t, wc.Refresh())
 		balance, err := wc.GetBalance(0)
 		require.NoError(t, err)
-		if balance.UnlockedBalance > uint64(minBalance) {
+		if balance.UnlockedBalance > minBalU64 {
 			break
 		}
+
 		_, err = daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
 			AmountOfBlocks: 32,
 			WalletAddress:  addr.Address,

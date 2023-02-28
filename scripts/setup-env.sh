@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # If you need to debug unit tests, this script will turn up the necessary
 # daemons without running the tests. Warning: It will terminate any
 # currently running test daemons.
@@ -10,7 +10,6 @@ fi
 
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
 "${SCRIPTS_DIR}/cleanup-test-processes.sh"
-sleep 2 # give monerod time to fully shutdown
 source "${SCRIPTS_DIR}/testlib.sh"
 
 start-monerod-regtest

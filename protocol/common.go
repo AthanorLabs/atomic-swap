@@ -62,7 +62,11 @@ type VerifyResult struct {
 
 // VerifyKeysAndProof verifies the given DLEq proof and asserts that the resulting secp256k1 key corresponds
 // to the given key.
-func VerifyKeysAndProof(proofStr, secp256k1PubString, ed25519PubString string) (*VerifyResult, error) {
+func VerifyKeysAndProof(
+	proofStr string,
+	secp256k1Pub *secp256k1.PublicKey,
+	ed25519Pub *mcrypto.PublicKey,
+) (*VerifyResult, error) {
 	pb, err := hex.DecodeString(proofStr)
 	if err != nil {
 		return nil, err
@@ -75,18 +79,8 @@ func VerifyKeysAndProof(proofStr, secp256k1PubString, ed25519PubString string) (
 		return nil, err
 	}
 
-	if res.Secp256k1PublicKey().String() != secp256k1PubString {
+	if !bytes.Equal(res.Secp256k1PublicKey().Bytes(), secp256k1Pub.Bytes()) {
 		return nil, errInvalidSecp256k1Key
-	}
-
-	secp256k1Pub, err := secp256k1.NewPublicKeyFromHex(secp256k1PubString)
-	if err != nil {
-		return nil, err
-	}
-
-	ed25519Pub, err := mcrypto.NewPublicKeyFromHex(ed25519PubString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate XMRMaker's public spend key: %w", err)
 	}
 
 	if !bytes.Equal(res.Ed25519PublicKey().Bytes(), ed25519Pub.Bytes()) {

@@ -40,7 +40,7 @@ file above. More information on what the individual files contain can be
 
 ### {DATA_DIR}/eth.key
 
-This is the default location of your ethereum private key used by swaps. Alternate
+This is the default location of your Ethereum private key used by swaps. Alternate
 locations can be configured with `--ethereum-privkey`. If the file does not
 exist, a new random key will be created and placed in this location.
 
@@ -59,7 +59,23 @@ It is safe to delete this directory if `swapd` is not running.
 
 Stores information on a swap when it reaches the stage where ethereum is locked.
 
-### {DATA_DIR}/contract-address.json
+### {DATA_DIR}/contract-addresses.json
 
 Only written when `--deploy` is passed to swapd. This file stores the address
 that the contract was deployed to along with other data.
+
+## Relayer default file locations
+
+### {DATA_DIR}/relayer
+
+By default, all relayer-related files will be placed in the `relayer` directory within the data dir.
+
+### {DATA_DIR}/relayer/eth.key
+
+The location of the Ethereum private key used by the relayer to submit transactions. Fees received by the relayer will also go into this account. Alternate locations can be configured with `--ethereum-privkey`. If the file does not exist, the relayer will error on startup.
+
+### {DATA_DIR}/relayer/net.key
+
+The private key to the relayer's libp2p identity. If the file does not exist, a new
+random key will be generated and placed in this location. Alternate locations can be
+configured with `--libp2p-key`. It does not necessarily need to be a different key than that used by swapd.

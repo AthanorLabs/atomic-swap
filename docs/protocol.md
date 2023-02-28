@@ -13,7 +13,7 @@ Alice deploys a smart contract on Ethereum and locks her ETH in it. The contract
 
 - it contains two timestamps, `t_0` and `t_1`, before and after which different actions are authorized.
 
-- it is constructed containing `P_a` and`P_b`, so that if Alice or Bob reveals their secret by calling the contract, the contract will verify that the secret corresponds to the expected public key that it was initalized with.
+- it is constructed containing `P_a` and`P_b`, so that if Alice or Bob reveals their secret by calling the contract, the contract will verify that the secret corresponds to the expected public key that it was initialized with.
 
 - it has a `Ready()` function which can only be called by Alice. Once `Ready()` is invoked, Bob can proceed with redeeming his ether. Alice has until the `t_0` timestamp to call `Ready()` - once `t_0` passes, then the contract automatically allows Bob to claim his ether, up until some second timestamp `t_1`.
 
@@ -23,7 +23,7 @@ Alice deploys a smart contract on Ethereum and locks her ETH in it. The contract
 
 - it has a `Refund()` function that can only be called by Alice and only before `Ready()` is called *or* `t_0` is reached. Once `Ready()` is invoked, Alice can no longer call `Refund()` until the next timestamp `t_1`.  If Bob doesn't claim his ether by `t_1`, then `Refund()` can be called by Alice once again.
 
-- `Refund()` takes one parameter from Alice: `s_a`. This allows Alice to get her ETH back in case Bob goes offline, but it simulteneously reveals her secret, allowing Bob to regain access to the XMR he locked.
+- `Refund()` takes one parameter from Alice: `s_a`. This allows Alice to get her ETH back in case Bob goes offline, but it simultaneously reveals her secret, allowing Bob to regain access to the XMR he locked.
 
 #### Step 2. 
 Bob sees the smart contract has been deployed with the correct parameters. He sends his XMR to an account address constructed from `P_a + P_b`. Thus, the funds can only be accessed by an entity having both `s_a` and `s_b`, as the secret spend key to that account is `s_a + s_b`. The funds are viewable by someone having `v_a + v_b`.

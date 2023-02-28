@@ -1,18 +1,19 @@
 package db
 
 import (
-	"encoding/json"
 	"math/big"
 	"testing"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-
 	"github.com/ChainSafe/chaindb"
 	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/vjson"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
 func newTestRecoveryDB(t *testing.T) *RecoveryDB {
@@ -34,7 +35,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 	si := &EthereumSwapInfo{
 		StartNumber: big.NewInt(12345),
 		SwapID:      types.Hash{1, 2, 3, 4},
-		Swap: contracts.SwapFactorySwap{
+		Swap: &contracts.SwapFactorySwap{
 			Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 			Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 			PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),
@@ -49,22 +50,22 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 	}
 
 	expectedStr := `{
-		"start_number": 12345,
-		"swap_id":      "0x0102030400000000000000000000000000000000000000000000000000000000",
+		"startNumber": 12345,
+		"swapID":      "0x0102030400000000000000000000000000000000000000000000000000000000",
 		"swap": {
 			"owner":          "0xda9dfa130df4de4673b89022ee50ff26f6ea73cf",
 			"claimer":        "0xbe0eb53f46cd790cd13851d5eff43d12404d33e8",
-			"pub_key_claim":  "0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9",
-			"pub_key_refund": "0x4897bc3b9e02c2a8cd6353b9b29377157bf2694daaf52b59c0b42daa39877f14",
+			"pubKeyClaim":  "0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9",
+			"pubKeyRefund": "0x4897bc3b9e02c2a8cd6353b9b29377157bf2694daaf52b59c0b42daa39877f14",
 			"timeout0":       1672531200,
 			"timeout1":       1672545600,
 			"asset":          "0x0000000000000000000000000000000000000000",
 			"value":          9876,
 			"nonce":          1234
 		},
-		"contract_address": "0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"
+		"contractAddress": "0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"
 	}`
-	jsonData, err := json.Marshal(si)
+	jsonData, err := vjson.MarshalStruct(si)
 	require.NoError(t, err)
 	require.JSONEq(t, expectedStr, string(jsonData))
 
@@ -80,9 +81,10 @@ func TestRecoveryDB_SwapRelayerInfo(t *testing.T) {
 	rdb := newTestRecoveryDB(t)
 	offerID := types.Hash{5, 6, 7, 8}
 
+	fee := coins.StrToDecimal("0.0135")
 	info := &types.OfferExtra{
-		RelayerEndpoint:   "endpoint",
-		RelayerCommission: 0.0135,
+		RelayerEndpoint: "endpoint",
+		RelayerFee:      fee,
 	}
 
 	err := rdb.PutSwapRelayerInfo(offerID, info)
@@ -105,7 +107,7 @@ func TestRecoveryDB_SwapPrivateKey(t *testing.T) {
 
 	res, err := rdb.GetSwapPrivateKey(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
+	require.Equal(t, kp.SpendKey().String(), res.String())
 }
 
 func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
@@ -115,28 +117,28 @@ func TestRecoveryDB_SharedSwapPrivateKey(t *testing.T) {
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	err = rdb.PutSharedSwapPrivateKey(offerID, kp.SpendKey())
+	err = rdb.PutCounterpartySwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)
 
-	res, err := rdb.GetSharedSwapPrivateKey(offerID)
+	res, err := rdb.GetCounterpartySwapPrivateKey(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Hex(), res.Hex())
+	require.Equal(t, kp.SpendKey().String(), res.String())
 }
 
-func TestRecoveryDB_XMRMakerSwapKeys(t *testing.T) {
+func TestRecoveryDB_CounterpartySwapKeys(t *testing.T) {
 	rdb := newTestRecoveryDB(t)
 	offerID := types.Hash{5, 6, 7, 8}
 
 	kp, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	err = rdb.PutXMRMakerSwapKeys(offerID, kp.SpendKey().Public(), kp.ViewKey())
+	err = rdb.PutCounterpartySwapKeys(offerID, kp.SpendKey().Public(), kp.ViewKey())
 	require.NoError(t, err)
 
-	resSk, resVk, err := rdb.GetXMRMakerSwapKeys(offerID)
+	resSk, resVk, err := rdb.GetCounterpartySwapKeys(offerID)
 	require.NoError(t, err)
-	require.Equal(t, kp.SpendKey().Public().Hex(), resSk.Hex())
-	require.Equal(t, kp.ViewKey().Hex(), resVk.Hex())
+	require.Equal(t, kp.SpendKey().Public().String(), resSk.String())
+	require.Equal(t, kp.ViewKey().String(), resVk.String())
 }
 
 func TestRecoveryDB_DeleteSwap(t *testing.T) {
@@ -149,7 +151,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	si := &EthereumSwapInfo{
 		StartNumber: big.NewInt(12345),
 		SwapID:      types.Hash{1, 2, 3, 4},
-		Swap: contracts.SwapFactorySwap{
+		Swap: &contracts.SwapFactorySwap{
 			Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 			Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 			PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),
@@ -162,9 +164,10 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 		},
 		ContractAddress: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
 	}
+
 	info := &types.OfferExtra{
-		RelayerEndpoint:   "endpoint",
-		RelayerCommission: 0.0135,
+		RelayerEndpoint: "endpoint",
+		RelayerFee:      coins.StrToDecimal("0.0135"),
 	}
 
 	err = rdb.PutContractSwapInfo(offerID, si)
@@ -173,9 +176,9 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	require.NoError(t, err)
 	err = rdb.PutSwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)
-	err = rdb.PutSharedSwapPrivateKey(offerID, kp.SpendKey())
+	err = rdb.PutCounterpartySwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)
-	err = rdb.PutXMRMakerSwapKeys(offerID, kp.SpendKey().Public(), kp.ViewKey())
+	err = rdb.PutCounterpartySwapKeys(offerID, kp.SpendKey().Public(), kp.ViewKey())
 	require.NoError(t, err)
 
 	err = rdb.DeleteSwap(offerID)
@@ -186,8 +189,8 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
 	_, err = rdb.GetSwapPrivateKey(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
-	_, err = rdb.GetSharedSwapPrivateKey(offerID)
+	_, err = rdb.GetCounterpartySwapPrivateKey(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
-	_, _, err = rdb.GetXMRMakerSwapKeys(offerID)
+	_, _, err = rdb.GetCounterpartySwapKeys(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())
 }

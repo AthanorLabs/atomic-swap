@@ -3,24 +3,26 @@ package xmrmaker
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"strings"
+	"time"
 
+	"github.com/cockroachdb/apd/v3"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
-
-var numEtherUnitsFloat = big.NewFloat(math.Pow(10, 18))
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (ethcommon.Hash, error) {
@@ -36,19 +38,20 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 	}
 
+	weiBalance, err := s.ETHClient().Balance(s.ctx)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		balance, err := s.ETHClient().Balance(s.ctx) //nolint:govet
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-		log.Infof("balance before claim: %v ETH", common.WeiAmount(*balance).AsEther())
+		log.Infof("balance before claim: %s ETH", coins.NewWeiAmount(weiBalance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v %s",
-			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
 			symbol,
 		)
 	}
@@ -60,18 +63,23 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	if s.offerExtra.RelayerEndpoint != "" {
 		// relayer endpoint is set, claim using relayer
-		// TODO: eventually update when relayer discovery is implemented
 		txHash, err = s.claimRelayer()
 		if err != nil {
-			return ethcommon.Hash{}, err
+			log.Warnf("failed to claim using relayer at %s, trying relayers via p2p: err: %s",
+				s.offerExtra.RelayerEndpoint,
+				err,
+			)
+			txHash, err = s.discoverRelayersAndClaim()
 		}
+	} else if weiBalance.Cmp(big.NewInt(0)) == 0 {
+		txHash, err = s.discoverRelayersAndClaim()
 	} else {
 		// claim and wait for tx to be included
 		sc := s.getSecret()
 		txHash, _, err = s.sender.Claim(s.contractSwap, sc)
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
+	}
+	if err != nil {
+		return ethcommon.Hash{}, err
 	}
 
 	log.Infof("sent claim transaction, tx hash=%s", txHash)
@@ -81,20 +89,76 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %v ETH", common.WeiAmount(*balance).AsEther())
+		log.Infof("balance after claim: %s ETH", coins.NewWeiAmount(balance).AsEther())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
 
-		log.Infof("balance after claim: %v %s",
-			common.NewERC20TokenAmountFromBigInt(balance, int(decimals)).AsStandard(),
+		log.Infof("balance after claim: %s %s",
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
 			symbol,
 		)
 	}
 
 	return txHash, nil
+}
+
+// discoverRelayersAndClaim discovers available relayers on the network,
+func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
+	relayers, err := s.Backend.DiscoverRelayers()
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	forwarderAddress, err := s.Contract().TrustedForwarder(
+		&bind.CallOpts{Context: s.ctx},
+	)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	calldata, err := getClaimTxCalldata(common.DefaultRelayerFee, s.contractSwap, s.getSecret())
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	req, err := relayer.CreateSubmitTransactionRequest(
+		s.ETHClient().PrivateKey(),
+		s.ETHClient().Raw(),
+		forwarderAddress,
+		s.contractAddr,
+		calldata,
+	)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
+	for _, relayer := range relayers {
+		resp, err := s.Backend.SubmitTransactionToRelayer(relayer, req)
+		if err != nil {
+			log.Warnf("failed to submit tx to relayer with peer ID %s, trying next relayer: err: %s", relayer, err)
+			continue
+		}
+
+		err = waitForClaimReceipt(
+			s.ctx,
+			s.ETHClient().Raw(),
+			resp.TxHash,
+			s.contractAddr,
+			s.contractSwapID,
+			s.getSecret(),
+		)
+		if err != nil {
+			log.Warnf("tx %s submitted by relayer with peer ID %s failed, trying next relayer", resp.TxHash, relayer)
+			continue
+		}
+
+		return resp.TxHash, nil
+	}
+
+	return ethcommon.Hash{}, errors.New("failed to submit transaction to any relayer")
 }
 
 func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
@@ -105,13 +169,14 @@ func (s *swapState) claimRelayer() (ethcommon.Hash, error) {
 		s.contractAddr,
 		s.ETHClient().Raw(),
 		s.offerExtra.RelayerEndpoint,
-		s.offerExtra.RelayerCommission,
-		&s.contractSwap,
+		s.offerExtra.RelayerFee,
+		s.contractSwap,
+		s.contractSwapID,
 		s.getSecret(),
 	)
 }
 
-// claimRelayer claims the ETH funds via relayer.
+// claimRelayer claims the ETH funds via relayer RPC endpoint.
 func claimRelayer(
 	ctx context.Context,
 	sk *ecdsa.PrivateKey,
@@ -119,9 +184,9 @@ func claimRelayer(
 	contractAddr ethcommon.Address,
 	ec *ethclient.Client,
 	relayerEndpoint string,
-	relayerCommission float64,
+	relayerFee *apd.Decimal,
 	contractSwap *contracts.SwapFactorySwap,
-	secret [32]byte,
+	contractSwapID, secret [32]byte,
 ) (ethcommon.Hash, error) {
 	forwarderAddress, err := contract.TrustedForwarder(&bind.CallOpts{})
 	if err != nil {
@@ -133,17 +198,7 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryABI))
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	feeValue, err := calculateRelayerCommissionValue(contractSwap.Value, relayerCommission)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	calldata, err := abi.Pack("claimRelayer", *contractSwap, secret, feeValue)
+	calldata, err := getClaimTxCalldata(relayerFee, contractSwap, secret)
 	if err != nil {
 		return ethcommon.Hash{}, err
 	}
@@ -153,34 +208,122 @@ func claimRelayer(
 		return ethcommon.Hash{}, err
 	}
 
-	// wait for inclusion
-	receipt, err := block.WaitForReceipt(ctx, ec, txHash)
+	err = waitForClaimReceipt(
+		ctx,
+		ec,
+		txHash,
+		contractAddr,
+		contractSwapID,
+		secret,
+	)
 	if err != nil {
 		return ethcommon.Hash{}, err
-	}
-
-	if receipt.Status == 0 {
-		return ethcommon.Hash{}, fmt.Errorf("transaction failed")
-	}
-
-	if len(receipt.Logs) == 0 {
-		return ethcommon.Hash{}, fmt.Errorf("claim transaction had no logs")
 	}
 
 	return txHash, nil
 }
 
-// swapValue is in wei
-// relayerCommission is a percentage (ie must be much less than 1)
-// error if it's greater than 0.1 (10%) - arbitrary, just a sanity check
-func calculateRelayerCommissionValue(swapValue *big.Int, relayerCommission float64) (*big.Int, error) {
-	if relayerCommission > 0.1 {
-		return nil, errRelayerCommissionTooHigh
+func waitForClaimReceipt(
+	ctx context.Context,
+	ec *ethclient.Client,
+	txHash ethcommon.Hash,
+	contractAddr ethcommon.Address,
+	contractSwapID, secret [32]byte,
+) error {
+	const (
+		checkInterval = time.Second // time between transaction polls
+		maxWait       = time.Minute // max wait for the tx to be included in a block
+		maxNotFound   = 5           // max failures where the tx is not even found in the mempool
+	)
+
+	start := time.Now()
+
+	var notFoundCount int
+	// wait for inclusion
+	for {
+		// sleep before the first check, b/c we want to give the tx some time to propagate
+		// into the node we're using
+		err := common.SleepWithContext(ctx, checkInterval)
+		if err != nil {
+			return err
+		}
+
+		_, isPending, err := ec.TransactionByHash(ctx, txHash)
+		if err != nil {
+			// allow up to 5 NotFound errors, in case there's some network problems
+			if errors.Is(err, ethereum.NotFound) && notFoundCount >= maxNotFound {
+				notFoundCount++
+				continue
+			}
+
+			return err
+		}
+
+		if time.Since(start) > maxWait {
+			// the tx is taking too long, return an error so we try with another relayer
+			return errRelayedTransactionTimeout
+		}
+
+		if !isPending {
+			break
+		}
 	}
 
-	swapValueF := big.NewFloat(0).SetInt(swapValue)
-	relayerCommissionF := big.NewFloat(relayerCommission)
-	feeValue := big.NewFloat(0).Mul(swapValueF, relayerCommissionF)
-	wei, _ := feeValue.Int(nil)
-	return wei, nil
+	receipt, err := ec.TransactionReceipt(ctx, txHash)
+	if err != nil {
+		return err
+	}
+
+	if len(receipt.Logs) == 0 {
+		return fmt.Errorf("claim transaction had no logs")
+	}
+
+	return checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret)
+}
+
+func checkClaimedLog(log *ethtypes.Log, contractAddr ethcommon.Address, contractSwapID, secret [32]byte) error {
+	if log.Address != contractAddr {
+		return errClaimedLogInvalidContractAddr
+	}
+
+	if len(log.Topics) != 3 {
+		return errClaimedLogWrongTopicLength
+	}
+
+	if log.Topics[0] != claimedTopic {
+		return errClaimedLogWrongEvent
+	}
+
+	if log.Topics[1] != contractSwapID {
+		return errClaimedLogWrongSwapID
+	}
+
+	if log.Topics[2] != secret {
+		return errClaimedLogWrongSecret
+	}
+
+	return nil
+}
+
+func getClaimTxCalldata(
+	fee *apd.Decimal,
+	contractSwap *contracts.SwapFactorySwap,
+	secret [32]byte,
+) ([]byte, error) {
+	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
+	if err != nil {
+		return nil, err
+	}
+
+	feeWei := coins.EtherToWei(fee).BigInt()
+	if contractSwap.Value.Cmp(feeWei) <= 0 {
+		return nil, errSwapValueTooLow
+	}
+
+	calldata, err := abi.Pack("claimRelayer", *contractSwap, secret, feeWei)
+	if err != nil {
+		return nil, err
+	}
+
+	return calldata, nil
 }

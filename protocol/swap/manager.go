@@ -5,13 +5,12 @@ package swap
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 
 	"github.com/ChainSafe/chaindb"
 )
-
-var _ Manager = &manager{}
 
 var errNoSwapWithID = errors.New("unable to find swap with given ID")
 
@@ -22,7 +21,7 @@ type Manager interface {
 	GetPastIDs() ([]types.Hash, error)
 	GetPastSwap(types.Hash) (*Info, error)
 	GetOngoingSwap(types.Hash) (Info, error)
-	GetOngoingSwaps() ([]Info, error)
+	GetOngoingSwaps() ([]*Info, error)
 	CompleteOngoingSwap(info *Info) error
 }
 
@@ -37,10 +36,12 @@ type manager struct {
 	past    map[types.Hash]*Info
 }
 
+var _ Manager = (*manager)(nil)
+
 // NewManager returns a new Manager that uses the given database.
 // It loads all ongoing swaps into memory on construction.
 // Completed swaps are not loaded into memory.
-func NewManager(db Database) (*manager, error) {
+func NewManager(db Database) (Manager, error) {
 	ongoing := make(map[types.Hash]*Info)
 
 	stored, err := db.GetAllSwaps()
@@ -148,13 +149,15 @@ func (m *manager) GetOngoingSwap(id types.Hash) (Info, error) {
 }
 
 // GetOngoingSwaps returns all ongoing swaps.
-func (m *manager) GetOngoingSwaps() ([]Info, error) {
+func (m *manager) GetOngoingSwaps() ([]*Info, error) {
 	m.RLock()
 	defer m.RUnlock()
-	swaps := make([]Info, len(m.ongoing))
+	swaps := make([]*Info, len(m.ongoing))
 	i := 0
 	for _, s := range m.ongoing {
-		swaps[i] = *s
+		sCopy := new(Info)
+		*sCopy = *s
+		swaps[i] = sCopy
 		i++
 	}
 	return swaps, nil
@@ -168,6 +171,8 @@ func (m *manager) CompleteOngoingSwap(info *Info) error {
 	if !has {
 		return errNoSwapWithID
 	}
+
+	info.EndTime = time.Now()
 
 	m.past[info.ID] = info
 	delete(m.ongoing, info.ID)

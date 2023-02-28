@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -22,7 +23,7 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().SetReady(txOpts, s.contractSwap)
+	tx, err := s.Contract().SetReady(txOpts, *s.contractSwap)
 	require.NoError(t, err)
 	tests.MineTransaction(t, s.ETHClient().Raw(), tx)
 
@@ -43,7 +44,12 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 
 	xmrtakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	s.setXMRTakerPublicKeys(xmrtakerKeysAndProof.PublicKeyPair, xmrtakerKeysAndProof.Secp256k1PublicKey)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
@@ -52,7 +58,7 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(common.MoneroToPiconero(s.info.ProvidedAmount))
+	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's secret

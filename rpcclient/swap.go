@@ -3,11 +3,12 @@ package rpcclient
 import (
 	"fmt"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
 // GetPastSwapIDs calls swap_getPastIDs
-func (c *Client) GetPastSwapIDs() ([]string, error) {
+func (c *Client) GetPastSwapIDs() ([]*rpc.PastSwapInfo, error) {
 	const (
 		method = "swap_getPastIDs"
 	)
@@ -18,7 +19,7 @@ func (c *Client) GetPastSwapIDs() ([]string, error) {
 		return nil, err
 	}
 
-	return res.IDs, nil
+	return res.Swaps, nil
 }
 
 // GetOngoingSwap calls swap_getOngoing
@@ -76,16 +77,16 @@ func (c *Client) Refund(id string) (*rpc.RefundResponse, error) {
 	return res, nil
 }
 
-// GetStage calls swap_getStage
-func (c *Client) GetStage(id string) (*rpc.GetStageResponse, error) {
+// GetStatus calls swap_getStatus
+func (c *Client) GetStatus(id types.Hash) (*rpc.GetStatusResponse, error) {
 	const (
-		method = "swap_getStage"
+		method = "swap_getStatus"
 	)
 
-	req := &rpc.GetStageRequest{
-		OfferID: id,
+	req := &rpc.GetStatusRequest{
+		ID: id,
 	}
-	res := &rpc.GetStageResponse{}
+	res := &rpc.GetStatusResponse{}
 
 	if err := c.Post(method, req, res); err != nil {
 		return nil, err
@@ -95,13 +96,13 @@ func (c *Client) GetStage(id string) (*rpc.GetStageResponse, error) {
 }
 
 // ClearOffers calls swap_clearOffers
-func (c *Client) ClearOffers(ids []string) error {
+func (c *Client) ClearOffers(offerIDs []types.Hash) error {
 	const (
 		method = "swap_clearOffers"
 	)
 
 	req := &rpc.ClearOffersRequest{
-		IDs: ids,
+		OfferIDs: offerIDs,
 	}
 
 	if err := c.Post(method, req, nil); err != nil {
@@ -109,4 +110,18 @@ func (c *Client) ClearOffers(ids []string) error {
 	}
 
 	return nil
+}
+
+// SuggestedExchangeRate calls swap_suggestedExchangeRate
+func (c *Client) SuggestedExchangeRate() (*rpc.SuggestedExchangeRateResponse, error) {
+	const (
+		method = "swap_suggestedExchangeRate"
+	)
+
+	res := &rpc.SuggestedExchangeRateResponse{}
+	if err := c.Post(method, nil, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

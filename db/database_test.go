@@ -4,46 +4,42 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ChainSafe/chaindb"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
-
-	"github.com/ChainSafe/chaindb"
-	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	_ = logging.SetLogLevel("db", "debug")
+}
+
 func TestDatabase_OfferTable(t *testing.T) {
-	cfg := &chaindb.Config{
+	db, err := NewDatabase(&chaindb.Config{
 		DataDir:  t.TempDir(),
 		InMemory: true,
-	}
-
-	db, err := NewDatabase(cfg)
+	})
 	require.NoError(t, err)
 
 	// put swap to ensure iterator over offers is ok
 	infoA := &swap.Info{
-		ID: types.Hash{0x1},
+		ID:       types.Hash{0x1},
+		Provides: coins.ProvidesXMR,
+		Status:   types.ExpectingKeys,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
-	offerA := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	one := coins.StrToDecimal("1")
+	oneEx := coins.ToExchangeRate(one)
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
-	offerB := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	offerB := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerB)
 	require.NoError(t, err)
 
@@ -59,6 +55,72 @@ func TestDatabase_OfferTable(t *testing.T) {
 	require.Equal(t, 0, len(offers))
 }
 
+func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
+	db, err := NewDatabase(&chaindb.Config{
+		DataDir:  t.TempDir(),
+		InMemory: true,
+	})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+
+	// Put a bad offer that won't deserialize in the database
+	badOfferID := types.Hash{0x1, 0x2, 0x3}
+	err = db.offerTable.Put(badOfferID[:], []byte(`{"key":"value"}`))
+	require.NoError(t, err)
+
+	// Put a good offer in the database
+	goodOffer := types.NewOffer(
+		coins.ProvidesXMR,
+		coins.StrToDecimal("1"),
+		coins.StrToDecimal("2"),
+		coins.ToExchangeRate(coins.StrToDecimal("0.10")),
+		types.EthAssetETH,
+	)
+	err = db.PutOffer(goodOffer)
+	require.NoError(t, err)
+
+	// Put a swap entry tied to the bad offer in the database
+	swapEntry := &swap.Info{
+		ID:       badOfferID,
+		Provides: coins.ProvidesXMR,
+		Status:   types.KeysExchanged,
+	}
+	err = db.PutSwap(swapEntry)
+	require.NoError(t, err)
+
+	// Establish a baseline that both the good and bad entries exist before calling GetAllOffers
+	exists, err := db.offerTable.Has(goodOffer.ID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	exists, err = db.offerTable.Has(badOfferID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	exists, err = db.swapTable.Has(badOfferID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	// Only the good offer should be returned by GetAllOffers
+	offers, err := db.GetAllOffers()
+	require.NoError(t, err)
+	require.Equal(t, 1, len(offers))
+	require.EqualValues(t, goodOffer.ID[:], offers[0].ID[:])
+
+	// GetAllOffers should have pruned the bad offer, but left the good offer
+	exists, err = db.offerTable.Has(goodOffer.ID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	exists, err = db.offerTable.Has(badOfferID[:])
+	require.NoError(t, err)
+	require.False(t, exists) // offer entry was pruned
+
+	exists, err = db.swapTable.Has(badOfferID[:])
+	require.NoError(t, err)
+	require.False(t, exists) // swap info tied to removed offer pruned
+}
+
 func TestDatabase_SwapTable(t *testing.T) {
 	cfg := &chaindb.Config{
 		DataDir:  t.TempDir(),
@@ -68,26 +130,27 @@ func TestDatabase_SwapTable(t *testing.T) {
 	db, err := NewDatabase(cfg)
 	require.NoError(t, err)
 
-	offerA := types.NewOffer(
-		types.ProvidesXMR,
-		float64(1),
-		float64(1),
-		types.ExchangeRate(1),
-		types.EthAssetETH,
-	)
+	one := coins.StrToDecimal("1")
+	oneEx := coins.ToExchangeRate(one)
+
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
 	infoA := &swap.Info{
-		ID:      types.Hash{0x1},
-		Version: swap.CurInfoVersion,
+		ID:       types.Hash{0x1},
+		Version:  swap.CurInfoVersion,
+		Provides: coins.ProvidesXMR,
+		Status:   types.ContractReady,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		ID:      types.Hash{0x2},
-		Version: swap.CurInfoVersion,
+		ID:       types.Hash{0x2},
+		Version:  swap.CurInfoVersion,
+		Provides: coins.ProvidesXMR,
+		Status:   types.XMRLocked,
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
@@ -101,6 +164,57 @@ func TestDatabase_SwapTable(t *testing.T) {
 	require.Equal(t, 2, len(swaps))
 }
 
+func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
+	db, err := NewDatabase(&chaindb.Config{
+		DataDir:  t.TempDir(),
+		InMemory: true,
+	})
+	require.NoError(t, err)
+
+	goodInfo := &swap.Info{
+		Version:           swap.CurInfoVersion,
+		ID:                types.Hash{0x1, 0x2, 0x3},
+		Provides:          coins.ProvidesXMR,
+		ProvidedAmount:    coins.StrToDecimal("1.5"),
+		ExpectedAmount:    coins.StrToDecimal("0.15"),
+		ExchangeRate:      coins.ToExchangeRate(coins.StrToDecimal("0.1")),
+		EthAsset:          types.EthAsset{},
+		Status:            types.ETHLocked,
+		MoneroStartHeight: 0,
+	}
+	err = db.PutSwap(goodInfo)
+	require.NoError(t, err)
+
+	// Put a bad entry in the database
+	badInfoID := types.Hash{0x4, 0x5, 0x6}
+	err = db.swapTable.Put(badInfoID[:], []byte(`{"key":"value"}`))
+	require.NoError(t, err)
+
+	// Establish a baseline that both the good and bad entries exist before calling GetAllSwaps
+	exists, err := db.swapTable.Has(goodInfo.ID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	exists, err = db.swapTable.Has(badInfoID[:])
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	// Only the good offer should be returned by GetAllSwaps
+	swaps, err := db.GetAllSwaps()
+	require.NoError(t, err)
+	require.Equal(t, 1, len(swaps))
+	require.EqualValues(t, goodInfo.ID[:], swaps[0].ID[:])
+
+	// GetAllSwaps should have pruned the bad swap info entry, but left the good entry
+	exists, err = db.swapTable.Has(goodInfo.ID[:])
+	require.NoError(t, err)
+	require.True(t, exists) // entry still exists
+
+	exists, err = db.swapTable.Has(badInfoID[:])
+	require.NoError(t, err)
+	require.False(t, exists) // entry was pruned
+}
+
 func TestDatabase_SwapTable_Update(t *testing.T) {
 	cfg := &chaindb.Config{
 		DataDir:  t.TempDir(),
@@ -112,14 +226,17 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 
 	id := types.Hash{0x1}
 	infoA := &swap.Info{
-		ID: id,
+		ID:       id,
+		Provides: coins.ProvidesXMR,
+		Status:   types.XMRLocked,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		ID:     id,
-		Status: types.CompletedSuccess,
+		ID:       id,
+		Provides: coins.ProvidesXMR,
+		Status:   types.CompletedSuccess,
 	}
 
 	err = db.PutSwap(infoB)
