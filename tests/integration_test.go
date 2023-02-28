@@ -556,6 +556,12 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
+	// Bob making an offer above only queues the DHT advertisement for the XMR
+	// namespace (the namespace for swapd hosts providing XMR offers). We need
+	// to wait a little extra before Alice calls Discover to ensure that the
+	// advertisement went out.
+	common.SleepWithContext(ctx, time.Millisecond*500)
+
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), 1, len(peerIDs))
