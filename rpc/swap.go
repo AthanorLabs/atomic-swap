@@ -50,7 +50,7 @@ func NewSwapService(
 type PastSwapInfo struct {
 	ID        types.Hash `json:"id"`
 	StartTime time.Time  `json:"startTime"`
-	EndTime   time.Time  `json:"endTime"`
+	EndTime   *time.Time `json:"endTime"`
 }
 
 // GetPastIDsResponse ...
@@ -100,7 +100,7 @@ type GetPastResponse struct {
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         types.Status        `json:"status" validate:"required"`
 	StartTime      time.Time           `json:"startTime"`
-	EndTime        time.Time           `json:"endTime"`
+	EndTime        *time.Time          `json:"endTime"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -134,6 +134,8 @@ type OngoingSwap struct {
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
 	Status         types.Status        `json:"status" validate:"required"`
 	StartTime      time.Time           `json:"startTime"`
+	Timeout0       *time.Time          `json:"timeout0"`
+	Timeout1       *time.Time          `json:"timeout1"`
 }
 
 // GetOngoingResponse ...
@@ -182,6 +184,8 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.ExchangeRate = info.ExchangeRate
 		swap.Status = info.Status
 		swap.StartTime = info.StartTime
+		swap.Timeout0 = info.Timeout0
+		swap.Timeout1 = info.Timeout1
 		resp.Swaps[i] = swap
 	}
 

@@ -495,6 +495,8 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 	s.t0 = time.Unix(t0.Int64(), 0)
 	s.t1 = time.Unix(t1.Int64(), 0)
+	s.info.Timeout0 = &s.t0
+	s.info.Timeout1 = &s.t1
 }
 
 func (s *swapState) generateAndSetKeys() error {
