@@ -36,10 +36,26 @@ type Info struct {
 	EthAsset       types.EthAsset      `json:"ethAsset"`
 	Status         Status              `json:"status" validate:"required"`
 	// MoneroStartHeight is the Monero block number when the swap begins.
-	MoneroStartHeight uint64            `json:"moneroStartHeight" validate:"required"`
-	StartTime         time.Time         `json:"startTime" validate:"required"`
-	EndTime           time.Time         `json:"endTime,omitempty"`
-	statusCh          chan types.Status `json:"-"`
+	MoneroStartHeight uint64 `json:"moneroStartHeight" validate:"required"`
+	// StartTime is the time at which the swap is initiated via
+	// key exchange.
+	// This may vary slightly between the maker/taker.
+	StartTime time.Time `json:"startTime" validate:"required"`
+	// EndTime is the time at which the swap completes; ie.
+	// when the node has claimed or refunded its funds.
+	EndTime *time.Time `json:"endTime,omitempty"`
+	// Timeout0 is the first swap timeout; before this timeout,
+	// the ETH-maker is able to refund the ETH (if `ready` has not
+	// been set to true in the contract). After this timeout,
+	// the ETH-taker is able to claim, and the ETH-maker can
+	// no longer refund.
+	Timeout0 *time.Time `json:"timeout0,omitempty"`
+	// Timeout1 is the second swap timeout; before this timeout
+	// (and after Timeout0), the ETH-taker is able to claim, but
+	// after this timeout, the ETH-taker can no longer claim, only
+	// the ETH-maker can refund.
+	Timeout1 *time.Time        `json:"timeout1,omitempty"`
+	statusCh chan types.Status `json:"-"`
 }
 
 // NewInfo creates a new *Info from the given parameters.
