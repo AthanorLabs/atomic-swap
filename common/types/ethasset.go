@@ -10,9 +10,10 @@ import (
 // EthAsset represents an Ethereum asset (ETH or a token address)
 type EthAsset ethcommon.Address
 
-// String ...
+// String implements fmt.Stringer, returning the asset's address in hex, or
+// a short string for well-known assets like ETH.
 func (asset EthAsset) String() string {
-	if ethcommon.Address(asset).Hex() == "0x0000000000000000000000000000000000000000" {
+	if asset == EthAssetETH {
 		return "ETH"
 	}
 
@@ -20,7 +21,8 @@ func (asset EthAsset) String() string {
 	return ethcommon.Address(asset).Hex()
 }
 
-// MarshalText returns the hex representation of the EthAsset
+// MarshalText returns the hex representation of the EthAsset or,
+// in some cases, a short string.
 func (asset EthAsset) MarshalText() ([]byte, error) {
 	return []byte(asset.String()), nil
 }
@@ -46,4 +48,4 @@ func (asset EthAsset) Address() ethcommon.Address {
 }
 
 // EthAssetETH describes regular ETH (rather than an ERC-20 token)
-var EthAssetETH = EthAsset(ethcommon.HexToAddress("0x0"))
+var EthAssetETH = EthAsset(ethcommon.Address{})

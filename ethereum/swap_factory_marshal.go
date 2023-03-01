@@ -12,10 +12,10 @@ import (
 // swap is the same as the auto-generated SwapFactorySwap type, but with some type
 // adjustments and annotations for JSON marshalling.
 type swap struct {
-	Owner        common.Address `json:"owner"`
-	Claimer      common.Address `json:"claimer"`
-	PubKeyClaim  types.Hash     `json:"pubKeyClaim"`
-	PubKeyRefund types.Hash     `json:"pubKeyRefund"`
+	Owner        common.Address `json:"owner" validate:"required"`
+	Claimer      common.Address `json:"claimer" validate:"required"`
+	PubKeyClaim  types.Hash     `json:"pubKeyClaim" validate:"required"`
+	PubKeyRefund types.Hash     `json:"pubKeyRefund" validate:"required"`
 	Timeout0     *big.Int       `json:"timeout0" validate:"required"`
 	Timeout1     *big.Int       `json:"timeout1" validate:"required"`
 	Asset        common.Address `json:"asset"`

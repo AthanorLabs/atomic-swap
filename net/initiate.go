@@ -107,8 +107,10 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
-		log.Warnf("failed to send response to peer: err=%s", err)
-		_ = s.Exit()
+		log.Warnf("failed to send response to peer: %s", err)
+		if err = s.Exit(); err != nil {
+			log.Warnf("Swap exit failure: %s", err)
+		}
 		_ = stream.Close()
 		return
 	}

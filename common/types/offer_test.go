@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -62,7 +61,7 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 	}`, offer.ID, ethAsset, offer.Nonce)
 
 	var res Offer
-	err := json.Unmarshal([]byte(offerJSON), &res)
+	err := vjson.UnmarshalStruct([]byte(offerJSON), &res)
 	require.NoError(t, err)
 	assert.Equal(t, offer.ID, res.ID)
 	assert.Equal(t, res.Provides, coins.ProvidesXMR)
@@ -90,7 +89,7 @@ func TestOffer_UnmarshalJSON_DefaultAsset(t *testing.T) {
 	}`, offer.ID, offer.Nonce)
 
 	var res Offer
-	err := json.Unmarshal([]byte(offerJSON), &res)
+	err := vjson.UnmarshalStruct([]byte(offerJSON), &res)
 	require.NoError(t, err)
 	assert.Equal(t, *CurOfferVersion, offer.Version)
 	assert.Equal(t, offer.ID, res.ID)
@@ -109,7 +108,7 @@ func TestOffer_MarshalJSON_RoundTrip(t *testing.T) {
 	offerJSON, err := vjson.MarshalStruct(offer1)
 	require.NoError(t, err)
 	var offer2 Offer
-	err = json.Unmarshal(offerJSON, &offer2)
+	err = vjson.UnmarshalStruct(offerJSON, &offer2)
 	require.NoError(t, err)
 	assert.Equal(t, offer1.Version.String(), offer2.Version.String())
 	offer2.Version = offer1.Version // make the version pointers equal for the next line
@@ -138,10 +137,11 @@ func TestOffer_UnmarshalJSON_MissingID(t *testing.T) {
 		"minAmount": "100",
 		"maxAmount": "200",
 		"exchangeRate": "1.5",
-		"ethAsset": "ETH"
+		"ethAsset": "ETH",
+		"nonce": 1234
 	}`)
 	_, err := UnmarshalOffer(offerJSON)
-	require.ErrorIs(t, err, errOfferIDNotSet)
+	require.ErrorContains(t, err, "Field validation for 'ID' failed on the 'required' tag")
 }
 
 func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
@@ -151,7 +151,8 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		"minAmount": %s,
 		"maxAmount": %s,
 		"exchangeRate": %s,
-		"ethAsset": "ETH"
+		"ethAsset": "ETH",
+		"nonce": 1234
 	}`
 	type entry struct {
 		jsonData    string
@@ -161,7 +162,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		// Min amount checks
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `null`, `"1"`, `"0.1"`),
-			errContains: `"minAmount" is not set`,
+			errContains: `Field validation for 'MinAmount' failed on the 'required' tag`,
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"0"`, `"1"`, `"0.1"`),
@@ -174,7 +175,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		// Max Amount checks
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `null`, `"0.1"`),
-			errContains: `"maxAmount" is not set`,
+			errContains: `Field validation for 'MaxAmount' failed on the 'required' tag`,
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"-0"`, `"0.1"`),
@@ -192,7 +193,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		// Exchange rate checks
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"1"`, `null`),
-			errContains: `"exchangeRate" is not set`,
+			errContains: `Field validation for 'ExchangeRate' failed on the 'required' tag`,
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"1"`, `"0"`),
@@ -205,7 +206,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 	}
 	for _, e := range testEntries {
 		o := new(Offer)
-		err := json.Unmarshal([]byte(e.jsonData), o)
+		err := vjson.UnmarshalStruct([]byte(e.jsonData), o)
 		assert.ErrorContains(t, err, e.errContains)
 	}
 }
@@ -219,7 +220,7 @@ func TestOffer_UnmarshalJSON_BadProvides(t *testing.T) {
 		"exchangeRate": "0.5",
 		"ethAsset": "ETH"
 	}`)
-	err := json.Unmarshal(offerJSON, new(Offer))
+	err := vjson.UnmarshalStruct(offerJSON, new(Offer))
 	assert.ErrorIs(t, err, coins.ErrInvalidCoin)
 }
 

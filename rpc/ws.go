@@ -192,7 +192,7 @@ func (s *wsServer) handleSigner(
 			log.Debugf("outbound tx: %v", tx)
 			resp := &rpctypes.SignerResponse{
 				OfferID: offerID,
-				To:      tx.To.String(),
+				To:      tx.To,
 				Data:    tx.Data,
 				Value:   tx.Value,
 			}

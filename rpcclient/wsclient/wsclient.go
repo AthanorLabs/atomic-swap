@@ -333,7 +333,7 @@ func (c *wsClient) MakeOfferAndSubscribe(
 		MinAmount:       min,
 		MaxAmount:       max,
 		ExchangeRate:    exchangeRate,
-		EthAsset:        ethAsset.Address().String(),
+		EthAsset:        ethAsset,
 		RelayerEndpoint: relayerEndpoint,
 		RelayerFee:      relayerFee,
 	}
