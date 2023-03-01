@@ -5,7 +5,6 @@ package xmrtaker
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -300,7 +299,9 @@ func (s *swapState) waitForSendKeysMessage() {
 	}
 
 	// if not, just exit the swap
-	_ = s.Exit()
+	if err := s.Exit(); err != nil {
+		log.Warnf("Swap exit failure: %s", err)
+	}
 }
 
 // SendKeysMessage ...
@@ -308,7 +309,7 @@ func (s *swapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{
 		PublicSpendKey:     s.pubkeys.SpendKey(),
 		PrivateViewKey:     s.privkeys.ViewKey(),
-		DLEqProof:          hex.EncodeToString(s.dleqProof.Proof()),
+		DLEqProof:          s.dleqProof.Proof(),
 		Secp256k1PublicKey: s.secp256k1Pub,
 	}
 }
@@ -495,6 +496,8 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 func (s *swapState) setTimeouts(t0, t1 *big.Int) {
 	s.t0 = time.Unix(t0.Int64(), 0)
 	s.t1 = time.Unix(t1.Int64(), 0)
+	s.info.Timeout0 = &s.t0
+	s.info.Timeout1 = &s.t1
 }
 
 func (s *swapState) generateAndSetKeys() error {

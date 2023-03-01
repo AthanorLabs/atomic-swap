@@ -3,7 +3,6 @@ package protocol
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -63,17 +62,12 @@ type VerifyResult struct {
 // VerifyKeysAndProof verifies the given DLEq proof and asserts that the resulting secp256k1 key corresponds
 // to the given key.
 func VerifyKeysAndProof(
-	proofStr string,
+	proofData []byte,
 	secp256k1Pub *secp256k1.PublicKey,
 	ed25519Pub *mcrypto.PublicKey,
 ) (*VerifyResult, error) {
-	pb, err := hex.DecodeString(proofStr)
-	if err != nil {
-		return nil, err
-	}
-
 	d := &dleq.DefaultDLEq{}
-	proof := dleq.NewProofWithoutSecret(pb)
+	proof := dleq.NewProofWithoutSecret(proofData)
 	res, err := d.Verify(proof)
 	if err != nil {
 		return nil, err

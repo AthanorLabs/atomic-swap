@@ -48,14 +48,14 @@ func NewSwapService(
 
 // PastSwapInfo contains a swap ID and its start and end time.
 type PastSwapInfo struct {
-	ID        types.Hash `json:"id"`
-	StartTime time.Time  `json:"startTime"`
-	EndTime   time.Time  `json:"endTime"`
+	ID        types.Hash `json:"id" validate:"required"`
+	StartTime time.Time  `json:"startTime" validate:"required"`
+	EndTime   *time.Time `json:"endTime"`
 }
 
 // GetPastIDsResponse ...
 type GetPastIDsResponse struct {
-	Swaps []*PastSwapInfo `json:"swaps"`
+	Swaps []*PastSwapInfo `json:"swaps" validate:"dive,required"`
 }
 
 // GetPastIDs returns all past swap IDs and their start and end times.
@@ -89,18 +89,18 @@ func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastI
 
 // GetPastRequest ...
 type GetPastRequest struct {
-	OfferID string `json:"offerID"`
+	OfferID string `json:"offerID" validate:"required"`
 }
 
 // GetPastResponse ...
 type GetPastResponse struct {
-	Provided       coins.ProvidesCoin  `json:"provided"`
-	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
-	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
-	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
+	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
+	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
+	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 	Status         types.Status        `json:"status" validate:"required"`
-	StartTime      time.Time           `json:"startTime"`
-	EndTime        time.Time           `json:"endTime"`
+	StartTime      time.Time           `json:"startTime" validate:"required"`
+	EndTime        *time.Time          `json:"endTime"`
 }
 
 // GetPast returns information about a past swap, given its ID.
@@ -127,23 +127,25 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // OngoingSwap represents an ongoing swap returned by swap_getOngoing.
 type OngoingSwap struct {
-	ID             types.Hash          `json:"id"`
-	Provided       coins.ProvidesCoin  `json:"provided"`
-	ProvidedAmount *apd.Decimal        `json:"providedAmount"`
-	ExpectedAmount *apd.Decimal        `json:"expectedAmount"`
-	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate"`
+	ID             types.Hash          `json:"id" validate:"required"`
+	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
+	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
+	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 	Status         types.Status        `json:"status" validate:"required"`
-	StartTime      time.Time           `json:"startTime"`
+	StartTime      time.Time           `json:"startTime" validate:"required"`
+	Timeout0       *time.Time          `json:"timeout0"`
+	Timeout1       *time.Time          `json:"timeout1"`
 }
 
 // GetOngoingResponse ...
 type GetOngoingResponse struct {
-	Swaps []*OngoingSwap `json:"swaps"`
+	Swaps []*OngoingSwap `json:"swaps" validate:"dive,required"`
 }
 
 // GetOngoingRequest ...
 type GetOngoingRequest struct {
-	OfferID string `json:"offerID"`
+	OfferID string `json:"offerID" validate:"required"`
 }
 
 // GetOngoing returns information about the ongoing swap with the given ID, if there is one.
@@ -182,6 +184,8 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.ExchangeRate = info.ExchangeRate
 		swap.Status = info.Status
 		swap.StartTime = info.StartTime
+		swap.Timeout0 = info.Timeout0
+		swap.Timeout1 = info.Timeout1
 		resp.Swaps[i] = swap
 	}
 
@@ -194,12 +198,12 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 // RefundRequest ...
 type RefundRequest struct {
-	OfferID string `json:"offerID"`
+	OfferID string `json:"offerID" validate:"required"`
 }
 
 // RefundResponse ...
 type RefundResponse struct {
-	TxHash string `json:"transactionHash"`
+	TxHash string `json:"transactionHash" validate:"required"`
 }
 
 // Refund refunds the ongoing swap if we are the ETH provider.
@@ -230,7 +234,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 
 // GetStatusRequest ...
 type GetStatusRequest struct {
-	ID types.Hash `json:"id"`
+	ID types.Hash `json:"id" validate:"required"`
 }
 
 // GetStatusResponse ...
@@ -255,8 +259,8 @@ func (s *SwapService) GetStatus(_ *http.Request, req *GetStatusRequest, resp *Ge
 
 // GetOffersResponse ...
 type GetOffersResponse struct {
-	PeerID peer.ID        `json:"peerID"`
-	Offers []*types.Offer `json:"offers"`
+	PeerID peer.ID        `json:"peerID" validate:"required"`
+	Offers []*types.Offer `json:"offers" validate:"dive,required"`
 }
 
 // GetOffers returns our currently available offers.
@@ -268,7 +272,7 @@ func (s *SwapService) GetOffers(_ *http.Request, _ *interface{}, resp *GetOffers
 
 // ClearOffersRequest ...
 type ClearOffersRequest struct {
-	OfferIDs []types.Hash `json:"offerIDs"`
+	OfferIDs []types.Hash `json:"offerIDs" validate:"dive,required"`
 }
 
 // ClearOffers clears our provided offers. If there are no offers provided, it clears all offers.
@@ -283,12 +287,12 @@ func (s *SwapService) ClearOffers(_ *http.Request, req *ClearOffersRequest, _ *i
 
 // CancelRequest ...
 type CancelRequest struct {
-	OfferID types.Hash `json:"offerID"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // CancelResponse ...
 type CancelResponse struct {
-	Status types.Status `json:"status"`
+	Status types.Status `json:"status" validate:"required"`
 }
 
 // Cancel attempts to cancel the currently ongoing swap, if there is one.
@@ -327,11 +331,11 @@ func offerIDStringToHash(s string) (types.Hash, error) {
 
 // SuggestedExchangeRateResponse ...
 type SuggestedExchangeRateResponse struct {
-	ETHUpdatedAt time.Time           `json:"ethUpdatedAt"`
-	ETHPrice     *apd.Decimal        `json:"ethPrice"`
-	XMRUpdatedAt time.Time           `json:"xmrUpdatedAt"`
-	XMRPrice     *apd.Decimal        `json:"xmrPrice"`
-	ExchangeRate *coins.ExchangeRate `json:"exchangeRate"`
+	ETHUpdatedAt time.Time           `json:"ethUpdatedAt" validate:"required"`
+	ETHPrice     *apd.Decimal        `json:"ethPrice" validate:"required"`
+	XMRUpdatedAt time.Time           `json:"xmrUpdatedAt" validate:"required"`
+	XMRPrice     *apd.Decimal        `json:"xmrPrice" validate:"required"`
+	ExchangeRate *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 }
 
 // SuggestedExchangeRate returns the current mainnet exchange rate, expressed as the XMR/ETH price.

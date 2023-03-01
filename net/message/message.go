@@ -103,13 +103,13 @@ func (m *QueryResponse) Type() byte {
 
 // SendKeysMessage is sent by both parties to each other to initiate the protocol
 type SendKeysMessage struct {
-	OfferID            types.Hash              `json:"offerID"`
+	OfferID            types.Hash              `json:"offerID"` // Not set by XMR Maker
 	ProvidedAmount     *apd.Decimal            `json:"providedAmount" validate:"required"`
 	PublicSpendKey     *mcrypto.PublicKey      `json:"publicSpendKey" validate:"required"`
 	PrivateViewKey     *mcrypto.PrivateViewKey `json:"privateViewKey" validate:"required"`
-	DLEqProof          string                  `json:"dleqProof" validate:"required"`
+	DLEqProof          []byte                  `json:"dleqProof" validate:"required"`
 	Secp256k1PublicKey *secp256k1.PublicKey    `json:"secp256k1PublicKey" validate:"required"`
-	EthAddress         ethcommon.Address       `json:"ethAddress"`
+	EthAddress         ethcommon.Address       `json:"ethAddress"` // not set by XMR Taker
 }
 
 // String ...
@@ -143,9 +143,9 @@ func (m *SendKeysMessage) Type() byte {
 // NotifyETHLocked is sent by XMRTaker to XMRMaker after deploying the swap contract
 // and locking her ether in it
 type NotifyETHLocked struct {
-	Address        ethcommon.Address          `json:"address"`
-	TxHash         types.Hash                 `json:"txHash"`
-	ContractSwapID types.Hash                 `json:"contractSwapID"`
+	Address        ethcommon.Address          `json:"address" validate:"required"`
+	TxHash         types.Hash                 `json:"txHash" validate:"required"`
+	ContractSwapID types.Hash                 `json:"contractSwapID" validate:"required"`
 	ContractSwap   *contracts.SwapFactorySwap `json:"contractSwap" validate:"required"`
 }
 
@@ -177,7 +177,7 @@ func (m *NotifyETHLocked) Type() byte {
 // NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
 type NotifyXMRLock struct {
 	Address *mcrypto.Address `json:"address" validate:"required"` // address the monero was sent to
-	TxID    types.Hash       `json:"txID"`                        // Monero transaction ID (transaction hash in hex)
+	TxID    types.Hash       `json:"txID" validate:"required"`    // Monero transaction ID (transaction hash in hex)
 }
 
 // String ...

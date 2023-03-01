@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -173,7 +172,9 @@ func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *
 	skm.ProvidedAmount = providesAmount
 
 	if err = s.net.Initiate(peer.AddrInfo{ID: who}, skm, swapState); err != nil {
-		_ = swapState.Exit()
+		if err = swapState.Exit(); err != nil {
+			log.Warnf("Swap exit failure: %s", err)
+		}
 		return nil, err
 	}
 
@@ -238,20 +239,12 @@ func (s *NetService) MakeOffer(
 }
 
 func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOfferResponse, *types.OfferExtra, error) {
-	ethAsset := types.EthAssetETH
-	if req.EthAsset != "" {
-		if !ethcommon.IsHexAddress(req.EthAsset) {
-			return nil, nil, errEthAssetIncorrectFormat
-		}
-		ethAsset = types.EthAsset(ethcommon.HexToAddress(req.EthAsset))
-	}
-
 	offer := types.NewOffer(
 		coins.ProvidesXMR,
 		req.MinAmount,
 		req.MaxAmount,
 		req.ExchangeRate,
-		ethAsset,
+		req.EthAsset,
 	)
 
 	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerFee)
