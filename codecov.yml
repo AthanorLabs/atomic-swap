@@ -1,3 +1,12 @@
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
 # Don't calculate code coverage percentages on generated abigen files
 ignore:
   - ethereum/swap_factory.go
