@@ -32,15 +32,6 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	t.Logf("Transferred %d pico XMR (fees %d) to account %s", transfer.Amount, transfer.Fee, xmrAddr)
 	t.Logf("Transfer was mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
 
-	txID, err := types.HexToHash(transfer.TxID)
-	require.NoError(t, err)
-
-	// send notification that monero was locked
-	lmsg := &message.NotifyXMRLock{
-		Address: xmrAddr,
-		TxID:    txID,
-	}
-
 	// assert that ready() is called, setup contract watcher
 	ethHeader, err := backend.ETHClient().Raw().HeaderByNumber(backend.Ctx(), nil)
 	require.NoError(t, err)
@@ -59,7 +50,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	require.NoError(t, err)
 
 	// now handle the NotifyXMRLock message
-	err = s.HandleProtocolMessage(lmsg)
+	err = s.handleNotifyXMRLock()
 	require.NoError(t, err)
 	require.Equal(t, s.nextExpectedEvent, EventETHClaimedType)
 	require.Equal(t, types.ContractReady, s.info.Status)

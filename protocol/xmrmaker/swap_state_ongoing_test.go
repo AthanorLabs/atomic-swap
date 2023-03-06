@@ -86,7 +86,7 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
+	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 	s.cancel()
 

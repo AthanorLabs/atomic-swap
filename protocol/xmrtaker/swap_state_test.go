@@ -239,15 +239,10 @@ func lockXMRFunds(
 	wc monero.WalletClient,
 	destAddr *mcrypto.Address,
 	amount *coins.PiconeroAmount,
-) types.Hash {
+) {
 	monero.MineMinXMRBalance(t, wc, amount)
-	transfer, err := wc.Transfer(ctx, destAddr, 0, amount, monero.MinSpendConfirmations)
+	_, err := wc.Transfer(ctx, destAddr, 0, amount, monero.MinSpendConfirmations)
 	require.NoError(t, err)
-
-	txID, err := types.HexToHash(transfer.TxID)
-	require.NoError(t, err)
-
-	return txID
 }
 
 func TestSwapState_NotifyXMRLock(t *testing.T) {
@@ -271,12 +266,8 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Development)
 
-	msg := &message.NotifyXMRLock{
-		Address: xmrAddr,
-		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
-	}
-
-	err = s.HandleProtocolMessage(msg)
+	lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount())
+	err = s.handleNotifyXMRLock()
 	require.NoError(t, err)
 	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 }
@@ -305,12 +296,8 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	kp := mcrypto.SumSpendAndViewKeys(xmrmakerKeysAndProof.PublicKeyPair, s.pubkeys)
 	xmrAddr := kp.Address(common.Development)
 
-	msg := &message.NotifyXMRLock{
-		Address: xmrAddr,
-		TxID:    lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount()),
-	}
-
-	err = s.HandleProtocolMessage(msg)
+	lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount())
+	err = s.handleNotifyXMRLock()
 	require.NoError(t, err)
 	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 
