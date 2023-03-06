@@ -251,12 +251,7 @@ func (s *swapState) handleEvent(event Event) {
 }
 
 func (s *swapState) handleEventETHLocked(e *EventETHLocked) error {
-	resp, err := s.handleNotifyETHLocked(e.message)
-	if err != nil {
-		return err
-	}
-
-	return s.SendSwapMessage(resp, s.ID())
+	return s.handleNotifyETHLocked(e.message)
 }
 
 func (s *swapState) handleEventContractReady() error {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -29,13 +28,6 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 		if err != nil {
 			return err
 		}
-	// case *message.NotifyXMRLock:
-	// 	event := newEventXMRLocked(msg)
-	// 	s.eventCh <- event
-	// 	err := <-event.errCh
-	// 	if err != nil {
-	// 		return err
-	// 	}
 	default:
 		return errUnexpectedMessageType
 	}
@@ -238,51 +230,7 @@ func (s *swapState) expectedXMRLockAccount() (*mcrypto.Address, *mcrypto.Private
 	return mcrypto.NewPublicKeyPair(sk, vk.Public()).Address(s.Env()), vk
 }
 
-func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
-	if msg.Address == nil {
-		return errNoLockedXMRAddress
-	}
-
-	// check that XMR was locked in expected account, and confirm amount
-	lockedAddr, vk := s.expectedXMRLockAccount()
-	if !msg.Address.Equal(lockedAddr) {
-		return fmt.Errorf("address received in message does not match expected address")
-	}
-
-	conf := s.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-verify-funds")
-	abViewCli, err := monero.CreateViewOnlyWalletFromKeys(conf, vk, lockedAddr, s.walletScanHeight)
-	if err != nil {
-		return fmt.Errorf("failed to generate view-only wallet to verify locked XMR: %w", err)
-	}
-	defer abViewCli.CloseAndRemoveWallet()
-
-	log.Debugf("generated view-only wallet to check funds: %s", abViewCli.WalletName())
-
-	balance, err := abViewCli.GetBalance(0)
-	if err != nil {
-		return fmt.Errorf("failed to get balance: %w", err)
-	}
-
-	log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
-		lockedAddr, balance.Balance, balance.BlocksToUnlock)
-
-	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
-		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
-			coins.FmtPiconeroAmtAsXMR(balance.Balance), s.ExpectedAmount().Text('f'))
-	}
-
-	// Monero received from a transfer is locked for a minimum of 10 confirmations before
-	// it can be spent again. The maker is required to wait for 10 confirmations before
-	// notifying us that the XMR is locked and should not be adding additional wait
-	// requirements. We give one block of leniency, in case the taker's node is not fully
-	// synced. Our goal is to prevent double spends, issues due to block reorgs, and
-	// prevent the maker from locking our funds until close to the heat death of the
-	// universe (https://github.com/monero-project/research-lab/issues/78).
-	if balance.BlocksToUnlock > 1 {
-		return fmt.Errorf("received XMR funds are not unlocked as required (blocks-to-unlock=%d)",
-			balance.BlocksToUnlock)
-	}
-
+func (s *swapState) handleNotifyXMRLock() error {
 	close(s.xmrLockedCh)
 	log.Info("XMR was locked successfully, setting contract to ready...")
 

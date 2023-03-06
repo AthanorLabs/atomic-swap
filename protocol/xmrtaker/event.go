@@ -131,8 +131,7 @@ func newEventKeysReceived(msg *message.SendKeysMessage) *EventKeysReceived {
 // EventXMRLocked is the second expected event. It represents XMR being locked
 // on-chain.
 type EventXMRLocked struct {
-	message *message.NotifyXMRLock
-	errCh   chan error
+	errCh chan error
 }
 
 // Type ...
@@ -311,7 +310,7 @@ func (s *swapState) handleEventKeysReceived(event *EventKeysReceived) error {
 }
 
 func (s *swapState) handleEventXMRLocked(event *EventXMRLocked) error {
-	return s.handleNotifyXMRLock(event.message)
+	return s.handleNotifyXMRLock()
 }
 
 func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
