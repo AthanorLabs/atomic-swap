@@ -267,7 +267,9 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	xmrAddr := kp.Address(common.Development)
 
 	lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount())
-	err = s.handleNotifyXMRLock()
+	event := newEventXMRLocked()
+	s.eventCh <- event
+	err = <-event.errCh
 	require.NoError(t, err)
 	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 }
@@ -297,7 +299,9 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	xmrAddr := kp.Address(common.Development)
 
 	lockXMRFunds(t, s.ctx, s.XMRClient(), xmrAddr, s.expectedPiconeroAmount())
-	err = s.handleNotifyXMRLock()
+	event := newEventXMRLocked()
+	s.eventCh <- event
+	err = <-event.errCh
 	require.NoError(t, err)
 	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 

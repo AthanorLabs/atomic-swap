@@ -50,7 +50,9 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	require.NoError(t, err)
 
 	// now handle the NotifyXMRLock message
-	err = s.handleNotifyXMRLock()
+	event := newEventXMRLocked()
+	s.eventCh <- event
+	err = <-event.errCh
 	require.NoError(t, err)
 	require.Equal(t, s.nextExpectedEvent, EventETHClaimedType)
 	require.Equal(t, types.ContractReady, s.info.Status)
