@@ -1,4 +1,4 @@
-package main
+package relayer
 
 import (
 	"bytes"
@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"math/big"
 
-	rcommon "github.com/athanorlabs/go-relayer/common"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 var (
@@ -67,31 +67,27 @@ var (
 	}
 )
 
-type validator struct {
-	ctx              context.Context
-	ec               *ethclient.Client
-	minFee           *big.Int
-	forwarderAddress ethcommon.Address
-}
-
-func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionRequest) error {
-	// validate that:
-	// 1. the `to` address is a swap contract;
-	// 2. the function being called is `claimRelayer`;
-	// 3. the fee passed to `claimRelayer` is equal to or greater
-	// than our desired fee.
-
-	forwarderAddr, err := contracts.CheckSwapFactoryContractCode(
-		v.ctx, v.ec, req.To,
-	)
+// ValidateClaimRequest validates that:
+//  1. the `to` address is a swap contract
+//  2. the function being called is `claimRelayer`
+//  3. the fee passed to `claimRelayer` is equal to or greater
+//     than the passed minFee.
+func ValidateClaimRequest(
+	ctx context.Context,
+	req *message.RelayClaimRequest,
+	ec *ethclient.Client,
+	forwarderAddress ethcommon.Address,
+	minFee *big.Int,
+) error {
+	requestedForwarderAddr, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SFContractAddress)
 	if err != nil {
 		return err
 	}
 
-	if forwarderAddr != v.forwarderAddress {
-		return fmt.Errorf("swap contract does not have expected forwarder address: got %s, expected %s",
-			forwarderAddr,
-			v.forwarderAddress,
+	if requestedForwarderAddr != forwarderAddress {
+		return fmt.Errorf("claim request had expected forwarder address: got %s, expected %s",
+			requestedForwarderAddr,
+			forwarderAddress,
 		)
 	}
 
@@ -106,7 +102,7 @@ func (v *validator) validateTransactionFunc(req *rcommon.SubmitTransactionReques
 		return err
 	}
 
-	err = validateFee(args, v.minFee)
+	err = validateFee(args, minFee)
 	if err != nil {
 		return err
 	}

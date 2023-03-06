@@ -68,7 +68,7 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 
 // handleProtocolStream is called when there is an incoming protocol stream.
 func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
-	if h.handler == nil {
+	if h.makerHandler == nil {
 		_ = stream.Close()
 		return
 	}
@@ -99,7 +99,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	var s SwapState
-	s, resp, err := h.handler.HandleInitiateMessage(im)
+	s, resp, err := h.makerHandler.HandleInitiateMessage(im)
 	if err != nil {
 		log.Warnf("failed to handle protocol message: err=%s", err)
 		_ = stream.Close()

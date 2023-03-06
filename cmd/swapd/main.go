@@ -14,7 +14,6 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 	p2pnet "github.com/athanorlabs/go-p2p-net"
-	rnet "github.com/athanorlabs/go-relayer/net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
@@ -76,6 +75,7 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
+	flagClaimRelayer         = "claim-relayer"
 
 	flagDevXMRTaker      = "dev-xmrtaker"
 	flagDevXMRMaker      = "dev-xmrmaker"
@@ -203,6 +203,11 @@ var (
 				Name:  flagUseExternalSigner,
 				Usage: "Use external signer, for usage with the swap UI",
 			},
+			&cli.BoolFlag{
+				Name:  flagClaimRelayer,
+				Usage: "Relay claims for other XMR makers and earn a modest fee per relayed transaction",
+				Value: false,
+			},
 			&cli.StringFlag{
 				Name:   flagProfile,
 				Usage:  "BIND_IP:PORT to provide profiling information on",
@@ -219,11 +224,12 @@ func main() {
 }
 
 type xmrtakerHandler interface {
+	net.TakerHandler
 	rpc.XMRTaker
 }
 
 type xmrmakerHandler interface {
-	net.Handler
+	net.MakerHandler
 	rpc.XMRMaker
 }
 
@@ -433,12 +439,11 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		ListenIP:   listenIP,
 	}
 
-	host, err := net.NewHost(netCfg)
+	host, err := net.NewHost(netCfg, c.Bool(flagClaimRelayer))
 	if err != nil {
 		return err
 	}
 	d.host = host
-	relayerHost := setupRelayerNetwork(d.ctx, host.P2pHost())
 
 	dbCfg := &chaindb.Config{
 		DataDir: path.Join(cfg.DataDir, "db"),
@@ -466,7 +471,6 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		host,
 		ec,
 		sdb.RecoveryDB(),
-		relayerHost,
 	)
 	if err != nil {
 		return err
@@ -485,7 +489,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 
 	// connect network to protocol handler
 	// handler handles initiated ("taken") swap
-	host.SetHandler(b)
+	host.SetHandlers(b, a)
 
 	if err = host.Start(); err != nil {
 		return err
@@ -573,7 +577,6 @@ func newBackend(
 	net *net.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
-	rhost *rnet.Host,
 ) (backend.Backend, error) {
 	var (
 		ethPrivKey *ecdsa.PrivateKey
@@ -704,7 +707,6 @@ func newBackend(
 		SwapContractAddress: contractAddr,
 		Net:                 net,
 		RecoveryDB:          rdb,
-		RelayerHost:         rhost,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -760,16 +762,4 @@ func getProtocolInstances(
 	}
 
 	return xmrTaker, xmrMaker, nil
-}
-
-func setupRelayerNetwork(
-	ctx context.Context,
-	host rnet.P2pnetHost,
-) *rnet.Host {
-	cfg := &rnet.Config{
-		Context:   ctx,
-		IsRelayer: false,
-	}
-
-	return rnet.NewHostFromP2pHost(cfg, host)
 }

@@ -10,7 +10,6 @@ import (
 // MakeOffer makes a new swap offer.
 func (b *Instance) MakeOffer(
 	o *types.Offer,
-	relayerEndpoint string,
 	relayerFee *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	// get monero balance
@@ -24,7 +23,7 @@ func (b *Instance) MakeOffer(
 		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
 	}
 
-	extra, err := b.offerManager.AddOffer(o, relayerEndpoint, relayerFee)
+	extra, err := b.offerManager.AddOffer(o, relayerFee)
 	if err != nil {
 		return nil, err
 	}

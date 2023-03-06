@@ -105,7 +105,7 @@ func newSwapStateFromStart(
 		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
 
-	if offerExtra.RelayerEndpoint != "" {
+	if offerExtra.RelayerFee != nil {
 		if err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {
 			return nil, err
 		}
@@ -345,7 +345,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
-			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerFee)
+			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerFee)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.ID, err)
 			}

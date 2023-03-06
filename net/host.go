@@ -19,9 +19,11 @@ import (
 )
 
 const (
-	// ProtocolID is the base atomic swap network protocol ID.
-	ProtocolID     = "/atomic-swap/0.2"
-	maxMessageSize = 1 << 17
+	// ProtocolID is the base atomic swap network protocol ID prefix. The full ID
+	// includes the chain ID at the end.
+	ProtocolID          = "/atomic-swap/0.2"
+	maxMessageSize      = 1 << 17            // TODO: implement separate sizes for query/relay protocols
+	maxRelayMessageSize = maxMessageSize / 2 // TODO: optimize
 )
 
 var log = logging.Logger("net")
@@ -49,9 +51,12 @@ type P2pHost interface {
 
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
-	ctx     context.Context
-	h       P2pHost
-	handler Handler
+	ctx       context.Context
+	h         P2pHost
+	isRelayer bool
+
+	makerHandler MakerHandler
+	takerHandler TakerHandler
 
 	// swap instance info
 	swapMu sync.Mutex
@@ -61,16 +66,17 @@ type Host struct {
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
-func NewHost(cfg *p2pnet.Config) (*Host, error) {
+func NewHost(cfg *p2pnet.Config, isRelayer bool) (*Host, error) {
 	h, err := p2pnet.NewHost(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Host{
-		ctx:   cfg.Ctx,
-		h:     h,
-		swaps: make(map[types.Hash]*swap),
+		ctx:       cfg.Ctx,
+		h:         h,
+		isRelayer: isRelayer,
+		swaps:     make(map[types.Hash]*swap),
 	}, nil
 }
 
@@ -79,25 +85,37 @@ func (h *Host) P2pHost() P2pHost {
 	return h.h
 }
 
-// SetHandler sets the Handler instance used by the host.
-func (h *Host) SetHandler(handler Handler) {
-	fn := func() bool {
-		return len(handler.GetOffers()) == 0
-	}
+// SetHandlers sets the maker and taker instances used by the host.
+func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler) {
+	h.makerHandler = makerHandler
+	h.takerHandler = takerHandler
 
-	h.handler = handler
+	fn := func() bool {
+		return len(makerHandler.GetOffers()) > 0 || h.isRelayer
+	}
 	h.h.SetShouldAdvertiseFunc(fn)
 }
 
 // Start starts the bootstrap and discovery process.
 func (h *Host) Start() error {
-	if h.handler == nil {
+	if h.makerHandler == nil || h.takerHandler == nil {
 		return errNilHandler
 	}
 
-	h.h.SetStreamHandler(queryID, h.handleQueryStream)
+	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
+	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
 	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
-	return h.h.Start()
+
+	// Note: Start() is non-blocking
+	if err := h.h.Start(); err != nil {
+		return err
+	}
+
+	if h.isRelayer {
+		h.Advertise(nil)
+	}
+
+	return nil
 }
 
 // Stop stops the host.
@@ -133,6 +151,9 @@ func (h *Host) CloseProtocolStream(id types.Hash) {
 
 // Advertise advertises in the DHT.
 func (h *Host) Advertise(strs []string) {
+	if h.isRelayer {
+		strs = append(strs, relayerProvidesStr)
+	}
 	h.h.Advertise(strs)
 }
 

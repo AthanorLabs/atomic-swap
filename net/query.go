@@ -8,26 +8,25 @@ import (
 	p2pnet "github.com/athanorlabs/go-p2p-net"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
-	queryID      = "/query/0"
-	queryTimeout = time.Second * 5
+	queryProtocolID = "/query/0"
+	queryTimeout    = time.Second * 5
 )
 
 func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
+	defer func() { _ = stream.Close() }()
+
 	resp := &QueryResponse{
-		Offers: h.handler.GetOffers(),
+		Offers: h.makerHandler.GetOffers(),
 	}
 
 	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send QueryResponse message to peer: err=%s", err)
 	}
-
-	_ = stream.Close()
 }
 
 // Query queries the given peer for its offers.
@@ -39,7 +38,7 @@ func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
 		return nil, err
 	}
 
-	stream, err := h.h.NewStream(ctx, who, protocol.ID(queryID))
+	stream, err := h.h.NewStream(ctx, who, queryProtocolID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}

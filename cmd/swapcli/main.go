@@ -19,6 +19,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
@@ -26,22 +27,24 @@ import (
 const (
 	defaultDiscoverSearchTimeSecs = 12
 
-	flagSwapdPort       = "swapd-port"
-	flagMinAmount       = "min-amount"
-	flagMaxAmount       = "max-amount"
-	flagPeerID          = "peer-id"
-	flagOfferID         = "offer-id"
-	flagOfferIDs        = "offer-ids"
-	flagExchangeRate    = "exchange-rate"
-	flagProvides        = "provides"
-	flagProvidesAmount  = "provides-amount"
-	flagRelayerFee      = "relayer-fee"
-	flagRelayerEndpoint = "relayer-endpoint"
-	flagSearchTime      = "search-time"
-	flagSubscribe       = "subscribe"
+	flagSwapdPort      = "swapd-port"
+	flagMinAmount      = "min-amount"
+	flagMaxAmount      = "max-amount"
+	flagPeerID         = "peer-id"
+	flagOfferID        = "offer-id"
+	flagOfferIDs       = "offer-ids"
+	flagExchangeRate   = "exchange-rate"
+	flagProvides       = "provides"
+	flagProvidesAmount = "provides-amount"
+	flagRelayerFee     = "relayer-fee"
+	flagSearchTime     = "search-time"
+	flagSubscribe      = "subscribe"
 )
 
 var (
+	minRelayerFee = coins.NewWeiAmount(relayer.DefaultRelayerFee).AsEther()
+	maxRelayerFee = apd.New(1, 0) // 1 ETH
+
 	app = &cli.App{
 		Name:                 "swapcli",
 		Usage:                "Client for swapd",
@@ -176,13 +179,10 @@ var (
 						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
 					&cli.StringFlag{
-						Name:  flagRelayerEndpoint,
-						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
-					},
-					&cli.StringFlag{
 						Name: flagRelayerFee,
-						Usage: "Fee to pay the relayer in ETH:" +
+						Usage: "Fee to pay the relayer in ETH if you have insufficient funds to claim:" +
 							" eg. --relayer-fee=0.009 to pay 0.0009 ETH",
+						Value: minRelayerFee.Text('f'),
 					},
 					swapdPortFlag,
 				},
@@ -549,17 +549,12 @@ func runMake(ctx *cli.Context) error {
 
 	c := newRRPClient(ctx)
 
-	relayerEndpoint := ctx.String(flagRelayerEndpoint)
-	relayerFee := new(apd.Decimal)
-	if relayerEndpoint != "" {
-		if relayerFee, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee); err != nil {
-			return err
-		}
-	} else if ctx.IsSet(flagRelayerFee) {
-		return errMustSetRelayerEndpoint
+	relayerFee, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee)
+	if err != nil {
+		return err
 	}
-	if relayerFee.Cmp(apd.New(1, 0)) > 0 {
-		return errRelayerFeeTooHigh
+	if relayerFee.Cmp(minRelayerFee) < 0 || relayerFee.Cmp(maxRelayerFee) > 0 {
+		return errRelayerFeeOutOfRange
 	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
@@ -582,7 +577,6 @@ func runMake(ctx *cli.Context) error {
 			max,
 			exchangeRate,
 			ethAsset,
-			relayerEndpoint,
 			relayerFee,
 		)
 		if err != nil {
@@ -601,7 +595,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerFee)
+	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerFee)
 	if err != nil {
 		return err
 	}

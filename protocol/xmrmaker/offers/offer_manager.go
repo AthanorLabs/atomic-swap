@@ -83,7 +83,6 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
 func (m *Manager) AddOffer(
 	offer *types.Offer,
-	relayerEndpoint string,
 	relayerFee *apd.Decimal,
 ) (*types.OfferExtra, error) {
 	m.mu.Lock()
@@ -101,9 +100,8 @@ func (m *Manager) AddOffer(
 	}
 
 	extra := &types.OfferExtra{
-		StatusCh:        make(chan types.Status, statusChSize),
-		RelayerEndpoint: relayerEndpoint,
-		RelayerFee:      relayerFee,
+		StatusCh:   make(chan types.Status, statusChSize),
+		RelayerFee: relayerFee,
 	}
 
 	m.offers[id] = &offerWithExtra{

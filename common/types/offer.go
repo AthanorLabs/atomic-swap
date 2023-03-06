@@ -147,9 +147,8 @@ func (o *Offer) validate() error {
 
 // OfferExtra represents extra data that is passed when an offer is made.
 type OfferExtra struct {
-	StatusCh        chan Status  `json:"-"`
-	RelayerEndpoint string       `json:"relayerEndpoint"`
-	RelayerFee      *apd.Decimal `json:"relayerFee"`
+	StatusCh   chan Status  `json:"-"`
+	RelayerFee *apd.Decimal `json:"relayerFee"`
 }
 
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before

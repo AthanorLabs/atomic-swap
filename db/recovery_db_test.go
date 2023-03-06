@@ -83,8 +83,7 @@ func TestRecoveryDB_SwapRelayerInfo(t *testing.T) {
 
 	fee := coins.StrToDecimal("0.0135")
 	info := &types.OfferExtra{
-		RelayerEndpoint: "endpoint",
-		RelayerFee:      fee,
+		RelayerFee: fee,
 	}
 
 	err := rdb.PutSwapRelayerInfo(offerID, info)
@@ -166,8 +165,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	}
 
 	info := &types.OfferExtra{
-		RelayerEndpoint: "endpoint",
-		RelayerFee:      coins.StrToDecimal("0.0135"),
+		RelayerFee: coins.StrToDecimal("0.0135"),
 	}
 
 	err = rdb.PutContractSwapInfo(offerID, si)

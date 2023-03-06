@@ -1,6 +1,4 @@
-// Package relayer provides client libraries that Bob (an XMR maker) can use to interact
-// with a relay server that will pay the Ethereum gas fees needed to receive an Ethereum
-// asset in exchange for Monero.
+// Package relayer provides libraries for creating and validating relay requests and responses.
 package relayer
 
 import (
@@ -9,50 +7,19 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-
-	client "github.com/athanorlabs/go-relayer-client"
 	rcommon "github.com/athanorlabs/go-relayer/common"
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+
+	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
-// Client is a client that can submit transactions to an Ethereum meta-transaction relayer.
-// It has a private key for signing transactions to be forwarded.
-type Client struct {
-	key              *rcommon.Key
-	c                *client.Client
-	chainID          *big.Int
-	forwarder        *gsnforwarder.IForwarder
-	forwarderAddress ethcommon.Address
-}
-
-// NewClient returns a new relayer client.
-func NewClient(
-	sk *ecdsa.PrivateKey,
-	ec *ethclient.Client,
-	relayerEndpoint string,
-	forwarderAddress ethcommon.Address,
-) (*Client, error) {
-	forwarder, err := forwarderFromAddress(forwarderAddress, ec)
-	if err != nil {
-		return nil, err
-	}
-
-	chainID, err := ec.ChainID(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	return &Client{
-		key:              rcommon.NewKeyFromPrivateKey(sk),
-		c:                client.NewClient(relayerEndpoint),
-		chainID:          chainID,
-		forwarder:        forwarder,
-		forwarderAddress: forwarderAddress,
-	}, nil
-}
+// DefaultRelayerFee is the default fee for swap relayers.
+// It's set to 0.009 ETH.
+var DefaultRelayerFee = big.NewInt(9e15)
 
 func forwarderFromAddress(address ethcommon.Address, ec *ethclient.Client) (*gsnforwarder.IForwarder, error) {
 	forwarder, err := gsnforwarder.NewIForwarder(address, ec)
@@ -63,41 +30,18 @@ func forwarderFromAddress(address ethcommon.Address, ec *ethclient.Client) (*gsn
 	return forwarder, nil
 }
 
-// SubmitTransaction submits a transaction with the given calldata to the relayer.
-func (c *Client) SubmitTransaction(
-	to ethcommon.Address,
-	calldata []byte,
-) (ethcommon.Hash, error) {
-	rpcReq, err := createSubmitTransactionRequest(
-		c.key,
-		c.forwarder,
-		c.forwarderAddress,
-		c.chainID,
-		to,
-		calldata,
-	)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	// submit transaction to relayer
-	resp, err := c.c.SubmitTransaction(rpcReq)
-	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to submit transaction to relayer: %w", err)
-	}
-
-	return resp.TxHash, nil
-}
-
-// CreateSubmitTransactionRequest fills and returns a SubmitTransactionRequest ready for submission
-// to a relayer.
-func CreateSubmitTransactionRequest(
-	sk *ecdsa.PrivateKey,
+// CreateRelayClaimRequest fills and returns a RelayClaimRequest ready for
+// submission to a relayer.
+func CreateRelayClaimRequest(
+	ctx context.Context,
+	sk *ecdsa.PrivateKey, // Used for signing and the claim address
 	ec *ethclient.Client,
+	swapFactoryAddress ethcommon.Address,
 	forwarderAddress ethcommon.Address,
-	to ethcommon.Address,
 	calldata []byte,
-) (*rcommon.SubmitTransactionRequest, error) {
+) (*message.RelayClaimRequest, error) {
+	claimAddress := ethcrypto.PubkeyToAddress(sk.PublicKey)
+
 	forwarder, err := forwarderFromAddress(forwarderAddress, ec)
 	if err != nil {
 		return nil, err
@@ -108,26 +52,9 @@ func CreateSubmitTransactionRequest(
 		return nil, err
 	}
 
-	key := rcommon.NewKeyFromPrivateKey(sk)
-	return createSubmitTransactionRequest(
-		key,
-		forwarder,
-		forwarderAddress,
-		chainID,
-		to,
-		calldata,
-	)
-}
+	callOpts := &bind.CallOpts{Context: ctx}
 
-func createSubmitTransactionRequest(
-	key *rcommon.Key,
-	forwarder *gsnforwarder.IForwarder,
-	forwarderAddress ethcommon.Address,
-	chainID *big.Int,
-	to ethcommon.Address,
-	calldata []byte,
-) (*rcommon.SubmitTransactionRequest, error) {
-	nonce, err := forwarder.GetNonce(&bind.CallOpts{}, key.Address())
+	nonce, err := forwarder.GetNonce(callOpts, claimAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nonce from forwarder: %w", err)
 	}
@@ -139,8 +66,8 @@ func createSubmitTransactionRequest(
 	}
 
 	req := &gsnforwarder.IForwarderForwardRequest{
-		From:           key.Address(),
-		To:             to,
+		From:           claimAddress,
+		To:             swapFactoryAddress,
 		Value:          big.NewInt(0),
 		Gas:            big.NewInt(200000), // TODO: fetch from ethclient
 		Nonce:          nonce,
@@ -157,33 +84,25 @@ func createSubmitTransactionRequest(
 		return nil, fmt.Errorf("failed to get forward request digest: %w", err)
 	}
 
-	sig, err := key.Sign(digest)
+	sig, err := rcommon.NewKeyFromPrivateKey(sk).Sign(digest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign forward request digest: %w", err)
 	}
 
-	err = forwarder.Verify(
-		&bind.CallOpts{},
-		*req,
-		domainSeparator,
-		gsnforwarder.ForwardRequestTypehash,
-		nil,
-		sig,
-	)
+	err = forwarder.Verify(callOpts, *req, domainSeparator, gsnforwarder.ForwardRequestTypehash, nil, sig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
-	return &rcommon.SubmitTransactionRequest{
-		From:            req.From,
-		To:              req.To,
-		Value:           req.Value,
-		Gas:             req.Gas,
-		Nonce:           req.Nonce,
-		Data:            req.Data,
-		Signature:       sig,
-		ValidUntilTime:  req.ValidUntilTime,
-		DomainSeparator: domainSeparator,
-		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
+	return &message.RelayClaimRequest{
+		ClaimerAddress:    req.From,
+		SFContractAddress: req.To,
+		Gas:               req.Gas,
+		Nonce:             req.Nonce,
+		Data:              req.Data,
+		Signature:         sig,
+		ValidUntilTime:    req.ValidUntilTime,
+		DomainSeparator:   domainSeparator,
+		RequestTypeHash:   gsnforwarder.ForwardRequestTypehash,
 	}, nil
 }

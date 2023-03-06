@@ -188,7 +188,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	maxXMRAmt := one
 	xRate := coins.ToExchangeRate(one)
 
-	offerResp, err := client.MakeOffer(minXMRAmt, maxXMRAmt, xRate, types.EthAssetETH, "", nil)
+	offerResp, err := client.MakeOffer(minXMRAmt, maxXMRAmt, xRate, types.EthAssetETH, nil)
 	require.NoError(t, err)
 
 	// shut down daemon

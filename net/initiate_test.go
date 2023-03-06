@@ -82,7 +82,7 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 	require.NotNil(t, hb.swaps[testID])
 	hb.swapMu.Unlock()
 
-	hb.handler.(*mockHandler).id = testID2
+	hb.makerHandler.(*mockMakerHandler).id = testID2
 
 	err = ha.Initiate(hb.h.AddrInfo(), createSendKeysMessage(t), &mockSwapState{testID2})
 	require.NoError(t, err)

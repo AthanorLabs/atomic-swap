@@ -19,7 +19,10 @@ import (
 // Identifiers for our p2p message types. The first byte of a message has the
 // identifier below telling us which type to decode the JSON message as.
 const (
+	Unknown                = iota // occupies the uninitialized value
 	QueryResponseType byte = iota
+	RelayClaimRequestType
+	RelayClaimResponseType
 	SendKeysType
 	NotifyETHLockedType
 	NotifyXMRLockType
@@ -36,8 +39,12 @@ func TypeToString(t byte) string {
 		return "NotifyETHLocked"
 	case NotifyXMRLockType:
 		return "NotifyXMRLock"
+	case RelayClaimRequestType:
+		return "RelayClaimRequestType"
+	case RelayClaimResponseType:
+		return "RelayClaimResponse"
 	default:
-		return "unknown"
+		return fmt.Sprintf("Unknown(%d)", t)
 	}
 }
 
@@ -54,13 +61,17 @@ func DecodeMessage(b []byte) (common.Message, error) {
 
 	switch msgType {
 	case QueryResponseType:
-		msg = &QueryResponse{}
+		msg = new(QueryResponse)
+	case RelayClaimRequestType:
+		msg = new(RelayClaimRequest)
+	case RelayClaimResponseType:
+		msg = new(RelayClaimResponse)
 	case SendKeysType:
-		msg = &SendKeysMessage{}
+		msg = new(SendKeysMessage)
 	case NotifyETHLockedType:
-		msg = &NotifyETHLocked{}
+		msg = new(NotifyETHLocked)
 	case NotifyXMRLockType:
-		msg = &NotifyXMRLock{}
+		msg = new(NotifyXMRLock)
 	default:
 		return nil, fmt.Errorf("invalid message type=%d", msgType)
 	}
@@ -83,7 +94,8 @@ func (m *QueryResponse) String() string {
 	)
 }
 
-// Encode ...
+// Encode implements the Encode() method of the common.Message interface which
+// prepends a message type byte before the message's JSON encoding.
 func (m *QueryResponse) Encode() ([]byte, error) {
 	b, err := vjson.MarshalStruct(m)
 	if err != nil {
@@ -93,7 +105,7 @@ func (m *QueryResponse) Encode() ([]byte, error) {
 	return append([]byte{QueryResponseType}, b...), nil
 }
 
-// Type ...
+// Type implements the Type() method of the common.Message interface
 func (m *QueryResponse) Type() byte {
 	return QueryResponseType
 }
@@ -125,7 +137,8 @@ func (m *SendKeysMessage) String() string {
 	)
 }
 
-// Encode ...
+// Encode implements the Encode() method of the common.Message interface which
+// prepends a message type byte before the message's JSON encoding.
 func (m *SendKeysMessage) Encode() ([]byte, error) {
 	b, err := vjson.MarshalStruct(m)
 	if err != nil {
@@ -135,7 +148,7 @@ func (m *SendKeysMessage) Encode() ([]byte, error) {
 	return append([]byte{SendKeysType}, b...), nil
 }
 
-// Type ...
+// Type implements the Type() method of the common.Message interface
 func (m *SendKeysMessage) Type() byte {
 	return SendKeysType
 }
@@ -159,7 +172,8 @@ func (m *NotifyETHLocked) String() string {
 	)
 }
 
-// Encode ...
+// Encode implements the Encode() method of the common.Message interface which
+// prepends a message type byte before the message's JSON encoding.
 func (m *NotifyETHLocked) Encode() ([]byte, error) {
 	b, err := vjson.MarshalStruct(m)
 	if err != nil {
@@ -169,7 +183,7 @@ func (m *NotifyETHLocked) Encode() ([]byte, error) {
 	return append([]byte{NotifyETHLockedType}, b...), nil
 }
 
-// Type ...
+// Type implements the Type() method of the common.Message interface
 func (m *NotifyETHLocked) Type() byte {
 	return NotifyETHLockedType
 }
@@ -185,7 +199,8 @@ func (m *NotifyXMRLock) String() string {
 	return "NotifyXMRLock"
 }
 
-// Encode ...
+// Encode implements the Encode() method of the common.Message interface which
+// prepends a message type byte before the message's JSON encoding.
 func (m *NotifyXMRLock) Encode() ([]byte, error) {
 	b, err := vjson.MarshalStruct(m)
 	if err != nil {
@@ -195,7 +210,7 @@ func (m *NotifyXMRLock) Encode() ([]byte, error) {
 	return append([]byte{NotifyXMRLockType}, b...), nil
 }
 
-// Type ...
+// Type implements the Type() method of the common.Message interface
 func (m *NotifyXMRLock) Type() byte {
 	return NotifyXMRLockType
 }

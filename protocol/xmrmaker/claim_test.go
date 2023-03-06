@@ -4,81 +4,27 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
-	rcommon "github.com/athanorlabs/go-relayer/common"
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
-	"github.com/athanorlabs/go-relayer/relayer"
-	rrpc "github.com/athanorlabs/go-relayer/rpc"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
+	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 var (
 	defaultTestTimeoutDuration = big.NewInt(60 * 5)
 )
-
-// runRelayer starts the relayer and returns the endpoint URL
-func runRelayer(
-	t *testing.T,
-	ctx context.Context, //nolint:revive // context should be 1st param to function
-	ec *ethclient.Client,
-	forwarderAddress ethcommon.Address,
-	sk *ecdsa.PrivateKey,
-) string {
-	iforwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
-	require.NoError(t, err)
-	fw := gsnforwarder.NewIForwarderWrapped(iforwarder)
-
-	key := rcommon.NewKeyFromPrivateKey(sk)
-
-	cfg := &relayer.Config{
-		Ctx:       ctx,
-		EthClient: ec,
-		Forwarder: fw,
-		Key:       key,
-		ValidateTransactionFunc: func(_ *rcommon.SubmitTransactionRequest) error {
-			return nil
-		},
-	}
-
-	r, err := relayer.NewRelayer(cfg)
-	require.NoError(t, err)
-
-	server, err := rrpc.NewServer(&rrpc.Config{
-		Ctx:     ctx,
-		Address: "127.0.0.1:0",
-		Relayer: r,
-	})
-	require.NoError(t, err)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := server.Start()
-		require.ErrorIs(t, err, context.Canceled)
-	}()
-
-	t.Cleanup(func() {
-		// We could call server.Shutdown() but the context cancellation would beat us to
-		// it. Just make sure the test hangs if the server didn't exit.
-		wg.Wait()
-	})
-	return server.HttpURL()
-}
 
 func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
 	initialBalance := big.NewInt(90000000000000000)
@@ -116,9 +62,9 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	relayerSk := tests.GetRelayerTestKey(t)
-	require.NotEqual(t, sk, relayerSk)
-	conn, chainID := tests.NewEthClient(t)
+	ec, chainID := tests.NewEthClient(t)
+	extendedEC, err := extethclient.NewEthClient(ctx, common.Development, ec, sk)
+	require.NoError(t, err)
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(sk, chainID)
 	require.NoError(t, err)
@@ -137,30 +83,27 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// deploy forwarder
-	forwarderAddress, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, conn)
+	forwarderAddress, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, ec)
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(ctx, conn, tx.Hash())
+	receipt, err := block.WaitForReceipt(ctx, ec, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy Forwarder.sol: %d", receipt.GasUsed)
 
 	tx, err = forwarderContract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
-	// start relayer
-	relayerEndpoint := runRelayer(t, ctx, conn, forwarderAddress, relayerSk)
-
 	// deploy swap contract with claim key hash
-	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, conn, forwarderAddress)
+	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	if asset != types.EthAssetETH {
-		token, err := contracts.NewIERC20(asset.Address(), conn) //nolint:govet
+		token, err := contracts.NewIERC20(asset.Address(), ec) //nolint:govet
 		require.NoError(t, err)
 
 		balance, err := token.BalanceOf(&bind.CallOpts{}, addr)
@@ -169,7 +112,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		tx, err = token.Approve(txOpts, contractAddr, balance)
 		require.NoError(t, err)
 
-		_, err = block.WaitForReceipt(ctx, conn, tx.Hash())
+		_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 		require.NoError(t, err)
 	}
 
@@ -180,7 +123,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	tx, err = contract.NewSwap(txOpts, cmt, [32]byte{}, addr,
 		defaultTestTimeoutDuration, asset.Address(), value, nonce)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 	txOpts.Value = big.NewInt(0)
@@ -197,7 +140,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[logIndex])
 	require.NoError(t, err)
 
-	swap := contracts.SwapFactorySwap{
+	swap := &contracts.SwapFactorySwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
@@ -210,9 +153,9 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	}
 
 	// set contract to Ready
-	tx, err = contract.SetReady(txOpts, swap)
+	tx, err = contract.SetReady(txOpts, *swap)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, conn, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
 	require.NoError(t, err)
 
@@ -221,21 +164,16 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	secret := proof.Secret()
 	copy(s[:], secret[:])
 
-	txHash, err := claimRelayer(
-		context.Background(),
-		sk,
-		contract,
-		contractAddr,
-		conn,
-		relayerEndpoint,
-		common.DefaultRelayerFee,
-		&swap,
-		id,
-		s,
-	)
+	calldata, err := getClaimTxCalldata(relayer.DefaultRelayerFee, swap, secret)
 	require.NoError(t, err)
 
-	receipt, err = block.WaitForReceipt(context.Background(), conn, txHash)
+	req, err := relayer.CreateRelayClaimRequest(ctx, sk, ec, contractAddr, forwarderAddress, calldata)
+	require.NoError(t, err)
+
+	resp, err := relayer.SendRelayedTransaction(ctx, req, extendedEC, forwarderAddress, relayer.DefaultRelayerFee)
+	require.NoError(t, err)
+
+	receipt, err = block.WaitForReceipt(ctx, ec, resp.TxHash)
 	require.NoError(t, err)
 	t.Logf("gas cost to call Claim via relayer: %d", receipt.GasUsed)
 

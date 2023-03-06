@@ -1,4 +1,4 @@
-package main
+package relayer
 
 import (
 	"math/big"

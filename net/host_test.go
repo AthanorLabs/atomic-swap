@@ -19,20 +19,28 @@ func init() {
 
 var testID = types.Hash{99}
 
-type mockHandler struct {
+type mockMakerHandler struct {
 	t  *testing.T
 	id types.Hash
 }
 
-func (h *mockHandler) GetOffers() []*types.Offer {
+func (h *mockMakerHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockHandler) HandleInitiateMessage(msg *message.SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockMakerHandler) HandleInitiateMessage(msg *message.SendKeysMessage) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
 		return &mockSwapState{h.id}, createSendKeysMessage(h.t), nil
 	}
 	return &mockSwapState{}, msg, nil
+}
+
+type mockTakerHandler struct {
+	t *testing.T
+}
+
+func (h *mockTakerHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
+	return new(RelayClaimResponse), nil
 }
 
 type mockSwapState struct {
@@ -70,9 +78,9 @@ func basicTestConfig(t *testing.T) *p2pnet.Config {
 }
 
 func newHost(t *testing.T, cfg *p2pnet.Config) *Host {
-	h, err := NewHost(cfg)
+	h, err := NewHost(cfg, true)
 	require.NoError(t, err)
-	h.SetHandler(&mockHandler{t: t})
+	h.SetHandlers(&mockMakerHandler{t: t}, &mockTakerHandler{t: t})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)

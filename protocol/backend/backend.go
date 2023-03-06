@@ -10,9 +10,6 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	rcommon "github.com/athanorlabs/go-relayer/common"
-	rnet "github.com/athanorlabs/go-relayer/net"
-
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -20,6 +17,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
@@ -28,13 +26,8 @@ import (
 type MessageSender interface {
 	SendSwapMessage(common.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
-}
-
-// RelayerHost contains required network functionality for discovering
-// and messaging relayers.
-type RelayerHost interface {
-	Discover(time.Duration) ([]peer.ID, error)
-	SubmitTransaction(who peer.ID, msg *rnet.TransactionRequest) (*rcommon.SubmitTransactionResponse, error)
+	DiscoverRelayers() ([]peer.ID, error)                                                          // Only used by Maker
+	SubmitClaimToRelayer(peer.ID, *message.RelayClaimRequest) (*message.RelayClaimResponse, error) // Only used by Taker
 }
 
 // RecoveryDB is implemented by *db.RecoveryDB
@@ -80,10 +73,6 @@ type Backend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
-
-	// relayer functions
-	DiscoverRelayers() ([]peer.ID, error)
-	SubmitTransactionToRelayer(peer.ID, *rcommon.SubmitTransactionRequest) (*rcommon.SubmitTransactionResponse, error)
 }
 
 type backend struct {
@@ -111,9 +100,6 @@ type backend struct {
 
 	// network interface
 	MessageSender
-
-	// relayer network interface
-	rnet RelayerHost
 }
 
 // Config is the config for the Backend
@@ -130,8 +116,7 @@ type Config struct {
 
 	RecoveryDB RecoveryDB
 
-	Net         MessageSender
-	RelayerHost RelayerHost
+	Net MessageSender
 }
 
 // NewBackend returns a new Backend
@@ -152,7 +137,6 @@ func NewBackend(cfg *Config) (Backend, error) {
 		MessageSender:         cfg.Net,
 		perSwapXMRDepositAddr: make(map[types.Hash]*mcrypto.Address),
 		recoveryDB:            cfg.RecoveryDB,
-		rnet:                  cfg.RelayerHost,
 	}, nil
 }
 
@@ -243,20 +227,4 @@ func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
 	b.perSwapXMRDepositAddrRWMu.Lock()
 	defer b.perSwapXMRDepositAddrRWMu.Unlock()
 	delete(b.perSwapXMRDepositAddr, offerID)
-}
-
-func (b *backend) DiscoverRelayers() ([]peer.ID, error) {
-	const defaultDiscoverTime = time.Second * 3
-	return b.rnet.Discover(defaultDiscoverTime)
-}
-
-func (b *backend) SubmitTransactionToRelayer(
-	to peer.ID,
-	req *rcommon.SubmitTransactionRequest,
-) (*rcommon.SubmitTransactionResponse, error) {
-	msg := &rnet.TransactionRequest{
-		SubmitTransactionRequest: *req,
-	}
-
-	return b.rnet.SubmitTransaction(to, msg)
 }

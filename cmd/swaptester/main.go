@@ -434,7 +434,6 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 		maxProvidesAmountBD,
 		getRandomExchangeRate(),
 		types.EthAssetETH,
-		"",
 		nil,
 	)
 	if err != nil {
