@@ -175,7 +175,7 @@ func (s *swapState) checkForXMRLock() {
 			log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
 				lockedAddr, balance.Balance, balance.BlocksToUnlock)
 
-			if s.expectedPiconeroAmount().CmpU64(balance.Balance) <= 0 {
+			if s.expectedPiconeroAmount().CmpU64(balance.UnlockedBalance) <= 0 {
 				event := newEventXMRLocked()
 				s.eventCh <- event
 				err := <-event.errCh
