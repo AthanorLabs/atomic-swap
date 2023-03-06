@@ -140,10 +140,9 @@ func (*EventXMRLocked) Type() EventType {
 	return EventXMRLockedType
 }
 
-func newEventXMRLocked(msg *message.NotifyXMRLock) *EventXMRLocked {
+func newEventXMRLocked() *EventXMRLocked {
 	return &EventXMRLocked{
-		message: msg,
-		errCh:   make(chan error),
+		errCh: make(chan error),
 	}
 }
 

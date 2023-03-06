@@ -29,13 +29,13 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 		if err != nil {
 			return err
 		}
-	case *message.NotifyXMRLock:
-		event := newEventXMRLocked(msg)
-		s.eventCh <- event
-		err := <-event.errCh
-		if err != nil {
-			return err
-		}
+	// case *message.NotifyXMRLock:
+	// 	event := newEventXMRLocked(msg)
+	// 	s.eventCh <- event
+	// 	err := <-event.errCh
+	// 	if err != nil {
+	// 		return err
+	// 	}
 	default:
 		return errUnexpectedMessageType
 	}
@@ -138,6 +138,9 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 	// start goroutine to check that XMRMaker locks before t_0
 	go s.runT0ExpirationHandler()
 
+	// start goroutine to check for xmr being locked
+	go s.checkForXMRLock()
+
 	out := &message.NotifyETHLocked{
 		Address:        s.ContractAddr(),
 		TxHash:         txHash,
@@ -146,6 +149,52 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 	}
 
 	return out, nil
+}
+
+func (s *swapState) checkForXMRLock() {
+	// monero block time is >1 minute, so this should be fine
+	const checkForXMRLockInterval = time.Minute
+
+	// check that XMR was locked in expected account, and confirm amount
+	lockedAddr, vk := s.expectedXMRLockAccount()
+
+	conf := s.XMRClient().CreateWalletConf("xmrtaker-swap-wallet-verify-funds")
+	abViewCli, err := monero.CreateViewOnlyWalletFromKeys(conf, vk, lockedAddr, s.walletScanHeight)
+	if err != nil {
+		log.Errorf("failed to generate view-only wallet to verify locked XMR: %s", err)
+		return
+	}
+	defer abViewCli.CloseAndRemoveWallet()
+
+	log.Debugf("generated view-only wallet to check funds: %s", abViewCli.WalletName())
+
+	timer := time.NewTimer(checkForXMRLockInterval)
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-timer.C:
+			balance, err := abViewCli.GetBalance(0)
+			if err != nil {
+				log.Errorf("failed to get balance: %s", err)
+				continue
+			}
+
+			log.Debugf("checking locked wallet, address=%s balance=%d blocks-to-unlock=%d",
+				lockedAddr, balance.Balance, balance.BlocksToUnlock)
+
+			if s.expectedPiconeroAmount().CmpU64(balance.Balance) <= 0 {
+				event := newEventXMRLocked()
+				s.eventCh <- event
+				err := <-event.errCh
+				if err != nil {
+					log.Errorf("eventXMRLocked errored: %s", err)
+				}
+
+				return
+			}
+		}
+	}
 }
 
 func (s *swapState) runT0ExpirationHandler() {
