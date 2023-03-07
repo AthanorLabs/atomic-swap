@@ -126,7 +126,9 @@ And Bob's balances with this command:
 
 ### Make a Swap Offer
 
-Next we need Bob to make an offer and advertise it, so that Alice can take it:
+Next we need Bob to make an offer and advertise it, so that Alice can take it. You
+will get notified when the swap is taken. This command will block waiting for update
+messages, so you will need to dedicate a separate terminal for it:
 ```bash
 ./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5001
 ```
@@ -137,13 +139,14 @@ Published:
 	Peer ID:   12D3KooWK7989g6xmAaEsKFPuZTj2CVknRxQuk7dFL55CC1rpEWW
 	Taker Min: 0.005 ETH
 	Taker Max: 0.05 ETH
+> Stage updated: KeysExchanged
+> Stage updated: XMRLocked
+> Stage updated: Success
 ```
 
-Alternatively, you can make the offer via websockets and get notified when the swap is
-taken. This option will block waiting for update messages, so you will need to dedicate a
-separate terminal for it:
+Alternatively, you can make the offer without subscribing to swap updates:
 ```bash
-./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5001 --subscribe
+./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.05 --swapd-port 5001 --detached
 ```
 
 ### Discover Swap Offers
@@ -180,20 +183,20 @@ from the previous step to update the command below:
   --offer-id 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb \
   --provides-amount 0.05
 ```
-
-Alternatively, you can take the offer via websockets and get notified when the swap status updates.
-```bash
-./bin/swapcli take \
-  --peer-id 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp \
-  --offer-id 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb \
-  --provides-amount 0.05 --subscribe
-```
 ```
 Initiated swap with offer ID 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb
 > Stage updated: ExpectingKeys
 > Stage updated: ETHLocked
 > Stage updated: ContractReady
 > Stage updated: Success
+```
+
+Alternatively, you can take the offer without subscribing to swap updates:
+```bash
+./bin/swapcli take \
+  --peer-id 12D3KooWAE3zH374qcxyFCA8B5g1uMqhgeiHoXT5KKD6A54SGGsp \
+  --offer-id 0xcc57d3d1b9d8186118f1f1581a8dc4dca0e5aa6c39a5255bd0c2ebb824cfe2eb \
+  --provides-amount 0.05 --detached
 ```
 
 If all goes well, you should see Alice and Bob successfully exchange messages and execute
