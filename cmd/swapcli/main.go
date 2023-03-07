@@ -732,8 +732,13 @@ func runGetPastSwap(ctx *cli.Context) error {
 		receivedCoin = "XMR"
 	}
 
+	endTime := "-"
+	if info.EndTime != nil {
+		endTime = info.EndTime.Format(common.TimeFmtSecs)
+	}
+
 	fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
-	fmt.Printf("End time: %s\n", info.EndTime.Format(common.TimeFmtSecs))
+	fmt.Printf("End time: %s\n", endTime)
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
 	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
