@@ -28,7 +28,7 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	b.net.Advertise([]string{string(coins.ProvidesXMR)})
+	b.net.RefreshNamespaces()
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }

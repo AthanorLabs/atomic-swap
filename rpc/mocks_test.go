@@ -8,6 +8,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2ptest "github.com/libp2p/go-libp2p/core/test"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -27,7 +28,7 @@ type mockNet struct {
 	peerID peer.ID
 }
 
-func (*mockNet) Addresses() []string {
+func (*mockNet) Addresses() []ma.Multiaddr {
 	panic("not implemented")
 }
 

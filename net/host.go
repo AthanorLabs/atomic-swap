@@ -12,7 +12,9 @@ import (
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -33,18 +35,18 @@ type P2pHost interface {
 	Start() error
 	Stop() error
 
-	Advertise([]string)
+	RefreshNamespaces()
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 
 	SetStreamHandler(string, func(libp2pnetwork.Stream))
-	SetShouldAdvertiseFunc(p2pnet.ShouldAdvertiseFunc)
+	SetAdvertisedNamespacesFunc(fn func() []string)
 
 	Connectedness(peer.ID) libp2pnetwork.Connectedness
 	Connect(context.Context, peer.AddrInfo) error
 	NewStream(context.Context, peer.ID, protocol.ID) (libp2pnetwork.Stream, error)
 
 	AddrInfo() peer.AddrInfo
-	Addresses() []string
+	Addresses() []ma.Multiaddr
 	PeerID() peer.ID
 	ConnectedPeers() []string
 }
@@ -85,15 +87,29 @@ func (h *Host) P2pHost() P2pHost {
 	return h.h
 }
 
+func (h *Host) advertisedNamespaces() []string {
+	provides := []string{""}
+
+	if len(h.makerHandler.GetOffers()) > 0 {
+		provides = append(provides, string(coins.ProvidesXMR))
+	}
+
+	if h.isRelayer {
+		provides = append(provides, relayerProvidesStr)
+	}
+
+	return provides
+}
+
 // SetHandlers sets the maker and taker instances used by the host.
 func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler) {
 	h.makerHandler = makerHandler
 	h.takerHandler = takerHandler
+	h.h.SetAdvertisedNamespacesFunc(h.advertisedNamespaces)
 
-	fn := func() bool {
-		return len(makerHandler.GetOffers()) > 0 || h.isRelayer
-	}
-	h.h.SetShouldAdvertiseFunc(fn)
+	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
+	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
+	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 }
 
 // Start starts the bootstrap and discovery process.
@@ -102,17 +118,9 @@ func (h *Host) Start() error {
 		return errNilHandler
 	}
 
-	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
-	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
-	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
-
 	// Note: Start() is non-blocking
 	if err := h.h.Start(); err != nil {
 		return err
-	}
-
-	if h.isRelayer {
-		h.Advertise(nil)
 	}
 
 	return nil
@@ -149,12 +157,10 @@ func (h *Host) CloseProtocolStream(id types.Hash) {
 	_ = swap.stream.Close()
 }
 
-// Advertise advertises in the DHT.
-func (h *Host) Advertise(strs []string) {
-	if h.isRelayer {
-		strs = append(strs, relayerProvidesStr)
-	}
-	h.h.Advertise(strs)
+// RefreshNamespaces forces an immediate update to the advertised namespaces in
+// the DHT
+func (h *Host) RefreshNamespaces() {
+	h.h.RefreshNamespaces()
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin..
@@ -169,7 +175,7 @@ func (h *Host) AddrInfo() peer.AddrInfo {
 }
 
 // Addresses returns the list of multiaddress the host is listening on.
-func (h *Host) Addresses() []string {
+func (h *Host) Addresses() []ma.Multiaddr {
 	return h.h.Addresses()
 }
 

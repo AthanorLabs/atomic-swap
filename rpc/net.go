@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -21,7 +22,7 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	PeerID() peer.ID
 	ConnectedPeers() []string
-	Addresses() []string
+	Addresses() []ma.Multiaddr
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*message.QueryResponse, error)
 	Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s common.SwapStateNet) error
