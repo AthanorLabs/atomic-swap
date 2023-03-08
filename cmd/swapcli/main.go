@@ -26,18 +26,19 @@ import (
 
 const (
 	defaultDiscoverSearchTimeSecs = 12
-	flagSwapdPort                 = "swapd-port"
-	flagMinAmount                 = "min-amount"
-	flagMaxAmount                 = "max-amount"
-	flagPeerID                    = "peer-id"
-	flagOfferID                   = "offer-id"
-	flagOfferIDs                  = "offer-ids"
-	flagExchangeRate              = "exchange-rate"
-	flagProvides                  = "provides"
-	flagProvidesAmount            = "provides-amount"
-	flagRelayerFee                = "relayer-fee"
-	flagSearchTime                = "search-time"
-	flagDetached                  = "detached"
+
+	flagSwapdPort      = "swapd-port"
+	flagMinAmount      = "min-amount"
+	flagMaxAmount      = "max-amount"
+	flagPeerID         = "peer-id"
+	flagOfferID        = "offer-id"
+	flagOfferIDs       = "offer-ids"
+	flagExchangeRate   = "exchange-rate"
+	flagProvides       = "provides"
+	flagProvidesAmount = "provides-amount"
+	flagRelayerFee     = "relayer-fee"
+	flagSearchTime     = "search-time"
+	flagDetached       = "detached"
 )
 
 var (
