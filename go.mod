@@ -8,7 +8,7 @@ require (
 	github.com/MarinX/monerorpc v1.0.5
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213
-	github.com/athanorlabs/go-p2p-net v0.0.0-20230308063143-061005271523
+	github.com/athanorlabs/go-p2p-net v0.0.0-20230308075745-0eef13c26810
 	github.com/athanorlabs/go-relayer v0.0.6-0.20230126054526-85b34765dc00
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cockroachdb/apd/v3 v3.1.2
@@ -23,6 +23,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.26.2
+	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.24.4
@@ -112,7 +113,6 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
-	github.com/multiformats/go-multiaddr v0.8.0 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.3.1 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.1.1 // indirect

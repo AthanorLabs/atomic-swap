@@ -37,7 +37,7 @@ type offerWithExtra struct {
 // NewManager creates a new offer manager. The passed in dataDir is the
 // directory where the recovery file is for each individual swap is stored.
 func NewManager(dataDir string, db Database) (*Manager, error) {
-	log.Infof("loading offers from db...")
+	log.Infof("loading any saved offers from db")
 	// load offers from the database, if there are any
 	savedOffers, err := db.GetAllOffers()
 	if err != nil {
