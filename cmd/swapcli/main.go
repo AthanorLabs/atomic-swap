@@ -26,19 +26,18 @@ import (
 
 const (
 	defaultDiscoverSearchTimeSecs = 12
-
-	flagSwapdPort      = "swapd-port"
-	flagMinAmount      = "min-amount"
-	flagMaxAmount      = "max-amount"
-	flagPeerID         = "peer-id"
-	flagOfferID        = "offer-id"
-	flagOfferIDs       = "offer-ids"
-	flagExchangeRate   = "exchange-rate"
-	flagProvides       = "provides"
-	flagProvidesAmount = "provides-amount"
-	flagRelayerFee     = "relayer-fee"
-	flagSearchTime     = "search-time"
-	flagSubscribe      = "subscribe"
+	flagSwapdPort                 = "swapd-port"
+	flagMinAmount                 = "min-amount"
+	flagMaxAmount                 = "max-amount"
+	flagPeerID                    = "peer-id"
+	flagOfferID                   = "offer-id"
+	flagOfferIDs                  = "offer-ids"
+	flagExchangeRate              = "exchange-rate"
+	flagProvides                  = "provides"
+	flagProvidesAmount            = "provides-amount"
+	flagRelayerFee                = "relayer-fee"
+	flagSearchTime                = "search-time"
+	flagDetached                  = "detached"
 )
 
 var (
@@ -171,8 +170,8 @@ var (
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:  flagSubscribe,
-						Usage: "Subscribe to push notifications about the swap's status",
+						Name:  flagDetached,
+						Usage: "Exit immediately instead of subscribing to notifications about the swap's status",
 					},
 					&cli.StringFlag{
 						Name:  "eth-asset",
@@ -209,8 +208,8 @@ var (
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:  flagSubscribe,
-						Usage: "Subscribe to push notifications about the swap's status",
+						Name:  flagDetached,
+						Usage: "Exit immediately instead of subscribing to notifications about the swap's status",
 					},
 					swapdPortFlag,
 				},
@@ -570,7 +569,7 @@ func runMake(ctx *cli.Context) error {
 		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
 	}
 
-	if ctx.Bool(flagSubscribe) {
+	if !ctx.Bool(flagDetached) {
 		wsc, err := newWSClient(ctx) //nolint:govet
 		if err != nil {
 			return err
@@ -624,7 +623,7 @@ func runTake(ctx *cli.Context) error {
 		return err
 	}
 
-	if ctx.Bool(flagSubscribe) {
+	if !ctx.Bool(flagDetached) {
 		wsc, err := newWSClient(ctx)
 		if err != nil {
 			return err
