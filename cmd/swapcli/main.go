@@ -549,12 +549,17 @@ func runMake(ctx *cli.Context) error {
 
 	c := newRRPClient(ctx)
 
-	relayerFee, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee)
-	if err != nil {
-		return err
-	}
-	if relayerFee.Cmp(minRelayerFee) < 0 || relayerFee.Cmp(maxRelayerFee) > 0 {
-		return errRelayerFeeOutOfRange
+	// In the near future, the relayer will only be used if Bob doesn't have funds to claim,
+	// but in the current version, it is always used whenever this relayerFee is non-nil.
+	var relayerFee *apd.Decimal
+	if ctx.IsSet(flagRelayerFee) {
+		relayerFee, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee)
+		if err != nil {
+			return err
+		}
+		if relayerFee.Cmp(minRelayerFee) < 0 || relayerFee.Cmp(maxRelayerFee) > 0 {
+			return errRelayerFeeOutOfRange
+		}
 	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
