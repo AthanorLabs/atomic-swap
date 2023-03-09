@@ -24,8 +24,8 @@ const (
 	// ProtocolID is the base atomic swap network protocol ID prefix. The full ID
 	// includes the chain ID at the end.
 	ProtocolID          = "/atomic-swap/0.2"
-	maxMessageSize      = 1 << 17            // TODO: implement separate sizes for query/relay protocols
-	maxRelayMessageSize = maxMessageSize / 2 // TODO: optimize
+	maxMessageSize      = 1 << 17
+	maxRelayMessageSize = 2048
 )
 
 var log = logging.Logger("net")
