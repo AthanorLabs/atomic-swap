@@ -265,10 +265,5 @@ func (inst *Instance) HandleRelayClaimRequest(request *message.RelayClaimRequest
 		return nil, err
 	}
 
-	err = relayer.ValidateClaimRequest(ctx, request, ec, forwarderAddr, relayer.DefaultRelayerFee)
-	if err != nil {
-		return nil, err
-	}
-
-	return relayer.SendRelayedTransaction(ctx, request, inst.backend.ETHClient(), forwarderAddr, relayer.DefaultRelayerFee)
+	return relayer.ValidateAndSendTransaction(ctx, request, inst.backend.ETHClient(), forwarderAddr)
 }

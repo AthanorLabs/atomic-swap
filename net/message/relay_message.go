@@ -6,22 +6,17 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
 // RelayClaimRequest implements common.Message for our p2p relay claim requests
 type RelayClaimRequest struct {
-	ClaimerAddress    ethcommon.Address `json:"claimerAddress" validate:"required"`
-	SFContractAddress ethcommon.Address `json:"sfContractAddress" validate:"required"`
-	Gas               *big.Int          `json:"gas" validate:"required"`
-	Nonce             *big.Int          `json:"nonce" validate:"required"`
-	Data              []byte            `json:"data" validate:"required"`
-	Signature         []byte            `json:"signature" validate:"required"`
-	ValidUntilTime    *big.Int          `json:"validUntilTime" validate:"required"`
-	DomainSeparator   types.Hash        `json:"domainSeparator" validate:"required"`
-	RequestTypeHash   types.Hash        `json:"requestTypeHash" validate:"required"`
-	SuffixData        []byte            `json:"suffixData,omitempty"`
+	SFContractAddress ethcommon.Address          `json:"sfContractAddress" validate:"required"`
+	RelayerFeeWei     *big.Int                   `json:"relayerFeeWei" validate:"required"`
+	Swap              *contracts.SwapFactorySwap `json:"swap" validate:"required"`
+	Secret            []byte                     `json:"secret" validate:"required,len=32"`
+	Signature         []byte                     `json:"signature" validate:"required,len=65"`
 }
 
 // RelayClaimResponse implements common.Message for our p2p relay claim responses

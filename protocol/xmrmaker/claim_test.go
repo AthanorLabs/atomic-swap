@@ -159,18 +159,22 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
 	require.NoError(t, err)
 
-	// now let's try to claim
-	var s [32]byte
 	secret := proof.Secret()
-	copy(s[:], secret[:])
 
-	calldata, err := getClaimTxCalldata(relayer.DefaultRelayerFee, swap, secret)
+	// now let's try to claim
+	req, err := relayer.CreateRelayClaimRequest(
+		ctx,
+		sk,
+		ec,
+		relayer.DefaultRelayerFee,
+		contractAddr,
+		forwarderAddress,
+		swap,
+		&secret,
+	)
 	require.NoError(t, err)
 
-	req, err := relayer.CreateRelayClaimRequest(ctx, sk, ec, contractAddr, forwarderAddress, calldata)
-	require.NoError(t, err)
-
-	resp, err := relayer.SendRelayedTransaction(ctx, req, extendedEC, forwarderAddress, relayer.DefaultRelayerFee)
+	resp, err := relayer.ValidateAndSendTransaction(ctx, req, extendedEC, forwarderAddress)
 	require.NoError(t, err)
 
 	receipt, err = block.WaitForReceipt(ctx, ec, resp.TxHash)

@@ -52,7 +52,7 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	log.Debugf("Relayed claim for %s with tx=%s", req.ClaimerAddress, resp.TxHash)
+	log.Debugf("Relayed claim for %s with tx=%s", req.Swap.Claimer, resp.TxHash)
 
 	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send RelayClaimResponse message to peer: %s", err)

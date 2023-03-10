@@ -7,6 +7,7 @@ import (
 	rcommon "github.com/athanorlabs/go-relayer/common"
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	rrelayer "github.com/athanorlabs/go-relayer/relayer"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
@@ -14,19 +15,33 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
-// SendRelayedTransaction sends the relayed transaction to the network if it validates successfully.
-func SendRelayedTransaction(
+// ValidateAndSendTransaction sends the relayed transaction to the network if it validates successfully.
+func ValidateAndSendTransaction(
 	ctx context.Context,
 	request *message.RelayClaimRequest,
 	ec extethclient.EthClient,
 	forwarderAddress ethcommon.Address,
-	minFee *big.Int,
 ) (*message.RelayClaimResponse, error) {
-	if err := ValidateClaimRequest(ctx, request, ec.Raw(), forwarderAddress, minFee); err != nil {
+
+	err := validateClaimRequest(ctx, request, ec.Raw(), forwarderAddress)
+	if err != nil {
 		return nil, err
 	}
 
-	forwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec.Raw())
+	forwarder, domainSeparator, err := getForwarderAndDomainSeparator(ctx, ec.Raw(), forwarderAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := forwarder.GetNonce(&bind.CallOpts{Context: ctx}, request.Swap.Claimer)
+	if err != nil {
+		return nil, err
+	}
+
+	// The size of request.Secret was vetted when it was deserialized
+	secret := (*[32]byte)(request.Secret)
+
+	callData, err := getClaimRelayerTxCalldata(request.RelayerFeeWei, request.Swap, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +52,7 @@ func SendRelayedTransaction(
 		Forwarder: gsnforwarder.NewIForwarderWrapped(forwarder),
 		Key:       rcommon.NewKeyFromPrivateKey(ec.PrivateKey()),
 		ValidateTransactionFunc: func(request *rcommon.SubmitTransactionRequest) error {
-			// do nothing, we already called ValidateClaimRequest above
+			// do nothing, we did validation above
 			return nil
 		},
 	})
@@ -45,21 +60,22 @@ func SendRelayedTransaction(
 		return nil, err
 	}
 
+	// Lock the wallet's nonce until we get a receipt
 	ec.Lock()
 	defer ec.Unlock()
 
 	resp, err := transSender.SubmitTransaction(&rcommon.SubmitTransactionRequest{
-		From:            request.ClaimerAddress,
+		From:            request.Swap.Claimer,
 		To:              request.SFContractAddress,
 		Value:           big.NewInt(0),
-		Gas:             request.Gas,
-		Nonce:           request.Nonce,
-		Data:            request.Data,
+		Gas:             big.NewInt(200000), // TODO: fetch from ethclient?
+		Nonce:           nonce,
+		Data:            callData,
 		Signature:       request.Signature,
-		ValidUntilTime:  request.ValidUntilTime,
-		DomainSeparator: request.DomainSeparator,
-		RequestTypeHash: request.RequestTypeHash,
-		SuffixData:      request.SuffixData,
+		ValidUntilTime:  big.NewInt(0),
+		DomainSeparator: *domainSeparator,
+		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
+		SuffixData:      nil,
 	})
 	if err != nil {
 		return nil, err

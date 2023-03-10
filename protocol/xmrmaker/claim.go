@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -18,7 +16,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
@@ -108,18 +105,22 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
-	calldata, err := getClaimTxCalldata(relayer.DefaultRelayerFee, s.contractSwap, s.getSecret())
-	if err != nil {
-		return ethcommon.Hash{}, err
+	secret := s.getSecret()
+
+	relayerFeeWei := relayer.DefaultRelayerFee
+	if s.offerExtra.RelayerFee != nil {
+		relayerFeeWei = coins.ToWeiAmount(s.offerExtra.RelayerFee).BigInt()
 	}
 
 	req, err := relayer.CreateRelayClaimRequest(
 		s.ctx,
 		s.ETHClient().PrivateKey(),
 		s.ETHClient().Raw(),
+		relayerFeeWei,
 		s.contractAddr,
 		forwarderAddress,
-		calldata,
+		s.contractSwap,
+		&secret,
 	)
 	if err != nil {
 		return ethcommon.Hash{}, err
@@ -231,26 +232,4 @@ func checkClaimedLog(log *ethtypes.Log, contractAddr ethcommon.Address, contract
 	}
 
 	return nil
-}
-
-func getClaimTxCalldata(
-	feeWei *big.Int,
-	contractSwap *contracts.SwapFactorySwap,
-	secret [32]byte,
-) ([]byte, error) {
-	abi, err := abi.JSON(strings.NewReader(contracts.SwapFactoryMetaData.ABI))
-	if err != nil {
-		return nil, err
-	}
-
-	if contractSwap.Value.Cmp(feeWei) <= 0 {
-		return nil, errSwapValueTooLow
-	}
-
-	calldata, err := abi.Pack("claimRelayer", *contractSwap, secret, feeWei)
-	if err != nil {
-		return nil, err
-	}
-
-	return calldata, nil
 }

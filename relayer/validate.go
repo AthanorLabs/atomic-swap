@@ -1,13 +1,13 @@
 package relayer
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -16,122 +16,106 @@ import (
 )
 
 var (
-	uint256Ty, _ = abi.NewType("uint256", "", nil)
-	bytes32Ty, _ = abi.NewType("bytes32", "", nil)
-	addressTy, _ = abi.NewType("address", "", nil)
-	arguments    = abi.Arguments{
-		{
-			Name: "owner",
-			Type: addressTy,
-		},
-		{
-			Name: "claimer",
-			Type: addressTy,
-		},
-		{
-			Name: "pubKeyClaim",
-			Type: bytes32Ty,
-		},
-		{
-			Name: "pubKeyRefund",
-			Type: bytes32Ty,
-		},
-		{
-			Name: "timeout0",
-			Type: uint256Ty,
-		},
-		{
-			Name: "timeout1",
-			Type: uint256Ty,
-		},
-		{
-			Name: "asset",
-			Type: addressTy,
-		},
-		{
-			Name: "value",
-			Type: uint256Ty,
-		},
-		{
-			Name: "nonce",
-			Type: uint256Ty,
-		},
-		{
-			Name: "_s",
-			Type: bytes32Ty,
-		},
-		{
-			Name: "fee",
-			Type: uint256Ty,
-		},
-	}
+	errSwapValueTooLow = errors.New("relayer fee is not greater than swap value")
 )
 
-// ValidateClaimRequest validates that:
-//  1. the `to` address is a swap contract
-//  2. the function being called is `claimRelayer`
-//  3. the fee passed to `claimRelayer` is equal to or greater
-//     than the passed minFee.
-func ValidateClaimRequest(
+func validateClaimRequest(
+	ctx context.Context,
+	request *message.RelayClaimRequest,
+	ec *ethclient.Client,
+	expectedForwarderAddress ethcommon.Address,
+) error {
+	err := validateClaimValues(ctx, request, ec, expectedForwarderAddress, minAcceptedRelayerFee)
+	if err != nil {
+		return err
+	}
+
+	return validateClaimSignature(ctx, ec, expectedForwarderAddress, request)
+}
+
+// validateClaimValues validates the non-signature aspects of the claim request:
+//  1. the claim request swap factory contract is byte compatible with ours
+//  2. the forwarder in the claim request swap factory contract has an identical
+//     address with our forwarder
+//  3. the relayer fee is equal to or greater than the passed minFee
+//  4. the swap value is strictly greater than the relayer fee
+//  5. TODO: Validate that the swap exists and is in a claimable state?
+func validateClaimValues(
 	ctx context.Context,
 	req *message.RelayClaimRequest,
 	ec *ethclient.Client,
-	forwarderAddress ethcommon.Address,
+	expectedForwarderAddress ethcommon.Address,
 	minFee *big.Int,
 ) error {
+	// Validate that the deployed SwapFactory contract has the same bytecode as
+	// the one we use. There is a good chance that it has the same exact address
+	// as ours, but we check for binary compatibility regardless.
 	requestedForwarderAddr, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SFContractAddress)
 	if err != nil {
 		return err
 	}
 
-	if requestedForwarderAddr != forwarderAddress {
+	// The forwarder used must have the same exact address as ours, so we don't
+	// need to check the forwarder contract bytecode.
+	if requestedForwarderAddr != expectedForwarderAddress {
 		return fmt.Errorf("claim request had expected forwarder address: got %s, expected %s",
-			requestedForwarderAddr,
-			forwarderAddress,
-		)
+			requestedForwarderAddr, expectedForwarderAddress)
 	}
 
-	// hardcoded, from swap_factory.go bindings
-	claimRelayerSig := ethcommon.FromHex("0x73e4771c")
-	if !bytes.Equal(claimRelayerSig, req.Data[:4]) {
-		return fmt.Errorf("call must be to claimRelayer(); got call to function with sig 0x%x", req.Data[:4])
+	// Relayer fee must be greater than or equal to the minimum fee that we accept
+	if req.RelayerFeeWei.Cmp(minFee) < 0 {
+		return fmt.Errorf("fee too low: got %s, expected minimum %s", req.RelayerFeeWei, minFee)
 	}
 
-	args, err := unpackData(req.Data[4:])
-	if err != nil {
-		return err
-	}
-
-	err = validateFee(args, minFee)
-	if err != nil {
-		return err
+	// The swap value must be strictly greater than the relayer fee
+	if req.Swap.Value.Cmp(req.RelayerFeeWei) <= 0 {
+		return errSwapValueTooLow
 	}
 
 	return nil
 }
 
-func unpackData(data []byte) (map[string]interface{}, error) {
-	args := make(map[string]interface{})
-	err := arguments.UnpackIntoMap(args, data)
+func validateClaimSignature(
+	ctx context.Context,
+	ec *ethclient.Client,
+	forwarderAddr ethcommon.Address,
+	req *message.RelayClaimRequest,
+) error {
+	callOpts := &bind.CallOpts{Context: ctx}
+
+	forwarder, domainSeparator, err := getForwarderAndDomainSeparator(ctx, ec, forwarderAddr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return args, nil
-}
-
-func validateFee(args map[string]interface{}, minFee *big.Int) error {
-	fee, ok := args["fee"].(*big.Int)
-	if !ok {
-		// this shouldn't happen afaik
-		return errors.New("fee argument was not marshalled into a *big.Int")
+	nonce, err := forwarder.GetNonce(callOpts, req.Swap.Claimer)
+	if err != nil {
+		return err
 	}
 
-	if fee.Cmp(minFee) < 0 {
-		return fmt.Errorf("fee too low: got %s, expected minimum %s",
-			fee,
-			minFee,
-		)
+	secret := (*[32]byte)(req.Secret)
+
+	forwarderRequest, err := createForwarderRequest(
+		nonce,
+		req.RelayerFeeWei,
+		req.SFContractAddress,
+		req.Swap,
+		secret,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = forwarder.Verify(
+		callOpts,
+		*forwarderRequest,
+		*domainSeparator,
+		gsnforwarder.ForwardRequestTypehash,
+		nil,
+		req.Signature,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to verify signature: %w", err)
 	}
 
 	return nil
