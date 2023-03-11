@@ -246,7 +246,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.handleEventXMRLocked()
+		err := s.handleNotifyXMRLock()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 			return
@@ -307,10 +307,6 @@ func (s *swapState) handleEventKeysReceived(event *EventKeysReceived) error {
 	}
 
 	return s.SendSwapMessage(resp, s.ID())
-}
-
-func (s *swapState) handleEventXMRLocked() error {
-	return s.handleNotifyXMRLock()
 }
 
 func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {

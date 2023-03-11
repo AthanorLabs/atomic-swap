@@ -144,8 +144,13 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 }
 
 func (s *swapState) checkForXMRLock() {
-	// monero block time is >1 minute, so this should be fine
-	const checkForXMRLockInterval = time.Minute
+	var checkForXMRLockInterval time.Duration
+	if s.Env() == common.Development {
+		checkForXMRLockInterval = time.Second
+	} else {
+		// monero block time is >1 minute, so this should be fine
+		checkForXMRLockInterval = time.Minute
+	}
 
 	// check that XMR was locked in expected account, and confirm amount
 	lockedAddr, vk := s.expectedXMRLockAccount()
@@ -160,7 +165,7 @@ func (s *swapState) checkForXMRLock() {
 
 	log.Debugf("generated view-only wallet to check funds: %s", abViewCli.WalletName())
 
-	timer := time.NewTimer(checkForXMRLockInterval)
+	timer := time.NewTicker(checkForXMRLockInterval)
 	for {
 		select {
 		case <-s.ctx.Done():
