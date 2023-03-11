@@ -49,19 +49,12 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	err = readyWatcher.Start()
 	require.NoError(t, err)
 
-	// now handle the NotifyXMRLock message
-	event := newEventXMRLocked()
-	s.eventCh <- event
-	err = <-event.errCh
-	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedEvent, EventETHClaimedType)
-	require.Equal(t, types.ContractReady, s.info.Status)
-
+	// goroutine in SendKeysMessage handler should handle the NotifyXMRLock message
 	select {
 	case log := <-logReadyCh:
 		err = pcommon.CheckSwapID(&log, readyTopic, s.contractSwapID)
 		require.NoError(t, err)
-	case <-time.After(time.Second * 2):
+	case <-time.After(time.Second * 5):
 		t.Fatalf("didn't get ready logs in time")
 	}
 }
@@ -99,6 +92,11 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 	lockXMRAndCheckForReadyLog(t, s, xmrAddr)
+	// give handleNotifyXMRLock some time to return, since the event watcher
+	// sees the Ready event before swapState.ready() returns
+	time.Sleep(time.Second * 2)
+	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
+	require.Equal(t, types.ContractReady, s.info.Status)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
