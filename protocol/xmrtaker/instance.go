@@ -260,6 +260,7 @@ func (inst *Instance) HandleRelayClaimRequest(request *message.RelayClaimRequest
 		return nil, err
 	}
 
+	// TODO: have this pre-saved as part of the instance
 	forwarderAddr, err := swapFactory.TrustedForwarder(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return nil, err

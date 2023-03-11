@@ -110,9 +110,9 @@ func (a *PiconeroAmount) AsMoneroString() string {
 	return a.AsMonero().Text('f')
 }
 
-// FmtPiconeroAmtAsXMR takes piconeros as input and produces a formatted string of the
+// FmtPiconeroAsXMR takes piconeros as input and produces a formatted string of the
 // amount in XMR.
-func FmtPiconeroAmtAsXMR(piconeros uint64) string {
+func FmtPiconeroAsXMR(piconeros uint64) string {
 	return NewPiconeroAmount(piconeros).AsMoneroString()
 }
 
@@ -193,6 +193,11 @@ func (a *WeiAmount) AsEther() *apd.Decimal {
 	return ether
 }
 
+// AsEtherString converts the wei amount to an eth amount string
+func (a *WeiAmount) AsEtherString() string {
+	return a.AsEther().Text('f')
+}
+
 // AsStandard is an alias for AsEther, returning the wei amount as ether
 func (a *WeiAmount) AsStandard() *apd.Decimal {
 	return a.AsEther()
@@ -201,6 +206,12 @@ func (a *WeiAmount) AsStandard() *apd.Decimal {
 // String returns the wei amount as a base10 string
 func (a *WeiAmount) String() string {
 	return a.Decimal().Text('f')
+}
+
+// FmtWeiAsETH takes wei as input and produces a formatted string of the amount
+// in ETH.
+func FmtWeiAsETH(wei *big.Int) string {
+	return NewWeiAmount(wei).AsEther().Text('f')
 }
 
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination

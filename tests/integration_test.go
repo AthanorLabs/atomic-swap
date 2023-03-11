@@ -55,8 +55,6 @@ type IntegrationTestSuite struct {
 }
 
 func TestRunIntegrationTests(t *testing.T) {
-	os.Setenv("CONTRACT_ADDR", "0xcfeb869f69431e42cdb54a4f4f105c19c080a601")
-	os.Setenv("TESTS", "integration")
 	if testing.Short() || os.Getenv(testsEnv) != integrationMode {
 		t.Skip()
 	}

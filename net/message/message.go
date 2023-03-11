@@ -79,6 +79,7 @@ func DecodeMessage(b []byte) (common.Message, error) {
 	if err := vjson.UnmarshalStruct(msgJSON, msg); err != nil {
 		return nil, fmt.Errorf("failed to decode %s message: %w", TypeToString(msg.Type()), err)
 	}
+
 	return msg, nil
 }
 

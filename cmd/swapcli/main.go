@@ -42,8 +42,8 @@ const (
 )
 
 var (
-	minRelayerFee = coins.NewWeiAmount(relayer.DefaultRelayerFee).AsEther()
-	maxRelayerFee = apd.New(1, 0) // 1 ETH
+	minRelayerFee = relayer.MinRelayerFeeEth
+	maxRelayerFee = apd.New(1, 0) // 1 ETH (client side sanity check)
 
 	app = &cli.App{
 		Name:                 "swapcli",
@@ -404,7 +404,7 @@ func runBalances(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
-	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEther().Text('f'))
+	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEtherString())
 	fmt.Println()
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
 	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMoneroString())

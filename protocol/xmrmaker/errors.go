@@ -27,6 +27,7 @@ var (
 	errClaimedLogWrongEvent          = errors.New("log did not have the Claimed event as its first topic")
 	errClaimedLogWrongSwapID         = errors.New("log did not have the correct swap ID as its second topic")
 	errClaimedLogWrongSecret         = errors.New("log did not have the correct secret as its third topic")
+	errRelayingWithNonEthAsset       = errors.New("relayers with ERC20 token swaps are not currently supported")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
@@ -79,5 +80,17 @@ func (e errUnlockedBalanceTooLow) Error() string {
 	return fmt.Sprintf("balance %s XMR is too low for maximum offer amount of %s XMR",
 		e.unlockedBalance.String(),
 		e.maxOfferAmount.String(),
+	)
+}
+
+type errRelayerFeeTooLow struct {
+	minFeeEth       *apd.Decimal
+	requestedFeeEth *apd.Decimal
+}
+
+func (e errRelayerFeeTooLow) Error() string {
+	return fmt.Sprintf("relayer fee of %s ETH is below minimum of %s ETH",
+		e.requestedFeeEth.Text('f'),
+		e.minFeeEth.Text('f'),
 	)
 }

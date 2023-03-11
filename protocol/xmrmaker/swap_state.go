@@ -520,8 +520,8 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 		return nil, err
 	}
 
-	log.Debug("total XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.Balance))
-	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.UnlockedBalance))
+	log.Debug("total XMR balance: ", coins.FmtPiconeroAsXMR(balance.Balance))
+	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAsXMR(balance.UnlockedBalance))
 
 	log.Infof("Starting lock of %s XMR in address %s", amount.AsMoneroString(), swapDestAddr)
 	transfer, err := s.XMRClient().Transfer(s.ctx, swapDestAddr, 0, amount, monero.MinSpendConfirmations)

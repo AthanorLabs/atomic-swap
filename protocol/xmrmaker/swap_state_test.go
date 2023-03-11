@@ -333,7 +333,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	balAfterLock, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
 	t.Logf("Balance after locking funds: %s XMR (%d blocks to unlock)",
-		coins.FmtPiconeroAmtAsXMR(balAfterLock.Balance), balAfterLock.BlocksToUnlock)
+		coins.FmtPiconeroAsXMR(balAfterLock.Balance), balAfterLock.BlocksToUnlock)
 
 	// call refund w/ XMRTaker's secret
 	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
@@ -363,7 +363,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
 	t.Logf("End balance after refund: %s XMR (%d blocks to unlock)",
-		coins.FmtPiconeroAmtAsXMR(balance.Balance), balance.BlocksToUnlock)
+		coins.FmtPiconeroAsXMR(balance.Balance), balance.BlocksToUnlock)
 	require.Greater(t, balance.Balance, balAfterLock.Balance) // increased by refund (minus some fees)
 	require.Equal(t, types.CompletedRefund, s.info.Status)
 }

@@ -27,6 +27,8 @@ var (
 )
 
 func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
+	t.Skip("Claiming ERC20 tokens via relayer is not yet supported")
+
 	initialBalance := big.NewInt(90000000000000000)
 
 	sk := tests.GetMakerTestKey(t)
@@ -166,7 +168,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		ctx,
 		sk,
 		ec,
-		relayer.DefaultRelayerFee,
+		relayer.MinRelayerFeeEth,
 		contractAddr,
 		forwarderAddress,
 		swap,

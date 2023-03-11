@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	p2pnet "github.com/athanorlabs/go-p2p-net"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
 
@@ -15,9 +16,13 @@ import (
 
 func init() {
 	logging.SetLogLevel("net", "debug")
+	logging.SetLogLevel("p2pnet", "debug")
 }
 
-var testID = types.Hash{99}
+var (
+	testID        = types.Hash{99}
+	mockEthTXHash = ethcommon.Hash{33}
+)
 
 type mockMakerHandler struct {
 	t  *testing.T
@@ -40,7 +45,9 @@ type mockTakerHandler struct {
 }
 
 func (h *mockTakerHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
-	return new(RelayClaimResponse), nil
+	return &RelayClaimResponse{
+		TxHash: mockEthTXHash,
+	}, nil
 }
 
 type mockSwapState struct {
@@ -77,8 +84,8 @@ func basicTestConfig(t *testing.T) *p2pnet.Config {
 	}
 }
 
-func newHost(t *testing.T, cfg *p2pnet.Config) *Host {
-	h, err := NewHost(cfg, true)
+func newHost(t *testing.T, cfg *p2pnet.Config, isRelayer bool) *Host {
+	h, err := NewHost(cfg, isRelayer)
 	require.NoError(t, err)
 	h.SetHandlers(&mockMakerHandler{t: t}, &mockTakerHandler{t: t})
 	t.Cleanup(func() {

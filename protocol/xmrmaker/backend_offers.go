@@ -5,6 +5,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 // MakeOffer makes a new swap offer.
@@ -21,6 +22,15 @@ func (b *Instance) MakeOffer(
 	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
 	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
 		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
+	}
+
+	if relayerFee != nil {
+		if o.EthAsset != types.EthAssetETH {
+			return nil, errRelayingWithNonEthAsset
+		}
+		if relayerFee.Cmp(relayer.MinRelayerFeeEth) < 0 {
+			return nil, errRelayerFeeTooLow{relayer.MinRelayerFeeEth, relayerFee}
+		}
 	}
 
 	extra, err := b.offerManager.AddOffer(o, relayerFee)

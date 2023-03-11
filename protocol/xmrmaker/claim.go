@@ -46,7 +46,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 			return ethcommon.Hash{}, err
 		}
 		log.Infof("balance before claim: %v %s",
-			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard().Text('f'),
 			symbol,
 		)
 	}
@@ -77,7 +77,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
-		log.Infof("balance after claim: %s ETH", coins.NewWeiAmount(balance).AsEther())
+		log.Infof("balance after claim: %s ETH", coins.FmtWeiAsETH(balance))
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
@@ -85,7 +85,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		}
 
 		log.Infof("balance after claim: %s %s",
-			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard(),
+			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard().Text('f'),
 			symbol,
 		)
 	}
@@ -100,6 +100,10 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
+	if len(relayers) == 0 {
+		return ethcommon.Hash{}, errors.New("no relayers found to submit claim to")
+	}
+
 	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
 	if err != nil {
 		return ethcommon.Hash{}, err
@@ -107,16 +111,11 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 
 	secret := s.getSecret()
 
-	relayerFeeWei := relayer.DefaultRelayerFee
-	if s.offerExtra.RelayerFee != nil {
-		relayerFeeWei = coins.ToWeiAmount(s.offerExtra.RelayerFee).BigInt()
-	}
-
 	req, err := relayer.CreateRelayClaimRequest(
 		s.ctx,
 		s.ETHClient().PrivateKey(),
 		s.ETHClient().Raw(),
-		relayerFeeWei,
+		s.offerExtra.RelayerFee,
 		s.contractAddr,
 		forwarderAddress,
 		s.contractSwap,

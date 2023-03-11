@@ -219,7 +219,7 @@ func (s *swapState) handleNotifyXMRLock(msg *message.NotifyXMRLock) error {
 
 	if s.expectedPiconeroAmount().CmpU64(balance.Balance) > 0 {
 		return fmt.Errorf("locked XMR amount is less than expected: got %s, expected %s",
-			coins.FmtPiconeroAmtAsXMR(balance.Balance), s.ExpectedAmount().Text('f'))
+			coins.FmtPiconeroAsXMR(balance.Balance), s.ExpectedAmount().Text('f'))
 	}
 
 	// Monero received from a transfer is locked for a minimum of 10 confirmations before

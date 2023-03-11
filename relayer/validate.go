@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -11,12 +10,10 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
-)
-
-var (
-	errSwapValueTooLow = errors.New("relayer fee is not greater than swap value")
 )
 
 func validateClaimRequest(
@@ -25,7 +22,7 @@ func validateClaimRequest(
 	ec *ethclient.Client,
 	expectedForwarderAddress ethcommon.Address,
 ) error {
-	err := validateClaimValues(ctx, request, ec, expectedForwarderAddress, minAcceptedRelayerFee)
+	err := validateClaimValues(ctx, request, ec, expectedForwarderAddress, MinRelayerFeeWei)
 	if err != nil {
 		return err
 	}
@@ -38,8 +35,9 @@ func validateClaimRequest(
 //  2. the forwarder in the claim request swap factory contract has an identical
 //     address with our forwarder
 //  3. the relayer fee is equal to or greater than the passed minFee
-//  4. the swap value is strictly greater than the relayer fee
-//  5. TODO: Validate that the swap exists and is in a claimable state?
+//  4. the swap is for ETH and not an ERC20 token
+//  5. the swap value is strictly greater than the relayer fee
+//  6. TODO: Validate that the swap exists and is in a claimable state?
 func validateClaimValues(
 	ctx context.Context,
 	req *message.RelayClaimRequest,
@@ -64,12 +62,19 @@ func validateClaimValues(
 
 	// Relayer fee must be greater than or equal to the minimum fee that we accept
 	if req.RelayerFeeWei.Cmp(minFee) < 0 {
-		return fmt.Errorf("fee too low: got %s, expected minimum %s", req.RelayerFeeWei, minFee)
+		return fmt.Errorf("fee too low: got %s ETH, expected minimum %s ETH",
+			coins.FmtWeiAsETH(req.RelayerFeeWei), coins.FmtWeiAsETH(minFee))
+	}
+
+	asset := types.EthAsset(req.Swap.Asset)
+	if asset != types.EthAssetETH {
+		return fmt.Errorf("relaying for ETH Asset %s is not supported", asset)
 	}
 
 	// The swap value must be strictly greater than the relayer fee
 	if req.Swap.Value.Cmp(req.RelayerFeeWei) <= 0 {
-		return errSwapValueTooLow
+		return fmt.Errorf("swap value of %s ETH is too low to support %s ETH relayer fee",
+			coins.FmtWeiAsETH(req.Swap.Value), coins.FmtWeiAsETH(req.RelayerFeeWei))
 	}
 
 	return nil
