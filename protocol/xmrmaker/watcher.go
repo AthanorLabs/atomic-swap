@@ -45,7 +45,13 @@ func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
 	// contract was set to ready, send EventReady
 	event := newEventContractReady()
 	s.eventCh <- event
-	return <-event.errCh
+	go func() {
+		err = <-event.errCh
+		if err != nil {
+			log.Errorf("failed to handle EventReady: %s", err)
+		}
+	}()
+	return nil
 }
 
 func (s *swapState) handleRefundLogs(ethlog *ethtypes.Log) error {

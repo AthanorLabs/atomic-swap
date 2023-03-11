@@ -15,7 +15,7 @@ import (
 
 // WaitForEthBlockAfterTimestamp returns the header of the first block whose timestamp is >= ts.
 func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts time.Time) (*ethtypes.Header, error) {
-	timeDelta := time.Duration(time.Until(ts))
+	timeDelta := time.Until(ts)
 	if timeDelta < 0 {
 		timeDelta = 0
 	}

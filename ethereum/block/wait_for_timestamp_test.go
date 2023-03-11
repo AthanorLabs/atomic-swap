@@ -14,11 +14,11 @@ import (
 // a header with stamp >= ts.
 func TestWaitForEthBlockAfterTimestamp_smallWait(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
-	ts := time.Now().Unix() + 1 // 1 seconds from now
+	ts := time.Now().Add(time.Second) // 1 seconds from now
 	ctx := context.Background()
 	hdr, err := WaitForEthBlockAfterTimestamp(ctx, ec, ts)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, hdr.Time, uint64(ts))
+	require.GreaterOrEqual(t, hdr.Time, uint64(ts.Unix()))
 }
 
 // Tests context cancellation in the sleep before waiting for any new block headers.
@@ -26,7 +26,7 @@ func TestWaitForEthBlockAfterTimestamp_cancelledCtxInSleep(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	ts := time.Now().Add(24 * time.Hour).Unix() // make the test time out if we don't handle the context
+	ts := time.Now().Add(24 * time.Hour) // make the test time out if we don't handle the context
 	_, err := WaitForEthBlockAfterTimestamp(ctx, ec, ts)
 	require.ErrorIs(t, err, context.Canceled)
 }
@@ -38,7 +38,7 @@ func TestWaitForEthBlockAfterTimestamp_cancelledCtxWaitingForHeaders(t *testing.
 	// First we set the ts to now and give a short context timeout. We want to pass
 	// the initial sleep and test the context handling in the code receiving new block
 	// headers
-	ts := time.Now().Unix()
+	ts := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
@@ -50,7 +50,7 @@ func TestWaitForEthBlockAfterTimestamp_cancelledCtxWaitingForHeaders(t *testing.
 func TestWaitForEthBlockAfterTimestamp_failToSubscribe(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 
-	ts := time.Now().Unix()
+	ts := time.Now()
 	ctx := context.Background()
 	ec.Close() // make SubscribeNewHead return an error
 	_, err := WaitForEthBlockAfterTimestamp(ctx, ec, ts)
@@ -63,9 +63,9 @@ func TestWaitForEthBlockAfterTimestamp_failToSubscribe(t *testing.T) {
 func TestWaitForEthBlockAfterTimestamp_alreadyAfter(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 
-	ts := time.Now().Unix() - 60 // one minute ago
+	ts := time.Now().Add(time.Second * -60) // one minute ago
 	ctx := context.Background()
 	hdr, err := WaitForEthBlockAfterTimestamp(ctx, ec, ts)
 	require.NoError(t, err)
-	require.Greater(t, hdr.Time, uint64(ts)) // ts was minute ago, so strictly greater
+	require.Greater(t, hdr.Time, uint64(ts.Unix())) // ts was minute ago, so strictly greater
 }

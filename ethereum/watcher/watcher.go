@@ -67,7 +67,6 @@ func (f *EventFilter) Start() error {
 			case <-f.ctx.Done():
 				return
 			case <-time.After(checkForBlocksTimeout):
-				log.Infof("checking for event %s...", f.topic)
 			}
 
 			currHeader, err := f.ec.HeaderByNumber(f.ctx, nil)
@@ -96,7 +95,6 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
-				log.Infof("putting log into channel, event=%s", f.topic)
 				f.logCh <- l
 			}
 
@@ -109,6 +107,7 @@ func (f *EventFilter) Start() error {
 	return nil
 }
 
+// Stop stops the EventFilter.
 func (f *EventFilter) Stop() {
 	f.cancel()
 }

@@ -56,9 +56,6 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		)
 	}
 
-	// SIMULATE CLAIM ERROR
-	return ethcommon.Hash{}, errors.New("fake claim error")
-
 	var (
 		txHash ethcommon.Hash
 	)
