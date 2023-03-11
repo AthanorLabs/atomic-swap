@@ -190,7 +190,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.handleEventETHLocked(e)
+		err := s.handleNotifyETHLocked(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
 			if !s.fundsLocked {
@@ -248,15 +248,6 @@ func (s *swapState) handleEvent(event Event) {
 	default:
 		panic("unhandled event type")
 	}
-}
-
-func (s *swapState) handleEventETHLocked(e *EventETHLocked) error {
-	resp, err := s.handleNotifyETHLocked(e.message)
-	if err != nil {
-		return err
-	}
-
-	return s.SendSwapMessage(resp, s.ID())
 }
 
 func (s *swapState) handleEventContractReady() error {

@@ -22,7 +22,6 @@ const (
 	QueryResponseType byte = iota
 	SendKeysType
 	NotifyETHLockedType
-	NotifyXMRLockType
 )
 
 // TypeToString converts a message type into a string.
@@ -34,8 +33,6 @@ func TypeToString(t byte) string {
 		return "SendKeysMessage"
 	case NotifyETHLockedType:
 		return "NotifyETHLocked"
-	case NotifyXMRLockType:
-		return "NotifyXMRLock"
 	default:
 		return "unknown"
 	}
@@ -59,8 +56,6 @@ func DecodeMessage(b []byte) (common.Message, error) {
 		msg = &SendKeysMessage{}
 	case NotifyETHLockedType:
 		msg = &NotifyETHLocked{}
-	case NotifyXMRLockType:
-		msg = &NotifyXMRLock{}
 	default:
 		return nil, fmt.Errorf("invalid message type=%d", msgType)
 	}
@@ -172,30 +167,4 @@ func (m *NotifyETHLocked) Encode() ([]byte, error) {
 // Type ...
 func (m *NotifyETHLocked) Type() byte {
 	return NotifyETHLockedType
-}
-
-// NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
-type NotifyXMRLock struct {
-	Address *mcrypto.Address `json:"address" validate:"required"` // address the monero was sent to
-	TxID    types.Hash       `json:"txID" validate:"required"`    // Monero transaction ID (transaction hash in hex)
-}
-
-// String ...
-func (m *NotifyXMRLock) String() string {
-	return "NotifyXMRLock"
-}
-
-// Encode ...
-func (m *NotifyXMRLock) Encode() ([]byte, error) {
-	b, err := vjson.MarshalStruct(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return append([]byte{NotifyXMRLockType}, b...), nil
-}
-
-// Type ...
-func (m *NotifyXMRLock) Type() byte {
-	return NotifyXMRLockType
 }

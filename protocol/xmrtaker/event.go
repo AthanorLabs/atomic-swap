@@ -131,8 +131,7 @@ func newEventKeysReceived(msg *message.SendKeysMessage) *EventKeysReceived {
 // EventXMRLocked is the second expected event. It represents XMR being locked
 // on-chain.
 type EventXMRLocked struct {
-	message *message.NotifyXMRLock
-	errCh   chan error
+	errCh chan error
 }
 
 // Type ...
@@ -140,10 +139,9 @@ func (*EventXMRLocked) Type() EventType {
 	return EventXMRLockedType
 }
 
-func newEventXMRLocked(msg *message.NotifyXMRLock) *EventXMRLocked {
+func newEventXMRLocked() *EventXMRLocked {
 	return &EventXMRLocked{
-		message: msg,
-		errCh:   make(chan error),
+		errCh: make(chan error),
 	}
 }
 
@@ -248,7 +246,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.handleEventXMRLocked(e)
+		err := s.handleNotifyXMRLock()
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 			return
@@ -309,10 +307,6 @@ func (s *swapState) handleEventKeysReceived(event *EventKeysReceived) error {
 	}
 
 	return s.SendSwapMessage(resp, s.ID())
-}
-
-func (s *swapState) handleEventXMRLocked(event *EventXMRLocked) error {
-	return s.handleNotifyXMRLock(event.message)
 }
 
 func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {

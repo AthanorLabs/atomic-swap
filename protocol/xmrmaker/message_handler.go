@@ -86,20 +86,20 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
-func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (common.Message, error) {
+func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 	if msg.Address == (ethcommon.Address{}) {
-		return nil, errMissingAddress
+		return errMissingAddress
 	}
 
 	if types.IsHashZero(msg.ContractSwapID) {
-		return nil, errNilContractSwapID
+		return errNilContractSwapID
 	}
 
 	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%s", msg.Address, msg.ContractSwapID)
 
 	// validate that swap ID == keccak256(swap struct)
 	if err := checkContractSwapID(msg); err != nil {
-		return nil, err
+		return err
 	}
 
 	s.contractSwapID = msg.ContractSwapID
@@ -107,7 +107,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (common.
 
 	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, msg.TxHash)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	contractAddr := msg.Address
@@ -116,11 +116,11 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (common.
 	// doesn't hurt though I suppose.
 	_, err = contracts.CheckSwapFactoryContractCode(s.ctx, s.Backend.ETHClient().Raw(), contractAddr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err = s.setContract(contractAddr); err != nil {
-		return nil, fmt.Errorf("failed to instantiate contract instance: %w", err)
+		return fmt.Errorf("failed to instantiate contract instance: %w", err)
 	}
 
 	ethInfo := &db.EthereumSwapInfo{
@@ -131,25 +131,25 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) (common.
 	}
 
 	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err = s.checkContract(msg.TxHash); err != nil {
-		return nil, err
+		return err
 	}
 
 	err = s.checkAndSetTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	notifyXMRLocked, err := s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
+	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	if err != nil {
-		return nil, fmt.Errorf("failed to lock funds: %w", err)
+		return fmt.Errorf("failed to lock funds: %w", err)
 	}
 
 	go s.runT0ExpirationHandler()
-	return notifyXMRLocked, nil
+	return nil
 }
 
 func (s *swapState) runT0ExpirationHandler() {

@@ -18,7 +18,6 @@ var (
 	errCannotRefund            = errors.New("swap is not at a stage where it can refund")
 	errRefundInvalid           = errors.New("cannot refund, swap does not exist")
 	errRefundSwapCompleted     = fmt.Errorf("cannot refund, %w", errSwapCompleted)
-	errNoLockedXMRAddress      = errors.New("got empty address for locked XMR")
 	errCounterpartyKeysNotSet  = errors.New("counterparty's keys aren't set")
 	errSwapInstantiationNoLogs = errors.New("expected 1 log, got 0")
 	errSwapCompleted           = errors.New("swap is already completed")

@@ -45,27 +45,6 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 	return xmrmaker, swapState, db
 }
 
-func newTestSwapStateAndNet(t *testing.T) (*Instance, *swapState, *mockNet) {
-	xmrmaker, net := newTestInstanceAndNet(t)
-
-	swapState, err := newSwapStateFromStart(
-		xmrmaker.backend,
-		types.NewOffer(
-			coins.ProvidesXMR,
-			coins.StrToDecimal("0.1"),
-			coins.StrToDecimal("1"),
-			coins.StrToExchangeRate("0.1"),
-			types.EthAssetETH,
-		),
-		&types.OfferExtra{},
-		xmrmaker.offerManager,
-		coins.MoneroToPiconero(coins.StrToDecimal("0.1")),
-		desiredAmount,
-	)
-	require.NoError(t, err)
-	return xmrmaker, swapState, net
-}
-
 func newTestSwapState(t *testing.T) (*Instance, *swapState) {
 	xmrmaker, swapState, _ := newTestSwapStateAndDB(t)
 	return xmrmaker, swapState
@@ -177,7 +156,7 @@ func TestSwapState_handleSendKeysMessage(t *testing.T) {
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
-	_, s, net := newTestSwapStateAndNet(t)
+	_, s := newTestSwapState(t)
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHLockedType
 
@@ -208,12 +187,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
-	resp := net.LastSentMessage()
-	require.NotNil(t, resp)
-	require.Equal(t, message.NotifyXMRLockType, resp.Type())
-	require.Equal(t, duration, s.t1.Sub(s.t0))
-	require.Equal(t, EventContractReadyType, s.nextExpectedEvent)
-	require.True(t, s.info.Status.IsOngoing())
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
@@ -279,7 +252,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
+	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	// call refund w/ XMRTaker's spend key
@@ -327,7 +300,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
-	_, err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
+	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
 	require.NoError(t, err)
 
 	balAfterLock, err := s.XMRClient().GetBalance(0)

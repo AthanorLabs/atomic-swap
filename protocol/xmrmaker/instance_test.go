@@ -146,11 +146,6 @@ func newTestInstanceAndDB(t *testing.T) (*Instance, *offers.MockDatabase) {
 	return inst, db
 }
 
-func newTestInstanceAndNet(t *testing.T) (*Instance, *mockNet) {
-	inst, _, net := newTestInstanceAndDBAndNet(t)
-	return inst, net
-}
-
 func TestInstance_createOngoingSwap(t *testing.T) {
 	inst, offerDB := newTestInstanceAndDB(t)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
