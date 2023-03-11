@@ -143,6 +143,12 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
             isTrustedForwarder(msg.sender),
             "claimRelayer can only be called by a trusted forwarder"
         );
+
+        require(
+            _msgSender() == _swap.claimer,
+            "signer of the relayed transaction must be the claimer"
+        );
+
         _claim(_swap, _s);
 
         // send ether to swap claimant, subtracting the relayer fee
