@@ -189,6 +189,10 @@ func newSwapStateFromOngoing(
 	s.contractSwap = ethSwapInfo.Swap
 	s.xmrmakerPublicSpendKey = makerSk
 	s.xmrmakerPrivateViewKey = makerVk
+
+	if info.Status == types.ETHLocked {
+		go s.checkForXMRLock()
+	}
 	return s, nil
 }
 
