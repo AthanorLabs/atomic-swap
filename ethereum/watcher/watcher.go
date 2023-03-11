@@ -22,6 +22,7 @@ var (
 // When it finds a desired log, it puts it into its outbound channel.
 type EventFilter struct {
 	ctx         context.Context
+	cancel      context.CancelFunc
 	ec          *ethclient.Client
 	topic       ethcommon.Hash
 	filterQuery eth.FilterQuery
@@ -42,8 +43,10 @@ func NewEventFilter(
 		Addresses: []ethcommon.Address{contract},
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
 	return &EventFilter{
 		ctx:         ctx,
+		cancel:      cancel,
 		ec:          ec,
 		topic:       topic,
 		filterQuery: filterQuery,
@@ -64,6 +67,7 @@ func (f *EventFilter) Start() error {
 			case <-f.ctx.Done():
 				return
 			case <-time.After(checkForBlocksTimeout):
+				log.Infof("checking for event %s...", f.topic)
 			}
 
 			currHeader, err := f.ec.HeaderByNumber(f.ctx, nil)
@@ -92,6 +96,7 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
+				log.Infof("putting log into channel, event=%s", f.topic)
 				f.logCh <- l
 			}
 
@@ -102,4 +107,8 @@ func (f *EventFilter) Start() error {
 	}()
 
 	return nil
+}
+
+func (f *EventFilter) Stop() {
+	f.cancel()
 }

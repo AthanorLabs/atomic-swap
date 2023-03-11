@@ -249,7 +249,7 @@ func (s *swapState) handleNotifyXMRLock() error {
 
 func (s *swapState) runT1ExpirationHandler() {
 	log.Debugf("time until t1 (%s): %vs",
-		s.t0.Format(common.TimeFmtSecs),
+		s.t1.Format(common.TimeFmtSecs),
 		time.Until(s.t1).Seconds(),
 	)
 

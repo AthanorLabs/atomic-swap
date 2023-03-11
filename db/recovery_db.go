@@ -69,6 +69,7 @@ func (db *RecoveryDB) GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, erro
 // swap ID, but is instead a hash of the `SwapFactorySwap` structure)
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo) error {
+	defer db.db.Flush()
 	val, err := vjson.MarshalStruct(info)
 	if err != nil {
 		return err

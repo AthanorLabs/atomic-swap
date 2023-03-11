@@ -124,6 +124,12 @@ And Bob's balances with this command:
 ./bin/swapcli balances --swapd-port 5001
 ```
 
+If Bob doesn't have enough balance, you can mine more blocks using:
+```bash
+source scripts/testlib.sh
+mine-monero-for-swapd 5001
+```
+
 ### Make a Swap Offer
 
 Next we need Bob to make an offer and advertise it, so that Alice can take it. You

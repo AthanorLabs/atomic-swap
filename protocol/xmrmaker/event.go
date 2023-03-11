@@ -253,6 +253,7 @@ func (s *swapState) handleEvent(event Event) {
 func (s *swapState) handleEventContractReady() error {
 	log.Debug("contract ready, attempting to claim funds...")
 	close(s.readyCh)
+	s.readyWatcher.Stop()
 
 	// contract ready, let's claim our ether
 	txHash, err := s.claimFunds()

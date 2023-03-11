@@ -134,6 +134,8 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 		return err
 	}
 
+	log.Infof("stored ContractSwapInfo: id=%s", s.ID())
+
 	if err = s.checkContract(msg.TxHash); err != nil {
 		return err
 	}

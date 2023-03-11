@@ -20,6 +20,7 @@ func (s *swapState) runContractEventWatcher() {
 				log.Errorf("failed to handle ready logs: %s", err)
 			}
 		case l := <-s.logRefundedCh:
+			log.Infof("got refunded logs: %s", l)
 			err := s.handleRefundLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle refund logs: %s", err)
@@ -47,21 +48,23 @@ func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
 	return <-event.errCh
 }
 
-func (s *swapState) handleRefundLogs(log *ethtypes.Log) error {
-	err := pcommon.CheckSwapID(log, refundedTopic, s.contractSwapID)
+func (s *swapState) handleRefundLogs(ethlog *ethtypes.Log) error {
+	err := pcommon.CheckSwapID(ethlog, refundedTopic, s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
+		log.Warnf("ErrLogNotForUs")
 		return nil
 	}
 	if err != nil {
 		return err
 	}
 
-	sk, err := contracts.GetSecretFromLog(log, refundedTopic)
+	sk, err := contracts.GetSecretFromLog(ethlog, refundedTopic)
 	if err != nil {
 		return err
 	}
 
 	// swap was refunded, send EventRefunded
+	log.Infof("sending EventETHRefunded in s.eventCh")
 	event := newEventETHRefunded(sk)
 	s.eventCh <- event
 	return <-event.errCh

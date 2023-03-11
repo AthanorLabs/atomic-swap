@@ -14,8 +14,11 @@ import (
 )
 
 // WaitForEthBlockAfterTimestamp returns the header of the first block whose timestamp is >= ts.
-func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts int64) (*ethtypes.Header, error) {
-	timeDelta := time.Duration(ts-time.Now().Unix()) * time.Second
+func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts time.Time) (*ethtypes.Header, error) {
+	timeDelta := time.Duration(time.Until(ts))
+	if timeDelta < 0 {
+		timeDelta = 0
+	}
 
 	// The sleep is safe even if timeDelta is negative. We only optimise for timestamps in the future, but if
 	// the timestamp had already passed for some reason, nothing bad happens.
@@ -39,7 +42,7 @@ func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts
 		case err := <-sub.Err():
 			return nil, err
 		case header := <-headers:
-			if header.Time >= uint64(ts) {
+			if header.Time >= uint64(ts.Unix()) {
 				return header, nil
 			}
 		}

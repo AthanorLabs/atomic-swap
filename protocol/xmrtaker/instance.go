@@ -114,7 +114,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 
 	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
+		return fmt.Errorf("failed to get info for ongoing swap, id %s: %s", s.ID, err)
 	}
 
 	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
