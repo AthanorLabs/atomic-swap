@@ -286,6 +286,11 @@ func (s *swapState) handleEvent(event Event) {
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 		}
+
+		err = s.exit()
+		if err != nil {
+			log.Warnf("failed to exit swap: %s", err)
+		}
 	case *EventExit:
 		// this can happen at any stage.
 		log.Infof("EventExit")

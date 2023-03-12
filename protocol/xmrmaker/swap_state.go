@@ -73,6 +73,8 @@ type swapState struct {
 	// set to true once funds are locked
 	fundsLocked bool
 
+	readyWatcher *watcher.EventFilter
+
 	// channels
 
 	// channel for swap events
@@ -292,6 +294,7 @@ func newSwapState(
 		readyCh:           make(chan struct{}),
 		info:              info,
 		done:              make(chan struct{}),
+		readyWatcher:      readyWatcher,
 	}
 
 	go s.runHandleEvents()
@@ -390,12 +393,19 @@ func (s *swapState) exit() error {
 		// this case takes control of the event channel.
 		// the next event will either be EventContractReady or EventETHRefunded.
 
+		log.Infof("waiting for EventETHRefunded or EventContractReady")
+
 		var err error
 		event := <-s.eventCh
+
 		switch e := event.(type) {
 		case *EventETHRefunded:
+			defer close(e.errCh)
+			log.Infof("got EventETHRefunded")
 			err = s.handleEventETHRefunded(e)
 		case *EventContractReady:
+			defer close(e.errCh)
+			log.Infof("got EventContractReady")
 			err = s.handleEventContractReady()
 		}
 		if err != nil {
