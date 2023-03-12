@@ -180,7 +180,7 @@ var (
 					},
 					&cli.StringFlag{
 						Name: flagRelayerFee,
-						Usage: "Fee to pay the relayer in ETH if you have insufficient funds to claim:" +
+						Usage: "Fee to pay the relayer in ETH:" +
 							" eg. --relayer-fee=0.009 to pay 0.0009 ETH",
 						Value: minRelayerFee.Text('f'),
 					},

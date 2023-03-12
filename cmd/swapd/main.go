@@ -29,6 +29,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
+	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -204,8 +205,11 @@ var (
 				Usage: "Use external signer, for usage with the swap UI",
 			},
 			&cli.BoolFlag{
-				Name:  flagClaimRelayer,
-				Usage: "Relay claims for other XMR makers and earn a modest fee per relayed transaction",
+				Name: flagClaimRelayer,
+				Usage: fmt.Sprintf(
+					"Relay transactions for other XMR makers and earn %s ETH per relayed transaction",
+					relayer.MinRelayerFeeEth.Text('f'),
+				),
 				Value: false,
 			},
 			&cli.StringFlag{

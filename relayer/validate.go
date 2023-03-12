@@ -56,7 +56,7 @@ func validateClaimValues(
 	// The forwarder used must have the same exact address as ours, so we don't
 	// need to check the forwarder contract bytecode.
 	if requestedForwarderAddr != expectedForwarderAddress {
-		return fmt.Errorf("claim request had expected forwarder address: got %s, expected %s",
+		return fmt.Errorf("claim request had unexpected forwarder address: got %s, expected %s",
 			requestedForwarderAddr, expectedForwarderAddress)
 	}
 
