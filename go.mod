@@ -8,7 +8,7 @@ require (
 	github.com/MarinX/monerorpc v1.0.5
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213
-	github.com/athanorlabs/go-p2p-net v0.0.0-20230311002106-2cb76cdd9041
+	github.com/athanorlabs/go-p2p-net v0.0.0-20230312042804-f7fe26ae4180
 	github.com/athanorlabs/go-relayer v0.0.6-0.20230126054526-85b34765dc00
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cockroachdb/apd/v3 v3.1.2
@@ -17,7 +17,6 @@ require (
 	github.com/fatih/color v1.14.1
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/golang/mock v1.6.0
-	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0

@@ -28,7 +28,7 @@ func twoHostRelayerSetup(t *testing.T) (*Host, *Host) {
 	err = hb.Start()
 	require.NoError(t, err)
 
-	ha.RefreshNamespaces()             // hb wasn't around on ha's first advertisement loop
+	ha.Advertise()                     // hb wasn't around on ha's first advertisement loop
 	time.Sleep(500 * time.Millisecond) // give hb time to advertise in DHT
 
 	return ha, hb

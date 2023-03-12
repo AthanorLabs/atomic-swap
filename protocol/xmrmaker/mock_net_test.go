@@ -67,6 +67,18 @@ func (mr *MockP2pHostMockRecorder) Addresses() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Addresses", reflect.TypeOf((*MockP2pHost)(nil).Addresses))
 }
 
+// Advertise mocks base method.
+func (m *MockP2pHost) Advertise() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Advertise")
+}
+
+// Advertise indicates an expected call of Advertise.
+func (mr *MockP2pHostMockRecorder) Advertise() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Advertise", reflect.TypeOf((*MockP2pHost)(nil).Advertise))
+}
+
 // Connect mocks base method.
 func (m *MockP2pHost) Connect(arg0 context.Context, arg1 peer.AddrInfo) error {
 	m.ctrl.T.Helper()
@@ -151,18 +163,6 @@ func (m *MockP2pHost) PeerID() peer.ID {
 func (mr *MockP2pHostMockRecorder) PeerID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PeerID", reflect.TypeOf((*MockP2pHost)(nil).PeerID))
-}
-
-// RefreshNamespaces mocks base method.
-func (m *MockP2pHost) RefreshNamespaces() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RefreshNamespaces")
-}
-
-// RefreshNamespaces indicates an expected call of RefreshNamespaces.
-func (mr *MockP2pHostMockRecorder) RefreshNamespaces() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshNamespaces", reflect.TypeOf((*MockP2pHost)(nil).RefreshNamespaces))
 }
 
 // SetAdvertisedNamespacesFunc mocks base method.

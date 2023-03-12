@@ -38,7 +38,7 @@ func (b *Instance) MakeOffer(
 		return nil, err
 	}
 
-	b.net.RefreshNamespaces()
+	b.net.Advertise()
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }

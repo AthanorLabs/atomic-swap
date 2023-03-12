@@ -35,7 +35,7 @@ type P2pHost interface {
 	Start() error
 	Stop() error
 
-	RefreshNamespaces()
+	Advertise()
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 
 	SetStreamHandler(string, func(libp2pnetwork.Stream))
@@ -157,10 +157,10 @@ func (h *Host) CloseProtocolStream(id types.Hash) {
 	_ = swap.stream.Close()
 }
 
-// RefreshNamespaces forces an immediate update to the advertised namespaces in
-// the DHT
-func (h *Host) RefreshNamespaces() {
-	h.h.RefreshNamespaces()
+// Advertise advertises the namespaces now instead of waiting for the next periodic
+// update. We use it when a new advertised namespace is added.
+func (h *Host) Advertise() {
+	h.h.Advertise()
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin..
