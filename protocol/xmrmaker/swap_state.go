@@ -73,6 +73,8 @@ type swapState struct {
 	// set to true once funds are locked
 	fundsLocked bool
 
+	readyWatcher *watcher.EventFilter
+
 	// channels
 
 	// channel for swap events
@@ -292,6 +294,7 @@ func newSwapState(
 		readyCh:           make(chan struct{}),
 		info:              info,
 		done:              make(chan struct{}),
+		readyWatcher:      readyWatcher,
 	}
 
 	go s.runHandleEvents()
@@ -390,12 +393,19 @@ func (s *swapState) exit() error {
 		// this case takes control of the event channel.
 		// the next event will either be EventContractReady or EventETHRefunded.
 
+		log.Infof("waiting for EventETHRefunded or EventContractReady")
+
 		var err error
 		event := <-s.eventCh
+
 		switch e := event.(type) {
 		case *EventETHRefunded:
+			defer close(e.errCh)
+			log.Infof("got EventETHRefunded")
 			err = s.handleEventETHRefunded(e)
 		case *EventContractReady:
+			defer close(e.errCh)
+			log.Infof("got EventContractReady")
 			err = s.handleEventContractReady()
 		}
 		if err != nil {
@@ -510,14 +520,14 @@ func (s *swapState) setContract(address ethcommon.Address) error {
 // lockFunds locks XMRMaker's funds in the monero account specified by public key
 // (S_a + S_b), viewable with (V_a + V_b)
 // It accepts the amount to lock as the input
-func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRLock, error) {
+func (s *swapState) lockFunds(amount *coins.PiconeroAmount) error {
 	xmrtakerPublicKeys := mcrypto.NewPublicKeyPair(s.xmrtakerPublicSpendKey, s.xmrtakerPrivateViewKey.Public())
 	swapDestAddr := mcrypto.SumSpendAndViewKeys(xmrtakerPublicKeys, s.pubkeys).Address(s.Env())
 	log.Infof("going to lock XMR funds, amount=%s XMR", amount.AsMoneroString())
 
 	balance, err := s.XMRClient().GetBalance(0)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	log.Debug("total XMR balance: ", coins.FmtPiconeroAsXMR(balance.Balance))
@@ -526,19 +536,11 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) (*message.NotifyXMRL
 	log.Infof("Starting lock of %s XMR in address %s", amount.AsMoneroString(), swapDestAddr)
 	transfer, err := s.XMRClient().Transfer(s.ctx, swapDestAddr, 0, amount, monero.MinSpendConfirmations)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
 	s.fundsLocked = true
-
-	txID, err := types.HexToHash(transfer.TxID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &message.NotifyXMRLock{
-		Address: swapDestAddr,
-		TxID:    txID,
-	}, nil
+	return nil
 }

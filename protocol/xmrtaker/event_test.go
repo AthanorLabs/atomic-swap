@@ -32,15 +32,6 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	t.Logf("Transferred %d pico XMR (fees %d) to account %s", transfer.Amount, transfer.Fee, xmrAddr)
 	t.Logf("Transfer was mined at block=%d with %d confirmations", transfer.Height, transfer.Confirmations)
 
-	txID, err := types.HexToHash(transfer.TxID)
-	require.NoError(t, err)
-
-	// send notification that monero was locked
-	lmsg := &message.NotifyXMRLock{
-		Address: xmrAddr,
-		TxID:    txID,
-	}
-
 	// assert that ready() is called, setup contract watcher
 	ethHeader, err := backend.ETHClient().Raw().HeaderByNumber(backend.Ctx(), nil)
 	require.NoError(t, err)
@@ -58,17 +49,12 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	err = readyWatcher.Start()
 	require.NoError(t, err)
 
-	// now handle the NotifyXMRLock message
-	err = s.HandleProtocolMessage(lmsg)
-	require.NoError(t, err)
-	require.Equal(t, s.nextExpectedEvent, EventETHClaimedType)
-	require.Equal(t, types.ContractReady, s.info.Status)
-
+	// goroutine in SendKeysMessage handler should handle the NotifyXMRLock message
 	select {
 	case log := <-logReadyCh:
 		err = pcommon.CheckSwapID(&log, readyTopic, s.contractSwapID)
 		require.NoError(t, err)
-	case <-time.After(time.Second * 2):
+	case <-time.After(time.Second * 5):
 		t.Fatalf("didn't get ready logs in time")
 	}
 }
@@ -106,6 +92,11 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	kp := mcrypto.SumSpendAndViewKeys(s.pubkeys, s.pubkeys)
 	xmrAddr := kp.Address(common.Mainnet)
 	lockXMRAndCheckForReadyLog(t, s, xmrAddr)
+	// give handleNotifyXMRLock some time to return, since the event watcher
+	// sees the Ready event before swapState.ready() returns
+	time.Sleep(time.Second * 2)
+	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
+	require.Equal(t, types.ContractReady, s.info.Status)
 
 	// simulate xmrmaker calling claim
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key

@@ -190,7 +190,7 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err := s.handleEventETHLocked(e)
+		err := s.handleNotifyETHLocked(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
 			if !s.fundsLocked {
@@ -250,18 +250,10 @@ func (s *swapState) handleEvent(event Event) {
 	}
 }
 
-func (s *swapState) handleEventETHLocked(e *EventETHLocked) error {
-	resp, err := s.handleNotifyETHLocked(e.message)
-	if err != nil {
-		return err
-	}
-
-	return s.SendSwapMessage(resp, s.ID())
-}
-
 func (s *swapState) handleEventContractReady() error {
 	log.Debug("contract ready, attempting to claim funds...")
 	close(s.readyCh)
+	s.readyWatcher.Stop()
 
 	// contract ready, let's claim our ether
 	txHash, err := s.claimFunds()

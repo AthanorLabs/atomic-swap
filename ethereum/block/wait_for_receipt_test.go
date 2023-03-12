@@ -90,7 +90,7 @@ func TestWaitForReceipt_failWhenTransactionIsMined(t *testing.T) {
 	checker := createStampChecker(t)
 
 	// One second in the future rounding up
-	oneSecInFuture := time.Now().Add(1500 * time.Millisecond).Unix()
+	oneSecInFuture := time.Now().Add(1500 * time.Millisecond)
 
 	// We don't want a race condition between getting the current block and creating the
 	// check_stamp transaction. The transaction creation needs to be done when the

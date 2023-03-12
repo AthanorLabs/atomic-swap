@@ -209,10 +209,11 @@ func (c *ethClient) WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (
 }
 
 func (c *ethClient) WaitForTimestamp(ctx context.Context, ts time.Time) error {
-	hdr, err := block.WaitForEthBlockAfterTimestamp(ctx, c.ec, ts.Unix())
+	hdr, err := block.WaitForEthBlockAfterTimestamp(ctx, c.ec, ts)
 	if err != nil {
 		return err
 	}
+
 	log.Debugf("Wait complete for block %d with ts=%s >= %s",
 		hdr.Number.Uint64(),
 		time.Unix(int64(hdr.Time), 0).Format(common.TimeFmtSecs),

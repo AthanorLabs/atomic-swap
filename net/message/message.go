@@ -19,13 +19,12 @@ import (
 // Identifiers for our p2p message types. The first byte of a message has the
 // identifier below telling us which type to decode the JSON message as.
 const (
-	Unknown                = iota // occupies the uninitialized value
-	QueryResponseType byte = iota
+	Unknown byte = iota // occupies the uninitialized value
+	QueryResponseType
 	RelayClaimRequestType
 	RelayClaimResponseType
 	SendKeysType
 	NotifyETHLockedType
-	NotifyXMRLockType
 )
 
 // TypeToString converts a message type into a string.
@@ -37,8 +36,6 @@ func TypeToString(t byte) string {
 		return "SendKeysMessage"
 	case NotifyETHLockedType:
 		return "NotifyETHLocked"
-	case NotifyXMRLockType:
-		return "NotifyXMRLock"
 	case RelayClaimRequestType:
 		return "RelayClaimRequestType"
 	case RelayClaimResponseType:
@@ -70,8 +67,6 @@ func DecodeMessage(b []byte) (common.Message, error) {
 		msg = new(SendKeysMessage)
 	case NotifyETHLockedType:
 		msg = new(NotifyETHLocked)
-	case NotifyXMRLockType:
-		msg = new(NotifyXMRLock)
 	default:
 		return nil, fmt.Errorf("invalid message type=%d", msgType)
 	}
@@ -187,31 +182,4 @@ func (m *NotifyETHLocked) Encode() ([]byte, error) {
 // Type implements the Type() method of the common.Message interface
 func (m *NotifyETHLocked) Type() byte {
 	return NotifyETHLockedType
-}
-
-// NotifyXMRLock is sent by XMRMaker to XMRTaker after locking his XMR.
-type NotifyXMRLock struct {
-	Address *mcrypto.Address `json:"address" validate:"required"` // address the monero was sent to
-	TxID    types.Hash       `json:"txID" validate:"required"`    // Monero transaction ID (transaction hash in hex)
-}
-
-// String ...
-func (m *NotifyXMRLock) String() string {
-	return "NotifyXMRLock"
-}
-
-// Encode implements the Encode() method of the common.Message interface which
-// prepends a message type byte before the message's JSON encoding.
-func (m *NotifyXMRLock) Encode() ([]byte, error) {
-	b, err := vjson.MarshalStruct(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return append([]byte{NotifyXMRLockType}, b...), nil
-}
-
-// Type implements the Type() method of the common.Message interface
-func (m *NotifyXMRLock) Type() byte {
-	return NotifyXMRLockType
 }

@@ -22,6 +22,7 @@ var (
 // When it finds a desired log, it puts it into its outbound channel.
 type EventFilter struct {
 	ctx         context.Context
+	cancel      context.CancelFunc
 	ec          *ethclient.Client
 	topic       ethcommon.Hash
 	filterQuery eth.FilterQuery
@@ -42,8 +43,10 @@ func NewEventFilter(
 		Addresses: []ethcommon.Address{contract},
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
 	return &EventFilter{
 		ctx:         ctx,
+		cancel:      cancel,
 		ec:          ec,
 		topic:       topic,
 		filterQuery: filterQuery,
@@ -102,4 +105,9 @@ func (f *EventFilter) Start() error {
 	}()
 
 	return nil
+}
+
+// Stop stops the EventFilter.
+func (f *EventFilter) Stop() {
+	f.cancel()
 }
