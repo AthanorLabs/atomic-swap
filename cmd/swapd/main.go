@@ -208,7 +208,7 @@ var (
 				Name: flagClaimRelayer,
 				Usage: fmt.Sprintf(
 					"Relay transactions for other XMR makers and earn %s ETH per relayed transaction",
-					relayer.MinRelayerFeeEth.Text('f'),
+					relayer.FeeEth.Text('f'),
 				),
 				Value: false,
 			},

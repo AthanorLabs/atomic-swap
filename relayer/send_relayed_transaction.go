@@ -52,7 +52,7 @@ func ValidateAndSendTransaction(
 	// The size of request.Secret was vetted when it was deserialized
 	secret := (*[32]byte)(req.Secret)
 
-	callData, err := getClaimRelayerTxCalldata(RelayerFeeWei, req.Swap, secret)
+	callData, err := getClaimRelayerTxCalldata(FeeWei, req.Swap, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func ValidateAndSendTransaction(
 		From:            req.Swap.Claimer,
 		To:              req.SFContractAddress,
 		Value:           big.NewInt(0),
-		Gas:             big.NewInt(200000), // TODO: fetch from ethclient?
+		Gas:             big.NewInt(relayedClaimGas),
 		Nonce:           nonce,
 		Data:            callData,
 		Signature:       req.Signature,

@@ -59,9 +59,9 @@ func validateClaimValues(
 	}
 
 	// The relayer fee must be strictly less than the swap value
-	if RelayerFeeWei.Cmp(req.Swap.Value) >= 0 {
+	if FeeWei.Cmp(req.Swap.Value) >= 0 {
 		return fmt.Errorf("swap value of %s ETH is too low to support %s ETH relayer fee",
-			coins.FmtWeiAsETH(req.Swap.Value), coins.FmtWeiAsETH(RelayerFeeWei))
+			coins.FmtWeiAsETH(req.Swap.Value), coins.FmtWeiAsETH(FeeWei))
 	}
 
 	return nil

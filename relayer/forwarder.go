@@ -71,7 +71,7 @@ func createForwarderRequest(
 	secret *[32]byte,
 ) (*gsnforwarder.IForwarderForwardRequest, error) {
 
-	calldata, err := getClaimRelayerTxCalldata(RelayerFeeWei, swap, secret)
+	calldata, err := getClaimRelayerTxCalldata(FeeWei, swap, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func createForwarderRequest(
 		From:           swap.Claimer,
 		To:             swapFactoryAddress,
 		Value:          big.NewInt(0),
-		Gas:            big.NewInt(200000), // TODO: fetch from ethclient?
+		Gas:            big.NewInt(relayedClaimGas),
 		Nonce:          nonce,
 		Data:           calldata,
 		ValidUntilTime: big.NewInt(0),

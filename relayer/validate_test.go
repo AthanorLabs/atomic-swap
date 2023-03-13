@@ -34,17 +34,17 @@ func TestValidateRelayerFee(t *testing.T) {
 	testCases := []testCase{
 		{
 			description: "swap value equal to relayer fee",
-			value:       RelayerFeeWei,
+			value:       FeeWei,
 			expectErr:   "swap value of 0.009 ETH is too low to support 0.009 ETH relayer fee",
 		},
 		{
 			description: "swap value less than relayer fee",
-			value:       new(big.Int).Sub(RelayerFeeWei, big.NewInt(1e15)),
+			value:       new(big.Int).Sub(FeeWei, big.NewInt(1e15)),
 			expectErr:   "swap value of 0.008 ETH is too low to support 0.009 ETH relayer fee",
 		},
 		{
 			description: "swap value larger than min fee",
-			value:       new(big.Int).Add(RelayerFeeWei, big.NewInt(1e15)),
+			value:       new(big.Int).Add(FeeWei, big.NewInt(1e15)),
 		},
 	}
 

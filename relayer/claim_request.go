@@ -14,13 +14,14 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
-// RelayerFeeWei is the default fee for swap relayers.
-// It's set to 0.009 ETH. Currently, the minimum and default
-// values are identical.
+const (
+	relayedClaimGas = 52000
+)
+
+// FeeWei and FeeEth are the fixed 0.009 ETH fee for using a swap relayer to claim.
 var (
-	RelayerFeeWei    = big.NewInt(9e15)
-	MinRelayerFeeWei = RelayerFeeWei
-	MinRelayerFeeEth = coins.NewWeiAmount(MinRelayerFeeWei).AsEther()
+	FeeWei = big.NewInt(9e15)
+	FeeEth = coins.NewWeiAmount(FeeWei).AsEther()
 )
 
 // CreateRelayClaimRequest fills and returns a RelayClaimRequest ready for
