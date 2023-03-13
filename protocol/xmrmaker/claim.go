@@ -54,7 +54,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	var txHash ethcommon.Hash
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
-	if s.offerExtra.RelayerFee != nil || weiBalance.Cmp(big.NewInt(0)) == 0 {
+	if s.offerExtra.UseRelayer || weiBalance.Cmp(big.NewInt(0)) == 0 {
 		// relayer fee was set or we had insufficient funds to claim without a relayer
 		// TODO: Sufficient funds check above should be more specific
 		txHash, err = s.discoverRelayersAndClaim()
@@ -115,7 +115,6 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 		s.ctx,
 		s.ETHClient().PrivateKey(),
 		s.ETHClient().Raw(),
-		s.offerExtra.RelayerFee,
 		s.contractAddr,
 		forwarderAddress,
 		s.contractSwap,

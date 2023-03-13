@@ -52,7 +52,7 @@ func ValidateAndSendTransaction(
 	// The size of request.Secret was vetted when it was deserialized
 	secret := (*[32]byte)(req.Secret)
 
-	callData, err := getClaimRelayerTxCalldata(req.RelayerFeeWei, req.Swap, secret)
+	callData, err := getClaimRelayerTxCalldata(RelayerFeeWei, req.Swap, secret)
 	if err != nil {
 		return nil, err
 	}

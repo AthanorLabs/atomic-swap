@@ -21,7 +21,7 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 
 	b.net.(*MockP2pHost).EXPECT().Advertise()
 
-	_, err := b.MakeOffer(offer, nil)
+	_, err := b.MakeOffer(offer, false)
 	require.NoError(t, err)
 
 	msg, _ := newTestXMRTakerSendKeysMessage(t)

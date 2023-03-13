@@ -430,11 +430,12 @@ func (d *daemon) makeOffer(done <-chan struct{}) {
 
 	defer wsc.Close()
 
+	useRelayer := getRandomInt(2) == 0
 	offerID, statusCh, err := wsc.MakeOfferAndSubscribe(minProvidesAmountBD,
 		maxProvidesAmountBD,
 		getRandomExchangeRate(),
 		types.EthAssetETH,
-		nil,
+		useRelayer,
 	)
 	if err != nil {
 		log.Errorf("failed to make offer (node %d): %s", d.idx, err)

@@ -168,7 +168,6 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		ctx,
 		sk,
 		ec,
-		relayer.MinRelayerFeeEth,
 		contractAddr,
 		forwarderAddress,
 		swap,

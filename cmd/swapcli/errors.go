@@ -5,9 +5,7 @@ import (
 )
 
 var (
-	errNoDuration           = fmt.Errorf("must provide non-zero --duration")
-	errRelayerFeeOutOfRange = fmt.Errorf("valid --%s range is from %s to %s ETH",
-		flagRelayerFee, minRelayerFee.Text('f'), maxRelayerFee.Text('f'))
+	errNoDuration = fmt.Errorf("must provide non-zero --duration")
 )
 
 func errInvalidFlagValue(flagName string, err error) error {

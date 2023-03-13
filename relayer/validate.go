@@ -3,7 +3,6 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,7 +21,7 @@ func validateClaimRequest(
 	ec *ethclient.Client,
 	ourSFContractAddr ethcommon.Address,
 ) error {
-	err := validateClaimValues(ctx, request, ec, ourSFContractAddr, MinRelayerFeeWei)
+	err := validateClaimValues(ctx, request, ec, ourSFContractAddr)
 	if err != nil {
 		return err
 	}
@@ -43,7 +42,6 @@ func validateClaimValues(
 	req *message.RelayClaimRequest,
 	ec *ethclient.Client,
 	ourSwapFactoryAddr ethcommon.Address,
-	minFee *big.Int,
 ) error {
 	// Validate the deployed SwapFactory contract, if it is not at the same address
 	// as our own. The CheckSwapFactoryContractCode method validates both the
@@ -55,21 +53,15 @@ func validateClaimValues(
 		}
 	}
 
-	// Relayer fee must be greater than or equal to the minimum fee that we accept
-	if req.RelayerFeeWei.Cmp(minFee) < 0 {
-		return fmt.Errorf("fee too low: got %s ETH, expected minimum %s ETH",
-			coins.FmtWeiAsETH(req.RelayerFeeWei), coins.FmtWeiAsETH(minFee))
-	}
-
 	asset := types.EthAsset(req.Swap.Asset)
 	if asset != types.EthAssetETH {
 		return fmt.Errorf("relaying for ETH Asset %s is not supported", asset)
 	}
 
-	// The swap value must be strictly greater than the relayer fee
-	if req.Swap.Value.Cmp(req.RelayerFeeWei) <= 0 {
+	// The relayer fee must be strictly less than the swap value
+	if RelayerFeeWei.Cmp(req.Swap.Value) >= 0 {
 		return fmt.Errorf("swap value of %s ETH is too low to support %s ETH relayer fee",
-			coins.FmtWeiAsETH(req.Swap.Value), coins.FmtWeiAsETH(req.RelayerFeeWei))
+			coins.FmtWeiAsETH(req.Swap.Value), coins.FmtWeiAsETH(RelayerFeeWei))
 	}
 
 	return nil
@@ -108,7 +100,6 @@ func validateClaimSignature(
 
 	forwarderRequest, err := createForwarderRequest(
 		nonce,
-		req.RelayerFeeWei,
 		req.SFContractAddress,
 		req.Swap,
 		secret,

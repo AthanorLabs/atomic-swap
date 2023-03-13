@@ -2,7 +2,6 @@ package message
 
 import (
 	"fmt"
-	"math/big"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -13,7 +12,6 @@ import (
 // RelayClaimRequest implements common.Message for our p2p relay claim requests
 type RelayClaimRequest struct {
 	SFContractAddress ethcommon.Address          `json:"sfContractAddress" validate:"required"`
-	RelayerFeeWei     *big.Int                   `json:"relayerFeeWei" validate:"required"`
 	Swap              *contracts.SwapFactorySwap `json:"swap" validate:"required"`
 	Secret            []byte                     `json:"secret" validate:"required,len=32"`
 	Signature         []byte                     `json:"signature" validate:"required,len=65"`

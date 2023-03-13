@@ -20,7 +20,6 @@ func createForwarderSignature(
 	ctx context.Context,
 	claimerEthKey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
-	relayerFeeWei *big.Int,
 	swapFactoryAddress ethcommon.Address,
 	forwarderAddress ethcommon.Address,
 	swap *contracts.SwapFactorySwap,
@@ -43,7 +42,6 @@ func createForwarderSignature(
 
 	forwarderReq, err := createForwarderRequest(
 		nonce,
-		relayerFeeWei,
 		swapFactoryAddress,
 		swap,
 		secret,
@@ -68,13 +66,12 @@ func createForwarderSignature(
 // createForwarderRequest creates the forwarder request, which we sign the digest of.
 func createForwarderRequest(
 	nonce *big.Int,
-	relayerFeeWei *big.Int,
 	swapFactoryAddress ethcommon.Address,
 	swap *contracts.SwapFactorySwap,
 	secret *[32]byte,
 ) (*gsnforwarder.IForwarderForwardRequest, error) {
 
-	calldata, err := getClaimRelayerTxCalldata(relayerFeeWei, swap, secret)
+	calldata, err := getClaimRelayerTxCalldata(RelayerFeeWei, swap, secret)
 	if err != nil {
 		return nil, err
 	}

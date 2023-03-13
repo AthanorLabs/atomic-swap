@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ChainSafe/chaindb"
-	"github.com/cockroachdb/apd/v3"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 
@@ -83,7 +82,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
 func (m *Manager) AddOffer(
 	offer *types.Offer,
-	relayerFee *apd.Decimal,
+	useRelayer bool,
 ) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -104,7 +103,7 @@ func (m *Manager) AddOffer(
 
 	extra := &types.OfferExtra{
 		StatusCh:   make(chan types.Status, statusChSize),
-		RelayerFee: relayerFee,
+		UseRelayer: useRelayer,
 	}
 
 	m.offers[id] = &offerWithExtra{

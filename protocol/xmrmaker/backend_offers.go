@@ -1,17 +1,14 @@
 package xmrmaker
 
 import (
-	"github.com/cockroachdb/apd/v3"
-
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 // MakeOffer makes a new swap offer.
 func (b *Instance) MakeOffer(
 	o *types.Offer,
-	relayerFee *apd.Decimal,
+	useRelayer bool,
 ) (*types.OfferExtra, error) {
 	// get monero balance
 	balance, err := b.backend.XMRClient().GetBalance(0)
@@ -24,16 +21,11 @@ func (b *Instance) MakeOffer(
 		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
 	}
 
-	if relayerFee != nil {
-		if o.EthAsset != types.EthAssetETH {
-			return nil, errRelayingWithNonEthAsset
-		}
-		if relayerFee.Cmp(relayer.MinRelayerFeeEth) < 0 {
-			return nil, errRelayerFeeTooLow{relayer.MinRelayerFeeEth, relayerFee}
-		}
+	if useRelayer && o.EthAsset != types.EthAssetETH {
+		return nil, errRelayingWithNonEthAsset
 	}
 
-	extra, err := b.offerManager.AddOffer(o, relayerFee)
+	extra, err := b.offerManager.AddOffer(o, useRelayer)
 	if err != nil {
 		return nil, err
 	}

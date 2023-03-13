@@ -13,7 +13,7 @@ func (c *Client) MakeOffer(
 	min, max *apd.Decimal,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
-	relayerFee *apd.Decimal,
+	useRelayer bool,
 ) (*rpctypes.MakeOfferResponse, error) {
 	const (
 		method = "net_makeOffer"
@@ -24,7 +24,7 @@ func (c *Client) MakeOffer(
 		MaxAmount:    max,
 		ExchangeRate: exchangeRate,
 		EthAsset:     ethAsset,
-		RelayerFee:   relayerFee,
+		UseRelayer:   useRelayer,
 	}
 	res := &rpctypes.MakeOfferResponse{}
 

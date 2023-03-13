@@ -82,15 +82,3 @@ func (e errUnlockedBalanceTooLow) Error() string {
 		e.maxOfferAmount.String(),
 	)
 }
-
-type errRelayerFeeTooLow struct {
-	minFeeEth       *apd.Decimal
-	requestedFeeEth *apd.Decimal
-}
-
-func (e errRelayerFeeTooLow) Error() string {
-	return fmt.Sprintf("relayer fee of %s ETH is below minimum of %s ETH",
-		e.requestedFeeEth.Text('f'),
-		e.minFeeEth.Text('f'),
-	)
-}

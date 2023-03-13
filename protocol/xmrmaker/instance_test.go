@@ -165,7 +165,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
 	offerDB.EXPECT().PutOffer(offer).Return(nil)
-	_, err := inst.offerManager.AddOffer(offer, nil)
+	_, err := inst.offerManager.AddOffer(offer, false)
 	require.NoError(t, err)
 
 	s := &pswap.Info{

@@ -388,7 +388,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	_, err := b.MakeOffer(s.offer, nil)
+	_, err := b.MakeOffer(s.offer, false)
 	require.NoError(t, err)
 
 	s.info.SetStatus(types.CompletedRefund)

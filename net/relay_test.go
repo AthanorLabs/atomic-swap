@@ -11,7 +11,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 func twoHostRelayerSetup(t *testing.T) (*Host, *Host) {
@@ -54,7 +53,6 @@ func createTestClaimRequest() *message.RelayClaimRequest {
 
 	req := &message.RelayClaimRequest{
 		SFContractAddress: ethcommon.Address{0x1},
-		RelayerFeeWei:     relayer.DefaultRelayerFeeWei,
 		Swap: &contracts.SwapFactorySwap{
 			Owner:        ethcommon.Address{0x1},
 			Claimer:      ethcommon.Address{0x1},

@@ -83,7 +83,7 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	min := coins.StrToDecimal("0.1")
 	max := coins.StrToDecimal("1")
 	exRate := coins.ToExchangeRate(coins.StrToDecimal("0.05"))
-	offerResp, ch, err := c.MakeOfferAndSubscribe(min, max, exRate, types.EthAssetETH, nil)
+	offerResp, ch, err := c.MakeOfferAndSubscribe(min, max, exRate, types.EthAssetETH, false)
 	require.NoError(t, err)
 	require.NotEqual(t, offerResp.OfferID, testSwapID)
 	select {

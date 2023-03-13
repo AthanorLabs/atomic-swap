@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/skip2/go-qrcode"
@@ -19,7 +18,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
@@ -36,15 +34,12 @@ const (
 	flagExchangeRate   = "exchange-rate"
 	flagProvides       = "provides"
 	flagProvidesAmount = "provides-amount"
-	flagRelayerFee     = "relayer-fee"
+	flagUseRelayer     = "use-relayer"
 	flagSearchTime     = "search-time"
 	flagDetached       = "detached"
 )
 
 var (
-	minRelayerFee = relayer.MinRelayerFeeEth
-	maxRelayerFee = apd.New(1, 0) // 1 ETH (client side sanity check)
-
 	app = &cli.App{
 		Name:                 "swapcli",
 		Usage:                "Client for swapd",
@@ -178,11 +173,9 @@ var (
 						Name:  "eth-asset",
 						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
-					&cli.StringFlag{
-						Name: flagRelayerFee,
-						Usage: "Fee to pay the relayer in ETH:" +
-							" eg. --relayer-fee=0.009 to pay 0.0009 ETH",
-						Value: minRelayerFee.Text('f'),
+					&cli.BoolFlag{
+						Name:  flagUseRelayer,
+						Usage: "Use the relayer even if the receiving account already has enough ETH to claim",
 					},
 					swapdPortFlag,
 				},
@@ -549,19 +542,6 @@ func runMake(ctx *cli.Context) error {
 
 	c := newRRPClient(ctx)
 
-	// In the near future, the relayer will only be used if Bob doesn't have funds to claim,
-	// but in the current version, it is always used whenever this relayerFee is non-nil.
-	var relayerFee *apd.Decimal
-	if ctx.IsSet(flagRelayerFee) {
-		relayerFee, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee)
-		if err != nil {
-			return err
-		}
-		if relayerFee.Cmp(minRelayerFee) < 0 || relayerFee.Cmp(maxRelayerFee) > 0 {
-			return errRelayerFeeOutOfRange
-		}
-	}
-
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
@@ -569,6 +549,8 @@ func runMake(ctx *cli.Context) error {
 		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), ethAsset)
 		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
 	}
+
+	alwaysUseRelayer := ctx.Bool(flagUseRelayer)
 
 	if !ctx.Bool(flagDetached) {
 		wsc, err := newWSClient(ctx) //nolint:govet
@@ -582,7 +564,7 @@ func runMake(ctx *cli.Context) error {
 			max,
 			exchangeRate,
 			ethAsset,
-			relayerFee,
+			alwaysUseRelayer,
 		)
 		if err != nil {
 			return err
@@ -600,7 +582,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerFee)
+	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, alwaysUseRelayer)
 	if err != nil {
 		return err
 	}

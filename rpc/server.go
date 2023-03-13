@@ -181,7 +181,7 @@ type XMRTaker interface {
 // XMRMaker ...
 type XMRMaker interface {
 	Protocol
-	MakeOffer(offer *types.Offer, relayerFee *apd.Decimal) (*types.OfferExtra, error)
+	MakeOffer(offer *types.Offer, useRelayer bool) (*types.OfferExtra, error)
 	GetOffers() []*types.Offer
 	ClearOffers([]types.Hash) error
 	GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceResponse, error)
