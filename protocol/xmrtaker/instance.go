@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -252,19 +250,10 @@ func (inst *Instance) ExternalSender(offerID types.Hash) (*txsender.ExternalSend
 
 // HandleRelayClaimRequest validates and sends the transaction for a relay claim request
 func (inst *Instance) HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
-	ctx := inst.backend.Ctx()
-	ec := inst.backend.ETHClient().Raw()
-
-	swapFactory, err := contracts.NewSwapFactory(inst.backend.ContractAddr(), ec)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: have this pre-saved as part of the instance
-	forwarderAddr, err := swapFactory.TrustedForwarder(&bind.CallOpts{Context: ctx})
-	if err != nil {
-		return nil, err
-	}
-
-	return relayer.ValidateAndSendTransaction(ctx, request, inst.backend.ETHClient(), forwarderAddr)
+	return relayer.ValidateAndSendTransaction(
+		inst.backend.Ctx(),
+		request,
+		inst.backend.ETHClient(),
+		inst.backend.ContractAddr(),
+	)
 }

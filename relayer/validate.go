@@ -20,14 +20,14 @@ func validateClaimRequest(
 	ctx context.Context,
 	request *message.RelayClaimRequest,
 	ec *ethclient.Client,
-	expectedForwarderAddress ethcommon.Address,
+	ourSFContractAddr ethcommon.Address,
 ) error {
-	err := validateClaimValues(ctx, request, ec, expectedForwarderAddress, MinRelayerFeeWei)
+	err := validateClaimValues(ctx, request, ec, ourSFContractAddr, MinRelayerFeeWei)
 	if err != nil {
 		return err
 	}
 
-	return validateClaimSignature(ctx, ec, expectedForwarderAddress, request)
+	return validateClaimSignature(ctx, ec, request)
 }
 
 // validateClaimValues validates the non-signature aspects of the claim request:
@@ -42,22 +42,17 @@ func validateClaimValues(
 	ctx context.Context,
 	req *message.RelayClaimRequest,
 	ec *ethclient.Client,
-	expectedForwarderAddress ethcommon.Address,
+	ourSwapFactoryAddr ethcommon.Address,
 	minFee *big.Int,
 ) error {
-	// Validate that the deployed SwapFactory contract has the same bytecode as
-	// the one we use. There is a good chance that it has the same exact address
-	// as ours, but we check for binary compatibility regardless.
-	requestedForwarderAddr, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SFContractAddress)
-	if err != nil {
-		return err
-	}
-
-	// The forwarder used must have the same exact address as ours, so we don't
-	// need to check the forwarder contract bytecode.
-	if requestedForwarderAddr != expectedForwarderAddress {
-		return fmt.Errorf("claim request had unexpected forwarder address: got %s, expected %s",
-			requestedForwarderAddr, expectedForwarderAddress)
+	// Validate the deployed SwapFactory contract, if it is not at the same address
+	// as our own. The CheckSwapFactoryContractCode method validates both the
+	// SwapFactory bytecode and the Forwarder bytecode.
+	if req.SFContractAddress != ourSwapFactoryAddr {
+		_, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SFContractAddress)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Relayer fee must be greater than or equal to the minimum fee that we accept
@@ -80,13 +75,24 @@ func validateClaimValues(
 	return nil
 }
 
+// validateClaimSignature validates the claim signature. It is assumed that the
+// request fields have already been validated.
 func validateClaimSignature(
 	ctx context.Context,
 	ec *ethclient.Client,
-	forwarderAddr ethcommon.Address,
 	req *message.RelayClaimRequest,
 ) error {
 	callOpts := &bind.CallOpts{Context: ctx}
+
+	swapFactory, err := contracts.NewSwapFactory(req.SFContractAddress, ec)
+	if err != nil {
+		return err
+	}
+
+	forwarderAddr, err := swapFactory.TrustedForwarder(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return err
+	}
 
 	forwarder, domainSeparator, err := getForwarderAndDomainSeparator(ctx, ec, forwarderAddr)
 	if err != nil {

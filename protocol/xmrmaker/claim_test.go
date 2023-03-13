@@ -176,7 +176,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	)
 	require.NoError(t, err)
 
-	resp, err := relayer.ValidateAndSendTransaction(ctx, req, extendedEC, forwarderAddress)
+	resp, err := relayer.ValidateAndSendTransaction(ctx, req, extendedEC, contractAddr)
 	require.NoError(t, err)
 
 	receipt, err = block.WaitForReceipt(ctx, ec, resp.TxHash)
