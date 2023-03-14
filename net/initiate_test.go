@@ -31,10 +31,10 @@ func createSendKeysMessage(t *testing.T) *message.SendKeysMessage {
 }
 
 func TestHost_Initiate(t *testing.T) {
-	ha := newHost(t, basicTestConfig(t), false)
+	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
-	hb := newHost(t, basicTestConfig(t), false)
+	hb := newHost(t, basicTestConfig(t))
 	err = hb.Start()
 	require.NoError(t, err)
 
@@ -55,13 +55,13 @@ func TestHost_Initiate(t *testing.T) {
 }
 
 func TestHost_ConcurrentSwaps(t *testing.T) {
-	ha := newHost(t, basicTestConfig(t), false)
+	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
 
 	hbCfg := basicTestConfig(t)
 	hbCfg.Bootnodes = []string{ha.Addresses()[0].String()} // get some test coverage on our bootnode code
-	hb := newHost(t, hbCfg, false)
+	hb := newHost(t, hbCfg)
 	err = hb.Start()
 	require.NoError(t, err)
 

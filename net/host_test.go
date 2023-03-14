@@ -5,7 +5,6 @@ import (
 	"path"
 	"testing"
 
-	p2pnet "github.com/athanorlabs/go-p2p-net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -70,10 +69,10 @@ func (s *mockSwapState) Exit() error {
 	return nil
 }
 
-func basicTestConfig(t *testing.T) *p2pnet.Config {
+func basicTestConfig(t *testing.T) *Config {
 	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
 	tmpDir := t.TempDir()
-	return &p2pnet.Config{
+	return &Config{
 		Ctx:        context.Background(),
 		DataDir:    tmpDir,
 		Port:       0, // OS randomized libp2p port
@@ -81,11 +80,12 @@ func basicTestConfig(t *testing.T) *p2pnet.Config {
 		Bootnodes:  nil,
 		ProtocolID: "/testid",
 		ListenIP:   "127.0.0.1",
+		IsRelayer:  false,
 	}
 }
 
-func newHost(t *testing.T, cfg *p2pnet.Config, isRelayer bool) *Host {
-	h, err := NewHost(cfg, isRelayer)
+func newHost(t *testing.T, cfg *Config) *Host {
+	h, err := NewHost(cfg)
 	require.NoError(t, err)
 	h.SetHandlers(&mockMakerHandler{t: t}, &mockTakerHandler{t: t})
 	t.Cleanup(func() {

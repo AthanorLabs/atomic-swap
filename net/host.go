@@ -65,11 +65,31 @@ type Host struct {
 	swaps  map[types.Hash]*swap
 }
 
+// Config holds the initialization parameters for the NewHost constructor.
+type Config struct {
+	Ctx        context.Context
+	DataDir    string
+	Port       uint16
+	KeyFile    string
+	Bootnodes  []string
+	ProtocolID string
+	ListenIP   string
+	IsRelayer  bool
+}
+
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
-func NewHost(cfg *p2pnet.Config, isRelayer bool) (*Host, error) {
-	h, err := p2pnet.NewHost(cfg)
+func NewHost(cfg *Config) (*Host, error) {
+	h, err := p2pnet.NewHost(&p2pnet.Config{
+		Ctx:        cfg.Ctx,
+		DataDir:    cfg.DataDir,
+		Port:       cfg.Port,
+		KeyFile:    cfg.KeyFile,
+		Bootnodes:  cfg.Bootnodes,
+		ProtocolID: cfg.ProtocolID,
+		ListenIP:   cfg.ListenIP,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +97,7 @@ func NewHost(cfg *p2pnet.Config, isRelayer bool) (*Host, error) {
 	return &Host{
 		ctx:       cfg.Ctx,
 		h:         h,
-		isRelayer: isRelayer,
+		isRelayer: cfg.IsRelayer,
 		swaps:     make(map[types.Hash]*swap),
 	}, nil
 }

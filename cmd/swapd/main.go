@@ -13,7 +13,6 @@ import (
 	"path"
 
 	"github.com/ChainSafe/chaindb"
-	p2pnet "github.com/athanorlabs/go-p2p-net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
@@ -437,7 +436,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		listenIP = "127.0.0.1"
 	}
 
-	netCfg := &p2pnet.Config{
+	netCfg := &net.Config{
 		Ctx:        d.ctx,
 		DataDir:    cfg.DataDir,
 		Port:       libp2pPort,
@@ -445,9 +444,10 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		Bootnodes:  cfg.Bootnodes,
 		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
+		IsRelayer:  c.Bool(flagClaimRelayer),
 	}
 
-	host, err := net.NewHost(netCfg, c.Bool(flagClaimRelayer))
+	host, err := net.NewHost(netCfg)
 	if err != nil {
 		return err
 	}

@@ -15,14 +15,17 @@ import (
 
 func twoHostRelayerSetup(t *testing.T) (*Host, *Host) {
 	// ha is not a relayer
-	ha := newHost(t, basicTestConfig(t), true)
+	haCfg := basicTestConfig(t)
+	haCfg.IsRelayer = true
+	ha := newHost(t, haCfg)
 	err := ha.Start()
 	require.NoError(t, err)
 
 	// hb is a relayer
 	hbCfg := basicTestConfig(t)
+	hbCfg.IsRelayer = true
 	hbCfg.Bootnodes = []string{ha.Addresses()[0].String()}
-	hb := newHost(t, hbCfg, true)
+	hb := newHost(t, hbCfg)
 	require.NoError(t, err)
 	err = hb.Start()
 	require.NoError(t, err)

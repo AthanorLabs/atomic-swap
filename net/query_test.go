@@ -9,11 +9,11 @@ import (
 )
 
 func TestHost_Query(t *testing.T) {
-	ha := newHost(t, basicTestConfig(t), false)
+	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
 
-	hb := newHost(t, basicTestConfig(t), false)
+	hb := newHost(t, basicTestConfig(t))
 	err = hb.Start()
 	require.NoError(t, err)
 
