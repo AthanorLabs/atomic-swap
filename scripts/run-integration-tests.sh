@@ -105,7 +105,7 @@ start-daemons() {
 		--rpc-port 5002 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
 		"--contract-address=${SWAP_FACTORY_ADDR}" \
-		"--claim-relayer"
+		"--relayer"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
 	sleep 5

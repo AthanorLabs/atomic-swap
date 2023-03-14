@@ -76,7 +76,7 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
-	flagClaimRelayer         = "claim-relayer"
+	flagClaimRelayer         = "relayer"
 
 	flagDevXMRTaker      = "dev-xmrtaker"
 	flagDevXMRMaker      = "dev-xmrmaker"
