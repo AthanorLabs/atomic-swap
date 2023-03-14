@@ -22,8 +22,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
 
-// MessageSender is implemented by a Host
-type MessageSender interface {
+// NetSender consists of Host methods invoked by the Maker/Taker
+type NetSender interface {
 	SendSwapMessage(common.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
 	DiscoverRelayers() ([]peer.ID, error)                                                          // Only used by Maker
@@ -50,7 +50,7 @@ type RecoveryDB interface {
 type Backend interface {
 	XMRClient() monero.WalletClient
 	ETHClient() extethclient.EthClient
-	MessageSender
+	NetSender
 
 	RecoveryDB() RecoveryDB
 
@@ -99,7 +99,7 @@ type backend struct {
 	swapTimeout  time.Duration
 
 	// network interface
-	MessageSender
+	NetSender
 }
 
 // Config is the config for the Backend
@@ -116,7 +116,7 @@ type Config struct {
 
 	RecoveryDB RecoveryDB
 
-	Net MessageSender
+	Net NetSender
 }
 
 // NewBackend returns a new Backend
@@ -134,7 +134,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		contractAddr:          cfg.SwapContractAddress,
 		swapManager:           cfg.SwapManager,
 		swapTimeout:           common.SwapTimeoutFromEnv(cfg.Environment),
-		MessageSender:         cfg.Net,
+		NetSender:             cfg.Net,
 		perSwapXMRDepositAddr: make(map[types.Hash]*mcrypto.Address),
 		recoveryDB:            cfg.RecoveryDB,
 	}, nil
