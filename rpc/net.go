@@ -51,7 +51,13 @@ func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager
 // addresses do not correspond to what remote peers connect to unless your host has a
 // public IP directly attached to a local interface.
 func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *rpctypes.AddressesResponse) error {
-	resp.Addrs = s.net.Addresses()
+	// Multiaddr is an interface that you can serialize, but you need a concrete
+	// type to deserialize, so we just use strings in the AddressesResponse.
+	addresses := s.net.Addresses()
+	resp.Addrs = make([]string, 0, len(addresses))
+	for _, a := range addresses {
+		resp.Addrs = append(resp.Addrs, a.String())
+	}
 	return nil
 }
 

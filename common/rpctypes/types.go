@@ -6,7 +6,6 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -125,7 +124,7 @@ type BalancesResponse struct {
 
 // AddressesResponse ...
 type AddressesResponse struct {
-	Addrs []ma.Multiaddr `json:"addresses" validate:"dive,required"`
+	Addrs []string `json:"addresses" validate:"dive,required"`
 }
 
 // PeersResponse ...
