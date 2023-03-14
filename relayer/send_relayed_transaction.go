@@ -57,7 +57,7 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 
-	transSender, err := rrelayer.NewRelayer(&rrelayer.Config{
+	txRelayer, err := rrelayer.NewRelayer(&rrelayer.Config{
 		Ctx:       ctx,
 		EthClient: ec.Raw(), // TODO: Use flashbots to prevent front-running and reverts?
 		Forwarder: gsnforwarder.NewIForwarderWrapped(reqForwarder),
@@ -75,7 +75,7 @@ func ValidateAndSendTransaction(
 	ec.Lock()
 	defer ec.Unlock()
 
-	resp, err := transSender.SubmitTransaction(&rcommon.SubmitTransactionRequest{
+	resp, err := txRelayer.SubmitTransaction(&rcommon.SubmitTransactionRequest{
 		From:            req.Swap.Claimer,
 		To:              req.SFContractAddress,
 		Value:           big.NewInt(0),
