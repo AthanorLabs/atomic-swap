@@ -31,8 +31,8 @@ github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213 h1:2IaAtMG8GEi
 github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213/go.mod h1:DWry6jSD7A13MKmeZA0AX3/xBeQCXDoygX99VPwL3yU=
 github.com/athanorlabs/go-p2p-net v0.0.0-20230312042804-f7fe26ae4180 h1:JOKfjheTDnhz5H7jdsHheVcFJNXxJzx5os1d3rBgC+A=
 github.com/athanorlabs/go-p2p-net v0.0.0-20230312042804-f7fe26ae4180/go.mod h1:egbDohZq6I4FzKaVytR+xZKUwA2OqTE6mr9dsNQPPbE=
-github.com/athanorlabs/go-relayer v0.0.6-0.20230126054526-85b34765dc00 h1:rR3ZzPqlGngBVGdcYfyUlvkC2lu/ydKfnzfPP616K3A=
-github.com/athanorlabs/go-relayer v0.0.6-0.20230126054526-85b34765dc00/go.mod h1:Ww/wfTsi+WGS2Yf6Zk3ao7EjoJmcIdWfq6WNHcCEmxk=
+github.com/athanorlabs/go-relayer v0.0.6-0.20230130025015-5c38ca344baa h1:WYLvwVVvzxX1Ggl2AWaO6JUUce9eFOPkLzqpXa9OaL0=
+github.com/athanorlabs/go-relayer v0.0.6-0.20230130025015-5c38ca344baa/go.mod h1:Ww/wfTsi+WGS2Yf6Zk3ao7EjoJmcIdWfq6WNHcCEmxk=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
