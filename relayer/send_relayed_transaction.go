@@ -2,11 +2,8 @@ package relayer
 
 import (
 	"context"
-	"math/big"
 
-	rcommon "github.com/athanorlabs/go-relayer/common"
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
-	rrelayer "github.com/athanorlabs/go-relayer/relayer"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -52,50 +49,36 @@ func ValidateAndSendTransaction(
 	// The size of request.Secret was vetted when it was deserialized
 	secret := (*[32]byte)(req.Secret)
 
-	callData, err := getClaimRelayerTxCalldata(FeeWei, req.Swap, secret)
-	if err != nil {
-		return nil, err
-	}
-
-	txRelayer, err := rrelayer.NewRelayer(&rrelayer.Config{
-		Ctx:       ctx,
-		EthClient: ec.Raw(), // TODO: Use flashbots to prevent front-running and reverts?
-		Forwarder: gsnforwarder.NewIForwarderWrapped(reqForwarder),
-		Key:       rcommon.NewKeyFromPrivateKey(ec.PrivateKey()),
-		ValidateTransactionFunc: func(request *rcommon.SubmitTransactionRequest) error {
-			// do nothing, we did validation above
-			return nil
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	// Lock the wallet's nonce until we get a receipt
 	ec.Lock()
 	defer ec.Unlock()
 
-	resp, err := txRelayer.SubmitTransaction(&rcommon.SubmitTransactionRequest{
-		From:            req.Swap.Claimer,
-		To:              req.SFContractAddress,
-		Value:           big.NewInt(0),
-		Gas:             big.NewInt(relayedClaimGas),
-		Nonce:           nonce,
-		Data:            callData,
-		Signature:       req.Signature,
-		ValidUntilTime:  big.NewInt(0),
-		DomainSeparator: *domainSeparator,
-		RequestTypeHash: gsnforwarder.ForwardRequestTypehash,
-		SuffixData:      nil,
-	})
+	forwarderReq, err := createForwarderRequest(nonce, req.SFContractAddress, req.Swap, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = block.WaitForReceipt(ctx, ec.Raw(), resp.TxHash)
+	txOpts, err := ec.TxOpts(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &message.RelayClaimResponse{TxHash: resp.TxHash}, nil
+	tx, err := reqForwarder.Execute(
+		txOpts,
+		*forwarderReq,
+		*domainSeparator,
+		gsnforwarder.ForwardRequestTypehash,
+		nil,
+		req.Signature,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	return &message.RelayClaimResponse{TxHash: tx.Hash()}, nil
 }

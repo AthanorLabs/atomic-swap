@@ -99,13 +99,13 @@ func getForwarderAndDomainSeparator(
 	ctx context.Context,
 	ec *ethclient.Client,
 	forwarderAddress ethcommon.Address,
-) (*gsnforwarder.IForwarder, *[32]byte, error) {
+) (*gsnforwarder.Forwarder, *[32]byte, error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	forwarder, err := gsnforwarder.NewIForwarder(forwarderAddress, ec)
+	forwarder, err := gsnforwarder.NewForwarder(forwarderAddress, ec)
 	if err != nil {
 		return nil, nil, err
 	}

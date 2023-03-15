@@ -91,18 +91,10 @@ func Test_validateSignature(t *testing.T) {
 	err = validateClaimSignature(ctx, ec, req)
 	require.NoError(t, err)
 
-	/*
-	 * WARNING, WARNING:  Why is the check below not failing?
-	 */
-	// failure path
-	for i := 0; i < 65; i++ {
-		req.Signature[i]++
-	}
+	// failure path (tamper with an arbitrary byte of the signature)
+	req.Signature[10]++
 	err = validateClaimSignature(ctx, ec, req)
-	if err == nil {
-		t.Logf("FAILURE: signature above should not have validated")
-	}
-
+	require.ErrorContains(t, err, "failed to verify signature")
 }
 
 func Test_validateClaimRequest(t *testing.T) {

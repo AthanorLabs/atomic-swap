@@ -74,7 +74,10 @@ func validateClaimSignature(
 	ec *ethclient.Client,
 	req *message.RelayClaimRequest,
 ) error {
-	callOpts := &bind.CallOpts{Context: ctx}
+	callOpts := &bind.CallOpts{
+		Context: ctx,
+		From:    ethcommon.Address{0xFF}, // can be any value but zero, which will validate all signatures
+	}
 
 	swapFactory, err := contracts.NewSwapFactory(req.SFContractAddress, ec)
 	if err != nil {
