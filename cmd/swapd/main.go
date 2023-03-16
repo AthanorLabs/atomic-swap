@@ -468,7 +468,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	swapBackend, err := newBackend(
+	backendConf, err := createBackendConfig(
 		d.ctx,
 		c,
 		env,
@@ -484,7 +484,13 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 
-	defer swapBackend.XMRClient().Close()
+	defer backendConf.MoneroClient.Close()
+
+	swapBackend, err := backend.NewBackend(backendConf)
+	if err != nil {
+		return fmt.Errorf("failed to make backend: %w", err)
+	}
+
 	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
 		swapBackend.XMRClient().Endpoint(),
 		ethEndpoint,
@@ -574,7 +580,7 @@ func errFlagValueZero(flag string) error {
 	return fmt.Errorf("flag %q requires a non-zero value", flag)
 }
 
-func newBackend(
+func createBackendConfig(
 	ctx context.Context,
 	c *cli.Context,
 	env common.Environment,
@@ -585,7 +591,7 @@ func newBackend(
 	net *net.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
-) (backend.Backend, error) {
+) (*backend.Config, error) {
 	var (
 		ethPrivKey *ecdsa.PrivateKey
 	)
@@ -705,7 +711,7 @@ func newBackend(
 		return nil, err
 	}
 
-	bcfg := &backend.Config{
+	return &backend.Config{
 		Ctx:                 ctx,
 		MoneroClient:        mc,
 		EthereumClient:      extendedEC,
@@ -715,15 +721,7 @@ func newBackend(
 		SwapContractAddress: contractAddr,
 		Net:                 net,
 		RecoveryDB:          rdb,
-	}
-
-	b, err := backend.NewBackend(bcfg)
-	if err != nil {
-		mc.Close()
-		return nil, fmt.Errorf("failed to make backend: %w", err)
-	}
-
-	return b, nil
+	}, nil
 }
 
 func getProtocolInstances(
