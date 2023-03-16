@@ -369,7 +369,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	if err != nil {
 		return err
 	}
-	cfg := common.ConfigDefaultsForEnv(env)
+	envCfg := common.ConfigDefaultsForEnv(env)
 
 	devXMRMaker := c.Bool(flagDevXMRMaker)
 	devXMRTaker := c.Bool(flagDevXMRTaker)
@@ -379,28 +379,28 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
 	if c.IsSet(flagDataDir) {
-		cfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
-		if cfg.DataDir == "" {
+		envCfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
+		if envCfg.DataDir == "" {
 			return errFlagValueEmpty(flagDataDir)
 		}
 	} else if env == common.Development {
 		// Override in dev scenarios if the value was not explicitly set
 		switch {
 		case devXMRTaker:
-			cfg.DataDir = defaultXMRTakerDataDir
+			envCfg.DataDir = defaultXMRTakerDataDir
 		case devXMRMaker:
-			cfg.DataDir = defaultXMRMakerDataDir
+			envCfg.DataDir = defaultXMRMakerDataDir
 		}
 	}
-	if err = common.MakeDir(cfg.DataDir); err != nil {
+	if err = common.MakeDir(envCfg.DataDir); err != nil {
 		return err
 	}
 
 	if c.IsSet(flagBootnodes) {
-		cfg.Bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
+		envCfg.Bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
 	}
 
-	libp2pKey := cfg.LibP2PKeyFile()
+	libp2pKey := envCfg.LibP2PKeyFile()
 	if c.IsSet(flagLibp2pKey) {
 		libp2pKey = c.String(flagLibp2pKey)
 		if libp2pKey == "" {
@@ -438,10 +438,10 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 
 	netCfg := &net.Config{
 		Ctx:        d.ctx,
-		DataDir:    cfg.DataDir,
+		DataDir:    envCfg.DataDir,
 		Port:       libp2pPort,
 		KeyFile:    libp2pKey,
-		Bootnodes:  cfg.Bootnodes,
+		Bootnodes:  envCfg.Bootnodes,
 		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
 		IsRelayer:  c.Bool(flagRelayer),
@@ -454,7 +454,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 	d.host = host
 
 	dbCfg := &chaindb.Config{
-		DataDir: path.Join(cfg.DataDir, "db"),
+		DataDir: path.Join(envCfg.DataDir, "db"),
 	}
 
 	sdb, err := db.NewDatabase(dbCfg)
@@ -472,7 +472,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		d.ctx,
 		c,
 		env,
-		cfg,
+		envCfg,
 		devXMRMaker,
 		devXMRTaker,
 		sm,
@@ -496,7 +496,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		ethEndpoint,
 	)
 
-	a, b, err := getProtocolInstances(c, cfg, swapBackend, sdb, host)
+	a, b, err := getProtocolInstances(c, envCfg, swapBackend, sdb, host)
 	if err != nil {
 		return err
 	}
@@ -542,7 +542,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 
 	close(d.startedCh)
 
-	log.Infof("starting swapd with data-dir %s", cfg.DataDir)
+	log.Infof("starting swapd with data-dir %s", envCfg.DataDir)
 	err = s.Start()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
