@@ -115,7 +115,7 @@ func (h *Host) advertisedNamespaces() []string {
 	}
 
 	if h.isRelayer {
-		provides = append(provides, relayerProvidesStr)
+		provides = append(provides, RelayerProvidesStr)
 	}
 
 	return provides

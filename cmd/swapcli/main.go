@@ -18,6 +18,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
@@ -98,8 +99,8 @@ var (
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name: flagProvides,
-						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
-							coins.ProvidesXMR, coins.ProvidesETH),
+						Usage: fmt.Sprintf("Search for %q or %q providers",
+							coins.ProvidesXMR, net.RelayerProvidesStr),
 						Value: string(coins.ProvidesXMR),
 					},
 					&cli.Uint64Flag{

@@ -13,16 +13,19 @@ import (
 )
 
 const (
-	relayProtocolID    = "/relay/0"
-	relayClaimTimeout  = time.Second * 30 // TODO: Vet this value
-	relayerProvidesStr = "relayer"
+	relayProtocolID   = "/relay/0"
+	relayClaimTimeout = time.Second * 30 // TODO: Vet this value
+
+	// RelayerProvidesStr is the DHT namespace advertised by nodes willing to relay
+	// claims for arbitrary XMR makers.
+	RelayerProvidesStr = "relayer"
 )
 
 // DiscoverRelayers returns the peer IDs of hosts that advertised their willingness to
 // relay claim transactions.
 func (h *Host) DiscoverRelayers() ([]peer.ID, error) {
 	const defaultDiscoverTime = time.Second * 3
-	return h.Discover(relayerProvidesStr, defaultDiscoverTime)
+	return h.Discover(RelayerProvidesStr, defaultDiscoverTime)
 }
 
 func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
