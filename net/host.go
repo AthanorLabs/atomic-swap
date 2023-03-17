@@ -121,7 +121,8 @@ func (h *Host) advertisedNamespaces() []string {
 	return provides
 }
 
-// SetHandlers sets the maker and taker instances used by the host.
+// SetHandlers sets the maker and taker instances used by the host, and configures
+// the stream handlers.
 func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler) {
 	h.makerHandler = makerHandler
 	h.takerHandler = takerHandler
