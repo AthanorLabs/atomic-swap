@@ -50,9 +50,9 @@ func CreateRelayClaimRequest(
 	}
 
 	return &message.RelayClaimRequest{
-		SFContractAddress: swapFactoryAddress,
-		Swap:              swap,
-		Secret:            secret[:],
-		Signature:         signature,
+		SwapFactoryAddress: swapFactoryAddress,
+		Swap:               swap,
+		Secret:             secret[:],
+		Signature:          signature,
 	}, nil
 }

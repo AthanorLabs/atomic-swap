@@ -98,9 +98,6 @@ func (m *Manager) AddOffer(
 		return nil, err
 	}
 
-	// TODO: Is it a problem that we don't save the relayerFee to the database?
-	//       Should we place the relayer fee directly in the offer?
-
 	extra := &types.OfferExtra{
 		StatusCh:   make(chan types.Status, statusChSize),
 		UseRelayer: useRelayer,

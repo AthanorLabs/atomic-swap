@@ -145,7 +145,7 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 	offerResp, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, asset, false)
 	require.NoError(s.T(), err)
 
-	_ = common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second)) // Give offer advertisement time to propagate
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)

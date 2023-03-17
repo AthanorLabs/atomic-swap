@@ -176,7 +176,7 @@ var (
 					},
 					&cli.BoolFlag{
 						Name:  flagUseRelayer,
-						Usage: "Use the relayer even if the receiving account already has enough ETH to claim",
+						Usage: "Use the relayer even if the receiving account has enough ETH to claim",
 					},
 					swapdPortFlag,
 				},

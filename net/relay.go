@@ -89,9 +89,9 @@ func (h *Host) SubmitClaimToRelayer(relayerID peer.ID, request *RelayClaimReques
 }
 
 func receiveRelayClaimResponse(stream libp2pnetwork.Stream) (*RelayClaimResponse, error) {
-	msg, err := readStreamMessage(stream, maxMessageSize)
+	msg, err := readStreamMessage(stream, maxRelayMessageSize)
 	if err != nil {
-		return nil, fmt.Errorf("error reading relay SubmitTransactionResponse: %w", err)
+		return nil, fmt.Errorf("failed to read RelayClaimResponse: %w", err)
 	}
 
 	resp, ok := msg.(*RelayClaimResponse)

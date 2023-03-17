@@ -11,10 +11,10 @@ import (
 
 // RelayClaimRequest implements common.Message for our p2p relay claim requests
 type RelayClaimRequest struct {
-	SFContractAddress ethcommon.Address          `json:"sfContractAddress" validate:"required"`
-	Swap              *contracts.SwapFactorySwap `json:"swap" validate:"required"`
-	Secret            []byte                     `json:"secret" validate:"required,len=32"`
-	Signature         []byte                     `json:"signature" validate:"required,len=65"`
+	SwapFactoryAddress ethcommon.Address          `json:"swapFactoryAddress" validate:"required"`
+	Swap               *contracts.SwapFactorySwap `json:"swap" validate:"required"`
+	Secret             []byte                     `json:"secret" validate:"required,len=32"`
+	Signature          []byte                     `json:"signature" validate:"required,len=65"`
 }
 
 // RelayClaimResponse implements common.Message for our p2p relay claim responses

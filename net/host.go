@@ -128,7 +128,9 @@ func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler)
 	h.h.SetAdvertisedNamespacesFunc(h.advertisedNamespaces)
 
 	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
-	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
+	if h.isRelayer {
+		h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
+	}
 	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 }
 

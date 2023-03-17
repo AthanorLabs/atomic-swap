@@ -30,13 +30,10 @@ func validateClaimRequest(
 }
 
 // validateClaimValues validates the non-signature aspects of the claim request:
-//  1. the claim request swap factory contract is byte compatible with ours
-//  2. the forwarder in the claim request swap factory contract has an identical
-//     address with our forwarder
-//  3. the relayer fee is equal to or greater than the passed minFee
-//  4. the swap is for ETH and not an ERC20 token
-//  5. the swap value is strictly greater than the relayer fee
-//  6. TODO: Validate that the swap exists and is in a claimable state?
+//  1. the claim request's swap factory and forwarder contract bytecode matches ours
+//  2. the swap is for ETH and not an ERC20 token
+//  3. the swap value is strictly greater than the relayer fee
+//  4. TODO: Validate that the swap exists and is in a claimable state?
 func validateClaimValues(
 	ctx context.Context,
 	req *message.RelayClaimRequest,
@@ -46,8 +43,8 @@ func validateClaimValues(
 	// Validate the deployed SwapFactory contract, if it is not at the same address
 	// as our own. The CheckSwapFactoryContractCode method validates both the
 	// SwapFactory bytecode and the Forwarder bytecode.
-	if req.SFContractAddress != ourSwapFactoryAddr {
-		_, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SFContractAddress)
+	if req.SwapFactoryAddress != ourSwapFactoryAddr {
+		_, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SwapFactoryAddress)
 		if err != nil {
 			return err
 		}
@@ -79,7 +76,7 @@ func validateClaimSignature(
 		From:    ethcommon.Address{0xFF}, // can be any value but zero, which will validate all signatures
 	}
 
-	swapFactory, err := contracts.NewSwapFactory(req.SFContractAddress, ec)
+	swapFactory, err := contracts.NewSwapFactory(req.SwapFactoryAddress, ec)
 	if err != nil {
 		return err
 	}
@@ -103,7 +100,7 @@ func validateClaimSignature(
 
 	forwarderRequest, err := createForwarderRequest(
 		nonce,
-		req.SFContractAddress,
+		req.SwapFactoryAddress,
 		req.Swap,
 		secret,
 	)

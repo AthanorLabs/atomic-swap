@@ -75,7 +75,7 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
-	flagClaimRelayer         = "relayer"
+	flagRelayer              = "relayer"
 
 	flagDevXMRTaker      = "dev-xmrtaker"
 	flagDevXMRMaker      = "dev-xmrmaker"
@@ -204,9 +204,9 @@ var (
 				Usage: "Use external signer, for usage with the swap UI",
 			},
 			&cli.BoolFlag{
-				Name: flagClaimRelayer,
+				Name: flagRelayer,
 				Usage: fmt.Sprintf(
-					"Relay transactions for other XMR makers and earn %s ETH per relayed transaction",
+					"Relay claims for XMR makers and earn %s ETH (minus gas fees) per transaction",
 					relayer.FeeEth.Text('f'),
 				),
 				Value: false,
@@ -444,7 +444,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		Bootnodes:  cfg.Bootnodes,
 		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
-		IsRelayer:  c.Bool(flagClaimRelayer),
+		IsRelayer:  c.Bool(flagRelayer),
 	}
 
 	host, err := net.NewHost(netCfg)

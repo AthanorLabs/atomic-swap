@@ -26,7 +26,7 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 
-	reqSwapFactory, err := contracts.NewSwapFactory(req.SFContractAddress, ec.Raw())
+	reqSwapFactory, err := contracts.NewSwapFactory(req.SwapFactoryAddress, ec.Raw())
 	if err != nil {
 		return nil, err
 	}
@@ -49,14 +49,14 @@ func ValidateAndSendTransaction(
 	// The size of request.Secret was vetted when it was deserialized
 	secret := (*[32]byte)(req.Secret)
 
-	// Lock the wallet's nonce until we get a receipt
-	ec.Lock()
-	defer ec.Unlock()
-
-	forwarderReq, err := createForwarderRequest(nonce, req.SFContractAddress, req.Swap, secret)
+	forwarderReq, err := createForwarderRequest(nonce, req.SwapFactoryAddress, req.Swap, secret)
 	if err != nil {
 		return nil, err
 	}
+
+	// Lock the wallet's nonce until we get a receipt
+	ec.Lock()
+	defer ec.Unlock()
 
 	txOpts, err := ec.TxOpts(ctx)
 	if err != nil {

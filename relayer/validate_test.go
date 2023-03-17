@@ -61,9 +61,9 @@ func TestValidateRelayerFee(t *testing.T) {
 		var secret [32]byte
 
 		request := &message.RelayClaimRequest{
-			SFContractAddress: swapFactoryAddr,
-			Swap:              swap,
-			Secret:            secret[:],
+			SwapFactoryAddress: swapFactoryAddr,
+			Swap:               swap,
+			Secret:             secret[:],
 		}
 
 		err := validateClaimValues(ctx, request, ec, forwarderAddr)

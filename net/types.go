@@ -21,7 +21,7 @@ type (
 )
 
 // MakerHandler handles swap initiation messages and offer queries. It is
-// implemented by *xmrmaker.xmrmaker.
+// implemented by *xmrmaker.Instance.
 type MakerHandler interface {
 	GetOffers() []*types.Offer
 	HandleInitiateMessage(msg *SendKeysMessage) (SwapState, Message, error)
