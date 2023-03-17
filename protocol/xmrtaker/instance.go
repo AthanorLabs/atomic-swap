@@ -11,10 +11,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
+	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 var (
@@ -244,4 +246,14 @@ func (inst *Instance) ExternalSender(offerID types.Hash) (*txsender.ExternalSend
 	}
 
 	return es, nil
+}
+
+// HandleRelayClaimRequest validates and sends the transaction for a relay claim request
+func (inst *Instance) HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+	return relayer.ValidateAndSendTransaction(
+		inst.backend.Ctx(),
+		request,
+		inst.backend.ETHClient(),
+		inst.backend.ContractAddr(),
+	)
 }

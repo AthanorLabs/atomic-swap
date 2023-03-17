@@ -12,16 +12,20 @@ import (
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
 const (
-	// ProtocolID is the base atomic swap network protocol ID.
-	ProtocolID     = "/atomic-swap/0.2"
-	maxMessageSize = 1 << 17
+	// ProtocolID is the base atomic swap network protocol ID prefix. The full ID
+	// includes the chain ID at the end.
+	ProtocolID          = "/atomic-swap/0.2"
+	maxMessageSize      = 1 << 17
+	maxRelayMessageSize = 2048
 )
 
 var log = logging.Logger("net")
@@ -31,46 +35,70 @@ type P2pHost interface {
 	Start() error
 	Stop() error
 
-	Advertise([]string)
+	Advertise()
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 
 	SetStreamHandler(string, func(libp2pnetwork.Stream))
-	SetShouldAdvertiseFunc(p2pnet.ShouldAdvertiseFunc)
+	SetAdvertisedNamespacesFunc(fn func() []string)
 
 	Connectedness(peer.ID) libp2pnetwork.Connectedness
 	Connect(context.Context, peer.AddrInfo) error
 	NewStream(context.Context, peer.ID, protocol.ID) (libp2pnetwork.Stream, error)
 
 	AddrInfo() peer.AddrInfo
-	Addresses() []string
+	Addresses() []ma.Multiaddr
 	PeerID() peer.ID
 	ConnectedPeers() []string
 }
 
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
-	ctx     context.Context
-	h       P2pHost
-	handler Handler
+	ctx       context.Context
+	h         P2pHost
+	isRelayer bool
+
+	makerHandler MakerHandler
+	takerHandler TakerHandler
 
 	// swap instance info
 	swapMu sync.Mutex
 	swaps  map[types.Hash]*swap
 }
 
+// Config holds the initialization parameters for the NewHost constructor.
+type Config struct {
+	Ctx        context.Context
+	DataDir    string
+	Port       uint16
+	KeyFile    string
+	Bootnodes  []string
+	ProtocolID string
+	ListenIP   string
+	IsRelayer  bool
+}
+
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
-func NewHost(cfg *p2pnet.Config) (*Host, error) {
-	h, err := p2pnet.NewHost(cfg)
+func NewHost(cfg *Config) (*Host, error) {
+	h, err := p2pnet.NewHost(&p2pnet.Config{
+		Ctx:        cfg.Ctx,
+		DataDir:    cfg.DataDir,
+		Port:       cfg.Port,
+		KeyFile:    cfg.KeyFile,
+		Bootnodes:  cfg.Bootnodes,
+		ProtocolID: cfg.ProtocolID,
+		ListenIP:   cfg.ListenIP,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &Host{
-		ctx:   cfg.Ctx,
-		h:     h,
-		swaps: make(map[types.Hash]*swap),
+		ctx:       cfg.Ctx,
+		h:         h,
+		isRelayer: cfg.IsRelayer,
+		swaps:     make(map[types.Hash]*swap),
 	}, nil
 }
 
@@ -79,25 +107,46 @@ func (h *Host) P2pHost() P2pHost {
 	return h.h
 }
 
-// SetHandler sets the Handler instance used by the host.
-func (h *Host) SetHandler(handler Handler) {
-	fn := func() bool {
-		return len(handler.GetOffers()) == 0
+func (h *Host) advertisedNamespaces() []string {
+	provides := []string{""}
+
+	if len(h.makerHandler.GetOffers()) > 0 {
+		provides = append(provides, string(coins.ProvidesXMR))
 	}
 
-	h.handler = handler
-	h.h.SetShouldAdvertiseFunc(fn)
+	if h.isRelayer {
+		provides = append(provides, RelayerProvidesStr)
+	}
+
+	return provides
+}
+
+// SetHandlers sets the maker and taker instances used by the host, and configures
+// the stream handlers.
+func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler) {
+	h.makerHandler = makerHandler
+	h.takerHandler = takerHandler
+	h.h.SetAdvertisedNamespacesFunc(h.advertisedNamespaces)
+
+	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
+	if h.isRelayer {
+		h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
+	}
+	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 }
 
 // Start starts the bootstrap and discovery process.
 func (h *Host) Start() error {
-	if h.handler == nil {
+	if h.makerHandler == nil || h.takerHandler == nil {
 		return errNilHandler
 	}
 
-	h.h.SetStreamHandler(queryID, h.handleQueryStream)
-	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
-	return h.h.Start()
+	// Note: Start() is non-blocking
+	if err := h.h.Start(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Stop stops the host.
@@ -131,9 +180,10 @@ func (h *Host) CloseProtocolStream(id types.Hash) {
 	_ = swap.stream.Close()
 }
 
-// Advertise advertises in the DHT.
-func (h *Host) Advertise(strs []string) {
-	h.h.Advertise(strs)
+// Advertise advertises the namespaces now instead of waiting for the next periodic
+// update. We use it when a new advertised namespace is added.
+func (h *Host) Advertise() {
+	h.h.Advertise()
 }
 
 // Discover searches the DHT for peers that advertise that they provide the given coin..
@@ -148,7 +198,7 @@ func (h *Host) AddrInfo() peer.AddrInfo {
 }
 
 // Addresses returns the list of multiaddress the host is listening on.
-func (h *Host) Addresses() []string {
+func (h *Host) Addresses() []ma.Multiaddr {
 	return h.h.Addresses()
 }
 

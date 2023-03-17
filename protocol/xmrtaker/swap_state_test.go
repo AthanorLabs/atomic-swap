@@ -13,6 +13,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -48,6 +49,14 @@ func (n *mockNet) SendSwapMessage(msg common.Message, _ types.Hash) error {
 	defer n.msgMu.Unlock()
 	n.msg = msg
 	return nil
+}
+
+func (n *mockNet) DiscoverRelayers() ([]peer.ID, error) {
+	return nil, nil
+}
+
+func (n *mockNet) SubmitClaimToRelayer(_ peer.ID, _ *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+	return new(message.RelayClaimResponse), nil
 }
 
 func (n *mockNet) CloseProtocolStream(_ types.Hash) {}

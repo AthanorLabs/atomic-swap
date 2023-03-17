@@ -77,8 +77,8 @@ func ClaimMonero(
 
 	for _, transfer := range transfers {
 		log.Infof("transferred %s XMR to primary wallet (%s XMR lost to fees)",
-			coins.FmtPiconeroAmtAsXMR(transfer.Amount),
-			coins.FmtPiconeroAmtAsXMR(transfer.Fee),
+			coins.FmtPiconeroAsXMR(transfer.Amount),
+			coins.FmtPiconeroAsXMR(transfer.Fee),
 		)
 	}
 

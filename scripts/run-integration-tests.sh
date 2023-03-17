@@ -23,7 +23,6 @@ KEY_USERS=(
 	"alice"
 	"bob"
 	"charlie"
-	"relayer"
 )
 
 create-eth-keys() {
@@ -38,27 +37,6 @@ create-eth-keys() {
 ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
 LOG_LEVEL=debug
-
-start-relayer() {
-	local relayer_flags=("${@}")
-	local log_file="${SWAP_TEST_DATA_DIR}/relayer.log"
-	echo "Starting relayer with logs in ${log_file}"
-	./bin/relayer "${relayer_flags[@]}" &>"${log_file}" &
-	local relayer_pid="${!}"
-	echo "${relayer_pid}" >"${SWAP_TEST_DATA_DIR}/relayer.pid"
-	sleep 1
-	if ! kill -0 "${relayer_pid}" 2>/dev/null; then
-		echo "Failed to start relayer"
-		echo "=============== Failed logs  ==============="
-		cat "${log_file}"
-		echo "============================================"
-		exit 1
-	fi
-}
-
-stop-relayer() {
-	stop-program "relayer"
-}
 
 start-swapd() {
 	local swapd_user="${1:?}"
@@ -112,13 +90,6 @@ start-daemons() {
 		exit 1
 	fi
 
-	start-relayer \
-		"--log-level=${LOG_LEVEL}" \
-		--data-dir="${SWAP_TEST_DATA_DIR}" \
-		--rpc \
-		--bootnodes="${ALICE_MULTIADDR}" \
-		--forwarder-address="${FORWARDER_ADDR}"
-
 	start-swapd bob \
 		--dev-xmrmaker \
 		"--log-level=${LOG_LEVEL}" \
@@ -133,7 +104,8 @@ start-daemons() {
 		--libp2p-port=9955 \
 		--rpc-port 5002 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${SWAP_FACTORY_ADDR}"
+		"--contract-address=${SWAP_FACTORY_ADDR}" \
+		"--relayer"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
 	sleep 5
@@ -142,7 +114,6 @@ start-daemons() {
 stop-daemons() {
 	stop-swapd charlie
 	stop-swapd bob
-	stop-relayer
 	stop-swapd alice
 	stop-monerod-regtest
 	stop-ganache

@@ -308,7 +308,7 @@ func (c *walletClient) Transfer(
 	log.Infof("Transfer TXID=%s succeeded with %d confirmations and fee %s XMR",
 		transfer.TxID,
 		transfer.Confirmations,
-		coins.FmtPiconeroAmtAsXMR(transfer.Fee),
+		coins.FmtPiconeroAsXMR(transfer.Fee),
 	)
 	return transfer, nil
 }
@@ -329,7 +329,7 @@ func (c *walletClient) SweepAll(
 	if err != nil {
 		return nil, fmt.Errorf("sweep operation failed to get balance: %w", err)
 	}
-	log.Infof("Starting sweep of %s XMR from %s to %s", coins.FmtPiconeroAmtAsXMR(balance.Balance), from, to)
+	log.Infof("Starting sweep of %s XMR from %s to %s", coins.FmtPiconeroAsXMR(balance.Balance), from, to)
 	if balance.Balance == 0 {
 		return nil, fmt.Errorf("sweep from %s failed, no balance to sweep", from)
 	}
@@ -362,8 +362,8 @@ func (c *walletClient) SweepAll(
 		}
 		log.Infof("Sweep transfer ID=%s of %s XMR (%s XMR fees) completed at height %d",
 			txID,
-			coins.FmtPiconeroAmtAsXMR(receipt.Amount),
-			coins.FmtPiconeroAmtAsXMR(receipt.Fee),
+			coins.FmtPiconeroAsXMR(receipt.Amount),
+			coins.FmtPiconeroAsXMR(receipt.Fee),
 			receipt.Height,
 		)
 		transfers = append(transfers, receipt)
@@ -458,7 +458,7 @@ func createWalletFromKeys(
 
 	log.Infof("Created wallet %s, balance is %s XMR (%d blocks to unlock), address is %s",
 		c.WalletName(),
-		coins.FmtPiconeroAmtAsXMR(bal.Balance),
+		coins.FmtPiconeroAsXMR(bal.Balance),
 		bal.BlocksToUnlock,
 		c.PrimaryAddress(),
 	)

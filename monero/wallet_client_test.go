@@ -33,8 +33,8 @@ func TestClient_Transfer(t *testing.T) {
 
 	balanceBob := GetBalance(t, cXMRMaker)
 	t.Logf("Bob's initial balance: bal=%s XMR, unlocked=%s XMR, blocks-to-unlock=%d",
-		coins.FmtPiconeroAmtAsXMR(balanceBob.Balance),
-		coins.FmtPiconeroAmtAsXMR(balanceBob.UnlockedBalance),
+		coins.FmtPiconeroAsXMR(balanceBob.Balance),
+		coins.FmtPiconeroAsXMR(balanceBob.UnlockedBalance),
 		balanceBob.BlocksToUnlock)
 
 	transferAmtU64, err := transferAmt.Uint64()
@@ -54,8 +54,8 @@ func TestClient_Transfer(t *testing.T) {
 	transfer, err := cXMRMaker.Transfer(ctx, abAddress, 0, transferAmt, MinSpendConfirmations)
 	require.NoError(t, err)
 	t.Logf("Bob sent %s (+fee %s) XMR to A+B address with TX ID %s",
-		coins.FmtPiconeroAmtAsXMR(transfer.Amount),
-		coins.FmtPiconeroAmtAsXMR(transfer.Fee),
+		coins.FmtPiconeroAsXMR(transfer.Amount),
+		coins.FmtPiconeroAsXMR(transfer.Fee),
 		transfer.TxID)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, transfer.Confirmations, uint64(MinSpendConfirmations))
@@ -83,8 +83,8 @@ func TestClient_Transfer(t *testing.T) {
 	height, err := abViewCli.GetHeight()
 	require.NoError(t, err)
 	t.Logf("A+B View-Only wallet balance: bal=%s unlocked=%s blocks-to-unlock=%d, cur-height=%d",
-		coins.FmtPiconeroAmtAsXMR(balanceABWal.Balance),
-		coins.FmtPiconeroAmtAsXMR(balanceABWal.UnlockedBalance),
+		coins.FmtPiconeroAsXMR(balanceABWal.Balance),
+		coins.FmtPiconeroAsXMR(balanceABWal.UnlockedBalance),
 		balanceABWal.BlocksToUnlock, height)
 	require.Zero(t, balanceABWal.BlocksToUnlock)
 	require.Equal(t, balanceABWal.Balance, balanceABWal.UnlockedBalance)
@@ -116,7 +116,7 @@ func TestClient_Transfer(t *testing.T) {
 	sweepFee := transfers[0].Fee
 
 	t.Logf("Sweep of A+B wallet sent %s XMR with fees %s XMR to Alice's primary wallet",
-		coins.FmtPiconeroAmtAsXMR(sweepAmount), coins.FmtPiconeroAmtAsXMR(sweepFee))
+		coins.FmtPiconeroAsXMR(sweepAmount), coins.FmtPiconeroAsXMR(sweepFee))
 	require.Equal(t, transferAmtU64, sweepAmount+sweepFee)
 	t.Logf("Alice's sweep transactions was mined at height %d with %d confirmations",
 		transfer.Height, transfer.Confirmations)
@@ -127,8 +127,8 @@ func TestClient_Transfer(t *testing.T) {
 
 	balanceAlice := GetBalance(t, cXMRTaker)
 	t.Logf("Alice's primary wallet after sweep: bal=%s XMR, unlocked=%s XMR, blocks-to-unlock=%d",
-		coins.FmtPiconeroAmtAsXMR(balanceAlice.Balance),
-		coins.FmtPiconeroAmtAsXMR(balanceAlice.UnlockedBalance),
+		coins.FmtPiconeroAsXMR(balanceAlice.Balance),
+		coins.FmtPiconeroAsXMR(balanceAlice.UnlockedBalance),
 		balanceAlice.BlocksToUnlock)
 	require.Equal(t, balanceAlice.Balance, sweepAmount)
 }

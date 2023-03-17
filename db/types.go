@@ -13,7 +13,7 @@ import (
 type EthereumSwapInfo struct {
 	// StartNumber the block number of the `newSwap` transaction. The same for
 	// both maker/taker.
-	StartNumber *big.Int `json:"startNumber" validate:"required,dive,required"`
+	StartNumber *big.Int `json:"startNumber" validate:"required"`
 
 	// SwapID is the swap ID used by the swap contract; not the same as the
 	// swap/offer ID used by swapd. It's the hash of the ABI encoded

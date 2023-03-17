@@ -38,7 +38,7 @@ func Test_Manager(t *testing.T) {
 			types.EthAssetETH,
 		)
 		db.EXPECT().PutOffer(offer)
-		offerExtra, err := mgr.AddOffer(offer, "", nil)
+		offerExtra, err := mgr.AddOffer(offer, false)
 		require.NoError(t, err)
 		require.NotNil(t, offerExtra)
 	}
@@ -83,7 +83,7 @@ func Test_Manager_NoErrorDeletingOfferNotOnDisk(t *testing.T) {
 		coins.ToExchangeRate(coins.StrToDecimal("0.1")),
 		types.EthAssetETH,
 	)
-	offerExtra, err := mgr.AddOffer(offer, "", nil)
+	offerExtra, err := mgr.AddOffer(offer, false)
 	require.NoError(t, err)
 	require.NotNil(t, offerExtra)
 

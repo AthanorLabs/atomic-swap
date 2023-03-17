@@ -60,7 +60,7 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 	require.NoError(t, err)
 
 	hbCfg := basicTestConfig(t)
-	hbCfg.Bootnodes = ha.h.Addresses() // get some test coverage on our bootnode code
+	hbCfg.Bootnodes = []string{ha.Addresses()[0].String()} // get some test coverage on our bootnode code
 	hb := newHost(t, hbCfg)
 	err = hb.Start()
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 	require.NotNil(t, hb.swaps[testID])
 	hb.swapMu.Unlock()
 
-	hb.handler.(*mockHandler).id = testID2
+	hb.makerHandler.(*mockMakerHandler).id = testID2
 
 	err = ha.Initiate(hb.h.AddrInfo(), createSendKeysMessage(t), &mockSwapState{testID2})
 	require.NoError(t, err)

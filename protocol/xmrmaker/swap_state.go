@@ -107,7 +107,7 @@ func newSwapStateFromStart(
 		offerExtra.StatusCh = make(chan types.Status, 7)
 	}
 
-	if offerExtra.RelayerEndpoint != "" {
+	if offerExtra.UseRelayer {
 		if err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {
 			return nil, err
 		}
@@ -348,7 +348,7 @@ func (s *swapState) exit() error {
 
 		if s.info.Status != types.CompletedSuccess && s.offer.IsSet() {
 			// re-add offer, as it wasn't taken successfully
-			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.RelayerEndpoint, s.offerExtra.RelayerFee)
+			_, err = s.offerManager.AddOffer(s.offer, s.offerExtra.UseRelayer)
 			if err != nil {
 				log.Warnf("failed to re-add offer %s: %s", s.offer.ID, err)
 			}
@@ -530,8 +530,8 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) error {
 		return err
 	}
 
-	log.Debug("total XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.Balance))
-	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAmtAsXMR(balance.UnlockedBalance))
+	log.Debug("total XMR balance: ", coins.FmtPiconeroAsXMR(balance.Balance))
+	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAsXMR(balance.UnlockedBalance))
 
 	log.Infof("Starting lock of %s XMR in address %s", amount.AsMoneroString(), swapDestAddr)
 	transfer, err := s.XMRClient().Transfer(s.ctx, swapDestAddr, 0, amount, monero.MinSpendConfirmations)

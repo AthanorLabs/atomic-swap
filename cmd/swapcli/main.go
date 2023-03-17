@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/skip2/go-qrcode"
@@ -19,6 +18,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
@@ -26,19 +26,18 @@ import (
 const (
 	defaultDiscoverSearchTimeSecs = 12
 
-	flagSwapdPort       = "swapd-port"
-	flagMinAmount       = "min-amount"
-	flagMaxAmount       = "max-amount"
-	flagPeerID          = "peer-id"
-	flagOfferID         = "offer-id"
-	flagOfferIDs        = "offer-ids"
-	flagExchangeRate    = "exchange-rate"
-	flagProvides        = "provides"
-	flagProvidesAmount  = "provides-amount"
-	flagRelayerFee      = "relayer-fee"
-	flagRelayerEndpoint = "relayer-endpoint"
-	flagSearchTime      = "search-time"
-	flagDetached        = "detached"
+	flagSwapdPort      = "swapd-port"
+	flagMinAmount      = "min-amount"
+	flagMaxAmount      = "max-amount"
+	flagPeerID         = "peer-id"
+	flagOfferID        = "offer-id"
+	flagOfferIDs       = "offer-ids"
+	flagExchangeRate   = "exchange-rate"
+	flagProvides       = "provides"
+	flagProvidesAmount = "provides-amount"
+	flagUseRelayer     = "use-relayer"
+	flagSearchTime     = "search-time"
+	flagDetached       = "detached"
 )
 
 var (
@@ -100,8 +99,8 @@ var (
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name: flagProvides,
-						Usage: fmt.Sprintf("Coin to find providers for: one of [%s, %s]",
-							coins.ProvidesXMR, coins.ProvidesETH),
+						Usage: fmt.Sprintf("Search for %q or %q providers",
+							coins.ProvidesXMR, net.RelayerProvidesStr),
 						Value: string(coins.ProvidesXMR),
 					},
 					&cli.Uint64Flag{
@@ -175,14 +174,9 @@ var (
 						Name:  "eth-asset",
 						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
 					},
-					&cli.StringFlag{
-						Name:  flagRelayerEndpoint,
-						Usage: "HTTP RPC endpoint of relayer to use for claiming funds. No relayer is used if this is not set",
-					},
-					&cli.StringFlag{
-						Name: flagRelayerFee,
-						Usage: "Fee to pay the relayer in ETH:" +
-							" eg. --relayer-fee=0.009 to pay 0.0009 ETH",
+					&cli.BoolFlag{
+						Name:  flagUseRelayer,
+						Usage: "Use the relayer even if the receiving account has enough ETH to claim",
 					},
 					swapdPortFlag,
 				},
@@ -404,7 +398,7 @@ func runBalances(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
-	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEther().Text('f'))
+	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEtherString())
 	fmt.Println()
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
 	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMoneroString())
@@ -549,19 +543,6 @@ func runMake(ctx *cli.Context) error {
 
 	c := newRRPClient(ctx)
 
-	relayerEndpoint := ctx.String(flagRelayerEndpoint)
-	relayerFee := new(apd.Decimal)
-	if relayerEndpoint != "" {
-		if relayerFee, err = cliutil.ReadUnsignedDecimalFlag(ctx, flagRelayerFee); err != nil {
-			return err
-		}
-	} else if ctx.IsSet(flagRelayerFee) {
-		return errMustSetRelayerEndpoint
-	}
-	if relayerFee.Cmp(apd.New(1, 0)) > 0 {
-		return errRelayerFeeTooHigh
-	}
-
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
@@ -569,6 +550,8 @@ func runMake(ctx *cli.Context) error {
 		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), ethAsset)
 		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
 	}
+
+	alwaysUseRelayer := ctx.Bool(flagUseRelayer)
 
 	if !ctx.Bool(flagDetached) {
 		wsc, err := newWSClient(ctx) //nolint:govet
@@ -582,8 +565,7 @@ func runMake(ctx *cli.Context) error {
 			max,
 			exchangeRate,
 			ethAsset,
-			relayerEndpoint,
-			relayerFee,
+			alwaysUseRelayer,
 		)
 		if err != nil {
 			return err
@@ -601,7 +583,7 @@ func runMake(ctx *cli.Context) error {
 		return nil
 	}
 
-	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, relayerEndpoint, relayerFee)
+	resp, err := c.MakeOffer(min, max, exchangeRate, ethAsset, alwaysUseRelayer)
 	if err != nil {
 		return err
 	}
@@ -738,8 +720,13 @@ func runGetPastSwap(ctx *cli.Context) error {
 		receivedCoin = "XMR"
 	}
 
+	endTime := "-"
+	if info.EndTime != nil {
+		endTime = info.EndTime.Format(common.TimeFmtSecs)
+	}
+
 	fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
-	fmt.Printf("End time: %s\n", info.EndTime.Format(common.TimeFmtSecs))
+	fmt.Printf("End time: %s\n", endTime)
 	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
 	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)

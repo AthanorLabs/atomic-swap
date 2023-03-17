@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -26,6 +24,11 @@ const (
 )
 
 var (
+	// SwapFactoryParsedABI is the parsed SwapFactory ABI. We can skip the error check,
+	// as it can only fail if abigen generates JSON bindings that golang can't parse, in
+	// which case it will be nil we'll see panics when vetting the binaries.
+	SwapFactoryParsedABI, _ = SwapFactoryMetaData.GetAbi()
+
 	claimedTopic  = common.GetTopic(common.ClaimedEventSignature)
 	refundedTopic = common.GetTopic(common.RefundedEventSignature)
 )
@@ -111,10 +114,7 @@ func CheckIfLogIDMatches(log ethtypes.Log, eventTopic, id [32]byte) (bool, error
 
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
-	if err != nil {
-		return [32]byte{}, err
-	}
+	abi := SwapFactoryParsedABI
 
 	const event = "New"
 	if log.Topics[0] != abi.Events[event].ID {
@@ -138,10 +138,7 @@ func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
 
 // GetTimeoutsFromLog returns the timeouts from a New event.
 func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
-	abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
-	if err != nil {
-		return nil, nil, err
-	}
+	abi := SwapFactoryParsedABI
 
 	const event = "New"
 	if log.Topics[0] != abi.Events[event].ID {

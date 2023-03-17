@@ -27,7 +27,7 @@ var (
 	errClaimedLogWrongEvent          = errors.New("log did not have the Claimed event as its first topic")
 	errClaimedLogWrongSwapID         = errors.New("log did not have the correct swap ID as its second topic")
 	errClaimedLogWrongSecret         = errors.New("log did not have the correct secret as its third topic")
-	errSwapValueTooLow               = errors.New("swap value is less than relayer fee")
+	errRelayingWithNonEthAsset       = errors.New("relayers with ERC20 token swaps are not currently supported")
 
 	// protocol initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")

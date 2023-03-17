@@ -16,9 +16,6 @@ if "${pkill_cmd[@]}" '/swapd '; then
 	sleep 4 # Give time for wallet to shutdown
 fi
 
-echo "Stopping any relayer instances"
-"${pkill_cmd[@]}" '/relayer '
-
 # Take note of monero-wallet-rpc instances being killed here if the instances
 # were started by swapd, as killing swapd should have already shut them down.
 echo "Stopping any monero-wallet-rpc instances"

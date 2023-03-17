@@ -12,17 +12,25 @@ type SwapState = common.SwapStateNet //nolint:revive
 
 //nolint:revive
 type (
-	MessageType     = byte
-	Message         = common.Message
-	QueryResponse   = message.QueryResponse
-	SendKeysMessage = message.SendKeysMessage
+	MessageType        = byte
+	Message            = common.Message
+	QueryResponse      = message.QueryResponse
+	SendKeysMessage    = message.SendKeysMessage
+	RelayClaimRequest  = message.RelayClaimRequest
+	RelayClaimResponse = message.RelayClaimResponse
 )
 
-// Handler handles swap initiation messages.
-// It is implemented by *xmrmaker.xmrmaker
-type Handler interface {
+// MakerHandler handles swap initiation messages and offer queries. It is
+// implemented by *xmrmaker.Instance.
+type MakerHandler interface {
 	GetOffers() []*types.Offer
-	HandleInitiateMessage(msg *SendKeysMessage) (s SwapState, resp Message, err error)
+	HandleInitiateMessage(msg *SendKeysMessage) (SwapState, Message, error)
+}
+
+// TakerHandler handles relay claim requests. It is implemented by
+// *xmrtaker.xmrtaker.
+type TakerHandler interface {
+	HandleRelayClaimRequest(msg *RelayClaimRequest) (*RelayClaimResponse, error)
 }
 
 type swap struct {

@@ -115,10 +115,11 @@ func (s *IntegrationTestSuite) newSwapdWSClient(ctx context.Context, endpoint st
 func (s *IntegrationTestSuite) TestXMRTaker_Discover() {
 	ctx := context.Background()
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH, "", nil)
+	_, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, types.EthAssetETH, false)
 	require.NoError(s.T(), err)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
@@ -141,10 +142,10 @@ func (s *IntegrationTestSuite) TestXMRTaker_Query() {
 func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 	ctx := context.Background()
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offerResp, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, asset, "", nil)
+	offerResp, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, asset, false)
 	require.NoError(s.T(), err)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second)) // Give offer advertisement time to propagate
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
@@ -169,14 +170,10 @@ func (s *IntegrationTestSuite) testXMRTakerQuery(asset types.EthAsset) {
 }
 
 func (s *IntegrationTestSuite) TestSuccess_OneSwap() {
-	s.testSuccessOneSwap(types.EthAssetETH, "", nil)
+	s.testSuccessOneSwap(types.EthAssetETH, false)
 }
 
-func (s *IntegrationTestSuite) testSuccessOneSwap(
-	asset types.EthAsset,
-	relayerEndpoint string,
-	relayerFee *apd.Decimal,
-) {
+func (s *IntegrationTestSuite) testSuccessOneSwap(asset types.EthAsset, useRelayer bool) {
 	const testTimeout = time.Second * 90
 
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -185,7 +182,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 	min := coins.StrToDecimal("0.1")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
-		exchangeRate, asset, relayerEndpoint, relayerFee)
+		exchangeRate, asset, useRelayer)
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
@@ -224,7 +221,8 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	awsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	// TODO: implement discovery over websockets (#97)
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
@@ -278,7 +276,7 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(xmrmakerProvideAmount, xmrmakerProvideAmount,
-		exchangeRate, asset, "", nil)
+		exchangeRate, asset, false)
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
@@ -322,7 +320,8 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	err = ac.SetSwapTimeout(swapTimeout)
 	require.NoError(s.T(), err)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
@@ -414,7 +413,7 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(xmrmakerProvideAmount, xmrmakerProvideAmount,
-		exchangeRate, types.EthAssetETH, "", nil)
+		exchangeRate, types.EthAssetETH, false)
 	require.NoError(s.T(), err)
 
 	beforeResp, err := bc.GetOffers()
@@ -463,7 +462,8 @@ func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
 	err = ac.SetSwapTimeout(swapTimeout)
 	require.NoError(s.T(), err)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
@@ -524,7 +524,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 
 	min := coins.StrToDecimal("0.1")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
-		exchangeRate, asset, "", nil)
+		exchangeRate, asset, false)
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
@@ -566,7 +566,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 	// namespace (the namespace for swapd hosts providing XMR offers). We need
 	// to wait a little extra before Alice calls Discover to ensure that the
 	// advertisement went out.
-	common.SleepWithContext(ctx, time.Second)
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
@@ -633,7 +633,7 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(xmrmakerProvideAmount, xmrmakerProvideAmount,
-		exchangeRate, asset, "", nil)
+		exchangeRate, asset, false)
 	require.NoError(s.T(), err)
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
@@ -674,7 +674,8 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	c := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	wsc := s.newSwapdWSClient(ctx, defaultXMRTakerSwapdWSEndpoint)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	peerIDs, err := c.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
@@ -711,7 +712,9 @@ func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
 	default:
 	}
 
-	common.SleepWithContext(ctx, 3*time.Second) // give some extra time for the offer to be re-added
+	// give some extra time for the offer to be re-added
+	require.NoError(s.T(), common.SleepWithContext(ctx, 3*time.Second))
+
 	afterResp, err := bc.GetOffers()
 	require.NoError(s.T(), err)
 	require.Equalf(s.T(), len(beforeResp.Offers), len(afterResp.Offers), "offer count mismatch")
@@ -729,10 +732,11 @@ func (s *IntegrationTestSuite) testErrorShouldOnlyTakeOfferOnce(asset types.EthA
 	defer cancel()
 
 	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
-	offerResp, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, asset, "", nil)
+	offerResp, err := bc.MakeOffer(xmrmakerProvideAmount, xmrmakerProvideAmount, exchangeRate, asset, false)
 	require.NoError(s.T(), err)
 
-	common.SleepWithContext(ctx, time.Second) // Give offer advertisement time to propagate
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
 	peerIDs, err := ac.Discover(string(coins.ProvidesXMR), defaultDiscoverTimeout)
@@ -848,7 +852,7 @@ func (s *IntegrationTestSuite) testSuccessConcurrentSwaps(asset types.EthAsset) 
 	for i := 0; i < numConcurrentSwaps; i++ {
 		bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 		offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(xmrmakerProvideAmount, xmrmakerProvideAmount, //nolint:govet
-			exchangeRate, asset, "", nil)
+			exchangeRate, asset, false)
 		require.NoError(s.T(), err)
 
 		s.T().Logf("XMRMaker[%d] made offer %s", i, offerResp.OfferID)

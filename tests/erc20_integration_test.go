@@ -47,7 +47,7 @@ func (s *IntegrationTestSuite) TestXMRTaker_ERC20_Query() {
 }
 
 func (s *IntegrationTestSuite) TestSuccess_ERC20_OneSwap() {
-	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), "", nil)
+	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), false)
 }
 
 func (s *IntegrationTestSuite) TestRefund_ERC20_XMRTakerCancels() {

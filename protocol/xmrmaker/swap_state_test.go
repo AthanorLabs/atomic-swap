@@ -306,7 +306,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	balAfterLock, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
 	t.Logf("Balance after locking funds: %s XMR (%d blocks to unlock)",
-		coins.FmtPiconeroAmtAsXMR(balAfterLock.Balance), balAfterLock.BlocksToUnlock)
+		coins.FmtPiconeroAsXMR(balAfterLock.Balance), balAfterLock.BlocksToUnlock)
 
 	// call refund w/ XMRTaker's secret
 	secret := xmrtakerKeysAndProof.DLEqProof.Secret()
@@ -336,7 +336,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	balance, err := s.XMRClient().GetBalance(0)
 	require.NoError(t, err)
 	t.Logf("End balance after refund: %s XMR (%d blocks to unlock)",
-		coins.FmtPiconeroAmtAsXMR(balance.Balance), balance.BlocksToUnlock)
+		coins.FmtPiconeroAsXMR(balance.Balance), balance.BlocksToUnlock)
 	require.Greater(t, balance.Balance, balAfterLock.Balance) // increased by refund (minus some fees)
 	require.Equal(t, types.CompletedRefund, s.info.Status)
 }
@@ -381,14 +381,14 @@ func TestSwapState_Exit_Success(t *testing.T) {
 func TestSwapState_Exit_Refunded(t *testing.T) {
 	b, s, db := newTestSwapStateAndDB(t)
 
-	b.net.(*MockP2pHost).EXPECT().Advertise([]string{"XMR"})
+	b.net.(*MockP2pHost).EXPECT().Advertise()
 
 	min := coins.StrToDecimal("0.1")
 	max := coins.StrToDecimal("0.2")
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
 	db.EXPECT().PutOffer(s.offer)
-	_, err := b.MakeOffer(s.offer, "", nil)
+	_, err := b.MakeOffer(s.offer, false)
 	require.NoError(t, err)
 
 	s.info.SetStatus(types.CompletedRefund)

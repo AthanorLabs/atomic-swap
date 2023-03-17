@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -21,7 +22,7 @@ const defaultSearchTime = time.Second * 12
 type Net interface {
 	PeerID() peer.ID
 	ConnectedPeers() []string
-	Addresses() []string
+	Addresses() []ma.Multiaddr
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 	Query(who peer.ID) (*message.QueryResponse, error)
 	Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s common.SwapStateNet) error
@@ -50,7 +51,13 @@ func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager
 // addresses do not correspond to what remote peers connect to unless your host has a
 // public IP directly attached to a local interface.
 func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *rpctypes.AddressesResponse) error {
-	resp.Addrs = s.net.Addresses()
+	// Multiaddr is an interface that you can serialize, but you need a concrete
+	// type to deserialize, so we just use strings in the AddressesResponse.
+	addresses := s.net.Addresses()
+	resp.Addrs = make([]string, 0, len(addresses))
+	for _, a := range addresses {
+		resp.Addrs = append(resp.Addrs, a.String())
+	}
 	return nil
 }
 
@@ -247,7 +254,7 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOf
 		req.EthAsset,
 	)
 
-	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.RelayerEndpoint, req.RelayerFee)
+	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.UseRelayer)
 	if err != nil {
 		return nil, nil, err
 	}

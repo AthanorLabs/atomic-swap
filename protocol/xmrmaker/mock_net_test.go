@@ -13,6 +13,7 @@ import (
 	network "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 	protocol "github.com/libp2p/go-libp2p/core/protocol"
+	multiaddr "github.com/multiformats/go-multiaddr"
 )
 
 // MockP2pHost is a mock of P2pHost interface.
@@ -53,10 +54,10 @@ func (mr *MockP2pHostMockRecorder) AddrInfo() *gomock.Call {
 }
 
 // Addresses mocks base method.
-func (m *MockP2pHost) Addresses() []string {
+func (m *MockP2pHost) Addresses() []multiaddr.Multiaddr {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Addresses")
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].([]multiaddr.Multiaddr)
 	return ret0
 }
 
@@ -67,15 +68,15 @@ func (mr *MockP2pHostMockRecorder) Addresses() *gomock.Call {
 }
 
 // Advertise mocks base method.
-func (m *MockP2pHost) Advertise(arg0 []string) {
+func (m *MockP2pHost) Advertise() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Advertise", arg0)
+	m.ctrl.Call(m, "Advertise")
 }
 
 // Advertise indicates an expected call of Advertise.
-func (mr *MockP2pHostMockRecorder) Advertise(arg0 interface{}) *gomock.Call {
+func (mr *MockP2pHostMockRecorder) Advertise() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Advertise", reflect.TypeOf((*MockP2pHost)(nil).Advertise), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Advertise", reflect.TypeOf((*MockP2pHost)(nil).Advertise))
 }
 
 // Connect mocks base method.
@@ -164,16 +165,16 @@ func (mr *MockP2pHostMockRecorder) PeerID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PeerID", reflect.TypeOf((*MockP2pHost)(nil).PeerID))
 }
 
-// SetShouldAdvertiseFunc mocks base method.
-func (m *MockP2pHost) SetShouldAdvertiseFunc(arg0 func() bool) {
+// SetAdvertisedNamespacesFunc mocks base method.
+func (m *MockP2pHost) SetAdvertisedNamespacesFunc(arg0 func() []string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShouldAdvertiseFunc", arg0)
+	m.ctrl.Call(m, "SetAdvertisedNamespacesFunc", arg0)
 }
 
-// SetShouldAdvertiseFunc indicates an expected call of SetShouldAdvertiseFunc.
-func (mr *MockP2pHostMockRecorder) SetShouldAdvertiseFunc(arg0 interface{}) *gomock.Call {
+// SetAdvertisedNamespacesFunc indicates an expected call of SetAdvertisedNamespacesFunc.
+func (mr *MockP2pHostMockRecorder) SetAdvertisedNamespacesFunc(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShouldAdvertiseFunc", reflect.TypeOf((*MockP2pHost)(nil).SetShouldAdvertiseFunc), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAdvertisedNamespacesFunc", reflect.TypeOf((*MockP2pHost)(nil).SetAdvertisedNamespacesFunc), arg0)
 }
 
 // SetStreamHandler mocks base method.

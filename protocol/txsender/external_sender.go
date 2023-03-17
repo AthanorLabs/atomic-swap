@@ -57,11 +57,6 @@ func NewExternalSender(
 	contractAddr ethcommon.Address,
 	erc20Addr ethcommon.Address,
 ) (*ExternalSender, error) {
-	abi, err := contracts.SwapFactoryMetaData.GetAbi()
-	if err != nil {
-		return nil, err
-	}
-
 	switch env {
 	case common.Mainnet, common.Stagenet:
 		transactionTimeout = time.Hour
@@ -70,7 +65,7 @@ func NewExternalSender(
 	return &ExternalSender{
 		ctx:          ctx,
 		ec:           ec,
-		abi:          abi,
+		abi:          contracts.SwapFactoryParsedABI,
 		contractAddr: contractAddr,
 		erc20Addr:    erc20Addr,
 		out:          make(chan *Transaction),

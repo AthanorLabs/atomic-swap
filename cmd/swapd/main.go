@@ -13,8 +13,6 @@ import (
 	"path"
 
 	"github.com/ChainSafe/chaindb"
-	p2pnet "github.com/athanorlabs/go-p2p-net"
-	rnet "github.com/athanorlabs/go-relayer/net"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
@@ -30,6 +28,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
+	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
@@ -76,6 +75,7 @@ const (
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
 	flagUseExternalSigner    = "external-signer"
+	flagRelayer              = "relayer"
 
 	flagDevXMRTaker      = "dev-xmrtaker"
 	flagDevXMRMaker      = "dev-xmrmaker"
@@ -203,6 +203,14 @@ var (
 				Name:  flagUseExternalSigner,
 				Usage: "Use external signer, for usage with the swap UI",
 			},
+			&cli.BoolFlag{
+				Name: flagRelayer,
+				Usage: fmt.Sprintf(
+					"Relay claims for XMR makers and earn %s ETH (minus gas fees) per transaction",
+					relayer.FeeEth.Text('f'),
+				),
+				Value: false,
+			},
 			&cli.StringFlag{
 				Name:   flagProfile,
 				Usage:  "BIND_IP:PORT to provide profiling information on",
@@ -219,11 +227,12 @@ func main() {
 }
 
 type xmrtakerHandler interface {
+	net.TakerHandler
 	rpc.XMRTaker
 }
 
 type xmrmakerHandler interface {
-	net.Handler
+	net.MakerHandler
 	rpc.XMRMaker
 }
 
@@ -259,8 +268,8 @@ func setLogLevelsFromContext(c *cli.Context) error {
 }
 
 func setLogLevels(level string) {
-	_ = logging.SetLogLevel("xmrtaker", level)
-	_ = logging.SetLogLevel("xmrmaker", level)
+	// alphabetically ordered
+	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("coins", level)
 	_ = logging.SetLogLevel("common", level)
 	_ = logging.SetLogLevel("contracts", level)
@@ -270,10 +279,12 @@ func setLogLevels(level string) {
 	_ = logging.SetLogLevel("monero", level)
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("offers", level)
-	_ = logging.SetLogLevel("p2pnet", level)
+	_ = logging.SetLogLevel("p2pnet", level) // external
 	_ = logging.SetLogLevel("pricefeed", level)
+	_ = logging.SetLogLevel("relayer", level) // external and internal
 	_ = logging.SetLogLevel("rpc", level)
-
+	_ = logging.SetLogLevel("xmrmaker", level)
+	_ = logging.SetLogLevel("xmrtaker", level)
 }
 
 func runDaemon(c *cli.Context) error {
@@ -425,7 +436,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		listenIP = "127.0.0.1"
 	}
 
-	netCfg := &p2pnet.Config{
+	netCfg := &net.Config{
 		Ctx:        d.ctx,
 		DataDir:    cfg.DataDir,
 		Port:       libp2pPort,
@@ -433,6 +444,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		Bootnodes:  cfg.Bootnodes,
 		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
 		ListenIP:   listenIP,
+		IsRelayer:  c.Bool(flagRelayer),
 	}
 
 	host, err := net.NewHost(netCfg)
@@ -440,7 +452,6 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		return err
 	}
 	d.host = host
-	relayerHost := setupRelayerNetwork(d.ctx, host.P2pHost())
 
 	dbCfg := &chaindb.Config{
 		DataDir: path.Join(cfg.DataDir, "db"),
@@ -468,7 +479,6 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 		host,
 		ec,
 		sdb.RecoveryDB(),
-		relayerHost,
 	)
 	if err != nil {
 		return err
@@ -487,7 +497,7 @@ func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
 
 	// connect network to protocol handler
 	// handler handles initiated ("taken") swap
-	host.SetHandler(b)
+	host.SetHandlers(b, a)
 
 	if err = host.Start(); err != nil {
 		return err
@@ -575,7 +585,6 @@ func newBackend(
 	net *net.Host,
 	ec *ethclient.Client,
 	rdb *db.RecoveryDB,
-	rhost *rnet.Host,
 ) (backend.Backend, error) {
 	var (
 		ethPrivKey *ecdsa.PrivateKey
@@ -706,7 +715,6 @@ func newBackend(
 		SwapContractAddress: contractAddr,
 		Net:                 net,
 		RecoveryDB:          rdb,
-		RelayerHost:         rhost,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -762,16 +770,4 @@ func getProtocolInstances(
 	}
 
 	return xmrTaker, xmrMaker, nil
-}
-
-func setupRelayerNetwork(
-	ctx context.Context,
-	host rnet.P2pnetHost,
-) *rnet.Host {
-	cfg := &rnet.Config{
-		Context:   ctx,
-		IsRelayer: false,
-	}
-
-	return rnet.NewHostFromP2pHost(cfg, host)
 }

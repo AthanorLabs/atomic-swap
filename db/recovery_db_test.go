@@ -9,7 +9,6 @@ import (
 	"github.com/ChainSafe/chaindb"
 	"github.com/stretchr/testify/require"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -81,10 +80,8 @@ func TestRecoveryDB_SwapRelayerInfo(t *testing.T) {
 	rdb := newTestRecoveryDB(t)
 	offerID := types.Hash{5, 6, 7, 8}
 
-	fee := coins.StrToDecimal("0.0135")
 	info := &types.OfferExtra{
-		RelayerEndpoint: "endpoint",
-		RelayerFee:      fee,
+		UseRelayer: true,
 	}
 
 	err := rdb.PutSwapRelayerInfo(offerID, info)
@@ -166,8 +163,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	}
 
 	info := &types.OfferExtra{
-		RelayerEndpoint: "endpoint",
-		RelayerFee:      coins.StrToDecimal("0.0135"),
+		UseRelayer: true,
 	}
 
 	err = rdb.PutContractSwapInfo(offerID, si)

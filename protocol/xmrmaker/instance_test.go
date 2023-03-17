@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -18,6 +19,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -50,6 +52,14 @@ func (n *mockNet) SendSwapMessage(msg common.Message, _ types.Hash) error {
 	defer n.msgMu.Unlock()
 	n.msg = msg
 	return nil
+}
+
+func (n *mockNet) DiscoverRelayers() ([]peer.ID, error) {
+	return nil, nil
+}
+
+func (n *mockNet) SubmitClaimToRelayer(_ peer.ID, _ *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+	return new(message.RelayClaimResponse), nil
 }
 
 func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
@@ -155,7 +165,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
 	offerDB.EXPECT().PutOffer(offer).Return(nil)
-	_, err := inst.offerManager.AddOffer(offer, "", nil)
+	_, err := inst.offerManager.AddOffer(offer, false)
 	require.NoError(t, err)
 
 	s := &pswap.Info{
