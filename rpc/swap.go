@@ -65,7 +65,7 @@ type GetPastRequest struct {
 
 // GetPastResponse ...
 type GetPastResponse struct {
-	Swaps []*PastSwap `json:"swaps" validate:"required"`
+	Swaps []*PastSwap `json:"swaps" validate:"dive,required"`
 }
 
 // GetPast returns information about a past swap given its ID.
@@ -131,14 +131,14 @@ type OngoingSwap struct {
 	Timeout1       *time.Time          `json:"timeout1"`
 }
 
-// GetOngoingResponse ...
-type GetOngoingResponse struct {
-	Swaps []*OngoingSwap `json:"swaps" validate:"dive,required"`
-}
-
 // GetOngoingRequest ...
 type GetOngoingRequest struct {
 	OfferID types.Hash `json:"offerID" validate:"required"`
+}
+
+// GetOngoingResponse ...
+type GetOngoingResponse struct {
+	Swaps []*OngoingSwap `json:"swaps" validate:"dive,required"`
 }
 
 // GetOngoing returns information about the ongoing swap with the given ID, if there is one.
