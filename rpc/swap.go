@@ -345,3 +345,34 @@ func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, res
 	resp.ExchangeRate = exchangeRate
 	return nil
 }
+
+func estimatedTimeToCompletion(env common.Environment, status types.Status) (time.Duration, error) {
+	var (
+		moneroBlockTime time.Duration
+		ethBlockTime time.Duration
+	)
+
+	switch env {
+	case common.Development:
+		moneroBlockTime = time.Second
+		ethBlockTime = time.Second
+	default:
+		moneroBlockTime = time.Minute * 2
+		ethBlockTime = time.Second * 12
+	}
+
+	switch status {
+	case types.ExpectingKeys:
+		return (moneroBlockTime * 12) + (ethBlockTime * 3), nil
+	case types.KeysExchanged:
+		return (moneroBlockTime * 10) + (ethBlockTime * 3), nil
+	case types.ETHLocked:
+		return (moneroBlockTime * 12) + (ethBlockTime * 2), nil
+	case types.XMRLocked:
+		return (moneroBlockTime * 10) + (ethBlockTime * 2), nil
+	case types.ContractReady:
+		return (moneroBlockTime * 2) + ethBlockTime, nil
+	default:
+		return 0, fmt.Errorf("invalid status")
+	}
+}
