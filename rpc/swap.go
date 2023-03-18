@@ -60,7 +60,7 @@ type PastSwap struct {
 
 // GetPastRequest ...
 type GetPastRequest struct {
-	OfferID string `json:"offerID"`
+	OfferID types.Hash `json:"offerID"`
 }
 
 // GetPastResponse ...
@@ -72,11 +72,9 @@ type GetPastResponse struct {
 // If no ID is provided, all past swaps are returned.
 // It sorts them in order from oldest to newest.
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
-	var (
-		swaps []*swap.Info
-	)
+	var swaps []*swap.Info
 
-	if req.OfferID == "" {
+	if types.IsHashZero(req.OfferID) {
 		ids, err := s.sm.GetPastIDs()
 		if err != nil {
 			return err
@@ -91,12 +89,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 			swaps = append(swaps, info)
 		}
 	} else {
-		offerID, err := offerIDStringToHash(req.OfferID)
-		if err != nil {
-			return err
-		}
-
-		info, err := s.sm.GetPastSwap(offerID)
+		info, err := s.sm.GetPastSwap(req.OfferID)
 		if err != nil {
 			return err
 		}
@@ -145,7 +138,7 @@ type GetOngoingResponse struct {
 
 // GetOngoingRequest ...
 type GetOngoingRequest struct {
-	OfferID string `json:"offerID" validate:"required"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // GetOngoing returns information about the ongoing swap with the given ID, if there is one.
@@ -155,18 +148,13 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		err   error
 	)
 
-	if req.OfferID == "" {
+	if types.IsHashZero(req.OfferID) {
 		swaps, err = s.sm.GetOngoingSwaps()
 		if err != nil {
 			return err
 		}
 	} else {
-		offerID, err := offerIDStringToHash(req.OfferID)
-		if err != nil {
-			return err
-		}
-
-		info, err := s.sm.GetOngoingSwap(offerID)
+		info, err := s.sm.GetOngoingSwap(req.OfferID)
 		if err != nil {
 			return err
 		}
@@ -198,7 +186,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 // RefundRequest ...
 type RefundRequest struct {
-	OfferID string `json:"offerID" validate:"required"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // RefundResponse ...
@@ -209,12 +197,7 @@ type RefundResponse struct {
 // Refund refunds the ongoing swap if we are the ETH provider.
 // TODO: remove in favour of swap_cancel?
 func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundResponse) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
-	}
-
-	info, err := s.sm.GetOngoingSwap(offerID)
+	info, err := s.sm.GetOngoingSwap(req.OfferID)
 	if err != nil {
 		return err
 	}
@@ -223,7 +206,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 		return errCannotRefund
 	}
 
-	txHash, err := s.xmrtaker.Refund(offerID)
+	txHash, err := s.xmrtaker.Refund(req.OfferID)
 	if err != nil {
 		return fmt.Errorf("failed to refund: %w", err)
 	}
@@ -323,10 +306,6 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 	resp.Status = past.Status
 	return nil
-}
-
-func offerIDStringToHash(s string) (types.Hash, error) {
-	return types.HexToHash(s)
 }
 
 // SuggestedExchangeRateResponse ...
