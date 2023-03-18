@@ -7,21 +7,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
-// GetPastSwapIDs calls swap_getPastIDs
-func (c *Client) GetPastSwapIDs() ([]*rpc.PastSwapInfo, error) {
-	const (
-		method = "swap_getPastIDs"
-	)
-
-	res := &rpc.GetPastIDsResponse{}
-
-	if err := c.Post(method, nil, res); err != nil {
-		return nil, err
-	}
-
-	return res.Swaps, nil
-}
-
 // GetOngoingSwap calls swap_getOngoing
 func (c *Client) GetOngoingSwap(id string) (*rpc.GetOngoingResponse, error) {
 	const (

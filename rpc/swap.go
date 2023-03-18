@@ -46,54 +46,9 @@ func NewSwapService(
 	}
 }
 
-// PastSwapInfo contains a swap ID and its start and end time.
-type PastSwapInfo struct {
-	ID        types.Hash `json:"id" validate:"required"`
-	StartTime time.Time  `json:"startTime" validate:"required"`
-	EndTime   *time.Time `json:"endTime"`
-}
-
-// GetPastIDsResponse ...
-type GetPastIDsResponse struct {
-	Swaps []*PastSwapInfo `json:"swaps" validate:"dive,required"`
-}
-
-// GetPastIDs returns all past swap IDs and their start and end times.
-// It sorts them in order from oldest to newest.
-func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastIDsResponse) error {
-	ids, err := s.sm.GetPastIDs()
-	if err != nil {
-		return err
-	}
-
-	resp.Swaps = make([]*PastSwapInfo, len(ids))
-	for i, id := range ids {
-		info, err := s.sm.GetPastSwap(id)
-		if err != nil {
-			return fmt.Errorf("failed to get past swap %s: %w", id, err)
-		}
-
-		resp.Swaps[i] = &PastSwapInfo{
-			ID:        id,
-			StartTime: info.StartTime,
-			EndTime:   info.EndTime,
-		}
-	}
-
-	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
-	})
-
-	return nil
-}
-
-// GetPastRequest ...
-type GetPastRequest struct {
-	OfferID string `json:"offerID" validate:"required"`
-}
-
-// GetPastResponse ...
-type GetPastResponse struct {
+// PastSwap represents a past swap returned by swap_getPast.
+type PastSwap struct {
+	ID             types.Hash          `json:"id" validate:"required"`
 	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
@@ -103,25 +58,70 @@ type GetPastResponse struct {
 	EndTime        *time.Time          `json:"endTime"`
 }
 
-// GetPast returns information about a past swap, given its ID.
+// GetPastRequest ...
+type GetPastRequest struct {
+	OfferID string `json:"offerID"`
+}
+
+// GetPastResponse ...
+type GetPastResponse struct {
+	Swaps []*PastSwap `json:"swaps" validate:"required"`
+}
+
+// GetPast returns information about a past swap given its ID.
+// If no ID is provided, all past swaps are returned.
+// It sorts them in order from oldest to newest.
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
+	var (
+		swaps []*swap.Info
+	)
+
+	if req.OfferID == "" {
+		ids, err := s.sm.GetPastIDs()
+		if err != nil {
+			return err
+		}
+
+		for _, id := range ids {
+			info, err := s.sm.GetPastSwap(id)
+			if err != nil {
+				return fmt.Errorf("failed to get past swap %s: %w", id, err)
+			}
+
+			swaps = append(swaps, info)
+		}
+	} else {
+		offerID, err := offerIDStringToHash(req.OfferID)
+		if err != nil {
+			return err
+		}
+
+		info, err := s.sm.GetPastSwap(offerID)
+		if err != nil {
+			return err
+		}
+
+		swaps = append(swaps, info)
 	}
 
-	info, err := s.sm.GetPastSwap(offerID)
-	if err != nil {
-		return err
+	resp.Swaps = make([]*PastSwap, len(swaps))
+	for i, info := range swaps {
+		resp.Swaps[i] = &PastSwap{
+			ID:             info.ID,
+			Provided:       info.Provides,
+			ProvidedAmount: info.ProvidedAmount,
+			ExpectedAmount: info.ExpectedAmount,
+			ExchangeRate:   info.ExchangeRate,
+			Status:         info.Status,
+			StartTime:      info.StartTime,
+			EndTime:        info.EndTime,
+		}
 	}
 
-	resp.Provided = info.Provides
-	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ExpectedAmount = info.ExpectedAmount
-	resp.ExchangeRate = info.ExchangeRate
-	resp.Status = info.Status
-	resp.StartTime = info.StartTime
-	resp.EndTime = info.EndTime
+	sort.Slice(resp.Swaps, func(i, j int) bool {
+		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
+	})
+
 	return nil
 }
 

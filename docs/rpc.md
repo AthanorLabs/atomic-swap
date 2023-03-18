@@ -382,7 +382,7 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 
 ### `swap_getOngoing`
 
-Gets information for the specified ongoing swap.
+Gets information for ongoing swaps. If no ID is provided, all ongoing swaps are returned. Otherwise, only the swap with the specified ID is returned.
 
 Parameters:
 - `offerID`: (optional) the swap's ID.
@@ -392,12 +392,14 @@ Returns:
 
 Each items in `swaps` contains:
 - `id`: the swap ID.
-- `startTime`: the start time of the swap (in RFC 3339 format).
 - `provided`: the coin provided during the swap.
 - `providedAmount`: the amount of coin provided during the swap.
 - `receivedAmount`: the amount of coin expected to be received during the swap.
 - `exchangeRate`: the exchange rate of the swap, expressed in a ratio of XMR/ETH.
-- `status`: the swap's status; should always be "ongoing".
+- `status`: the swap's status.
+- `startTime`: the start time of the swap (in RFC 3339 format).
+- `timeout0`: the time at which the ETH-taker can always claim ETH, and the ETH-maker can no longer refund.
+- `timeout1`: the time at which the ETH-taker can no longer claim ETH, and the ETH-maker is able to refund.
 
 Example:
 ```bash
@@ -411,13 +413,15 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
   "result": {
     "swaps": [
       {
-        "id": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+        "id": "0xb12d3ecf4d437cfe682e6d455e4a9b2432e730e51029f2551e923b9695f36063",
         "provided": "ETH",
-        "providedAmount": "0.18",
-        "expectedAmount": "0.18",
-        "exchangeRate": "1",
+        "providedAmount": "0.006",
+        "expectedAmount": "0.12",
+        "exchangeRate": "0.05",
         "status": "ETHLocked",
-        "startTime": "2023-02-20T23:52:28.826764666Z"
+        "startTime": "2023-03-18T16:47:50.598029743-04:00",
+        "timeout0": "2023-03-18T16:49:55-04:00",
+        "timeout1": "2023-03-18T16:51:55-04:00"
       }
     ]
   },
@@ -436,63 +440,26 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
   "result": {
     "swaps": [
       {
-        "id": "0xea9e976d11871627c8fed3f15e0ec3857364d61c632cbf9f1da4dca603397c4f",
+        "id": "0x4e3c5db727b312ff7eefa6d6e18ac44285e20b75e5255c16255a9b741bc311d3",
         "provided": "ETH",
-        "providedAmount": "0.14",
-        "expectedAmount": "0.14",
+        "providedAmount": "0.1",
+        "expectedAmount": "0.1",
         "exchangeRate": "1",
         "status": "ETHLocked",
-        "startTime": "2023-02-20T22:01:24.145265256Z"
+        "startTime": "2023-03-18T16:52:56.304958446-04:00",
+        "timeout0": "2023-03-18T16:55:01-04:00",
+        "timeout1": "2023-03-18T16:57:01-04:00"
       },
       {
-        "id": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
+        "id": "0x8f23b7e187b1db26fcfd23c1699c3e56221153fd7225ada0b0cae8fdbd1cab65",
         "provided": "ETH",
-        "providedAmount": "0.18",
-        "expectedAmount": "0.18",
+        "providedAmount": "0.1",
+        "expectedAmount": "0.1",
         "exchangeRate": "1",
         "status": "ETHLocked",
-        "startTime": "2023-02-20T23:52:28.826764666Z"
-      }
-    ]
-  },
-  "id": "0"
-}
-```
-
-### `swap_getPastIDs`
-
-Gets all past swap IDs.
-
-Parameters:
-- none
-
-Returns:
-- `ids`: a list of all past swap IDs.
-
-Each item in `ids` contains:
-- `id`: the ID of the swap.
-- `startTime`: the start time of the swap (in RFC 3339 format).
-- `endTime`: the end time of the swap (in RFC 3339 format).
-
-Example:
-```bash
-curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
-'{"jsonrpc":"2.0","id":"0","method":"swap_getPastIDs","params":{}}' | jq
-```
-```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "ids": [
-      {
-        "id": "0x25d567ce6d963750e17946905bb334580b9e469c8f23e724ab98df535277dcc2",
-        "startTime": "2023-02-20T21:56:44.006075694Z",
-        "endTime": "2023-02-20T21:56:47.023332658Z"
-      },
-      {
-        "id": "0x38083ead32b9278c71ec6225b11d12aa6aaa677992afe415f26b4648572b4206",
-        "startTime": "2023-02-20T21:14:02.04949932Z",
-        "endTime": "2023-02-20T21:36:21.362943839Z"
+        "startTime": "2023-03-18T16:53:02.642556563-04:00",
+        "timeout0": "2023-03-18T16:55:07-04:00",
+        "timeout1": "2023-03-18T16:57:07-04:00"
       }
     ]
   },
@@ -502,34 +469,47 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 
 ### `swap_getPast`
 
-Gets a past swap information for the given swap ID.
+Gets information for past swaps. If no ID is provided, all past swaps are returned. Otherwise, only the swap with the specified ID is returned.
 
-Paramters:
-- `offerID`: the swap ID.
+Parameters:
+- `offerID`: (optional) the swap's ID.
 
 Returns:
+- `swaps`: a list of past swaps. If an offerID is provided, this returns only the swap with that ID, if it exists.
+
+Each items in `swaps` contains:
+- `id`: the swap ID.
 - `provided`: the coin provided during the swap.
 - `providedAmount`: the amount of coin provided during the swap.
-- `receivedAmount`: the amount of coin received during the swap.
+- `receivedAmount`: the amount of coin expected to be received during the swap.
 - `exchangeRate`: the exchange rate of the swap, expressed in a ratio of XMR/ETH.
-- `status`: the swap's status, one of `success`, `refunded`, or `aborted`.
+- `status`: the swap's exit status.
+- `startTime`: the start time of the swap (in RFC 3339 format).
+- `end`: the end time of the swap (in RFC 3339 format).
 
 Example:
 ```bash
 curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 '{"jsonrpc":"2.0","id":"0","method":"swap_getPast",
-"params":{"offerID": "0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381"}}' \
+"params":{"offerID": "0xb12d3ecf4d437cfe682e6d455e4a9b2432e730e51029f2551e923b9695f36063"}}' \
 | jq
 ```
 ```json
 {
   "jsonrpc": "2.0",
   "result": {
-    "provided": "ETH",
-    "providedAmount": "0.01",
-    "receivedAmount": "1",
-    "exchangeRate": "0.01",
-    "status": "Success"
+    "swaps": [
+      {
+        "id": "0xb12d3ecf4d437cfe682e6d455e4a9b2432e730e51029f2551e923b9695f36063",
+        "provided": "ETH",
+        "providedAmount": "0.006",
+        "expectedAmount": "0.12",
+        "exchangeRate": "0.05",
+        "status": "Success",
+        "startTime": "2023-03-18T16:47:50.598029743-04:00",
+        "endTime": "2023-03-18T16:48:14.942103399-04:00"
+      }
+    ]
   },
   "id": "0"
 }
