@@ -22,6 +22,10 @@ func IsHashZero(h Hash) bool {
 
 // HexToHash decodes a hex-encoded string into a hash
 func HexToHash(s string) (Hash, error) {
+	if s == "" {
+		return EmptyHash, nil
+	}
+
 	h, err := hex.DecodeString(strings.TrimPrefix(s, "0x"))
 	if err != nil {
 		return Hash{}, err
