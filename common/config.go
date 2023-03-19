@@ -1,8 +1,6 @@
 package common
 
 import (
-	"fmt"
-	"math/big"
 	"os"
 	"path"
 	"time"
@@ -32,15 +30,17 @@ type MoneroNode struct {
 
 // Config contains constants that are defaults for various environments
 type Config struct {
+	Env                      Environment
 	DataDir                  string
 	MoneroNodes              []*MoneroNode
-	ContractAddress          ethcommon.Address
+	SwapFactoryAddress       ethcommon.Address
 	ForwarderContractAddress ethcommon.Address
 	Bootnodes                []string
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration
 var MainnetConfig = Config{
+	Env:     Mainnet,
 	DataDir: path.Join(baseDir, "mainnet"),
 	MoneroNodes: []*MoneroNode{
 		{
@@ -64,6 +64,7 @@ var MainnetConfig = Config{
 
 // StagenetConfig is the monero stagenet and ethereum Gorli configuration
 var StagenetConfig = Config{
+	Env:     Stagenet,
 	DataDir: path.Join(baseDir, "stagenet"),
 	MoneroNodes: []*MoneroNode{
 		{
@@ -79,7 +80,7 @@ var StagenetConfig = Config{
 			Port: 38081,
 		},
 	},
-	ContractAddress:          ethcommon.HexToAddress("0x3d561C6f938aDBc45239772cc6A39e1Db7192154"),
+	SwapFactoryAddress:       ethcommon.HexToAddress("0x3d561C6f938aDBc45239772cc6A39e1Db7192154"),
 	ForwarderContractAddress: ethcommon.HexToAddress("0x4a707181842Ef084daFC90DeF367a1825eCcBCab"),
 	Bootnodes: []string{
 		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
@@ -95,6 +96,7 @@ var StagenetConfig = Config{
 
 // DevelopmentConfig is the monero and ethereum development environment configuration
 var DevelopmentConfig = Config{
+	Env:     Development,
 	DataDir: path.Join(baseDir, "dev"),
 	MoneroNodes: []*MoneroNode{
 		{
@@ -160,19 +162,5 @@ func DefaultMoneroPortFromEnv(env Environment) uint {
 		return DefaultMoneroDaemonDevPort
 	default:
 		panic("invalid environment")
-	}
-}
-
-// ConfigFromChainID returns the *Config corresponding to the given chain ID.
-func ConfigFromChainID(chainID *big.Int) (Config, error) {
-	switch chainID.Uint64() {
-	case MainnetChainID:
-		return MainnetConfig, nil
-	case GoerliChainID:
-		return StagenetConfig, nil
-	case GanacheChainID, HardhatChainID:
-		return DevelopmentConfig, nil
-	default:
-		return Config{}, fmt.Errorf("no config for chain ID %d", chainID)
 	}
 }

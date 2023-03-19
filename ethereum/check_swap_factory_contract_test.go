@@ -129,7 +129,7 @@ func TestGoerliContract(t *testing.T) {
 	require.NoError(t, err)
 	defer ec.Close()
 
-	parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, common.StagenetConfig.ContractAddress)
+	parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, common.StagenetConfig.SwapFactoryAddress)
 	if errors.Is(err, errInvalidSwapContract) && goerliKey != "" {
 		pk, err := ethcrypto.HexToECDSA(goerliKey) //nolint:govet // shadow declaration of err
 		require.NoError(t, err)

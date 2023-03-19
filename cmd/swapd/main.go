@@ -1,35 +1,26 @@
-// Package main provides the entrypoint of swapd, a daemon that manages atomic swaps
+// Package main provides the entrypoint of swapd, a Daemon that manages atomic swaps
 // between monero and ethereum assets.
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 
-	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/db"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/daemon"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/protocol/backend"
-	"github.com/athanorlabs/atomic-swap/protocol/swap"
-	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker"
-	"github.com/athanorlabs/atomic-swap/protocol/xmrtaker"
 	"github.com/athanorlabs/atomic-swap/relayer"
-	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
 const (
@@ -81,7 +72,7 @@ const (
 	flagDevXMRMaker      = "dev-xmrmaker"
 	flagDeploy           = "deploy"
 	flagForwarderAddress = "forwarder-address"
-	flagTransferBack     = "transfer-back"
+	flagNoTransferBack   = "no-transfer-back"
 
 	flagLogLevel = "log-level"
 	flagProfile  = "profile"
@@ -98,7 +89,7 @@ var (
 		Flags: []cli.Flag{
 			&cli.UintFlag{
 				Name:  flagRPCPort,
-				Usage: "Port for the daemon RPC server to run on",
+				Usage: "Port for the Daemon RPC server to run on",
 				Value: defaultRPCPort,
 			},
 			&cli.StringFlag{
@@ -190,9 +181,8 @@ var (
 				Usage: "Specifies the Ethereum address of the trusted forwarder contract when deploying the swap contract. Ignored if --deploy is not passed.", //nolint:lll
 			},
 			&cli.BoolFlag{
-				Name:  flagTransferBack,
-				Usage: "Set to false to leave XMR in generated swap wallet instead of moving to primary.",
-				Value: true,
+				Name:  flagNoTransferBack,
+				Usage: "Leave XMR in generated swap wallet instead of sweeping funds to primary.",
 			},
 			&cli.StringFlag{
 				Name:  flagLogLevel,
@@ -221,31 +211,15 @@ var (
 )
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go signalHandler(ctx, cancel)
+
+	err := app.RunContext(ctx, os.Args)
+	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-type xmrtakerHandler interface {
-	net.TakerHandler
-	rpc.XMRTaker
-}
-
-type xmrmakerHandler interface {
-	net.MakerHandler
-	rpc.XMRMaker
-}
-
-type daemon struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	database  *db.Database
-	host      *net.Host
-	rpcServer *rpc.Server
-
-	// this channel is closed once the daemon has started up
-	// (but before the RPC server starts, since that blocks)
-	startedCh chan struct{}
 }
 
 func setLogLevelsFromContext(c *cli.Context) error {
@@ -301,346 +275,119 @@ func runDaemon(c *cli.Context) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(c.Context)
-	defer cancel()
-	go signalHandler(ctx, cancel)
-
-	d := newEmptyDaemon(ctx, cancel)
-	if err := d.make(c); err != nil {
-		log.Errorf("RPC/Websocket server exited: %s", err)
-		cancel()
-	}
-	if err := d.stop(); err != nil {
-		log.Warnf("Cleanup error: %s", err)
-	}
-
-	return nil
-}
-
-func newEmptyDaemon(ctx context.Context, cancel context.CancelFunc) *daemon {
-	return &daemon{
-		ctx:       ctx,
-		cancel:    cancel,
-		startedCh: make(chan struct{}),
-	}
-}
-
-func (d *daemon) stop() error {
-	var hostErr, rpcErr, dbErr error
-	d.cancel()
-
-	if d.host != nil {
-		if hostErr = d.host.Stop(); hostErr != nil {
-			hostErr = fmt.Errorf("shutting down peer-to-peer services: %w", hostErr)
-		}
-	}
-
-	if d.rpcServer != nil {
-		if rpcErr = d.rpcServer.Stop(); rpcErr != nil {
-			rpcErr = fmt.Errorf("shutting down RPC/Websockets service: %s", rpcErr)
-		}
-	}
-
-	if d.database != nil {
-		if dbErr = d.database.Close(); dbErr != nil {
-			dbErr = fmt.Errorf("syncing database: %s", dbErr)
-		}
-	}
-
-	// Making sure the database is synced is the most important task, so we don't want to
-	// skip closing it if errors happen when stopping other services. We also want to
-	// close services that may modify the database before closing the database. Lastly, if
-	// we get multiple errors and need to chose which one to propagate upwards, a database
-	// error should be prioritised first.
-	switch {
-	case dbErr != nil:
-		return dbErr
-	case rpcErr != nil:
-		return rpcErr
-	case hostErr != nil:
-		return hostErr
-	default:
-		return nil
-	}
-}
-
-func (d *daemon) make(c *cli.Context) error { //nolint:gocyclo
-	env, err := common.NewEnv(c.String(flagEnv))
-	if err != nil {
-		return err
-	}
-	envCfg := common.ConfigDefaultsForEnv(env)
-
 	devXMRMaker := c.Bool(flagDevXMRMaker)
 	devXMRTaker := c.Bool(flagDevXMRTaker)
 	if devXMRMaker && devXMRTaker {
 		return errFlagsMutuallyExclusive(flagDevXMRMaker, flagDevXMRTaker)
 	}
 
+	env, err := common.NewEnv(c.String(flagEnv))
+	if err != nil {
+		return err
+	}
+
+	envConf, err := getEnvConfig(c, devXMRMaker, devXMRTaker)
+	if err != nil {
+		return err
+	}
+
+	mc, err := createMoneroClient(c, env)
+	if err != nil {
+		return err
+	}
+	defer mc.Close()
+
+	if err = maybeBackgroundMine(c.Context, devXMRMaker, mc.PrimaryAddress()); err != nil {
+		return err
+	}
+
+	ec, err := createEthClient(c, envConf)
+	if err != nil {
+		return err
+	}
+	defer ec.Close()
+
+	if err = validateOrDeployContracts(c, envConf, ec); err != nil {
+		return err
+	}
+
+	conf, err := createSwapdConf(c, envConf, mc, ec)
+	if err != nil {
+		return err
+	}
+
+	err = daemon.RunSwapDaemon(c.Context, conf)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return err
+	}
+
+	return nil
+}
+
+// getEnvConfig returns the environment specific config, adjusting all values changed by
+// command line options.
+func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.Config, error) {
+	env, err := common.NewEnv(c.String(flagEnv))
+	if err != nil {
+		return nil, err
+	}
+	conf := common.ConfigDefaultsForEnv(env)
+
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
 	if c.IsSet(flagDataDir) {
-		envCfg.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
-		if envCfg.DataDir == "" {
-			return errFlagValueEmpty(flagDataDir)
+		conf.DataDir = c.String(flagDataDir) // override the value derived from `flagEnv`
+		if conf.DataDir == "" {
+			return nil, errFlagValueEmpty(flagDataDir)
 		}
 	} else if env == common.Development {
 		// Override in dev scenarios if the value was not explicitly set
 		switch {
 		case devXMRTaker:
-			envCfg.DataDir = defaultXMRTakerDataDir
+			conf.DataDir = defaultXMRTakerDataDir
 		case devXMRMaker:
-			envCfg.DataDir = defaultXMRMakerDataDir
+			conf.DataDir = defaultXMRMakerDataDir
 		}
 	}
-	if err = common.MakeDir(envCfg.DataDir); err != nil {
-		return err
+	if err = common.MakeDir(conf.DataDir); err != nil {
+		return nil, err
 	}
 
 	if c.IsSet(flagBootnodes) {
-		envCfg.Bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
+		conf.Bootnodes = cliutil.ExpandBootnodes(c.StringSlice(flagBootnodes))
 	}
-
-	libp2pKey := envCfg.LibP2PKeyFile()
-	if c.IsSet(flagLibp2pKey) {
-		libp2pKey = c.String(flagLibp2pKey)
-		if libp2pKey == "" {
-			return errFlagValueEmpty(flagLibp2pKey)
-		}
-	}
-
-	libp2pPort := uint16(c.Uint(flagLibp2pPort))
-	if !c.IsSet(flagLibp2pPort) {
-		switch {
-		case devXMRTaker:
-			libp2pPort = defaultXMRTakerLibp2pPort
-		case devXMRMaker:
-			libp2pPort = defaultXMRMakerLibp2pPort
-		}
-	}
-
-	ethEndpoint := common.DefaultEthEndpoint
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String(flagEthereumEndpoint)
-	}
-	ec, err := ethclient.Dial(ethEndpoint)
-	if err != nil {
-		return err
-	}
-	chainID, err := ec.ChainID(d.ctx)
-	if err != nil {
-		return err
-	}
-
-	listenIP := "0.0.0.0"
-	if env == common.Development {
-		listenIP = "127.0.0.1"
-	}
-
-	netCfg := &net.Config{
-		Ctx:        d.ctx,
-		DataDir:    envCfg.DataDir,
-		Port:       libp2pPort,
-		KeyFile:    libp2pKey,
-		Bootnodes:  envCfg.Bootnodes,
-		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
-		ListenIP:   listenIP,
-		IsRelayer:  c.Bool(flagRelayer),
-	}
-
-	host, err := net.NewHost(netCfg)
-	if err != nil {
-		return err
-	}
-	d.host = host
-
-	dbCfg := &chaindb.Config{
-		DataDir: path.Join(envCfg.DataDir, "db"),
-	}
-
-	sdb, err := db.NewDatabase(dbCfg)
-	if err != nil {
-		return err
-	}
-	d.database = sdb
-
-	sm, err := swap.NewManager(sdb)
-	if err != nil {
-		return err
-	}
-
-	backendConf, err := createBackendConfig(
-		d.ctx,
-		c,
-		env,
-		envCfg,
-		devXMRMaker,
-		devXMRTaker,
-		sm,
-		host,
-		ec,
-		sdb.RecoveryDB(),
-	)
-	if err != nil {
-		return err
-	}
-
-	defer backendConf.MoneroClient.Close()
-
-	swapBackend, err := backend.NewBackend(backendConf)
-	if err != nil {
-		return fmt.Errorf("failed to make backend: %w", err)
-	}
-
-	log.Infof("created backend with monero endpoint %s and ethereum endpoint %s",
-		swapBackend.XMRClient().Endpoint(),
-		ethEndpoint,
-	)
-
-	a, b, err := getProtocolInstances(c, envCfg, swapBackend, sdb, host)
-	if err != nil {
-		return err
-	}
-
-	// connect network to protocol handler
-	// handler handles initiated ("taken") swap
-	host.SetHandlers(b, a)
-
-	if err = host.Start(); err != nil {
-		return err
-	}
-
-	rpcPort := uint16(c.Uint(flagRPCPort))
-	if !c.IsSet(flagRPCPort) {
-		switch {
-		case devXMRTaker:
-			rpcPort = defaultXMRTakerRPCPort
-		case devXMRMaker:
-			rpcPort = defaultXMRMakerRPCPort
-		}
-	}
-	listenAddr := fmt.Sprintf("127.0.0.1:%d", rpcPort)
-
-	rpcCfg := &rpc.Config{
-		Ctx:             d.ctx,
-		Address:         listenAddr,
-		Net:             host,
-		XMRTaker:        a,
-		XMRMaker:        b,
-		ProtocolBackend: swapBackend,
-	}
-
-	s, err := rpc.NewServer(rpcCfg)
-	if err != nil {
-		return err
-	}
-	d.rpcServer = s
-
-	err = maybeBackgroundMine(d.ctx, devXMRMaker, swapBackend)
-	if err != nil {
-		return err
-	}
-
-	close(d.startedCh)
-
-	log.Infof("starting swapd with data-dir %s", envCfg.DataDir)
-	err = s.Start()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-
-	return nil
-}
-
-func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, b backend.Backend) error {
-	// if we're in dev-xmrmaker mode, start background mining blocks
-	// otherwise swaps won't succeed as they'll be waiting for blocks
-	if !devXMRMaker {
-		return nil
-	}
-
-	addr, err := b.XMRClient().GetAddress(0)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("background mining blocks...")
-	go monero.BackgroundMineBlocks(ctx, addr.Address)
-	return nil
-}
-
-func errFlagsMutuallyExclusive(flag1, flag2 string) error {
-	return fmt.Errorf("flags %q and %q are mutually exclusive", flag1, flag2)
-}
-
-func errFlagValueEmpty(flag string) error {
-	return fmt.Errorf("flag %q requires a non-empty value", flag)
-}
-
-func errFlagValueZero(flag string) error {
-	return fmt.Errorf("flag %q requires a non-zero value", flag)
-}
-
-func createBackendConfig(
-	ctx context.Context,
-	c *cli.Context,
-	env common.Environment,
-	cfg *common.Config,
-	devXMRMaker bool,
-	devXMRTaker bool,
-	sm swap.Manager,
-	net *net.Host,
-	ec *ethclient.Client,
-	rdb *db.RecoveryDB,
-) (*backend.Config, error) {
-	var (
-		ethPrivKey *ecdsa.PrivateKey
-	)
-
-	useExternalSigner := c.Bool(flagUseExternalSigner)
-	if useExternalSigner && c.IsSet(flagEthereumPrivKey) {
-		return nil, errFlagsMutuallyExclusive(flagUseExternalSigner, flagEthereumPrivKey)
-	}
-
-	if !useExternalSigner {
-		ethPrivKeyFile := cfg.EthKeyFileName()
-		if c.IsSet(flagEthereumPrivKey) {
-			ethPrivKeyFile = c.String(flagEthereumPrivKey)
-			if ethPrivKeyFile == "" {
-				return nil, errFlagValueEmpty(flagEthereumPrivKey)
-			}
-		}
-		var err error
-		if ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker); err != nil {
-			return nil, err
-		}
-	}
-
-	extendedEC, err := extethclient.NewEthClient(ctx, env, ec, ethPrivKey)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
-	extendedEC.SetGasPrice(uint64(c.Uint(flagGasPrice)))
-	extendedEC.SetGasLimit(uint64(c.Uint(flagGasLimit)))
 
 	deploy := c.Bool(flagDeploy)
 	if deploy {
 		if c.IsSet(flagContractAddress) {
 			return nil, errFlagsMutuallyExclusive(flagDeploy, flagContractAddress)
 		}
-		// Zero out any default contract address in the config, so we deploy
-		cfg.ContractAddress = ethcommon.Address{}
+		// Zero out the contract address, we'll set its final value after deploying
+		conf.SwapFactoryAddress = ethcommon.Address{}
 	} else {
 		contractAddrStr := c.String(flagContractAddress)
 		if contractAddrStr != "" {
 			if !ethcommon.IsHexAddress(contractAddrStr) {
 				return nil, fmt.Errorf("%q is not a valid contract address", contractAddrStr)
 			}
-			cfg.ContractAddress = ethcommon.HexToAddress(contractAddrStr)
+			conf.SwapFactoryAddress = ethcommon.HexToAddress(contractAddrStr)
 		}
 
-		if bytes.Equal(cfg.ContractAddress.Bytes(), ethcommon.Address{}.Bytes()) {
+		if conf.SwapFactoryAddress == (ethcommon.Address{}) {
 			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
+		}
+	}
+
+	return conf, nil
+}
+
+// validateOrDeployContracts validates or deploys the swap factory. The SwapFactoryAddress field
+// of envConf should be all zeros if deploying and its value will be replaced by the new deployed
+// contract.
+func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec extethclient.EthClient) error {
+	deploy := c.Bool(flagDeploy)
+	if deploy {
+		if envConf.SwapFactoryAddress != (ethcommon.Address{}) {
+			panic("contract address should have been zeroed when envConf was initialized")
 		}
 	}
 
@@ -649,9 +396,8 @@ func createBackendConfig(
 	var forwarderAddress ethcommon.Address
 	forwarderAddressStr := c.String(flagForwarderAddress)
 	if deploy && forwarderAddressStr != "" {
-		ok := ethcommon.IsHexAddress(forwarderAddressStr)
-		if !ok {
-			return nil, errors.New("forwarder-address is invalid")
+		if !ethcommon.IsHexAddress(forwarderAddressStr) {
+			return errors.New("forwarder-address is invalid")
 		}
 
 		forwarderAddress = ethcommon.HexToAddress(forwarderAddressStr)
@@ -659,18 +405,25 @@ func createBackendConfig(
 		log.Warnf("forwarder-address is unused")
 	}
 
-	contract, contractAddr, err := getOrDeploySwapFactory(
-		ctx,
-		cfg.ContractAddress,
-		env,
-		cfg.DataDir,
-		ethPrivKey,
+	contractAddr, err := getOrDeploySwapFactory(
+		c.Context,
+		envConf.SwapFactoryAddress,
+		envConf.Env,
+		envConf.DataDir,
 		ec,
 		forwarderAddress,
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	envConf.SwapFactoryAddress = contractAddr
+
+	return nil
+}
+
+func createMoneroClient(c *cli.Context, env common.Environment) (monero.WalletClient, error) {
+	envConfig := common.ConfigDefaultsForEnv(env)
 
 	if c.IsSet(flagMoneroDaemonHost) || c.IsSet(flagMoneroDaemonPort) {
 		node := &common.MoneroNode{
@@ -689,83 +442,143 @@ func createBackendConfig(
 				return nil, errFlagValueZero(flagMoneroDaemonPort)
 			}
 		}
-		cfg.MoneroNodes = []*common.MoneroNode{node}
+		envConfig.MoneroNodes = []*common.MoneroNode{node}
 	}
 
-	walletFilePath := cfg.MoneroWalletPath()
+	walletFilePath := envConfig.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
 		if walletFilePath == "" {
 			return nil, errFlagValueEmpty(flagMoneroWalletPath)
 		}
 	}
-	mc, err := monero.NewWalletClient(&monero.WalletClientConf{
+
+	return monero.NewWalletClient(&monero.WalletClientConf{
 		Env:                 env,
 		WalletFilePath:      walletFilePath,
-		MonerodNodes:        cfg.MoneroNodes,
+		MonerodNodes:        envConfig.MoneroNodes,
 		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
 		WalletPassword:      c.String(flagMoneroWalletPassword),
 		WalletPort:          c.Uint(flagMoneroWalletPort),
 	})
+}
+
+func createEthClient(c *cli.Context, envConf *common.Config) (extethclient.EthClient, error) {
+	env := envConf.Env
+
+	ethEndpoint := common.DefaultEthEndpoint
+	if c.String(flagEthereumEndpoint) != "" {
+		ethEndpoint = c.String(flagEthereumEndpoint)
+	}
+
+	var ethPrivKey *ecdsa.PrivateKey
+
+	useExternalSigner := c.Bool(flagUseExternalSigner)
+	if useExternalSigner && c.IsSet(flagEthereumPrivKey) {
+		return nil, errFlagsMutuallyExclusive(flagUseExternalSigner, flagEthereumPrivKey)
+	}
+
+	if !useExternalSigner {
+		ethPrivKeyFile := envConf.EthKeyFileName()
+		if c.IsSet(flagEthereumPrivKey) {
+			ethPrivKeyFile = c.String(flagEthereumPrivKey)
+			if ethPrivKeyFile == "" {
+				return nil, errFlagValueEmpty(flagEthereumPrivKey)
+			}
+		}
+
+		devXMRMaker := c.Bool(flagDevXMRMaker)
+		devXMRTaker := c.Bool(flagDevXMRTaker)
+		if devXMRMaker && devXMRTaker {
+			return nil, errFlagsMutuallyExclusive(flagDevXMRMaker, flagDevXMRTaker)
+		}
+
+		var err error
+		ethPrivKey, err = cliutil.GetEthereumPrivateKey(ethPrivKeyFile, env, devXMRMaker, devXMRTaker)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	extendedEC, err := extethclient.NewEthClient(c.Context, env, ethEndpoint, ethPrivKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return &backend.Config{
-		Ctx:                 ctx,
-		MoneroClient:        mc,
-		EthereumClient:      extendedEC,
-		Environment:         env,
-		SwapManager:         sm,
-		SwapContract:        contract,
-		SwapContractAddress: contractAddr,
-		Net:                 net,
-		RecoveryDB:          rdb,
-	}, nil
+	// TODO: add configs for different eth testnets + L2 and set gas limit based on those, if not set (#153)
+	extendedEC.SetGasPrice(uint64(c.Uint(flagGasPrice)))
+	extendedEC.SetGasLimit(uint64(c.Uint(flagGasLimit)))
+
+	return extendedEC, nil
 }
 
-func getProtocolInstances(
+func createSwapdConf(
 	c *cli.Context,
-	cfg *common.Config,
-	b backend.Backend,
-	db *db.Database,
-	host *net.Host,
-) (xmrtakerHandler, xmrmakerHandler, error) {
-	walletFilePath := cfg.MoneroWalletPath()
-	if c.IsSet(flagMoneroWalletPath) {
-		walletFilePath = c.String(flagMoneroWalletPath)
-		if walletFilePath == "" {
-			return nil, nil, errFlagValueEmpty(flagMoneroWalletPath)
+	envConf *common.Config,
+	mc monero.WalletClient,
+	ec extethclient.EthClient,
+) (*daemon.SwapdConfig, error) {
+
+	libp2pKeyFile := envConf.LibP2PKeyFile()
+	if c.IsSet(flagLibp2pKey) {
+		libp2pKeyFile = c.String(flagLibp2pKey)
+		if libp2pKeyFile == "" {
+			return nil, errFlagValueEmpty(flagLibp2pKey)
 		}
 	}
 
-	// empty password is ok
-	walletPassword := c.String(flagMoneroWalletPassword)
-
-	xmrtakerCfg := &xmrtaker.Config{
-		Backend:      b,
-		DataDir:      cfg.DataDir,
-		TransferBack: c.Bool(flagTransferBack),
+	libp2pPort := c.Uint(flagLibp2pPort)
+	if !c.IsSet(flagLibp2pPort) {
+		switch {
+		case c.Bool(flagDevXMRMaker):
+			libp2pPort = defaultXMRMakerLibp2pPort
+		case c.Bool(flagDevXMRTaker):
+			libp2pPort = defaultXMRTakerLibp2pPort
+		}
 	}
 
-	xmrTaker, err := xmrtaker.NewInstance(xmrtakerCfg)
-	if err != nil {
-		return nil, nil, err
+	rpcPort := c.Uint(flagRPCPort)
+	if !c.IsSet(flagRPCPort) {
+		switch {
+		case c.Bool(flagDevXMRMaker):
+			rpcPort = defaultXMRMakerRPCPort
+		case c.Bool(flagDevXMRTaker):
+			rpcPort = defaultXMRTakerRPCPort
+		}
 	}
 
-	xmrMakerCfg := &xmrmaker.Config{
-		Backend:        b,
-		DataDir:        cfg.DataDir,
-		Database:       db,
-		WalletFile:     walletFilePath,
-		WalletPassword: walletPassword,
-		Network:        host,
+	return &daemon.SwapdConfig{
+		EnvConf:        envConf,
+		Libp2pPort:     uint16(libp2pPort),
+		Libp2pKeyfile:  libp2pKeyFile,
+		RPCPort:        uint16(rpcPort),
+		IsRelayer:      c.Bool(flagRelayer),
+		NoTransferBack: c.Bool(flagNoTransferBack),
+		MoneroClient:   mc,
+		EthereumClient: ec,
+	}, nil
+}
+
+func maybeBackgroundMine(ctx context.Context, devXMRMaker bool, address *mcrypto.Address) error {
+	// if we're in dev-xmrmaker mode, start background mining blocks
+	// otherwise swaps won't succeed as they'll be waiting for blocks
+	if !devXMRMaker {
+		return nil
 	}
 
-	xmrMaker, err := xmrmaker.NewInstance(xmrMakerCfg)
-	if err != nil {
-		return nil, nil, err
-	}
+	log.Infof("background mining blocks...")
+	go monero.BackgroundMineBlocks(ctx, address)
+	return nil
+}
 
-	return xmrTaker, xmrMaker, nil
+func errFlagsMutuallyExclusive(flag1, flag2 string) error {
+	return fmt.Errorf("flags %q and %q are mutually exclusive", flag1, flag2)
+}
+
+func errFlagValueEmpty(flag string) error {
+	return fmt.Errorf("flag %q requires a non-empty value", flag)
+}
+
+func errFlagValueZero(flag string) error {
+	return fmt.Errorf("flag %q requires a non-zero value", flag)
 }

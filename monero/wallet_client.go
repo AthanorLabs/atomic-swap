@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -108,7 +107,7 @@ func (conf *WalletClientConf) Fill() error {
 	}
 
 	if conf.WalletPort == 0 {
-		conf.WalletPort, err = getFreeTCPPort()
+		conf.WalletPort, err = common.GetFreeTCPPort()
 		if err != nil {
 			return err
 		}
@@ -396,7 +395,7 @@ func createWalletFromKeys(
 ) (WalletClient, error) {
 	if conf.WalletPort == 0 { // swap wallets need randomized ports, so we expect this to be zero
 		var err error
-		conf.WalletPort, err = getFreeTCPPort()
+		conf.WalletPort, err = common.GetFreeTCPPort()
 		if err != nil {
 			return nil, err
 		}
@@ -835,17 +834,4 @@ func getWalletRPCFlags(
 	}
 
 	return args
-}
-
-// getFreeTCPPort returns an OS allocated and immediately freed port. There is nothing preventing
-// something else on the system from using the port before the caller has a chance, but OS
-// allocated ports are randomised to make the risk negligible.
-func getFreeTCPPort() (uint, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = ln.Close() }()
-
-	return uint(ln.Addr().(*net.TCPAddr).Port), nil
 }

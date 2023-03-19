@@ -31,6 +31,7 @@ type EthClient interface {
 	SetAddress(addr ethcommon.Address)
 	PrivateKey() *ecdsa.PrivateKey
 	HasPrivateKey() bool
+	Endpoint() string
 
 	Balance(ctx context.Context) (*big.Int, error)
 	ERC20Balance(ctx context.Context, token ethcommon.Address) (*big.Int, error)
@@ -49,10 +50,12 @@ type EthClient interface {
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
 
+	Close()
 	Raw() *ethclient.Client
 }
 
 type ethClient struct {
+	endpoint   string
 	ec         *ethclient.Client
 	ethPrivKey *ecdsa.PrivateKey
 	ethAddress ethcommon.Address
@@ -63,13 +66,18 @@ type ethClient struct {
 }
 
 // NewEthClient creates and returns our extended ethereum client/wallet. The passed context
-// is only used for creation.
+// is only used for creation. The privKey can be nil if you are using an external signer.
 func NewEthClient(
 	ctx context.Context,
 	env common.Environment,
-	ec *ethclient.Client,
+	endpoint string,
 	privKey *ecdsa.PrivateKey,
 ) (EthClient, error) {
+	ec, err := ethclient.Dial(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return nil, err
@@ -85,6 +93,7 @@ func NewEthClient(
 	}
 
 	return &ethClient{
+		endpoint:   endpoint,
 		ec:         ec,
 		ethPrivKey: privKey,
 		ethAddress: addr,
@@ -109,6 +118,11 @@ func (c *ethClient) PrivateKey() *ecdsa.PrivateKey {
 
 func (c *ethClient) HasPrivateKey() bool {
 	return c.ethPrivKey != nil
+}
+
+// Endpoint returns the endpoint URL that we are connected to
+func (c *ethClient) Endpoint() string {
+	return c.endpoint
 }
 
 func (c *ethClient) Balance(ctx context.Context) (*big.Int, error) {
@@ -236,6 +250,10 @@ func (c *ethClient) Lock() {
 
 func (c *ethClient) Unlock() {
 	c.mu.Unlock()
+}
+
+func (c *ethClient) Close() {
+	c.ec.Close()
 }
 
 func (c *ethClient) Raw() *ethclient.Client {

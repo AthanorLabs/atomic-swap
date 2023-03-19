@@ -312,7 +312,7 @@ func Test_validateMonerodConfig_misMatchedEnv(t *testing.T) {
 }
 
 func Test_validateMonerodConfig_invalidPort(t *testing.T) {
-	nonUsedPort, err := getFreeTCPPort()
+	nonUsedPort, err := common.GetFreeTCPPort()
 	require.NoError(t, err)
 	node := &common.MoneroNode{
 		Host: "127.0.0.1",

@@ -7,6 +7,8 @@ import (
 
 	"github.com/MarinX/monerorpc"
 	"github.com/MarinX/monerorpc/daemon"
+
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
 const (
@@ -23,7 +25,7 @@ var mineMu sync.Mutex
 // BackgroundMineBlocks starts a background go routine to mine blocks in a monerod instance
 // that is in regtest mode. If there is an existing go routine that is already mining from
 // a previous call, no new go routine is created.
-func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
+func BackgroundMineBlocks(ctx context.Context, blockRewardAddress *mcrypto.Address) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	defer wg.Wait()
@@ -48,7 +50,7 @@ func BackgroundMineBlocks(ctx context.Context, blockRewardAddress string) {
 			daemonCli := monerorpc.New(MonerodRegtestEndpoint, nil).Daemon
 			resp, err := daemonCli.GenerateBlocks(&daemon.GenerateBlocksRequest{
 				AmountOfBlocks: 1,
-				WalletAddress:  blockRewardAddress,
+				WalletAddress:  blockRewardAddress.String(),
 			})
 			if err != nil && err.Error() == errBlockNotAccepted {
 				// This probably happens when something else is simultaneously generating

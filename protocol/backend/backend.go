@@ -104,25 +104,25 @@ type backend struct {
 
 // Config is the config for the Backend
 type Config struct {
-	Ctx            context.Context
-	MoneroClient   monero.WalletClient
-	EthereumClient extethclient.EthClient
-	Environment    common.Environment
-
-	SwapContract        *contracts.SwapFactory
-	SwapContractAddress ethcommon.Address
-
-	SwapManager swap.Manager
-
-	RecoveryDB RecoveryDB
-
-	Net NetSender
+	Ctx                context.Context
+	MoneroClient       monero.WalletClient
+	EthereumClient     extethclient.EthClient
+	Environment        common.Environment
+	SwapFactoryAddress ethcommon.Address
+	SwapManager        swap.Manager
+	RecoveryDB         RecoveryDB
+	Net                NetSender
 }
 
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
-	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
+	if (cfg.SwapFactoryAddress == ethcommon.Address{}) {
 		return nil, errNilSwapContractOrAddress
+	}
+
+	swapFactory, err := contracts.NewSwapFactory(cfg.SwapFactoryAddress, cfg.EthereumClient.Raw())
+	if err != nil {
+		return nil, err
 	}
 
 	return &backend{
@@ -130,8 +130,8 @@ func NewBackend(cfg *Config) (Backend, error) {
 		env:                   cfg.Environment,
 		moneroWallet:          cfg.MoneroClient,
 		ethClient:             cfg.EthereumClient,
-		contract:              cfg.SwapContract,
-		contractAddr:          cfg.SwapContractAddress,
+		contract:              swapFactory,
+		contractAddr:          cfg.SwapFactoryAddress,
 		swapManager:           cfg.SwapManager,
 		swapTimeout:           common.SwapTimeoutFromEnv(cfg.Environment),
 		NetSender:             cfg.Net,

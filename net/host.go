@@ -39,7 +39,6 @@ type P2pHost interface {
 	Discover(provides string, searchTime time.Duration) ([]peer.ID, error)
 
 	SetStreamHandler(string, func(libp2pnetwork.Stream))
-	SetAdvertisedNamespacesFunc(fn func() []string)
 
 	Connectedness(peer.ID) libp2pnetwork.Connectedness
 	Connect(context.Context, peer.AddrInfo) error
@@ -81,25 +80,29 @@ type Config struct {
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
 func NewHost(cfg *Config) (*Host, error) {
-	h, err := p2pnet.NewHost(&p2pnet.Config{
-		Ctx:        cfg.Ctx,
-		DataDir:    cfg.DataDir,
-		Port:       cfg.Port,
-		KeyFile:    cfg.KeyFile,
-		Bootnodes:  cfg.Bootnodes,
-		ProtocolID: cfg.ProtocolID,
-		ListenIP:   cfg.ListenIP,
+	h := &Host{
+		ctx:       cfg.Ctx,
+		h:         nil, // set below
+		isRelayer: cfg.IsRelayer,
+		swaps:     make(map[types.Hash]*swap),
+	}
+
+	var err error
+	h.h, err = p2pnet.NewHost(&p2pnet.Config{
+		Ctx:                      cfg.Ctx,
+		DataDir:                  cfg.DataDir,
+		Port:                     cfg.Port,
+		KeyFile:                  cfg.KeyFile,
+		Bootnodes:                cfg.Bootnodes,
+		ProtocolID:               cfg.ProtocolID,
+		ListenIP:                 cfg.ListenIP,
+		AdvertisedNamespacesFunc: h.advertisedNamespaces,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &Host{
-		ctx:       cfg.Ctx,
-		h:         h,
-		isRelayer: cfg.IsRelayer,
-		swaps:     make(map[types.Hash]*swap),
-	}, nil
+	return h, nil
 }
 
 // P2pHost returns the underlying go-p2p-net host.
@@ -126,7 +129,6 @@ func (h *Host) advertisedNamespaces() []string {
 func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler) {
 	h.makerHandler = makerHandler
 	h.takerHandler = takerHandler
-	h.h.SetAdvertisedNamespacesFunc(h.advertisedNamespaces)
 
 	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
 	if h.isRelayer {

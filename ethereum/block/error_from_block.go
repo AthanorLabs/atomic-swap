@@ -9,12 +9,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// errorFromBlock returns the error for why a transaction was reverted when mined.
+// ErrorFromBlock returns the error for why a transaction was reverted when mined.
 // Normally these errors are detected when creating the transaction, as the contract
 // call is simulated to estimate gas, but the state is different in the mined block
 // and the transaction can fail (losing gas) after it already went out to the network.
 // In this case, we simulate the call using the mined block to extract the error.
-func errorFromBlock(ctx context.Context, ec *ethclient.Client, receipt *ethtypes.Receipt) error {
+func ErrorFromBlock(ctx context.Context, ec *ethclient.Client, receipt *ethtypes.Receipt) error {
 	tx, err := ec.TransactionInBlock(ctx, receipt.BlockHash, receipt.TransactionIndex)
 	if err != nil {
 		return fmt.Errorf("unable to determine error in mined block, %w", err)

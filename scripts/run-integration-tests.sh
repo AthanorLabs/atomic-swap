@@ -36,6 +36,7 @@ create-eth-keys() {
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
 ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
+ALICE_RPC_PORT=5000
 LOG_LEVEL=debug
 
 start-swapd() {
@@ -73,15 +74,31 @@ start-daemons() {
 		--deploy
 
 	#
-	# Wait up to 60 seconds for Alice's swapd instance to start and deploy the swap contract
+	# Wait up to 60 seconds for Alice's swapd to be listening on its RPC port.
 	#
-	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-addresses.json"
-	for _ in {1..60}; do
-		if [[ -f "${CONTRACT_ADDR_FILE}" ]]; then
+	local alice_started=0
+	for i in {1..60}; do
+		if is-port-open "${ALICE_RPC_PORT}"; then
+			echo "Alice's swapd instance is listening after ${i} seconds"
+			alice_started=1
 			break
 		fi
 		sleep 1
 	done
+
+	if [[ "${alice_started}" -ne 1 ]]; then
+		echo "Alice's swapd instance failed to start"
+		stop-daemons
+		exit 1
+	fi
+
+	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-addresses.json"
+	if [[ ! -f "${CONTRACT_ADDR_FILE}" ]]; then
+		echo "Failed to get Alice's deployed contract address file"
+		stop-daemons
+		exit 1
+	fi
+
 	SWAP_FACTORY_ADDR="$(jq -r .swapFactory "${CONTRACT_ADDR_FILE}")"
 	FORWARDER_ADDR="$(jq -r .forwarder "${CONTRACT_ADDR_FILE}")"
 	if [[ -z "${SWAP_FACTORY_ADDR}" ]] || [[ -z "${FORWARDER_ADDR}" ]]; then
@@ -108,7 +125,7 @@ start-daemons() {
 		"--relayer"
 
 	# Give time for Bob and Charlie's swapd instances to fully start
-	sleep 5
+	sleep 15
 }
 
 stop-daemons() {
