@@ -30,6 +30,7 @@ func HexToHash(s string) (Hash, error) {
 	if err != nil {
 		return Hash{}, err
 	}
+
 	if len(h) != len(Hash{}) {
 		return Hash{}, fmt.Errorf("invalid len=%d hash", len(h))
 	}
