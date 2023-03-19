@@ -375,7 +375,8 @@ func estimatedTimeToCompletion(
 	estimatedTime := timeForStatus - time.Since(lastStatusUpdateTime)
 	if estimatedTime < 0 {
 		// TODO: add explanation as to why time to completion can't be estimated,
-		// probably because we need to wait for the countparty to refund
+		// probably because we need to wait for the countparty to refund, or
+		// monero block times were longer than expected.
 		return 0, nil
 	}
 
