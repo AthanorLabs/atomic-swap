@@ -671,6 +671,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 			fmt.Printf("First timeout: %s\n", info.Timeout0.Format(common.TimeFmtSecs))
 			fmt.Printf("Second timeout: %s\n", info.Timeout1.Format(common.TimeFmtSecs))
 		}
+		fmt.Printf("Estimated time to completion: %s\n", info.EstimatedTimeToCompletion)
 	}
 
 	return nil
