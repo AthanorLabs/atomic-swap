@@ -363,12 +363,23 @@ func estimatedTimeToCompletion(
 	status types.Status,
 	lastStatusUpdateTime time.Time,
 ) (time.Duration, error) {
+	if time.Until(lastStatusUpdateTime) > 0 {
+		return 0, fmt.Errorf("last status update time must be less than now")
+	}
+
 	timeForStatus, err := estimatedTimeToCompletionForStatus(env, status)
 	if err != nil {
 		return 0, err
 	}
 
-	return timeForStatus - time.Since(lastStatusUpdateTime), nil
+	estimatedTime := timeForStatus - time.Since(lastStatusUpdateTime)
+	if estimatedTime < 0 {
+		// TODO: add explanation as to why time to completion can't be estimated,
+		// probably because we need to wait for the countparty to refund
+		return 0, nil
+	}
+
+	return estimatedTime, nil
 }
 
 // estimatedTimeToCompletionForStatus returns the estimated time for the swap to complete
