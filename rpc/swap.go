@@ -60,7 +60,7 @@ type PastSwap struct {
 
 // GetPastRequest ...
 type GetPastRequest struct {
-	OfferID types.Hash `json:"offerID"`
+	OfferID *types.Hash `json:"offerID,omitempty"`
 }
 
 // GetPastResponse ...
@@ -74,7 +74,7 @@ type GetPastResponse struct {
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
 	var swaps []*swap.Info
 
-	if types.IsHashZero(req.OfferID) {
+	if req.OfferID == nil {
 		ids, err := s.sm.GetPastIDs()
 		if err != nil {
 			return err
@@ -89,7 +89,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 			swaps = append(swaps, info)
 		}
 	} else {
-		info, err := s.sm.GetPastSwap(req.OfferID)
+		info, err := s.sm.GetPastSwap(*req.OfferID)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ type OngoingSwap struct {
 
 // GetOngoingRequest ...
 type GetOngoingRequest struct {
-	OfferID types.Hash `json:"offerID" validate:"required"`
+	OfferID *types.Hash `json:"offerID,omitempty"`
 }
 
 // GetOngoingResponse ...
@@ -148,13 +148,13 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		err   error
 	)
 
-	if types.IsHashZero(req.OfferID) {
+	if req.OfferID == nil {
 		swaps, err = s.sm.GetOngoingSwaps()
 		if err != nil {
 			return err
 		}
 	} else {
-		info, err := s.sm.GetOngoingSwap(req.OfferID)
+		info, err := s.sm.GetOngoingSwap(*req.OfferID)
 		if err != nil {
 			return err
 		}
