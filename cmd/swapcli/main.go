@@ -634,9 +634,14 @@ func runTake(ctx *cli.Context) error {
 }
 
 func runGetOngoingSwap(ctx *cli.Context) error {
-	offerID, err := types.HexToHash(ctx.String(flagOfferID))
-	if err != nil {
-		return errInvalidFlagValue(flagOfferID, err)
+	var offerID *types.Hash
+
+	if ctx.IsSet(flagOfferID) {
+		hash, err := types.HexToHash(ctx.String(flagOfferID))
+		if err != nil {
+			return errInvalidFlagValue(flagOfferID, err)
+		}
+		offerID = &hash
 	}
 
 	c := newRRPClient(ctx)
@@ -679,9 +684,14 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 }
 
 func runGetPastSwap(ctx *cli.Context) error {
-	offerID, err := types.HexToHash(ctx.String(flagOfferID))
-	if err != nil {
-		return errInvalidFlagValue(flagOfferID, err)
+	var offerID *types.Hash
+
+	if ctx.IsSet(flagOfferID) {
+		hash, err := types.HexToHash(ctx.String(flagOfferID))
+		if err != nil {
+			return errInvalidFlagValue(flagOfferID, err)
+		}
+		offerID = &hash
 	}
 
 	c := newRRPClient(ctx)

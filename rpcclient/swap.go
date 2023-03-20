@@ -8,7 +8,7 @@ import (
 )
 
 // GetOngoingSwap calls swap_getOngoing
-func (c *Client) GetOngoingSwap(id types.Hash) (*rpc.GetOngoingResponse, error) {
+func (c *Client) GetOngoingSwap(id *types.Hash) (*rpc.GetOngoingResponse, error) {
 	const (
 		method = "swap_getOngoing"
 	)
@@ -26,7 +26,7 @@ func (c *Client) GetOngoingSwap(id types.Hash) (*rpc.GetOngoingResponse, error) 
 }
 
 // GetPastSwap calls swap_getPast
-func (c *Client) GetPastSwap(id types.Hash) (*rpc.GetPastResponse, error) {
+func (c *Client) GetPastSwap(id *types.Hash) (*rpc.GetPastResponse, error) {
 	const (
 		method = "swap_getPast"
 	)
