@@ -212,10 +212,12 @@ the swap protocol.
 
 To query the information for an ongoing swap, you can run:
 ```bash
-./bin/swapcli get-ongoing-swap --offer-id <id>
+./bin/swapcli ongoing --offer-id <id>
 ```
 
 To query information for a past swap using its ID, you can run:
 ```bash
-./bin/swapcli get-past-swap --offer-id <id>
+./bin/swapcli past --offer-id <id>
 ```
+
+For both of these commands, if no `--offer-id` is passed, all ongoing or past swaps will be returned.

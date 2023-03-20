@@ -7,23 +7,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
-// GetPastSwapIDs calls swap_getPastIDs
-func (c *Client) GetPastSwapIDs() ([]*rpc.PastSwapInfo, error) {
-	const (
-		method = "swap_getPastIDs"
-	)
-
-	res := &rpc.GetPastIDsResponse{}
-
-	if err := c.Post(method, nil, res); err != nil {
-		return nil, err
-	}
-
-	return res.Swaps, nil
-}
-
 // GetOngoingSwap calls swap_getOngoing
-func (c *Client) GetOngoingSwap(id string) (*rpc.GetOngoingResponse, error) {
+func (c *Client) GetOngoingSwap(id *types.Hash) (*rpc.GetOngoingResponse, error) {
 	const (
 		method = "swap_getOngoing"
 	)
@@ -41,7 +26,7 @@ func (c *Client) GetOngoingSwap(id string) (*rpc.GetOngoingResponse, error) {
 }
 
 // GetPastSwap calls swap_getPast
-func (c *Client) GetPastSwap(id string) (*rpc.GetPastResponse, error) {
+func (c *Client) GetPastSwap(id *types.Hash) (*rpc.GetPastResponse, error) {
 	const (
 		method = "swap_getPast"
 	)
@@ -60,7 +45,7 @@ func (c *Client) GetPastSwap(id string) (*rpc.GetPastResponse, error) {
 }
 
 // Refund calls swap_refund
-func (c *Client) Refund(id string) (*rpc.RefundResponse, error) {
+func (c *Client) Refund(id types.Hash) (*rpc.RefundResponse, error) {
 	const (
 		method = "swap_refund"
 	)
