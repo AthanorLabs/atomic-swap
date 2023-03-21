@@ -8,7 +8,7 @@ require (
 	github.com/MarinX/monerorpc v1.0.5
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213
-	github.com/athanorlabs/go-p2p-net v0.1.1-0.20230321015612-f46930a5f318
+	github.com/athanorlabs/go-p2p-net v0.2.0
 	github.com/athanorlabs/go-relayer v0.0.6-0.20230130025015-5c38ca344baa
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cockroachdb/apd/v3 v3.1.2
@@ -153,7 +153,7 @@ require (
 	go.uber.org/fx v1.19.2 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0 // indirect
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
