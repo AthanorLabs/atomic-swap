@@ -46,37 +46,68 @@ func NewSwapService(
 	}
 }
 
-// PastSwapInfo contains a swap ID and its start and end time.
-type PastSwapInfo struct {
-	ID        types.Hash `json:"id" validate:"required"`
-	StartTime time.Time  `json:"startTime" validate:"required"`
-	EndTime   *time.Time `json:"endTime"`
+// PastSwap represents a past swap returned by swap_getPast.
+type PastSwap struct {
+	ID             types.Hash          `json:"id" validate:"required"`
+	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
+	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
+	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
+	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
+	Status         types.Status        `json:"status" validate:"required"`
+	StartTime      time.Time           `json:"startTime" validate:"required"`
+	EndTime        *time.Time          `json:"endTime"`
 }
 
-// GetPastIDsResponse ...
-type GetPastIDsResponse struct {
-	Swaps []*PastSwapInfo `json:"swaps" validate:"dive,required"`
+// GetPastRequest ...
+type GetPastRequest struct {
+	OfferID *types.Hash `json:"offerID,omitempty"`
 }
 
-// GetPastIDs returns all past swap IDs and their start and end times.
+// GetPastResponse ...
+type GetPastResponse struct {
+	Swaps []*PastSwap `json:"swaps" validate:"dive,required"`
+}
+
+// GetPast returns information about a past swap given its ID.
+// If no ID is provided, all past swaps are returned.
 // It sorts them in order from oldest to newest.
-func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastIDsResponse) error {
-	ids, err := s.sm.GetPastIDs()
-	if err != nil {
-		return err
-	}
+func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
+	var swaps []*swap.Info
 
-	resp.Swaps = make([]*PastSwapInfo, len(ids))
-	for i, id := range ids {
-		info, err := s.sm.GetPastSwap(id)
+	if req.OfferID == nil {
+		ids, err := s.sm.GetPastIDs()
 		if err != nil {
-			return fmt.Errorf("failed to get past swap %s: %w", id, err)
+			return err
 		}
 
-		resp.Swaps[i] = &PastSwapInfo{
-			ID:        id,
-			StartTime: info.StartTime,
-			EndTime:   info.EndTime,
+		for _, id := range ids {
+			info, err := s.sm.GetPastSwap(id)
+			if err != nil {
+				return fmt.Errorf("failed to get past swap %s: %w", id, err)
+			}
+
+			swaps = append(swaps, info)
+		}
+	} else {
+		info, err := s.sm.GetPastSwap(*req.OfferID)
+		if err != nil {
+			return err
+		}
+
+		swaps = append(swaps, info)
+	}
+
+	resp.Swaps = make([]*PastSwap, len(swaps))
+	for i, info := range swaps {
+		resp.Swaps[i] = &PastSwap{
+			ID:             info.ID,
+			Provided:       info.Provides,
+			ProvidedAmount: info.ProvidedAmount,
+			ExpectedAmount: info.ExpectedAmount,
+			ExchangeRate:   info.ExchangeRate,
+			Status:         info.Status,
+			StartTime:      info.StartTime,
+			EndTime:        info.EndTime,
 		}
 	}
 
@@ -87,55 +118,24 @@ func (s *SwapService) GetPastIDs(_ *http.Request, _ *interface{}, resp *GetPastI
 	return nil
 }
 
-// GetPastRequest ...
-type GetPastRequest struct {
-	OfferID string `json:"offerID" validate:"required"`
-}
-
-// GetPastResponse ...
-type GetPastResponse struct {
-	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
-	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
-	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
-	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
-	Status         types.Status        `json:"status" validate:"required"`
-	StartTime      time.Time           `json:"startTime" validate:"required"`
-	EndTime        *time.Time          `json:"endTime"`
-}
-
-// GetPast returns information about a past swap, given its ID.
-func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
-	}
-
-	info, err := s.sm.GetPastSwap(offerID)
-	if err != nil {
-		return err
-	}
-
-	resp.Provided = info.Provides
-	resp.ProvidedAmount = info.ProvidedAmount
-	resp.ExpectedAmount = info.ExpectedAmount
-	resp.ExchangeRate = info.ExchangeRate
-	resp.Status = info.Status
-	resp.StartTime = info.StartTime
-	resp.EndTime = info.EndTime
-	return nil
-}
-
 // OngoingSwap represents an ongoing swap returned by swap_getOngoing.
 type OngoingSwap struct {
-	ID             types.Hash          `json:"id" validate:"required"`
-	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
-	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
-	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
-	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
-	Status         types.Status        `json:"status" validate:"required"`
-	StartTime      time.Time           `json:"startTime" validate:"required"`
-	Timeout0       *time.Time          `json:"timeout0"`
-	Timeout1       *time.Time          `json:"timeout1"`
+	ID                        types.Hash          `json:"id" validate:"required"`
+	Provided                  coins.ProvidesCoin  `json:"provided" validate:"required"`
+	ProvidedAmount            *apd.Decimal        `json:"providedAmount" validate:"required"`
+	ExpectedAmount            *apd.Decimal        `json:"expectedAmount" validate:"required"`
+	ExchangeRate              *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
+	Status                    types.Status        `json:"status" validate:"required"`
+	LastStatusUpdateTime      time.Time           `json:"lastStatusUpdateTime" validate:"required"`
+	StartTime                 time.Time           `json:"startTime" validate:"required"`
+	Timeout0                  *time.Time          `json:"timeout0"`
+	Timeout1                  *time.Time          `json:"timeout1"`
+	EstimatedTimeToCompletion time.Duration       `json:"estimatedTimeToCompletion" validate:"required"`
+}
+
+// GetOngoingRequest ...
+type GetOngoingRequest struct {
+	OfferID *types.Hash `json:"offerID,omitempty"`
 }
 
 // GetOngoingResponse ...
@@ -143,30 +143,22 @@ type GetOngoingResponse struct {
 	Swaps []*OngoingSwap `json:"swaps" validate:"dive,required"`
 }
 
-// GetOngoingRequest ...
-type GetOngoingRequest struct {
-	OfferID string `json:"offerID" validate:"required"`
-}
-
 // GetOngoing returns information about the ongoing swap with the given ID, if there is one.
 func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
+	env := s.backend.Env()
+
 	var (
 		swaps []*swap.Info
 		err   error
 	)
 
-	if req.OfferID == "" {
+	if req.OfferID == nil {
 		swaps, err = s.sm.GetOngoingSwaps()
 		if err != nil {
 			return err
 		}
 	} else {
-		offerID, err := offerIDStringToHash(req.OfferID)
-		if err != nil {
-			return err
-		}
-
-		info, err := s.sm.GetOngoingSwap(offerID)
+		info, err := s.sm.GetOngoingSwap(*req.OfferID) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -183,9 +175,15 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.ExpectedAmount = info.ExpectedAmount
 		swap.ExchangeRate = info.ExchangeRate
 		swap.Status = info.Status
+		swap.LastStatusUpdateTime = info.LastStatusUpdateTime
 		swap.StartTime = info.StartTime
 		swap.Timeout0 = info.Timeout0
 		swap.Timeout1 = info.Timeout1
+		swap.EstimatedTimeToCompletion, err = estimatedTimeToCompletion(env, info.Status, info.LastStatusUpdateTime)
+		if err != nil {
+			return fmt.Errorf("failed to estimate time to completion for swap %s: %w", info.ID, err)
+		}
+
 		resp.Swaps[i] = swap
 	}
 
@@ -198,7 +196,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 
 // RefundRequest ...
 type RefundRequest struct {
-	OfferID string `json:"offerID" validate:"required"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // RefundResponse ...
@@ -209,12 +207,7 @@ type RefundResponse struct {
 // Refund refunds the ongoing swap if we are the ETH provider.
 // TODO: remove in favour of swap_cancel?
 func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundResponse) error {
-	offerID, err := offerIDStringToHash(req.OfferID)
-	if err != nil {
-		return err
-	}
-
-	info, err := s.sm.GetOngoingSwap(offerID)
+	info, err := s.sm.GetOngoingSwap(req.OfferID)
 	if err != nil {
 		return err
 	}
@@ -223,7 +216,7 @@ func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundRe
 		return errCannotRefund
 	}
 
-	txHash, err := s.xmrtaker.Refund(offerID)
+	txHash, err := s.xmrtaker.Refund(req.OfferID)
 	if err != nil {
 		return fmt.Errorf("failed to refund: %w", err)
 	}
@@ -325,10 +318,6 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 	return nil
 }
 
-func offerIDStringToHash(s string) (types.Hash, error) {
-	return types.HexToHash(s)
-}
-
 // SuggestedExchangeRateResponse ...
 type SuggestedExchangeRateResponse struct {
 	ETHUpdatedAt time.Time           `json:"ethUpdatedAt" validate:"required"`
@@ -365,4 +354,70 @@ func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, res
 
 	resp.ExchangeRate = exchangeRate
 	return nil
+}
+
+// estimatedTimeToCompletionreturns the estimated time for the swap to complete
+// in the optimistic case based on the given status and the time the status was updated.
+func estimatedTimeToCompletion(
+	env common.Environment,
+	status types.Status,
+	lastStatusUpdateTime time.Time,
+) (time.Duration, error) {
+	if time.Until(lastStatusUpdateTime) > 0 {
+		return 0, fmt.Errorf("last status update time must be less than now")
+	}
+
+	timeForStatus, err := estimatedTimeToCompletionForStatus(env, status)
+	if err != nil {
+		return 0, err
+	}
+
+	estimatedTime := timeForStatus - time.Since(lastStatusUpdateTime)
+	if estimatedTime < 0 {
+		// TODO: add explanation as to why time to completion can't be estimated,
+		// probably because we need to wait for the countparty to refund, or
+		// monero block times were longer than expected.
+		return 0, nil
+	}
+
+	return estimatedTime.Round(time.Second), nil
+}
+
+// estimatedTimeToCompletionForStatus returns the estimated time for the swap to complete
+// in the optimistic case based on the given status, assuming the status was updated just now.
+func estimatedTimeToCompletionForStatus(env common.Environment, status types.Status) (time.Duration, error) {
+	var (
+		moneroBlockTime time.Duration
+		ethBlockTime    time.Duration
+	)
+
+	switch env {
+	case common.Development:
+		moneroBlockTime = time.Second
+		ethBlockTime = time.Second
+	default:
+		moneroBlockTime = time.Minute * 2
+		ethBlockTime = time.Second * 12
+	}
+
+	// we assume the Monero lock step will take 10 blocks, and for the taker,
+	// there is the additional 2 blocks to transfer the funds from the swap wallet
+	// to the original wallet.
+	//
+	// we also assume all Ethereum txs will take at maximum 2 blocks
+	// to be included.
+	switch status {
+	case types.ExpectingKeys:
+		return (moneroBlockTime * 12) + (ethBlockTime * 6), nil
+	case types.KeysExchanged:
+		return (moneroBlockTime * 10) + (ethBlockTime * 6), nil
+	case types.ETHLocked:
+		return (moneroBlockTime * 12) + (ethBlockTime * 4), nil
+	case types.XMRLocked:
+		return (moneroBlockTime * 10) + (ethBlockTime * 4), nil
+	case types.ContractReady:
+		return (moneroBlockTime * 2) + (ethBlockTime * 2), nil
+	default:
+		return 0, fmt.Errorf("invalid status %s; must be ongoing status type", status)
+	}
 }

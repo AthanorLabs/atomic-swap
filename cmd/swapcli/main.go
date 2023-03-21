@@ -210,13 +210,7 @@ var (
 				},
 			},
 			{
-				Name:   "get-past-swap-ids",
-				Usage:  "Get past swap IDs",
-				Action: runGetPastSwapIDs,
-				Flags:  []cli.Flag{swapdPortFlag},
-			},
-			{
-				Name:   "get-ongoing-swap",
+				Name:   "ongoing",
 				Usage:  "Get information about ongoing swap(s).",
 				Action: runGetOngoingSwap,
 				Flags: []cli.Flag{
@@ -228,14 +222,13 @@ var (
 				},
 			},
 			{
-				Name:   "get-past-swap",
-				Usage:  "Get information about a past swap with the given ID",
+				Name:   "past",
+				Usage:  "Get information about past swap(s)",
 				Action: runGetPastSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap to retrieve info for",
-						Required: true,
+						Name:  flagOfferID,
+						Usage: "ID of swap to retrieve info for",
 					},
 					swapdPortFlag,
 				},
@@ -640,34 +633,16 @@ func runTake(ctx *cli.Context) error {
 	return nil
 }
 
-func runGetPastSwapIDs(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
-	ids, err := c.GetPastSwapIDs()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Past swap offer IDs:")
-	if len(ids) == 0 {
-		fmt.Println("[none]")
-		return nil
-	}
-
-	for i, id := range ids {
-		if i > 0 {
-			fmt.Printf("---\n")
-		}
-
-		fmt.Printf("ID: %s\n", id.ID)
-		fmt.Printf("Start time: %s\n", id.StartTime.Format(common.TimeFmtSecs))
-		fmt.Printf("End time: %s\n", id.EndTime.Format(common.TimeFmtSecs))
-	}
-
-	return nil
-}
-
 func runGetOngoingSwap(ctx *cli.Context) error {
-	offerID := ctx.String(flagOfferID)
+	var offerID *types.Hash
+
+	if ctx.IsSet(flagOfferID) {
+		hash, err := types.HexToHash(ctx.String(flagOfferID))
+		if err != nil {
+			return errInvalidFlagValue(flagOfferID, err)
+		}
+		offerID = &hash
+	}
 
 	c := newRRPClient(ctx)
 	resp, err := c.GetOngoingSwap(offerID)
@@ -697,46 +672,72 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
+		fmt.Printf("Time status was last updated: %s\n", info.LastStatusUpdateTime.Format(common.TimeFmtSecs))
 		if info.Timeout0 != nil && info.Timeout1 != nil {
 			fmt.Printf("First timeout: %s\n", info.Timeout0.Format(common.TimeFmtSecs))
 			fmt.Printf("Second timeout: %s\n", info.Timeout1.Format(common.TimeFmtSecs))
 		}
+		fmt.Printf("Estimated time to completion: %s\n", info.EstimatedTimeToCompletion)
 	}
 
 	return nil
 }
 
 func runGetPastSwap(ctx *cli.Context) error {
-	offerID := ctx.String(flagOfferID)
+	var offerID *types.Hash
+
+	if ctx.IsSet(flagOfferID) {
+		hash, err := types.HexToHash(ctx.String(flagOfferID))
+		if err != nil {
+			return errInvalidFlagValue(flagOfferID, err)
+		}
+		offerID = &hash
+	}
 
 	c := newRRPClient(ctx)
-	info, err := c.GetPastSwap(offerID)
+	resp, err := c.GetPastSwap(offerID)
 	if err != nil {
 		return err
 	}
 
-	receivedCoin := "ETH"
-	if info.Provided == coins.ProvidesETH {
-		receivedCoin = "XMR"
+	fmt.Println("Past swaps:")
+	if len(resp.Swaps) == 0 {
+		fmt.Println("[none]")
+		return nil
 	}
 
-	endTime := "-"
-	if info.EndTime != nil {
-		endTime = info.EndTime.Format(common.TimeFmtSecs)
-	}
+	for i, info := range resp.Swaps {
+		if i > 0 {
+			fmt.Printf("---\n")
+		}
 
-	fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
-	fmt.Printf("End time: %s\n", endTime)
-	fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
-	fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
-	fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
-	fmt.Printf("Status: %s\n", info.Status)
+		receivedCoin := "ETH"
+		if info.Provided == coins.ProvidesETH {
+			receivedCoin = "XMR"
+		}
+
+		endTime := "-"
+		if info.EndTime != nil {
+			endTime = info.EndTime.Format(common.TimeFmtSecs)
+		}
+
+		fmt.Printf("ID: %s\n", info.ID)
+		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
+		fmt.Printf("End time: %s\n", endTime)
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Received: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
+		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+		fmt.Printf("Status: %s\n", info.Status)
+	}
 
 	return nil
 }
 
 func runRefund(ctx *cli.Context) error {
-	offerID := ctx.String(flagOfferID)
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
 
 	c := newRRPClient(ctx)
 	resp, err := c.Refund(offerID)
