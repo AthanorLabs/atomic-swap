@@ -120,15 +120,17 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 
 // OngoingSwap represents an ongoing swap returned by swap_getOngoing.
 type OngoingSwap struct {
-	ID             types.Hash          `json:"id" validate:"required"`
-	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
-	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
-	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
-	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
-	Status         types.Status        `json:"status" validate:"required"`
-	StartTime      time.Time           `json:"startTime" validate:"required"`
-	Timeout0       *time.Time          `json:"timeout0"`
-	Timeout1       *time.Time          `json:"timeout1"`
+	ID                        types.Hash          `json:"id" validate:"required"`
+	Provided                  coins.ProvidesCoin  `json:"provided" validate:"required"`
+	ProvidedAmount            *apd.Decimal        `json:"providedAmount" validate:"required"`
+	ExpectedAmount            *apd.Decimal        `json:"expectedAmount" validate:"required"`
+	ExchangeRate              *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
+	Status                    types.Status        `json:"status" validate:"required"`
+	LastStatusUpdateTime      time.Time           `json:"lastStatusUpdateTime" validate:"required"`
+	StartTime                 time.Time           `json:"startTime" validate:"required"`
+	Timeout0                  *time.Time          `json:"timeout0"`
+	Timeout1                  *time.Time          `json:"timeout1"`
+	EstimatedTimeToCompletion time.Duration       `json:"estimatedTimeToCompletion" validate:"required"`
 }
 
 // GetOngoingRequest ...
@@ -143,6 +145,8 @@ type GetOngoingResponse struct {
 
 // GetOngoing returns information about the ongoing swap with the given ID, if there is one.
 func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
+	env := s.backend.Env()
+
 	var (
 		swaps []*swap.Info
 		err   error
@@ -154,7 +158,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 			return err
 		}
 	} else {
-		info, err := s.sm.GetOngoingSwap(*req.OfferID)
+		info, err := s.sm.GetOngoingSwap(*req.OfferID) //nolint:govet
 		if err != nil {
 			return err
 		}
@@ -171,9 +175,15 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.ExpectedAmount = info.ExpectedAmount
 		swap.ExchangeRate = info.ExchangeRate
 		swap.Status = info.Status
+		swap.LastStatusUpdateTime = info.LastStatusUpdateTime
 		swap.StartTime = info.StartTime
 		swap.Timeout0 = info.Timeout0
 		swap.Timeout1 = info.Timeout1
+		swap.EstimatedTimeToCompletion, err = estimatedTimeToCompletion(env, info.Status, info.LastStatusUpdateTime)
+		if err != nil {
+			return fmt.Errorf("failed to estimate time to completion for swap %s: %w", info.ID, err)
+		}
+
 		resp.Swaps[i] = swap
 	}
 
@@ -344,4 +354,70 @@ func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, res
 
 	resp.ExchangeRate = exchangeRate
 	return nil
+}
+
+// estimatedTimeToCompletionreturns the estimated time for the swap to complete
+// in the optimistic case based on the given status and the time the status was updated.
+func estimatedTimeToCompletion(
+	env common.Environment,
+	status types.Status,
+	lastStatusUpdateTime time.Time,
+) (time.Duration, error) {
+	if time.Until(lastStatusUpdateTime) > 0 {
+		return 0, fmt.Errorf("last status update time must be less than now")
+	}
+
+	timeForStatus, err := estimatedTimeToCompletionForStatus(env, status)
+	if err != nil {
+		return 0, err
+	}
+
+	estimatedTime := timeForStatus - time.Since(lastStatusUpdateTime)
+	if estimatedTime < 0 {
+		// TODO: add explanation as to why time to completion can't be estimated,
+		// probably because we need to wait for the countparty to refund, or
+		// monero block times were longer than expected.
+		return 0, nil
+	}
+
+	return estimatedTime.Round(time.Second), nil
+}
+
+// estimatedTimeToCompletionForStatus returns the estimated time for the swap to complete
+// in the optimistic case based on the given status, assuming the status was updated just now.
+func estimatedTimeToCompletionForStatus(env common.Environment, status types.Status) (time.Duration, error) {
+	var (
+		moneroBlockTime time.Duration
+		ethBlockTime    time.Duration
+	)
+
+	switch env {
+	case common.Development:
+		moneroBlockTime = time.Second
+		ethBlockTime = time.Second
+	default:
+		moneroBlockTime = time.Minute * 2
+		ethBlockTime = time.Second * 12
+	}
+
+	// we assume the Monero lock step will take 10 blocks, and for the taker,
+	// there is the additional 2 blocks to transfer the funds from the swap wallet
+	// to the original wallet.
+	//
+	// we also assume all Ethereum txs will take at maximum 2 blocks
+	// to be included.
+	switch status {
+	case types.ExpectingKeys:
+		return (moneroBlockTime * 12) + (ethBlockTime * 6), nil
+	case types.KeysExchanged:
+		return (moneroBlockTime * 10) + (ethBlockTime * 6), nil
+	case types.ETHLocked:
+		return (moneroBlockTime * 12) + (ethBlockTime * 4), nil
+	case types.XMRLocked:
+		return (moneroBlockTime * 10) + (ethBlockTime * 4), nil
+	case types.ContractReady:
+		return (moneroBlockTime * 2) + (ethBlockTime * 2), nil
+	default:
+		return 0, fmt.Errorf("invalid status %s; must be ongoing status type", status)
+	}
 }

@@ -37,19 +37,20 @@ func TestDatabase_OfferTable(t *testing.T) {
 
 	// put swap to ensure iterator over offers is ok
 	infoA := &swap.Info{
-		Version:           swap.CurInfoVersion,
-		ID:                types.Hash{0x1},
-		Provides:          coins.ProvidesXMR,
-		ProvidedAmount:    coins.StrToDecimal("0.1"),
-		ExpectedAmount:    coins.StrToDecimal("1"),
-		ExchangeRate:      coins.StrToExchangeRate("0.1"),
-		EthAsset:          types.EthAsset{},
-		Status:            types.ExpectingKeys,
-		MoneroStartHeight: 12345,
-		StartTime:         time.Now().Add(-30 * time.Minute),
-		EndTime:           nil,
-		Timeout0:          nil,
-		Timeout1:          nil,
+		Version:              swap.CurInfoVersion,
+		ID:                   types.Hash{0x1},
+		Provides:             coins.ProvidesXMR,
+		ProvidedAmount:       coins.StrToDecimal("0.1"),
+		ExpectedAmount:       coins.StrToDecimal("1"),
+		ExchangeRate:         coins.StrToExchangeRate("0.1"),
+		EthAsset:             types.EthAsset{},
+		Status:               types.ExpectingKeys,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    12345,
+		StartTime:            time.Now().Add(-30 * time.Minute),
+		EndTime:              nil,
+		Timeout0:             nil,
+		Timeout1:             nil,
 	}
 
 	err = db.PutSwap(infoA)
@@ -103,19 +104,20 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 
 	// Put a swap entry tied to the bad offer in the database
 	swapEntry := &swap.Info{
-		Version:           swap.CurInfoVersion,
-		ID:                badOfferID,
-		Provides:          coins.ProvidesXMR,
-		ProvidedAmount:    coins.StrToDecimal("0.1"),
-		ExpectedAmount:    coins.StrToDecimal("1"),
-		ExchangeRate:      coins.StrToExchangeRate("0.1"),
-		EthAsset:          types.EthAsset{},
-		Status:            types.ExpectingKeys,
-		MoneroStartHeight: 12345,
-		Timeout0:          nil,
-		Timeout1:          nil,
-		StartTime:         time.Now().Add(-30 * time.Minute),
-		EndTime:           nil,
+		Version:              swap.CurInfoVersion,
+		ID:                   badOfferID,
+		Provides:             coins.ProvidesXMR,
+		ProvidedAmount:       coins.StrToDecimal("0.1"),
+		ExpectedAmount:       coins.StrToDecimal("1"),
+		ExchangeRate:         coins.StrToExchangeRate("0.1"),
+		EthAsset:             types.EthAsset{},
+		Status:               types.ExpectingKeys,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    12345,
+		Timeout0:             nil,
+		Timeout1:             nil,
+		StartTime:            time.Now().Add(-30 * time.Minute),
+		EndTime:              nil,
 	}
 	err = db.PutSwap(swapEntry)
 	require.NoError(t, err)
@@ -174,37 +176,39 @@ func TestDatabase_SwapTable(t *testing.T) {
 	timeout1 := time.Now().Add(60 * time.Minute)
 
 	infoA := &swap.Info{
-		Version:           swap.CurInfoVersion,
-		ID:                offerA.ID,
-		Provides:          offerA.Provides,
-		ProvidedAmount:    offerA.MinAmount,
-		ExpectedAmount:    offerA.MinAmount,
-		ExchangeRate:      offerA.ExchangeRate,
-		EthAsset:          offerA.EthAsset,
-		Status:            types.ContractReady,
-		MoneroStartHeight: 12345,
-		StartTime:         startTime,
-		EndTime:           nil,
-		Timeout0:          &timeout0,
-		Timeout1:          &timeout1,
+		Version:              swap.CurInfoVersion,
+		ID:                   offerA.ID,
+		Provides:             offerA.Provides,
+		ProvidedAmount:       offerA.MinAmount,
+		ExpectedAmount:       offerA.MinAmount,
+		ExchangeRate:         offerA.ExchangeRate,
+		EthAsset:             offerA.EthAsset,
+		Status:               types.ContractReady,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    12345,
+		StartTime:            startTime,
+		EndTime:              nil,
+		Timeout0:             &timeout0,
+		Timeout1:             &timeout1,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
 
 	infoB := &swap.Info{
-		Version:           swap.CurInfoVersion,
-		ID:                types.Hash{0x2},
-		Provides:          coins.ProvidesXMR,
-		ProvidedAmount:    coins.StrToDecimal("1.5"),
-		ExpectedAmount:    coins.StrToDecimal("0.15"),
-		ExchangeRate:      coins.ToExchangeRate(coins.StrToDecimal("0.1")),
-		EthAsset:          types.EthAsset{},
-		Status:            types.XMRLocked,
-		MoneroStartHeight: 12345,
-		StartTime:         startTime,
-		EndTime:           nil,
-		Timeout0:          &timeout0,
-		Timeout1:          &timeout1,
+		Version:              swap.CurInfoVersion,
+		ID:                   types.Hash{0x2},
+		Provides:             coins.ProvidesXMR,
+		ProvidedAmount:       coins.StrToDecimal("1.5"),
+		ExpectedAmount:       coins.StrToDecimal("0.15"),
+		ExchangeRate:         coins.ToExchangeRate(coins.StrToDecimal("0.1")),
+		EthAsset:             types.EthAsset{},
+		Status:               types.XMRLocked,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    12345,
+		StartTime:            startTime,
+		EndTime:              nil,
+		Timeout0:             &timeout0,
+		Timeout1:             &timeout1,
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
@@ -230,19 +234,20 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 	timeout1 := time.Now().Add(60 * time.Minute)
 
 	goodInfo := &swap.Info{
-		Version:           swap.CurInfoVersion,
-		ID:                types.Hash{0x1, 0x2, 0x3},
-		Provides:          coins.ProvidesXMR,
-		ProvidedAmount:    coins.StrToDecimal("1.5"),
-		ExpectedAmount:    coins.StrToDecimal("0.15"),
-		ExchangeRate:      coins.ToExchangeRate(coins.StrToDecimal("0.1")),
-		EthAsset:          types.EthAsset{},
-		Status:            types.ETHLocked,
-		MoneroStartHeight: 12345,
-		StartTime:         startTime,
-		EndTime:           nil,
-		Timeout0:          &timeout0,
-		Timeout1:          &timeout1,
+		Version:              swap.CurInfoVersion,
+		ID:                   types.Hash{0x1, 0x2, 0x3},
+		Provides:             coins.ProvidesXMR,
+		ProvidedAmount:       coins.StrToDecimal("1.5"),
+		ExpectedAmount:       coins.StrToDecimal("0.15"),
+		ExchangeRate:         coins.ToExchangeRate(coins.StrToDecimal("0.1")),
+		EthAsset:             types.EthAsset{},
+		Status:               types.ETHLocked,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    12345,
+		StartTime:            startTime,
+		EndTime:              nil,
+		Timeout0:             &timeout0,
+		Timeout1:             &timeout1,
 	}
 	err = db.PutSwap(goodInfo)
 	require.NoError(t, err)
@@ -292,19 +297,20 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 	timeout1 := time.Now().Add(60 * time.Minute)
 
 	infoA := &swap.Info{
-		Version:           swap.CurInfoVersion,
-		ID:                id,
-		Provides:          coins.ProvidesXMR,
-		ProvidedAmount:    coins.StrToDecimal("0.1"),
-		ExpectedAmount:    coins.StrToDecimal("1"),
-		ExchangeRate:      coins.StrToExchangeRate("0.1"),
-		EthAsset:          types.EthAsset{},
-		Status:            types.XMRLocked,
-		MoneroStartHeight: 12345,
-		StartTime:         startTime,
-		EndTime:           nil,
-		Timeout0:          &timeout0,
-		Timeout1:          &timeout1,
+		Version:              swap.CurInfoVersion,
+		ID:                   id,
+		Provides:             coins.ProvidesXMR,
+		ProvidedAmount:       coins.StrToDecimal("0.1"),
+		ExpectedAmount:       coins.StrToDecimal("1"),
+		ExchangeRate:         coins.StrToExchangeRate("0.1"),
+		EthAsset:             types.EthAsset{},
+		Status:               types.XMRLocked,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    12345,
+		StartTime:            startTime,
+		EndTime:              nil,
+		Timeout0:             &timeout0,
+		Timeout1:             &timeout1,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)

@@ -35,6 +35,8 @@ type Info struct {
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 	EthAsset       types.EthAsset      `json:"ethAsset"`
 	Status         Status              `json:"status" validate:"required"`
+	// LastStatusUpdateTime is the time at which the status was last updated.
+	LastStatusUpdateTime time.Time `json:"lastStatusUpdateTime" validate:"required"`
 	// MoneroStartHeight is the Monero block number when the swap begins.
 	MoneroStartHeight uint64 `json:"moneroStartHeight" validate:"required"`
 	// StartTime is the time at which the swap is initiated via
@@ -71,17 +73,18 @@ func NewInfo(
 	statusCh chan types.Status,
 ) *Info {
 	info := &Info{
-		Version:           CurInfoVersion,
-		ID:                id,
-		Provides:          provides,
-		ProvidedAmount:    providedAmount,
-		ExpectedAmount:    expectedAmount,
-		ExchangeRate:      exchangeRate,
-		EthAsset:          ethAsset,
-		Status:            status,
-		MoneroStartHeight: moneroStartHeight,
-		statusCh:          statusCh,
-		StartTime:         time.Now(),
+		Version:              CurInfoVersion,
+		ID:                   id,
+		Provides:             provides,
+		ProvidedAmount:       providedAmount,
+		ExpectedAmount:       expectedAmount,
+		ExchangeRate:         exchangeRate,
+		EthAsset:             ethAsset,
+		Status:               status,
+		LastStatusUpdateTime: time.Now(),
+		MoneroStartHeight:    moneroStartHeight,
+		statusCh:             statusCh,
+		StartTime:            time.Now(),
 	}
 	return info
 }
@@ -94,6 +97,7 @@ func (i *Info) StatusCh() chan types.Status {
 // SetStatus ...
 func (i *Info) SetStatus(s Status) {
 	i.Status = s
+	i.LastStatusUpdateTime = time.Now()
 }
 
 // UnmarshalInfo deserializes a JSON Info struct, checking the version for compatibility

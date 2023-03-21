@@ -29,6 +29,7 @@ func Test_InfoMarshal(t *testing.T) {
 	)
 	err := info.StartTime.UnmarshalJSON([]byte("\"2023-02-20T17:29:43.471020297-05:00\""))
 	require.NoError(t, err)
+	info.LastStatusUpdateTime = info.StartTime
 
 	infoBytes, err := vjson.MarshalStruct(info)
 	require.NoError(t, err)
@@ -43,6 +44,7 @@ func Test_InfoMarshal(t *testing.T) {
 		"ethAsset": "ETH",
 		"moneroStartHeight": 200,
 		"status": "Success",
+		"lastStatusUpdateTime": "2023-02-20T17:29:43.471020297-05:00",
 		"startTime": "2023-02-20T17:29:43.471020297-05:00"
 	}`
 	require.JSONEq(t, expectedJSON, string(infoBytes))
