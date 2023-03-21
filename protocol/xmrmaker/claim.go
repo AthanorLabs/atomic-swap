@@ -220,6 +220,7 @@ func waitForClaimReceipt(
 			txHash, receipt.BlockNumber, err)
 	}
 
+	log.Debugf("relayer's claim transaction validated, gas used: %d", receipt.GasUsed)
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -21,6 +22,7 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -97,6 +99,7 @@ func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	}
 }
 
+// Tests the scenario, where Bob has no ETH and Alice relays his claim.
 func TestRunSwapDaemon_SwapBobHasNoEth(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	t.Cleanup(func() {
@@ -111,8 +114,6 @@ func TestRunSwapDaemon_SwapBobHasNoEth(t *testing.T) {
 
 	bobEthKey, err := crypto.GenerateKey() // Bob has no ETH (not a ganache key)
 	require.NoError(t, err)
-	_ = bobEthKey
-	bobEthKey = tests.GetMakerTestKey(t) // TODO: MEETING TOPIC
 	bobConf := createTestConf(t, bobEthKey)
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
@@ -150,8 +151,8 @@ func TestRunSwapDaemon_SwapBobHasNoEth(t *testing.T) {
 	}()
 	WaitForSwapdStart(t, aliceConf.RPCPort)
 
-	// TODO: set usRelayer to false below before merging
-	makeResp, bobStatusCh, err := bws.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, true)
+	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
+	makeResp, bobStatusCh, err := bws.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
 	require.NoError(t, err)
 
 	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
@@ -200,4 +201,19 @@ func TestRunSwapDaemon_SwapBobHasNoEth(t *testing.T) {
 	}()
 
 	statusWG.Wait()
+	if t.Failed() {
+		return
+	}
+
+	//
+	// Bob's ending balance should be Alice's provided amount minus the relayer fee
+	//
+	expectedBal := new(apd.Decimal)
+	_, err = coins.DecimalCtx().Sub(expectedBal, providesAmt, relayer.FeeEth)
+	require.NoError(t, err)
+
+	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
 }
