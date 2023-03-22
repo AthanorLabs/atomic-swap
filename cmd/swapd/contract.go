@@ -18,6 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+const (
+	contractAddressesFile = "contract-addresses.json"
+)
+
 var (
 	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
 )
@@ -76,6 +80,10 @@ func deploySwapFactory(
 		if err != nil {
 			return ethcommon.Address{}, nil, err
 		}
+	} else {
+		if err := contracts.CheckForwarderContractCode(ctx, ec, forwarderAddress); err != nil {
+			return ethcommon.Address{}, nil, err
+		}
 	}
 
 	swapFactoryAddress, sf, err := contracts.DeploySwapFactoryWithKey(ctx, ec, privkey, forwarderAddress)
@@ -85,7 +93,7 @@ func deploySwapFactory(
 
 	// store the contract address on disk
 	err = writeContractAddressToFile(
-		path.Join(dataDir, "contract-addresses.json"),
+		path.Join(dataDir, contractAddressesFile),
 		&contractAddresses{
 			SwapFactory: swapFactoryAddress,
 			Forwarder:   forwarderAddress,

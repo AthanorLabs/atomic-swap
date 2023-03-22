@@ -78,8 +78,8 @@ const (
 	flagProfile  = "profile"
 )
 
-var (
-	app = &cli.App{
+func cliApp() *cli.App {
+	return &cli.App{
 		Name:                 "swapd",
 		Usage:                "A program for doing atomic swaps between ETH and XMR",
 		Version:              cliutil.GetVersion(),
@@ -208,7 +208,7 @@ var (
 			},
 		},
 	}
-)
+}
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -216,7 +216,7 @@ func main() {
 
 	go signalHandler(ctx, cancel)
 
-	err := app.RunContext(ctx, os.Args)
+	err := cliApp().RunContext(ctx, os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -39,71 +39,77 @@ type Config struct {
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration
-var MainnetConfig = Config{
-	Env:     Mainnet,
-	DataDir: path.Join(baseDir, "mainnet"),
-	MoneroNodes: []*MoneroNode{
-		{
-			Host: "node.sethforprivacy.com",
-			Port: 18089,
+func MainnetConfig() *Config {
+	return &Config{
+		Env:     Mainnet,
+		DataDir: path.Join(baseDir, "mainnet"),
+		MoneroNodes: []*MoneroNode{
+			{
+				Host: "node.sethforprivacy.com",
+				Port: 18089,
+			},
+			{
+				Host: "xmr-node.cakewallet.com",
+				Port: DefaultMoneroDaemonMainnetPort,
+			},
+			{
+				Host: "node.monerodevs.org",
+				Port: 18089,
+			},
+			{
+				Host: "node.community.rino.io",
+				Port: DefaultMoneroDaemonMainnetPort,
+			},
 		},
-		{
-			Host: "xmr-node.cakewallet.com",
-			Port: DefaultMoneroDaemonMainnetPort,
-		},
-		{
-			Host: "node.monerodevs.org",
-			Port: 18089,
-		},
-		{
-			Host: "node.community.rino.io",
-			Port: DefaultMoneroDaemonMainnetPort,
-		},
-	},
+	}
 }
 
 // StagenetConfig is the monero stagenet and ethereum Gorli configuration
-var StagenetConfig = Config{
-	Env:     Stagenet,
-	DataDir: path.Join(baseDir, "stagenet"),
-	MoneroNodes: []*MoneroNode{
-		{
-			Host: "node.sethforprivacy.com",
-			Port: 38089,
+func StagenetConfig() *Config {
+	return &Config{
+		Env:     Stagenet,
+		DataDir: path.Join(baseDir, "stagenet"),
+		MoneroNodes: []*MoneroNode{
+			{
+				Host: "node.sethforprivacy.com",
+				Port: 38089,
+			},
+			{
+				Host: "node.monerodevs.org",
+				Port: 38089,
+			},
+			{
+				Host: "stagenet.community.rino.io",
+				Port: 38081,
+			},
 		},
-		{
-			Host: "node.monerodevs.org",
-			Port: 38089,
+		SwapFactoryAddress:       ethcommon.HexToAddress("0x3d561C6f938aDBc45239772cc6A39e1Db7192154"),
+		ForwarderContractAddress: ethcommon.HexToAddress("0x4a707181842Ef084daFC90DeF367a1825eCcBCab"),
+		Bootnodes: []string{
+			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
+			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
+			"/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLbfkLZZvvn8Lxs1KDU3u7gyvBk88ZNtJBbugytBr5RCG",
+			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
+			"/ip4/67.205.131.11/tcp/9900/p2p/12D3KooWT19g8cfBVYiGWkksU1ZojHCBNqTu3Hz5JLfhhytaHSwi",
+			"/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz",
+			"/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu",
+			"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
 		},
-		{
-			Host: "stagenet.community.rino.io",
-			Port: 38081,
-		},
-	},
-	SwapFactoryAddress:       ethcommon.HexToAddress("0x3d561C6f938aDBc45239772cc6A39e1Db7192154"),
-	ForwarderContractAddress: ethcommon.HexToAddress("0x4a707181842Ef084daFC90DeF367a1825eCcBCab"),
-	Bootnodes: []string{
-		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
-		"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
-		"/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLbfkLZZvvn8Lxs1KDU3u7gyvBk88ZNtJBbugytBr5RCG",
-		"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
-		"/ip4/67.205.131.11/tcp/9900/p2p/12D3KooWT19g8cfBVYiGWkksU1ZojHCBNqTu3Hz5JLfhhytaHSwi",
-		"/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz",
-		"/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu",
-		"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
-	},
+	}
 }
 
 // DevelopmentConfig is the monero and ethereum development environment configuration
-var DevelopmentConfig = Config{
-	Env:     Development,
-	DataDir: path.Join(baseDir, "dev"),
-	MoneroNodes: []*MoneroNode{
-		{
-			Host: "127.0.0.1",
-			Port: DefaultMoneroDaemonMainnetPort,
+func DevelopmentConfig() *Config {
+	return &Config{
+		Env:     Development,
+		DataDir: path.Join(baseDir, "dev"),
+		MoneroNodes: []*MoneroNode{
+			{
+				Host: "127.0.0.1",
+				Port: DefaultMoneroDaemonMainnetPort,
+			},
 		},
-	},
+	}
 }
 
 // MoneroWalletPath returns the path to the wallet file, whose default value
@@ -128,11 +134,11 @@ func (c Config) EthKeyFileName() string {
 func ConfigDefaultsForEnv(env Environment) *Config {
 	switch env {
 	case Mainnet:
-		return &MainnetConfig
+		return MainnetConfig()
 	case Stagenet:
-		return &StagenetConfig
+		return StagenetConfig()
 	case Development:
-		return &DevelopmentConfig
+		return DevelopmentConfig()
 	default:
 		panic("invalid environment")
 	}

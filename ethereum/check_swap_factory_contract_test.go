@@ -125,11 +125,13 @@ func TestGoerliContract(t *testing.T) {
 	const goerliEndpoint = "https://ethereum-goerli-rpc.allthatnode.com"
 	// temporarily place a funded goerli private key below to deploy the test contract
 	const goerliKey = ""
+
+	ctx := context.Background()
 	ec, err := ethclient.Dial(goerliEndpoint)
 	require.NoError(t, err)
 	defer ec.Close()
 
-	parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, common.StagenetConfig.SwapFactoryAddress)
+	parsedTFAddr, err := CheckSwapFactoryContractCode(ctx, ec, common.StagenetConfig().SwapFactoryAddress)
 	if errors.Is(err, errInvalidSwapContract) && goerliKey != "" {
 		pk, err := ethcrypto.HexToECDSA(goerliKey) //nolint:govet // shadow declaration of err
 		require.NoError(t, err)

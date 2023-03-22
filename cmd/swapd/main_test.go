@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
@@ -18,8 +21,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/daemon"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
+	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 func newTestContext(t *testing.T) (context.Context, context.CancelFunc) {
@@ -46,6 +51,7 @@ func getFreePort(t *testing.T) uint16 {
 
 func TestDaemon_DevXMRTaker(t *testing.T) {
 	rpcPort := getFreePort(t)
+	dataDir := t.TempDir()
 
 	flags := []string{
 		"testSwapd",
@@ -53,6 +59,73 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		fmt.Sprintf("--%s=debug", flagLogLevel),
 		fmt.Sprintf("--%s=true", flagDevXMRTaker),
 		fmt.Sprintf("--%s=true", flagDeploy),
+		fmt.Sprintf("--%s=%s", flagDataDir, dataDir),
+		fmt.Sprintf("--%s=%d", flagRPCPort, rpcPort),
+		fmt.Sprintf("--%s=0", flagLibp2pPort),
+	}
+
+	ctx, cancel := newTestContext(t)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		err := cliApp().RunContext(ctx, flags)
+		assert.NoError(t, err)
+	}()
+
+	// Ensure the daemon fully started before we cancel the context
+	daemon.WaitForSwapdStart(t, rpcPort)
+	cancel()
+	wg.Wait()
+
+	if t.Failed() {
+		return
+	}
+
+	//
+	// Validate that --deploy created a contract address file and that we
+	// deployed a forwarder. At some future point, we will ask the RPC endpoint
+	// what the contract addresses are instead of using this file.
+	//
+	data, err := os.ReadFile(path.Join(dataDir, contractAddressesFile))
+	require.NoError(t, err)
+	m := make(map[string]string)
+	require.NoError(t, json.Unmarshal(data, &m))
+	swapFactoryAddr, ok := m["swapFactory"]
+	require.True(t, ok)
+	forwarderAddr, ok := m["forwarder"]
+	require.True(t, ok)
+
+	ec, _ := tests.NewEthClient(t)
+	ecCtx := context.Background()
+	discoveredForwarderAddr, err :=
+		contracts.CheckSwapFactoryContractCode(ecCtx, ec, ethcommon.HexToAddress(swapFactoryAddr))
+	require.NoError(t, err)
+	require.Equal(t, strings.ToLower(discoveredForwarderAddr.Hex()), forwarderAddr)
+
+	// something is seriously wrong if this next check fails, as CheckSwapFactoryContractCode
+	// should have already validated the forwarder bytecode
+	err = contracts.CheckForwarderContractCode(ecCtx, ec, ethcommon.HexToAddress(forwarderAddr))
+	require.NoError(t, err)
+}
+
+func TestDaemon_DevXMRMaker(t *testing.T) {
+	rpcPort := getFreePort(t)
+	key := tests.GetMakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+
+	// We tested --deploy with the taker, so test passing the contract address here
+	swapFactoryAddr, _, err := deploySwapFactory(context.Background(), ec, key, ethcommon.Address{}, t.TempDir())
+	require.NoError(t, err)
+
+	flags := []string{
+		"testSwapd",
+		fmt.Sprintf("--%s", flagDevXMRMaker),
+		fmt.Sprintf("--%s=dev", flagEnv),
+		fmt.Sprintf("--%s=debug", flagLogLevel),
+		fmt.Sprintf("--%s=%s", flagContractAddress, swapFactoryAddr),
 		fmt.Sprintf("--%s=%s", flagDataDir, t.TempDir()),
 		fmt.Sprintf("--%s=%d", flagRPCPort, rpcPort),
 		fmt.Sprintf("--%s=0", flagLibp2pPort),
@@ -65,7 +138,7 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := app.RunContext(ctx, flags)
+		err := cliApp().RunContext(ctx, flags)
 		assert.NoError(t, err)
 	}()
 
@@ -76,36 +149,71 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	wg.Wait()
 }
 
-func TestDaemon_DevXMRMaker(t *testing.T) {
-	rpcPort := getFreePort(t)
+func TestDaemon_BadContractFlags(t *testing.T) {
+	key := tests.GetMakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+	ctx, _ := newTestContext(t)
 
-	flags := []string{
+	swapFactoryAddr, swapFactory, err := deploySwapFactory(ctx, ec, key, ethcommon.Address{}, t.TempDir())
+	require.NoError(t, err)
+	forwarderAddr, err := swapFactory.TrustedForwarder(nil)
+	require.NoError(t, err)
+
+	baseFlags := []string{
 		"testSwapd",
-		fmt.Sprintf("--%s", flagDevXMRMaker),
 		fmt.Sprintf("--%s=dev", flagEnv),
 		fmt.Sprintf("--%s=debug", flagLogLevel),
-		fmt.Sprintf("--%s", flagDeploy),
 		fmt.Sprintf("--%s=%s", flagDataDir, t.TempDir()),
-		fmt.Sprintf("--%s=%d", flagRPCPort, rpcPort),
+		fmt.Sprintf("--%s=0", flagRPCPort),
 		fmt.Sprintf("--%s=0", flagLibp2pPort),
 	}
 
-	ctx, cancel := newTestContext(t)
+	type testCase struct {
+		description string
+		extraFlags  []string
+		expectErr   string
+	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	testCases := []testCase{
+		{
+			description: "no contract and no request to deploy",
+			extraFlags:  nil,
+			expectErr:   `flag "deploy" or "contract-address" is required for env=dev`,
+		},
+		{
+			description: "deploy SwapFactory with invalid forwarder",
+			extraFlags: []string{
+				fmt.Sprintf("--%s", flagDeploy),
+				fmt.Sprintf("--%s=%s", flagForwarderAddress, swapFactoryAddr), // passing wrong contract
+			},
+			expectErr: "does not contain correct Forwarder code",
+		},
+		{
+			description: "pass invalid SwapFactory contract",
+			extraFlags: []string{
+				fmt.Sprintf("--%s=%s", flagContractAddress, forwarderAddr), // passing wrong contract
+			},
+			expectErr: "does not contain correct SwapFactory code",
+		},
+		{
+			description: "forgot to prefix the flag name with dashes",
+			extraFlags: []string{
+				flagContractAddress, swapFactoryAddr.String(),
+			},
+			expectErr: fmt.Sprintf("unknown command %q", flagContractAddress),
+		},
+	}
 
-	go func() {
-		defer wg.Done()
-		err := app.RunContext(ctx, flags)
-		assert.NoError(t, err)
-	}()
-
-	// Ensure the daemon fully started before we cancel the context
-	daemon.WaitForSwapdStart(t, rpcPort)
-	cancel()
-
-	wg.Wait()
+	for _, tc := range testCases {
+		func() { // so we can call defer inside loop
+			testCtx, cancel := context.WithTimeout(ctx, time.Second*15)
+			defer cancel()
+			flags := append(append([]string{}, baseFlags...), tc.extraFlags...)
+			t.Logf("FLAGS ARE: %v", flags)
+			err := cliApp().RunContext(testCtx, flags)
+			assert.ErrorContains(t, err, tc.expectErr, tc.description)
+		}()
+	}
 }
 
 func TestDaemon_PersistOffers(t *testing.T) {
@@ -145,7 +253,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 
 	go func() {
 		defer wg1.Done()
-		err := app.RunContext(ctx1, flags)
+		err := cliApp().RunContext(ctx1, flags)
 		assert.NoError(t, err)
 		t.Logf("initial swapd instance exited")
 	}()
@@ -186,7 +294,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 
 	go func() {
 		defer wg2.Done()
-		err := app.RunContext(ctx2, flags) //nolint:govet
+		err := cliApp().RunContext(ctx2, flags) //nolint:govet
 		assert.NoError(t, err)
 	}()
 
