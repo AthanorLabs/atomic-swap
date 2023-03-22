@@ -54,7 +54,6 @@ start-swapd() {
 	echo "${swapd_pid}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
 
 	# Wait up to 60 seconds for the daemon's port to be listening
-	local started=0
 	for i in {1..60}; do
 		sleep 1
 
@@ -68,7 +67,6 @@ start-swapd() {
 			echo "${swapd_user^}'s swapd instance is listening after ${i} seconds"
 			return
 		fi
-
 	done
 
 	echo "Failed to start ${swapd_user^}'s swapd"
