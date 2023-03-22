@@ -218,6 +218,8 @@ func TestDaemon_BadContractFlags(t *testing.T) {
 
 func TestDaemon_PersistOffers(t *testing.T) {
 	dataDir := t.TempDir()
+	walletDir := path.Join(dataDir, "wallet")
+
 	defer func() {
 		// CI has issues with the filesystem still being written to when it is
 		// recursively deleting dataDir. Can't be replicated outside of CI.
@@ -225,7 +227,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}()
 
-	wc := monero.CreateWalletClientWithWalletDir(t, dataDir)
+	wc := monero.CreateWalletClientWithWalletDir(t, walletDir)
 	one := apd.New(1, 0)
 	monero.MineMinXMRBalance(t, wc, coins.MoneroToPiconero(one))
 	walletName := wc.WalletName()
@@ -243,7 +245,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 		fmt.Sprintf("--%s=%s", flagDataDir, dataDir),
 		fmt.Sprintf("--%s=%d", flagRPCPort, rpcPort),
 		fmt.Sprintf("--%s=0", flagLibp2pPort),
-		fmt.Sprintf("--%s=%s", flagMoneroWalletPath, path.Join(dataDir, walletName)),
+		fmt.Sprintf("--%s=%s", flagMoneroWalletPath, path.Join(walletDir, walletName)),
 	}
 
 	ctx1, cancel1 := newTestContext(t)

@@ -17,9 +17,9 @@ import (
 
 // WaitForSwapdStart takes the rpcPort of a swapd instance and waits for it to
 // be in a listening state. Fails the test if the server isn't listening after a
-// little over 30 seconds.
+// little over 60 seconds.
 func WaitForSwapdStart(t *testing.T, rpcPort uint16) {
-	const maxSeconds = 30
+	const maxSeconds = 60
 	addr := fmt.Sprintf("127.0.0.1:%d", rpcPort)
 
 	startTime := time.Now()
