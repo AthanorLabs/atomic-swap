@@ -281,17 +281,12 @@ func runDaemon(c *cli.Context) error {
 		return errFlagsMutuallyExclusive(flagDevXMRMaker, flagDevXMRTaker)
 	}
 
-	env, err := common.NewEnv(c.String(flagEnv))
-	if err != nil {
-		return err
-	}
-
 	envConf, err := getEnvConfig(c, devXMRMaker, devXMRTaker)
 	if err != nil {
 		return err
 	}
 
-	mc, err := createMoneroClient(c, env)
+	mc, err := createMoneroClient(c, envConf)
 	if err != nil {
 		return err
 	}
@@ -422,13 +417,11 @@ func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec exteth
 	return nil
 }
 
-func createMoneroClient(c *cli.Context, env common.Environment) (monero.WalletClient, error) {
-	envConfig := common.ConfigDefaultsForEnv(env)
-
+func createMoneroClient(c *cli.Context, envConf *common.Config) (monero.WalletClient, error) {
 	if c.IsSet(flagMoneroDaemonHost) || c.IsSet(flagMoneroDaemonPort) {
 		node := &common.MoneroNode{
 			Host: "127.0.0.1",
-			Port: common.DefaultMoneroPortFromEnv(env),
+			Port: common.DefaultMoneroPortFromEnv(envConf.Env),
 		}
 		if c.IsSet(flagMoneroDaemonHost) {
 			node.Host = c.String(flagMoneroDaemonHost)
@@ -442,10 +435,10 @@ func createMoneroClient(c *cli.Context, env common.Environment) (monero.WalletCl
 				return nil, errFlagValueZero(flagMoneroDaemonPort)
 			}
 		}
-		envConfig.MoneroNodes = []*common.MoneroNode{node}
+		envConf.MoneroNodes = []*common.MoneroNode{node}
 	}
 
-	walletFilePath := envConfig.MoneroWalletPath()
+	walletFilePath := envConf.MoneroWalletPath()
 	if c.IsSet(flagMoneroWalletPath) {
 		walletFilePath = c.String(flagMoneroWalletPath)
 		if walletFilePath == "" {
@@ -454,9 +447,9 @@ func createMoneroClient(c *cli.Context, env common.Environment) (monero.WalletCl
 	}
 
 	return monero.NewWalletClient(&monero.WalletClientConf{
-		Env:                 env,
+		Env:                 envConf.Env,
 		WalletFilePath:      walletFilePath,
-		MonerodNodes:        envConfig.MoneroNodes,
+		MonerodNodes:        envConf.MoneroNodes,
 		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
 		WalletPassword:      c.String(flagMoneroWalletPassword),
 		WalletPort:          c.Uint(flagMoneroWalletPort),

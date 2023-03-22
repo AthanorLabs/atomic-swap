@@ -36,25 +36,47 @@ create-eth-keys() {
 # This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
 ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
 ALICE_LIBP2PKEY=./tests/alice-libp2p.key
-ALICE_RPC_PORT=5000
 LOG_LEVEL=debug
+
+ALICE_RPC_PORT=5000
+BOB_RPC_PORT=5001
+CHARLIE_RPC_PORT=5002
 
 start-swapd() {
 	local swapd_user="${1:?}"
-	local swapd_flags=("${@:2}")
+	local rpc_port="${2:?}"
+	local swapd_flags=("${@:3}" "--rpc-port=${rpc_port}")
 	local log_file="${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
+
 	echo "Starting ${swapd_user^}'s swapd, logs in ${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 	./bin/swapd "${swapd_flags[@]}" &>"${log_file}" &
 	local swapd_pid="${!}"
 	echo "${swapd_pid}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
-	sleep 1
-	if ! kill -0 "${swapd_pid}" 2>/dev/null; then
-		echo "Failed to start ${swapd_user^}'s swapd"
-		echo "=============== Failed logs  ==============="
-		cat "${log_file}"
-		echo "============================================"
-		exit 1
-	fi
+
+	# Wait up to 60 seconds for the daemon's port to be listening
+	local started=0
+	for i in {1..60}; do
+		sleep 1
+
+		# Test if pid is still alive, leave loop if it is not
+		if ! kill -0 "${swapd_pid}" 2>/dev/null; then
+			break
+		fi
+
+		# Test if RPC port is listening, exit success if it is
+		if is-port-open "${rpc_port}"; then
+			echo "${swapd_user^}'s swapd instance is listening after ${i} seconds"
+			return
+		fi
+
+	done
+
+	echo "Failed to start ${swapd_user^}'s swapd"
+	echo "=============== Failed logs  ==============="
+	cat "${log_file}"
+	echo "============================================"
+	stop-daemons
+	exit 1
 }
 
 stop-swapd() {
@@ -62,35 +84,22 @@ stop-swapd() {
 	stop-program "${swapd_user}-swapd"
 }
 
+wait-rpc-started() {
+	local swapd_user="${1}"
+	local rpc_port="${1}"
+
+}
+
 start-daemons() {
 	start-monerod-regtest
 	start-ganache
 
-	start-swapd alice \
+	start-swapd alice "${ALICE_RPC_PORT}" \
 		--dev-xmrtaker \
 		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
 		"--libp2p-key=${ALICE_LIBP2PKEY}" \
 		--deploy
-
-	#
-	# Wait up to 60 seconds for Alice's swapd to be listening on its RPC port.
-	#
-	local alice_started=0
-	for i in {1..60}; do
-		if is-port-open "${ALICE_RPC_PORT}"; then
-			echo "Alice's swapd instance is listening after ${i} seconds"
-			alice_started=1
-			break
-		fi
-		sleep 1
-	done
-
-	if [[ "${alice_started}" -ne 1 ]]; then
-		echo "Alice's swapd instance failed to start"
-		stop-daemons
-		exit 1
-	fi
 
 	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-addresses.json"
 	if [[ ! -f "${CONTRACT_ADDR_FILE}" ]]; then
@@ -107,7 +116,7 @@ start-daemons() {
 		exit 1
 	fi
 
-	start-swapd bob \
+	start-swapd bob "${BOB_RPC_PORT}" \
 		--dev-xmrmaker \
 		"--log-level=${LOG_LEVEL}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
@@ -115,17 +124,13 @@ start-daemons() {
 		"--bootnodes=${ALICE_MULTIADDR}" \
 		"--contract-address=${SWAP_FACTORY_ADDR}"
 
-	start-swapd charlie \
+	start-swapd charlie "${CHARLIE_RPC_PORT}" \
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
-		--rpc-port 5002 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
 		"--contract-address=${SWAP_FACTORY_ADDR}" \
 		"--relayer"
-
-	# Give time for Bob and Charlie's swapd instances to fully start
-	sleep 15
 }
 
 stop-daemons() {
