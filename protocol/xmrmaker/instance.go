@@ -35,8 +35,6 @@ type Instance struct {
 
 	net Host
 
-	//walletFile, walletPassword string
-
 	offerManager *offers.Manager
 
 	swapMu     sync.Mutex // synchronises access to swapStates
