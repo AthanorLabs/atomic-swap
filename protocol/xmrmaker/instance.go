@@ -67,10 +67,8 @@ func NewInstance(cfg *Config) (*Instance, error) {
 	}
 
 	inst := &Instance{
-		backend: cfg.Backend,
-		dataDir: cfg.DataDir,
-		//walletFile:     cfg.WalletFile,
-		//walletPassword: cfg.WalletPassword,
+		backend:      cfg.Backend,
+		dataDir:      cfg.DataDir,
 		offerManager: om,
 		swapStates:   make(map[types.Hash]*swapState),
 		net:          cfg.Network,
