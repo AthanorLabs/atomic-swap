@@ -124,7 +124,7 @@ func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	providedAmt := coins.EtherToWei(coins.StrToDecimal("1"))
 	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("1"))
 	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
-	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
+	swapState, err := newSwapStateFromStart(b, types.Hash{}, true,
 		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState, net

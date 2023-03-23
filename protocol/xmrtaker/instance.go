@@ -29,7 +29,7 @@ type Instance struct {
 	backend backend.Backend
 	dataDir string
 
-	transferBack bool // transfer xmr back to original account
+	noTransferBack bool // leave XMR in per-swap generated wallet
 
 	// non-nil if a swap is currently happening, nil otherwise
 	// map of offer IDs -> ongoing swaps
@@ -41,7 +41,7 @@ type Instance struct {
 type Config struct {
 	Backend        backend.Backend
 	DataDir        string
-	TransferBack   bool
+	NoTransferBack bool
 	ExternalSender bool
 }
 
@@ -134,7 +134,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	ss, err := newSwapStateFromOngoing(
 		inst.backend,
 		s,
-		inst.transferBack,
+		inst.noTransferBack,
 		ethSwapInfo,
 		kp,
 	)
@@ -160,9 +160,9 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 // It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
 // us finding the counterparty's secret and claiming the XMR.
 //
-// Note: this will use the current value of `transferBack `(verses whatever value was set when
-// the swap was started). It will also only only recover to the primary wallet address,
-// not whatever address was used when the swap was started.
+// Note: this will use the current value of `noTransferBack` (verses whatever value
+// was set when the swap was started). It will also only only recover to the primary
+// wallet address, not whatever address was used when the swap was started.
 func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) error {
 	// fetch our swap private spend key
 	skA, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
@@ -195,7 +195,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) e
 		s.MoneroStartHeight,
 		kpAB,
 		inst.backend.XMRClient().PrimaryAddress(),
-		inst.transferBack,
+		inst.noTransferBack,
 	)
 	if err != nil {
 		return err

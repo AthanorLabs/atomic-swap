@@ -149,7 +149,7 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	wg.Wait()
 }
 
-func TestDaemon_BadContractFlags(t *testing.T) {
+func TestDaemon_BadFlags(t *testing.T) {
 	key := tests.GetMakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
 	ctx, _ := newTestContext(t)
@@ -196,11 +196,20 @@ func TestDaemon_BadContractFlags(t *testing.T) {
 			expectErr: "does not contain correct SwapFactory code",
 		},
 		{
+			// this one also happens when people accidentally confuse swapd with swapcli
 			description: "forgot to prefix the flag name with dashes",
 			extraFlags: []string{
 				flagContractAddress, swapFactoryAddr.String(),
 			},
 			expectErr: fmt.Sprintf("unknown command %q", flagContractAddress),
+		},
+		{
+			description: "used http(s) ethereum endpoint",
+			extraFlags: []string{
+				fmt.Sprintf("--%s=%s", flagEthereumEndpoint, "http://127.0.0.1:8545"),
+				fmt.Sprintf("--%s", flagDeploy),
+			},
+			expectErr: "ethereum endpoint requires a websockets URL",
 		},
 	}
 
@@ -209,7 +218,6 @@ func TestDaemon_BadContractFlags(t *testing.T) {
 			testCtx, cancel := context.WithTimeout(ctx, time.Second*15)
 			defer cancel()
 			flags := append(append([]string{}, baseFlags...), tc.extraFlags...)
-			t.Logf("FLAGS ARE: %v", flags)
 			err := cliApp().RunContext(testCtx, flags)
 			assert.ErrorContains(t, err, tc.expectErr, tc.description)
 		}()

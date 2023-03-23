@@ -1,5 +1,5 @@
-// Package main provides the entrypoint of swapd, a Daemon that manages atomic swaps
-// between monero and ethereum assets.
+// Package main provides the entrypoint of swapd executable, a daemon that
+// manages atomic swaps between monero and ethereum assets.
 package main
 
 import (
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
@@ -89,7 +90,7 @@ func cliApp() *cli.App {
 		Flags: []cli.Flag{
 			&cli.UintFlag{
 				Name:  flagRPCPort,
-				Usage: "Port for the Daemon RPC server to run on",
+				Usage: "Port for the daemon RPC server to run on",
 				Value: defaultRPCPort,
 			},
 			&cli.StringFlag{
@@ -139,7 +140,7 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumEndpoint,
-				Usage: "Ethereum client endpoint",
+				Usage: "Ethereum websockets client endpoint",
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumPrivKey,
@@ -462,6 +463,9 @@ func createEthClient(c *cli.Context, envConf *common.Config) (extethclient.EthCl
 	ethEndpoint := common.DefaultEthEndpoint
 	if c.String(flagEthereumEndpoint) != "" {
 		ethEndpoint = c.String(flagEthereumEndpoint)
+		if !strings.HasPrefix(strings.ToLower(ethEndpoint), "ws") {
+			return nil, errors.New("ethereum endpoint requires a websockets URL")
+		}
 	}
 
 	var ethPrivKey *ecdsa.PrivateKey

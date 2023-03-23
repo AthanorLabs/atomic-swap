@@ -121,9 +121,9 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) error {
 	)
 
 	xmrTaker, err := xmrtaker.NewInstance(&xmrtaker.Config{
-		Backend:      swapBackend,
-		DataDir:      conf.EnvConf.DataDir,
-		TransferBack: !conf.NoTransferBack,
+		Backend:        swapBackend,
+		DataDir:        conf.EnvConf.DataDir,
+		NoTransferBack: conf.NoTransferBack,
 	})
 	if err != nil {
 		return err

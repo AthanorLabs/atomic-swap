@@ -85,8 +85,8 @@ type backend struct {
 	moneroWallet monero.WalletClient
 	ethClient    extethclient.EthClient
 
-	// Monero deposit address. When the XMR xmrtaker has transferBack set to
-	// true (default), claimed funds are swept back to the primary XMR wallet
+	// Monero deposit address. When the XMR maker has noTransferBack set to
+	// false (default), claimed funds are swept into the primary XMR wallet
 	// address used by swapd. This sweep destination address can be overridden
 	// on a per-swap basis, by setting an address indexed by the offerID/swapID
 	// in the map below.
@@ -212,7 +212,7 @@ func (b *backend) XMRDepositAddress(offerID *types.Hash) *mcrypto.Address {
 }
 
 // SetXMRDepositAddress sets a per-swap override deposit address to use when
-// sweeping funds out of the shared swap wallet. When transferBack is set
+// sweeping funds out of the shared swap wallet. When noTransferBack is unset
 // (default), funds will be swept to this override address instead of to swap's
 // primary monero wallet.
 func (b *backend) SetXMRDepositAddress(addr *mcrypto.Address, offerID types.Hash) {

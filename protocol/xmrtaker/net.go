@@ -90,7 +90,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmoun
 	s, err := newSwapStateFromStart(
 		inst.backend,
 		offerID,
-		inst.transferBack,
+		inst.noTransferBack,
 		providesAmount,
 		expectedAmount,
 		exchangeRate,
