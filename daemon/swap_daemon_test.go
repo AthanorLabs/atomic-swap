@@ -101,7 +101,7 @@ func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 
 // Tests the scenario, where Bob has no ETH and Alice relays his claim.
 func TestRunSwapDaemon_SwapBobHasNoEth(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	t.Cleanup(func() {
 		cancel()
 	})

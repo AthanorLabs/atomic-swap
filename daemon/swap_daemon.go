@@ -58,6 +58,25 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) error {
 	ec := conf.EthereumClient
 	chainID := ec.ChainID()
 
+	// Initialize the database first, so the defer statement that closes it
+	// will get executed last.
+	sdb, err := db.NewDatabase(&chaindb.Config{
+		DataDir: path.Join(conf.EnvConf.DataDir, "db"),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if dbErr := sdb.Close(); dbErr != nil {
+			err = multierror.Append(err, fmt.Errorf("syncing database: %s", dbErr))
+		}
+	}()
+
+	sm, err := swap.NewManager(sdb)
+	if err != nil {
+		return err
+	}
+
 	hostListenIP := "0.0.0.0"
 	if conf.EnvConf.Env == common.Development {
 		hostListenIP = "127.0.0.1"
@@ -81,25 +100,6 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) error {
 			err = multierror.Append(err, fmt.Errorf("error shutting down peer-to-peer services: %w", hostErr))
 		}
 	}()
-
-	dbCfg := &chaindb.Config{
-		DataDir: path.Join(conf.EnvConf.DataDir, "db"),
-	}
-
-	sdb, err := db.NewDatabase(dbCfg)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if dbErr := sdb.Close(); dbErr != nil {
-			err = multierror.Append(err, fmt.Errorf("syncing database: %s", dbErr))
-		}
-	}()
-
-	sm, err := swap.NewManager(sdb)
-	if err != nil {
-		return err
-	}
 
 	swapBackend, err := backend.NewBackend(&backend.Config{
 		Ctx:                ctx,
