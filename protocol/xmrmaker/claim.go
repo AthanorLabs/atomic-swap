@@ -127,7 +127,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 	}
 
 	for _, relayer := range relayers {
-		log.Debugf("submitting claim to relayer peer ID %s", relayer)
+		log.Debugf("submitting claim to relayer with peer ID %s", relayer)
 		resp, err := s.Backend.SubmitClaimToRelayer(relayer, req)
 		if err != nil {
 			log.Warnf("failed to submit tx to relayer: %s", err)
@@ -220,7 +220,8 @@ func waitForClaimReceipt(
 			txHash, receipt.BlockNumber, err)
 	}
 
-	log.Debugf("relayer's claim transaction validated, gas used: %d", receipt.GasUsed)
+	log.Infof("relayer's claim tx=%s in block=%d validated, gas used: %d",
+		receipt.TxHash, receipt.BlockNumber, receipt.GasUsed)
 	return nil
 }
 

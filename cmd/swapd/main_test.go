@@ -189,11 +189,35 @@ func TestDaemon_BadFlags(t *testing.T) {
 			expectErr: "does not contain correct Forwarder code",
 		},
 		{
+			description: "pass invalid forwarder address (wrong length)",
+			extraFlags: []string{
+				fmt.Sprintf("--%s", flagDeploy),
+				fmt.Sprintf("--%s=%sAB", flagForwarderAddress, forwarderAddr), // one byte too long
+			},
+			expectErr: fmt.Sprintf(`"%s" requires a valid ethereum address`, flagForwarderAddress),
+		},
+		{
+			description: "pass forwarder address without deploy flag",
+			extraFlags: []string{
+				fmt.Sprintf("--%s=%s", flagForwarderAddress, forwarderAddr),
+				// next flag is needed, or we fail on a different error first
+				fmt.Sprintf("--%s=%s", flagContractAddress, swapFactoryAddr),
+			},
+			expectErr: fmt.Sprintf(`using flag "%s" requires the "%s" flag`, flagForwarderAddress, flagDeploy),
+		},
+		{
 			description: "pass invalid SwapFactory contract",
 			extraFlags: []string{
 				fmt.Sprintf("--%s=%s", flagContractAddress, forwarderAddr), // passing wrong contract
 			},
 			expectErr: "does not contain correct SwapFactory code",
+		},
+		{
+			description: "pass SwapFactory contract an invalid address (wrong length)",
+			extraFlags: []string{
+				fmt.Sprintf("--%s=%s", flagContractAddress, "0xFFFF"), // too short
+			},
+			expectErr: fmt.Sprintf(`"%s" requires a valid ethereum address`, flagContractAddress),
 		},
 		{
 			// this one also happens when people accidentally confuse swapd with swapcli

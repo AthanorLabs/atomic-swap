@@ -1,4 +1,3 @@
-// Package tests provides
 package tests
 
 import (

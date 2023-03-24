@@ -44,9 +44,9 @@ type SwapdConfig struct {
 // shut down. Typically, shutdown happens because a signal handler cancels the
 // passed in context, but we may add a shutdown method to the RPC instance in
 // the future.
-func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) error {
-	var err error
-
+func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
+	// Note: err can be modified in defer blocks, so it needs to be a named return
+	//       value above.
 	if conf.Libp2pKeyfile == "" {
 		conf.Libp2pKeyfile = path.Join(conf.EnvConf.DataDir, common.DefaultLibp2pKeyFileName)
 	}
@@ -160,6 +160,7 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) error {
 		return err
 	}
 
-	// err can get set in defer blocks, so don't return nil below
+	// err can get set in defer blocks, so return err or use an empty
+	// return statement below (not nil)
 	return err
 }

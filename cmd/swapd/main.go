@@ -1,4 +1,4 @@
-// Package main provides the entrypoint of swapd executable, a daemon that
+// Package main provides the entrypoint of the swapd executable, a daemon that
 // manages atomic swaps between monero and ethereum assets.
 package main
 
@@ -179,7 +179,7 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:  flagForwarderAddress,
-				Usage: "Specifies the Ethereum address of the trusted forwarder contract when deploying the swap contract. Ignored if --deploy is not passed.", //nolint:lll
+				Usage: "Ethereum address of the trusted forwarder contract to use when deploying the swap contract",
 			},
 			&cli.BoolFlag{
 				Name:  flagNoTransferBack,
@@ -363,7 +363,7 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 		contractAddrStr := c.String(flagContractAddress)
 		if contractAddrStr != "" {
 			if !ethcommon.IsHexAddress(contractAddrStr) {
-				return nil, fmt.Errorf("%q is not a valid contract address", contractAddrStr)
+				return nil, fmt.Errorf("%q requires a valid ethereum address", flagContractAddress)
 			}
 			conf.SwapFactoryAddress = ethcommon.HexToAddress(contractAddrStr)
 		}
@@ -381,10 +381,8 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 // contract.
 func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec extethclient.EthClient) error {
 	deploy := c.Bool(flagDeploy)
-	if deploy {
-		if envConf.SwapFactoryAddress != (ethcommon.Address{}) {
-			panic("contract address should have been zeroed when envConf was initialized")
-		}
+	if deploy && envConf.SwapFactoryAddress != (ethcommon.Address{}) {
+		panic("contract address should have been zeroed when envConf was initialized")
 	}
 
 	// forwarderAddress is set only if we're deploying the swap contract, and the --forwarder-address
@@ -393,12 +391,12 @@ func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec exteth
 	forwarderAddressStr := c.String(flagForwarderAddress)
 	if deploy && forwarderAddressStr != "" {
 		if !ethcommon.IsHexAddress(forwarderAddressStr) {
-			return errors.New("forwarder-address is invalid")
+			return fmt.Errorf("%q requires a valid ethereum address", flagForwarderAddress)
 		}
 
 		forwarderAddress = ethcommon.HexToAddress(forwarderAddressStr)
 	} else if !deploy && forwarderAddressStr != "" {
-		log.Warnf("forwarder-address is unused")
+		return fmt.Errorf("using flag %q requires the %q flag", flagForwarderAddress, flagDeploy)
 	}
 
 	contractAddr, err := getOrDeploySwapFactory(
