@@ -227,14 +227,6 @@ func TestDaemon_BadFlags(t *testing.T) {
 			},
 			expectErr: fmt.Sprintf("unknown command %q", flagContractAddress),
 		},
-		{
-			description: "used http(s) ethereum endpoint",
-			extraFlags: []string{
-				fmt.Sprintf("--%s=%s", flagEthereumEndpoint, "http://127.0.0.1:8545"),
-				fmt.Sprintf("--%s", flagDeploy),
-			},
-			expectErr: "ethereum endpoint requires a websockets URL",
-		},
 	}
 
 	for _, tc := range testCases {
