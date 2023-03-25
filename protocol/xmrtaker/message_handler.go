@@ -273,7 +273,7 @@ func (s *swapState) runT1ExpirationHandler() {
 		if err != nil {
 			// TODO: Do we propagate this error? If we retry, the logic should probably be inside
 			// WaitForTimestamp. (#162)
-			log.Errorf("Failure waiting for T1 timeout: err=%s", err)
+			log.Errorf("failure waiting for T1 timeout: %s", err)
 			return
 		}
 		s.handleT1Expired()

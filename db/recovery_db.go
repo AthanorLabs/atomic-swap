@@ -39,6 +39,8 @@ func (db *RecoveryDB) close() error {
 
 // PutSwapRelayerInfo ...
 func (db *RecoveryDB) PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) error {
+	defer db.db.Flush()
+
 	val, err := vjson.MarshalStruct(info)
 	if err != nil {
 		return err
@@ -69,6 +71,8 @@ func (db *RecoveryDB) GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, erro
 // swap ID, but is instead a hash of the `SwapFactorySwap` structure)
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo) error {
+	defer db.db.Flush()
+
 	val, err := vjson.MarshalStruct(info)
 	if err != nil {
 		return err
@@ -98,6 +102,8 @@ func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, err
 
 // PutSwapPrivateKey stores the given ephemeral swap private key share for the given swap ID.
 func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendKey) error {
+	defer db.db.Flush()
+
 	val, err := vjson.MarshalStruct(sk)
 	if err != nil {
 		return err
@@ -126,6 +132,8 @@ func (db *RecoveryDB) GetSwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey
 
 // PutCounterpartySwapPrivateKey stores the counterparty's swap private key for the given swap ID.
 func (db *RecoveryDB) PutCounterpartySwapPrivateKey(id types.Hash, kp *mcrypto.PrivateSpendKey) error {
+	defer db.db.Flush()
+
 	val, err := vjson.MarshalStruct(kp)
 	if err != nil {
 		return err
@@ -137,6 +145,8 @@ func (db *RecoveryDB) PutCounterpartySwapPrivateKey(id types.Hash, kp *mcrypto.P
 
 // GetCounterpartySwapPrivateKey returns the counterparty's swap private key, if it exists.
 func (db *RecoveryDB) GetCounterpartySwapPrivateKey(id types.Hash) (*mcrypto.PrivateSpendKey, error) {
+	defer db.db.Flush()
+
 	key := getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix)
 	value, err := db.db.Get(key[:])
 	if err != nil {
@@ -159,6 +169,8 @@ type counterpartyKeys struct {
 
 // PutCounterpartySwapKeys is used to store the counterparty's swap keys.
 func (db *RecoveryDB) PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error {
+	defer db.db.Flush()
+
 	val, err := vjson.MarshalStruct(&counterpartyKeys{
 		PublicSpendKey: sk,
 		PrivateViewKey: vk,
