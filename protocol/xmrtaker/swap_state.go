@@ -389,16 +389,21 @@ func (s *swapState) exit() error {
 		txHash, err := s.tryRefund()
 		if err != nil {
 			if strings.Contains(err.Error(), revertSwapCompleted) {
-				return s.tryClaim()
+				// note: this should NOT ever error; it could if the ethclient
+				// or monero clients crash during the course of the claim,
+				// but that would be very bad.
+				err = s.tryClaim()
+				if err != nil {
+					panic(fmt.Sprintf("failed to claim even though swap was completed on-chain: %s", err))
+				}
 			}
 
-			s.clearNextExpectedEvent(types.CompletedAbort)
-			log.Errorf("failed to refund: err=%s", err)
-			return err
+			panic(fmt.Sprintf("failed to refund: %s", err))
 		}
 
 		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
+		return nil
 	case EventNoneType:
 		// the swap completed already, do nothing
 		return nil
@@ -483,17 +488,30 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	// it won't handle those events while this function is executing.)
 	log.Infof("waiting until time %s to refund", s.t1)
 
-	event := <-s.eventCh
-	log.Debugf("got event %s while waiting for T1", event)
-	switch event.(type) {
-	case *EventShouldRefund:
+	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
+	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+
+	waitCh := make(chan error)
+	go func() {
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t1)
+		close(waitCh)
+	}()
+
+	select {
+	case event := <-s.eventCh:
+		log.Debugf("got event %s while waiting for T1", event)
+		switch event.(type) {
+		case *EventShouldRefund:
+			return s.refund()
+		case *EventETHClaimed:
+			// we should claim; returning this error
+			// causes the calling function to claim
+			return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
+		default:
+			panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
+		}
+	case err = <-waitCh:
 		return s.refund()
-	case *EventETHClaimed:
-		// we should claim; returning this error
-		// causes the calling function to claim
-		return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
-	default:
-		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
 	}
 }
 

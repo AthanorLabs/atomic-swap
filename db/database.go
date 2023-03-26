@@ -83,6 +83,8 @@ func (db *Database) RecoveryDB() *RecoveryDB {
 
 // PutOffer puts an offer in the database.
 func (db *Database) PutOffer(offer *types.Offer) error {
+	defer db.offerTable.Flush()
+
 	val, err := vjson.MarshalStruct(offer)
 	if err != nil {
 		return err
@@ -182,6 +184,8 @@ func (db *Database) ClearAllOffers() error {
 // PutSwap puts the given swap in the database.
 // If a swap with the same ID is already in the database, it overwrites it.
 func (db *Database) PutSwap(s *swap.Info) error {
+	defer db.swapTable.Flush()
+
 	val, err := vjson.MarshalStruct(s)
 	if err != nil {
 		return err
