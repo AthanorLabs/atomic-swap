@@ -12,7 +12,6 @@ import (
 
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -64,11 +63,8 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ec, chainID := tests.NewEthClient(t)
-	extendedEC, err := extethclient.NewEthClient(ctx, common.Development, ec, sk)
-	require.NoError(t, err)
-
-	txOpts, err := bind.NewKeyedTransactorWithChainID(sk, chainID)
+	ec := extethclient.CreateTestClient(t, sk)
+	txOpts, err := ec.TxOpts(ctx)
 	require.NoError(t, err)
 
 	// generate claim secret and public key
@@ -85,27 +81,27 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// deploy forwarder
-	forwarderAddress, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, ec)
+	forwarderAddress, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, ec.Raw())
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(ctx, ec, tx.Hash())
+	receipt, err := block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy Forwarder.sol: %d", receipt.GasUsed)
 
 	tx, err = forwarderContract.RegisterDomainSeparator(txOpts, gsnforwarder.DefaultName, gsnforwarder.DefaultVersion)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// deploy swap contract with claim key hash
-	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
+	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec.Raw(), forwarderAddress)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	if asset != types.EthAssetETH {
-		token, err := contracts.NewIERC20(asset.Address(), ec) //nolint:govet
+		token, err := contracts.NewIERC20(asset.Address(), ec.Raw()) //nolint:govet
 		require.NoError(t, err)
 
 		balance, err := token.BalanceOf(&bind.CallOpts{}, addr)
@@ -114,7 +110,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		tx, err = token.Approve(txOpts, contractAddr, balance)
 		require.NoError(t, err)
 
-		_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+		_, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 		require.NoError(t, err)
 	}
 
@@ -125,7 +121,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	tx, err = contract.NewSwap(txOpts, cmt, [32]byte{}, addr,
 		defaultTestTimeoutDuration, asset.Address(), value, nonce)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 	txOpts.Value = big.NewInt(0)
@@ -157,7 +153,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	// set contract to Ready
 	tx, err = contract.SetReady(txOpts, *swap)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(ctx, ec, tx.Hash())
+	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
 	require.NoError(t, err)
 
@@ -167,7 +163,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	req, err := relayer.CreateRelayClaimRequest(
 		ctx,
 		sk,
-		ec,
+		ec.Raw(),
 		contractAddr,
 		forwarderAddress,
 		swap,
@@ -175,10 +171,10 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	)
 	require.NoError(t, err)
 
-	resp, err := relayer.ValidateAndSendTransaction(ctx, req, extendedEC, contractAddr)
+	resp, err := relayer.ValidateAndSendTransaction(ctx, req, ec, contractAddr)
 	require.NoError(t, err)
 
-	receipt, err = block.WaitForReceipt(ctx, ec, resp.TxHash)
+	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), resp.TxHash)
 	require.NoError(t, err)
 	t.Logf("gas cost to call Claim via relayer: %d", receipt.GasUsed)
 

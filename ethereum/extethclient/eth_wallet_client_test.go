@@ -8,12 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/tests"
 )
 
 func Test_validateChainID_devSuccess(t *testing.T) {
-	_, chainID := tests.NewEthClient(t)
-	err := validateChainID(common.Development, chainID)
+	err := validateChainID(common.Development, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
 }
 

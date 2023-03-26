@@ -329,6 +329,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	// which will then set the next expected event to EventExit.
 	for status := range s.info.StatusCh() {
 		if !status.IsOngoing() {
+			require.Equal(t, types.CompletedRefund.String(), status.String())
 			break
 		}
 	}

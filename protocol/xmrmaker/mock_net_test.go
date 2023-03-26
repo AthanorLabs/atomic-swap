@@ -165,18 +165,6 @@ func (mr *MockP2pHostMockRecorder) PeerID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PeerID", reflect.TypeOf((*MockP2pHost)(nil).PeerID))
 }
 
-// SetAdvertisedNamespacesFunc mocks base method.
-func (m *MockP2pHost) SetAdvertisedNamespacesFunc(arg0 func() []string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetAdvertisedNamespacesFunc", arg0)
-}
-
-// SetAdvertisedNamespacesFunc indicates an expected call of SetAdvertisedNamespacesFunc.
-func (mr *MockP2pHostMockRecorder) SetAdvertisedNamespacesFunc(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAdvertisedNamespacesFunc", reflect.TypeOf((*MockP2pHost)(nil).SetAdvertisedNamespacesFunc), arg0)
-}
-
 // SetStreamHandler mocks base method.
 func (m *MockP2pHost) SetStreamHandler(arg0 string, arg1 func(network.Stream)) {
 	m.ctrl.T.Helper()

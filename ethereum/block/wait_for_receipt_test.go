@@ -83,7 +83,7 @@ func TestWaitForReceipt_success(t *testing.T) {
 	require.Greater(t, txBlockNum.Uint64(), blockBefore.Number.Uint64())
 }
 
-// Test our errorFromBlock method. This test is designed to create a transaction that will
+// Test our ErrorFromBlock method. This test is designed to create a transaction that will
 // successfully be created and sent to the network, but then subsequently fail when it is
 // mined into a block.
 func TestWaitForReceipt_failWhenTransactionIsMined(t *testing.T) {

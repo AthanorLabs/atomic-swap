@@ -18,7 +18,7 @@ func (b *Instance) MakeOffer(
 
 	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
 	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
-		return nil, errUnlockedBalanceTooLow{unlockedBalance, o.MaxAmount}
+		return nil, errUnlockedBalanceTooLow{o.MaxAmount, unlockedBalance}
 	}
 
 	if useRelayer && o.EthAsset != types.EthAssetETH {

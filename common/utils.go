@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -72,4 +73,18 @@ func SleepWithContext(ctx context.Context, d time.Duration) error {
 	case <-timer.C:
 		return nil
 	}
+}
+
+// GetFreeTCPPort returns an OS allocated and immediately freed port. There is
+// nothing preventing something else on the system from using the port before
+// the caller has a chance, but OS allocated ports are randomised to make the
+// risk negligible.
+func GetFreeTCPPort() (uint, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = ln.Close() }()
+
+	return uint(ln.Addr().(*net.TCPAddr).Port), nil
 }

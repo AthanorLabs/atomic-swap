@@ -64,9 +64,6 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	defer s.cancel()
 	s.SetSwapTimeout(time.Minute * 2)
 
-	// test transferBack functionality
-	s.transferBack = true
-
 	// invalid SendKeysMessage should result in an error
 	msg := &message.SendKeysMessage{}
 	err := s.HandleProtocolMessage(msg)

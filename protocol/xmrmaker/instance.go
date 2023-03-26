@@ -35,8 +35,6 @@ type Instance struct {
 
 	net Host
 
-	walletFile, walletPassword string
-
 	offerManager *offers.Manager
 
 	swapMu     sync.Mutex // synchronises access to swapStates
@@ -67,13 +65,11 @@ func NewInstance(cfg *Config) (*Instance, error) {
 	}
 
 	inst := &Instance{
-		backend:        cfg.Backend,
-		dataDir:        cfg.DataDir,
-		walletFile:     cfg.WalletFile,
-		walletPassword: cfg.WalletPassword,
-		offerManager:   om,
-		swapStates:     make(map[types.Hash]*swapState),
-		net:            cfg.Network,
+		backend:      cfg.Backend,
+		dataDir:      cfg.DataDir,
+		offerManager: om,
+		swapStates:   make(map[types.Hash]*swapState),
+		net:          cfg.Network,
 	}
 
 	err = inst.checkForOngoingSwaps()
@@ -199,9 +195,9 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 // It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
 // us finding the counterparty's secret and claiming the XMR.
 //
-// Note: this will use the current value of `transferBack `(verses whatever value was set when
-// the swap was started). It will also only only recover to the primary wallet address,
-// not whatever address was used when the swap was started.
+// Note: this will use the current value of `noTransferBack` (verses whatever value was
+// set when the swap was started). It will also only only recover to the primary wallet
+// address, not whatever address was used when the swap was started.
 func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
 	// fetch our swap private spend key
 	skB, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
@@ -235,7 +231,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 		s.MoneroStartHeight,
 		kpAB,
 		inst.backend.XMRClient().PrimaryAddress(),
-		true, // always sweep back to our primary address
+		false, // always sweep back to our primary address
 	)
 	if err != nil {
 		return err

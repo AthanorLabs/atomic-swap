@@ -46,9 +46,9 @@ type swapState struct {
 	backend.Backend
 	sender txsender.Sender
 
-	ctx          context.Context
-	cancel       context.CancelFunc
-	transferBack bool
+	ctx            context.Context
+	cancel         context.CancelFunc
+	noTransferBack bool
 
 	info           *pswap.Info
 	statusCh       chan types.Status
@@ -97,7 +97,7 @@ type swapState struct {
 func newSwapStateFromStart(
 	b backend.Backend,
 	offerID types.Hash,
-	transferBack bool,
+	noTransferBack bool,
 	providedAmount EthereumAssetAmount,
 	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
@@ -138,7 +138,7 @@ func newSwapStateFromStart(
 
 	s, err := newSwapState(
 		b,
-		transferBack,
+		noTransferBack,
 		info,
 		ethHeader.Number,
 		moneroStartNumber,
@@ -154,7 +154,7 @@ func newSwapStateFromStart(
 func newSwapStateFromOngoing(
 	b backend.Backend,
 	info *pswap.Info,
-	transferBack bool,
+	noTransferBack bool,
 	ethSwapInfo *db.EthereumSwapInfo,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
@@ -169,7 +169,7 @@ func newSwapStateFromOngoing(
 
 	s, err := newSwapState(
 		b,
-		transferBack,
+		noTransferBack,
 		info,
 		ethSwapInfo.StartNumber,
 		info.MoneroStartHeight,
@@ -198,17 +198,18 @@ func newSwapStateFromOngoing(
 
 func newSwapState(
 	b backend.Backend,
-	transferBack bool,
+	noTransferBack bool,
 	info *pswap.Info,
 	ethStartNumber *big.Int,
 	moneroStartNumber uint64,
 ) (*swapState, error) {
-	// If the user specified `--external-signer=true` (no private eth key in the client) and
-	// explicitly set `--transfer-back=false` (overriding the default behaviour), we override
-	// their decision and set it back to `true` because an external signer (UI) must be used,
-	// which will prompt the user to set their XMR address for funds to be transferred-back to.
+	// If the user specified `--external-signer=true` (no private eth key in the
+	// client) and explicitly set `--no-transfer-back`, we override their
+	// decision and set it back to `false`, because an external signer (UI) must
+	// be used, which will prompt the user to set their XMR address for funds to
+	// be transferred-back to.
 	if !b.ETHClient().HasPrivateKey() {
-		transferBack = true // front-end must set final deposit address
+		noTransferBack = false // front-end must set final deposit address
 	}
 
 	var sender txsender.Sender
@@ -265,7 +266,7 @@ func newSwapState(
 		cancel:            cancel,
 		Backend:           b,
 		sender:            sender,
-		transferBack:      transferBack,
+		noTransferBack:    noTransferBack,
 		walletScanHeight:  moneroStartNumber,
 		nextExpectedEvent: nextExpectedEventFromStatus(info.Status),
 		eventCh:           make(chan Event),

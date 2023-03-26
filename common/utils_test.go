@@ -3,12 +3,14 @@ package common
 import (
 	"context"
 	"io/fs"
+	"math"
 	"os"
 	"path"
 	"testing"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
@@ -23,6 +25,17 @@ func TestReverse(t *testing.T) {
 	in2 := [3]byte{0xa, 0xb, 0xc}
 	require.Equal(t, expected, Reverse(in2[:]))
 	require.Equal(t, in2, [3]byte{0xa, 0xb, 0xc}) // input array is unmodified
+}
+
+func TestEthereumPrivateKeyToAddress(t *testing.T) {
+	// Using the 0th deterministic ganache account/key as the test case
+	const ethAddressHex = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+	const ethKeyHex = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+
+	ethKey, err := ethcrypto.HexToECDSA(ethKeyHex)
+	require.NoError(t, err)
+	addr := EthereumPrivateKeyToAddress(ethKey)
+	require.Equal(t, ethAddressHex, addr.String())
 }
 
 func TestGetTopic(t *testing.T) {
@@ -82,4 +95,11 @@ func TestSleepWithContext_canceled(t *testing.T) {
 	defer cancel()
 	err := SleepWithContext(ctx, 24*time.Hour) // time out the test if we fail
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestGetFreeTCPPort(t *testing.T) {
+	port, err := GetFreeTCPPort()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, port, uint(1024))
+	require.LessOrEqual(t, port, uint(math.MaxUint16))
 }

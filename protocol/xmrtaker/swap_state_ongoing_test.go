@@ -64,7 +64,7 @@ func TestSwapStateOngoing_handleEvent_EventXMRLocked(t *testing.T) {
 	ss, err := newSwapStateFromOngoing(
 		s.Backend,
 		s.info,
-		s.transferBack,
+		s.noTransferBack,
 		ethInfo,
 		s.privkeys,
 	)
@@ -91,7 +91,7 @@ func TestSwapStateOngoing_handleEvent_EventETHClaimed(t *testing.T) {
 	ss, err := newSwapStateFromOngoing(
 		s.Backend,
 		s.info,
-		s.transferBack,
+		s.noTransferBack,
 		ethInfo,
 		s.privkeys,
 	)
