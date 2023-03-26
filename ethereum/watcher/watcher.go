@@ -94,7 +94,7 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
-				log.Debugf("watcher for topic %s found log in block %s", f.topic, l.BlockNumber)
+				log.Debugf("watcher for topic %s found log in block %d", f.topic, l.BlockNumber)
 				f.logCh <- l
 			}
 
