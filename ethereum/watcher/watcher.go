@@ -82,7 +82,7 @@ func (f *EventFilter) Start() error {
 				continue
 			}
 
-			log.Debugf("filtered for logs from block %s to head %s", f.filterQuery.FromBlock, currHeader.Number)
+			log.Debugf("filtered for logs from block %s to block %s", f.filterQuery.FromBlock, currHeader.Number)
 
 			for _, l := range logs {
 				if l.Topics[0] != f.topic {
@@ -98,8 +98,7 @@ func (f *EventFilter) Start() error {
 				f.logCh <- l
 			}
 
-			// the filter is inclusive of the latest block when `ToBlock` is nil, so we add 1
-			f.filterQuery.FromBlock = new(big.Int).Add(currHeader.Number, big.NewInt(1))
+			f.filterQuery.FromBlock = currHeader.Number
 		}
 	}()
 
