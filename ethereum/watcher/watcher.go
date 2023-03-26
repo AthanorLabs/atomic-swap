@@ -56,11 +56,6 @@ func NewEventFilter(
 
 // Start starts the EventFilter. It watches the chain for logs.
 func (f *EventFilter) Start() error {
-	header, err := f.ec.HeaderByNumber(f.ctx, nil)
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		for {
 			select {
@@ -75,9 +70,8 @@ func (f *EventFilter) Start() error {
 				continue
 			}
 
-			if currHeader.Number.Cmp(header.Number) <= 0 {
+			if currHeader.Number.Cmp(f.filterQuery.FromBlock) <= 0 {
 				// no new blocks, don't do anything
-				header = currHeader
 				continue
 			}
 
@@ -106,7 +100,6 @@ func (f *EventFilter) Start() error {
 
 			// the filter is inclusive of the latest block when `ToBlock` is nil, so we add 1
 			f.filterQuery.FromBlock = new(big.Int).Add(currHeader.Number, big.NewInt(1))
-			header = currHeader
 		}
 	}()
 
