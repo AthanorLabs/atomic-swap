@@ -93,12 +93,10 @@ func (m *Manager) AddOffer(
 		return oe.extra, nil
 	}
 
-	log.Debugf("putting offer in db...")
 	err := m.db.PutOffer(offer)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("put offer in db")
 
 	extra := &types.OfferExtra{
 		StatusCh:   make(chan types.Status, statusChSize),

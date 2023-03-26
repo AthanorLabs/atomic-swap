@@ -76,14 +76,12 @@ func (f *EventFilter) Start() error {
 			}
 
 			if currHeader.Number.Cmp(header.Number) <= 0 {
-				log.Debugf("current block=%d, prev block=%d", currHeader.Number, header.Number)
 				// no new blocks, don't do anything
 				header = currHeader
 				continue
 			}
 
 			// let's see if we have logs
-			log.Debugf("watcher for topic %s found new block %d", f.topic, currHeader.Number)
 			logs, err := f.ec.FilterLogs(f.ctx, f.filterQuery)
 			if err != nil {
 				log.Errorf("failed to filter logs for topic %s: %s", f.topic, err)
@@ -102,13 +100,12 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
-				log.Debugf("watcher for topic %s found log %s", f.topic, l)
+				log.Debugf("watcher for topic %s found log in block %s", f.topic, l.BlockNumber)
 				f.logCh <- l
 			}
 
 			// the filter is inclusive of the latest block when `ToBlock` is nil, so we add 1
-			//f.filterQuery.FromBlock = new(big.Int).Add(currHeader.Number, big.NewInt(1))
-			f.filterQuery.FromBlock = currHeader.Number
+			f.filterQuery.FromBlock = new(big.Int).Add(currHeader.Number, big.NewInt(1))
 			header = currHeader
 		}
 	}()

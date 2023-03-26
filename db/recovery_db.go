@@ -216,23 +216,27 @@ func (db *RecoveryDB) GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey
 }
 
 // DeleteSwap deletes all recovery info from the db for the given swap.
+// TODO: this is currently unimplemented
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
 	return nil
+}
 
-	// keys := [][]byte{
-	// 	getRecoveryDBKey(id, relayerInfoPrefix),
-	// 	getRecoveryDBKey(id, contractSwapInfoPrefix),
-	// 	getRecoveryDBKey(id, swapPrivateKeyPrefix),
-	// 	getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix),
-	// 	getRecoveryDBKey(id, counterpartySwapKeysPrefix),
-	// }
+// deleteSwap is currently unused.
+func (db *RecoveryDB) deleteSwap(id types.Hash) error {
+	keys := [][]byte{
+		getRecoveryDBKey(id, relayerInfoPrefix),
+		getRecoveryDBKey(id, contractSwapInfoPrefix),
+		getRecoveryDBKey(id, swapPrivateKeyPrefix),
+		getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix),
+		getRecoveryDBKey(id, counterpartySwapKeysPrefix),
+	}
 
-	// for _, key := range keys {
-	// 	err := db.db.Del(key)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	for _, key := range keys {
+		err := db.db.Del(key)
+		if err != nil {
+			return err
+		}
+	}
 
-	// return nil
+	return nil
 }

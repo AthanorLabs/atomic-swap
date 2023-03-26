@@ -10,15 +10,11 @@ func (b *Instance) MakeOffer(
 	o *types.Offer,
 	useRelayer bool,
 ) (*types.OfferExtra, error) {
-	log.Debugf("attempting to make offer, getting monero balance")
-
 	// get monero balance
 	balance, err := b.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Debugf("got monero balance")
 
 	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
 	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
