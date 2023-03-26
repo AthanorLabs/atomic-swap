@@ -71,10 +71,12 @@ func (f *EventFilter) Start() error {
 
 			currHeader, err := f.ec.HeaderByNumber(f.ctx, nil)
 			if err != nil {
+				log.Warnf("failed to get header in event watcher: %s", err)
 				continue
 			}
 
 			if currHeader.Number.Cmp(header.Number) <= 0 {
+				log.Debugf("current block=%d, prev block=%d", currHeader.Number, header.Number)
 				// no new blocks, don't do anything
 				header = currHeader
 				continue
@@ -84,6 +86,7 @@ func (f *EventFilter) Start() error {
 			log.Debugf("watcher for topic %s found new block %d", f.topic, currHeader.Number)
 			logs, err := f.ec.FilterLogs(f.ctx, f.filterQuery)
 			if err != nil {
+				log.Warnf("failed to filter logs for topic %s: %s", f.topic, err)
 				continue
 			}
 
