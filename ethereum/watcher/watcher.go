@@ -80,6 +80,7 @@ func (f *EventFilter) Start() error {
 			}
 
 			// let's see if we have logs
+			log.Debugf("watcher for topic %s found new block %d", f.topic, currHeader.Number)
 			logs, err := f.ec.FilterLogs(f.ctx, f.filterQuery)
 			if err != nil {
 				continue
@@ -95,6 +96,7 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
+				log.Debugf("watcher for topic %s found log %s", f.topic, l)
 				f.logCh <- l
 			}
 

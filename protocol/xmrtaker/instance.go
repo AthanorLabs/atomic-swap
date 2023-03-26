@@ -86,7 +86,8 @@ func (inst *Instance) checkForOngoingSwaps() error {
 
 		err = inst.createOngoingSwap(s)
 		if err != nil {
-			return err
+			log.Errorf("%s", err)
+			continue
 		}
 	}
 
@@ -116,7 +117,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 
 	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get info for ongoing swap, id %s: %s", s.ID, err)
+		return fmt.Errorf("failed to get contract info for ongoing swap, id %s: %s", s.ID, err)
 	}
 
 	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)

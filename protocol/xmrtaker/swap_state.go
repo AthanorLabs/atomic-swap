@@ -442,7 +442,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 	switch stage {
 	case contracts.StageInvalid:
-		return ethcommon.Hash{}, errRefundInvalid
+		return ethcommon.Hash{}, fmt.Errorf("%w: contract swap ID: %s", errRefundInvalid, s.contractSwapID)
 	case contracts.StageCompleted:
 		return ethcommon.Hash{}, errRefundSwapCompleted
 	case contracts.StagePending, contracts.StageReady:
