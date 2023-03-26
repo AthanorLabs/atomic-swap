@@ -413,8 +413,6 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return errUnexpectedEventType
 	}
-
-	return nil
 }
 
 // doRefund is called by the RPC function swap_refund.
@@ -464,7 +462,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
 	if ts.Before(s.t0) && !isReady {
-		txHash, err := s.refund()
+		txHash, err := s.refund() //nolint:govet
 		// TODO: Have refund() return errors that we can use errors.Is to check against
 		if err == nil {
 			return txHash, nil
@@ -512,6 +510,10 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 			panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
 		}
 	case err = <-waitCh:
+		if err != nil {
+			panic(fmt.Sprintf("failed to wait for T1: %s", err))
+		}
+
 		return s.refund()
 	}
 }
