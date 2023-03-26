@@ -4,11 +4,13 @@ package xmrmaker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	ethereum "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
@@ -165,6 +167,92 @@ func newSwapStateFromStart(
 	return s, nil
 }
 
+func checkIfCompletedSuccessfully(b backend.Backend, ethSwapInfo *db.EthereumSwapInfo, info *pswap.Info, om *offers.Manager) (bool, error) {
+	// check if swap actually completed and we didn't realize for some reason
+	// this could happen if we restart from an ongoing swap
+	contract, err := contracts.NewSwapFactory(ethSwapInfo.ContractAddress, b.ETHClient().Raw())
+	if err != nil {
+		return false, err
+	}
+
+	stage, err := contract.Swaps(b.ETHClient().CallOpts(b.Ctx()), ethSwapInfo.SwapID)
+	if err != nil {
+		return false, err
+	}
+
+	switch stage {
+	case contracts.StageInvalid:
+		// this should never happen
+		return false, fmt.Errorf("%w: contract swap ID: %s", errSwapDoesNotExist, ethSwapInfo.SwapID)
+	case contracts.StageCompleted:
+		// check if we already claimed, or if the swap was refunded
+	case contracts.StagePending, contracts.StageReady:
+		return false, nil
+	default:
+		panic("Unhandled stage value")
+	}
+
+	filterQuery := ethereum.FilterQuery{
+		FromBlock: ethSwapInfo.StartNumber,
+		Addresses: []ethcommon.Address{ethSwapInfo.ContractAddress},
+	}
+
+	claimedTopic := common.GetTopic(common.ClaimedEventSignature)
+
+	// let's see if we have logs
+	logs, err := b.ETHClient().Raw().FilterLogs(b.Ctx(), filterQuery)
+	if err != nil {
+		return false, fmt.Errorf("failed to filter logs for topic %s: %s", claimedTopic, err)
+	}
+
+	log.Debugf("filtered for logs from block %s to head", filterQuery.FromBlock)
+
+	var foundClaimed *ethtypes.Log
+	for _, l := range logs {
+		if l.Topics[0] != claimedTopic {
+			continue
+		}
+
+		if l.Removed {
+			log.Debugf("found removed log: tx hash %s", l.TxHash)
+			continue
+		}
+
+		err := pcommon.CheckSwapID(&l, claimedTopic, ethSwapInfo.SwapID)
+		if errors.Is(err, pcommon.ErrLogNotForUs) {
+			continue
+		}
+
+		log.Infof("found Claimed log in block %d", l.BlockNumber)
+		foundClaimed = &l
+	}
+
+	if foundClaimed == nil {
+		return false, nil
+	}
+
+	// set swap to completed
+	info.SetStatus(types.CompletedSuccess)
+	err = b.SwapManager().CompleteOngoingSwap(info)
+	if err != nil {
+		return true, fmt.Errorf("failed to mark swap %s as completed: %s", info.ID, err)
+	}
+
+	err = om.DeleteOffer(info.ID)
+	if err != nil {
+		log.Warnf("failed to delete offer %s from db: %s", info.ID, err)
+	}
+
+	err = b.RecoveryDB().DeleteSwap(info.ID)
+	if err != nil {
+		log.Warnf("failed to delete temporary swap info %s from db: %s", info.ID, err)
+	}
+
+	exitLog := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", info.ID)
+	log.Info(exitLog)
+	return true, nil
+}
+
 // newSwapStateFromOngoing returns a new *swapState given information about a swap
 // that's ongoing, but not yet completed.
 func newSwapStateFromOngoing(
@@ -176,6 +264,15 @@ func newSwapStateFromOngoing(
 	info *pswap.Info,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
+	completedSuccessfully, err := checkIfCompletedSuccessfully(b, ethSwapInfo, info, om)
+	if err != nil {
+		return nil, err
+	}
+
+	if completedSuccessfully {
+		return nil, errors.New("swap was already completed successfully")
+	}
+
 	// TODO: do we want to support the case where the ETH has been locked,
 	// but we haven't locked yet?
 	if info.Status != types.XMRLocked {
