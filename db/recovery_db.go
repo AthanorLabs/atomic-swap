@@ -188,11 +188,13 @@ func (db *RecoveryDB) PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicK
 	}
 
 	key := getRecoveryDBKey(id, counterpartySwapKeysPrefix)
+	log.Debugf("PutCounterpartySwapKeys %s", key)
 	err = db.db.Put(key, val)
 	if err != nil {
 		return err
 	}
 
+	log.Debugf("flushing db")
 	return db.db.Flush()
 }
 

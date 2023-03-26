@@ -120,6 +120,8 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
 	}
 
+	log.Debugf("set XMR maker's keys")
+
 	txHash, err := s.lockAsset()
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock ethereum asset in contract: %w", err)

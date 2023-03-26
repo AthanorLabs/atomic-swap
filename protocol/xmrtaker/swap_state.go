@@ -601,6 +601,8 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
+	log.Debugf("locking ETH in contract")
+
 	nonce := generateNonce()
 	txHash, receipt, err := s.sender.NewSwap(
 		cmtXMRMaker,
