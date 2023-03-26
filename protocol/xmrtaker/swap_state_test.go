@@ -75,18 +75,17 @@ func newSwapManager(t *testing.T) pswap.Manager {
 
 func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	pk := tests.GetTakerTestKey(t)
-	ec, chainID := tests.NewEthClient(t)
+	ec := extethclient.CreateTestClient(t, pk)
 	ctx := context.Background()
-	env := common.Development
 
-	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, ec.ChainID())
 	require.NoError(t, err)
 
 	var forwarderAddress ethcommon.Address
-	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
+	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec.Raw(), forwarderAddress)
 	require.NoError(t, err)
 
-	addr, err := bind.WaitDeployed(ctx, ec, tx)
+	addr, err := bind.WaitDeployed(ctx, ec.Raw(), tx)
 	require.NoError(t, err)
 
 	ctrl := gomock.NewController(t)
@@ -98,20 +97,16 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
-	require.NoError(t, err)
-
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:                 context.Background(),
-		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      extendedEC,
-		Environment:         common.Development,
-		SwapManager:         newSwapManager(t),
-		SwapContract:        contract,
-		SwapContractAddress: addr,
-		Net:                 net,
-		RecoveryDB:          rdb,
+		Ctx:                context.Background(),
+		MoneroClient:       monero.CreateWalletClient(t),
+		EthereumClient:     ec,
+		Environment:        common.Development,
+		SwapManager:        newSwapManager(t),
+		SwapFactoryAddress: addr,
+		Net:                net,
+		RecoveryDB:         rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -129,7 +124,7 @@ func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	providedAmt := coins.EtherToWei(coins.StrToDecimal("1"))
 	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("1"))
 	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
-	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
+	swapState, err := newSwapStateFromStart(b, types.Hash{}, true,
 		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState, net

@@ -16,6 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
@@ -103,6 +104,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 	if len(relayers) == 0 {
 		return ethcommon.Hash{}, errors.New("no relayers found to submit claim to")
 	}
+	log.Debugf("Found %d relayers to submit claim to", len(relayers))
 
 	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
 	if err != nil {
@@ -125,9 +127,10 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 	}
 
 	for _, relayer := range relayers {
+		log.Debugf("submitting claim to relayer with peer ID %s", relayer)
 		resp, err := s.Backend.SubmitClaimToRelayer(relayer, req)
 		if err != nil {
-			log.Warnf("failed to submit tx to relayer with peer ID %s, trying next relayer: err: %s", relayer, err)
+			log.Warnf("failed to submit tx to relayer: %s", err)
 			continue
 		}
 
@@ -140,7 +143,7 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 			s.getSecret(),
 		)
 		if err != nil {
-			log.Warnf("tx %s submitted by relayer with peer ID %s failed, trying next relayer", resp.TxHash, relayer)
+			log.Warnf("failed to get receipt of relayer's tx: %s", err)
 			continue
 		}
 
@@ -201,11 +204,25 @@ func waitForClaimReceipt(
 		return err
 	}
 
-	if len(receipt.Logs) == 0 {
-		return fmt.Errorf("claim transaction had no logs")
+	if receipt.Status != ethtypes.ReceiptStatusSuccessful {
+		err = fmt.Errorf("relayer's claim transaction failed (gas-lost=%d tx=%s block=%d), %w",
+			receipt.GasUsed, txHash, receipt.BlockNumber, block.ErrorFromBlock(ctx, ec, receipt))
+		return err
 	}
 
-	return checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret)
+	if len(receipt.Logs) == 0 {
+		return fmt.Errorf("relayer's claim transaction had no logs (tx=%s block=%d)",
+			txHash, receipt.BlockNumber)
+	}
+
+	if err = checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret); err != nil {
+		return fmt.Errorf("relayer's claim had logs error (tx=%s block=%d): %w",
+			txHash, receipt.BlockNumber, err)
+	}
+
+	log.Infof("relayer's claim tx=%s in block=%d validated, gas used: %d",
+		receipt.TxHash, receipt.BlockNumber, receipt.GasUsed)
+	return nil
 }
 
 func checkClaimedLog(log *ethtypes.Log, contractAddr ethcommon.Address, contractSwapID, secret [32]byte) error {

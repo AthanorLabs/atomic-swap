@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 
@@ -17,10 +16,10 @@ import (
 func TestWaitForReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ec, chainID := tests.NewEthClient(t)
 	privKey := tests.GetTakerTestKey(t)
+	ec := extethclient.CreateTestClient(t, privKey)
 
-	gasPrice, err := ec.SuggestGasPrice(ctx)
+	gasPrice, err := ec.Raw().SuggestGasPrice(ctx)
 	require.NoError(t, err)
 
 	to := ethcommon.Address{}
@@ -32,21 +31,16 @@ func TestWaitForReceipt(t *testing.T) {
 	}
 
 	tx, err := ethtypes.SignNewTx(privKey,
-		ethtypes.LatestSignerForChainID(chainID),
+		ethtypes.LatestSignerForChainID(ec.ChainID()),
 		txInner,
 	)
 	require.NoError(t, err)
 
-	err = ec.SendTransaction(ctx, tx)
-	require.NoError(t, err)
-
-	env := common.Development
-
-	extendedEC, err := extethclient.NewEthClient(ctx, env, ec, privKey)
+	err = ec.Raw().SendTransaction(ctx, tx)
 	require.NoError(t, err)
 
 	b := &backend{
-		ethClient: extendedEC,
+		ethClient: ec,
 	}
 
 	receipt, err := b.ETHClient().WaitForReceipt(ctx, tx.Hash())

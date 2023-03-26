@@ -450,7 +450,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 		s.moneroStartHeight,
 		kpAB,
 		s.XMRClient().PrimaryAddress(),
-		true, // always sweep back to our primary address
+		false, // always sweep back to our primary address
 	)
 }
 

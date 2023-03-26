@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	relayedClaimGas = 52000
+	relayedClaimGas = 70000
 )
 
 // FeeWei and FeeEth are the fixed 0.009 ETH fee for using a swap relayer to claim.

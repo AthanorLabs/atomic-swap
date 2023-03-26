@@ -33,6 +33,7 @@ var testPackages = []struct {
 	numKeys int
 }{
 	{"cmd/swapd", 2},
+	{"daemon", 2},
 	{"ethereum", 16},
 	{"ethereum/block", 2},
 	{"net", 2},

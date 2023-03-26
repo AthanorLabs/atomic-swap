@@ -22,7 +22,7 @@ func newTestInstance(t *testing.T) *Instance {
 	inst, err := NewInstance(&Config{
 		Backend:        newBackend(t),
 		DataDir:        "",
-		TransferBack:   true,
+		NoTransferBack: false,
 		ExternalSender: false,
 	})
 	require.NoError(t, err)

@@ -85,8 +85,8 @@ type backend struct {
 	moneroWallet monero.WalletClient
 	ethClient    extethclient.EthClient
 
-	// Monero deposit address. When the XMR xmrtaker has transferBack set to
-	// true (default), claimed funds are swept back to the primary XMR wallet
+	// Monero deposit address. When the XMR maker has noTransferBack set to
+	// false (default), claimed funds are swept into the primary XMR wallet
 	// address used by swapd. This sweep destination address can be overridden
 	// on a per-swap basis, by setting an address indexed by the offerID/swapID
 	// in the map below.
@@ -104,25 +104,25 @@ type backend struct {
 
 // Config is the config for the Backend
 type Config struct {
-	Ctx            context.Context
-	MoneroClient   monero.WalletClient
-	EthereumClient extethclient.EthClient
-	Environment    common.Environment
-
-	SwapContract        *contracts.SwapFactory
-	SwapContractAddress ethcommon.Address
-
-	SwapManager swap.Manager
-
-	RecoveryDB RecoveryDB
-
-	Net NetSender
+	Ctx                context.Context
+	MoneroClient       monero.WalletClient
+	EthereumClient     extethclient.EthClient
+	Environment        common.Environment
+	SwapFactoryAddress ethcommon.Address
+	SwapManager        swap.Manager
+	RecoveryDB         RecoveryDB
+	Net                NetSender
 }
 
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
-	if cfg.SwapContract == nil || (cfg.SwapContractAddress == ethcommon.Address{}) {
+	if (cfg.SwapFactoryAddress == ethcommon.Address{}) {
 		return nil, errNilSwapContractOrAddress
+	}
+
+	swapFactory, err := contracts.NewSwapFactory(cfg.SwapFactoryAddress, cfg.EthereumClient.Raw())
+	if err != nil {
+		return nil, err
 	}
 
 	return &backend{
@@ -130,8 +130,8 @@ func NewBackend(cfg *Config) (Backend, error) {
 		env:                   cfg.Environment,
 		moneroWallet:          cfg.MoneroClient,
 		ethClient:             cfg.EthereumClient,
-		contract:              cfg.SwapContract,
-		contractAddr:          cfg.SwapContractAddress,
+		contract:              swapFactory,
+		contractAddr:          cfg.SwapFactoryAddress,
 		swapManager:           cfg.SwapManager,
 		swapTimeout:           common.SwapTimeoutFromEnv(cfg.Environment),
 		NetSender:             cfg.Net,
@@ -212,7 +212,7 @@ func (b *backend) XMRDepositAddress(offerID *types.Hash) *mcrypto.Address {
 }
 
 // SetXMRDepositAddress sets a per-swap override deposit address to use when
-// sweeping funds out of the shared swap wallet. When transferBack is set
+// sweeping funds out of the shared swap wallet. When noTransferBack is unset
 // (default), funds will be swept to this override address instead of to swap's
 // primary monero wallet.
 func (b *backend) SetXMRDepositAddress(addr *mcrypto.Address, offerID types.Hash) {

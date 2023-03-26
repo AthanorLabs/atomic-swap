@@ -12,9 +12,14 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+)
+
+const (
+	contractAddressesFile = "contract-addresses.json"
 )
 
 var (
@@ -31,43 +36,29 @@ func getOrDeploySwapFactory(
 	address ethcommon.Address,
 	env common.Environment,
 	dataDir string,
-	privkey *ecdsa.PrivateKey,
-	ec *ethclient.Client,
+	ec extethclient.EthClient,
 	forwarderAddress ethcommon.Address,
-) (*contracts.SwapFactory, ethcommon.Address, error) {
-	var (
-		sf  *contracts.SwapFactory
-		err error
-	)
+) (ethcommon.Address, error) {
+	var err error
 
 	if env != common.Mainnet && (address == ethcommon.Address{}) {
 		// we're on a development or testnet environment and we have no deployed contract,
 		// so let's deploy one
-		address, sf, err = deploySwapFactory(ctx, ec, privkey, forwarderAddress, dataDir)
+		address, _, err = deploySwapFactory(ctx, ec.Raw(), ec.PrivateKey(), forwarderAddress, dataDir)
 		if err != nil {
-			return nil, ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w", err)
+			return ethcommon.Address{}, fmt.Errorf("failed to deploy swap factory: %w", err)
 		}
 	} else {
 		// otherwise, load the contract from the given address
 		// and check that its bytecode is valid (ie. matches the
 		// bytecode of this repo's swap contract)
-		sf, err = getSwapFactory(ec, address)
+		_, err = contracts.CheckSwapFactoryContractCode(ctx, ec.Raw(), address)
 		if err != nil {
-			return nil, ethcommon.Address{}, err
-		}
-		log.Infof("loaded SwapFactory.sol from address %s", address)
-
-		_, err = contracts.CheckSwapFactoryContractCode(ctx, ec, address)
-		if err != nil {
-			return nil, ethcommon.Address{}, err
+			return ethcommon.Address{}, err
 		}
 	}
 
-	return sf, address, nil
-}
-
-func getSwapFactory(client *ethclient.Client, addr ethcommon.Address) (*contracts.SwapFactory, error) {
-	return contracts.NewSwapFactory(addr, client)
+	return address, nil
 }
 
 func deploySwapFactory(
@@ -89,6 +80,10 @@ func deploySwapFactory(
 		if err != nil {
 			return ethcommon.Address{}, nil, err
 		}
+	} else {
+		if err := contracts.CheckForwarderContractCode(ctx, ec, forwarderAddress); err != nil {
+			return ethcommon.Address{}, nil, err
+		}
 	}
 
 	swapFactoryAddress, sf, err := contracts.DeploySwapFactoryWithKey(ctx, ec, privkey, forwarderAddress)
@@ -98,7 +93,7 @@ func deploySwapFactory(
 
 	// store the contract address on disk
 	err = writeContractAddressToFile(
-		path.Join(dataDir, "contract-addresses.json"),
+		path.Join(dataDir, contractAddressesFile),
 		&contractAddresses{
 			SwapFactory: swapFactoryAddress,
 			Forwarder:   forwarderAddress,

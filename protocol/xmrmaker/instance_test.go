@@ -85,7 +85,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	require.NoError(t, err)
 
 	var forwarderAddress ethcommon.Address
-	_, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
+	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
@@ -101,20 +101,19 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(context.Background(), env, ec, pk)
+	extendedEC, err := extethclient.NewEthClient(context.Background(), env, common.DefaultEthEndpoint, pk)
 	require.NoError(t, err)
 
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:                 context.Background(),
-		MoneroClient:        monero.CreateWalletClient(t),
-		EthereumClient:      extendedEC,
-		Environment:         common.Development,
-		SwapContract:        contract,
-		SwapContractAddress: addr,
-		SwapManager:         newSwapManager(t),
-		Net:                 net,
-		RecoveryDB:          rdb,
+		Ctx:                context.Background(),
+		MoneroClient:       monero.CreateWalletClient(t),
+		EthereumClient:     extendedEC,
+		Environment:        common.Development,
+		SwapFactoryAddress: addr,
+		SwapManager:        newSwapManager(t),
+		Net:                net,
+		RecoveryDB:         rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)

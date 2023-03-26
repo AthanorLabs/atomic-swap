@@ -48,8 +48,8 @@ func TestClaimMonero_NoTransferBack(t *testing.T) {
 		moneroCli,
 		height,
 		kp,
-		nil, // deposit address can be nil, as transferBack is false
-		false,
+		nil, // deposit address can be nil, as noTransferBack is true
+		true,
 	)
 	require.NoError(t, err)
 }
@@ -89,7 +89,7 @@ func TestClaimMonero_WithTransferBack(t *testing.T) {
 		height,
 		kp,
 		depositAddr,
-		true,
+		false,
 	)
 	require.NoError(t, err)
 }
