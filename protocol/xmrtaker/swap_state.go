@@ -496,7 +496,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 	select {
 	case event := <-s.eventCh:
-		log.Debugf("got event %s while waiting for T1", event)
+		log.Debugf("got event %s while waiting for T1", event.Type())
 		switch event.(type) {
 		case *EventShouldRefund:
 			return s.refund()

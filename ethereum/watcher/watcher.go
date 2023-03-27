@@ -72,6 +72,7 @@ func (f *EventFilter) Start() error {
 
 			if currHeader.Number.Cmp(f.filterQuery.FromBlock) <= 0 {
 				// no new blocks, don't do anything
+				log.Debugf("EventFilter continue, currHeader %d filterQuery.FromBlock %d", currHeader.Number, f.filterQuery.FromBlock)
 				continue
 			}
 
