@@ -167,7 +167,12 @@ func newSwapStateFromStart(
 	return s, nil
 }
 
-func checkIfCompletedSuccessfully(b backend.Backend, ethSwapInfo *db.EthereumSwapInfo, info *pswap.Info, om *offers.Manager) (bool, error) {
+func checkIfCompletedSuccessfully(
+	b backend.Backend,
+	ethSwapInfo *db.EthereumSwapInfo,
+	info *pswap.Info,
+	om *offers.Manager,
+) (bool, error) {
 	// check if swap actually completed and we didn't realize for some reason
 	// this could happen if we restart from an ongoing swap
 	contract, err := contracts.NewSwapFactory(ethSwapInfo.ContractAddress, b.ETHClient().Raw())
@@ -209,6 +214,7 @@ func checkIfCompletedSuccessfully(b backend.Backend, ethSwapInfo *db.EthereumSwa
 
 	var foundClaimed *ethtypes.Log
 	for _, l := range logs {
+		l := l
 		if l.Topics[0] != claimedTopic {
 			continue
 		}
@@ -218,7 +224,7 @@ func checkIfCompletedSuccessfully(b backend.Backend, ethSwapInfo *db.EthereumSwa
 			continue
 		}
 
-		err := pcommon.CheckSwapID(&l, claimedTopic, ethSwapInfo.SwapID)
+		err = pcommon.CheckSwapID(&l, claimedTopic, ethSwapInfo.SwapID)
 		if errors.Is(err, pcommon.ErrLogNotForUs) {
 			continue
 		}
