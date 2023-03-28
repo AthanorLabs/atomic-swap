@@ -142,12 +142,12 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 
 	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get contract info for ongoing swap, id %s: %s", s.ID, err)
+		return fmt.Errorf("failed to get contract info for ongoing swap from db with swap id %s: %w", s.ID, err)
 	}
 
 	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.ID, err)
+		return fmt.Errorf("failed to get private key for ongoing swap from db with swap id %s: %w", s.ID, err)
 	}
 
 	kp, err := sk.AsPrivateKeyPair()
@@ -172,7 +172,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		kp,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %s", s.ID, err)
+		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %w", s.ID, err)
 	}
 
 	inst.swapMu.Lock()

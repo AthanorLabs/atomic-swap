@@ -393,11 +393,11 @@ func (s *swapState) exit() error {
 				// but that would be very bad.
 				err = s.tryClaim()
 				if err != nil {
-					panic(fmt.Sprintf("failed to claim even though swap was completed on-chain: %s", err))
+					return fmt.Errorf("failed to claim even though swap was completed on-chain: %w", err)
 				}
 			}
 
-			panic(fmt.Sprintf("failed to refund: %s", err))
+			return fmt.Errorf("failed to refund: %w", err)
 		}
 
 		s.clearNextExpectedEvent(types.CompletedRefund)
@@ -485,8 +485,8 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	// it won't handle those events while this function is executing.)
 	log.Infof("waiting until time %s to refund", s.t1)
 
-	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
-	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
+	waitCtx, waitCtxCancel := context.WithCancel(s.ctx)
+	defer waitCtxCancel()
 
 	waitCh := make(chan error)
 	go func() {
@@ -509,7 +509,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		}
 	case err = <-waitCh:
 		if err != nil {
-			panic(fmt.Sprintf("failed to wait for T1: %s", err))
+			return ethcommon.Hash{}, fmt.Errorf("failed to wait for T1: %w", err)
 		}
 
 		return s.refund()
