@@ -34,7 +34,7 @@ type Instance struct {
 	// non-nil if a swap is currently happening, nil otherwise
 	// map of offer IDs -> ongoing swaps
 	swapStates map[types.Hash]*swapState
-	swapMu     sync.Mutex // lock for above map
+	swapMu     sync.RWMutex // lock for above map
 }
 
 // Config contains the configuration values for a new XMRTaker instance.
@@ -227,6 +227,8 @@ func (inst *Instance) Refund(offerID types.Hash) (ethcommon.Hash, error) {
 
 // GetOngoingSwapState ...
 func (inst *Instance) GetOngoingSwapState(offerID types.Hash) common.SwapState {
+	inst.swapMu.RLock()
+	defer inst.swapMu.RUnlock()
 	return inst.swapStates[offerID]
 }
 
