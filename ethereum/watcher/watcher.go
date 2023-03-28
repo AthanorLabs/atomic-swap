@@ -56,11 +56,6 @@ func NewEventFilter(
 
 // Start starts the EventFilter. It watches the chain for logs.
 func (f *EventFilter) Start() error {
-	header, err := f.ec.HeaderByNumber(f.ctx, nil)
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		for {
 			select {
@@ -71,10 +66,11 @@ func (f *EventFilter) Start() error {
 
 			currHeader, err := f.ec.HeaderByNumber(f.ctx, nil)
 			if err != nil {
+				log.Errorf("failed to get header in event watcher: %s", err)
 				continue
 			}
 
-			if currHeader.Number.Cmp(header.Number) <= 0 {
+			if currHeader.Number.Cmp(f.filterQuery.FromBlock) <= 0 {
 				// no new blocks, don't do anything
 				continue
 			}
@@ -82,8 +78,11 @@ func (f *EventFilter) Start() error {
 			// let's see if we have logs
 			logs, err := f.ec.FilterLogs(f.ctx, f.filterQuery)
 			if err != nil {
+				log.Errorf("failed to filter logs for topic %s: %s", f.topic, err)
 				continue
 			}
+
+			log.Debugf("filtered for logs from block %s to block %s", f.filterQuery.FromBlock, currHeader.Number)
 
 			for _, l := range logs {
 				if l.Topics[0] != f.topic {
@@ -95,12 +94,11 @@ func (f *EventFilter) Start() error {
 					continue
 				}
 
+				log.Debugf("watcher for topic %s found log in block %d", f.topic, l.BlockNumber)
 				f.logCh <- l
 			}
 
-			// the filter is inclusive of the latest block when `ToBlock` is nil, so we add 1
-			f.filterQuery.FromBlock = new(big.Int).Add(currHeader.Number, big.NewInt(1))
-			header = currHeader
+			f.filterQuery.FromBlock = currHeader.Number
 		}
 	}()
 

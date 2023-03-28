@@ -390,16 +390,21 @@ func (s *swapState) exit() error {
 		txHash, err := s.tryRefund()
 		if err != nil {
 			if strings.Contains(err.Error(), revertSwapCompleted) {
-				return s.tryClaim()
+				// note: this should NOT ever error; it could if the ethclient
+				// or monero clients crash during the course of the claim,
+				// but that would be very bad.
+				err = s.tryClaim()
+				if err != nil {
+					return fmt.Errorf("failed to claim even though swap was completed on-chain: %w", err)
+				}
 			}
 
-			s.clearNextExpectedEvent(types.CompletedAbort)
-			log.Errorf("failed to refund: err=%s", err)
-			return err
+			return fmt.Errorf("failed to refund: %w", err)
 		}
 
 		s.clearNextExpectedEvent(types.CompletedRefund)
 		log.Infof("refunded ether: transaction hash=%s", txHash)
+		return nil
 	case EventNoneType:
 		// the swap completed already, do nothing
 		return nil
@@ -408,8 +413,6 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return errUnexpectedEventType
 	}
-
-	return nil
 }
 
 // doRefund is called by the RPC function swap_refund.
@@ -439,7 +442,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 	switch stage {
 	case contracts.StageInvalid:
-		return ethcommon.Hash{}, errRefundInvalid
+		return ethcommon.Hash{}, fmt.Errorf("%w: contract swap ID: %s", errRefundInvalid, s.contractSwapID)
 	case contracts.StageCompleted:
 		return ethcommon.Hash{}, errRefundSwapCompleted
 	case contracts.StagePending, contracts.StageReady:
@@ -459,7 +462,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
 
 	if ts.Before(s.t0) && !isReady {
-		txHash, err := s.refund()
+		txHash, err := s.refund() //nolint:govet
 		// TODO: Have refund() return errors that we can use errors.Is to check against
 		if err == nil {
 			return txHash, nil
@@ -484,17 +487,34 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	// it won't handle those events while this function is executing.)
 	log.Infof("waiting until time %s to refund", s.t1)
 
-	event := <-s.eventCh
-	log.Debugf("got event %s while waiting for T1", event)
-	switch event.(type) {
-	case *EventShouldRefund:
+	waitCtx, waitCtxCancel := context.WithCancel(s.ctx)
+	defer waitCtxCancel()
+
+	waitCh := make(chan error)
+	go func() {
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t1)
+		close(waitCh)
+	}()
+
+	select {
+	case event := <-s.eventCh:
+		log.Debugf("got event %s while waiting for T1", event)
+		switch event.(type) {
+		case *EventShouldRefund:
+			return s.refund()
+		case *EventETHClaimed:
+			// we should claim; returning this error
+			// causes the calling function to claim
+			return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
+		default:
+			panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
+		}
+	case err = <-waitCh:
+		if err != nil {
+			return ethcommon.Hash{}, fmt.Errorf("failed to wait for T1: %w", err)
+		}
+
 		return s.refund()
-	case *EventETHClaimed:
-		// we should claim; returning this error
-		// causes the calling function to claim
-		return ethcommon.Hash{}, fmt.Errorf(revertSwapCompleted)
-	default:
-		panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
 	}
 }
 
@@ -581,6 +601,8 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
+	log.Debugf("locking ETH in contract")
+
 	nonce := generateNonce()
 	txHash, receipt, err := s.sender.NewSwap(
 		cmtXMRMaker,
@@ -660,10 +682,12 @@ func (s *swapState) ready() error {
 	if err != nil {
 		return err
 	}
+
 	if stage != contracts.StagePending {
 		return fmt.Errorf("cannot set contract to ready when swap stage is %s", contracts.StageToString(stage))
 	}
-	_, receipt, err := s.sender.SetReady(s.contractSwap)
+
+	txHash, receipt, err := s.sender.SetReady(s.contractSwap)
 	if err != nil {
 		if strings.Contains(err.Error(), revertSwapCompleted) && !s.info.Status.IsOngoing() {
 			return nil
@@ -671,7 +695,7 @@ func (s *swapState) ready() error {
 		return err
 	}
 
-	log.Debugf("contract set to ready in block %d", receipt.BlockNumber)
+	log.Debugf("contract set to ready in block %d, tx %s", receipt.BlockNumber, txHash)
 	return nil
 }
 

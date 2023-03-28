@@ -26,22 +26,18 @@ func WaitForEthBlockAfterTimestamp(ctx context.Context, ec *ethclient.Client, ts
 		return nil, err
 	}
 
-	// subscribe to new block headers
-	headers := make(chan *ethtypes.Header)
-	defer close(headers)
-	sub, err := ec.SubscribeNewHead(ctx, headers)
-	if err != nil {
-		return nil, err
-	}
-	defer sub.Unsubscribe()
+	ticker := time.NewTicker(time.Second)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case err := <-sub.Err():
-			return nil, err
-		case header := <-headers:
+		case <-ticker.C:
+			header, err := ec.HeaderByNumber(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+
 			if header.Time >= uint64(ts.Unix()) {
 				return header, nil
 			}

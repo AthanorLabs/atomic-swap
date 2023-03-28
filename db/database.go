@@ -89,7 +89,12 @@ func (db *Database) PutOffer(offer *types.Offer) error {
 	}
 
 	key := offer.ID
-	return db.offerTable.Put(key[:], val)
+	err = db.offerTable.Put(key[:], val)
+	if err != nil {
+		return err
+	}
+
+	return db.offerTable.Flush()
 }
 
 // DeleteOffer deletes an offer from the database.
@@ -188,7 +193,12 @@ func (db *Database) PutSwap(s *swap.Info) error {
 	}
 
 	key := s.ID
-	return db.swapTable.Put(key[:], val)
+	err = db.swapTable.Put(key[:], val)
+	if err != nil {
+		return err
+	}
+
+	return db.swapTable.Flush()
 }
 
 // HasSwap returns whether the db contains a swap with the given ID.
