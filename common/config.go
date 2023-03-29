@@ -64,7 +64,7 @@ func MainnetConfig() *Config {
 	}
 }
 
-// StagenetConfig is the monero stagenet and ethereum Gorli configuration
+// StagenetConfig is the monero stagenet and ethereum Sepolia configuration
 func StagenetConfig() *Config {
 	return &Config{
 		Env:     Stagenet,
@@ -83,8 +83,8 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapFactoryAddress:       ethcommon.HexToAddress("0x3d561C6f938aDBc45239772cc6A39e1Db7192154"),
-		ForwarderContractAddress: ethcommon.HexToAddress("0x4a707181842Ef084daFC90DeF367a1825eCcBCab"),
+		SwapFactoryAddress:       ethcommon.HexToAddress("0xE5656d3549478BdE248e5D7aE22ff8DCC5Cd11a3"),
+		ForwarderContractAddress: ethcommon.HexToAddress("0x171f294A0Ca7085Ce5F73DE1BE28b9721e007B94"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",

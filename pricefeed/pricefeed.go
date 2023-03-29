@@ -54,8 +54,8 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 	switch chainID.Uint64() {
 	case common.MainnetChainID:
 		// No extra work to do
-	case common.GoerliChainID:
-		// Push stagenet/goerli users to a mainnet endpoint
+	case common.SepoliaChainID:
+		// Push stagenet/sepolia users to a mainnet endpoint
 		ec, err = ethclient.Dial(mainnetEndpoint)
 		if err != nil {
 			return nil, err
@@ -85,8 +85,8 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 	switch chainID.Uint64() {
 	case common.MainnetChainID:
 		// No extra work to do
-	case common.GoerliChainID:
-		// Push stagenet/goerli users to a mainnet endpoint
+	case common.SepoliaChainID:
+		// Push stagenet/sepolia users to a mainnet endpoint
 		ec, err = ethclient.Dial(mainnetEndpoint)
 		if err != nil {
 			return nil, err
