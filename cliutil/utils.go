@@ -83,7 +83,7 @@ func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMR
 
 	if exists {
 		log.Infof("Using ETH wallet key located in %s", ethPrivKeyFile)
-		log.Infof("ETH address:", ethcrypto.PubkeyToAddress(*(privkey.Public().(*ecdsa.PublicKey))).Hex())
+		log.Infof("ETH address: %s", ethcrypto.PubkeyToAddress(*(privkey.Public().(*ecdsa.PublicKey))).Hex())
 	}
 
 	return privkey, nil
