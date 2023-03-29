@@ -40,6 +40,7 @@ For Linux 64-bit, you can do:
 
 6. Fund your Sepolia account using a faucet: 
 - https://sepolia-faucet.pk910.de/
+- https://sepoliafaucet.com/
 - https://sepolia.dev/
 
 7. Obtain a Sepolia JSON-RPC endpoint. If you don't want to sync your own node, you can find public ones here: https://sepolia.dev/
