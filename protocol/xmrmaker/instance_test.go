@@ -7,6 +7,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -159,12 +160,24 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst, offerDB := newTestInstanceAndDB(t)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
+	ec := inst.backend.ETHClient()
+	contract := inst.backend.Contract()
+	contractSwap, contractSwapID, _ := newTestSwap(
+		t, ec, contract, [32]byte{}, [32]byte{}, big.NewInt(100), time.Minute*10,
+	)
+
+	txOpts, err := ec.TxOpts(context.Background())
+	require.NoError(t, err)
+	tx, err := contract.SetReady(txOpts, *contractSwap)
+	require.NoError(t, err)
+	tests.MineTransaction(t, ec.Raw(), tx)
+
 	one := apd.New(1, 0)
 	rate := coins.ToExchangeRate(apd.New(1, 0))
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
 	offerDB.EXPECT().PutOffer(offer).Return(nil)
-	_, err := inst.offerManager.AddOffer(offer, false)
+	_, err = inst.offerManager.AddOffer(offer, false)
 	require.NoError(t, err)
 
 	s := &pswap.Info{
@@ -185,6 +198,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),
+		SwapID:          contractSwapID,
 		Swap: &contracts.SwapFactorySwap{
 			Timeout0: big.NewInt(1),
 			Timeout1: big.NewInt(2),
