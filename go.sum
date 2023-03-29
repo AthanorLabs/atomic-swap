@@ -27,12 +27,12 @@ github.com/VictoriaMetrics/fastcache v1.6.0 h1:C/3Oi3EiBCqufydp1neRZkqcwmEiuRT9c
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
-github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213 h1:2IaAtMG8GEi2A9YdG7swqHadOiyvrysgR1uSEMEQHHI=
-github.com/athanorlabs/go-dleq v0.0.0-20230113214619-d6fd7c03e213/go.mod h1:DWry6jSD7A13MKmeZA0AX3/xBeQCXDoygX99VPwL3yU=
+github.com/athanorlabs/go-dleq v0.1.0 h1:0/llWZG8fz2uintMBKOiBC502zCsDA8nt8vxI73W9Qc=
+github.com/athanorlabs/go-dleq v0.1.0/go.mod h1:DWry6jSD7A13MKmeZA0AX3/xBeQCXDoygX99VPwL3yU=
 github.com/athanorlabs/go-p2p-net v0.2.0 h1:+VpAN10Ys0B28QDXQRaDySvNfHS99Jt83Qq1sUhEnG4=
 github.com/athanorlabs/go-p2p-net v0.2.0/go.mod h1:egbDohZq6I4FzKaVytR+xZKUwA2OqTE6mr9dsNQPPbE=
-github.com/athanorlabs/go-relayer v0.0.6-0.20230130025015-5c38ca344baa h1:WYLvwVVvzxX1Ggl2AWaO6JUUce9eFOPkLzqpXa9OaL0=
-github.com/athanorlabs/go-relayer v0.0.6-0.20230130025015-5c38ca344baa/go.mod h1:Ww/wfTsi+WGS2Yf6Zk3ao7EjoJmcIdWfq6WNHcCEmxk=
+github.com/athanorlabs/go-relayer v0.1.0 h1:kmUmAQsAgO+tTli3t+NZkmbRnRsdVISQGqOgY0tHhGQ=
+github.com/athanorlabs/go-relayer v0.1.0/go.mod h1:Ww/wfTsi+WGS2Yf6Zk3ao7EjoJmcIdWfq6WNHcCEmxk=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
