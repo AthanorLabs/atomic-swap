@@ -119,7 +119,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	txOpts.Value = value
 
 	tx, err = contract.NewSwap(txOpts, cmt, [32]byte{}, addr,
-		defaultTestTimeoutDuration, asset.Address(), value, nonce)
+		defaultTestTimeoutDuration, defaultTestTimeoutDuration, asset.Address(), value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
