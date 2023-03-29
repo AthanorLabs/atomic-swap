@@ -75,7 +75,15 @@ func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMR
 		return nil, fmt.Errorf("failed to read ethereum-privkey file: %w", err)
 	}
 	ethPrivKeyHex := strings.TrimSpace(string(fileData))
-	return ethcrypto.HexToECDSA(ethPrivKeyHex)
+	privkey, err := ethcrypto.HexToECDSA(ethPrivKeyHex)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof("Using ETH wallet key located in %s", ethPrivKeyFile)
+	log.Infof("ETH address:",
+		ethcrypto.PubkeyToAddress(*(key.Public().(*ecdsa.PublicKey))).Hex())
+	return privkey, nil
 }
 
 // GetVersion returns our version string for an executable
