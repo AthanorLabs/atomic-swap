@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	// TransferGas is the amount of gas to perform a standard ETH transfer
-	TransferGas = 21000
+	// transferGas is the amount of gas to perform a standard ETH transfer
+	transferGas = 21000
 )
 
 func init() {
@@ -99,7 +99,7 @@ func transfer(t *testing.T, fromKey *ecdsa.PrivateKey, toAddress ethcommon.Addre
 		Nonce:    nonce,
 		To:       &toAddress,
 		Value:    weiAmount,
-		Gas:      TransferGas,
+		Gas:      transferGas,
 		GasPrice: gasPrice,
 	})
 	signedTx, err := ethtypes.SignTx(tx, ethtypes.LatestSignerForChainID(chainID), fromKey)
