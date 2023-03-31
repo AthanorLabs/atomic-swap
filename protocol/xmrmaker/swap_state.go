@@ -28,6 +28,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -167,7 +168,9 @@ func newSwapStateFromStart(
 	return s, nil
 }
 
-func checkIfCompletedSuccessfully(
+// checkIfAlreadyClaimed returns true if the ETH has already been
+// claimed by us, false otherwise.
+func checkIfAlreadyClaimed(
 	b backend.Backend,
 	ethSwapInfo *db.EthereumSwapInfo,
 	info *pswap.Info,
@@ -237,11 +240,17 @@ func checkIfCompletedSuccessfully(
 		return false, nil
 	}
 
+	return true, nil
+}
+
+// completeSwap marks the swap as completed and deletes it from the db.
+// note: it does not return an error if it fails to delete the swap from the db.
+func completeSwap(info *swap.Info, b backend.Backend, om *offers.Manager) error {
 	// set swap to completed
 	info.SetStatus(types.CompletedSuccess)
-	err = b.SwapManager().CompleteOngoingSwap(info)
+	err := b.SwapManager().CompleteOngoingSwap(info)
 	if err != nil {
-		return true, fmt.Errorf("failed to mark swap %s as completed: %s", info.ID, err)
+		return fmt.Errorf("failed to mark swap %s as completed: %s", info.ID, err)
 	}
 
 	err = om.DeleteOffer(info.ID)
@@ -256,7 +265,7 @@ func checkIfCompletedSuccessfully(
 
 	exitLog := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", info.ID)
 	log.Info(exitLog)
-	return true, nil
+	return nil
 }
 
 // newSwapStateFromOngoing returns a new *swapState given information about a swap
@@ -270,12 +279,19 @@ func newSwapStateFromOngoing(
 	info *pswap.Info,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
-	completedSuccessfully, err := checkIfCompletedSuccessfully(b, ethSwapInfo, info, om)
+	alreadyClaimed, err := checkIfAlreadyClaimed(b, ethSwapInfo, info, om)
 	if err != nil {
 		return nil, err
 	}
 
-	if completedSuccessfully {
+	if alreadyClaimed {
+		err = completeSwap(info, b, om)
+		if err != nil {
+			return nil, fmt.Errorf("failed to complete swap: %w", err)
+		}
+
+		// although this doesn't look like an error, we need to return an error
+		// so the caller knows the swap is completed
 		return nil, errors.New("swap was already completed successfully")
 	}
 
