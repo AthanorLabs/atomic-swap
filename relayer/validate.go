@@ -75,14 +75,14 @@ func validateClaimValues(
 func validateClaimSignature(
 	ctx context.Context,
 	ec *ethclient.Client,
-	req *message.RelayClaimRequest,
+	request *message.RelayClaimRequest,
 ) error {
 	callOpts := &bind.CallOpts{
 		Context: ctx,
 		From:    ethcommon.Address{0xFF}, // can be any value but zero, which will validate all signatures
 	}
 
-	swapFactory, err := contracts.NewSwapFactory(req.SwapFactoryAddress, ec)
+	swapFactory, err := contracts.NewSwapFactory(request.SwapFactoryAddress, ec)
 	if err != nil {
 		return err
 	}
@@ -97,17 +97,17 @@ func validateClaimSignature(
 		return err
 	}
 
-	nonce, err := forwarder.GetNonce(callOpts, req.Swap.Claimer)
+	nonce, err := forwarder.GetNonce(callOpts, request.Swap.Claimer)
 	if err != nil {
 		return err
 	}
 
-	secret := (*[32]byte)(req.Secret)
+	secret := (*[32]byte)(request.Secret)
 
 	forwarderRequest, err := createForwarderRequest(
 		nonce,
-		req.SwapFactoryAddress,
-		req.Swap,
+		request.SwapFactoryAddress,
+		request.Swap,
 		secret,
 	)
 	if err != nil {
@@ -120,7 +120,7 @@ func validateClaimSignature(
 		*domainSeparator,
 		gsnforwarder.ForwardRequestTypehash,
 		nil,
-		req.Signature,
+		request.Signature,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to verify signature: %w", err)

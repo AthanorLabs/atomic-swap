@@ -17,17 +17,30 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
+// Speed up tests a little by giving deployContracts(...) a package-level cache.
+// These variables should not be accessed by other functions.
+var _forwarderAddress *ethcommon.Address
+var _swapFactoryAddress *ethcommon.Address
+
 // deployContracts deploys and returns the swapFactory and forwarder addresses.
 func deployContracts(t *testing.T, ec *ethclient.Client, key *ecdsa.PrivateKey) (ethcommon.Address, ethcommon.Address) {
 	ctx := context.Background()
 
-	forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, key)
-	require.NoError(t, err)
+	if _forwarderAddress == nil || _swapFactoryAddress == nil {
+		forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, key)
+		require.NoError(t, err)
+		// temporary hack to ensure that the forwarder contract used is not adjacent
+		// to the swap factory contract
+		_, err = contracts.DeployGSNForwarderWithKey(ctx, ec, key)
+		require.NoError(t, err)
+		_forwarderAddress = &forwarderAddr
 
-	swapFactoryAddr, _, err := contracts.DeploySwapFactoryWithKey(ctx, ec, key, forwarderAddr)
-	require.NoError(t, err)
+		swapFactoryAddr, _, err := contracts.DeploySwapFactoryWithKey(ctx, ec, key, forwarderAddr)
+		require.NoError(t, err)
+		_swapFactoryAddress = &swapFactoryAddr
+	}
 
-	return swapFactoryAddr, forwarderAddr
+	return *_swapFactoryAddress, *_forwarderAddress
 }
 
 func createTestSwap(claimer ethcommon.Address) *contracts.SwapFactorySwap {

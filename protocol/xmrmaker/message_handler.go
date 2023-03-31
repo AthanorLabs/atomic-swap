@@ -98,8 +98,8 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%s", msg.Address, msg.ContractSwapID)
 
 	// validate that swap ID == keccak256(swap struct)
-	if err := checkContractSwapID(msg); err != nil {
-		return err
+	if msg.ContractSwap.SwapID() != msg.ContractSwapID {
+		return errSwapIDMismatch
 	}
 
 	s.contractSwapID = msg.ContractSwapID

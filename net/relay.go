@@ -88,6 +88,9 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 
 // SubmitClaimToRelayer sends a request to relay a swap claim to a peer.
 func (h *Host) SubmitClaimToRelayer(relayerID peer.ID, request *RelayClaimRequest) (*RelayClaimResponse, error) {
+	// The timeout should be short enough, that the Maker can try multiple relayers
+	// before T1 expires even if the receiving node accepts the relay request and
+	// just sits on it without doing anything.
 	ctx, cancel := context.WithTimeout(h.ctx, relayClaimTimeout)
 	defer cancel()
 

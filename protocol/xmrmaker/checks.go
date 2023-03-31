@@ -11,18 +11,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
-
-// checkContractSwapID checks that the `Swap` type sent matches the swap ID when hashed
-func checkContractSwapID(msg *message.NotifyETHLocked) error {
-	if msg.ContractSwap.SwapID() != msg.ContractSwapID {
-		return errSwapIDMismatch
-	}
-
-	return nil
-}
 
 // checkContract checks the contract's balance and Claim/Refund keys.
 // if the balance doesn't match what we're expecting to receive, or the public keys in the contract
