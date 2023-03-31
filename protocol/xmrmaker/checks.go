@@ -30,7 +30,7 @@ func checkContractSwapID(msg *message.NotifyETHLocked) error {
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	tx, _, err := s.ETHClient().Raw().TransactionByHash(s.ctx, txHash)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get newSwap transaction %s by hash: %w", txHash, err)
 	}
 
 	if tx.To() == nil || *(tx.To()) != s.contractAddr {

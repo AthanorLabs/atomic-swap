@@ -137,17 +137,19 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 
 	offer, _, err := inst.offerManager.GetOffer(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to get offer for ongoing swap, offer ID %s: %s", s.OfferID, err)
 	}
 
 	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get info for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to get contract info for ongoing swap from db with offer ID %s: %s",
+			s.OfferID, err)
 	}
 
 	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to get private key for ongoing swap from db with offer ID %s: %s",
+			s.OfferID, err)
 	}
 
 	kp, err := sk.AsPrivateKeyPair()
@@ -172,7 +174,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		kp,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to create new swap state for ongoing swap, offer id %s: %w", s.OfferID, err)
 	}
 
 	inst.swapMu.Lock()

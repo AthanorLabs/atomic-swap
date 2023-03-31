@@ -32,7 +32,7 @@ type Instance struct {
 	// non-nil if a swap is currently happening, nil otherwise
 	// map of offer IDs -> ongoing swaps
 	swapStates map[types.Hash]*swapState
-	swapMu     sync.Mutex // lock for above map
+	swapMu     sync.RWMutex // lock for above map
 }
 
 // Config contains the configuration values for a new XMRTaker instance.
@@ -84,7 +84,8 @@ func (inst *Instance) checkForOngoingSwaps() error {
 
 		err = inst.createOngoingSwap(s)
 		if err != nil {
-			return err
+			log.Errorf("%s", err)
+			continue
 		}
 	}
 
@@ -114,12 +115,13 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 
 	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get info for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to get contract info for ongoing swap from db with offer id %s: %w", s.OfferID, err)
 	}
 
 	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get private key for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to get private key for ongoing swap from db with offer id %s: %w",
+			s.OfferID, err)
 	}
 
 	kp, err := sk.AsPrivateKeyPair()
@@ -137,7 +139,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		kp,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %s", s.OfferID, err)
+		return fmt.Errorf("failed to create new swap state for ongoing swap, offer id %s: %w", s.OfferID, err)
 	}
 
 	inst.swapStates[s.OfferID] = ss
@@ -224,6 +226,8 @@ func (inst *Instance) Refund(offerID types.Hash) (ethcommon.Hash, error) {
 
 // GetOngoingSwapState ...
 func (inst *Instance) GetOngoingSwapState(offerID types.Hash) common.SwapState {
+	inst.swapMu.RLock()
+	defer inst.swapMu.RUnlock()
 	return inst.swapStates[offerID]
 }
 

@@ -177,7 +177,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	err = rdb.PutCounterpartySwapKeys(offerID, kp.SpendKey().Public(), kp.ViewKey())
 	require.NoError(t, err)
 
-	err = rdb.DeleteSwap(offerID)
+	err = rdb.deleteSwap(offerID)
 	require.NoError(t, err)
 	_, err = rdb.GetContractSwapInfo(offerID)
 	require.EqualError(t, chaindb.ErrKeyNotFound, err.Error())

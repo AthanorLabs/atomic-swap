@@ -45,7 +45,12 @@ func (db *RecoveryDB) PutSwapRelayerInfo(id types.Hash, info *types.OfferExtra) 
 	}
 
 	key := getRecoveryDBKey(id, relayerInfoPrefix)
-	return db.db.Put(key, val)
+	err = db.db.Put(key, val)
+	if err != nil {
+		return err
+	}
+
+	return db.db.Flush()
 }
 
 // GetSwapRelayerInfo ...
@@ -75,7 +80,12 @@ func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo)
 	}
 
 	key := getRecoveryDBKey(id, contractSwapInfoPrefix)
-	return db.db.Put(key, val)
+	err = db.db.Put(key, val)
+	if err != nil {
+		return err
+	}
+
+	return db.db.Flush()
 }
 
 // GetContractSwapInfo returns the contract swap ID (a hash of the `SwapFactorySwap` structure) and
@@ -104,7 +114,12 @@ func (db *RecoveryDB) PutSwapPrivateKey(id types.Hash, sk *mcrypto.PrivateSpendK
 	}
 
 	key := getRecoveryDBKey(id, swapPrivateKeyPrefix)
-	return db.db.Put(key[:], val)
+	err = db.db.Put(key, val)
+	if err != nil {
+		return err
+	}
+
+	return db.db.Flush()
 }
 
 // GetSwapPrivateKey returns the swap private key share, if it exists.
@@ -132,7 +147,12 @@ func (db *RecoveryDB) PutCounterpartySwapPrivateKey(id types.Hash, kp *mcrypto.P
 	}
 
 	key := getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix)
-	return db.db.Put(key[:], val)
+	err = db.db.Put(key, val)
+	if err != nil {
+		return err
+	}
+
+	return db.db.Flush()
 }
 
 // GetCounterpartySwapPrivateKey returns the counterparty's swap private key, if it exists.
@@ -168,7 +188,14 @@ func (db *RecoveryDB) PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicK
 	}
 
 	key := getRecoveryDBKey(id, counterpartySwapKeysPrefix)
-	return db.db.Put(key[:], val)
+	log.Debugf("PutCounterpartySwapKeys %s", key)
+	err = db.db.Put(key, val)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("flushing db")
+	return db.db.Flush()
 }
 
 // GetCounterpartySwapKeys is called during recovery to retrieve the counterparty's swap keys.
@@ -189,7 +216,13 @@ func (db *RecoveryDB) GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey
 }
 
 // DeleteSwap deletes all recovery info from the db for the given swap.
+// TODO: this is currently unimplemented
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
+	return nil
+}
+
+// deleteSwap is currently unused.
+func (db *RecoveryDB) deleteSwap(id types.Hash) error {
 	keys := [][]byte{
 		getRecoveryDBKey(id, relayerInfoPrefix),
 		getRecoveryDBKey(id, contractSwapInfoPrefix),

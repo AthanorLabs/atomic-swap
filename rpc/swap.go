@@ -303,6 +303,12 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 		ss = s.xmrmaker.GetOngoingSwapState(req.OfferID)
 	}
 
+	if ss == nil {
+		return fmt.Errorf("failed to find swap state with ID %s", req.OfferID)
+	}
+
+	// Exit() is safe to be called concurrently, since it since it puts an exit event
+	// into the swap state's eventCh, and events are handled sequentially.
 	if err = ss.Exit(); err != nil {
 		return err
 	}

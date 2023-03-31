@@ -185,6 +185,7 @@ func newSwapStateFromOngoing(
 		return nil, errInvalidStageForRecovery
 	}
 
+	log.Debugf("restarting swap from eth block number %s", ethSwapInfo.StartNumber)
 	s, err := newSwapState(
 		b, offer, offerExtra, om, ethSwapInfo.StartNumber, info.MoneroStartHeight, info,
 	)

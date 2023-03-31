@@ -214,7 +214,7 @@ func waitForClaimReceipt(
 	const (
 		checkInterval = time.Second // time between transaction polls
 		maxWait       = time.Minute // max wait for the tx to be included in a block
-		maxNotFound   = 5           // max failures where the tx is not even found in the mempool
+		maxNotFound   = 10          // max failures where the tx is not even found in the mempool
 	)
 
 	start := time.Now()

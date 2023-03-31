@@ -23,6 +23,6 @@ func TestNewEnv(t *testing.T) {
 }
 
 func TestNewEnv_fail(t *testing.T) {
-	_, err := NewEnv("goerli")
+	_, err := NewEnv("something")
 	require.ErrorContains(t, err, "unknown")
 }

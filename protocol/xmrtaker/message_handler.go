@@ -119,6 +119,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 	if err != nil {
 		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
 	}
+	log.Debugf("stored XMR maker's keys, going to lock ETH")
 
 	receipt, err := s.lockAsset()
 	if err != nil {
@@ -273,7 +274,7 @@ func (s *swapState) runT1ExpirationHandler() {
 		if err != nil {
 			// TODO: Do we propagate this error? If we retry, the logic should probably be inside
 			// WaitForTimestamp. (#162)
-			log.Errorf("Failure waiting for T1 timeout: err=%s", err)
+			log.Errorf("failure waiting for T1 timeout: %s", err)
 			return
 		}
 		s.handleT1Expired()
