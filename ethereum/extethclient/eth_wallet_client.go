@@ -267,8 +267,8 @@ func validateChainID(env common.Environment, chainID *big.Int) error {
 			return fmt.Errorf("expected Mainnet chain ID (%d), but found %s", common.MainnetChainID, chainID)
 		}
 	case common.Stagenet:
-		if chainID.Cmp(big.NewInt(common.GoerliChainID)) != 0 {
-			return fmt.Errorf("expected Goerli chain ID (%d), but found %s", common.GoerliChainID, chainID)
+		if chainID.Cmp(big.NewInt(common.SepoliaChainID)) != 0 {
+			return fmt.Errorf("expected Sepolia chain ID (%d), but found %s", common.SepoliaChainID, chainID)
 		}
 	case common.Development:
 		if chainID.Cmp(big.NewInt(common.GanacheChainID)) != 0 {

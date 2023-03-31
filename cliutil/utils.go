@@ -54,12 +54,13 @@ func createAndWriteEthKeyFile(ethPrivKeyFile string, env common.Environment, dev
 
 // GetEthereumPrivateKey reads or creates and returns an ethereum private key for the given the CLI options.
 func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMRMaker, devXMRTaker bool) (
-	key *ecdsa.PrivateKey,
-	err error,
+	*ecdsa.PrivateKey,
+	error,
 ) {
 	if ethPrivKeyFile == "" {
 		panic("missing required parameter ethPrivKeyFile")
 	}
+
 	exists, err := common.FileExists(ethPrivKeyFile)
 	if err != nil {
 		return nil, err
@@ -75,7 +76,17 @@ func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMR
 		return nil, fmt.Errorf("failed to read ethereum-privkey file: %w", err)
 	}
 	ethPrivKeyHex := strings.TrimSpace(string(fileData))
-	return ethcrypto.HexToECDSA(ethPrivKeyHex)
+	privkey, err := ethcrypto.HexToECDSA(ethPrivKeyHex)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		log.Infof("Using ETH wallet key located in %s", ethPrivKeyFile)
+		log.Infof("ETH address: %s", ethcrypto.PubkeyToAddress(*(privkey.Public().(*ecdsa.PublicKey))).Hex())
+	}
+
+	return privkey, nil
 }
 
 // GetVersion returns our version string for an executable

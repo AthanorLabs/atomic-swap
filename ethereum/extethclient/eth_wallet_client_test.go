@@ -22,5 +22,5 @@ func Test_validateChainID_mismatchedEnv(t *testing.T) {
 
 	err = validateChainID(common.Stagenet, big.NewInt(common.GanacheChainID))
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "expected Goerli chain ID (5), but found 1337")
+	assert.ErrorContains(t, err, "expected Sepolia chain ID (11155111), but found 1337")
 }

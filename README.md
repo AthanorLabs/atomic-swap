@@ -16,9 +16,9 @@ Please see the [protocol documentation](docs/protocol.md) for how it works.
 
 To try the swap locally with two nodes (maker and taker) on a development environment, follow the instructions [here](./docs/local.md).
 
-### Trying it on Monero's stagenet and Ethereum's Goerli testnet
+### Trying it on Monero's stagenet and Ethereum's Sepolia testnet
 
-To try the swap on Stagenet/Goerli, follow the instructions [here](./docs/stagenet.md).
+To try the swap on Stagenet/Sepolia, follow the instructions [here](./docs/stagenet.md).
 
 ## Additional documentation
 
