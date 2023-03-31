@@ -27,7 +27,7 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
-	id := s.ID()
+	id := s.OfferID()
 
 	if h.swaps[id] != nil {
 		return errSwapAlreadyInProgress
@@ -84,9 +84,11 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
+	curPeer := stream.Conn().RemotePeer()
+
 	log.Debug(
 		"received message from peer, peer=",
-		stream.Conn().RemotePeer(),
+		curPeer,
 		" type=",
 		message.TypeToString(msg.Type()),
 	)
@@ -99,7 +101,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	var s SwapState
-	s, resp, err := h.makerHandler.HandleInitiateMessage(im)
+	s, resp, err := h.makerHandler.HandleInitiateMessage(curPeer, im)
 	if err != nil {
 		log.Warnf("failed to handle protocol message: err=%s", err)
 		_ = stream.Close()
@@ -116,7 +118,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	h.swapMu.Lock()
-	h.swaps[s.ID()] = &swap{
+	h.swaps[s.OfferID()] = &swap{
 		swapState: s,
 		stream:    stream,
 	}
@@ -136,7 +138,7 @@ func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			log.Errorf("failed to exit protocol: err=%s", err)
 		}
 		h.swapMu.Lock()
-		delete(h.swaps, s.ID())
+		delete(h.swaps, s.OfferID())
 		h.swapMu.Unlock()
 	}()
 

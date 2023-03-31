@@ -140,7 +140,7 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	}
 
 	// connect the maker/taker handlers to the p2p network host
-	host.SetHandlers(xmrMaker, xmrTaker)
+	host.SetHandlers(xmrMaker, swapBackend)
 	if err = host.Start(); err != nil {
 		return err
 	}

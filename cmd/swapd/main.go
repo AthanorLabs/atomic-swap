@@ -250,6 +250,7 @@ func setLogLevels(level string) {
 	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("extethclient", level)
 	_ = logging.SetLogLevel("ethereum/watcher", level)
+	_ = logging.SetLogLevel("ethereum/block", level)
 	_ = logging.SetLogLevel("monero", level)
 	_ = logging.SetLogLevel("net", level)
 	_ = logging.SetLogLevel("offers", level)

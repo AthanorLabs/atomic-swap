@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/fatih/color"
+
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/fatih/color"
 )
 
 // HandleProtocolMessage is called by the network to handle an incoming message.
@@ -120,7 +120,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 		return nil, fmt.Errorf("failed to set xmrmaker keys: %w", err)
 	}
 
-	txHash, err := s.lockAsset()
+	receipt, err := s.lockAsset()
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock ethereum asset in contract: %w", err)
 	}
@@ -135,7 +135,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 
 	out := &message.NotifyETHLocked{
 		Address:        s.ContractAddr(),
-		TxHash:         txHash,
+		TxHash:         receipt.TxHash,
 		ContractSwapID: s.contractSwapID,
 		ContractSwap:   s.contractSwap,
 	}

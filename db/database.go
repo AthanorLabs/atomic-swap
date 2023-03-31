@@ -187,7 +187,7 @@ func (db *Database) PutSwap(s *swap.Info) error {
 		return err
 	}
 
-	key := s.ID
+	key := s.OfferID
 	return db.swapTable.Put(key[:], val)
 }
 

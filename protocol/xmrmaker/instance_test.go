@@ -168,7 +168,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	require.NoError(t, err)
 
 	s := &pswap.Info{
-		ID:             offer.ID,
+		OfferID:        offer.ID,
 		Provides:       coins.ProvidesXMR,
 		ProvidedAmount: one,
 		ExpectedAmount: one,
@@ -180,9 +180,9 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	sk, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	rdb.EXPECT().GetSwapRelayerInfo(s.ID).Return(nil, errors.New("some error"))
-	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
-	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
+	rdb.EXPECT().GetSwapRelayerInfo(s.OfferID).Return(nil, errors.New("some error"))
+	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.OfferID).Return(nil, errors.New("some error"))
+	rdb.EXPECT().GetContractSwapInfo(s.OfferID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),
 		Swap: &contracts.SwapFactorySwap{
@@ -190,17 +190,17 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 			Timeout1: big.NewInt(2),
 		},
 	}, nil)
-	rdb.EXPECT().GetSwapPrivateKey(s.ID).Return(
+	rdb.EXPECT().GetSwapPrivateKey(s.OfferID).Return(
 		sk.SpendKey(), nil,
 	)
-	offerDB.EXPECT().GetOffer(s.ID).Return(offer, nil)
+	offerDB.EXPECT().GetOffer(s.OfferID).Return(offer, nil)
 
 	err = inst.createOngoingSwap(s)
 	require.NoError(t, err)
 
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
-	close(inst.swapStates[s.ID].done)
+	close(inst.swapStates[s.OfferID].done)
 }
 
 func TestInstance_CompleteSwap(t *testing.T) {
@@ -224,7 +224,7 @@ func TestInstance_CompleteSwap(t *testing.T) {
 	height, err := inst.backend.XMRClient().GetHeight()
 	require.NoError(t, err)
 	sinfo := &pswap.Info{
-		ID:                id,
+		OfferID:           id,
 		MoneroStartHeight: height,
 		Status:            types.XMRLocked,
 	}

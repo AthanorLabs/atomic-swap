@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -173,7 +174,7 @@ type ProtocolBackend interface {
 // XMRTaker ...
 type XMRTaker interface {
 	Protocol
-	InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error)
+	InitiateProtocol(peerID peer.ID, providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error)
 	Refund(types.Hash) (ethcommon.Hash, error)
 	ExternalSender(offerID types.Hash) (*txsender.ExternalSender, error)
 }

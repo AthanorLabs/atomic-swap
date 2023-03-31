@@ -7,6 +7,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -32,7 +33,10 @@ func (h *mockMakerHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockMakerHandler) HandleInitiateMessage(msg *message.SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockMakerHandler) HandleInitiateMessage(
+	_ peer.ID,
+	msg *message.SendKeysMessage,
+) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
 		return &mockSwapState{h.id}, createSendKeysMessage(h.t), nil
 	}
@@ -50,12 +54,12 @@ func (h *mockTakerHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*Relay
 }
 
 type mockSwapState struct {
-	id types.Hash
+	offerID types.Hash
 }
 
-func (s *mockSwapState) ID() types.Hash {
-	if (s.id != types.Hash{}) {
-		return s.id
+func (s *mockSwapState) OfferID() types.Hash {
+	if (s.offerID != types.Hash{}) {
+		return s.offerID
 	}
 
 	return testID

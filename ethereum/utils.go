@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 )
 
@@ -47,6 +50,75 @@ func StageToString(stage byte) string {
 	default:
 		return fmt.Sprintf("UnknownStageValue(%d)", stage)
 	}
+}
+
+// SwapID calculates and returns the same hashed swap identifier that newSwap
+// emits and that is used to index the on-net stage of a swap.
+func (sfs *SwapFactorySwap) SwapID() types.Hash {
+	uint256Ty, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create uint256 type: %s", err))
+	}
+
+	bytes32Ty, err := abi.NewType("bytes32", "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create bytes32 type: %s", err))
+	}
+
+	addressTy, err := abi.NewType("address", "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create address type: %s", err))
+	}
+
+	arguments := abi.Arguments{
+		{
+			Type: addressTy,
+		},
+		{
+			Type: addressTy,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: addressTy,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+	}
+
+	args, err := arguments.Pack(
+		sfs.Owner,
+		sfs.Claimer,
+		sfs.PubKeyClaim,
+		sfs.PubKeyRefund,
+		sfs.Timeout0,
+		sfs.Timeout1,
+		sfs.Asset,
+		sfs.Value,
+		sfs.Nonce,
+	)
+	if err != nil {
+		// As long as none of the *big.Int fields are nil, this cannot fail.
+		// When receiving SwapFactorySwap objects from the database or peers in
+		// JSON, all *big.Int values are pre-validated to be non-nil.
+		panic(fmt.Sprintf("failed to pack arguments: %s", err))
+	}
+
+	return crypto.Keccak256Hash(args)
 }
 
 // GetSecretFromLog returns the secret from a Claimed or Refunded log

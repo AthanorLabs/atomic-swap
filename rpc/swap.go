@@ -100,7 +100,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	resp.Swaps = make([]*PastSwap, len(swaps))
 	for i, info := range swaps {
 		resp.Swaps[i] = &PastSwap{
-			ID:             info.ID,
+			ID:             info.OfferID,
 			Provided:       info.Provides,
 			ProvidedAmount: info.ProvidedAmount,
 			ExpectedAmount: info.ExpectedAmount,
@@ -169,7 +169,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	resp.Swaps = make([]*OngoingSwap, len(swaps))
 	for i, info := range swaps {
 		swap := new(OngoingSwap)
-		swap.ID = info.ID
+		swap.ID = info.OfferID
 		swap.Provided = info.Provides
 		swap.ProvidedAmount = info.ProvidedAmount
 		swap.ExpectedAmount = info.ExpectedAmount
@@ -181,7 +181,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.Timeout1 = info.Timeout1
 		swap.EstimatedTimeToCompletion, err = estimatedTimeToCompletion(env, info.Status, info.LastStatusUpdateTime)
 		if err != nil {
-			return fmt.Errorf("failed to estimate time to completion for swap %s: %w", info.ID, err)
+			return fmt.Errorf("failed to estimate time to completion for swap %s: %w", info.OfferID, err)
 		}
 
 		resp.Swaps[i] = swap
@@ -309,7 +309,7 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 
 	s.net.CloseProtocolStream(req.OfferID)
 
-	past, err := s.sm.GetPastSwap(info.ID)
+	past, err := s.sm.GetPastSwap(info.OfferID)
 	if err != nil {
 		return err
 	}

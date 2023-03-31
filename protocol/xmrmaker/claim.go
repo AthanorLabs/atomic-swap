@@ -17,11 +17,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
-func (s *swapState) claimFunds() (ethcommon.Hash, error) {
+func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 	var (
 		symbol   string
 		decimals uint8
@@ -30,13 +31,13 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	if types.EthAsset(s.contractSwap.Asset) != types.EthAssetETH {
 		_, symbol, decimals, err = s.ETHClient().ERC20Info(s.ctx, s.contractSwap.Asset)
 		if err != nil {
-			return ethcommon.Hash{}, fmt.Errorf("failed to get ERC20 info: %w", err)
+			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 	}
 
 	weiBalance, err := s.ETHClient().Balance(s.ctx)
 	if err != nil {
-		return ethcommon.Hash{}, err
+		return nil, err
 	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
@@ -44,7 +45,7 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
-			return ethcommon.Hash{}, err
+			return nil, err
 		}
 		log.Infof("balance before claim: %v %s",
 			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard().Text('f'),
@@ -52,37 +53,40 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		)
 	}
 
-	var txHash ethcommon.Hash
+	var receipt *ethtypes.Receipt
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
 	if s.offerExtra.UseRelayer || weiBalance.Cmp(big.NewInt(0)) == 0 {
 		// relayer fee was set or we had insufficient funds to claim without a relayer
 		// TODO: Sufficient funds check above should be more specific
-		txHash, err = s.discoverRelayersAndClaim()
+		receipt, err = s.claimWithRelay()
 		if err != nil {
-			log.Warnf("failed to claim using relayers: %s", err)
+			return nil, fmt.Errorf("failed to claim using relayers: %w", err)
 		}
+		log.Debugf("relayed claim transaction %s", common.ReceiptInfo(receipt))
 	} else {
 		// claim and wait for tx to be included
 		sc := s.getSecret()
-		txHash, _, err = s.sender.Claim(s.contractSwap, sc)
+		receipt, err = s.sender.Claim(s.contractSwap, sc)
+		if err != nil {
+			return nil, err
+		}
+		log.Infof("claim transaction %s", common.ReceiptInfo(receipt))
 	}
 	if err != nil {
-		return ethcommon.Hash{}, err
+		return nil, err
 	}
-
-	log.Infof("sent claim transaction, tx hash=%s", txHash)
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
 		balance, err := s.ETHClient().Balance(s.ctx)
 		if err != nil {
-			return ethcommon.Hash{}, err
+			return nil, err
 		}
 		log.Infof("balance after claim: %s ETH", coins.FmtWeiAsETH(balance))
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
-			return ethcommon.Hash{}, err
+			return nil, err
 		}
 
 		log.Infof("balance after claim: %s %s",
@@ -91,50 +95,61 @@ func (s *swapState) claimFunds() (ethcommon.Hash, error) {
 		)
 	}
 
-	return txHash, nil
+	return receipt, nil
 }
 
-// discoverRelayersAndClaim discovers available relayers on the network,
-func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
+// relayClaimWithXMRTaker relays the claim to the swap's XMR taker, who should
+// process the claim even if they are not relaying claims for everyone.
+func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (*ethtypes.Receipt, error) {
+	// only requests to the XMR taker set the offerID field
+	request.OfferID = &s.offer.ID
+	defer func() { request.OfferID = nil }()
+
+	response, err := s.Backend.SubmitClaimToRelayer(s.info.PeerID, request)
+	if err != nil {
+		return nil, err
+	}
+
+	receipt, err := waitForClaimReceipt(
+		s.ctx,
+		s.ETHClient().Raw(),
+		response.TxHash,
+		s.contractAddr,
+		s.contractSwapID,
+		s.getSecret(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get receipt of relayer's tx: %s", err)
+	}
+
+	log.Infof("relayer's claim via XMR taker validated block=%d gas-used=%d tx=%s",
+		receipt.BlockNumber, receipt.GasUsed, receipt.TxHash)
+
+	return receipt, nil
+}
+
+// claimWithAdvertisedRelayers relays the claim to nodes that advertise
+// themselves as relayers in the DHT until the claim succeeds, all relayers have
+// been tried, or the context is cancelled.
+func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimRequest) (*ethtypes.Receipt, error) {
 	relayers, err := s.Backend.DiscoverRelayers()
 	if err != nil {
-		return ethcommon.Hash{}, err
+		return nil, err
 	}
 
 	if len(relayers) == 0 {
-		return ethcommon.Hash{}, errors.New("no relayers found to submit claim to")
+		return nil, errors.New("no relayers found to submit claim to")
 	}
 	log.Debugf("Found %d relayers to submit claim to", len(relayers))
-
-	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	secret := s.getSecret()
-
-	req, err := relayer.CreateRelayClaimRequest(
-		s.ctx,
-		s.ETHClient().PrivateKey(),
-		s.ETHClient().Raw(),
-		s.contractAddr,
-		forwarderAddress,
-		s.contractSwap,
-		&secret,
-	)
-	if err != nil {
-		return ethcommon.Hash{}, err
-	}
-
-	for _, relayer := range relayers {
-		log.Debugf("submitting claim to relayer with peer ID %s", relayer)
-		resp, err := s.Backend.SubmitClaimToRelayer(relayer, req)
+	for _, r := range relayers {
+		log.Debugf("submitting claim to relayer with peer ID %s", r)
+		resp, err := s.Backend.SubmitClaimToRelayer(r, request)
 		if err != nil {
 			log.Warnf("failed to submit tx to relayer: %s", err)
 			continue
 		}
 
-		err = waitForClaimReceipt(
+		receipt, err := waitForClaimReceipt(
 			s.ctx,
 			s.ETHClient().Raw(),
 			resp.TxHash,
@@ -147,10 +162,45 @@ func (s *swapState) discoverRelayersAndClaim() (ethcommon.Hash, error) {
 			continue
 		}
 
-		return resp.TxHash, nil
+		log.Infof("DHT relayer's claim validated block=%d gas-used=%d tx=%s",
+			receipt.BlockNumber, receipt.GasUsed, receipt.TxHash)
+
+		return receipt, nil
 	}
 
-	return ethcommon.Hash{}, errors.New("failed to submit transaction to any relayer")
+	return nil, errors.New("failed to relay claim with any non-counterparty relayer")
+}
+
+// claimWithRelay first attempts to relay with the help of the XMR taker and, if
+// that fails, tries all relayers advertising in the DHT. Note that the receipt
+// returned is for a transaction created by the remote relayer, not by us.
+func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
+	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
+	if err != nil {
+		return nil, err
+	}
+
+	secret := s.getSecret()
+
+	request, err := relayer.CreateRelayClaimRequest(
+		s.ctx,
+		s.ETHClient().PrivateKey(),
+		s.ETHClient().Raw(),
+		s.contractAddr,
+		forwarderAddress,
+		s.contractSwap,
+		&secret,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	receipt, err := s.relayClaimWithXMRTaker(request)
+	if err != nil {
+		log.Warnf("failed to relay claim with XMR taker: %s", err)
+		return s.claimWithAdvertisedRelayers(request)
+	}
+	return receipt, nil
 }
 
 func waitForClaimReceipt(
@@ -158,8 +208,9 @@ func waitForClaimReceipt(
 	ec *ethclient.Client,
 	txHash ethcommon.Hash,
 	contractAddr ethcommon.Address,
-	contractSwapID, secret [32]byte,
-) error {
+	contractSwapID [32]byte,
+	secret [32]byte,
+) (*ethtypes.Receipt, error) {
 	const (
 		checkInterval = time.Second // time between transaction polls
 		maxWait       = time.Minute // max wait for the tx to be included in a block
@@ -175,7 +226,7 @@ func waitForClaimReceipt(
 		// into the node we're using
 		err := common.SleepWithContext(ctx, checkInterval)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		_, isPending, err := ec.TransactionByHash(ctx, txHash)
@@ -186,12 +237,12 @@ func waitForClaimReceipt(
 				continue
 			}
 
-			return err
+			return nil, err
 		}
 
 		if time.Since(start) > maxWait {
 			// the tx is taking too long, return an error so we try with another relayer
-			return errRelayedTransactionTimeout
+			return nil, errRelayedTransactionTimeout
 		}
 
 		if !isPending {
@@ -201,28 +252,26 @@ func waitForClaimReceipt(
 
 	receipt, err := ec.TransactionReceipt(ctx, txHash)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if receipt.Status != ethtypes.ReceiptStatusSuccessful {
 		err = fmt.Errorf("relayer's claim transaction failed (gas-lost=%d tx=%s block=%d), %w",
 			receipt.GasUsed, txHash, receipt.BlockNumber, block.ErrorFromBlock(ctx, ec, receipt))
-		return err
+		return nil, err
 	}
 
 	if len(receipt.Logs) == 0 {
-		return fmt.Errorf("relayer's claim transaction had no logs (tx=%s block=%d)",
+		return nil, fmt.Errorf("relayer's claim transaction had no logs (tx=%s block=%d)",
 			txHash, receipt.BlockNumber)
 	}
 
 	if err = checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret); err != nil {
-		return fmt.Errorf("relayer's claim had logs error (tx=%s block=%d): %w",
+		return nil, fmt.Errorf("relayer's claim had logs error (tx=%s block=%d): %w",
 			txHash, receipt.BlockNumber, err)
 	}
 
-	log.Infof("relayer's claim tx=%s in block=%d validated, gas used: %d",
-		receipt.TxHash, receipt.BlockNumber, receipt.GasUsed)
-	return nil
+	return receipt, nil
 }
 
 func checkClaimedLog(log *ethtypes.Log, contractAddr ethcommon.Address, contractSwapID, secret [32]byte) error {

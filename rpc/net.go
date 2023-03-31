@@ -149,11 +149,11 @@ func (s *NetService) TakeOffer(
 	return nil
 }
 
-func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
+func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
 	<-chan types.Status,
 	error,
 ) {
-	queryResp, err := s.net.Query(who)
+	queryResp, err := s.net.Query(makerPeerID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *
 		return nil, errNoOfferWithID
 	}
 
-	swapState, err := s.xmrtaker.InitiateProtocol(providesAmount, offer)
+	swapState, err := s.xmrtaker.InitiateProtocol(makerPeerID, providesAmount, offer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initiate protocol: %w", err)
 	}
@@ -178,7 +178,7 @@ func (s *NetService) takeOffer(who peer.ID, offerID types.Hash, providesAmount *
 	skm.OfferID = offerID
 	skm.ProvidedAmount = providesAmount
 
-	if err = s.net.Initiate(peer.AddrInfo{ID: who}, skm, swapState); err != nil {
+	if err = s.net.Initiate(peer.AddrInfo{ID: makerPeerID}, skm, swapState); err != nil {
 		if err = swapState.Exit(); err != nil {
 			log.Warnf("Swap exit failure: %s", err)
 		}

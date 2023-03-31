@@ -42,16 +42,11 @@ func WaitForReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.
 			continue
 		}
 		if receipt.Status != ethtypes.ReceiptStatusSuccessful {
-			err = fmt.Errorf("transaction failed (gas-lost=%d tx=%s block=%d), %w",
-				receipt.GasUsed, txHash, receipt.BlockNumber, ErrorFromBlock(ctx, ec, receipt))
+			err = fmt.Errorf("mined transaction failed (%s): %w",
+				common.ReceiptInfo(receipt), ErrorFromBlock(ctx, ec, receipt))
 			return nil, err
 		}
-		log.Infof("transaction %s included in chain, block hash=%s, block number=%d, gas used=%d",
-			txHash,
-			receipt.BlockHash,
-			receipt.BlockNumber,
-			receipt.CumulativeGasUsed,
-		)
+		log.Debugf("transaction included in chain %s", common.ReceiptInfo(receipt))
 		return receipt, nil
 	}
 

@@ -130,11 +130,11 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 		ContractAddress: contractAddr,
 	}
 
-	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
+	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.OfferID(), ethInfo); err != nil {
 		return err
 	}
 
-	log.Infof("stored ContractSwapInfo: id=%s", s.ID())
+	log.Infof("stored ContractSwapInfo: id=%s", s.OfferID())
 
 	if err = s.checkContract(msg.TxHash); err != nil {
 		return err

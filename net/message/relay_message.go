@@ -5,12 +5,17 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
-// RelayClaimRequest implements common.Message for our p2p relay claim requests
+// RelayClaimRequest implements common.Message for our p2p relay claim requests.
 type RelayClaimRequest struct {
+	// OfferID is non-nil, if the request is from a maker to the taker of an
+	// active swap. It is nil, if the request is being sent to a relay node,
+	// because it advertised in the DHT.
+	OfferID            *types.Hash                `json:"offerID"`
 	SwapFactoryAddress ethcommon.Address          `json:"swapFactoryAddress" validate:"required"`
 	Swap               *contracts.SwapFactorySwap `json:"swap" validate:"required"`
 	Secret             []byte                     `json:"secret" validate:"required,len=32"`

@@ -4,12 +4,14 @@ import (
 	"context"
 	"io/fs"
 	"math"
+	"math/big"
 	"os"
 	"path"
 	"testing"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
@@ -102,4 +104,16 @@ func TestGetFreeTCPPort(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, port, uint(1024))
 	require.LessOrEqual(t, port, uint(math.MaxUint16))
+}
+
+func TestReceiptInfo(t *testing.T) {
+	receipt := &ethtypes.Receipt{
+		GasUsed:           100000,
+		EffectiveGasPrice: big.NewInt(1000000),
+		BlockNumber:       big.NewInt(99),
+		TxHash:            ethcommon.Hash{1, 2, 3},
+	}
+	logStr := ReceiptInfo(receipt)
+	const expectedStr = "gas-used: 100000, gas-price: 1000000 WEI, tx-cost: 0.0000001 ETH, block: 99, txID: 0x0102030000000000000000000000000000000000000000000000000000000000" //nolint:lll
+	require.Equal(t, expectedStr, logStr)
 }

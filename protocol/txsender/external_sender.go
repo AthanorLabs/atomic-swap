@@ -95,10 +95,10 @@ func (s *ExternalSender) IncomingCh(id types.Hash) chan<- ethcommon.Hash {
 func (s *ExternalSender) Approve(
 	spender ethcommon.Address,
 	amount *big.Int,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("approve", spender, amount)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	return s.sendAndReceive(input, s.erc20Addr)
@@ -113,11 +113,11 @@ func (s *ExternalSender) NewSwap(
 	nonce *big.Int,
 	ethAsset types.EthAsset,
 	value *big.Int,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
 		ethAsset, value, nonce)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	valueWei := coins.NewWeiAmount(value)
@@ -134,23 +134,23 @@ func (s *ExternalSender) NewSwap(
 	var txHash ethcommon.Hash
 	select {
 	case <-time.After(transactionTimeout):
-		return ethcommon.Hash{}, nil, errTransactionTimeout
+		return nil, errTransactionTimeout
 	case txHash = <-s.in:
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return txHash, receipt, nil
+	return receipt, nil
 }
 
 // SetReady prompts the external sender to sign a set_ready transaction
-func (s *ExternalSender) SetReady(swap *contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *ExternalSender) SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("set_ready", swap)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	return s.sendAndReceive(input, s.contractAddr)
@@ -160,10 +160,10 @@ func (s *ExternalSender) SetReady(swap *contracts.SwapFactorySwap) (ethcommon.Ha
 func (s *ExternalSender) Claim(
 	swap *contracts.SwapFactorySwap,
 	secret [32]byte,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("claim", swap, secret)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	return s.sendAndReceive(input, s.contractAddr)
@@ -173,16 +173,16 @@ func (s *ExternalSender) Claim(
 func (s *ExternalSender) Refund(
 	swap *contracts.SwapFactorySwap,
 	secret [32]byte,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("refund", swap, secret)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	return s.sendAndReceive(input, s.contractAddr)
 }
 
-func (s *ExternalSender) sendAndReceive(input []byte, to ethcommon.Address) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *ExternalSender) sendAndReceive(input []byte, to ethcommon.Address) (*ethtypes.Receipt, error) {
 	tx := &Transaction{To: to, Data: input}
 
 	s.Lock()
@@ -192,14 +192,14 @@ func (s *ExternalSender) sendAndReceive(input []byte, to ethcommon.Address) (eth
 	var txHash ethcommon.Hash
 	select {
 	case <-time.After(transactionTimeout):
-		return ethcommon.Hash{}, nil, errTransactionTimeout
+		return nil, errTransactionTimeout
 	case txHash = <-s.in:
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return txHash, receipt, nil
+	return receipt, nil
 }

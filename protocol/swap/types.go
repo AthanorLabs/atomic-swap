@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -28,7 +29,8 @@ type (
 // Info contains the details of the swap as well as its status.
 type Info struct {
 	Version        *semver.Version     `json:"version"`
-	ID             types.Hash          `json:"offerID" validate:"required"` // swap offer ID
+	PeerID         peer.ID             `json:"peerID" validate:"required"`
+	OfferID        types.Hash          `json:"offerID" validate:"required"`
 	Provides       coins.ProvidesCoin  `json:"provides" validate:"required"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
@@ -63,7 +65,8 @@ type Info struct {
 // NewInfo creates a new *Info from the given parameters.
 // Note that the swap ID is the same as the offer ID.
 func NewInfo(
-	id types.Hash,
+	peerID peer.ID,
+	offerID types.Hash,
 	provides coins.ProvidesCoin,
 	providedAmount, expectedAmount *apd.Decimal,
 	exchangeRate *coins.ExchangeRate,
@@ -74,7 +77,8 @@ func NewInfo(
 ) *Info {
 	info := &Info{
 		Version:              CurInfoVersion,
-		ID:                   id,
+		PeerID:               peerID,
+		OfferID:              offerID,
 		Provides:             provides,
 		ProvidedAmount:       providedAmount,
 		ExpectedAmount:       expectedAmount,

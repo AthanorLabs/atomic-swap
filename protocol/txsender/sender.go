@@ -23,7 +23,7 @@ import (
 type Sender interface {
 	SetContract(*contracts.SwapFactory)
 	SetContractAddress(ethcommon.Address)
-	Approve(spender ethcommon.Address, amount *big.Int) (ethcommon.Hash, *ethtypes.Receipt, error) // for ERC20 swaps
+	Approve(spender ethcommon.Address, amount *big.Int) (*ethtypes.Receipt, error) // for ERC20 swaps
 	NewSwap(
 		pubKeyClaim [32]byte,
 		pubKeyRefund [32]byte,
@@ -32,10 +32,10 @@ type Sender interface {
 		nonce *big.Int,
 		ethAsset types.EthAsset,
 		amount *big.Int,
-	) (ethcommon.Hash, *ethtypes.Receipt, error)
-	SetReady(swap *contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Claim(swap *contracts.SwapFactorySwap, secret [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
-	Refund(swap *contracts.SwapFactorySwap, secret [32]byte) (ethcommon.Hash, *ethtypes.Receipt, error)
+	) (*ethtypes.Receipt, error)
+	SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Receipt, error)
+	Claim(swap *contracts.SwapFactorySwap, secret [32]byte) (*ethtypes.Receipt, error)
+	Refund(swap *contracts.SwapFactorySwap, secret [32]byte) (*ethtypes.Receipt, error)
 }
 
 type privateKeySender struct {
@@ -69,27 +69,27 @@ func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
 func (s *privateKeySender) Approve(
 	spender ethcommon.Address,
 	amount *big.Int,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	tx, err := s.erc20Contract.Approve(txOpts, spender, amount)
 	if err != nil {
 		err = fmt.Errorf("set_ready tx creation failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
 	if err != nil {
 		err = fmt.Errorf("set_ready failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return tx.Hash(), receipt, nil
+	return receipt, nil
 }
 
 func (s *privateKeySender) NewSwap(
@@ -100,12 +100,12 @@ func (s *privateKeySender) NewSwap(
 	nonce *big.Int,
 	ethAsset types.EthAsset,
 	value *big.Int,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	// transfer ETH if we're not doing an ERC20 swap
@@ -117,89 +117,89 @@ func (s *privateKeySender) NewSwap(
 		ethcommon.Address(ethAsset), value, nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
 	if err != nil {
 		err = fmt.Errorf("new_swap failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return tx.Hash(), receipt, nil
+	return receipt, nil
 }
 
-func (s *privateKeySender) SetReady(swap *contracts.SwapFactorySwap) (ethcommon.Hash, *ethtypes.Receipt, error) {
+func (s *privateKeySender) SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	tx, err := s.swapContract.SetReady(txOpts, *swap)
 	if err != nil {
 		err = fmt.Errorf("set_ready tx creation failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
 	if err != nil {
 		err = fmt.Errorf("set_ready failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return tx.Hash(), receipt, nil
+	return receipt, nil
 }
 
 func (s *privateKeySender) Claim(
 	swap *contracts.SwapFactorySwap,
 	secret [32]byte,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	tx, err := s.swapContract.Claim(txOpts, *swap, secret)
 	if err != nil {
 		err = fmt.Errorf("claim tx creation failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
 	if err != nil {
 		err = fmt.Errorf("claim failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return tx.Hash(), receipt, nil
+	return receipt, nil
 }
 
 func (s *privateKeySender) Refund(
 	swap *contracts.SwapFactorySwap,
 	secret [32]byte,
-) (ethcommon.Hash, *ethtypes.Receipt, error) {
+) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
 	if err != nil {
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	tx, err := s.swapContract.Refund(txOpts, *swap, secret)
 	if err != nil {
 		err = fmt.Errorf("refund tx creation failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
 	receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
 	if err != nil {
 		err = fmt.Errorf("refund failed, %w", err)
-		return ethcommon.Hash{}, nil, err
+		return nil, err
 	}
 
-	return tx.Hash(), receipt, nil
+	return receipt, nil
 }

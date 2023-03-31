@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -28,6 +29,7 @@ var (
 	_                         = logging.SetLogLevel("xmrmaker", "debug")
 	desiredAmount             = coins.EtherToWei(apd.New(33, -2)) // "0.33"
 	defaultTimeoutDuration, _ = time.ParseDuration("86400s")      // 1 day = 60s * 60min * 24hr
+	testPeerID, _             = peer.Decode("12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi")
 )
 
 func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDatabase) {
@@ -35,6 +37,7 @@ func newTestSwapStateAndDB(t *testing.T) (*Instance, *swapState, *offers.MockDat
 
 	swapState, err := newSwapStateFromStart(
 		xmrmaker.backend,
+		testPeerID,
 		types.NewOffer("", new(apd.Decimal), new(apd.Decimal), new(coins.ExchangeRate), types.EthAssetETH),
 		&types.OfferExtra{},
 		xmrmaker.offerManager,
@@ -132,9 +135,9 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	require.NoError(t, err)
 	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
-	txHash, err := swapState.claimFunds()
+	receipt, err := swapState.claimFunds()
 	require.NoError(t, err)
-	require.NotEqual(t, "", txHash)
+	require.NotNil(t, receipt)
 	require.True(t, swapState.info.Status.IsOngoing())
 }
 

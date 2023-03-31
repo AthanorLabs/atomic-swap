@@ -36,29 +36,35 @@ func validateClaimRequest(
 //  4. TODO: Validate that the swap exists and is in a claimable state?
 func validateClaimValues(
 	ctx context.Context,
-	req *message.RelayClaimRequest,
+	request *message.RelayClaimRequest,
 	ec *ethclient.Client,
 	ourSwapFactoryAddr ethcommon.Address,
 ) error {
+	isTakerRelay := request.OfferID != nil
+
 	// Validate the deployed SwapFactory contract, if it is not at the same address
 	// as our own. The CheckSwapFactoryContractCode method validates both the
 	// SwapFactory bytecode and the Forwarder bytecode.
-	if req.SwapFactoryAddress != ourSwapFactoryAddr {
-		_, err := contracts.CheckSwapFactoryContractCode(ctx, ec, req.SwapFactoryAddress)
+	if request.SwapFactoryAddress != ourSwapFactoryAddr {
+		if isTakerRelay {
+			return fmt.Errorf("taker claim swap factory mismatch found=%s expected=%s",
+				request.SwapFactoryAddress, ourSwapFactoryAddr)
+		}
+		_, err := contracts.CheckSwapFactoryContractCode(ctx, ec, request.SwapFactoryAddress)
 		if err != nil {
 			return err
 		}
 	}
 
-	asset := types.EthAsset(req.Swap.Asset)
+	asset := types.EthAsset(request.Swap.Asset)
 	if asset != types.EthAssetETH {
 		return fmt.Errorf("relaying for ETH Asset %s is not supported", asset)
 	}
 
 	// The relayer fee must be strictly less than the swap value
-	if FeeWei.Cmp(req.Swap.Value) >= 0 {
+	if FeeWei.Cmp(request.Swap.Value) >= 0 {
 		return fmt.Errorf("swap value of %s ETH is too low to support %s ETH relayer fee",
-			coins.FmtWeiAsETH(req.Swap.Value), coins.FmtWeiAsETH(FeeWei))
+			coins.FmtWeiAsETH(request.Swap.Value), coins.FmtWeiAsETH(FeeWei))
 	}
 
 	return nil

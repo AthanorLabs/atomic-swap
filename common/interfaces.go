@@ -21,13 +21,13 @@ type SwapState interface {
 // It is implemented by *xmrtaker.swapState and *xmrmaker.swapState
 type SwapStateNet interface {
 	HandleProtocolMessage(msg Message) error
-	ID() types.Hash
+	OfferID() types.Hash
 	Exit() error
 }
 
 // SwapStateRPC contains the methods used by the RPC server into the SwapState.
 type SwapStateRPC interface {
 	SendKeysMessage() Message
-	ID() types.Hash
+	OfferID() types.Hash
 	Exit() error
 }

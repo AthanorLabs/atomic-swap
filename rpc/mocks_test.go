@@ -87,6 +87,7 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 
 	one := apd.New(1, 0)
 	return *swap.NewInfo(
+		testPeerID,
 		id,
 		coins.ProvidesETH,
 		one,
@@ -117,7 +118,7 @@ func (*mockXMRTaker) GetOngoingSwapState(_ types.Hash) common.SwapState {
 	return new(mockSwapState)
 }
 
-func (*mockXMRTaker) InitiateProtocol(_ *apd.Decimal, _ *types.Offer) (common.SwapState, error) {
+func (*mockXMRTaker) InitiateProtocol(_ peer.ID, _ *apd.Decimal, _ *types.Offer) (common.SwapState, error) {
 	return new(mockSwapState), nil
 }
 
@@ -177,7 +178,7 @@ func (*mockSwapState) SendKeysMessage() common.Message {
 	return &message.SendKeysMessage{}
 }
 
-func (*mockSwapState) ID() types.Hash {
+func (*mockSwapState) OfferID() types.Hash {
 	return testSwapID
 }
 

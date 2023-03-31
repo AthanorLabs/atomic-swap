@@ -2,11 +2,15 @@ package relayer
 
 import (
 	"context"
+	"fmt"
+	"math/big"
 
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
@@ -54,6 +58,10 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 
+	if err = checkForMinClaimBalance(ctx, ec); err != nil {
+		return nil, err
+	}
+
 	// Lock the wallet's nonce until we get a receipt
 	ec.Lock()
 	defer ec.Unlock()
@@ -75,10 +83,32 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 
-	_, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
+	receipt, err := block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	if err != nil {
 		return nil, err
 	}
 
+	log.Infof("relayed claim %s", common.ReceiptInfo(receipt))
+
 	return &message.RelayClaimResponse{TxHash: tx.Hash()}, nil
+}
+
+func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) error {
+	balance, err := ec.Balance(ctx)
+	if err != nil {
+		return err
+	}
+
+	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(ctx)
+	if err != nil {
+		return err
+	}
+
+	txCost := new(big.Int).Mul(suggestedGasPrice, big.NewInt(forwarderClaimGas))
+	if balance.Cmp(txCost) < 0 {
+		return fmt.Errorf("balance %s ETH is under the minimum %s ETH to relay claim",
+			coins.FmtWeiAsETH(balance), coins.FmtWeiAsETH(txCost))
+	}
+
+	return nil
 }

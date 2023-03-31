@@ -82,12 +82,12 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address,
 	}
 
 	// write counterparty swap privkey to disk in case something goes wrong
-	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skB)
+	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.OfferID(), skB)
 	if err != nil {
 		return nil, err
 	}
 
-	id := s.ID()
+	id := s.OfferID()
 	depositAddr := s.XMRDepositAddress(&id)
 	if s.noTransferBack {
 		depositAddr = nil
@@ -101,7 +101,7 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address,
 	err = pcommon.ClaimMonero(
 		s.ctx,
 		s.Env(),
-		s.info.ID,
+		s.info.OfferID,
 		s.XMRClient(),
 		s.walletScanHeight,
 		kpAB,

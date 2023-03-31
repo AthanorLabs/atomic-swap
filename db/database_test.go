@@ -7,6 +7,7 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -18,6 +19,8 @@ import (
 func init() {
 	_ = logging.SetLogLevel("db", "debug")
 }
+
+var testPeerID, _ = peer.Decode("12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi")
 
 // infoAsJSON converts an Info object to a JSON string. Converting
 // the struct to JSON is the easiest way to compare 2 structs for
@@ -38,7 +41,8 @@ func TestDatabase_OfferTable(t *testing.T) {
 	// put swap to ensure iterator over offers is ok
 	infoA := &swap.Info{
 		Version:              swap.CurInfoVersion,
-		ID:                   types.Hash{0x1},
+		PeerID:               testPeerID,
+		OfferID:              types.Hash{0x1},
 		Provides:             coins.ProvidesXMR,
 		ProvidedAmount:       coins.StrToDecimal("0.1"),
 		ExpectedAmount:       coins.StrToDecimal("1"),
@@ -105,7 +109,8 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 	// Put a swap entry tied to the bad offer in the database
 	swapEntry := &swap.Info{
 		Version:              swap.CurInfoVersion,
-		ID:                   badOfferID,
+		PeerID:               testPeerID,
+		OfferID:              badOfferID,
 		Provides:             coins.ProvidesXMR,
 		ProvidedAmount:       coins.StrToDecimal("0.1"),
 		ExpectedAmount:       coins.StrToDecimal("1"),
@@ -177,7 +182,8 @@ func TestDatabase_SwapTable(t *testing.T) {
 
 	infoA := &swap.Info{
 		Version:              swap.CurInfoVersion,
-		ID:                   offerA.ID,
+		PeerID:               testPeerID,
+		OfferID:              offerA.ID,
 		Provides:             offerA.Provides,
 		ProvidedAmount:       offerA.MinAmount,
 		ExpectedAmount:       offerA.MinAmount,
@@ -196,7 +202,8 @@ func TestDatabase_SwapTable(t *testing.T) {
 
 	infoB := &swap.Info{
 		Version:              swap.CurInfoVersion,
-		ID:                   types.Hash{0x2},
+		PeerID:               testPeerID,
+		OfferID:              types.Hash{0x2},
 		Provides:             coins.ProvidesXMR,
 		ProvidedAmount:       coins.StrToDecimal("1.5"),
 		ExpectedAmount:       coins.StrToDecimal("0.15"),
@@ -235,7 +242,8 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 
 	goodInfo := &swap.Info{
 		Version:              swap.CurInfoVersion,
-		ID:                   types.Hash{0x1, 0x2, 0x3},
+		PeerID:               testPeerID,
+		OfferID:              types.Hash{0x1, 0x2, 0x3},
 		Provides:             coins.ProvidesXMR,
 		ProvidedAmount:       coins.StrToDecimal("1.5"),
 		ExpectedAmount:       coins.StrToDecimal("0.15"),
@@ -258,7 +266,7 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Establish a baseline that both the good and bad entries exist before calling GetAllSwaps
-	exists, err := db.swapTable.Has(goodInfo.ID[:])
+	exists, err := db.swapTable.Has(goodInfo.OfferID[:])
 	require.NoError(t, err)
 	require.True(t, exists)
 
@@ -270,10 +278,10 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 	swaps, err := db.GetAllSwaps()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(swaps))
-	require.EqualValues(t, goodInfo.ID[:], swaps[0].ID[:])
+	require.EqualValues(t, goodInfo.OfferID[:], swaps[0].OfferID[:])
 
 	// GetAllSwaps should have pruned the bad swap info entry, but left the good entry
-	exists, err = db.swapTable.Has(goodInfo.ID[:])
+	exists, err = db.swapTable.Has(goodInfo.OfferID[:])
 	require.NoError(t, err)
 	require.True(t, exists) // entry still exists
 
@@ -298,7 +306,8 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 
 	infoA := &swap.Info{
 		Version:              swap.CurInfoVersion,
-		ID:                   id,
+		PeerID:               testPeerID,
+		OfferID:              id,
 		Provides:             coins.ProvidesXMR,
 		ProvidedAmount:       coins.StrToDecimal("0.1"),
 		ExpectedAmount:       coins.StrToDecimal("1"),
