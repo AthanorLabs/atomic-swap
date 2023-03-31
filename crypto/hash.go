@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package crypto is for cryptographic code used by both Monero and Ethereum.
 // Chain specific crypto is in subpackages.
 package crypto

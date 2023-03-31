@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package rpctypes provides the serialized types for queries and responses shared by
 // swapd's JSON-RPC server and client-side libraries.
 package rpctypes

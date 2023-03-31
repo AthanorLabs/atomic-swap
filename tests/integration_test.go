@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package tests provides integration tests, which exercise fully built swapd instances
 // pre-launched by a script. The non *_test.go files are test helper methods for both
 // unit and integration tests.

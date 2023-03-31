@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package main provides the entrypoint of the swapd executable, a daemon that
 // manages atomic swaps between monero and ethereum assets.
 package main

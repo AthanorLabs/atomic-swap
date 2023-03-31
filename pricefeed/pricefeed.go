@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package pricefeed implements routines to retrieve on-chain price feeds from chainlink's
 // decentralized oracle network.
 package pricefeed
