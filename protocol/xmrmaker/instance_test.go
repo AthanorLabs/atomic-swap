@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -89,7 +90,12 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
 	require.NoError(t, err)
 
-	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	addr, err := bind.WaitDeployed(ctx, ec, tx)
 	require.NoError(t, err)
 
 	ctrl := gomock.NewController(t)
@@ -102,12 +108,12 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(context.Background(), env, common.DefaultEthEndpoint, pk)
+	extendedEC, err := extethclient.NewEthClient(ctx, env, common.DefaultEthEndpoint, pk)
 	require.NoError(t, err)
 
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:                context.Background(),
+		Ctx:                ctx,
 		MoneroClient:       monero.CreateWalletClient(t),
 		EthereumClient:     extendedEC,
 		Environment:        common.Development,
@@ -119,7 +125,6 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
-
 	return b, net
 }
 
@@ -218,6 +223,8 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 }
 
 func TestInstance_CompleteSwap(t *testing.T) {
+	_ = logging.SetLogLevel("protocol", "debug")
+	_ = logging.SetLogLevel("xmrmaker", "debug")
 	monero.TestBackgroundMineBlocks(t)
 
 	inst, _ := newTestInstanceAndDB(t)
