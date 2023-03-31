@@ -173,8 +173,6 @@ func newSwapStateFromStart(
 func checkIfAlreadyClaimed(
 	b backend.Backend,
 	ethSwapInfo *db.EthereumSwapInfo,
-	info *pswap.Info,
-	om *offers.Manager,
 ) (bool, error) {
 	// check if swap actually completed and we didn't realize for some reason
 	// this could happen if we restart from an ongoing swap
@@ -279,7 +277,7 @@ func newSwapStateFromOngoing(
 	info *pswap.Info,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
-	alreadyClaimed, err := checkIfAlreadyClaimed(b, ethSwapInfo, info, om)
+	alreadyClaimed, err := checkIfAlreadyClaimed(b, ethSwapInfo)
 	if err != nil {
 		return nil, err
 	}
