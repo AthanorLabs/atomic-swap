@@ -8,7 +8,7 @@ bash ./scripts/install-monero-linux.sh
 # invoking this script. There is no guarantee that the node below will be
 # running or should be trusted when you test.
 #
-ETHEREUM_ENDPOINT="${ETHEREUM_ENDPOINT:-"https://ethereum-goerli-rpc.allthatnode.com"}"
+ETHEREUM_ENDPOINT="${ETHEREUM_ENDPOINT:-"https://rpc.sepolia.org/"}"
 
 #
 # swapd has some preconfigured stagenet monerod nodes, but the best option
