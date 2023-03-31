@@ -119,29 +119,29 @@ func TestCheckSwapFactoryContractCode_fail(t *testing.T) {
 	require.ErrorIs(t, err, errInvalidSwapContract)
 }
 
-func TestGoerliContract(t *testing.T) {
-	// comment out the next line to test the default goerli contract
-	t.Skip("requires access to non-vetted external goerli node")
-	const goerliEndpoint = "https://ethereum-goerli-rpc.allthatnode.com"
-	// temporarily place a funded goerli private key below to deploy the test contract
-	const goerliKey = ""
+func TestSepoliaContract(t *testing.T) {
+	// comment out the next line to test the default sepolia contract
+	t.Skip("requires access to non-vetted external sepolia node")
+	const sepoliaEndpoint = "https://rpc.sepolia.org/"
+	// temporarily place a funded sepolia private key below to deploy the test contract
+	const sepoliaKey = ""
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(goerliEndpoint)
+	ec, err := ethclient.Dial(sepoliaEndpoint)
 	require.NoError(t, err)
 	defer ec.Close()
 
 	parsedTFAddr, err := CheckSwapFactoryContractCode(ctx, ec, common.StagenetConfig().SwapFactoryAddress)
-	if errors.Is(err, errInvalidSwapContract) && goerliKey != "" {
-		pk, err := ethcrypto.HexToECDSA(goerliKey) //nolint:govet // shadow declaration of err
+	if errors.Is(err, errInvalidSwapContract) && sepoliaKey != "" {
+		pk, err := ethcrypto.HexToECDSA(sepoliaKey) //nolint:govet // shadow declaration of err
 		require.NoError(t, err)
 		forwarderAddr := deployForwarder(t, ec, pk)
 		sfAddr, _, err := DeploySwapFactoryWithKey(context.Background(), ec, pk, forwarderAddr)
 		require.NoError(t, err)
-		t.Logf("New Goerli SwapFactory deployed with TrustedForwarder=%s", forwarderAddr)
+		t.Logf("New Sepolia SwapFactory deployed with TrustedForwarder=%s", forwarderAddr)
 		t.Fatalf("Update common.StagenetConfig.ContractAddress with %s", sfAddr.Hex())
 	} else {
 		require.NoError(t, err)
-		t.Logf("Goerli SwapFactory deployed with TrustedForwarder=%s", parsedTFAddr.Hex())
+		t.Logf("Sepolia SwapFactory deployed with TrustedForwarder=%s", parsedTFAddr.Hex())
 	}
 }

@@ -1,6 +1,6 @@
-# Joining the Stagenet/Goerli network
+# Joining the Stagenet/Sepolia network
 
-Currently, an initial version of the swap is deployed onto the Goerli (Ethereum testnet) and Monero Stagenet networks. To join the network and try out the swap, either as a maker or a taker, please see the following.
+Currently, an initial version of the swap is deployed onto the Sepolia (Ethereum testnet) and Monero Stagenet networks. To join the network and try out the swap, either as a maker or a taker, please see the following.
 
 > Note: a swap on stagenet currently takes around 10-20 minutes due to block times.
 
@@ -9,7 +9,7 @@ Currently, an initial version of the swap is deployed onto the Goerli (Ethereum 
 ## Setup 
 
 The atomic swap daemon requires access to a fully synced, stagenet monerod daemon,
-a Goerli network endpoint, and a Goerli network private key funded with some GoETH.
+a Sepolia network endpoint, and a Sepolia network private key funded with some SepETH.
 
 1. Install the Monero CLI if you haven't already. You can get it [here](https://www.getmonero.org/downloads/#cli):
 
@@ -31,21 +31,19 @@ For Linux 64-bit, you can do:
    data. If you skip this step, a new wallet will be created that you can later fund for
    swaps.
 
-4. Create a Goerli wallet. You can do this using Metamask by selecting "Goerli Test Network" from the networks, then creating a new account with "Create account". I'd recommend naming this new account something explicit like `goerli-swap-account`.
+4. Create a Sepolia wallet. You can do this using Metamask by selecting "Sepolia Test Network" from the networks, then creating a new account with "Create account". I'd recommend naming this new account something explicit like `sepolia-swap-account`.
 
 5. Optional: Export the private key for this account by navigating to: three dots in upper right of
    Metamask -> account details -> export private key. Paste this private key into a file
-   named `{DATA_DIR}/eth.key`. If you skip this step, a new goerli wallet will be created for you
-   that you can transfer Goerli ether to or fund directly in the next step.
+   named `{DATA_DIR}/eth.key`. If you skip this step, a new wallet will be created for you
+   that you can transfer Sepolia ether to or fund directly in the next step.
 
-6. Fund your Goerli account using a faucet: 
-- https://goerli-faucet.pk910.de/
-- https://goerlifaucet.com/
-- https://goerli-faucet.mudit.blog/
+6. Fund your Sepolia account using a faucet: 
+- https://sepolia-faucet.pk910.de/
+- https://sepoliafaucet.com/
+- https://sepolia.dev/
 
-If you don't have any luck with these, please message me on twitter/reddit (@elizabethereum) with your Goerli address, and I can send you some GoETH.
-
-7. Obtain a Goerli JSON-RPC endpoint. You can get one from infura.io, or you can sync your own node, or ask a friend for their endpoint. 
+7. Obtain a Sepolia JSON-RPC endpoint. If you don't want to sync your own node, you can find public ones here: https://sepolia.dev/
 
 8. Install go 1.19+. See [build instructions](./build.md) for more details.
 
@@ -56,11 +54,9 @@ cd atomic-swap
 make build
 ```
 
-10. Start the `swapd` daemon. If you are using an Infura Goerli endpoint,
-    copy-paste your API key into the field below following the `--ethereum-endpoint` flag.
-    Otherwise, change `--ethereum-endpoint` to point to your endpoint.
+10. Start the `swapd` daemon. Change `--ethereum-endpoint` to point to your endpoint.
 ```bash
-./swapd --env stagenet --ethereum-endpoint=https://goerli.infura.io/v3/<your-api-key>
+./swapd --env stagenet --ethereum-endpoint=<sepolia-endpoint>
 ```
 Note: You probably need additional flags above:
 * `--data-dir PATH`: Needed if you are launching more than one `swapd` instance
@@ -160,7 +156,7 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 > Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. Since we're on testnet, it's not critical what you set it to. 
 
-When a peer takes your offer, you will see logs in `swapd` notifying you that a swap has been initiated. If all goes well, you should receive the GoETH in the Goerli account created earlier.
+When a peer takes your offer, you will see logs in `swapd` notifying you that a swap has been initiated. If all goes well, you should receive the SepETH in the Sepolia account created earlier.
 
 > Note: if you exit the `swapd` process, your offers are currently not saved, so when you restart you will not have any offers.
 
