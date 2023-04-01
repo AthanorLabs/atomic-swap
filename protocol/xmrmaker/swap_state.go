@@ -213,7 +213,7 @@ func checkIfAlreadyClaimed(
 
 	log.Debugf("filtered for logs from block %s to head", filterQuery.FromBlock)
 
-	var foundClaimed *ethtypes.Log
+	var foundClaimed bool
 	for _, l := range logs {
 		l := l
 		if l.Topics[0] != claimedTopic {
@@ -231,18 +231,14 @@ func checkIfAlreadyClaimed(
 		}
 
 		log.Infof("found Claimed log in block %d", l.BlockNumber)
-		foundClaimed = &l
+		foundClaimed = true
+		break
 	}
 
-	if foundClaimed == nil {
-		return false, nil
-	}
-
-	return true, nil
+	return foundClaimed, nil
 }
 
 // completeSwap marks the swap as completed and deletes it from the db.
-// note: it does not return an error if it fails to delete the swap from the db.
 func completeSwap(info *swap.Info, b backend.Backend, om *offers.Manager) error {
 	// set swap to completed
 	info.SetStatus(types.CompletedSuccess)
@@ -253,12 +249,12 @@ func completeSwap(info *swap.Info, b backend.Backend, om *offers.Manager) error 
 
 	err = om.DeleteOffer(info.ID)
 	if err != nil {
-		log.Warnf("failed to delete offer %s from db: %s", info.ID, err)
+		return fmt.Errorf("failed to delete offer %s from db: %s", info.ID, err)
 	}
 
 	err = b.RecoveryDB().DeleteSwap(info.ID)
 	if err != nil {
-		log.Warnf("failed to delete temporary swap info %s from db: %s", info.ID, err)
+		return fmt.Errorf("failed to delete temporary swap info %s from db: %s", info.ID, err)
 	}
 
 	exitLog := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", info.ID)

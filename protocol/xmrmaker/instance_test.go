@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -223,8 +222,6 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 }
 
 func TestInstance_CompleteSwap(t *testing.T) {
-	_ = logging.SetLogLevel("protocol", "debug")
-	_ = logging.SetLogLevel("xmrmaker", "debug")
 	monero.TestBackgroundMineBlocks(t)
 
 	inst, _ := newTestInstanceAndDB(t)
