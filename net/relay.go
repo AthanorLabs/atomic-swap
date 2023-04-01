@@ -67,8 +67,9 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 		h.swapMu.Unlock()
 
 		if !ok || curPeer != swap.stream.Conn().RemotePeer() {
-			log.Debugf("received taker-specific claim request from invalid peer=%s offerID=%s found=%t",
+			log.Debugf("received taker-specific claim request from invalid peer=%s offerID=%s swap-found=%t",
 				curPeer, req.OfferID, ok)
+			return
 		}
 	}
 

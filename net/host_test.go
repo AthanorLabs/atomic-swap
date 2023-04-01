@@ -43,11 +43,11 @@ func (h *mockMakerHandler) HandleInitiateMessage(
 	return &mockSwapState{}, msg, nil
 }
 
-type mockTakerHandler struct {
+type mockRelayHandler struct {
 	t *testing.T
 }
 
-func (h *mockTakerHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
+func (h *mockRelayHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
 	return &RelayClaimResponse{
 		TxHash: mockEthTXHash,
 	}, nil
@@ -91,7 +91,7 @@ func basicTestConfig(t *testing.T) *Config {
 func newHost(t *testing.T, cfg *Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
-	h.SetHandlers(&mockMakerHandler{t: t}, &mockTakerHandler{t: t})
+	h.SetHandlers(&mockMakerHandler{t: t}, &mockRelayHandler{t: t})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)

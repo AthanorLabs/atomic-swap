@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -16,7 +17,7 @@ import (
 func twoHostRelayerSetup(t *testing.T) (*Host, *Host) {
 	// ha is not a relayer
 	haCfg := basicTestConfig(t)
-	haCfg.IsRelayer = true
+	haCfg.IsRelayer = false
 	ha := newHost(t, haCfg)
 	err := ha.Start()
 	require.NoError(t, err)
@@ -41,13 +42,14 @@ func TestHost_DiscoverRelayers(t *testing.T) {
 
 	peerIDs, err := ha.DiscoverRelayers()
 	require.NoError(t, err)
-	require.Len(t, peerIDs, 1)
+	require.True(t, hb.isRelayer)
+	require.Len(t, peerIDs, 1) // discovers hb
 	require.Equal(t, hb.PeerID(), peerIDs[0])
 
 	peerIDs, err = hb.DiscoverRelayers()
 	require.NoError(t, err)
-	require.Len(t, peerIDs, 1)
-	require.Equal(t, ha.PeerID(), peerIDs[0])
+	require.False(t, ha.isRelayer)
+	require.Len(t, peerIDs, 0) // ha is not a relayer and not discovered
 }
 
 func createTestClaimRequest() *message.RelayClaimRequest {
@@ -74,12 +76,43 @@ func createTestClaimRequest() *message.RelayClaimRequest {
 	return req
 }
 
-func TestHost_SubmitClaimToRelayer(t *testing.T) {
+func TestHost_SubmitClaimToRelayer_dhtRelayer(t *testing.T) {
 	ha, hb := twoHostRelayerSetup(t)
 
+	// success path ha->hb, hb is a DHT relayer
 	resp, err := ha.SubmitClaimToRelayer(hb.PeerID(), createTestClaimRequest())
 	require.NoError(t, err)
 	require.Equal(t, mockEthTXHash.Hex(), resp.TxHash.Hex())
+
+	// failure path hb->ha, ha is NOT a DHT relayer. Note that the remote end
+	// does not pass back the exact reason for rejecting a claim to avoid
+	// possible privacy data leaks, but in this case it is because hb is not
+	// a DHT advertising relayer.
+	_, err = hb.SubmitClaimToRelayer(ha.PeerID(), createTestClaimRequest())
+	require.ErrorContains(t, err, "failed to read RelayClaimResponse: EOF")
+}
+
+func TestHost_SubmitClaimToRelayer_xmrTakerRelayer(t *testing.T) {
+	ha, hb := twoHostRelayerSetup(t)
+
+	request := createTestClaimRequest()
+	offerID := types.Hash{0x1}
+	request.OfferID = &offerID
+
+	// fail, because there is no ongoing swap between ha and hb
+	_, err := hb.SubmitClaimToRelayer(ha.PeerID(), request)
+	require.ErrorContains(t, err, "failed to read RelayClaimResponse: EOF")
+
+	// create an ongoing swap between ha and hb
+	swapState := &mockSwapState{offerID: offerID}
+	err = ha.Initiate(peer.AddrInfo{ID: hb.PeerID()}, createSendKeysMessage(t), swapState)
+	require.NoError(t, err)
+	defer ha.CloseProtocolStream(offerID)
+
+	// same steps will succeed now, because we started a swap first
+	response, err := hb.SubmitClaimToRelayer(ha.PeerID(), request)
+	require.NoError(t, err)
+	require.Equal(t, mockEthTXHash, response.TxHash)
 }
 
 func TestHost_SubmitClaimToRelayer_fail(t *testing.T) {
