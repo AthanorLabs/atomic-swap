@@ -105,11 +105,6 @@ func NewHost(cfg *Config) (*Host, error) {
 	return h, nil
 }
 
-// P2pHost returns the underlying go-p2p-net host.
-func (h *Host) P2pHost() P2pHost {
-	return h.h
-}
-
 func (h *Host) advertisedNamespaces() []string {
 	provides := []string{""}
 
