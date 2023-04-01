@@ -10,6 +10,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -91,7 +92,12 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
 	require.NoError(t, err)
 
-	addr, err := bind.WaitDeployed(context.Background(), ec, tx)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	addr, err := bind.WaitDeployed(ctx, ec, tx)
 	require.NoError(t, err)
 
 	ctrl := gomock.NewController(t)
@@ -104,12 +110,12 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(context.Background(), env, common.DefaultEthEndpoint, pk)
+	extendedEC, err := extethclient.NewEthClient(ctx, env, common.DefaultEthEndpoint, pk)
 	require.NoError(t, err)
 
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:                context.Background(),
+		Ctx:                ctx,
 		MoneroClient:       monero.CreateWalletClient(t),
 		EthereumClient:     extendedEC,
 		Environment:        common.Development,
@@ -121,7 +127,6 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 
 	b, err := backend.NewBackend(bcfg)
 	require.NoError(t, err)
-
 	return b, net
 }
 
@@ -162,12 +167,24 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst, offerDB := newTestInstanceAndDB(t)
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
+	ec := inst.backend.ETHClient()
+	contract := inst.backend.Contract()
+	contractSwap, contractSwapID, _ := newTestSwap(
+		t, ec, contract, [32]byte{}, [32]byte{}, big.NewInt(100), time.Minute*10,
+	)
+
+	txOpts, err := ec.TxOpts(context.Background())
+	require.NoError(t, err)
+	tx, err := contract.SetReady(txOpts, *contractSwap)
+	require.NoError(t, err)
+	tests.MineTransaction(t, ec.Raw(), tx)
+
 	one := apd.New(1, 0)
 	rate := coins.ToExchangeRate(apd.New(1, 0))
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, rate, types.EthAssetETH)
 
 	offerDB.EXPECT().PutOffer(offer).Return(nil)
-	_, err := inst.offerManager.AddOffer(offer, false)
+	_, err = inst.offerManager.AddOffer(offer, false)
 	require.NoError(t, err)
 
 	s := &pswap.Info{
@@ -188,6 +205,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),
+		SwapID:          contractSwapID,
 		Swap: &contracts.SwapFactorySwap{
 			Timeout0: big.NewInt(1),
 			Timeout1: big.NewInt(2),

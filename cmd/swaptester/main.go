@@ -209,7 +209,7 @@ var (
 )
 
 func getRandomExchangeRate() *coins.ExchangeRate {
-	rateFl := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate)
+	rateFl := minExchangeRate + mrand.Float64()*(maxExchangeRate-minExchangeRate) //nolint:gosec
 	rate, _, err := new(apd.Decimal).SetString(strconv.FormatFloat(rateFl, 'f', -1, 64))
 	if err != nil {
 		panic(err) // shouldn't be possible
@@ -218,7 +218,7 @@ func getRandomExchangeRate() *coins.ExchangeRate {
 }
 
 func getRndOfferAmount(xRate *coins.ExchangeRate, minXMRAmt, maxXMRAmt *apd.Decimal) (*apd.Decimal, error) {
-	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64())
+	randVal, err := new(apd.Decimal).SetFloat64(mrand.Float64()) //nolint:gosec
 	if err != nil {
 		return nil, err
 	}

@@ -403,7 +403,7 @@ func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_afterIsReady() {
 	s.testRefundXMRMakerCancels(30, types.CompletedSuccess)
 }
 
-func (s *IntegrationTestSuite) testRefundXMRMakerCancels( //nolint:unused
+func (s *IntegrationTestSuite) testRefundXMRMakerCancels(
 	swapTimeout uint64,
 	expectedExitStatus types.Status,
 ) {

@@ -33,6 +33,7 @@ var (
 	errRelayingWithNonEthAsset       = errors.New("relayers with ERC20 token swaps are not currently supported")
 
 	// protocol initiation errors
+	errSwapDoesNotExist          = errors.New("contract swap ID does not exist")
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
 	errOfferIDNotSet             = errors.New("offer ID was not set")
 	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not XMRLocked")
