@@ -45,13 +45,13 @@ func TestHost_Initiate(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 500)
 
-	ha.swapMu.Lock()
+	ha.swapMu.RLock()
 	require.NotNil(t, ha.swaps[testID])
-	ha.swapMu.Unlock()
+	ha.swapMu.RUnlock()
 
-	hb.swapMu.Lock()
+	hb.swapMu.RLock()
 	require.NotNil(t, hb.swaps[testID])
-	hb.swapMu.Unlock()
+	hb.swapMu.RUnlock()
 }
 
 func TestHost_ConcurrentSwaps(t *testing.T) {
@@ -74,13 +74,13 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 500)
 
-	ha.swapMu.Lock()
+	ha.swapMu.RLock()
 	require.NotNil(t, ha.swaps[testID])
-	ha.swapMu.Unlock()
+	ha.swapMu.RUnlock()
 
-	hb.swapMu.Lock()
+	hb.swapMu.RLock()
 	require.NotNil(t, hb.swaps[testID])
-	hb.swapMu.Unlock()
+	hb.swapMu.RUnlock()
 
 	hb.makerHandler.(*mockMakerHandler).id = testID2
 
@@ -88,11 +88,11 @@ func TestHost_ConcurrentSwaps(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 1500)
 
-	ha.swapMu.Lock()
+	ha.swapMu.RLock()
 	require.NotNil(t, ha.swaps[testID])
-	ha.swapMu.Unlock()
+	ha.swapMu.RUnlock()
 
-	hb.swapMu.Lock()
+	hb.swapMu.RLock()
 	require.NotNil(t, hb.swaps[testID])
-	hb.swapMu.Unlock()
+	hb.swapMu.RUnlock()
 }

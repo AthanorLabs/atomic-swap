@@ -60,7 +60,7 @@ type Host struct {
 	relayHandler RelayHandler
 
 	// swap instance info
-	swapMu sync.Mutex
+	swapMu sync.RWMutex
 	swaps  map[types.Hash]*swap
 }
 
@@ -151,8 +151,8 @@ func (h *Host) Stop() error {
 
 // SendSwapMessage sends a message to the peer who we're currently doing a swap with.
 func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
-	h.swapMu.Lock()
-	defer h.swapMu.Unlock()
+	h.swapMu.RLock()
+	defer h.swapMu.RUnlock()
 
 	swap, has := h.swaps[id]
 	if !has {
@@ -164,9 +164,9 @@ func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 
 // CloseProtocolStream closes the current swap protocol stream.
 func (h *Host) CloseProtocolStream(offerID types.Hash) {
-	h.swapMu.Lock()
+	h.swapMu.RLock()
 	swap, has := h.swaps[offerID]
-	h.swapMu.Unlock()
+	h.swapMu.RUnlock()
 	if !has {
 		return
 	}

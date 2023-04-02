@@ -60,6 +60,7 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 	h.swaps[id] = &swap{
 		swapState: s,
 		stream:    stream,
+		isTaker:   true,
 	}
 
 	go h.handleProtocolStreamInner(stream, s)
@@ -121,6 +122,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	h.swaps[s.OfferID()] = &swap{
 		swapState: s,
 		stream:    stream,
+		isTaker:   false,
 	}
 	h.swapMu.Unlock()
 
