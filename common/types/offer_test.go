@@ -56,9 +56,9 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 		"minAmount": "100",
 		"maxAmount": "200",
 		"exchangeRate": "1.5",
-		"ethAsset":"%s",
+		"ethAsset":"ETH",
 		"nonce": %d
-	}`, offer.ID, ethAsset, offer.Nonce)
+	}`, offer.ID, offer.Nonce)
 
 	var res Offer
 	err := vjson.UnmarshalStruct([]byte(offerJSON), &res)
