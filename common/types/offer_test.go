@@ -56,7 +56,7 @@ func TestOffer_UnmarshalJSON(t *testing.T) {
 		"minAmount": "100",
 		"maxAmount": "200",
 		"exchangeRate": "1.5",
-		"ethAsset":"ETH",
+		"ethAsset":"0x0000000000000000000000000000000000000001",
 		"nonce": %d
 	}`, offer.ID, offer.Nonce)
 
