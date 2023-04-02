@@ -141,9 +141,13 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 		return nil, errors.New("no relayers found to submit claim to")
 	}
 	log.Debugf("Found %d relayers to submit claim to", len(relayers))
-	for _, r := range relayers {
-		log.Debugf("submitting claim to relayer with peer ID %s", r)
-		resp, err := s.Backend.SubmitClaimToRelayer(r, request)
+	for _, relayerPeerID := range relayers {
+		if relayerPeerID == s.info.PeerID {
+			log.Debugf("skipping DHT-advertised relayer that is the XMR taker of the claim")
+			continue
+		}
+		log.Debugf("submitting claim to relayer with peer ID %s", relayerPeerID)
+		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, request)
 		if err != nil {
 			log.Warnf("failed to submit tx to relayer: %s", err)
 			continue
@@ -171,9 +175,12 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 	return nil, errors.New("failed to relay claim with any non-counterparty relayer")
 }
 
-// claimWithRelay first attempts to relay with the help of the XMR taker and, if
-// that fails, tries all relayers advertising in the DHT. Note that the receipt
-// returned is for a transaction created by the remote relayer, not by us.
+// claimWithRelay first tries to relay sequentially with all relayers
+// advertising in the DHT that are not the XMR taker and, if that fails, falls
+// back to the XMR taker who, if using our software, will act as a relayer of
+// last resort for their own swap, even if they are not performing relay
+// operations more generally. Note that the receipt returned is for a
+// transaction created by the remote relayer, not by us.
 func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
 	if err != nil {
@@ -195,10 +202,11 @@ func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	receipt, err := s.relayClaimWithXMRTaker(request)
+	receipt, err := s.claimWithAdvertisedRelayers(request)
 	if err != nil {
-		log.Warnf("failed to relay claim with XMR taker: %s", err)
-		return s.claimWithAdvertisedRelayers(request)
+		log.Warnf("failed to relay with DHT-advertised relayers: %s", err)
+		log.Infof("falling back to XMR taker as relayer")
+		return s.relayClaimWithXMRTaker(request)
 	}
 	return receipt, nil
 }
