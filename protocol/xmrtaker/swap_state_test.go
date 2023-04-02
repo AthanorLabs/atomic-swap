@@ -79,7 +79,10 @@ func newSwapManager(t *testing.T) pswap.Manager {
 func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, ec.ChainID())
 	require.NoError(t, err)
