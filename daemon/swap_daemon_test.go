@@ -296,10 +296,10 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	require.Equal(t, expectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
 }
 
-// Tests the scenario where Bob has no ETH, Alice does not have enough ETH to
-// relay his claim, and he can't find an advertised relayer, The end result
-// should be a refund. Note that this test has a long pause, as the refund
-// cannot happen until T1 expires.
+// Tests the scenario where Bob has no ETH, he can't find an advertised relayer,
+// and Alice does not have enough ETH to relay his claim. The end result should
+// be a refund. Note that this test has a long pause, as the refund cannot
+// happen until T1 expires.
 func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
@@ -374,10 +374,11 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	statusWG.Wait()
 }
 
-// Tests the scenario where Bob has no ETH, Alice does not have enough ETH to
-// relay his claim, and Charlie, an advertised relayer, performs the relay
-// so Bob can get his ETH.
-func TestRunSwapDaemon_CharlieRelaysBecauseAliceCannot(t *testing.T) {
+// Tests the scenario where Bob has no ETH and Charlie, an advertised relayer,
+// performs the relay so Bob can get his ETH. To ensure that the test does not
+// succeed by Alice relaying the claim, we ensure that Alice does not have
+// enough ETH left over after the swap to relay.
+func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
 	exRate := coins.StrToExchangeRate("0.1")
@@ -389,14 +390,13 @@ func TestRunSwapDaemon_CharlieRelaysBecauseAliceCannot(t *testing.T) {
 	bobConf := createTestConf(t, bobEthKey)
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
-	// Configure Alice to use Bob as a bootnode
+	// Configure Alice with enough funds to complete the swap, but not to relay Bob's claim
 	aliceEthKey, err := crypto.GenerateKey() // Alice gets a key without enough funds to relay
 	require.NoError(t, err)
 	aliceConf := createTestConf(t, aliceEthKey)
 	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
 
-	// Charlie also uses Bob as a bootnode and we can safely give him the taker
-	// key, as Alice is not using it.
+	// Charlie can safely use the taker key, as Alice is not using it.
 	charlieConf := createTestConf(t, tests.GetTakerTestKey(t))
 	charlieConf.IsRelayer = true
 	charlieStartBal, err := charlieConf.EthereumClient.Balance(context.Background())
@@ -481,4 +481,98 @@ func TestRunSwapDaemon_CharlieRelaysBecauseAliceCannot(t *testing.T) {
 	require.Greater(t, charlieBal.Cmp(charlieStartBal), 0)
 	charlieProfitWei := new(big.Int).Sub(charlieBal, charlieStartBal)
 	t.Logf("Charlie earned %s ETH", coins.FmtWeiAsETH(charlieProfitWei))
+}
+
+// Tests the scenario where Charlie, an advertised relayer, has run out of ETH
+// and cannot relay Alice's request. Bob falls back to Alice as the relayer of
+// last resort, and she relays his claim.
+func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
+	minXMR := coins.StrToDecimal("1")
+	maxXMR := minXMR
+	exRate := coins.StrToExchangeRate("0.1")
+	providesAmt, err := exRate.ToETH(minXMR)
+	require.NoError(t, err)
+
+	bobEthKey, err := crypto.GenerateKey() // Bob has no ETH (not a ganache key)
+	require.NoError(t, err)
+	bobConf := createTestConf(t, bobEthKey)
+	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
+
+	// Alice is fully funded with the taker key
+	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
+
+	// Charlie is a relayer, but he has no ETH
+	charlieEthKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	charlieConf := createTestConf(t, charlieEthKey)
+	charlieConf.IsRelayer = true
+
+	timeout := 5 * time.Minute
+	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
+
+	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
+	require.NoError(t, err)
+	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	require.NoError(t, err)
+
+	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
+	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
+	require.NoError(t, err)
+
+	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
+	require.NoError(t, err)
+
+	var statusWG sync.WaitGroup
+	statusWG.Add(2)
+
+	// Ensure Alice completes the swap successfully
+	go func() {
+		defer statusWG.Done()
+		for {
+			select {
+			case status := <-aliceStatusCh:
+				t.Log("> Alice got status:", status)
+				if !status.IsOngoing() {
+					assert.Equal(t, types.CompletedSuccess.String(), status.String())
+					return
+				}
+			case <-ctx.Done():
+				t.Errorf("Alice's context cancelled before she completed the swap")
+				return
+			}
+		}
+	}()
+
+	// Ensure Bob completes the swap successfully
+	go func() {
+		defer statusWG.Done()
+		for {
+			select {
+			case status := <-bobStatusCh:
+				t.Log("> Bob got status:", status)
+				if !status.IsOngoing() {
+					assert.Equal(t, types.CompletedSuccess.String(), status.String())
+					return
+				}
+			case <-ctx.Done():
+				t.Errorf("Bob's context cancelled before he completed the swap")
+				return
+			}
+		}
+	}()
+
+	statusWG.Wait()
+	if t.Failed() {
+		return
+	}
+
+	//
+	// Bob's ending balance should be Alice's provided amount minus the relayer fee
+	//
+	bobExpectedBal := new(apd.Decimal)
+	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, relayer.FeeEth)
+	require.NoError(t, err)
+	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
+	require.NoError(t, err)
+	require.Equal(t, bobExpectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
 }
