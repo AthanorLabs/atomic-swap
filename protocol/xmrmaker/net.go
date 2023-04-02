@@ -76,8 +76,6 @@ func (inst *Instance) initiate(
 		delete(inst.swapStates, offer.ID)
 	}()
 
-	log.Infof("initiate offer.EthAsset=%s", offer.EthAsset)
-
 	symbol, err := pcommon.AssetSymbol(inst.backend, offer.EthAsset)
 	if err != nil {
 		return nil, err
@@ -121,8 +119,6 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 	if err != nil {
 		return nil, nil, err
 	}
-
-	log.Infof("got offer: %s", offer)
 
 	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 	if err != nil {
