@@ -24,6 +24,9 @@ func (asset EthAsset) String() string {
 // MarshalText returns the hex representation of the EthAsset or,
 // in some cases, a short string.
 func (asset EthAsset) MarshalText() ([]byte, error) {
+	if asset == EthAssetETH {
+		return []byte("ETH"), nil
+	}
 	return []byte(ethcommon.Address(asset).Hex()), nil
 }
 
