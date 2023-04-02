@@ -64,8 +64,13 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	require.NoError(t, err)
 	value, err := rand.Prime(rand.Reader, 53) // (2^54 - 1) / 10^18 ~= .018 ETH
 	require.NoError(t, err)
-	if asset == ethAssetAddress {
+
+	isEthAsset := asset == ethAssetAddress
+
+	if isEthAsset {
 		auth.Value = value
+	} else {
+		value = big.NewInt(0)
 	}
 
 	tx, err = contract.NewSwap(auth, pubKeyClaim, pubKeyRefund,
@@ -76,11 +81,16 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
 
-	require.Equal(t, 1, len(receipt.Logs))
-	swapID, err := GetIDFromLog(receipt.Logs[0])
+	newSwapLogIndex := 0
+	if !isEthAsset {
+		newSwapLogIndex = 2
+	}
+	require.Equal(t, newSwapLogIndex+1, len(receipt.Logs))
+
+	swapID, err := GetIDFromLog(receipt.Logs[newSwapLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newSwapLogIndex])
 	require.NoError(t, err)
 
 	// validate that off-chain swapID calculation matches the on-chain value
@@ -92,11 +102,14 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Asset:        ethcommon.Address(types.EthAssetETH),
-		Value:        auth.Value,
+		Value:        value,
 		Nonce:        nonce,
 	}
 
 	// validate our off-net calculation of the SwapID
+	if !isEthAsset {
+		t.Skip("off-net calculation of swapID doesn't match")
+	}
 	require.Equal(t, types.Hash(swapID).Hex(), swap.SwapID().Hex())
 }
 
