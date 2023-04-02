@@ -53,7 +53,7 @@ func StageToString(stage byte) string {
 }
 
 // SwapID calculates and returns the same hashed swap identifier that newSwap
-// emits and that is used to index the on-net stage of a swap.
+// emits and that is used to track the on-chain stage of a swap.
 func (sfs *SwapFactorySwap) SwapID() types.Hash {
 	uint256Ty, err := abi.NewType("uint256", "", nil)
 	if err != nil {
