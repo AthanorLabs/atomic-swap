@@ -76,13 +76,15 @@ func (inst *Instance) initiate(
 		delete(inst.swapStates, offer.ID)
 	}()
 
+	log.Infof("initiate offer.EthAsset=%s", offer.EthAsset)
+
 	symbol, err := pcommon.AssetSymbol(inst.backend, offer.EthAsset)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
-	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR THE SWAP MAY BE CANCELLED!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
 		s.info.ExpectedAmount,
 		symbol,
@@ -119,6 +121,8 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 	if err != nil {
 		return nil, nil, err
 	}
+
+	log.Infof("got offer: %s", offer)
 
 	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 	if err != nil {

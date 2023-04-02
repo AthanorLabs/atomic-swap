@@ -28,6 +28,8 @@ func (inst *Instance) Provides() coins.ProvidesCoin {
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
 func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error) {
+	log.Infof("InitiateProtocol offer=%s", offer)
+
 	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
 	if err != nil {
 		return nil, err
@@ -108,7 +110,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmoun
 	}()
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
-	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR THE SWAP MAY BE CANCELLED!"))
 	inst.swapStates[offerID] = s
 	return s, nil
 }

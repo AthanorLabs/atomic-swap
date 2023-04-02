@@ -10,21 +10,21 @@ import (
 // EthAsset represents an Ethereum asset (ETH or a token address)
 type EthAsset ethcommon.Address
 
-// String implements fmt.Stringer, returning the asset's address in hex, or
-// a short string for well-known assets like ETH.
+// String implements fmt.Stringer, returning the asset's address in hex
+// prefixed by `ERC20@` if it's an ERC20 token, or ETH for ether.
 func (asset EthAsset) String() string {
 	if asset == EthAssetETH {
 		return "ETH"
 	}
 
 	// TODO: get name of asset from contract?
-	return ethcommon.Address(asset).Hex()
+	return fmt.Sprintf("ERC20@%s", ethcommon.Address(asset).Hex())
 }
 
 // MarshalText returns the hex representation of the EthAsset or,
 // in some cases, a short string.
 func (asset EthAsset) MarshalText() ([]byte, error) {
-	return []byte(asset.String()), nil
+	return []byte(ethcommon.Address(asset).Hex()), nil
 }
 
 // UnmarshalText assigns the EthAsset from the input text
