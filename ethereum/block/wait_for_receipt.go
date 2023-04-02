@@ -42,7 +42,7 @@ func WaitForReceipt(ctx context.Context, ec *ethclient.Client, txHash ethcommon.
 			continue
 		}
 		if receipt.Status != ethtypes.ReceiptStatusSuccessful {
-			err = fmt.Errorf("mined transaction failed (%s): %w",
+			err = fmt.Errorf("failed transaction included in block (%s): %w",
 				common.ReceiptInfo(receipt), ErrorFromBlock(ctx, ec, receipt))
 			return nil, err
 		}
