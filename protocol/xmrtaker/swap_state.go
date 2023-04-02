@@ -37,8 +37,6 @@ import (
 
 const revertSwapCompleted = "swap is already completed"
 
-// const revertUnableToRefund = "it's the counterparty's turn, unable to refund, try again later"
-
 var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
@@ -501,7 +499,7 @@ func (s *swapState) tryRefund() (*ethtypes.Receipt, error) {
 
 	select {
 	case event := <-s.eventCh:
-		log.Debugf("got event %s while waiting for T1", event)
+		log.Debugf("got event %s while waiting for T1", event.Type())
 		switch event.(type) {
 		case *EventShouldRefund:
 			return s.refund()

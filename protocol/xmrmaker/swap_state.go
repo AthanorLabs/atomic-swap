@@ -4,11 +4,13 @@ package xmrmaker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
@@ -27,6 +29,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	pswap "github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -168,6 +171,100 @@ func newSwapStateFromStart(
 	return s, nil
 }
 
+// checkIfAlreadyClaimed returns true if the ETH has already been
+// claimed by us, false otherwise.
+func checkIfAlreadyClaimed(
+	b backend.Backend,
+	ethSwapInfo *db.EthereumSwapInfo,
+) (bool, error) {
+	// check if swap actually completed and we didn't realize for some reason
+	// this could happen if we restart from an ongoing swap
+	contract, err := contracts.NewSwapFactory(ethSwapInfo.ContractAddress, b.ETHClient().Raw())
+	if err != nil {
+		return false, err
+	}
+
+	stage, err := contract.Swaps(b.ETHClient().CallOpts(b.Ctx()), ethSwapInfo.SwapID)
+	if err != nil {
+		return false, err
+	}
+
+	switch stage {
+	case contracts.StageInvalid:
+		// this should never happen
+		return false, fmt.Errorf("%w: contract swap ID: %s", errSwapDoesNotExist, ethSwapInfo.SwapID)
+	case contracts.StageCompleted:
+		// check if we already claimed, or if the swap was refunded
+	case contracts.StagePending, contracts.StageReady:
+		return false, nil
+	default:
+		panic("Unhandled stage value")
+	}
+
+	filterQuery := ethereum.FilterQuery{
+		FromBlock: ethSwapInfo.StartNumber,
+		Addresses: []ethcommon.Address{ethSwapInfo.ContractAddress},
+	}
+
+	claimedTopic := common.GetTopic(common.ClaimedEventSignature)
+
+	// let's see if we have logs
+	logs, err := b.ETHClient().Raw().FilterLogs(b.Ctx(), filterQuery)
+	if err != nil {
+		return false, fmt.Errorf("failed to filter logs for topic %s: %s", claimedTopic, err)
+	}
+
+	log.Debugf("filtered for logs from block %s to head", filterQuery.FromBlock)
+
+	var foundClaimed bool
+	for _, l := range logs {
+		l := l
+		if l.Topics[0] != claimedTopic {
+			continue
+		}
+
+		if l.Removed {
+			log.Debugf("found removed log: tx hash %s", l.TxHash)
+			continue
+		}
+
+		err = pcommon.CheckSwapID(&l, claimedTopic, ethSwapInfo.SwapID)
+		if errors.Is(err, pcommon.ErrLogNotForUs) {
+			continue
+		}
+
+		log.Infof("found Claimed log in block %d", l.BlockNumber)
+		foundClaimed = true
+		break
+	}
+
+	return foundClaimed, nil
+}
+
+// completeSwap marks the swap as completed and deletes it from the db.
+func completeSwap(info *swap.Info, b backend.Backend, om *offers.Manager) error {
+	// set swap to completed
+	info.SetStatus(types.CompletedSuccess)
+	err := b.SwapManager().CompleteOngoingSwap(info)
+	if err != nil {
+		return fmt.Errorf("failed to mark swap %s as completed: %s", info.OfferID, err)
+	}
+
+	err = om.DeleteOffer(info.OfferID)
+	if err != nil {
+		return fmt.Errorf("failed to delete offer %s from db: %s", info.OfferID, err)
+	}
+
+	err = b.RecoveryDB().DeleteSwap(info.OfferID)
+	if err != nil {
+		return fmt.Errorf("failed to delete temporary swap info %s from db: %s", info.OfferID, err)
+	}
+
+	exitLog := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", info.OfferID)
+	log.Info(exitLog)
+	return nil
+}
+
 // newSwapStateFromOngoing returns a new *swapState given information about a swap
 // that's ongoing, but not yet completed.
 func newSwapStateFromOngoing(
@@ -179,6 +276,22 @@ func newSwapStateFromOngoing(
 	info *pswap.Info,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
+	alreadyClaimed, err := checkIfAlreadyClaimed(b, ethSwapInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	if alreadyClaimed {
+		err = completeSwap(info, b, om)
+		if err != nil {
+			return nil, fmt.Errorf("failed to complete swap: %w", err)
+		}
+
+		// although this doesn't look like an error, we need to return an error
+		// so the caller knows the swap is completed
+		return nil, errors.New("swap was already completed successfully")
+	}
+
 	// TODO: do we want to support the case where the ETH has been locked,
 	// but we haven't locked yet?
 	if info.Status != types.XMRLocked {

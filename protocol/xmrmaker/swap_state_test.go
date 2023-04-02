@@ -1,6 +1,7 @@
 package xmrmaker
 
 import (
+	"context"
 	"errors"
 	"math/big"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/xmrmaker/offers"
@@ -67,39 +69,35 @@ func newTestXMRTakerSendKeysMessage(t *testing.T) (*message.SendKeysMessage, *pc
 	return msg, keysAndProof
 }
 
-func newSwap(
+func newTestSwap(
 	t *testing.T,
-	ss *swapState,
-	claimKey,
-	refundKey types.Hash,
+	ec extethclient.EthClient,
+	contract *contracts.SwapFactory,
+	claimKey, refundKey types.Hash,
 	amount *big.Int,
 	timeout time.Duration,
-) ethcommon.Hash {
+) (*contracts.SwapFactorySwap, [32]byte, ethcommon.Hash) {
 	tm := big.NewInt(int64(timeout.Seconds()))
-	if types.IsHashZero(claimKey) {
-		claimKey = ss.secp256k1Pub.Keccak256()
-	}
-
-	txOpts, err := ss.ETHClient().TxOpts(ss.ctx)
+	txOpts, err := ec.TxOpts(context.Background())
 	require.NoError(t, err)
 	txOpts.Value = amount
 
-	ethAddr := ss.ETHClient().Address()
+	ethAddr := ec.Address()
 	nonce := big.NewInt(0)
 	asset := types.EthAssetETH
-	tx, err := ss.Contract().NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
+	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
 		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
-	receipt := tests.MineTransaction(t, ss.ETHClient().Raw(), tx)
-
+	receipt := tests.MineTransaction(t, ec.Raw(), tx)
 	require.Equal(t, 1, len(receipt.Logs))
-	ss.contractSwapID, err = contracts.GetIDFromLog(receipt.Logs[0])
+
+	contractSwapID, err := contracts.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	ss.contractSwap = &contracts.SwapFactorySwap{
+	contractSwap := &contracts.SwapFactorySwap{
 		Owner:        ethAddr,
 		Claimer:      ethAddr,
 		PubKeyClaim:  claimKey,
@@ -111,8 +109,29 @@ func newSwap(
 		Nonce:        nonce,
 	}
 
-	ss.setTimeouts(t0, t1)
-	return tx.Hash()
+	return contractSwap, contractSwapID, tx.Hash()
+}
+
+func newSwap(
+	t *testing.T,
+	ss *swapState,
+	claimKey,
+	refundKey types.Hash,
+	amount *big.Int,
+	timeout time.Duration,
+) ethcommon.Hash {
+	if types.IsHashZero(claimKey) {
+		claimKey = ss.secp256k1Pub.Keccak256()
+	}
+
+	contractSwap, contractSwapID, txHash := newTestSwap(
+		t, ss.ETHClient(), ss.Contract(), claimKey, refundKey, amount, timeout,
+	)
+
+	ss.contractSwapID = contractSwapID
+	ss.contractSwap = contractSwap
+	ss.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
+	return txHash
 }
 
 func TestNewSwapState_generateAndSetKeys(t *testing.T) {

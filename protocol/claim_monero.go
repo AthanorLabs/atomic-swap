@@ -74,6 +74,7 @@ func ClaimMonero(
 		return fmt.Errorf("failed to send funds to deposit account: %w", err)
 	}
 
+	log.Debugf("got %d sweep receipts", len(transfers))
 	for _, transfer := range transfers {
 		log.Infof("transferred %s XMR to primary wallet (%s XMR lost to fees)",
 			coins.FmtPiconeroAsXMR(transfer.Amount),
