@@ -101,15 +101,12 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 		PubKeyRefund: pubKeyRefund,
 		Timeout0:     t0,
 		Timeout1:     t1,
-		Asset:        ethcommon.Address(types.EthAssetETH),
+		Asset:        asset,
 		Value:        value,
 		Nonce:        nonce,
 	}
 
 	// validate our off-net calculation of the SwapID
-	if !isEthAsset {
-		t.Skip("off-net calculation of swapID doesn't match")
-	}
 	require.Equal(t, types.Hash(swapID).Hex(), swap.SwapID().Hex())
 }
 
