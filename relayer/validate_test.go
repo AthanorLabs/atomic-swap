@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -120,5 +121,5 @@ func Test_validateClaimRequest(t *testing.T) {
 	asset := ethcommon.Address{0x1}
 	req.Swap.Asset = asset
 	err = validateClaimRequest(ctx, req, ec, forwarderAddr)
-	require.ErrorContains(t, err, fmt.Sprintf("relaying for ETH Asset %s is not supported", asset))
+	require.ErrorContains(t, err, fmt.Sprintf("relaying for ETH Asset %s is not supported", types.EthAsset(asset)))
 }

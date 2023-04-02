@@ -111,7 +111,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmoun
 	}()
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
-	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR THE SWAP MAY BE CANCELLED!"))
 	inst.swapStates[offerID] = s
 	return s, nil
 }
