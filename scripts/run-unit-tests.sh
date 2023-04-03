@@ -11,7 +11,7 @@ start-ganache
 # run unit tests
 echo "running unit tests..."
 rm -f coverage.txt
-go test ./... -v -short -timeout=30m -count=1 -covermode=atomic -coverprofile=coverage.txt
+go test -coverpkg=./... -v -short -timeout=30m -count=1 -covermode=atomic -coverprofile=coverage.txt ./...
 OK=$?
 
 if [[ -e coverage.txt ]]; then
