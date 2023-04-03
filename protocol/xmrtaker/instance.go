@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -209,20 +208,6 @@ func (inst *Instance) completeSwap(s *swap.Info, skB *mcrypto.PrivateSpendKey) e
 	}
 
 	return nil
-}
-
-// Refund is called by the RPC function swap_refund.
-// If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
-func (inst *Instance) Refund(offerID types.Hash) (ethcommon.Hash, error) {
-	inst.swapMu.Lock()
-	defer inst.swapMu.Unlock()
-
-	s, has := inst.swapStates[offerID]
-	if !has {
-		return ethcommon.Hash{}, errNoOngoingSwap
-	}
-
-	return s.doRefund()
 }
 
 // GetOngoingSwapState ...
