@@ -36,8 +36,6 @@ import (
 
 const revertSwapCompleted = "swap is already completed"
 
-// const revertUnableToRefund = "it's the counterparty's turn, unable to refund, try again later"
-
 var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
@@ -498,7 +496,7 @@ func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 
 	select {
 	case event := <-s.eventCh:
-		log.Debugf("got event %s while waiting for T1", event)
+		log.Debugf("got event %s while waiting for T1", event.Type())
 		switch event.(type) {
 		case *EventShouldRefund:
 			return s.refund()
@@ -591,8 +589,13 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		panic(errCounterpartyKeysNotSet)
 	}
 
+	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
+	if err != nil {
+		return ethcommon.Hash{}, err
+	}
+
 	if s.info.EthAsset != types.EthAssetETH {
-		err := s.approveToken()
+		err = s.approveToken()
 		if err != nil {
 			return ethcommon.Hash{}, err
 		}
@@ -601,7 +604,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
-	log.Debugf("locking ETH in contract")
+	log.Debugf("locking %s in contract", symbol)
 
 	nonce := generateNonce()
 	txHash, receipt, err := s.sender.NewSwap(
@@ -671,6 +674,7 @@ func (s *swapState) lockAsset() (ethcommon.Hash, error) {
 		return ethcommon.Hash{}, err
 	}
 
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
 	return txHash, nil
 }
 

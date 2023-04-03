@@ -43,6 +43,7 @@ func init() {
 	_ = logging.SetLogLevel("offers", level)
 	_ = logging.SetLogLevel("p2pnet", level) // external
 	_ = logging.SetLogLevel("pricefeed", level)
+	_ = logging.SetLogLevel("protocol", level)
 	_ = logging.SetLogLevel("relayer", level) // external and internal
 	_ = logging.SetLogLevel("rpc", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
