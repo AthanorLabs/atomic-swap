@@ -82,7 +82,7 @@ func (inst *Instance) initiate(
 	}
 
 	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
-	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR FUNDS MAY BE LOST!"))
+	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR THE SWAP MAY BE CANCELLED!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
 		s.info.ExpectedAmount,
 		symbol,
