@@ -592,8 +592,13 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		panic(errCounterpartyKeysNotSet)
 	}
 
+	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
+	if err != nil {
+		return nil, err
+	}
+
 	if s.info.EthAsset != types.EthAssetETH {
-		err := s.approveToken()
+		err = s.approveToken()
 		if err != nil {
 			return nil, err
 		}
@@ -602,7 +607,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
 
-	log.Debugf("locking ETH in contract")
+	log.Debugf("locking %s in contract", symbol)
 
 	nonce := generateNonce()
 	receipt, err := s.sender.NewSwap(
@@ -673,6 +678,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
 	return receipt, nil
 }
 

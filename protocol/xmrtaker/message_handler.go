@@ -126,8 +126,6 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 		return nil, fmt.Errorf("failed to lock ethereum asset in contract: %w", err)
 	}
 
-	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
-
 	// start goroutine to check that XMRMaker locks before t_0
 	go s.runT0ExpirationHandler()
 
