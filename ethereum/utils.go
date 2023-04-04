@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package contracts is for go bindings generated from Solidity contracts as well as
 // some utility functions for working with the contracts.
 package contracts

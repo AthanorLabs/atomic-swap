@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package common is for miscellaneous constants, types and interfaces used by many packages.
 package common
 

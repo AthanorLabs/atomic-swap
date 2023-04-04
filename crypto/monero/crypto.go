@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package mcrypto is for types and libraries that deal with Monero keys, addresses and
 // signing.
 package mcrypto
