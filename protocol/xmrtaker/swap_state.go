@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package xmrtaker manages the swap state of individual swaps where the local swapd
 // instance is offering Ethereum assets and accepting Monero in return.
 package xmrtaker

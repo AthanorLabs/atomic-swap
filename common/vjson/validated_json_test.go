@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package vjson or "validated JSON" provides additional validation, configured
 // via annotations, on structures as they are Marshaled or Unmarshalled to/from
 // JSON data.

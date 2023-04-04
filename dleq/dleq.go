@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package dleq provides a sub-api built on top of the go-dleq package for our atomic
 // swaps. The API allows you to verify that a Monero public spend key on the ed25519 curve
 // have the same discrete logarithm (same shared secret) as a public key on the secp256k1

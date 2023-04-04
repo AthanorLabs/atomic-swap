@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package monero provides client libraries for working with wallet files and interacting
 // with a monero node. Management of monero-wallet-rpc daemon instances is fully
 // encapsulated by these libraries.

@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package block contains ethereum helper methods that center around blocks, like waiting
 // for a certain block timestamp, waiting for a transaction to be mined in a block, and
 // extracting an error for a transaction from the block that mined it.

@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package rpc provides the HTTP server for incoming JSON-RPC and websocket requests to
 // swapd from the local host. The answers to these queries come from 3 subsystems: net,
 // personal and swap.
