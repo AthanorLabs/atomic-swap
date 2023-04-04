@@ -29,10 +29,6 @@ func deployContracts(t *testing.T, ec *ethclient.Client, key *ecdsa.PrivateKey) 
 	if _forwarderAddress == nil || _swapFactoryAddress == nil {
 		forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, key)
 		require.NoError(t, err)
-		// temporary hack to ensure that the forwarder contract used is not adjacent
-		// to the swap factory contract
-		_, err = contracts.DeployGSNForwarderWithKey(ctx, ec, key)
-		require.NoError(t, err)
 		_forwarderAddress = &forwarderAddr
 
 		swapFactoryAddr, _, err := contracts.DeploySwapFactoryWithKey(ctx, ec, key, forwarderAddr)
