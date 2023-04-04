@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package backend provides the portion of top-level swapd instance
 // management that is shared by both the maker and the taker.
 package backend

@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package extethclient provides libraries for interacting with an ethereum node
 // using a specific private key.
 package extethclient

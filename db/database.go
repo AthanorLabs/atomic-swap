@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package db implements the APIs for interacting with our disk persisted key-value store.
 package db
 

@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package swap provides the management layer used by swapd for tracking current and past
 // swaps.
 package swap

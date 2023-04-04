@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package net adds swap-specific functionality to go-p2p-net/Host,
 // in particular the swap messages for querying and initiation.
 package net

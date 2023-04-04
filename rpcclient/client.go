@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package rpcclient provides client libraries for interacting with a local swapd instance using
 // the JSON-RPC remote procedure call protocol.
 package rpcclient

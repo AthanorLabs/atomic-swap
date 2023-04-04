@@ -1,3 +1,6 @@
+// Copyright 2023 Athanor Labs (ON)
+// SPDX-License-Identifier: LGPL-3.0-only
+
 // Package secp256k1 contains methods and types for working with Ethereum and possibly other
 // cryptocurrency keys that use the secp256k1 elliptic curve.
 package secp256k1
