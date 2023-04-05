@@ -416,25 +416,6 @@ func (s *swapState) exit() error {
 	}
 }
 
-// doRefund is called by the RPC function swap_refund.
-// If it's possible to refund the ongoing swap, it does that, then notifies the counterparty.
-func (s *swapState) doRefund() (ethcommon.Hash, error) {
-	switch s.nextExpectedEvent {
-	case EventXMRLockedType, EventETHClaimedType:
-		event := newEventShouldRefund()
-		s.eventCh <- event
-		err := <-event.errCh
-		if err != nil {
-			return ethcommon.Hash{}, err
-		}
-
-		txHash := <-event.txHashCh
-		return txHash, nil
-	default:
-		return ethcommon.Hash{}, errCannotRefund
-	}
-}
-
 func (s *swapState) tryRefund() (ethcommon.Hash, error) {
 	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {

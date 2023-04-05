@@ -362,10 +362,10 @@ curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"perso
 
 ### `swap_cancel`
 
-Attempts to cancel an ongoing swap.
+Attempts to cancel an ongoing swap. Note that depending on the swap's stage, it may not be possible to cancel the swap and receive a refund.
 
 Parameters:
-- `id`: id of the swap to refund
+- `id`: id of the swap to cancel.
 
 Returns:
 - `status`: exit status of the swap.

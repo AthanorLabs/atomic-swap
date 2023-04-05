@@ -237,21 +237,8 @@ var (
 				},
 			},
 			{
-				Name:   "refund",
-				Usage:  "If we are the ETH provider for an ongoing swap, refund it if possible.",
-				Action: runRefund,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap to retrieve info for",
-						Required: true,
-					},
-					swapdPortFlag,
-				},
-			},
-			{
 				Name:   "cancel",
-				Usage:  "Cancel a ongoing swap if possible.",
+				Usage:  "Cancel a ongoing swap if possible. Depending on the swap stage, this may not be possible.",
 				Action: runCancel,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -736,22 +723,6 @@ func runGetPastSwap(ctx *cli.Context) error {
 	return nil
 }
 
-func runRefund(ctx *cli.Context) error {
-	offerID, err := types.HexToHash(ctx.String(flagOfferID))
-	if err != nil {
-		return errInvalidFlagValue(flagOfferID, err)
-	}
-
-	c := newRRPClient(ctx)
-	resp, err := c.Refund(offerID)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Refunded successfully, transaction hash: %s\n", resp.TxHash)
-	return nil
-}
-
 func runCancel(ctx *cli.Context) error {
 	offerID, err := types.HexToHash(ctx.String(flagOfferID))
 	if err != nil {
@@ -759,6 +730,7 @@ func runCancel(ctx *cli.Context) error {
 	}
 
 	c := newRRPClient(ctx)
+	fmt.Printf("Attempting to exit swap with id %s\n", offerID)
 	resp, err := c.Cancel(offerID)
 	if err != nil {
 		return err
