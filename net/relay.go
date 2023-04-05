@@ -96,6 +96,9 @@ func (h *Host) SubmitClaimToRelayer(relayerID peer.ID, request *RelayClaimReques
 	// The timeout should be short enough, that the Maker can try multiple relayers
 	// before T1 expires even if the receiving node accepts the relay request and
 	// just sits on it without doing anything.
+	// TODO: https://github.com/AthanorLabs/atomic-swap/issues/375
+	//       The context below needs extension to cover the response. Right now
+	//       only covers the Connect(...).
 	ctx, cancel := context.WithTimeout(h.ctx, relayClaimTimeout)
 	defer cancel()
 
