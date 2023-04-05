@@ -250,7 +250,7 @@ func (b *backend) HandleRelayClaimRequest(request *message.RelayClaimRequest) (*
 			return nil, fmt.Errorf("swap info for taker claim request not found: %w", err)
 		}
 		if swapInfo.SwapID != request.Swap.SwapID() {
-			return nil, errors.New("taker claim request has invalid swap ID")
+			return nil, errors.New("counterparty claim request has invalid swap ID")
 		}
 	}
 
