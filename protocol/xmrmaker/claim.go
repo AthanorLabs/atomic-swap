@@ -125,8 +125,7 @@ func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (
 		return nil, fmt.Errorf("failed to get receipt of relayer's tx: %s", err)
 	}
 
-	log.Infof("relayer's claim via XMR taker validated block=%d gas-used=%d tx=%s",
-		receipt.BlockNumber, receipt.GasUsed, receipt.TxHash)
+	log.Infof("relayer's claim via counterparty included and validated %s", common.ReceiptInfo(receipt))
 
 	return receipt, nil
 }
@@ -169,8 +168,7 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 			continue
 		}
 
-		log.Infof("DHT relayer's claim validated block=%d gas-used=%d tx=%s",
-			receipt.BlockNumber, receipt.GasUsed, receipt.TxHash)
+		log.Infof("DHT relayer's claim included and validated %s", common.ReceiptInfo(receipt))
 
 		return receipt, nil
 	}

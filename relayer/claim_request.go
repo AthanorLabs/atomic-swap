@@ -20,7 +20,7 @@ import (
 
 const (
 	relayedClaimGas   = 70000  // worst case gas usage for the claimRelayer swapFactory call
-	forwarderClaimGas = 195000 // worst case gas usage when using forwarder to claim
+	forwarderClaimGas = 156000 // worst case gas usage when using forwarder to claim
 )
 
 // FeeWei and FeeEth are the fixed 0.009 ETH fee for using a swap relayer to claim.
