@@ -71,7 +71,7 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 
 		found := ok && swap.isTaker
 		if !found || curPeer != swap.stream.Conn().RemotePeer() {
-			log.Debugf("received taker-specific claim request from invalid peer=%s offerID=%s swap-found=%t",
+			log.Debugf("received invalid taker-specific claim request from peer=%s offerID=%s swap-found=%t",
 				curPeer, req.OfferID, found)
 			return
 		}
