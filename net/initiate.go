@@ -90,12 +90,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 
 	curPeer := stream.Conn().RemotePeer()
 
-	log.Debug(
-		"received message from peer, peer=",
-		curPeer,
-		" type=",
-		message.TypeToString(msg.Type()),
-	)
+	log.Debugf("received message from peer=%s type=%s", curPeer, message.TypeToString(msg.Type()))
 
 	im, ok := msg.(*SendKeysMessage)
 	if !ok {
