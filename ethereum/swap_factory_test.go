@@ -53,7 +53,7 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, [32]byte{},
-		ethcommon.Address{}, defaultTimeoutDuration, asset, big.NewInt(0), nonce)
+		ethcommon.Address{}, defaultTimeoutDuration, defaultTimeoutDuration, asset, big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
+	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr, defaultTimeoutDuration,
 		defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -175,7 +175,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	}
 
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
-		defaultTimeoutDuration, asset, value, nonce)
+		defaultTimeoutDuration, defaultTimeoutDuration, asset, value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -250,7 +250,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration,
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, defaultTimeoutDuration,
 		asset, big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -319,7 +319,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 
 	nonce := big.NewInt(0)
 	timeout := big.NewInt(1) // T1 expires before we get the receipt for new_swap TX
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout,
+	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout, timeout,
 		asset, big.NewInt(0), nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -447,6 +447,7 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 				sc.swap.PubKeyClaim,
 				sc.swap.PubKeyRefund,
 				sc.swap.Claimer,
+				defaultTimeoutDuration,
 				defaultTimeoutDuration,
 				ethcommon.Address(types.EthAssetETH),
 				big.NewInt(0),

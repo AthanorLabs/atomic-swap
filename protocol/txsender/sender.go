@@ -116,7 +116,7 @@ func (s *privateKeySender) NewSwap(
 		txOpts.Value = value
 	}
 
-	tx, err := s.swapContract.NewSwap(txOpts, pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
+	tx, err := s.swapContract.NewSwap(txOpts, pubKeyClaim, pubKeyRefund, claimer, timeoutDuration, timeoutDuration,
 		ethcommon.Address(ethAsset), value, nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)

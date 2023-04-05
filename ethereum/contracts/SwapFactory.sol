@@ -29,8 +29,7 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         // the keccak256 hash of the expected public key derived from the secret `s_a`.
         // this public key is a point on the secp256k1 curve
         bytes32 pubKeyRefund;
-        // timestamp (set at contract creation)
-        // before which Alice can call either set_ready or refund
+        // timestamp before which Alice can call either set_ready or refund
         uint256 timeout0;
         // timestamp after which Bob cannot claim, only Alice can refund.
         uint256 timeout1;
@@ -61,11 +60,14 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
 
     // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
+    // _timeoutDuration0: duration between the current timestamp and timeout0
+    // _timeoutDuration1: duration between timeout0 and timeout1
     function newSwap(
         bytes32 _pubKeyClaim,
         bytes32 _pubKeyRefund,
         address payable _claimer,
-        uint256 _timeoutDuration,
+        uint256 _timeoutDuration0,
+        uint256 _timeoutDuration1,
         address _asset,
         uint256 _value,
         uint256 _nonce
@@ -75,8 +77,8 @@ contract SwapFactory is ERC2771Context, Secp256k1 {
         swap.pubKeyClaim = _pubKeyClaim;
         swap.pubKeyRefund = _pubKeyRefund;
         swap.claimer = _claimer;
-        swap.timeout0 = block.timestamp + _timeoutDuration;
-        swap.timeout1 = block.timestamp + (_timeoutDuration * 2);
+        swap.timeout0 = block.timestamp + _timeoutDuration0;
+        swap.timeout1 = block.timestamp + _timeoutDuration0 + _timeoutDuration1;
         swap.asset = _asset;
         swap.value = _value;
         if (swap.asset == address(0)) {

@@ -85,7 +85,7 @@ func newTestSwap(
 	ethAddr := ec.Address()
 	nonce := big.NewInt(0)
 	asset := types.EthAssetETH
-	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, ethAddr, tm,
+	tx, err := contract.NewSwap(txOpts, claimKey, refundKey, ethAddr, tm, tm,
 		ethcommon.Address(asset), amount, nonce)
 	require.NoError(t, err)
 	receipt := tests.MineTransaction(t, ec.Raw(), tx)
