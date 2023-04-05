@@ -18,7 +18,6 @@ var (
 	errMissingProvidedAmount   = errors.New("did not receive provided amount")
 	errMissingAddress          = errors.New("did not receive XMRMaker's address")
 	errNoClaimLogsFound        = errors.New("no Claimed logs found")
-	errCannotRefund            = errors.New("swap is not at a stage where it can refund")
 	errRefundInvalid           = errors.New("cannot refund, swap does not exist")
 	errRefundSwapCompleted     = fmt.Errorf("cannot refund, %w", errSwapCompleted)
 	errCounterpartyKeysNotSet  = errors.New("counterparty's keys aren't set")

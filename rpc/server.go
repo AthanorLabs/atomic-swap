@@ -16,7 +16,6 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/cockroachdb/apd/v3"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -178,7 +177,6 @@ type ProtocolBackend interface {
 type XMRTaker interface {
 	Protocol
 	InitiateProtocol(peerID peer.ID, providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error)
-	Refund(types.Hash) (ethcommon.Hash, error)
 	ExternalSender(offerID types.Hash) (*txsender.ExternalSender, error)
 }
 

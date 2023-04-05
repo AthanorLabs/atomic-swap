@@ -47,24 +47,6 @@ func (c *Client) GetPastSwap(id *types.Hash) (*rpc.GetPastResponse, error) {
 	return res, nil
 }
 
-// Refund calls swap_refund
-func (c *Client) Refund(id types.Hash) (*rpc.RefundResponse, error) {
-	const (
-		method = "swap_refund"
-	)
-
-	req := &rpc.RefundRequest{
-		OfferID: id,
-	}
-	res := &rpc.RefundResponse{}
-
-	if err := c.Post(method, req, res); err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
 // GetStatus calls swap_getStatus
 func (c *Client) GetStatus(id types.Hash) (*rpc.GetStatusResponse, error) {
 	const (

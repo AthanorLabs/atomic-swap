@@ -36,7 +36,7 @@ func TestNewInstance(t *testing.T) {
 	inst := newTestInstance(t)
 	assert.Nil(t, inst.GetOngoingSwapState(types.EmptyHash))
 	assert.Equal(t, inst.Provides(), coins.ProvidesETH)
-	_, err := inst.Refund(types.EmptyHash)
+	_, err := inst.ExternalSender(types.EmptyHash)
 	assert.ErrorIs(t, err, errNoOngoingSwap)
 }
 

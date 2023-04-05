@@ -197,37 +197,6 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	return nil
 }
 
-// RefundRequest ...
-type RefundRequest struct {
-	OfferID types.Hash `json:"offerID" validate:"required"`
-}
-
-// RefundResponse ...
-type RefundResponse struct {
-	TxHash string `json:"transactionHash" validate:"required"`
-}
-
-// Refund refunds the ongoing swap if we are the ETH provider.
-// TODO: remove in favour of swap_cancel?
-func (s *SwapService) Refund(_ *http.Request, req *RefundRequest, resp *RefundResponse) error {
-	info, err := s.sm.GetOngoingSwap(req.OfferID)
-	if err != nil {
-		return err
-	}
-
-	if info.Provides != coins.ProvidesETH {
-		return errCannotRefund
-	}
-
-	txHash, err := s.xmrtaker.Refund(req.OfferID)
-	if err != nil {
-		return fmt.Errorf("failed to refund: %w", err)
-	}
-
-	resp.TxHash = txHash.String()
-	return nil
-}
-
 // GetStatusRequest ...
 type GetStatusRequest struct {
 	ID types.Hash `json:"id" validate:"required"`
