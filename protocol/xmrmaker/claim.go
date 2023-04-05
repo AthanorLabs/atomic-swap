@@ -146,7 +146,7 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 	log.Debugf("Found %d relayers to submit claim to", len(relayers))
 	for _, relayerPeerID := range relayers {
 		if relayerPeerID == s.info.PeerID {
-			log.Debugf("skipping DHT-advertised relayer that is the XMR taker of the claim")
+			log.Debugf("skipping DHT-advertised relayer that is our swap counterparty")
 			continue
 		}
 		log.Debugf("submitting claim to relayer with peer ID %s", relayerPeerID)
