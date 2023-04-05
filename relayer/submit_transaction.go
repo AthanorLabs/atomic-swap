@@ -61,7 +61,8 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 
-	if err = checkForMinClaimBalance(ctx, ec); err != nil {
+	gasPrice, err := checkForMinClaimBalance(ctx, ec)
+	if err != nil {
 		return nil, err
 	}
 
@@ -73,6 +74,7 @@ func ValidateAndSendTransaction(
 	if err != nil {
 		return nil, err
 	}
+	txOpts.GasPrice = gasPrice
 
 	tx, err := reqForwarder.Execute(
 		txOpts,
@@ -96,22 +98,24 @@ func ValidateAndSendTransaction(
 	return &message.RelayClaimResponse{TxHash: tx.Hash()}, nil
 }
 
-func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) error {
+// checkForMinClaimBalance verifies that we have enough gas to relay a claim and
+// returns the gas price that was used for the calculation.
+func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*big.Int, error) {
 	balance, err := ec.Balance(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(ctx)
+	gasPrice, err := ec.SuggestGasPrice(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	txCost := new(big.Int).Mul(suggestedGasPrice, big.NewInt(forwarderClaimGas))
+	txCost := new(big.Int).Mul(gasPrice, big.NewInt(forwarderClaimGas))
 	if balance.Cmp(txCost) < 0 {
-		return fmt.Errorf("balance %s ETH is under the minimum %s ETH to relay claim",
+		return nil, fmt.Errorf("balance %s ETH is under the minimum %s ETH to relay claim",
 			coins.FmtWeiAsETH(balance), coins.FmtWeiAsETH(txCost))
 	}
 
-	return nil
+	return gasPrice, nil
 }
