@@ -206,7 +206,7 @@ func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 	receipt, err := s.claimWithAdvertisedRelayers(request)
 	if err != nil {
 		log.Warnf("failed to relay with DHT-advertised relayers: %s", err)
-		log.Infof("falling back to XMR taker as relayer")
+		log.Infof("falling back to swap counterparty as relayer")
 		return s.relayClaimWithXMRTaker(request)
 	}
 	return receipt, nil
