@@ -41,9 +41,6 @@ type RelayHandler interface {
 type swap struct {
 	swapState SwapState
 	stream    libp2pnetwork.Stream
-	// isTaker is true if we initiate the swap (created the outbound stream). If
-	// the value is false, it is not safe to assume that we are the maker, as
-	// the swap entry will get created before validation of the first received
-	// message.
+	// isTaker is true if we initiated the swap (created the outbound stream)
 	isTaker bool
 }
