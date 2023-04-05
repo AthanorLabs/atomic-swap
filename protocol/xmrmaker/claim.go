@@ -66,7 +66,7 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to claim using relayers: %w", err)
 		}
-		log.Debugf("relayed claim transaction %s", common.ReceiptInfo(receipt))
+		log.Infof("claim transaction was relayed: %s", common.ReceiptInfo(receipt))
 	} else {
 		// claim and wait for tx to be included
 		sc := s.getSecret()
