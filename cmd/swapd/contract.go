@@ -30,13 +30,13 @@ var (
 )
 
 type contractAddresses struct {
-	SwapCreator ethcommon.Address `json:"swapCreator" validate:"required"`
-	Forwarder   ethcommon.Address `json:"forwarder" validate:"required"`
+	SwapCreatorAddr ethcommon.Address `json:"swapCreatorAddr" validate:"required"`
+	ForwarderAddr   ethcommon.Address `json:"forwarderAddr" validate:"required"`
 }
 
 func getOrDeploySwapCreator(
 	ctx context.Context,
-	address ethcommon.Address,
+	swapCreatorAddr ethcommon.Address,
 	env common.Environment,
 	dataDir string,
 	ec extethclient.EthClient,
@@ -44,10 +44,10 @@ func getOrDeploySwapCreator(
 ) (ethcommon.Address, error) {
 	var err error
 
-	if env != common.Mainnet && (address == ethcommon.Address{}) {
+	if env != common.Mainnet && (swapCreatorAddr == ethcommon.Address{}) {
 		// we're on a development or testnet environment and we have no deployed contract,
 		// so let's deploy one
-		address, _, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), forwarderAddr, dataDir)
+		swapCreatorAddr, _, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), forwarderAddr, dataDir)
 		if err != nil {
 			return ethcommon.Address{}, fmt.Errorf("failed to deploy swap creator: %w", err)
 		}
@@ -55,13 +55,13 @@ func getOrDeploySwapCreator(
 		// otherwise, load the contract from the given address
 		// and check that its bytecode is valid (ie. matches the
 		// bytecode of this repo's swap contract)
-		_, err = contracts.CheckSwapCreatorContractCode(ctx, ec.Raw(), address)
+		_, err = contracts.CheckSwapCreatorContractCode(ctx, ec.Raw(), swapCreatorAddr)
 		if err != nil {
 			return ethcommon.Address{}, err
 		}
 	}
 
-	return address, nil
+	return swapCreatorAddr, nil
 }
 
 func deploySwapCreator(
@@ -98,8 +98,8 @@ func deploySwapCreator(
 	err = writeContractAddressesToFile(
 		path.Join(dataDir, contractAddressesFile),
 		&contractAddresses{
-			SwapCreator: swapCreatorAddr,
-			Forwarder:   forwarderAddr,
+			SwapCreatorAddr: swapCreatorAddr,
+			ForwarderAddr:   forwarderAddr,
 		},
 	)
 	if err != nil {

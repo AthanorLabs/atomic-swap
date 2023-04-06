@@ -106,8 +106,8 @@ start-daemons() {
 		exit 1
 	fi
 
-	SWAP_CREATOR_ADDR="$(jq -r .swapCreator "${CONTRACT_ADDR_FILE}")"
-	FORWARDER_ADDR="$(jq -r .forwarder "${CONTRACT_ADDR_FILE}")"
+	SWAP_CREATOR_ADDR="$(jq -r .swapCreatorAddr "${CONTRACT_ADDR_FILE}")"
+	FORWARDER_ADDR="$(jq -r .forwarderAddr "${CONTRACT_ADDR_FILE}")"
 	if [[ -z "${SWAP_CREATOR_ADDR}" ]] || [[ -z "${FORWARDER_ADDR}" ]]; then
 		echo "Failed to get Alice's deployed contract addresses"
 		stop-daemons

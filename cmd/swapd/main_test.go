@@ -96,9 +96,9 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	require.NoError(t, err)
 	m := make(map[string]string)
 	require.NoError(t, json.Unmarshal(data, &m))
-	swapCreatorAddr, ok := m["swapCreator"]
+	swapCreatorAddr, ok := m["swapCreatorAddr"]
 	require.True(t, ok)
-	forwarderAddr, ok := m["forwarder"]
+	forwarderAddr, ok := m["forwarderAddr"]
 	require.True(t, ok)
 
 	ec, _ := tests.NewEthClient(t)
