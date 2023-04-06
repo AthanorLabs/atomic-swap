@@ -20,7 +20,7 @@ import (
 
 var (
 	// CurInfoVersion is the latest supported version of a serialised Info struct
-	CurInfoVersion, _ = semver.NewVersion("0.2.0")
+	CurInfoVersion, _ = semver.NewVersion("0.3.0")
 
 	errInfoVersionMissing = errors.New("required 'version' field missing in swap Info")
 )
