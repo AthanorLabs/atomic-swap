@@ -85,7 +85,9 @@ func (f *EventFilter) Start() error {
 				continue
 			}
 
-			log.Debugf("filtered for logs from block %s to block %s", f.filterQuery.FromBlock, currHeader.Number)
+			// If you think we are missing log events, uncomment to debug:
+			// log.Debugf("filtered for logs from block %s to block %s",
+			// 	f.filterQuery.FromBlock, currHeader.Number)
 
 			for _, l := range logs {
 				if l.Topics[0] != f.topic {
