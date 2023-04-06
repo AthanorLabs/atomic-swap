@@ -33,8 +33,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-var _ = logging.SetLogLevel("protocol", "debug")
-var _ = logging.SetLogLevel("xmrtaker", "debug")
+var (
+	_             = logging.SetLogLevel("protocol", "debug")
+	_             = logging.SetLogLevel("xmrtaker", "debug")
+	testPeerID, _ = peer.Decode("12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi")
+)
 
 type mockNet struct {
 	msgMu sync.Mutex     // lock needed, as SendSwapMessage is called async from timeout handlers
@@ -79,7 +82,10 @@ func newSwapManager(t *testing.T) pswap.Manager {
 func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
 
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, ec.ChainID())
 	require.NoError(t, err)
@@ -127,7 +133,7 @@ func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	providedAmt := coins.EtherToWei(coins.StrToDecimal("1"))
 	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("1"))
 	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
-	swapState, err := newSwapStateFromStart(b, types.Hash{}, true,
+	swapState, err := newSwapStateFromStart(b, testPeerID, types.Hash{}, true,
 		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState, net
@@ -158,7 +164,7 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 
 	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
 	zeroPiconeros := coins.NewPiconeroAmount(0)
-	swapState, err := newSwapStateFromStart(b, types.Hash{}, false,
+	swapState, err := newSwapStateFromStart(b, testPeerID, types.Hash{}, false,
 		coins.IntToWei(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
@@ -334,7 +340,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 	s.nextExpectedEvent = EventKeysReceivedType
 	err := s.Exit()
 	require.NoError(t, err)
-	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, info.Status)
 }
@@ -360,7 +366,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedRefund, info.Status)
 }
@@ -386,7 +392,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedRefund, info.Status)
 }
@@ -413,7 +419,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	err = s.Exit()
 	require.True(t, errors.Is(err, errUnexpectedEventType))
 
-	info, err := s.SwapManager().GetPastSwap(s.info.ID)
+	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, info.Status)
 }

@@ -108,5 +108,5 @@ func TestWaitForReceipt_failWhenTransactionIsMined(t *testing.T) {
 	// Ensure that we got the expected error
 	require.Contains(t, err.Error(), "revert block.timestamp was not less than stamp")
 	// Ensure that the expected error happened when the transaction was mined and not earlier
-	require.Contains(t, err.Error(), "gas-lost=")
+	require.Contains(t, err.Error(), "failed transaction included in block")
 }

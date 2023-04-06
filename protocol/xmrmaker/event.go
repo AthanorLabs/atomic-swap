@@ -259,7 +259,7 @@ func (s *swapState) handleEventContractReady() error {
 	s.readyWatcher.Stop()
 
 	// contract ready, let's claim our ether
-	txHash, err := s.claimFunds()
+	receipt, err := s.claimFunds()
 	if err != nil {
 		log.Warnf("failed to claim funds from contract, attempting to safely exit: %s", err)
 
@@ -271,7 +271,7 @@ func (s *swapState) handleEventContractReady() error {
 		return fmt.Errorf("failed to claim: %w", err)
 	}
 
-	log.Debugf("funds claimed, tx: %s", txHash)
+	log.Debugf("funds claimed, tx: %s", receipt.TxHash)
 	s.clearNextExpectedEvent(types.CompletedSuccess)
 	return nil
 }
@@ -284,6 +284,6 @@ func (s *swapState) handleEventETHRefunded(e *EventETHRefunded) error {
 	}
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
-	s.CloseProtocolStream(s.ID())
+	s.CloseProtocolStream(s.OfferID())
 	return nil
 }

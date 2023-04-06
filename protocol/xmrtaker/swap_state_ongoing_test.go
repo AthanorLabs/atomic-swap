@@ -29,11 +29,12 @@ func setupSwapStateUntilETHLocked(t *testing.T) (*swapState, uint64) {
 
 	makerKeys, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
-	s.setXMRMakerKeys(
+	err = s.setXMRMakerKeys(
 		makerKeys.PublicKeyPair.SpendKey(),
 		makerKeys.PrivateKeyPair.ViewKey(),
 		makerKeys.Secp256k1PublicKey,
 	)
+	require.NoError(t, err)
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -43,7 +44,7 @@ func setupSwapStateUntilETHLocked(t *testing.T) (*swapState, uint64) {
 	// shutdown swap state, re-create from ongoing
 	s.cancel()
 
-	rdb.EXPECT().GetCounterpartySwapKeys(s.info.ID).Return(
+	rdb.EXPECT().GetCounterpartySwapKeys(s.info.OfferID).Return(
 		makerKeys.PublicKeyPair.SpendKey(),
 		makerKeys.PrivateKeyPair.ViewKey(),
 		nil,

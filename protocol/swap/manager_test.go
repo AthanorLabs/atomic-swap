@@ -29,6 +29,7 @@ func TestNewManager(t *testing.T) {
 
 	hashA := types.Hash{0x1}
 	infoA := NewInfo(
+		testPeerID,
 		hashA,
 		coins.ProvidesXMR,
 		apd.New(1, 0),
@@ -44,6 +45,7 @@ func TestNewManager(t *testing.T) {
 	require.NoError(t, err)
 
 	infoB := NewInfo(
+		testPeerID,
 		types.Hash{2},
 		coins.ProvidesXMR,
 		apd.New(1, 0),
@@ -77,6 +79,7 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 	m := mgr.(*manager)
 	require.NoError(t, err)
 	info := NewInfo(
+		testPeerID,
 		types.Hash{},
 		coins.ProvidesXMR,
 		apd.New(1, 0),
@@ -125,34 +128,34 @@ func TestManager_AddSwap_Past(t *testing.T) {
 	require.NoError(t, err)
 
 	info := &Info{
-		ID:     types.Hash{1},
-		Status: types.CompletedSuccess,
+		OfferID: types.Hash{1},
+		Status:  types.CompletedSuccess,
 	}
 
 	db.EXPECT().PutSwap(info)
 	err = m.AddSwap(info)
 	require.NoError(t, err)
 
-	s, err := m.GetPastSwap(info.ID)
+	s, err := m.GetPastSwap(info.OfferID)
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
 	info = &Info{
-		ID:     types.Hash{2},
-		Status: types.CompletedSuccess,
+		OfferID: types.Hash{2},
+		Status:  types.CompletedSuccess,
 	}
 
 	db.EXPECT().PutSwap(info)
 	err = m.AddSwap(info)
 	require.NoError(t, err)
 
-	s, err = m.GetPastSwap(info.ID)
+	s, err = m.GetPastSwap(info.OfferID)
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
 	info = &Info{
-		ID:     types.Hash{3},
-		Status: types.ExpectingKeys,
+		OfferID: types.Hash{3},
+		Status:  types.ExpectingKeys,
 	}
 
 	db.EXPECT().PutSwap(info)

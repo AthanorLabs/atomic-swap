@@ -7,12 +7,16 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 	"net"
 	"os"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 // Reverse returns a copy of the slice with the bytes in reverse order
@@ -90,4 +94,11 @@ func GetFreeTCPPort() (uint, error) {
 	defer func() { _ = ln.Close() }()
 
 	return uint(ln.Addr().(*net.TCPAddr).Port), nil
+}
+
+// ReceiptInfo creates a string for logging from an ethereum transaction receipt
+func ReceiptInfo(receipt *ethtypes.Receipt) string {
+	txCostWei := new(big.Int).Mul(receipt.EffectiveGasPrice, big.NewInt(int64(receipt.GasUsed)))
+	return fmt.Sprintf("gas-used: %d, gas-price: %s WEI, tx-cost: %s ETH, block: %s, txID: %s",
+		receipt.GasUsed, receipt.EffectiveGasPrice, coins.FmtWeiAsETH(txCostWei), receipt.BlockNumber, receipt.TxHash)
 }

@@ -7,6 +7,8 @@ package backend
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
+	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 // NetSender consists of Host methods invoked by the Maker/Taker
@@ -62,6 +65,7 @@ type Backend interface {
 
 	// helpers
 	NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error)
+	HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
 
 	// getters
 	Ctx() context.Context
@@ -230,4 +234,30 @@ func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
 	b.perSwapXMRDepositAddrRWMu.Lock()
 	defer b.perSwapXMRDepositAddrRWMu.Unlock()
 	delete(b.perSwapXMRDepositAddr, offerID)
+}
+
+// HandleRelayClaimRequest validates and sends the transaction for a relay claim request
+func (b *backend) HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+	// In the taker relay scenario, the net layer has already validated that we
+	// have an ongoing swap with the requesting peer that uses the passed
+	// offerID, but we have not verified that the claim in the swap matches the
+	// offerID. The backend, with its access to the recovery DB, is in the best
+	// position to perform this check. The remaining validations will be in the
+	// relayer library.
+	if request.OfferID != nil {
+		swapInfo, err := b.recoveryDB.GetContractSwapInfo(*request.OfferID)
+		if err != nil {
+			return nil, fmt.Errorf("swap info for taker claim request not found: %w", err)
+		}
+		if swapInfo.SwapID != request.Swap.SwapID() {
+			return nil, errors.New("counterparty claim request has invalid swap ID")
+		}
+	}
+
+	return relayer.ValidateAndSendTransaction(
+		b.Ctx(),
+		request,
+		b.ETHClient(),
+		b.ContractAddr(),
+	)
 }

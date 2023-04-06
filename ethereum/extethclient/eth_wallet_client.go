@@ -43,6 +43,7 @@ type EthClient interface {
 
 	SetGasPrice(uint64)
 	SetGasLimit(uint64)
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	CallOpts(ctx context.Context) *bind.CallOpts
 	TxOpts(ctx context.Context) (*bind.TransactOpts, error)
 	ChainID() *big.Int
@@ -135,6 +136,16 @@ func (c *ethClient) Balance(ctx context.Context) (*big.Int, error) {
 		return nil, err
 	}
 	return bal, nil
+}
+
+// SuggestedGasPrice returns the underlying eth client's suggested gas price
+// unless the user specified a fixed gas price to use, in which case the user
+// supplied value is returned.
+func (c *ethClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	if c.gasPrice != nil {
+		return c.gasPrice, nil
+	}
+	return c.Raw().SuggestGasPrice(ctx)
 }
 
 func (c *ethClient) ERC20Balance(ctx context.Context, token ethcommon.Address) (*big.Int, error) {

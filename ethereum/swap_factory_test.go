@@ -6,6 +6,7 @@ package contracts
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"math/big"
 	"sync"
@@ -18,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/crypto/secp256k1"
 	"github.com/athanorlabs/atomic-swap/dleq"
@@ -47,18 +49,77 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	require.NotEqual(t, ethcommon.Address{}, address)
 	require.NotNil(t, tx)
 	require.NotNil(t, contract)
+
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
 
-	nonce := big.NewInt(0)
-	tx, err = contract.NewSwap(auth, [32]byte{}, [32]byte{},
-		ethcommon.Address{}, defaultTimeoutDuration, defaultTimeoutDuration, asset, big.NewInt(0), nonce)
+	owner := auth.From
+	claimer := common.EthereumPrivateKeyToAddress(tests.GetMakerTestKey(t))
+
+	var pubKeyClaim, pubKeyRefund [32]byte
+	_, err = rand.Read(pubKeyClaim[:])
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	_, err = rand.Read(pubKeyRefund[:])
 	require.NoError(t, err)
 
+	nonce, err := rand.Prime(rand.Reader, 256)
+	require.NoError(t, err)
+	value, err := rand.Prime(rand.Reader, 53) // (2^54 - 1) / 10^18 ~= .018 ETH
+	require.NoError(t, err)
+
+	isEthAsset := asset == ethAssetAddress
+
+	if isEthAsset {
+		auth.Value = value
+	} else {
+		value = big.NewInt(0)
+	}
+
+	tx, err = contract.NewSwap(
+		auth,
+		pubKeyClaim,
+		pubKeyRefund,
+		claimer,
+		defaultTimeoutDuration,
+		defaultTimeoutDuration,
+		asset,
+		value,
+		nonce,
+	)
+	require.NoError(t, err)
+
+	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
+
+	newSwapLogIndex := 0
+	if !isEthAsset {
+		newSwapLogIndex = 2
+	}
+	require.Equal(t, newSwapLogIndex+1, len(receipt.Logs))
+
+	swapID, err := GetIDFromLog(receipt.Logs[newSwapLogIndex])
+	require.NoError(t, err)
+
+	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newSwapLogIndex])
+	require.NoError(t, err)
+
+	// validate that off-chain swapID calculation matches the on-chain value
+	swap := SwapFactorySwap{
+		Owner:        owner,
+		Claimer:      claimer,
+		PubKeyClaim:  pubKeyClaim,
+		PubKeyRefund: pubKeyRefund,
+		Timeout0:     t0,
+		Timeout1:     t1,
+		Asset:        asset,
+		Value:        value,
+		Nonce:        nonce,
+	}
+
+	// validate our off-net calculation of the SwapID
+	require.Equal(t, types.Hash(swapID).Hex(), swap.SwapID().Hex())
 }
 
 func TestSwapFactory_NewSwap(t *testing.T) {

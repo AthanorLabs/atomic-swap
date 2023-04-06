@@ -48,7 +48,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	offer := types.NewOffer(coins.ProvidesXMR, one, one, coins.ToExchangeRate(one), types.EthAssetETH)
 
 	s := &pswap.Info{
-		ID:             offer.ID,
+		OfferID:        offer.ID,
 		Provides:       coins.ProvidesXMR,
 		ProvidedAmount: one,
 		ExpectedAmount: one,
@@ -63,8 +63,8 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	makerKeys, err := mcrypto.GenerateKeys()
 	require.NoError(t, err)
 
-	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.ID).Return(nil, errors.New("some error"))
-	rdb.EXPECT().GetContractSwapInfo(s.ID).Return(&db.EthereumSwapInfo{
+	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.OfferID).Return(nil, errors.New("some error"))
+	rdb.EXPECT().GetContractSwapInfo(s.OfferID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
 		ContractAddress: inst.backend.ContractAddr(),
 		Swap: &contracts.SwapFactorySwap{
@@ -72,10 +72,10 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 			Timeout1: big.NewInt(2),
 		},
 	}, nil)
-	rdb.EXPECT().GetSwapPrivateKey(s.ID).Return(
+	rdb.EXPECT().GetSwapPrivateKey(s.OfferID).Return(
 		sk.SpendKey(), nil,
 	)
-	rdb.EXPECT().GetCounterpartySwapKeys(s.ID).Return(
+	rdb.EXPECT().GetCounterpartySwapKeys(s.OfferID).Return(
 		makerKeys.SpendKey().Public(), makerKeys.ViewKey(), nil,
 	)
 
@@ -84,5 +84,5 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
-	close(inst.swapStates[s.ID].done)
+	close(inst.swapStates[s.OfferID].done)
 }

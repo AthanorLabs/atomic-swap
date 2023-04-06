@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -30,7 +31,11 @@ func (inst *Instance) Provides() coins.ProvidesCoin {
 
 // InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
 // The input units are ether that we will provide.
-func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types.Offer) (common.SwapState, error) {
+func (inst *Instance) InitiateProtocol(
+	makerPeerID peer.ID,
+	providesAmount *apd.Decimal,
+	offer *types.Offer,
+) (common.SwapState, error) {
 	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
 	if err != nil {
 		return nil, err
@@ -45,7 +50,7 @@ func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types
 		return nil, err
 	}
 
-	state, err := inst.initiate(providedAmount, coins.MoneroToPiconero(expectedAmount),
+	state, err := inst.initiate(makerPeerID, providedAmount, coins.MoneroToPiconero(expectedAmount),
 		offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
@@ -54,8 +59,14 @@ func (inst *Instance) InitiateProtocol(providesAmount *apd.Decimal, offer *types
 	return state, nil
 }
 
-func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmount *coins.PiconeroAmount,
-	exchangeRate *coins.ExchangeRate, ethAsset types.EthAsset, offerID types.Hash) (*swapState, error) {
+func (inst *Instance) initiate(
+	makerPeerID peer.ID,
+	providesAmount EthereumAssetAmount,
+	expectedAmount *coins.PiconeroAmount,
+	exchangeRate *coins.ExchangeRate,
+	ethAsset types.EthAsset,
+	offerID types.Hash,
+) (*swapState, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 
@@ -70,7 +81,8 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmoun
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
 	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
-		log.Warnf("Account %s needs additional funds for this transaction", inst.backend.ETHClient().Address())
+		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
+			inst.backend.ETHClient().Address(), coins.FmtWeiAsETH(balance), providesAmount.AsStandard())
 		return nil, errBalanceTooLow
 	}
 
@@ -92,6 +104,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmoun
 
 	s, err := newSwapStateFromStart(
 		inst.backend,
+		makerPeerID,
 		offerID,
 		inst.noTransferBack,
 		providesAmount,
@@ -110,7 +123,7 @@ func (inst *Instance) initiate(providesAmount EthereumAssetAmount, expectedAmoun
 		delete(inst.swapStates, offerID)
 	}()
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with ID=%s**", s.info.ID))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.OfferID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR THE SWAP MAY BE CANCELLED!"))
 	inst.swapStates[offerID] = s
 	return s, nil

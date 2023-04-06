@@ -60,10 +60,10 @@ type Host struct {
 	isRelayer bool
 
 	makerHandler MakerHandler
-	takerHandler TakerHandler
+	relayHandler RelayHandler
 
 	// swap instance info
-	swapMu sync.Mutex
+	swapMu sync.RWMutex
 	swaps  map[types.Hash]*swap
 }
 
@@ -108,11 +108,6 @@ func NewHost(cfg *Config) (*Host, error) {
 	return h, nil
 }
 
-// P2pHost returns the underlying go-p2p-net host.
-func (h *Host) P2pHost() P2pHost {
-	return h.h
-}
-
 func (h *Host) advertisedNamespaces() []string {
 	provides := []string{""}
 
@@ -129,20 +124,18 @@ func (h *Host) advertisedNamespaces() []string {
 
 // SetHandlers sets the maker and taker instances used by the host, and configures
 // the stream handlers.
-func (h *Host) SetHandlers(makerHandler MakerHandler, takerHandler TakerHandler) {
+func (h *Host) SetHandlers(makerHandler MakerHandler, relayHandler RelayHandler) {
 	h.makerHandler = makerHandler
-	h.takerHandler = takerHandler
+	h.relayHandler = relayHandler
 
 	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
-	if h.isRelayer {
-		h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
-	}
+	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
 	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 }
 
 // Start starts the bootstrap and discovery process.
 func (h *Host) Start() error {
-	if h.makerHandler == nil || h.takerHandler == nil {
+	if h.makerHandler == nil || h.relayHandler == nil {
 		return errNilHandler
 	}
 
@@ -161,8 +154,8 @@ func (h *Host) Stop() error {
 
 // SendSwapMessage sends a message to the peer who we're currently doing a swap with.
 func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
-	h.swapMu.Lock()
-	defer h.swapMu.Unlock()
+	h.swapMu.RLock()
+	defer h.swapMu.RUnlock()
 
 	swap, has := h.swaps[id]
 	if !has {
@@ -173,8 +166,10 @@ func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 }
 
 // CloseProtocolStream closes the current swap protocol stream.
-func (h *Host) CloseProtocolStream(id types.Hash) {
-	swap, has := h.swaps[id]
+func (h *Host) CloseProtocolStream(offerID types.Hash) {
+	h.swapMu.RLock()
+	swap, has := h.swaps[offerID]
+	h.swapMu.RUnlock()
 	if !has {
 		return
 	}

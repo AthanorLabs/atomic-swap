@@ -314,7 +314,7 @@ func (s *swapState) handleEventKeysReceived(event *EventKeysReceived) error {
 		return err
 	}
 
-	return s.SendSwapMessage(resp, s.ID())
+	return s.SendSwapMessage(resp, s.OfferID())
 }
 
 func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
@@ -324,7 +324,7 @@ func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
 	}
 
 	s.clearNextExpectedEvent(types.CompletedSuccess)
-	s.CloseProtocolStream(s.ID())
+	s.CloseProtocolStream(s.OfferID())
 	return nil
 }
 
@@ -333,7 +333,7 @@ func (s *swapState) handleEventShouldRefund(event *EventShouldRefund) error {
 		return nil
 	}
 
-	txHash, err := s.refund()
+	receipt, err := s.refund()
 	if err != nil {
 		// TODO: could this ever happen anymore?
 		if !strings.Contains(err.Error(), revertSwapCompleted) {
@@ -344,7 +344,7 @@ func (s *swapState) handleEventShouldRefund(event *EventShouldRefund) error {
 		return nil
 	}
 
-	log.Infof("got our ETH back: tx hash=%s", txHash)
-	event.txHashCh <- txHash
+	log.Infof("got our ETH back: tx hash=%s", receipt.TxHash)
+	event.txHashCh <- receipt.TxHash
 	return nil
 }

@@ -116,7 +116,7 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 
 	s.info.Status = types.XMRLocked
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
-	rdb.EXPECT().GetCounterpartySwapKeys(s.ID()).Return(
+	rdb.EXPECT().GetCounterpartySwapKeys(s.OfferID()).Return(
 		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
 		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
 		nil,

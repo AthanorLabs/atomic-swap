@@ -10,6 +10,7 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -35,30 +36,33 @@ func (h *mockMakerHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockMakerHandler) HandleInitiateMessage(msg *message.SendKeysMessage) (s SwapState, resp Message, err error) {
+func (h *mockMakerHandler) HandleInitiateMessage(
+	_ peer.ID,
+	msg *message.SendKeysMessage,
+) (s SwapState, resp Message, err error) {
 	if (h.id != types.Hash{}) {
 		return &mockSwapState{h.id}, createSendKeysMessage(h.t), nil
 	}
 	return &mockSwapState{}, msg, nil
 }
 
-type mockTakerHandler struct {
+type mockRelayHandler struct {
 	t *testing.T
 }
 
-func (h *mockTakerHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
+func (h *mockRelayHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
 	return &RelayClaimResponse{
 		TxHash: mockEthTXHash,
 	}, nil
 }
 
 type mockSwapState struct {
-	id types.Hash
+	offerID types.Hash
 }
 
-func (s *mockSwapState) ID() types.Hash {
-	if (s.id != types.Hash{}) {
-		return s.id
+func (s *mockSwapState) OfferID() types.Hash {
+	if (s.offerID != types.Hash{}) {
+		return s.offerID
 	}
 
 	return testID
@@ -90,7 +94,7 @@ func basicTestConfig(t *testing.T) *Config {
 func newHost(t *testing.T, cfg *Config) *Host {
 	h, err := NewHost(cfg)
 	require.NoError(t, err)
-	h.SetHandlers(&mockMakerHandler{t: t}, &mockTakerHandler{t: t})
+	h.SetHandlers(&mockMakerHandler{t: t}, &mockRelayHandler{t: t})
 	t.Cleanup(func() {
 		err = h.Stop()
 		require.NoError(t, err)

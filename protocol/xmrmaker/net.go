@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -30,6 +31,7 @@ func (inst *Instance) Provides() coins.ProvidesCoin {
 }
 
 func (inst *Instance) initiate(
+	takerPeerID peer.ID,
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	providesAmount *coins.PiconeroAmount,
@@ -62,6 +64,7 @@ func (inst *Instance) initiate(
 
 	s, err := newSwapStateFromStart(
 		inst.backend,
+		takerPeerID,
 		offer,
 		offerExtra,
 		inst.offerManager,
@@ -84,7 +87,7 @@ func (inst *Instance) initiate(
 		return nil, err
 	}
 
-	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.ID))
+	log.Info(color.New(color.Bold).Sprintf("**initiated swap with offer ID=%s**", s.info.OfferID))
 	log.Info(color.New(color.Bold).Sprint("DO NOT EXIT THIS PROCESS OR THE SWAP MAY BE CANCELLED!"))
 	log.Infof(color.New(color.Bold).Sprintf("receiving %v %s for %v XMR",
 		s.info.ExpectedAmount,
@@ -96,7 +99,10 @@ func (inst *Instance) initiate(
 }
 
 // HandleInitiateMessage is called when we receive a network message from a peer that they wish to initiate a swap.
-func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.SwapState, common.Message, error) {
+func (inst *Instance) HandleInitiateMessage(
+	takerPeerID peer.ID,
+	msg *message.SendKeysMessage,
+) (net.SwapState, common.Message, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 
@@ -150,7 +156,7 @@ func (inst *Instance) HandleInitiateMessage(msg *message.SendKeysMessage) (net.S
 		return nil, nil, err
 	}
 
-	state, err := inst.initiate(offer, offerExtra, providedPiconero, expectedAmount)
+	state, err := inst.initiate(takerPeerID, offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {
 		return nil, nil, err
 	}

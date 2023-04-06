@@ -13,10 +13,11 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -99,6 +100,7 @@ type swapState struct {
 // newSwapStateFromStart returns a new *swapState for a fresh swap.
 func newSwapStateFromStart(
 	b backend.Backend,
+	takerPeerID peer.ID,
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
@@ -134,6 +136,7 @@ func newSwapStateFromStart(
 	}
 
 	info := pswap.NewInfo(
+		takerPeerID,
 		offer.ID,
 		coins.ProvidesXMR,
 		providesAmount.AsMonero(),
@@ -247,20 +250,20 @@ func completeSwap(info *swap.Info, b backend.Backend, om *offers.Manager) error 
 	info.SetStatus(types.CompletedSuccess)
 	err := b.SwapManager().CompleteOngoingSwap(info)
 	if err != nil {
-		return fmt.Errorf("failed to mark swap %s as completed: %s", info.ID, err)
+		return fmt.Errorf("failed to mark swap %s as completed: %s", info.OfferID, err)
 	}
 
-	err = om.DeleteOffer(info.ID)
+	err = om.DeleteOffer(info.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to delete offer %s from db: %s", info.ID, err)
+		return fmt.Errorf("failed to delete offer %s from db: %s", info.OfferID, err)
 	}
 
-	err = b.RecoveryDB().DeleteSwap(info.ID)
+	err = b.RecoveryDB().DeleteSwap(info.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to delete temporary swap info %s from db: %s", info.ID, err)
+		return fmt.Errorf("failed to delete temporary swap info %s from db: %s", info.OfferID, err)
 	}
 
-	exitLog := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", info.ID)
+	exitLog := color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", info.OfferID)
 	log.Info(exitLog)
 	return nil
 }
@@ -436,9 +439,9 @@ func (s *swapState) ExpectedAmount() *apd.Decimal {
 	return s.info.ExpectedAmount
 }
 
-// ID returns the ID of the swap
-func (s *swapState) ID() types.Hash {
-	return s.info.ID
+// OfferID returns the ID of the swap
+func (s *swapState) OfferID() types.Hash {
+	return s.info.OfferID
 }
 
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
@@ -490,11 +493,11 @@ func (s *swapState) exit() error {
 		var exitLog string
 		switch s.info.Status {
 		case types.CompletedSuccess:
-			exitLog = color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.ID())
+			exitLog = color.New(color.Bold).Sprintf("**swap completed successfully: id=%s**", s.OfferID())
 		case types.CompletedRefund:
-			exitLog = color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.ID())
+			exitLog = color.New(color.Bold).Sprintf("**swap refunded successfully: id=%s**", s.OfferID())
 		case types.CompletedAbort:
-			exitLog = color.New(color.Bold).Sprintf("**swap aborted: id=%s**", s.ID())
+			exitLog = color.New(color.Bold).Sprintf("**swap aborted: id=%s**", s.OfferID())
 		}
 
 		log.Info(exitLog)
@@ -542,13 +545,13 @@ func (s *swapState) exit() error {
 
 func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 	// write counterparty swap privkey to disk in case something goes wrong
-	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.ID(), skA)
+	err := s.Backend.RecoveryDB().PutCounterpartySwapPrivateKey(s.OfferID(), skA)
 	if err != nil {
 		return err
 	}
 
 	if s.xmrtakerPublicSpendKey == nil || s.xmrtakerPrivateViewKey == nil {
-		s.xmrtakerPublicSpendKey, s.xmrtakerPrivateViewKey, err = s.RecoveryDB().GetCounterpartySwapKeys(s.ID())
+		s.xmrtakerPublicSpendKey, s.xmrtakerPrivateViewKey, err = s.RecoveryDB().GetCounterpartySwapKeys(s.OfferID())
 		if err != nil {
 			return fmt.Errorf("failed to get counterparty public keypair: %w", err)
 		}
@@ -562,7 +565,7 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 	return pcommon.ClaimMonero(
 		s.ctx,
 		s.Env(),
-		s.ID(),
+		s.OfferID(),
 		s.XMRClient(),
 		s.moneroStartHeight,
 		kpAB,
@@ -589,7 +592,7 @@ func (s *swapState) generateAndSetKeys() error {
 	s.privkeys = keysAndProof.PrivateKeyPair
 	s.pubkeys = keysAndProof.PublicKeyPair
 
-	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.ID(), s.privkeys.SpendKey())
+	return s.Backend.RecoveryDB().PutSwapPrivateKey(s.OfferID(), s.privkeys.SpendKey())
 }
 
 func generateKeys() (*pcommon.KeysAndProof, error) {
@@ -616,7 +619,7 @@ func (s *swapState) setXMRTakerKeys(
 	s.xmrtakerPublicSpendKey = sk
 	s.xmrtakerPrivateViewKey = vk
 	s.xmrtakerSecp256K1PublicKey = secp256k1Pub
-	return s.RecoveryDB().PutCounterpartySwapKeys(s.ID(), sk, vk)
+	return s.RecoveryDB().PutCounterpartySwapKeys(s.OfferID(), sk, vk)
 }
 
 // setContract sets the contract in which XMRTaker has locked her ETH.

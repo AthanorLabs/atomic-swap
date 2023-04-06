@@ -101,8 +101,8 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 	log.Infof("got NotifyETHLocked; address=%s contract swap ID=%s", msg.Address, msg.ContractSwapID)
 
 	// validate that swap ID == keccak256(swap struct)
-	if err := checkContractSwapID(msg); err != nil {
-		return err
+	if msg.ContractSwap.SwapID() != msg.ContractSwapID {
+		return errSwapIDMismatch
 	}
 
 	s.contractSwapID = msg.ContractSwapID
@@ -133,11 +133,11 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 		ContractAddress: contractAddr,
 	}
 
-	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.ID(), ethInfo); err != nil {
+	if err = s.Backend.RecoveryDB().PutContractSwapInfo(s.OfferID(), ethInfo); err != nil {
 		return err
 	}
 
-	log.Infof("stored ContractSwapInfo: id=%s", s.ID())
+	log.Infof("stored ContractSwapInfo: id=%s", s.OfferID())
 
 	if err = s.checkContract(msg.TxHash); err != nil {
 		return err

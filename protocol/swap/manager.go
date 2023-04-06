@@ -57,7 +57,7 @@ func NewManager(db Database) (Manager, error) {
 			continue
 		}
 
-		ongoing[s.ID] = s
+		ongoing[s.OfferID] = s
 	}
 
 	return &manager{
@@ -74,9 +74,9 @@ func (m *manager) AddSwap(info *Info) error {
 
 	switch info.Status.IsOngoing() {
 	case true:
-		m.ongoing[info.ID] = info
+		m.ongoing[info.OfferID] = info
 	default:
-		m.past[info.ID] = info
+		m.past[info.OfferID] = info
 	}
 
 	return m.db.PutSwap(info)
@@ -107,7 +107,7 @@ func (m *manager) GetPastIDs() ([]types.Hash, error) {
 			continue
 		}
 
-		ids[s.ID] = struct{}{}
+		ids[s.OfferID] = struct{}{}
 	}
 
 	idArr := make([]types.Hash, len(ids))
@@ -135,7 +135,7 @@ func (m *manager) GetPastSwap(id types.Hash) (*Info, error) {
 	}
 
 	// cache the swap, since it's recently accessed
-	m.past[s.ID] = s
+	m.past[s.OfferID] = s
 	return s, nil
 }
 
@@ -170,7 +170,7 @@ func (m *manager) GetOngoingSwaps() ([]*Info, error) {
 func (m *manager) CompleteOngoingSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
-	_, has := m.ongoing[info.ID]
+	_, has := m.ongoing[info.OfferID]
 	if !has {
 		return errNoSwapWithID
 	}
@@ -178,8 +178,8 @@ func (m *manager) CompleteOngoingSwap(info *Info) error {
 	now := time.Now()
 	info.EndTime = &now
 
-	m.past[info.ID] = info
-	delete(m.ongoing, info.ID)
+	m.past[info.OfferID] = info
+	delete(m.ongoing, info.OfferID)
 
 	// re-write to db, as status has changed
 	return m.db.PutSwap(info)

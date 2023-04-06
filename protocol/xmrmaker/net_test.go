@@ -32,7 +32,7 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 	msg.ProvidedAmount, err = offer.ExchangeRate.ToETH(offer.MinAmount)
 	require.NoError(t, err)
 
-	_, resp, err := b.HandleInitiateMessage(msg)
+	_, resp, err := b.HandleInitiateMessage("", msg)
 	require.NoError(t, err)
 	require.Equal(t, message.SendKeysType, resp.Type())
 	require.NotNil(t, b.swapStates[offer.ID])

@@ -9,6 +9,7 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -16,10 +17,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
+var testPeerID, _ = peer.Decode("12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi")
+
 func Test_InfoMarshal(t *testing.T) {
 	offerIDStr := "0x0102030405060708091011121314151617181920212223242526272829303132"
 	offerID := ethcommon.HexToHash(offerIDStr)
 	info := NewInfo(
+		testPeerID,
 		offerID,
 		coins.ProvidesXMR,
 		apd.New(125, -2), // 1.25
@@ -39,6 +43,7 @@ func Test_InfoMarshal(t *testing.T) {
 
 	expectedJSON := `{
 		"version": "0.2.0",
+		"peerID": "12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi",
 		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303132",
 		"provides": "XMR",
 		"providedAmount": "1.25",

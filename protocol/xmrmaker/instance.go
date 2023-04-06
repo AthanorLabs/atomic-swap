@@ -95,7 +95,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 		}
 
 		if s.Status == types.KeysExchanged || s.Status == types.ExpectingKeys {
-			log.Infof("found ongoing swap %s in DB, aborting since no funds were locked", s.ID)
+			log.Infof("found ongoing swap %s in DB, aborting since no funds were locked", s.OfferID)
 
 			// for these two cases, no funds have been locked, so we can safely
 			// abort the swap.
@@ -125,32 +125,34 @@ func (inst *Instance) abortOngoingSwap(s *swap.Info) error {
 		return err
 	}
 
-	return inst.backend.RecoveryDB().DeleteSwap(s.ID)
+	return inst.backend.RecoveryDB().DeleteSwap(s.OfferID)
 }
 
 func (inst *Instance) createOngoingSwap(s *swap.Info) error {
-	log.Infof("found ongoing swap %s in DB, restarting swap", s.ID)
+	log.Infof("found ongoing swap %s in DB, restarting swap", s.OfferID)
 
 	// check if we have shared secret key in db; if so, recover XMR from that
 	// otherwise, create new swap state from recovery info
-	skA, err := inst.backend.RecoveryDB().GetCounterpartySwapPrivateKey(s.ID)
+	skA, err := inst.backend.RecoveryDB().GetCounterpartySwapPrivateKey(s.OfferID)
 	if err == nil {
 		return inst.completeSwap(s, skA)
 	}
 
-	offer, _, err := inst.offerManager.GetOffer(s.ID)
+	offer, _, err := inst.offerManager.GetOffer(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get offer for ongoing swap, id %s: %s", s.ID, err)
+		return fmt.Errorf("failed to get offer for ongoing swap, offer ID %s: %s", s.OfferID, err)
 	}
 
-	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.ID)
+	ethSwapInfo, err := inst.backend.RecoveryDB().GetContractSwapInfo(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get contract info for ongoing swap from db with swap id %s: %w", s.ID, err)
+		return fmt.Errorf("failed to get contract info for ongoing swap from db with offer ID %s: %s",
+			s.OfferID, err)
 	}
 
-	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
+	sk, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.OfferID)
 	if err != nil {
-		return fmt.Errorf("failed to get private key for ongoing swap from db with swap id %s: %w", s.ID, err)
+		return fmt.Errorf("failed to get private key for ongoing swap from db with offer ID %s: %s",
+			s.OfferID, err)
 	}
 
 	kp, err := sk.AsPrivateKeyPair()
@@ -158,7 +160,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		return err
 	}
 
-	relayerInfo, err := inst.backend.RecoveryDB().GetSwapRelayerInfo(s.ID)
+	relayerInfo, err := inst.backend.RecoveryDB().GetSwapRelayerInfo(s.OfferID)
 	if err != nil {
 		// we can ignore the error; if the key doesn't exist,
 		// then no relayer was set for this swap.
@@ -175,11 +177,11 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 		kp,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create new swap state for ongoing swap, id %s: %w", s.ID, err)
+		return fmt.Errorf("failed to create new swap state for ongoing swap, offer id %s: %w", s.OfferID, err)
 	}
 
 	inst.swapMu.Lock()
-	inst.swapStates[s.ID] = ss
+	inst.swapStates[s.OfferID] = ss
 	inst.swapMu.Unlock()
 
 	go func() {
@@ -203,7 +205,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 // address, not whatever address was used when the swap was started.
 func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) error {
 	// fetch our swap private spend key
-	skB, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.ID)
+	skB, err := inst.backend.RecoveryDB().GetSwapPrivateKey(s.OfferID)
 	if err != nil {
 		return err
 	}
@@ -216,7 +218,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 
 	// we save the counterparty's public keys in case they send public keys derived
 	// in a non-standard way.
-	_, vkA, err := inst.backend.RecoveryDB().GetCounterpartySwapKeys(s.ID)
+	_, vkA, err := inst.backend.RecoveryDB().GetCounterpartySwapKeys(s.OfferID)
 	if err != nil {
 		return err
 	}
@@ -229,7 +231,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 	err = pcommon.ClaimMonero(
 		inst.backend.Ctx(),
 		inst.backend.Env(),
-		s.ID,
+		s.OfferID,
 		inst.backend.XMRClient(),
 		s.MoneroStartHeight,
 		kpAB,
@@ -243,7 +245,7 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 	s.Status = types.CompletedRefund
 	err = inst.backend.SwapManager().CompleteOngoingSwap(s)
 	if err != nil {
-		return fmt.Errorf("failed to mark swap %s as completed: %w", s.ID, err)
+		return fmt.Errorf("failed to mark swap %s as completed: %w", s.OfferID, err)
 	}
 
 	return nil
