@@ -62,7 +62,7 @@ func TestSwapStateOngoing_handleEvent_EventXMRLocked(t *testing.T) {
 		StartNumber:     big.NewInt(int64(startNum)),
 		SwapID:          s.contractSwapID,
 		Swap:            s.contractSwap,
-		ContractAddress: s.Backend.ContractAddr(),
+		SwapCreatorAddr: s.Backend.SwapCreatorAddr(),
 	}
 
 	ss, err := newSwapStateFromOngoing(
@@ -89,7 +89,7 @@ func TestSwapStateOngoing_handleEvent_EventETHClaimed(t *testing.T) {
 		StartNumber:     big.NewInt(int64(startNum)),
 		SwapID:          s.contractSwapID,
 		Swap:            s.contractSwap,
-		ContractAddress: s.Backend.ContractAddr(),
+		SwapCreatorAddr: s.Backend.SwapCreatorAddr(),
 	}
 
 	ss, err := newSwapStateFromOngoing(

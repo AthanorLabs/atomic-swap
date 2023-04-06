@@ -62,11 +62,11 @@ func init() {
 	_ = logging.SetLogLevel("xmrtaker", level)
 }
 
-var _swapFactoryAddress *ethcommon.Address
+var _swapCreatorAddr *ethcommon.Address
 
-func getSwapFactoryAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address {
-	if _swapFactoryAddress != nil {
-		return *_swapFactoryAddress
+func getSwapCreatorAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address {
+	if _swapCreatorAddr != nil {
+		return *_swapCreatorAddr
 	}
 
 	ctx := context.Background()
@@ -75,11 +75,11 @@ func getSwapFactoryAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address
 	forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, ethKey)
 	require.NoError(t, err)
 
-	swapFactoryAddr, _, err := contracts.DeploySwapFactoryWithKey(ctx, ec, ethKey, forwarderAddr)
+	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, ethKey, forwarderAddr)
 	require.NoError(t, err)
 
-	_swapFactoryAddress = &swapFactoryAddr
-	return swapFactoryAddr
+	_swapCreatorAddr = &swapCreatorAddr
+	return swapCreatorAddr
 }
 
 func privKeyToAddr(privKey *ecdsa.PrivateKey) ethcommon.Address {
@@ -161,7 +161,7 @@ func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	envConf := new(common.Config)
 	*envConf = *common.ConfigDefaultsForEnv(common.Development)
 	envConf.DataDir = t.TempDir()
-	envConf.SwapFactoryAddress = getSwapFactoryAddress(t, ec.Raw())
+	envConf.SwapCreatorAddr = getSwapCreatorAddress(t, ec.Raw())
 
 	return &SwapdConfig{
 		EnvConf:        envConf,

@@ -151,7 +151,7 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
-				Usage: "Address of instance of SwapFactory.sol already deployed on-chain; required if running on mainnet",
+				Usage: "Address of instance of SwapCreator.sol already deployed on-chain; required if running on mainnet",
 			},
 			&cli.StringSliceFlag{
 				Name:    flagBootnodes,
@@ -362,17 +362,17 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 			return nil, errFlagsMutuallyExclusive(flagDeploy, flagContractAddress)
 		}
 		// Zero out the contract address, we'll set its final value after deploying
-		conf.SwapFactoryAddress = ethcommon.Address{}
+		conf.SwapCreatorAddr = ethcommon.Address{}
 	} else {
 		contractAddrStr := c.String(flagContractAddress)
 		if contractAddrStr != "" {
 			if !ethcommon.IsHexAddress(contractAddrStr) {
 				return nil, fmt.Errorf("%q requires a valid ethereum address", flagContractAddress)
 			}
-			conf.SwapFactoryAddress = ethcommon.HexToAddress(contractAddrStr)
+			conf.SwapCreatorAddr = ethcommon.HexToAddress(contractAddrStr)
 		}
 
-		if conf.SwapFactoryAddress == (ethcommon.Address{}) {
+		if conf.SwapCreatorAddr == (ethcommon.Address{}) {
 			return nil, fmt.Errorf("flag %q or %q is required for env=%s", flagDeploy, flagContractAddress, env)
 		}
 	}
@@ -380,42 +380,44 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 	return conf, nil
 }
 
-// validateOrDeployContracts validates or deploys the swap factory. The SwapFactoryAddress field
+// validateOrDeployContracts validates or deploys the swap creator. The SwapCreatorAddr field
 // of envConf should be all zeros if deploying and its value will be replaced by the new deployed
 // contract.
 func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec extethclient.EthClient) error {
 	deploy := c.Bool(flagDeploy)
-	if deploy && envConf.SwapFactoryAddress != (ethcommon.Address{}) {
+	if deploy && envConf.SwapCreatorAddr != (ethcommon.Address{}) {
 		panic("contract address should have been zeroed when envConf was initialized")
 	}
 
-	// forwarderAddress is set only if we're deploying the swap contract, and the --forwarder-address
-	// flag is set. otherwise, if we're deploying and the flag isn't set, we also deploy the forwarder.
-	var forwarderAddress ethcommon.Address
-	forwarderAddressStr := c.String(flagForwarderAddress)
-	if deploy && forwarderAddressStr != "" {
-		if !ethcommon.IsHexAddress(forwarderAddressStr) {
+	// forwarderAddr is set only if we're deploying the swap creator contract
+	// and the --forwarder-address flag is set. Otherwise, if we're deploying
+	// and this flag isn't set, we deploy both the forwarder and the swap
+	// creator contracts.
+	var forwarderAddr ethcommon.Address
+	forwarderAddrStr := c.String(flagForwarderAddress)
+	if deploy && forwarderAddrStr != "" {
+		if !ethcommon.IsHexAddress(forwarderAddrStr) {
 			return fmt.Errorf("%q requires a valid ethereum address", flagForwarderAddress)
 		}
 
-		forwarderAddress = ethcommon.HexToAddress(forwarderAddressStr)
-	} else if !deploy && forwarderAddressStr != "" {
+		forwarderAddr = ethcommon.HexToAddress(forwarderAddrStr)
+	} else if !deploy && forwarderAddrStr != "" {
 		return fmt.Errorf("using flag %q requires the %q flag", flagForwarderAddress, flagDeploy)
 	}
 
-	contractAddr, err := getOrDeploySwapFactory(
+	swapCreatorAddr, err := getOrDeploySwapCreator(
 		c.Context,
-		envConf.SwapFactoryAddress,
+		envConf.SwapCreatorAddr,
 		envConf.Env,
 		envConf.DataDir,
 		ec,
-		forwarderAddress,
+		forwarderAddr,
 	)
 	if err != nil {
 		return err
 	}
 
-	envConf.SwapFactoryAddress = contractAddr
+	envConf.SwapCreatorAddr = swapCreatorAddr
 
 	return nil
 }

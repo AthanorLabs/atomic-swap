@@ -158,7 +158,7 @@ type NotifyETHLocked struct {
 	Address        ethcommon.Address          `json:"address" validate:"required"`
 	TxHash         types.Hash                 `json:"txHash" validate:"required"`
 	ContractSwapID types.Hash                 `json:"contractSwapID" validate:"required"`
-	ContractSwap   *contracts.SwapFactorySwap `json:"contractSwap" validate:"required"`
+	ContractSwap   *contracts.SwapCreatorSwap `json:"contractSwap" validate:"required"`
 }
 
 // String ...

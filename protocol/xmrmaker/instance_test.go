@@ -88,8 +88,8 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	var forwarderAddress ethcommon.Address
-	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec, forwarderAddress)
+	var forwarderAddr ethcommon.Address
+	_, tx, _, err := contracts.DeploySwapCreator(txOpts, ec, forwarderAddr)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -115,14 +115,14 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:                ctx,
-		MoneroClient:       monero.CreateWalletClient(t),
-		EthereumClient:     extendedEC,
-		Environment:        common.Development,
-		SwapFactoryAddress: addr,
-		SwapManager:        newSwapManager(t),
-		Net:                net,
-		RecoveryDB:         rdb,
+		Ctx:             ctx,
+		MoneroClient:    monero.CreateWalletClient(t),
+		EthereumClient:  extendedEC,
+		Environment:     common.Development,
+		SwapCreatorAddr: addr,
+		SwapManager:     newSwapManager(t),
+		Net:             net,
+		RecoveryDB:      rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -168,7 +168,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb := inst.backend.RecoveryDB().(*backend.MockRecoveryDB)
 
 	ec := inst.backend.ETHClient()
-	contract := inst.backend.Contract()
+	contract := inst.backend.SwapCreator()
 	contractSwap, contractSwapID, _ := newTestSwap(
 		t, ec, contract, [32]byte{}, [32]byte{}, big.NewInt(100), time.Minute*10,
 	)
@@ -204,9 +204,9 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.OfferID).Return(nil, errors.New("some error"))
 	rdb.EXPECT().GetContractSwapInfo(s.OfferID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
-		ContractAddress: inst.backend.ContractAddr(),
+		SwapCreatorAddr: inst.backend.SwapCreatorAddr(),
 		SwapID:          contractSwapID,
-		Swap: &contracts.SwapFactorySwap{
+		Swap: &contracts.SwapCreatorSwap{
 			Timeout0: big.NewInt(1),
 			Timeout1: big.NewInt(2),
 		},

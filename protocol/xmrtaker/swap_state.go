@@ -73,7 +73,7 @@ type swapState struct {
 
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
-	contractSwap   *contracts.SwapFactorySwap
+	contractSwap   *contracts.SwapCreatorSwap
 	t0, t1         time.Time
 
 	// tracks the state of the swap
@@ -182,8 +182,8 @@ func newSwapStateFromOngoing(
 		return nil, err
 	}
 
-	if b.ContractAddr() != ethSwapInfo.ContractAddress {
-		return nil, errContractAddrMismatch(ethSwapInfo.ContractAddress.String())
+	if b.SwapCreatorAddr() != ethSwapInfo.SwapCreatorAddr {
+		return nil, errContractAddrMismatch(ethSwapInfo.SwapCreatorAddr.String())
 	}
 
 	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
@@ -244,7 +244,7 @@ func newSwapState(
 	claimedWatcher := watcher.NewEventFilter(
 		ctx,
 		b.ETHClient().Raw(),
-		b.ContractAddr(),
+		b.SwapCreatorAddr(),
 		ethStartNumber,
 		claimedTopic,
 		logClaimedCh,
@@ -420,7 +420,7 @@ func (s *swapState) exit() error {
 }
 
 func (s *swapState) tryRefund() (*ethtypes.Receipt, error) {
-	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
+	stage, err := s.SwapCreator().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +561,7 @@ func (s *swapState) approveToken() error {
 	}
 
 	log.Info("approving token for use by the swap contract...")
-	_, err = s.sender.Approve(s.ContractAddr(), balance)
+	_, err = s.sender.Approve(s.SwapCreatorAddr(), balance)
 	if err != nil {
 		return fmt.Errorf("failed to approve token: %w", err)
 	}
@@ -639,7 +639,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	s.fundsLocked = true
 	s.setTimeouts(t0, t1)
 
-	s.contractSwap = &contracts.SwapFactorySwap{
+	s.contractSwap = &contracts.SwapCreatorSwap{
 		Owner:        s.ETHClient().Address(),
 		Claimer:      s.xmrmakerAddress,
 		PubKeyClaim:  cmtXMRMaker,
@@ -655,7 +655,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		StartNumber:     receipt.BlockNumber,
 		SwapID:          s.contractSwapID,
 		Swap:            s.contractSwap,
-		ContractAddress: s.Backend.ContractAddr(),
+		SwapCreatorAddr: s.Backend.SwapCreatorAddr(),
 	}
 
 	if err := s.Backend.RecoveryDB().PutContractSwapInfo(s.OfferID(), ethInfo); err != nil {
@@ -670,7 +670,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
 func (s *swapState) ready() error {
-	stage, err := s.Contract().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
+	stage, err := s.SwapCreator().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return err
 	}

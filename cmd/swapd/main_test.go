@@ -96,7 +96,7 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	require.NoError(t, err)
 	m := make(map[string]string)
 	require.NoError(t, json.Unmarshal(data, &m))
-	swapFactoryAddr, ok := m["swapFactory"]
+	swapCreatorAddr, ok := m["swapCreator"]
 	require.True(t, ok)
 	forwarderAddr, ok := m["forwarder"]
 	require.True(t, ok)
@@ -104,11 +104,11 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ecCtx := context.Background()
 	discoveredForwarderAddr, err :=
-		contracts.CheckSwapFactoryContractCode(ecCtx, ec, ethcommon.HexToAddress(swapFactoryAddr))
+		contracts.CheckSwapCreatorContractCode(ecCtx, ec, ethcommon.HexToAddress(swapCreatorAddr))
 	require.NoError(t, err)
 	require.Equal(t, strings.ToLower(discoveredForwarderAddr.Hex()), forwarderAddr)
 
-	// something is seriously wrong if this next check fails, as CheckSwapFactoryContractCode
+	// something is seriously wrong if this next check fails, as CheckSwapCreatorContractCode
 	// should have already validated the forwarder bytecode
 	err = contracts.CheckForwarderContractCode(ecCtx, ec, ethcommon.HexToAddress(forwarderAddr))
 	require.NoError(t, err)
@@ -120,7 +120,7 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 
 	// We tested --deploy with the taker, so test passing the contract address here
-	swapFactoryAddr, _, err := deploySwapFactory(context.Background(), ec, key, ethcommon.Address{}, t.TempDir())
+	swapCreatorAddr, _, err := deploySwapCreator(context.Background(), ec, key, ethcommon.Address{}, t.TempDir())
 	require.NoError(t, err)
 
 	flags := []string{
@@ -128,7 +128,7 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 		fmt.Sprintf("--%s", flagDevXMRMaker),
 		fmt.Sprintf("--%s=dev", flagEnv),
 		fmt.Sprintf("--%s=debug", flagLogLevel),
-		fmt.Sprintf("--%s=%s", flagContractAddress, swapFactoryAddr),
+		fmt.Sprintf("--%s=%s", flagContractAddress, swapCreatorAddr),
 		fmt.Sprintf("--%s=%s", flagDataDir, t.TempDir()),
 		fmt.Sprintf("--%s=%d", flagRPCPort, rpcPort),
 		fmt.Sprintf("--%s=0", flagLibp2pPort),
@@ -157,9 +157,9 @@ func TestDaemon_BadFlags(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx, _ := newTestContext(t)
 
-	swapFactoryAddr, swapFactory, err := deploySwapFactory(ctx, ec, key, ethcommon.Address{}, t.TempDir())
+	swapCreatorAddr, swapCreator, err := deploySwapCreator(ctx, ec, key, ethcommon.Address{}, t.TempDir())
 	require.NoError(t, err)
-	forwarderAddr, err := swapFactory.TrustedForwarder(nil)
+	forwarderAddr, err := swapCreator.TrustedForwarder(nil)
 	require.NoError(t, err)
 
 	baseFlags := []string{
@@ -184,10 +184,10 @@ func TestDaemon_BadFlags(t *testing.T) {
 			expectErr:   `flag "deploy" or "contract-address" is required for env=dev`,
 		},
 		{
-			description: "deploy SwapFactory with invalid forwarder",
+			description: "deploy SwapCreator with invalid forwarder",
 			extraFlags: []string{
 				fmt.Sprintf("--%s", flagDeploy),
-				fmt.Sprintf("--%s=%s", flagForwarderAddress, swapFactoryAddr), // passing wrong contract
+				fmt.Sprintf("--%s=%s", flagForwarderAddress, swapCreatorAddr), // passing wrong contract
 			},
 			expectErr: "does not contain correct Forwarder code",
 		},
@@ -204,19 +204,19 @@ func TestDaemon_BadFlags(t *testing.T) {
 			extraFlags: []string{
 				fmt.Sprintf("--%s=%s", flagForwarderAddress, forwarderAddr),
 				// next flag is needed, or we fail on a different error first
-				fmt.Sprintf("--%s=%s", flagContractAddress, swapFactoryAddr),
+				fmt.Sprintf("--%s=%s", flagContractAddress, swapCreatorAddr),
 			},
 			expectErr: fmt.Sprintf(`using flag "%s" requires the "%s" flag`, flagForwarderAddress, flagDeploy),
 		},
 		{
-			description: "pass invalid SwapFactory contract",
+			description: "pass invalid SwapCreator contract",
 			extraFlags: []string{
 				fmt.Sprintf("--%s=%s", flagContractAddress, forwarderAddr), // passing wrong contract
 			},
-			expectErr: "does not contain correct SwapFactory code",
+			expectErr: "does not contain correct SwapCreator code",
 		},
 		{
-			description: "pass SwapFactory contract an invalid address (wrong length)",
+			description: "pass SwapCreator contract an invalid address (wrong length)",
 			extraFlags: []string{
 				fmt.Sprintf("--%s=%s", flagContractAddress, "0xFFFF"), // too short
 			},
@@ -226,7 +226,7 @@ func TestDaemon_BadFlags(t *testing.T) {
 			// this one also happens when people accidentally confuse swapd with swapcli
 			description: "forgot to prefix the flag name with dashes",
 			extraFlags: []string{
-				flagContractAddress, swapFactoryAddr.String(),
+				flagContractAddress, swapCreatorAddr.String(),
 			},
 			expectErr: fmt.Sprintf("unknown command %q", flagContractAddress),
 		},

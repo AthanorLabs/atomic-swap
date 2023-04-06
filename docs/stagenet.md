@@ -179,7 +179,7 @@ You can also try the swap on another Ethereum or EVM-compatible testnet. However
 
 To connect to a different Ethereum network, follow [Setup](#setup) steps 4-7 but with your desired network. Then, start `swapd` with your specified private key file, endpoint, and chain ID. Common chain IDs can be found [here](https://besu.hyperledger.org/en/stable/Concepts/NetworkID-And-ChainID/).
 
-> Note: The `--deploy` flag to `swapd` creates a new instance of `SwapFactory.sol` to the
+> Note: The `--deploy` flag to `swapd` creates a new instance of `SwapCreator.sol` to the
 network. You need to have funds in your account to deploy the contract. To use a contract
 deployed with `--deploy` in subsequent `swapd` instances, use the flag
 `--contract-addr=ADDRESS`. When using `stagenet`, a deployed contract already exists and

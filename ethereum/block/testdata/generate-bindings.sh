@@ -14,7 +14,7 @@ fi
 "${SOLC_BIN}" --abi  UTContract.sol -o . --overwrite
 "${SOLC_BIN}" --bin  UTContract.sol -o . --overwrite
 
-# Use abigen 1.10.17-stable to match how we compile the SwapFactory contract
+# Use abigen 1.10.17-stable to match how we compile the SwapCreator contract
 "${ABIGEN}" --abi UTContract.abi --bin UTContract.bin --pkg block --type UTContract --out ../ut_contract_test.go
 
 rm -f UTContract.abi UTContract.bin

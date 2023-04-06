@@ -74,7 +74,7 @@ func (db *RecoveryDB) GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, erro
 }
 
 // PutContractSwapInfo stores the given contract swap ID (which is not the same as the daemon
-// swap ID, but is instead a hash of the `SwapFactorySwap` structure)
+// swap ID, but is instead a hash of the `SwapCreatorSwap` structure)
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo) error {
 	val, err := vjson.MarshalStruct(info)
@@ -91,7 +91,7 @@ func (db *RecoveryDB) PutContractSwapInfo(id types.Hash, info *EthereumSwapInfo)
 	return db.db.Flush()
 }
 
-// GetContractSwapInfo returns the contract swap ID (a hash of the `SwapFactorySwap` structure) and
+// GetContractSwapInfo returns the contract swap ID (a hash of the `SwapCreatorSwap` structure) and
 // and contract swap structure for the given swap ID.
 func (db *RecoveryDB) GetContractSwapInfo(id types.Hash) (*EthereumSwapInfo, error) {
 	key := getRecoveryDBKey(id, contractSwapInfoPrefix)

@@ -24,7 +24,7 @@ import (
 
 // Sender signs and submits transactions to the chain
 type Sender interface {
-	SetContract(*contracts.SwapFactory)
+	SetContract(*contracts.SwapCreator)
 	SetContractAddress(ethcommon.Address)
 	Approve(spender ethcommon.Address, amount *big.Int) (*ethtypes.Receipt, error) // for ERC20 swaps
 	NewSwap(
@@ -36,15 +36,15 @@ type Sender interface {
 		ethAsset types.EthAsset,
 		amount *big.Int,
 	) (*ethtypes.Receipt, error)
-	SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Receipt, error)
-	Claim(swap *contracts.SwapFactorySwap, secret [32]byte) (*ethtypes.Receipt, error)
-	Refund(swap *contracts.SwapFactorySwap, secret [32]byte) (*ethtypes.Receipt, error)
+	SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.Receipt, error)
+	Claim(swap *contracts.SwapCreatorSwap, secret [32]byte) (*ethtypes.Receipt, error)
+	Refund(swap *contracts.SwapCreatorSwap, secret [32]byte) (*ethtypes.Receipt, error)
 }
 
 type privateKeySender struct {
 	ctx           context.Context
 	ethClient     extethclient.EthClient
-	swapContract  *contracts.SwapFactory
+	swapContract  *contracts.SwapCreator
 	erc20Contract *contracts.IERC20
 }
 
@@ -52,7 +52,7 @@ type privateKeySender struct {
 func NewSenderWithPrivateKey(
 	ctx context.Context,
 	ethClient extethclient.EthClient,
-	swapContract *contracts.SwapFactory,
+	swapContract *contracts.SwapCreator,
 	erc20Contract *contracts.IERC20,
 ) Sender {
 	return &privateKeySender{
@@ -63,7 +63,7 @@ func NewSenderWithPrivateKey(
 	}
 }
 
-func (s *privateKeySender) SetContract(contract *contracts.SwapFactory) {
+func (s *privateKeySender) SetContract(contract *contracts.SwapCreator) {
 	s.swapContract = contract
 }
 
@@ -132,7 +132,7 @@ func (s *privateKeySender) NewSwap(
 	return receipt, nil
 }
 
-func (s *privateKeySender) SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Receipt, error) {
+func (s *privateKeySender) SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
@@ -156,7 +156,7 @@ func (s *privateKeySender) SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.
 }
 
 func (s *privateKeySender) Claim(
-	swap *contracts.SwapFactorySwap,
+	swap *contracts.SwapCreatorSwap,
 	secret [32]byte,
 ) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
@@ -182,7 +182,7 @@ func (s *privateKeySender) Claim(
 }
 
 func (s *privateKeySender) Refund(
-	swap *contracts.SwapFactorySwap,
+	swap *contracts.SwapCreatorSwap,
 	secret [32]byte,
 ) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()

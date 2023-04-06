@@ -1,6 +1,3 @@
-// Copyright 2023 Athanor Labs (ON)
-// SPDX-License-Identifier: LGPL-3.0-only
-
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
@@ -29,6 +26,7 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
+	_ = abi.ConvertType
 )
 
 // AggregatorV3InterfaceMetaData contains all meta data concerning the AggregatorV3Interface contract.
@@ -137,11 +135,11 @@ func NewAggregatorV3InterfaceFilterer(address common.Address, filterer bind.Cont
 
 // bindAggregatorV3Interface binds a generic wrapper to an already deployed contract.
 func bindAggregatorV3Interface(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(AggregatorV3InterfaceABI))
+	parsed, err := AggregatorV3InterfaceMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and

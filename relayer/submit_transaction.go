@@ -33,12 +33,12 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 
-	reqSwapFactory, err := contracts.NewSwapFactory(req.SwapFactoryAddress, ec.Raw())
+	reqSwapCreator, err := contracts.NewSwapCreator(req.SwapCreatorAddr, ec.Raw())
 	if err != nil {
 		return nil, err
 	}
 
-	reqForwarderAddr, err := reqSwapFactory.TrustedForwarder(&bind.CallOpts{Context: ctx})
+	reqForwarderAddr, err := reqSwapCreator.TrustedForwarder(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func ValidateAndSendTransaction(
 	// The size of request.Secret was vetted when it was deserialized
 	secret := (*[32]byte)(req.Secret)
 
-	forwarderReq, err := createForwarderRequest(nonce, req.SwapFactoryAddress, req.Swap, secret)
+	forwarderReq, err := createForwarderRequest(nonce, req.SwapCreatorAddr, req.Swap, secret)
 	if err != nil {
 		return nil, err
 	}

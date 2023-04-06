@@ -12,7 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
-// swap is the same as the auto-generated SwapFactorySwap type, but with some type
+// swap is the same as the auto-generated SwapCreatorSwap type, but with some type
 // adjustments and annotations for JSON marshalling.
 type swap struct {
 	Owner        common.Address `json:"owner" validate:"required"`
@@ -26,8 +26,8 @@ type swap struct {
 	Nonce        *big.Int       `json:"nonce" validate:"required"`
 }
 
-// MarshalJSON provides JSON marshalling for SwapFactorySwap
-func (sfs *SwapFactorySwap) MarshalJSON() ([]byte, error) {
+// MarshalJSON provides JSON marshalling for SwapCreatorSwap
+func (sfs *SwapCreatorSwap) MarshalJSON() ([]byte, error) {
 	return vjson.MarshalStruct(&swap{
 		Owner:        sfs.Owner,
 		Claimer:      sfs.Claimer,
@@ -41,13 +41,13 @@ func (sfs *SwapFactorySwap) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON provides JSON unmarshalling for SwapFactorySwap
-func (sfs *SwapFactorySwap) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON provides JSON unmarshalling for SwapCreatorSwap
+func (sfs *SwapCreatorSwap) UnmarshalJSON(data []byte) error {
 	s := &swap{}
 	if err := vjson.UnmarshalStruct(data, s); err != nil {
 		return err
 	}
-	*sfs = SwapFactorySwap{
+	*sfs = SwapCreatorSwap{
 		Owner:        s.Owner,
 		Claimer:      s.Claimer,
 		PubKeyClaim:  s.PubKeyClaim,

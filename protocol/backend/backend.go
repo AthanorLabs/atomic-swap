@@ -64,15 +64,15 @@ type Backend interface {
 	NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error)
 
 	// helpers
-	NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error)
+	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
 	HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
 
 	// getters
 	Ctx() context.Context
 	Env() common.Environment
 	SwapManager() swap.Manager
-	Contract() *contracts.SwapFactory
-	ContractAddr() ethcommon.Address
+	SwapCreator() *contracts.SwapCreator
+	SwapCreatorAddr() ethcommon.Address
 	SwapTimeout() time.Duration
 	XMRDepositAddress(offerID *types.Hash) *mcrypto.Address
 
@@ -100,10 +100,10 @@ type backend struct {
 	perSwapXMRDepositAddrRWMu sync.RWMutex
 	perSwapXMRDepositAddr     map[types.Hash]*mcrypto.Address
 
-	// swap contract
-	contract     *contracts.SwapFactory
-	contractAddr ethcommon.Address
-	swapTimeout  time.Duration
+	// swap swapCreator
+	swapCreator     *contracts.SwapCreator
+	swapCreatorAddr ethcommon.Address
+	swapTimeout     time.Duration
 
 	// network interface
 	NetSender
@@ -111,23 +111,23 @@ type backend struct {
 
 // Config is the config for the Backend
 type Config struct {
-	Ctx                context.Context
-	MoneroClient       monero.WalletClient
-	EthereumClient     extethclient.EthClient
-	Environment        common.Environment
-	SwapFactoryAddress ethcommon.Address
-	SwapManager        swap.Manager
-	RecoveryDB         RecoveryDB
-	Net                NetSender
+	Ctx             context.Context
+	MoneroClient    monero.WalletClient
+	EthereumClient  extethclient.EthClient
+	Environment     common.Environment
+	SwapCreatorAddr ethcommon.Address
+	SwapManager     swap.Manager
+	RecoveryDB      RecoveryDB
+	Net             NetSender
 }
 
 // NewBackend returns a new Backend
 func NewBackend(cfg *Config) (Backend, error) {
-	if (cfg.SwapFactoryAddress == ethcommon.Address{}) {
+	if (cfg.SwapCreatorAddr == ethcommon.Address{}) {
 		return nil, errNilSwapContractOrAddress
 	}
 
-	swapFactory, err := contracts.NewSwapFactory(cfg.SwapFactoryAddress, cfg.EthereumClient.Raw())
+	swapCreator, err := contracts.NewSwapCreator(cfg.SwapCreatorAddr, cfg.EthereumClient.Raw())
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +137,8 @@ func NewBackend(cfg *Config) (Backend, error) {
 		env:                   cfg.Environment,
 		moneroWallet:          cfg.MoneroClient,
 		ethClient:             cfg.EthereumClient,
-		contract:              swapFactory,
-		contractAddr:          cfg.SwapFactoryAddress,
+		swapCreator:           swapCreator,
+		swapCreatorAddr:       cfg.SwapCreatorAddr,
 		swapManager:           cfg.SwapManager,
 		swapTimeout:           common.SwapTimeoutFromEnv(cfg.Environment),
 		NetSender:             cfg.Net,
@@ -157,22 +157,22 @@ func (b *backend) ETHClient() extethclient.EthClient {
 
 func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.IERC20) (txsender.Sender, error) {
 	if !b.ethClient.HasPrivateKey() {
-		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient.Raw(), b.contractAddr, asset)
+		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient.Raw(), b.swapCreatorAddr, asset)
 	}
 
-	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETHClient(), b.contract, erc20Contract), nil
+	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETHClient(), b.swapCreator, erc20Contract), nil
 }
 
 func (b *backend) RecoveryDB() RecoveryDB {
 	return b.recoveryDB
 }
 
-func (b *backend) Contract() *contracts.SwapFactory {
-	return b.contract
+func (b *backend) SwapCreator() *contracts.SwapCreator {
+	return b.swapCreator
 }
 
-func (b *backend) ContractAddr() ethcommon.Address {
-	return b.contractAddr
+func (b *backend) SwapCreatorAddr() ethcommon.Address {
+	return b.swapCreatorAddr
 }
 
 func (b *backend) Ctx() context.Context {
@@ -197,8 +197,8 @@ func (b *backend) SetSwapTimeout(timeout time.Duration) {
 	b.swapTimeout = timeout
 }
 
-func (b *backend) NewSwapFactory(addr ethcommon.Address) (*contracts.SwapFactory, error) {
-	return contracts.NewSwapFactory(addr, b.ethClient.Raw())
+func (b *backend) NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error) {
+	return contracts.NewSwapCreator(addr, b.ethClient.Raw())
 }
 
 // XMRDepositAddress returns the per-swap override deposit address, if a
@@ -258,6 +258,6 @@ func (b *backend) HandleRelayClaimRequest(request *message.RelayClaimRequest) (*
 		b.Ctx(),
 		request,
 		b.ETHClient(),
-		b.ContractAddr(),
+		b.SwapCreatorAddr(),
 	)
 }

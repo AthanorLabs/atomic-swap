@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"os"
 	"testing"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -20,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// deployContract is a test helper that deploys the SwapFactory contract and returns the
+// deployContract is a test helper that deploys the SwapCreator contract and returns the
 // deployed address
 func deployContract(
 	t *testing.T,
@@ -29,7 +30,7 @@ func deployContract(
 	trustedForwarder ethcommon.Address,
 ) ethcommon.Address {
 	ctx := context.Background()
-	contractAddr, _, err := DeploySwapFactoryWithKey(ctx, ec, pk, trustedForwarder)
+	contractAddr, _, err := DeploySwapCreatorWithKey(ctx, ec, pk, trustedForwarder)
 	require.NoError(t, err)
 	return contractAddr
 }
@@ -40,7 +41,7 @@ func deployForwarder(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) e
 	return addr
 }
 
-// getContractCode is a test helper that deploys the swap factory contract to read back
+// getContractCode is a test helper that deploys the swap creator contract to read back
 // and return the finalised byte code post deployment.
 func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 	ec, _ := tests.NewEthClient(t)
@@ -59,20 +60,20 @@ func TestCheckForwarderContractCode(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// This test will fail if the compiled SwapFactory contract is updated, but the
-// expectedSwapFactoryBytecodeHex constant is not updated. Use this test to update the
+// This test will fail if the compiled SwapCreator contract is updated, but the
+// expectedSwapCreatorBytecodeHex constant is not updated. Use this test to update the
 // constant.
-func TestExpectedSwapFactoryBytecodeHex(t *testing.T) {
+func TestExpectedSwapCreatorBytecodeHex(t *testing.T) {
 	allZeroTrustedForwarder := ethcommon.Address{}
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t, allZeroTrustedForwarder))
-	require.Equal(t, expectedSwapFactoryBytecodeHex, codeHex,
-		"update the expectedSwapFactoryBytecodeHex constant with the actual value to fix this test")
+	require.Equal(t, expectedSwapCreatorBytecodeHex, codeHex,
+		"update the expectedSwapCreatorBytecodeHex constant with the actual value to fix this test")
 }
 
-// This test will fail if the compiled SwapFactory contract is updated, but the
-// forwarderAddressIndexes slice of trusted forwarder locations is not updated. Use this
-// test to update the slice.
-func TestForwarderAddressIndexes(t *testing.T) {
+// This test will fail if the compiled SwapCreator contract is updated, but the
+// forwarderAddrIndexes slice of trusted forwarder locations is not updated. Use
+// this test to update the slice.
+func TestForwarderAddrIndexes(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
 	trustedForwarder := deployForwarder(t, ec, pk)
@@ -86,65 +87,67 @@ func TestForwarderAddressIndexes(t *testing.T) {
 		}
 	}
 
-	t.Logf("forwarderAddressIndexes: %v", addressLocations)
-	require.EqualValues(t, forwarderAddressIndices, addressLocations,
-		"update forwarderAddressIndexes with above logged indexes to fix this test")
+	t.Logf("forwarderAddrIndexes: %v", addressLocations)
+	require.EqualValues(t, forwarderAddrIndices, addressLocations,
+		"update forwarderAddrIndexes with above logged indexes to fix this test")
 }
 
-// Ensure that we correctly verify the SwapFactory contract when initialised with
+// Ensure that we correctly verify the SwapCreator contract when initialised with
 // different trusted forwarder addresses.
-func TestCheckSwapFactoryContractCode(t *testing.T) {
+func TestCheckSwapCreatorContractCode(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	trustedForwarderAddresses := []string{
+	trustedForwarderAddrs := []string{
 		deployForwarder(t, ec, pk).Hex(),
 		deployForwarder(t, ec, pk).Hex(),
 		deployForwarder(t, ec, pk).Hex(),
 	}
 
-	for _, addrHex := range trustedForwarderAddresses {
+	for _, addrHex := range trustedForwarderAddrs {
 		tfAddr := ethcommon.HexToAddress(addrHex)
 		contractAddr := deployContract(t, ec, pk, tfAddr)
-		parsedTFAddr, err := CheckSwapFactoryContractCode(context.Background(), ec, contractAddr)
+		parsedTFAddr, err := CheckSwapCreatorContractCode(context.Background(), ec, contractAddr)
 		require.NoError(t, err)
 		require.Equal(t, addrHex, parsedTFAddr.Hex())
 	}
 }
 
 // Tests that we fail when the wrong contract byte code is found
-func TestCheckSwapFactoryContractCode_fail(t *testing.T) {
+func TestCheckSwapCreatorContractCode_fail(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
 
-	// Deploy a forwarder contract and then try to verify it as SwapFactory contract
+	// Deploy a forwarder contract and then try to verify it as SwapCreator contract
 	contractAddr := deployForwarder(t, ec, pk)
-	_, err := CheckSwapFactoryContractCode(context.Background(), ec, contractAddr)
-	require.ErrorIs(t, err, errInvalidSwapContract)
+	_, err := CheckSwapCreatorContractCode(context.Background(), ec, contractAddr)
+	require.ErrorIs(t, err, errInvalidSwapCreatorContract)
 }
 
 func TestSepoliaContract(t *testing.T) {
-	// comment out the next line to test the default sepolia contract
-	t.Skip("requires access to non-vetted external sepolia node")
-	const sepoliaEndpoint = "https://rpc.sepolia.org/"
+	endpoint := os.Getenv("ETH_SEPOLIA_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "https://rpc.sepolia.org/"
+	}
+
 	// temporarily place a funded sepolia private key below to deploy the test contract
 	const sepoliaKey = ""
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(sepoliaEndpoint)
+	ec, err := ethclient.Dial(endpoint)
 	require.NoError(t, err)
 	defer ec.Close()
 
-	parsedTFAddr, err := CheckSwapFactoryContractCode(ctx, ec, common.StagenetConfig().SwapFactoryAddress)
-	if errors.Is(err, errInvalidSwapContract) && sepoliaKey != "" {
+	parsedTFAddr, err := CheckSwapCreatorContractCode(ctx, ec, common.StagenetConfig().SwapCreatorAddr)
+	if errors.Is(err, errInvalidSwapCreatorContract) && sepoliaKey != "" {
 		pk, err := ethcrypto.HexToECDSA(sepoliaKey) //nolint:govet // shadow declaration of err
 		require.NoError(t, err)
 		forwarderAddr := deployForwarder(t, ec, pk)
-		sfAddr, _, err := DeploySwapFactoryWithKey(context.Background(), ec, pk, forwarderAddr)
+		sfAddr, _, err := DeploySwapCreatorWithKey(context.Background(), ec, pk, forwarderAddr)
 		require.NoError(t, err)
-		t.Logf("New Sepolia SwapFactory deployed with TrustedForwarder=%s", forwarderAddr)
+		t.Logf("New Sepolia SwapCreator deployed with TrustedForwarder=%s", forwarderAddr)
 		t.Fatalf("Update common.StagenetConfig.ContractAddress with %s", sfAddr.Hex())
 	} else {
 		require.NoError(t, err)
-		t.Logf("Sepolia SwapFactory deployed with TrustedForwarder=%s", parsedTFAddr.Hex())
+		t.Logf("Sepolia SwapCreator deployed with TrustedForwarder=%s", parsedTFAddr.Hex())
 	}
 }

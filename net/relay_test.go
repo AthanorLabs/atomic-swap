@@ -60,8 +60,8 @@ func createTestClaimRequest() *message.RelayClaimRequest {
 	sig := [65]byte{0x1}
 
 	req := &message.RelayClaimRequest{
-		SwapFactoryAddress: ethcommon.Address{0x1},
-		Swap: &contracts.SwapFactorySwap{
+		SwapCreatorAddr: ethcommon.Address{0x1},
+		Swap: &contracts.SwapCreatorSwap{
 			Owner:        ethcommon.Address{0x1},
 			Claimer:      ethcommon.Address{0x1},
 			PubKeyClaim:  [32]byte{0x1},

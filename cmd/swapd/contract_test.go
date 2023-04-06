@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
+func TestGetOrDeploySwapCreator_DeployNoForwarder(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
 	tmpDir := t.TempDir()
@@ -24,7 +24,7 @@ func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec.Raw(), pk)
 	require.NoError(t, err)
 
-	_, err = getOrDeploySwapFactory(
+	_, err = getOrDeploySwapCreator(
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
@@ -35,12 +35,12 @@ func TestGetOrDeploySwapFactory_DeployNoForwarder(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGetOrDeploySwapFactory_DeployForwarderAlso(t *testing.T) {
+func TestGetOrDeploySwapCreator_DeployForwarderAlso(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
 	tmpDir := t.TempDir()
 
-	_, err := getOrDeploySwapFactory(
+	_, err := getOrDeploySwapCreator(
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
@@ -51,7 +51,7 @@ func TestGetOrDeploySwapFactory_DeployForwarderAlso(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGetOrDeploySwapFactory_Get(t *testing.T) {
+func TestGetOrDeploySwapCreator_Get(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
 	tmpDir := t.TempDir()
@@ -61,7 +61,7 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 	t.Log(forwarder)
 
 	// deploy and get address
-	address, err := getOrDeploySwapFactory(
+	address, err := getOrDeploySwapCreator(
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
@@ -71,7 +71,7 @@ func TestGetOrDeploySwapFactory_Get(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	addr2, err := getOrDeploySwapFactory(
+	addr2, err := getOrDeploySwapCreator(
 		context.Background(),
 		address,
 		common.Development,

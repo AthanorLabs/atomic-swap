@@ -117,7 +117,7 @@ func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (
 		s.ctx,
 		s.ETHClient().Raw(),
 		response.TxHash,
-		s.contractAddr,
+		s.swapCreatorAddr,
 		s.contractSwapID,
 		s.getSecret(),
 	)
@@ -159,7 +159,7 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 			s.ctx,
 			s.ETHClient().Raw(),
 			resp.TxHash,
-			s.contractAddr,
+			s.swapCreatorAddr,
 			s.contractSwapID,
 			s.getSecret(),
 		)
@@ -183,7 +183,7 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 // operations more generally. Note that the receipt returned is for a
 // transaction created by the remote relayer, not by us.
 func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
-	forwarderAddress, err := s.Contract().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
+	forwarderAddr, err := s.SwapCreator().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +194,8 @@ func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 		s.ctx,
 		s.ETHClient().PrivateKey(),
 		s.ETHClient().Raw(),
-		s.contractAddr,
-		forwarderAddress,
+		s.swapCreatorAddr,
+		forwarderAddr,
 		s.contractSwap,
 		&secret,
 	)

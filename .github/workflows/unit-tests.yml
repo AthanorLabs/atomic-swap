@@ -59,6 +59,7 @@ jobs:
       - name: Run unit tests
         env:
           ETH_MAINNET_ENDPOINT: ${{ secrets.ETH_MAINNET_ENDPOINT }}
+          ETH_SEPOLIA_ENDPOINT: ${{ secrets.ETH_SEPOLIA_ENDPOINT }}
         run: ./scripts/run-unit-tests.sh
 
       - name: Upload code coverage

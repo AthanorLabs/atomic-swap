@@ -15,7 +15,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
-func TestSwapFactory_NewSwap_ERC20(t *testing.T) {
+func TestSwapCreator_NewSwap_ERC20(t *testing.T) {
 	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
@@ -30,7 +30,7 @@ func TestSwapFactory_NewSwap_ERC20(t *testing.T) {
 	testNewSwap(t, erc20Addr)
 }
 
-func TestSwapFactory_Claim_ERC20(t *testing.T) {
+func TestSwapCreator_Claim_ERC20(t *testing.T) {
 	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
@@ -48,7 +48,7 @@ func TestSwapFactory_Claim_ERC20(t *testing.T) {
 	testClaim(t, erc20Addr, 2, big.NewInt(99), erc20Contract)
 }
 
-func TestSwapFactory_RefundBeforeT0_ERC20(t *testing.T) {
+func TestSwapCreator_RefundBeforeT0_ERC20(t *testing.T) {
 	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
@@ -62,7 +62,7 @@ func TestSwapFactory_RefundBeforeT0_ERC20(t *testing.T) {
 	testRefundBeforeT0(t, erc20Addr, 2)
 }
 
-func TestSwapFactory_RefundAfterT1_ERC20(t *testing.T) {
+func TestSwapCreator_RefundAfterT1_ERC20(t *testing.T) {
 	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
