@@ -6,6 +6,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"time"
 
@@ -13,12 +14,16 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	logging "github.com/ipfs/go-log"
 )
 
-var (
-	log                   = logging.Logger("ethereum/watcher")
+const (
 	checkForBlocksTimeout = time.Second
+)
+
+var (
+	log = logging.Logger("ethereum/watcher")
 )
 
 // EventFilter filters the chain for specific events (logs).
@@ -70,6 +75,9 @@ func (f *EventFilter) Start() error {
 			currHeader, err := f.ec.HeaderByNumber(f.ctx, nil)
 			if err != nil {
 				log.Errorf("failed to get header in event watcher: %s", err)
+				if errors.Is(err, ethrpc.ErrClientQuit) {
+					return // non-recoverable error
+				}
 				continue
 			}
 

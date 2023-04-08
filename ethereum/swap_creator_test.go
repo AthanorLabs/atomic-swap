@@ -211,11 +211,15 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with claim key hash
-	auth, conn, pkA := setupXMRTakerAuth(t)
+	authOrig, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	swapCreatorAddr, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	// TODO: Rewrite this code to avoid the awkward use of txOpts. Code was using
+	//       same TxOpts for multiple transactions and we needed a quick fix to get
+	//       CI working.
+	txOpts := *authOrig
+	swapCreatorAddr, tx, contract, err := DeploySwapCreator(&txOpts, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -223,7 +227,8 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 
 	if asset != ethAssetAddress {
 		require.NotNil(t, erc20Contract)
-		tx, err = erc20Contract.Approve(auth, swapCreatorAddr, value)
+		txOpts = *authOrig
+		tx, err = erc20Contract.Approve(&txOpts, swapCreatorAddr, value)
 		require.NoError(t, err)
 		receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 		require.NoError(t, err)
@@ -231,17 +236,17 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	}
 
 	nonce := big.NewInt(0)
+	txOpts = *authOrig
 	if asset == ethAssetAddress {
-		auth.Value = value
+		txOpts.Value = value
 	}
 
-	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
+	tx, err = contract.NewSwap(&txOpts, cmt, [32]byte{}, addr,
 		defaultTimeoutDuration, defaultTimeoutDuration, asset, value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
-	auth.Value = big.NewInt(0)
 
 	require.Equal(t, newLogIndex+1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
@@ -263,7 +268,8 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	}
 
 	// set contract to Ready
-	tx, err = contract.SetReady(auth, swap)
+	txOpts = *authOrig
+	tx, err = contract.SetReady(&txOpts, swap)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
@@ -273,7 +279,8 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	var s [32]byte
 	secret := proof.Secret()
 	copy(s[:], secret[:])
-	tx, err = contract.Claim(auth, swap, s)
+	txOpts = *authOrig
+	tx, err = contract.Claim(&txOpts, swap, s)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)

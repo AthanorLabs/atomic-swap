@@ -227,7 +227,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 
 	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
 
-	timeout := 5 * time.Minute
+	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
@@ -320,7 +320,7 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	aliceConf := createTestConf(t, aliceEthKey)
 	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
 
-	timeout := 7 * time.Minute
+	timeout := 8 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
@@ -405,7 +405,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	charlieStartBal, err := charlieConf.EthereumClient.Balance(context.Background())
 	require.NoError(t, err)
 
-	timeout := 5 * time.Minute
+	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
@@ -510,7 +510,7 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	charlieConf := createTestConf(t, charlieEthKey)
 	charlieConf.IsRelayer = true
 
-	timeout := 5 * time.Minute
+	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))

@@ -108,7 +108,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:             context.Background(),
+		Ctx:             ctx,
 		MoneroClient:    monero.CreateWalletClient(t),
 		EthereumClient:  ec,
 		Environment:     common.Development,

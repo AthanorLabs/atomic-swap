@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"os"
 	"testing"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -124,7 +123,8 @@ func TestCheckSwapCreatorContractCode_fail(t *testing.T) {
 }
 
 func TestSepoliaContract(t *testing.T) {
-	endpoint := os.Getenv("ETH_SEPOLIA_ENDPOINT")
+	// TODO: CI's ETH_SEPOLIA_ENDPOINT is giving 404 errors
+	endpoint := "" // os.Getenv("ETH_SEPOLIA_ENDPOINT")
 	if endpoint == "" {
 		endpoint = "https://rpc.sepolia.org/"
 	}
