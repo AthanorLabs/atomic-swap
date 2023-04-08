@@ -100,7 +100,7 @@ type backend struct {
 	perSwapXMRDepositAddrRWMu sync.RWMutex
 	perSwapXMRDepositAddr     map[types.Hash]*mcrypto.Address
 
-	// swap swapCreator
+	// swap contract
 	swapCreator     *contracts.SwapCreator
 	swapCreatorAddr ethcommon.Address
 	swapTimeout     time.Duration
