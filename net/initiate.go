@@ -66,8 +66,36 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 		isTaker:   true,
 	}
 
-	go h.handleProtocolStreamInner(stream, s)
+	go h.receiveInitiateResponse(stream, s)
 	return nil
+}
+
+func (h *Host) receiveInitiateResponse(stream libp2pnetwork.Stream, s SwapState) {
+	defer h.handleProtocolStreamClose(stream, s)
+
+	const initiateResponseTimeout = time.Minute
+
+	select {
+	case msg := <-nextStreamMessage(stream, maxMessageSize):
+		if msg == nil {
+			log.Errorf("failed to read initial SendKeysMessage response")
+			return
+		}
+
+		log.Debugf("received protocol=%s message from peer=%s type=%s",
+			stream.Protocol(), stream.Conn().RemotePeer(), message.TypeToString(msg.Type()))
+
+		err := s.HandleProtocolMessage(msg)
+		if err != nil {
+			log.Warnf("failed to handle protocol message: err=%s", err)
+			return
+		}
+	case <-time.After(initiateResponseTimeout):
+		log.Errorf("timed out waiting for SendKeysMessage response")
+		return
+	}
+
+	h.handleProtocolStreamInner(stream, s)
 }
 
 // handleProtocolStream is called when there is an incoming protocol stream.
@@ -129,18 +157,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
 func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
-	defer func() {
-		log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
-		_ = stream.Close()
-
-		log.Debugf("exiting swap...")
-		if err := s.Exit(); err != nil {
-			log.Errorf("failed to exit protocol: err=%s", err)
-		}
-		h.swapMu.Lock()
-		delete(h.swaps, s.OfferID())
-		h.swapMu.Unlock()
-	}()
+	defer h.handleProtocolStreamClose(stream, s)
 
 	for {
 		msg, err := readStreamMessage(stream, maxMessageSize)
@@ -163,4 +180,17 @@ func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 			return
 		}
 	}
+}
+
+func (h *Host) handleProtocolStreamClose(stream libp2pnetwork.Stream, s SwapState) {
+	log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
+	_ = stream.Close()
+
+	log.Debugf("exiting swap...")
+	if err := s.Exit(); err != nil {
+		log.Errorf("failed to exit protocol: err=%s", err)
+	}
+	h.swapMu.Lock()
+	delete(h.swaps, s.OfferID())
+	h.swapMu.Unlock()
 }
