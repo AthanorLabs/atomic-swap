@@ -20,14 +20,14 @@ import (
 
 var log = logging.Logger("contracts")
 
-// DeploySwapFactoryWithKey deploys the SwapFactory contract using the passed privKey to
+// DeploySwapCreatorWithKey deploys the SwapCreator contract using the passed privKey to
 // pay for the gas.
-func DeploySwapFactoryWithKey(
+func DeploySwapCreatorWithKey(
 	ctx context.Context,
 	ec *ethclient.Client,
 	privKey *ecdsa.PrivateKey,
 	forwarderAddr ethcommon.Address,
-) (ethcommon.Address, *SwapFactory, error) {
+) (ethcommon.Address, *SwapCreator, error) {
 
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
@@ -36,13 +36,13 @@ func DeploySwapFactoryWithKey(
 
 	if (forwarderAddr != ethcommon.Address{}) {
 		if err = registerDomainSeparatorIfNeeded(ctx, ec, privKey, forwarderAddr); err != nil {
-			return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap factory: %w", err)
+			return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap creator: %w", err)
 		}
 	}
 
-	address, tx, sf, err := DeploySwapFactory(txOpts, ec, forwarderAddr)
+	address, tx, sf, err := DeploySwapCreator(txOpts, ec, forwarderAddr)
 	if err != nil {
-		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap factory: %w", err)
+		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap creator: %w", err)
 	}
 
 	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
@@ -50,7 +50,7 @@ func DeploySwapFactoryWithKey(
 		return ethcommon.Address{}, nil, err
 	}
 
-	log.Infof("deployed SwapFactory.sol: address=%s tx hash=%s", address, tx.Hash())
+	log.Infof("deployed SwapCreator.sol: address=%s tx hash=%s", address, tx.Hash())
 
 	return address, sf, nil
 }

@@ -106,9 +106,9 @@ start-daemons() {
 		exit 1
 	fi
 
-	SWAP_FACTORY_ADDR="$(jq -r .swapFactory "${CONTRACT_ADDR_FILE}")"
-	FORWARDER_ADDR="$(jq -r .forwarder "${CONTRACT_ADDR_FILE}")"
-	if [[ -z "${SWAP_FACTORY_ADDR}" ]] || [[ -z "${FORWARDER_ADDR}" ]]; then
+	SWAP_CREATOR_ADDR="$(jq -r .swapCreatorAddr "${CONTRACT_ADDR_FILE}")"
+	FORWARDER_ADDR="$(jq -r .forwarderAddr "${CONTRACT_ADDR_FILE}")"
+	if [[ -z "${SWAP_CREATOR_ADDR}" ]] || [[ -z "${FORWARDER_ADDR}" ]]; then
 		echo "Failed to get Alice's deployed contract addresses"
 		stop-daemons
 		exit 1
@@ -120,14 +120,14 @@ start-daemons() {
 		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
 		--libp2p-port=9944 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${SWAP_FACTORY_ADDR}"
+		"--contract-address=${SWAP_CREATOR_ADDR}"
 
 	start-swapd charlie "${CHARLIE_RPC_PORT}" \
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${SWAP_FACTORY_ADDR}" \
+		"--contract-address=${SWAP_CREATOR_ADDR}" \
 		"--relayer"
 }
 
@@ -143,7 +143,7 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${SWAP_FACTORY_ADDR} go test ./tests -v -count=1 -timeout=30m
+TESTS=integration CONTRACT_ADDR=${SWAP_CREATOR_ADDR} go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 

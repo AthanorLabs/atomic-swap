@@ -120,6 +120,10 @@ func (s *Server) WsURL() string {
 
 // Start starts the JSON-RPC and Websocket server.
 func (s *Server) Start() error {
+	if s.ctx.Err() != nil {
+		return s.ctx.Err()
+	}
+
 	log.Infof("Starting RPC server on %s", s.HttpURL())
 	log.Infof("Starting websockets server on %s", s.WsURL())
 

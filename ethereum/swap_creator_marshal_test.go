@@ -17,8 +17,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
-func TestSwapFactorySwap_JSON(t *testing.T) {
-	sf := &SwapFactorySwap{
+func TestSwapCreatorSwap_JSON(t *testing.T) {
+	sf := &SwapCreatorSwap{
 		Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 		Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 		PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),
@@ -44,7 +44,7 @@ func TestSwapFactorySwap_JSON(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, expectedJSON, string(jsonData))
 
-	sf2 := &SwapFactorySwap{}
+	sf2 := &SwapCreatorSwap{}
 	err = json.Unmarshal(jsonData, sf2)
 	require.NoError(t, err)
 	require.EqualValues(t, sf, sf2)
@@ -52,8 +52,8 @@ func TestSwapFactorySwap_JSON(t *testing.T) {
 
 // Ensure that our serializable swap type has the same number of fields as the original
 // generated type.
-func TestSwapFactorySwap_JSON_fieldCountEqual(t *testing.T) {
+func TestSwapCreatorSwap_JSON_fieldCountEqual(t *testing.T) {
 	numSwapFields := reflect.TypeOf(swap{}).NumField()
-	numSwapFactorySwapFields := reflect.TypeOf(SwapFactorySwap{}).NumField()
-	require.Equal(t, numSwapFactorySwapFields, numSwapFields)
+	numSwapCreatorSwapFields := reflect.TypeOf(SwapCreatorSwap{}).NumField()
+	require.Equal(t, numSwapCreatorSwapFields, numSwapFields)
 }

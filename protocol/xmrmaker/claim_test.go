@@ -84,7 +84,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// deploy forwarder
-	forwarderAddress, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, ec.Raw())
+	forwarderAddr, tx, forwarderContract, err := gsnforwarder.DeployForwarder(txOpts, ec.Raw())
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
@@ -97,11 +97,11 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t.Logf("gas cost to call RegisterDomainSeparator: %d", receipt.GasUsed)
 
 	// deploy swap contract with claim key hash
-	contractAddr, tx, contract, err := contracts.DeploySwapFactory(txOpts, ec.Raw(), forwarderAddress)
+	contractAddr, tx, contract, err := contracts.DeploySwapCreator(txOpts, ec.Raw(), forwarderAddr)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	if asset != types.EthAssetETH {
 		token, err := contracts.NewIERC20(asset.Address(), ec.Raw()) //nolint:govet
@@ -141,7 +141,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[logIndex])
 	require.NoError(t, err)
 
-	swap := &contracts.SwapFactorySwap{
+	swap := &contracts.SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
@@ -168,7 +168,7 @@ func testSwapStateClaimRelayer(t *testing.T, sk *ecdsa.PrivateKey, asset types.E
 		sk,
 		ec.Raw(),
 		contractAddr,
-		forwarderAddress,
+		forwarderAddr,
 		swap,
 		&secret,
 	)

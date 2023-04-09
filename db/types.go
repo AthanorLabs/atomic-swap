@@ -20,12 +20,12 @@ type EthereumSwapInfo struct {
 
 	// SwapID is the swap ID used by the swap contract; not the same as the
 	// swap/offer ID used by swapd. It's the hash of the ABI encoded
-	// `contracts.SwapFactorySwap` struct.
+	// `contracts.SwapCreatorSwap` struct.
 	SwapID types.Hash `json:"swapID" validate:"required"`
 
-	// Swap is the `Swap` structure inside SwapFactory.sol.
-	Swap *contracts.SwapFactorySwap `json:"swap" validate:"required"`
+	// Swap is the `Swap` structure inside SwapCreator.sol.
+	Swap *contracts.SwapCreatorSwap `json:"swap" validate:"required"`
 
-	// ContractAddress is the address of the contract on which the swap was created.
-	ContractAddress ethcommon.Address `json:"contractAddress" validate:"required"`
+	// SwapCreatorAddr is the address of the contract on which the swap was created.
+	SwapCreatorAddr ethcommon.Address `json:"swapCreatorAddr" validate:"required"`
 }

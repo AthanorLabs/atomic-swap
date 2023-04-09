@@ -21,7 +21,7 @@ import (
 )
 
 // Swap stage values that match the names and indexes of the Stage enum in
-// the SwapFactory contract
+// the SwapCreator contract
 const (
 	StageInvalid byte = iota
 	StagePending
@@ -30,10 +30,10 @@ const (
 )
 
 var (
-	// SwapFactoryParsedABI is the parsed SwapFactory ABI. We can skip the error check,
+	// SwapCreatorParsedABI is the parsed SwapCreator ABI. We can skip the error check,
 	// as it can only fail if abigen generates JSON bindings that golang can't parse, in
 	// which case it will be nil we'll see panics when vetting the binaries.
-	SwapFactoryParsedABI, _ = SwapFactoryMetaData.GetAbi()
+	SwapCreatorParsedABI, _ = SwapCreatorMetaData.GetAbi()
 
 	claimedTopic  = common.GetTopic(common.ClaimedEventSignature)
 	refundedTopic = common.GetTopic(common.RefundedEventSignature)
@@ -57,7 +57,7 @@ func StageToString(stage byte) string {
 
 // SwapID calculates and returns the same hashed swap identifier that newSwap
 // emits and that is used to track the on-chain stage of a swap.
-func (sfs *SwapFactorySwap) SwapID() types.Hash {
+func (sfs *SwapCreatorSwap) SwapID() types.Hash {
 	uint256Ty, err := abi.NewType("uint256", "", nil)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create uint256 type: %s", err))
@@ -116,7 +116,7 @@ func (sfs *SwapFactorySwap) SwapID() types.Hash {
 	)
 	if err != nil {
 		// As long as none of the *big.Int fields are nil, this cannot fail.
-		// When receiving SwapFactorySwap objects from the database or peers in
+		// When receiving SwapCreatorSwap objects from the database or peers in
 		// JSON, all *big.Int values are pre-validated to be non-nil.
 		panic(fmt.Sprintf("failed to pack arguments: %s", err))
 	}
@@ -130,7 +130,7 @@ func GetSecretFromLog(log *ethtypes.Log, eventTopic [32]byte) (*mcrypto.PrivateS
 		return nil, errors.New("invalid event, must be one of Claimed or Refunded")
 	}
 
-	// abiSF, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
+	// abiSF, err := abi.JSON(strings.NewReader(SwapCreatorMetaData.ABI))
 	// if err != nil {
 	// 	return nil, err
 	// }
@@ -164,7 +164,7 @@ func CheckIfLogIDMatches(log ethtypes.Log, eventTopic, id [32]byte) (bool, error
 		return false, errors.New("invalid event, must be one of Claimed or Refunded")
 	}
 
-	// abi, err := abi.JSON(strings.NewReader(SwapFactoryMetaData.ABI))
+	// abi, err := abi.JSON(strings.NewReader(SwapCreatorMetaData.ABI))
 	// if err != nil {
 	// 	return false, err
 	// }
@@ -189,7 +189,7 @@ func CheckIfLogIDMatches(log ethtypes.Log, eventTopic, id [32]byte) (bool, error
 
 // GetIDFromLog returns the swap ID from a New log.
 func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
-	abi := SwapFactoryParsedABI
+	abi := SwapCreatorParsedABI
 
 	const event = "New"
 	if log.Topics[0] != abi.Events[event].ID {
@@ -213,7 +213,7 @@ func GetIDFromLog(log *ethtypes.Log) ([32]byte, error) {
 
 // GetTimeoutsFromLog returns the timeouts from a New event.
 func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
-	abi := SwapFactoryParsedABI
+	abi := SwapCreatorParsedABI
 
 	const event = "New"
 	if log.Topics[0] != abi.Events[event].ID {

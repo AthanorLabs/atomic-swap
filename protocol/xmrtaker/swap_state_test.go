@@ -90,8 +90,8 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, ec.ChainID())
 	require.NoError(t, err)
 
-	var forwarderAddress ethcommon.Address
-	_, tx, _, err := contracts.DeploySwapFactory(txOpts, ec.Raw(), forwarderAddress)
+	var forwarderAddr ethcommon.Address
+	_, tx, _, err := contracts.DeploySwapCreator(txOpts, ec.Raw(), forwarderAddr)
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(ctx, ec.Raw(), tx)
@@ -108,14 +108,14 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 
 	net := new(mockNet)
 	bcfg := &backend.Config{
-		Ctx:                context.Background(),
-		MoneroClient:       monero.CreateWalletClient(t),
-		EthereumClient:     ec,
-		Environment:        common.Development,
-		SwapManager:        newSwapManager(t),
-		SwapFactoryAddress: addr,
-		Net:                net,
-		RecoveryDB:         rdb,
+		Ctx:             ctx,
+		MoneroClient:    monero.CreateWalletClient(t),
+		EthereumClient:  ec,
+		Environment:     common.Development,
+		SwapManager:     newSwapManager(t),
+		SwapCreatorAddr: addr,
+		Net:             net,
+		RecoveryDB:      rdb,
 	}
 
 	b, err := backend.NewBackend(bcfg)
@@ -241,7 +241,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	}
 
 	// check swap is marked completed
-	stage, err := s.Contract().Swaps(nil, s.contractSwapID)
+	stage, err := s.SwapCreator().Swaps(nil, s.contractSwapID)
 	require.NoError(t, err)
 	require.Equal(t, contracts.StageCompleted, stage)
 }
@@ -329,7 +329,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	}
 
 	// check balance of contract is 0
-	balance, err := s.ETHClient().Raw().BalanceAt(context.Background(), s.ContractAddr(), nil)
+	balance, err := s.ETHClient().Raw().BalanceAt(context.Background(), s.SwapCreatorAddr(), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), balance.Uint64())
 }
@@ -429,7 +429,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 	s, contract := newTestSwapStateWithERC20(t, initialBalance)
 	err := s.approveToken()
 	require.NoError(t, err)
-	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.ContractAddr())
+	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.SwapCreatorAddr())
 	require.NoError(t, err)
 	require.Equal(t, initialBalance, allowance)
 }

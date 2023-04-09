@@ -27,7 +27,7 @@ compile-contract() {
 		--out "ethereum/${go_file_name}.go"
 }
 
-compile-contract SwapFactory SwapFactory swap_factory
+compile-contract SwapCreator SwapCreator swap_creator
 compile-contract ERC20Mock ERC20Mock erc20_mock
 compile-contract IERC20Metadata IERC20 ierc20
 compile-contract AggregatorV3Interface AggregatorV3Interface aggregator_v3_interface

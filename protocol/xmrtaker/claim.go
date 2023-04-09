@@ -38,7 +38,7 @@ func (s *swapState) tryClaim() error {
 
 func (s *swapState) filterForClaim() (*mcrypto.PrivateSpendKey, error) {
 	logs, err := s.ETHClient().Raw().FilterLogs(s.ctx, eth.FilterQuery{
-		Addresses: []ethcommon.Address{s.ContractAddr()},
+		Addresses: []ethcommon.Address{s.SwapCreatorAddr()},
 		Topics:    [][]ethcommon.Hash{{claimedTopic}},
 	})
 	if err != nil {

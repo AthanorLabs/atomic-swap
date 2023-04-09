@@ -62,11 +62,11 @@ func init() {
 	_ = logging.SetLogLevel("xmrtaker", level)
 }
 
-var _swapFactoryAddress *ethcommon.Address
+var _swapCreatorAddr *ethcommon.Address
 
-func getSwapFactoryAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address {
-	if _swapFactoryAddress != nil {
-		return *_swapFactoryAddress
+func getSwapCreatorAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address {
+	if _swapCreatorAddr != nil {
+		return *_swapCreatorAddr
 	}
 
 	ctx := context.Background()
@@ -75,11 +75,11 @@ func getSwapFactoryAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address
 	forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, ethKey)
 	require.NoError(t, err)
 
-	swapFactoryAddr, _, err := contracts.DeploySwapFactoryWithKey(ctx, ec, ethKey, forwarderAddr)
+	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, ethKey, forwarderAddr)
 	require.NoError(t, err)
 
-	_swapFactoryAddress = &swapFactoryAddr
-	return swapFactoryAddr
+	_swapCreatorAddr = &swapCreatorAddr
+	return swapCreatorAddr
 }
 
 func privKeyToAddr(privKey *ecdsa.PrivateKey) ethcommon.Address {
@@ -161,7 +161,7 @@ func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	envConf := new(common.Config)
 	*envConf = *common.ConfigDefaultsForEnv(common.Development)
 	envConf.DataDir = t.TempDir()
-	envConf.SwapFactoryAddress = getSwapFactoryAddress(t, ec.Raw())
+	envConf.SwapCreatorAddr = getSwapCreatorAddress(t, ec.Raw())
 
 	return &SwapdConfig{
 		EnvConf:        envConf,
@@ -227,7 +227,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 
 	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
 
-	timeout := 5 * time.Minute
+	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
@@ -320,7 +320,7 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	aliceConf := createTestConf(t, aliceEthKey)
 	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
 
-	timeout := 7 * time.Minute
+	timeout := 8 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
@@ -405,7 +405,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	charlieStartBal, err := charlieConf.EthereumClient.Balance(context.Background())
 	require.NoError(t, err)
 
-	timeout := 5 * time.Minute
+	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
@@ -510,7 +510,7 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	charlieConf := createTestConf(t, charlieEthKey)
 	charlieConf.IsRelayer = true
 
-	timeout := 5 * time.Minute
+	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))

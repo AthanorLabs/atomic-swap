@@ -68,7 +68,7 @@ func NewExternalSender(
 	return &ExternalSender{
 		ctx:          ctx,
 		ec:           ec,
-		abi:          contracts.SwapFactoryParsedABI,
+		abi:          contracts.SwapCreatorParsedABI,
 		contractAddr: contractAddr,
 		erc20Addr:    erc20Addr,
 		out:          make(chan *Transaction),
@@ -77,7 +77,7 @@ func NewExternalSender(
 }
 
 // SetContract ...
-func (s *ExternalSender) SetContract(_ *contracts.SwapFactory) {}
+func (s *ExternalSender) SetContract(_ *contracts.SwapCreator) {}
 
 // SetContractAddress ...
 func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
@@ -150,7 +150,7 @@ func (s *ExternalSender) NewSwap(
 }
 
 // SetReady prompts the external sender to sign a set_ready transaction
-func (s *ExternalSender) SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Receipt, error) {
+func (s *ExternalSender) SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("set_ready", swap)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func (s *ExternalSender) SetReady(swap *contracts.SwapFactorySwap) (*ethtypes.Re
 
 // Claim prompts the external sender to sign a claim transaction
 func (s *ExternalSender) Claim(
-	swap *contracts.SwapFactorySwap,
+	swap *contracts.SwapCreatorSwap,
 	secret [32]byte,
 ) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("claim", swap, secret)
@@ -174,7 +174,7 @@ func (s *ExternalSender) Claim(
 
 // Refund prompts the external sender to sign a refund transaction
 func (s *ExternalSender) Refund(
-	swap *contracts.SwapFactorySwap,
+	swap *contracts.SwapCreatorSwap,
 	secret [32]byte,
 ) (*ethtypes.Receipt, error) {
 	input, err := s.abi.Pack("refund", swap, secret)

@@ -33,7 +33,7 @@ func validateClaimRequest(
 }
 
 // validateClaimValues validates the non-signature aspects of the claim request:
-//  1. the claim request's swap factory and forwarder contract bytecode matches ours
+//  1. the claim request's swap creator and forwarder contract bytecode matches ours
 //  2. the swap is for ETH and not an ERC20 token
 //  3. the swap value is strictly greater than the relayer fee
 //  4. TODO: Validate that the swap exists and is in a claimable state?
@@ -41,19 +41,19 @@ func validateClaimValues(
 	ctx context.Context,
 	request *message.RelayClaimRequest,
 	ec *ethclient.Client,
-	ourSwapFactoryAddr ethcommon.Address,
+	ourSwapCreatorAddr ethcommon.Address,
 ) error {
 	isTakerRelay := request.OfferID != nil
 
-	// Validate the deployed SwapFactory contract, if it is not at the same address
-	// as our own. The CheckSwapFactoryContractCode method validates both the
-	// SwapFactory bytecode and the Forwarder bytecode.
-	if request.SwapFactoryAddress != ourSwapFactoryAddr {
+	// Validate the deployed SwapCreator contract, if it is not at the same address
+	// as our own. The CheckSwapCreatorContractCode method validates both the
+	// SwapCreator bytecode and the Forwarder bytecode.
+	if request.SwapCreatorAddr != ourSwapCreatorAddr {
 		if isTakerRelay {
-			return fmt.Errorf("taker claim swap factory mismatch found=%s expected=%s",
-				request.SwapFactoryAddress, ourSwapFactoryAddr)
+			return fmt.Errorf("taker claim swap creator mismatch found=%s expected=%s",
+				request.SwapCreatorAddr, ourSwapCreatorAddr)
 		}
-		_, err := contracts.CheckSwapFactoryContractCode(ctx, ec, request.SwapFactoryAddress)
+		_, err := contracts.CheckSwapCreatorContractCode(ctx, ec, request.SwapCreatorAddr)
 		if err != nil {
 			return err
 		}
@@ -85,12 +85,12 @@ func validateClaimSignature(
 		From:    ethcommon.Address{0xFF}, // can be any value but zero, which will validate all signatures
 	}
 
-	swapFactory, err := contracts.NewSwapFactory(request.SwapFactoryAddress, ec)
+	swapCreator, err := contracts.NewSwapCreator(request.SwapCreatorAddr, ec)
 	if err != nil {
 		return err
 	}
 
-	forwarderAddr, err := swapFactory.TrustedForwarder(&bind.CallOpts{Context: ctx})
+	forwarderAddr, err := swapCreator.TrustedForwarder(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func validateClaimSignature(
 
 	forwarderRequest, err := createForwarderRequest(
 		nonce,
-		request.SwapFactoryAddress,
+		request.SwapCreatorAddr,
 		request.Swap,
 		secret,
 	)

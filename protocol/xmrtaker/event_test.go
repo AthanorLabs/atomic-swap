@@ -44,7 +44,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	readyWatcher := watcher.NewEventFilter(
 		s.Backend.Ctx(),
 		s.Backend.ETHClient().Raw(),
-		s.Backend.ContractAddr(),
+		s.Backend.SwapCreatorAddr(),
 		ethHeader.Number,
 		readyTopic,
 		logReadyCh,

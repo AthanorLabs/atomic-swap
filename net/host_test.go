@@ -79,8 +79,14 @@ func (s *mockSwapState) Exit() error {
 func basicTestConfig(t *testing.T) *Config {
 	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
 	tmpDir := t.TempDir()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
 	return &Config{
-		Ctx:        context.Background(),
+		Ctx:        ctx,
 		DataDir:    tmpDir,
 		Port:       0, // OS randomized libp2p port
 		KeyFile:    path.Join(tmpDir, "node.key"),
