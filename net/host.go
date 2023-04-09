@@ -26,7 +26,7 @@ import (
 const (
 	// ProtocolID is the base atomic swap network protocol ID prefix. The full ID
 	// includes the chain ID at the end.
-	ProtocolID          = "/atomic-swap/0.2"
+	ProtocolID          = "/atomic-swap/0.3"
 	maxMessageSize      = 1 << 17
 	maxRelayMessageSize = 2048
 )

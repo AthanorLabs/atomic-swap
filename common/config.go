@@ -33,12 +33,12 @@ type MoneroNode struct {
 
 // Config contains constants that are defaults for various environments
 type Config struct {
-	Env                      Environment
-	DataDir                  string
-	MoneroNodes              []*MoneroNode
-	SwapFactoryAddress       ethcommon.Address
-	ForwarderContractAddress ethcommon.Address
-	Bootnodes                []string
+	Env             Environment
+	DataDir         string
+	MoneroNodes     []*MoneroNode
+	SwapCreatorAddr ethcommon.Address
+	ForwarderAddr   ethcommon.Address
+	Bootnodes       []string
 }
 
 // MainnetConfig is the mainnet ethereum and monero configuration
@@ -86,8 +86,8 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapFactoryAddress:       ethcommon.HexToAddress("0x531BAAceB7939C04ef0DE517557a2f84F5545EFB"),
-		ForwarderContractAddress: ethcommon.HexToAddress("0x8730e444bB1501C23BC3E170405a8EbAFD138000"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x2C3b31E4379ab5B1B0Cb12B37D2B268FEf44d7f0"),
+		ForwarderAddr:   ethcommon.HexToAddress("0xF45e206B38f5901daBf9758fcC2CFce6aEe5B134"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",

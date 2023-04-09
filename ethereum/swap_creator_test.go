@@ -44,7 +44,7 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 
 func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	auth, conn, _ := setupXMRTakerAuth(t)
-	address, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
+	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
 	require.NotNil(t, tx)
@@ -52,7 +52,7 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	owner := auth.From
 	claimer := common.EthereumPrivateKeyToAddress(tests.GetMakerTestKey(t))
@@ -106,7 +106,7 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	require.NoError(t, err)
 
 	// validate that off-chain swapID calculation matches the on-chain value
-	swap := SwapFactorySwap{
+	swap := SwapCreatorSwap{
 		Owner:        owner,
 		Claimer:      claimer,
 		PubKeyClaim:  pubKeyClaim,
@@ -122,11 +122,11 @@ func testNewSwap(t *testing.T, asset ethcommon.Address) {
 	require.Equal(t, types.Hash(swapID).Hex(), swap.SwapID().Hex())
 }
 
-func TestSwapFactory_NewSwap(t *testing.T) {
+func TestSwapCreator_NewSwap(t *testing.T) {
 	testNewSwap(t, ethAssetAddress)
 }
 
-func TestSwapFactory_Claim_vec(t *testing.T) {
+func TestSwapCreator_Claim_vec(t *testing.T) {
 	secret, err := hex.DecodeString("D30519BCAE8D180DBFCC94FE0B8383DC310185B0BE97B4365083EBCECCD75759")
 	require.NoError(t, err)
 	pubX, err := hex.DecodeString("3AF1E1EFA4D1E1AD5CB9E3967E98E901DAFCD37C44CF0BFB6C216997F5EE51DF")
@@ -147,11 +147,11 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr, defaultTimeoutDuration,
@@ -168,7 +168,7 @@ func TestSwapFactory_Claim_vec(t *testing.T) {
 	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	swap := SwapFactorySwap{
+	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
@@ -211,19 +211,24 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with claim key hash
-	auth, conn, pkA := setupXMRTakerAuth(t)
+	authOrig, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	swapFactoryAddress, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
+	// TODO: Rewrite this code to avoid the awkward use of txOpts. Code was using
+	//       same TxOpts for multiple transactions and we needed a quick fix to get
+	//       CI working.
+	txOpts := *authOrig
+	swapCreatorAddr, tx, contract, err := DeploySwapCreator(&txOpts, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	if asset != ethAssetAddress {
 		require.NotNil(t, erc20Contract)
-		tx, err = erc20Contract.Approve(auth, swapFactoryAddress, value)
+		txOpts = *authOrig
+		tx, err = erc20Contract.Approve(&txOpts, swapCreatorAddr, value)
 		require.NoError(t, err)
 		receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 		require.NoError(t, err)
@@ -231,17 +236,17 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	}
 
 	nonce := big.NewInt(0)
+	txOpts = *authOrig
 	if asset == ethAssetAddress {
-		auth.Value = value
+		txOpts.Value = value
 	}
 
-	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr,
+	tx, err = contract.NewSwap(&txOpts, cmt, [32]byte{}, addr,
 		defaultTimeoutDuration, defaultTimeoutDuration, asset, value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
 	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
-	auth.Value = big.NewInt(0)
 
 	require.Equal(t, newLogIndex+1, len(receipt.Logs))
 	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
@@ -250,7 +255,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	swap := SwapFactorySwap{
+	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
@@ -263,7 +268,8 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	}
 
 	// set contract to Ready
-	tx, err = contract.SetReady(auth, swap)
+	txOpts = *authOrig
+	tx, err = contract.SetReady(&txOpts, swap)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
@@ -273,7 +279,8 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	var s [32]byte
 	secret := proof.Secret()
 	copy(s[:], secret[:])
-	tx, err = contract.Claim(auth, swap, s)
+	txOpts = *authOrig
+	tx, err = contract.Claim(&txOpts, swap, s)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -284,7 +291,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwapFactory_Claim_random(t *testing.T) {
+func TestSwapCreator_Claim_random(t *testing.T) {
 	testClaim(t, ethAssetAddress, 0, big.NewInt(0), nil)
 }
 
@@ -304,11 +311,11 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, defaultTimeoutDuration,
@@ -325,7 +332,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	swap := SwapFactorySwap{
+	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  [32]byte{},
@@ -352,7 +359,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, newLogIndex int) 
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwapFactory_Refund_beforeT0(t *testing.T) {
+func TestSwapCreator_Refund_beforeT0(t *testing.T) {
 	testRefundBeforeT0(t, ethAssetAddress, 0)
 }
 
@@ -372,11 +379,11 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	nonce := big.NewInt(0)
 	timeout := big.NewInt(1) // T1 expires before we get the receipt for new_swap TX
@@ -396,7 +403,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 
 	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
 
-	swap := SwapFactorySwap{
+	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  [32]byte{},
@@ -428,11 +435,11 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, newLogIndex int) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwapFactory_Refund_afterT1(t *testing.T) {
+func TestSwapCreator_Refund_afterT1(t *testing.T) {
 	testRefundAfterT1(t, ethAssetAddress, 0)
 }
 
-func TestSwapFactory_MultipleSwaps(t *testing.T) {
+func TestSwapCreator_MultipleSwaps(t *testing.T) {
 	// test case where contract has multiple swaps happening at once
 	conn, chainID := tests.NewEthClient(t)
 
@@ -440,11 +447,11 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(pkContractCreator, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := DeploySwapFactory(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to deploy SwapFactory.sol: %d", receipt.GasUsed)
+	t.Logf("gas cost to deploy SwapCreator.sol: %d", receipt.GasUsed)
 
 	const numSwaps = 16
 	type swapCase struct {
@@ -452,7 +459,7 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 		walletKey *ecdsa.PrivateKey
 		id        [32]byte
 		secret    [32]byte
-		swap      SwapFactorySwap
+		swap      SwapCreatorSwap
 	}
 
 	getAuth := func(sc *swapCase) *bind.TransactOpts {
@@ -481,7 +488,7 @@ func TestSwapFactory_MultipleSwaps(t *testing.T) {
 		sc.walletKey = tests.GetTestKeyByIndex(t, i)
 		addrSwap := crypto.PubkeyToAddress(*sc.walletKey.Public().(*ecdsa.PublicKey))
 
-		sc.swap = SwapFactorySwap{
+		sc.swap = SwapCreatorSwap{
 			Owner:        addrSwap,
 			Claimer:      addrSwap,
 			PubKeyClaim:  res.Secp256k1PublicKey().Keccak256(),

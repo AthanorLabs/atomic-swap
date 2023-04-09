@@ -42,7 +42,7 @@ func Test_InfoMarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedJSON := `{
-		"version": "0.2.0",
+		"version": "0.3.0",
 		"peerID": "12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi",
 		"offerID": "0x0102030405060708091011121314151617181920212223242526272829303132",
 		"provides": "XMR",

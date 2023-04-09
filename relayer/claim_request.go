@@ -37,9 +37,9 @@ func CreateRelayClaimRequest(
 	ctx context.Context,
 	claimerEthKey *ecdsa.PrivateKey,
 	ec *ethclient.Client,
-	swapFactoryAddress ethcommon.Address,
-	forwarderAddress ethcommon.Address,
-	swap *contracts.SwapFactorySwap,
+	swapCreatorAddr ethcommon.Address,
+	forwarderAddr ethcommon.Address,
+	swap *contracts.SwapCreatorSwap,
 	secret *[32]byte,
 ) (*message.RelayClaimRequest, error) {
 
@@ -47,8 +47,8 @@ func CreateRelayClaimRequest(
 		ctx,
 		claimerEthKey,
 		ec,
-		swapFactoryAddress,
-		forwarderAddress,
+		swapCreatorAddr,
+		forwarderAddr,
 		swap,
 		secret,
 	)
@@ -57,10 +57,10 @@ func CreateRelayClaimRequest(
 	}
 
 	return &message.RelayClaimRequest{
-		OfferID:            nil, // set elsewhere if sending to counterparty
-		SwapFactoryAddress: swapFactoryAddress,
-		Swap:               swap,
-		Secret:             secret[:],
-		Signature:          signature,
+		OfferID:         nil, // set elsewhere if sending to counterparty
+		SwapCreatorAddr: swapCreatorAddr,
+		Swap:            swap,
+		Secret:          secret[:],
+		Signature:       signature,
 	}, nil
 }

@@ -54,8 +54,8 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 		conf.Libp2pKeyfile = path.Join(conf.EnvConf.DataDir, common.DefaultLibp2pKeyFileName)
 	}
 
-	if conf.EnvConf.SwapFactoryAddress == (ethcommon.Address{}) {
-		panic("swap factory address not specified")
+	if conf.EnvConf.SwapCreatorAddr == (ethcommon.Address{}) {
+		panic("swap creator address not specified")
 	}
 
 	ec := conf.EthereumClient
@@ -105,14 +105,14 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	}()
 
 	swapBackend, err := backend.NewBackend(&backend.Config{
-		Ctx:                ctx,
-		MoneroClient:       conf.MoneroClient,
-		EthereumClient:     conf.EthereumClient,
-		Environment:        conf.EnvConf.Env,
-		SwapFactoryAddress: conf.EnvConf.SwapFactoryAddress,
-		SwapManager:        sm,
-		RecoveryDB:         sdb.RecoveryDB(),
-		Net:                host,
+		Ctx:             ctx,
+		MoneroClient:    conf.MoneroClient,
+		EthereumClient:  conf.EthereumClient,
+		Environment:     conf.EnvConf.Env,
+		SwapCreatorAddr: conf.EnvConf.SwapCreatorAddr,
+		SwapManager:     sm,
+		RecoveryDB:      sdb.RecoveryDB(),
+		Net:             host,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to make backend: %w", err)

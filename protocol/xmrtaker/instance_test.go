@@ -66,8 +66,8 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	rdb.EXPECT().GetCounterpartySwapPrivateKey(s.OfferID).Return(nil, errors.New("some error"))
 	rdb.EXPECT().GetContractSwapInfo(s.OfferID).Return(&db.EthereumSwapInfo{
 		StartNumber:     big.NewInt(1),
-		ContractAddress: inst.backend.ContractAddr(),
-		Swap: &contracts.SwapFactorySwap{
+		SwapCreatorAddr: inst.backend.SwapCreatorAddr(),
+		Swap: &contracts.SwapCreatorSwap{
 			Timeout0: big.NewInt(1),
 			Timeout1: big.NewInt(2),
 		},

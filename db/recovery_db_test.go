@@ -37,7 +37,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 	si := &EthereumSwapInfo{
 		StartNumber: big.NewInt(12345),
 		SwapID:      types.Hash{1, 2, 3, 4},
-		Swap: &contracts.SwapFactorySwap{
+		Swap: &contracts.SwapCreatorSwap{
 			Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 			Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 			PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),
@@ -48,7 +48,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 			Value:        big.NewInt(9876),
 			Nonce:        big.NewInt(1234),
 		},
-		ContractAddress: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
 	}
 
 	expectedStr := `{
@@ -65,7 +65,7 @@ func TestRecoveryDB_ContractSwapInfo(t *testing.T) {
 			"value":          9876,
 			"nonce":          1234
 		},
-		"contractAddress": "0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"
+		"swapCreatorAddr": "0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"
 	}`
 	jsonData, err := vjson.MarshalStruct(si)
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 	si := &EthereumSwapInfo{
 		StartNumber: big.NewInt(12345),
 		SwapID:      types.Hash{1, 2, 3, 4},
-		Swap: &contracts.SwapFactorySwap{
+		Swap: &contracts.SwapCreatorSwap{
 			Owner:        ethcommon.HexToAddress("0xda9dfa130df4de4673b89022ee50ff26f6ea73cf"),
 			Claimer:      ethcommon.HexToAddress("0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"),
 			PubKeyClaim:  ethcommon.HexToHash("0x5ab9467e70d4e98567991f0179d1f82a3096ed7973f7aff9ea50f649cafa88b9"),
@@ -162,7 +162,7 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 			Value:        big.NewInt(9876),
 			Nonce:        big.NewInt(1234),
 		},
-		ContractAddress: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
 	}
 
 	info := &types.OfferExtra{

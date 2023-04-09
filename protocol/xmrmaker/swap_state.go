@@ -63,11 +63,11 @@ type swapState struct {
 	pubkeys      *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it
-	contract       *contracts.SwapFactory
-	contractAddr   ethcommon.Address
-	contractSwapID [32]byte
-	contractSwap   *contracts.SwapFactorySwap
-	t0, t1         time.Time
+	contract        *contracts.SwapCreator
+	swapCreatorAddr ethcommon.Address
+	contractSwapID  [32]byte
+	contractSwap    *contracts.SwapCreatorSwap
+	t0, t1          time.Time
 
 	// XMRTaker's keys for this session
 	xmrtakerPublicSpendKey     *mcrypto.PublicKey
@@ -182,7 +182,7 @@ func checkIfAlreadyClaimed(
 ) (bool, error) {
 	// check if swap actually completed and we didn't realize for some reason
 	// this could happen if we restart from an ongoing swap
-	contract, err := contracts.NewSwapFactory(ethSwapInfo.ContractAddress, b.ETHClient().Raw())
+	contract, err := contracts.NewSwapCreator(ethSwapInfo.SwapCreatorAddr, b.ETHClient().Raw())
 	if err != nil {
 		return false, err
 	}
@@ -206,7 +206,7 @@ func checkIfAlreadyClaimed(
 
 	filterQuery := ethereum.FilterQuery{
 		FromBlock: ethSwapInfo.StartNumber,
-		Addresses: []ethcommon.Address{ethSwapInfo.ContractAddress},
+		Addresses: []ethcommon.Address{ethSwapInfo.SwapCreatorAddr},
 	}
 
 	claimedTopic := common.GetTopic(common.ClaimedEventSignature)
@@ -309,7 +309,7 @@ func newSwapStateFromOngoing(
 		return nil, err
 	}
 
-	err = s.setContract(ethSwapInfo.ContractAddress)
+	err = s.setContract(ethSwapInfo.SwapCreatorAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +361,7 @@ func newSwapState(
 	readyWatcher := watcher.NewEventFilter(
 		ctx,
 		b.ETHClient().Raw(),
-		b.ContractAddr(),
+		b.SwapCreatorAddr(),
 		ethStartNumber,
 		readyTopic,
 		logReadyCh,
@@ -370,7 +370,7 @@ func newSwapState(
 	refundedWatcher := watcher.NewEventFilter(
 		ctx,
 		b.ETHClient().Raw(),
-		b.ContractAddr(),
+		b.SwapCreatorAddr(),
 		ethStartNumber,
 		refundedTopic,
 		logRefundedCh,
@@ -626,10 +626,10 @@ func (s *swapState) setXMRTakerKeys(
 
 // setContract sets the contract in which XMRTaker has locked her ETH.
 func (s *swapState) setContract(address ethcommon.Address) error {
-	s.contractAddr = address
+	s.swapCreatorAddr = address
 
 	var err error
-	s.contract, err = s.NewSwapFactory(address)
+	s.contract, err = s.NewSwapCreator(address)
 	if err != nil {
 		return err
 	}

@@ -138,7 +138,7 @@ func (c *ethClient) Balance(ctx context.Context) (*big.Int, error) {
 	return bal, nil
 }
 
-// SuggestedGasPrice returns the underlying eth client's suggested gas price
+// SuggestGasPrice returns the underlying eth client's suggested gas price
 // unless the user specified a fixed gas price to use, in which case the user
 // supplied value is returned.
 func (c *ethClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {

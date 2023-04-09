@@ -26,7 +26,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("failed to get newSwap transaction %s by hash: %w", txHash, err)
 	}
 
-	if tx.To() == nil || *(tx.To()) != s.contractAddr {
+	if tx.To() == nil || *(tx.To()) != s.swapCreatorAddr {
 		return errInvalidETHLockedTransaction
 	}
 
@@ -45,9 +45,9 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return errCannotFindNewLog
 	}
 
-	var event *contracts.SwapFactoryNew
+	var event *contracts.SwapCreatorNew
 	for _, log := range receipt.Logs {
-		event, err = s.Contract().ParseNew(*log)
+		event, err = s.SwapCreator().ParseNew(*log)
 		if err == nil {
 			break
 		}

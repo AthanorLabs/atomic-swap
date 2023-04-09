@@ -32,7 +32,7 @@ func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 
 	txOpts, err := swapState.ETHClient().TxOpts(swapState.Backend.Ctx())
 	require.NoError(t, err)
-	tx, err := swapState.Contract().SetReady(txOpts, *swapState.contractSwap)
+	tx, err := swapState.SwapCreator().SetReady(txOpts, *swapState.contractSwap)
 	require.NoError(t, err)
 	tests.MineTransaction(t, swapState.ETHClient().Raw(), tx)
 
@@ -40,7 +40,7 @@ func TestSwapStateOngoing_ClaimFunds(t *testing.T) {
 		StartNumber:     big.NewInt(int64(startNum)),
 		SwapID:          swapState.contractSwapID,
 		Swap:            swapState.contractSwap,
-		ContractAddress: swapState.Backend.ContractAddr(),
+		SwapCreatorAddr: swapState.Backend.SwapCreatorAddr(),
 	}
 
 	swapState.info.Status = types.XMRLocked
@@ -101,7 +101,7 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 	ctx := s.Backend.Ctx()
 	txOpts, err := s.ETHClient().TxOpts(ctx)
 	require.NoError(t, err)
-	tx, err := s.Contract().Refund(txOpts, *s.contractSwap, sc)
+	tx, err := s.SwapCreator().Refund(txOpts, *s.contractSwap, sc)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(ctx, s.ETHClient().Raw(), tx.Hash())
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestSwapStateOngoing_Refund(t *testing.T) {
 		StartNumber:     big.NewInt(int64(startNum)),
 		SwapID:          s.contractSwapID,
 		Swap:            s.contractSwap,
-		ContractAddress: s.Backend.ContractAddr(),
+		SwapCreatorAddr: s.Backend.SwapCreatorAddr(),
 	}
 
 	s.info.Status = types.XMRLocked

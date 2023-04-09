@@ -136,7 +136,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 	go s.checkForXMRLock()
 
 	out := &message.NotifyETHLocked{
-		Address:        s.ContractAddr(),
+		Address:        s.SwapCreatorAddr(),
 		TxHash:         receipt.TxHash,
 		ContractSwapID: s.contractSwapID,
 		ContractSwap:   s.contractSwap,
