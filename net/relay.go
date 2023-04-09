@@ -5,6 +5,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -123,17 +124,23 @@ func (h *Host) SubmitClaimToRelayer(relayerID peer.ID, request *RelayClaimReques
 }
 
 func receiveRelayClaimResponse(stream libp2pnetwork.Stream) (*RelayClaimResponse, error) {
-	msg, err := readStreamMessage(stream, maxRelayMessageSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read RelayClaimResponse: %w", err)
-	}
+	const relayResponseTimeout = time.Minute
 
-	resp, ok := msg.(*RelayClaimResponse)
-	if !ok {
-		return nil, fmt.Errorf("expected %s message but received %s",
-			message.TypeToString(message.RelayClaimResponseType),
-			message.TypeToString(msg.Type()))
-	}
+	select {
+	case msg := <-nextStreamMessage(stream, maxMessageSize):
+		if msg == nil {
+			return nil, errors.New("failed to read RelayClaimResponse")
+		}
 
-	return resp, nil
+		resp, ok := msg.(*RelayClaimResponse)
+		if !ok {
+			return nil, fmt.Errorf("expected %s message but received %s",
+				message.TypeToString(message.RelayClaimResponseType),
+				message.TypeToString(msg.Type()))
+		}
+
+		return resp, nil
+	case <-time.After(relayResponseTimeout):
+		return nil, errors.New("timed out waiting for QueryResponse")
+	}
 }

@@ -220,3 +220,24 @@ func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (comm
 
 	return message.DecodeMessage(msgBytes)
 }
+
+// nextStreamMessage returns a channel that will receive the next message from the stream.
+// if there is an error reading from the stream, the channel will be closed, thus
+// the received value will be nil.
+func nextStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) <-chan common.Message {
+	ch := make(chan common.Message)
+	go func() {
+		for {
+			msg, err := readStreamMessage(stream, maxMessageSize)
+			if err != nil {
+				log.Warnf("failed to read stream message: %s", err)
+				close(ch)
+				return
+			}
+
+			ch <- msg
+		}
+	}()
+
+	return ch
+}
