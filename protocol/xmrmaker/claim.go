@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -16,7 +15,6 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
@@ -26,40 +24,25 @@ import (
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
 func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
-	var (
-		symbol   string
-		decimals uint8
-		err      error
-	)
-	if types.EthAsset(s.contractSwap.Asset) != types.EthAssetETH {
-		_, symbol, decimals, err = s.ETHClient().ERC20Info(s.ctx, s.contractSwap.Asset)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
-		}
-	}
-
 	weiBalance, err := s.ETHClient().Balance(s.ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if types.EthAsset(s.contractSwap.Asset) == types.EthAssetETH {
-		log.Infof("balance before claim: %s ETH", coins.NewWeiAmount(weiBalance).AsEther())
+		log.Infof("balance before claim: %s ETH", weiBalance.AsEtherString())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("balance before claim: %v %s",
-			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard().Text('f'),
-			symbol,
-		)
+		log.Infof("balance before claim: %s %s", balance.AsStandardString(), balance.Symbol())
 	}
 
 	var receipt *ethtypes.Receipt
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
-	if s.offerExtra.UseRelayer || weiBalance.Cmp(big.NewInt(0)) == 0 {
+	if s.offerExtra.UseRelayer || weiBalance.Decimal().IsZero() {
 		// relayer fee was set or we had insufficient funds to claim without a relayer
 		// TODO: Sufficient funds check above should be more specific
 		receipt, err = s.claimWithRelay()
@@ -85,17 +68,14 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("balance after claim: %s ETH", coins.FmtWeiAsETH(balance))
+		log.Infof("balance after claim: %s ETH", balance.AsEtherString())
 	} else {
 		balance, err := s.ETHClient().ERC20Balance(s.ctx, s.contractSwap.Asset)
 		if err != nil {
 			return nil, err
 		}
 
-		log.Infof("balance after claim: %s %s",
-			coins.NewERC20TokenAmountFromBigInt(balance, decimals).AsStandard().Text('f'),
-			symbol,
-		)
+		log.Infof("balance after claim: %s %s", balance.AsStandardString(), balance.Symbol())
 	}
 
 	return receipt, nil

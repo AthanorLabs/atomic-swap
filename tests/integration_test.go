@@ -90,7 +90,7 @@ func mineMinXMRMakerBalance(t *testing.T, minBalance *coins.PiconeroAmount) {
 	daemonCli := monerorpc.New(monero.MonerodRegtestEndpoint, nil).Daemon
 	ctx := context.Background()
 	for {
-		balances, err := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint).Balances()
+		balances, err := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint).Balances(nil)
 		require.NoError(t, err)
 		if balances.PiconeroUnlockedBalance.Cmp(minBalance) >= 0 {
 			break

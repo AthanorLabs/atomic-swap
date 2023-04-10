@@ -54,7 +54,7 @@ type swapState struct {
 
 	info           *pswap.Info
 	statusCh       chan types.Status
-	providedAmount EthereumAssetAmount
+	providedAmount coins.EthAssetAmount
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -101,7 +101,7 @@ func newSwapStateFromStart(
 	makerPeerID peer.ID,
 	offerID types.Hash,
 	noTransferBack bool,
-	providedAmount EthereumAssetAmount,
+	providedAmount coins.EthAssetAmount,
 	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,

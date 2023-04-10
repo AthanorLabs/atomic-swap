@@ -13,6 +13,16 @@ import (
 // EthAsset represents an Ethereum asset (ETH or a token address)
 type EthAsset ethcommon.Address
 
+// NewEthAsset converts an unquoted string to the EthAsset type
+func NewEthAsset(assetStr string) (EthAsset, error) {
+	var asset EthAsset
+	err := asset.UnmarshalText([]byte(assetStr))
+	if err != nil {
+		return EthAsset{}, err
+	}
+	return asset, nil
+}
+
 // String implements fmt.Stringer, returning the asset's address in hex
 // prefixed by `ERC20@` if it's an ERC20 token, or ETH for ether.
 func (asset EthAsset) String() string {
@@ -36,16 +46,18 @@ func (asset EthAsset) MarshalText() ([]byte, error) {
 // UnmarshalText assigns the EthAsset from the input text
 func (asset *EthAsset) UnmarshalText(input []byte) error {
 	inputStr := string(input)
-	switch {
-	case strings.EqualFold(inputStr, "ETH"):
-		*asset = EthAsset{}
+	if inputStr == "ETH" {
+		*asset = EthAssetETH
 		return nil
-	case ethcommon.IsHexAddress(inputStr):
+	}
+
+	inputStr = strings.TrimPrefix(inputStr, "ERC20@")
+	if ethcommon.IsHexAddress(inputStr) {
 		*asset = EthAsset(ethcommon.HexToAddress(inputStr))
 		return nil
-	default:
-		return fmt.Errorf("invalid asset value %q", inputStr)
 	}
+
+	return fmt.Errorf("invalid asset value %q", inputStr)
 }
 
 // Address ...

@@ -5,6 +5,7 @@ package protocol
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
@@ -17,12 +18,12 @@ const etherSymbol = "ETH"
 // AssetSymbol returns the symbol for the given asset.
 func AssetSymbol(b backend.Backend, asset types.EthAsset) (string, error) {
 	if asset != types.EthAssetETH {
-		_, symbol, _, err := b.ETHClient().ERC20Info(b.Ctx(), asset.Address())
+		tokenInfo, err := b.ETHClient().ERC20Info(b.Ctx(), asset.Address())
 		if err != nil {
 			return "", fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return symbol, nil
+		return strconv.QuoteToASCII(tokenInfo.Symbol), nil
 	}
 
 	return etherSymbol, nil

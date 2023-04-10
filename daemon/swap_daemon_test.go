@@ -142,7 +142,7 @@ func minimumFundAlice(t *testing.T, ec extethclient.EthClient, providesAmt *apd.
 
 	bal, err := ec.Balance(context.Background())
 	require.NoError(t, err)
-	t.Logf("Alice's start balance is: %s ETH", coins.FmtWeiAsETH(bal))
+	t.Logf("Alice's start balance is: %s ETH", bal.AsEtherString())
 }
 
 func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
@@ -296,7 +296,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, expectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+	require.Equal(t, expectedBal.Text('f'), bobBalance.AsEtherString())
 }
 
 // Tests the scenario where Bob has no ETH, he can't find an advertised relayer,
@@ -472,7 +472,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
-	require.Equal(t, bobExpectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+	require.Equal(t, bobExpectedBal.Text('f'), bobBalance.AsEtherString())
 
 	//
 	// Charlie should be wealthier now than at the start, despite paying the claim
@@ -482,8 +482,8 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	charlieBal, err := charlieEC.Balance(ctx)
 	require.NoError(t, err)
 	require.Greater(t, charlieBal.Cmp(charlieStartBal), 0)
-	charlieProfitWei := new(big.Int).Sub(charlieBal, charlieStartBal)
-	t.Logf("Charlie earned %s ETH", coins.FmtWeiAsETH(charlieProfitWei))
+	charlieProfitWei := charlieBal.Sub(charlieStartBal)
+	t.Logf("Charlie earned %s ETH", charlieProfitWei.AsEtherString())
 }
 
 // Tests the scenario where Charlie, an advertised relayer, has run out of ETH
@@ -577,5 +577,5 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
-	require.Equal(t, bobExpectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+	require.Equal(t, bobExpectedBal.Text('f'), bobBalance.AsEtherString())
 }

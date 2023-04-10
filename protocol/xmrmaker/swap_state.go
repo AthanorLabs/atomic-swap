@@ -105,7 +105,7 @@ func newSwapStateFromStart(
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
 	providesAmount *coins.PiconeroAmount,
-	desiredAmount EthereumAssetAmount,
+	desiredAmount coins.EthAssetAmount,
 ) (*swapState, error) {
 	// at this point, we've received the counterparty's keys,
 	// and will send our own after this function returns.

@@ -158,7 +158,7 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	})
 
 	log.Infof("starting swapd with data-dir %s", conf.EnvConf.DataDir)
-	err = rpcServer.Start() // blocks until server is shutdown or context is cancelled
+	err = rpcServer.Start() // blocks until the server is shutdown or context is cancelled
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

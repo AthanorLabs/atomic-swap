@@ -9,12 +9,12 @@ import (
 )
 
 // MakeOffer makes a new swap offer.
-func (b *Instance) MakeOffer(
+func (inst *Instance) MakeOffer(
 	o *types.Offer,
 	useRelayer bool,
 ) (*types.OfferExtra, error) {
 	// get monero balance
-	balance, err := b.backend.XMRClient().GetBalance(0)
+	balance, err := inst.backend.XMRClient().GetBalance(0)
 	if err != nil {
 		return nil, err
 	}
@@ -28,25 +28,25 @@ func (b *Instance) MakeOffer(
 		return nil, errRelayingWithNonEthAsset
 	}
 
-	extra, err := b.offerManager.AddOffer(o, useRelayer)
+	extra, err := inst.offerManager.AddOffer(o, useRelayer)
 	if err != nil {
 		return nil, err
 	}
 
-	b.net.Advertise()
+	inst.net.Advertise()
 	log.Infof("created new offer: %v", o)
 	return extra, nil
 }
 
 // GetOffers returns all current offers.
-func (b *Instance) GetOffers() []*types.Offer {
-	return b.offerManager.GetOffers()
+func (inst *Instance) GetOffers() []*types.Offer {
+	return inst.offerManager.GetOffers()
 }
 
 // ClearOffers clears all offers.
-func (b *Instance) ClearOffers(offerIDs []types.Hash) error {
+func (inst *Instance) ClearOffers(offerIDs []types.Hash) error {
 	if len(offerIDs) == 0 {
-		return b.offerManager.ClearAllOffers()
+		return inst.offerManager.ClearAllOffers()
 	}
-	return b.offerManager.ClearOfferIDs(offerIDs)
+	return inst.offerManager.ClearOfferIDs(offerIDs)
 }

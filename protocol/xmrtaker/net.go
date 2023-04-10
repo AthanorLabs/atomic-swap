@@ -4,8 +4,6 @@
 package xmrtaker
 
 import (
-	"math/big"
-
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -17,12 +15,6 @@ import (
 
 	"github.com/fatih/color"
 )
-
-// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
-type EthereumAssetAmount interface {
-	BigInt() *big.Int
-	AsStandard() *apd.Decimal
-}
 
 // Provides returns types.ProvidesETH
 func (inst *Instance) Provides() coins.ProvidesCoin {
@@ -40,7 +32,7 @@ func (inst *Instance) InitiateProtocol(
 	if err != nil {
 		return nil, err
 	}
-	providedAmount, err := pcommon.GetEthereumAssetAmount(
+	providedAmount, err := pcommon.GetEthAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
 		providesAmount,
@@ -61,7 +53,7 @@ func (inst *Instance) InitiateProtocol(
 
 func (inst *Instance) initiate(
 	makerPeerID peer.ID,
-	providesAmount EthereumAssetAmount,
+	providesAmount coins.EthAssetAmount,
 	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
@@ -80,9 +72,9 @@ func (inst *Instance) initiate(
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
-	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
+	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
 		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
-			inst.backend.ETHClient().Address(), coins.FmtWeiAsETH(balance), providesAmount.AsStandard())
+			inst.backend.ETHClient().Address(), balance.AsEtherString(), providesAmount.AsStandard())
 		return nil, errBalanceTooLow
 	}
 

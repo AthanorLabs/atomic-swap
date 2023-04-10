@@ -40,6 +40,7 @@ const (
 	flagProvidesAmount = "provides-amount"
 	flagUseRelayer     = "use-relayer"
 	flagSearchTime     = "search-time"
+	flagToken          = "token"
 	flagDetached       = "detached"
 )
 
@@ -76,6 +77,11 @@ var (
 				Action:  runBalances,
 				Flags: []cli.Flag{
 					swapdPortFlag,
+					&cli.StringSliceFlag{
+						Name:    flagToken,
+						Aliases: []string{"t"},
+						Usage:   "Token address to include in the balance response",
+					},
 				},
 			},
 			{
@@ -375,7 +381,18 @@ func runPeers(ctx *cli.Context) error {
 
 func runBalances(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	balances, err := c.Balances()
+
+	request := &rpctypes.BalancesRequest{}
+	tokens := ctx.StringSlice(flagToken)
+	for _, token := range tokens {
+		asset, err := types.NewEthAsset(token)
+		if err != nil {
+			return err
+		}
+		request.TokenAddrs = append(request.TokenAddrs, asset)
+	}
+
+	balances, err := c.Balances(request)
 	if err != nil {
 		return err
 	}
@@ -383,6 +400,15 @@ func runBalances(ctx *cli.Context) error {
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
 	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEtherString())
 	fmt.Println()
+
+	for _, tokenBalance := range balances.TokenBalances {
+		fmt.Printf("Token: %s\n", tokenBalance.TokenInfo.Address)
+		fmt.Printf("Name: %q\n", tokenBalance.TokenInfo.Name)
+		fmt.Printf("Symbol: %q\n", tokenBalance.TokenInfo.Symbol)
+		fmt.Printf("Balance: %s\n", tokenBalance.AsStandard().Text('f'))
+		fmt.Println()
+	}
+
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
 	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMoneroString())
 	fmt.Printf("Unlocked XMR balance: %s\n",
@@ -393,7 +419,7 @@ func runBalances(ctx *cli.Context) error {
 
 func runETHAddress(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	balances, err := c.Balances()
+	balances, err := c.Balances(nil)
 	if err != nil {
 		return err
 	}
@@ -408,7 +434,7 @@ func runETHAddress(ctx *cli.Context) error {
 
 func runXMRAddress(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	balances, err := c.Balances()
+	balances, err := c.Balances(nil)
 	if err != nil {
 		return err
 	}

@@ -40,13 +40,13 @@ func (c *Client) GetSwapTimeout() (*rpc.GetSwapTimeoutResponse, error) {
 }
 
 // Balances calls personal_balances.
-func (c *Client) Balances() (*rpctypes.BalancesResponse, error) {
+func (c *Client) Balances(request *rpctypes.BalancesRequest) (*rpctypes.BalancesResponse, error) {
 	const (
 		method = "personal_balances"
 	)
 
 	balances := &rpctypes.BalancesResponse{}
-	if err := c.Post(method, nil, balances); err != nil {
+	if err := c.Post(method, request, balances); err != nil {
 		return nil, err
 	}
 
