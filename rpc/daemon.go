@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"net/http"
-	"runtime/debug"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -14,14 +13,14 @@ import (
 // DaemonService handles general daemon operations
 type DaemonService struct {
 	server *Server
-	cfg    *Config
+	pb     ProtocolBackend
 }
 
 // NewDaemonService ...
-func NewDaemonService(server *Server, cfg *Config) *DaemonService {
+func NewDaemonService(server *Server, pb ProtocolBackend) *DaemonService {
 	return &DaemonService{
 		server,
-		cfg,
+		pb,
 	}
 }
 
@@ -50,8 +49,8 @@ type VersionResponse struct {
 // Version returns version & misc info about swapd and its dependencies
 func (s *DaemonService) Version(_ *http.Request, req *VersionRequest, resp *VersionResponse) error {
 	resp.SwapdVersion = cliutil.GetVersion()
-	resp.Env = s.cfg.ProtocolBackend.Env()
-	resp.SwapCreatorAddr = s.cfg.ProtocolBackend.SwapCreatorAddr()
 	resp.P2PVersion = net.ProtocolID
+	resp.Env = s.pb.Env()
+	resp.SwapCreatorAddr = s.pb.SwapCreatorAddr()
 	return nil
 }

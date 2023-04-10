@@ -108,7 +108,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		httpServer: server,
 	}
 
-	if err = rpcServer.RegisterService(NewDaemonService(s, cfg), "daemon"); err != nil {
+	if err = rpcServer.RegisterService(NewDaemonService(s, cfg.ProtocolBackend), "daemon"); err != nil {
 		return nil, err
 	}
 
