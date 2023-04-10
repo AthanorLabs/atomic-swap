@@ -161,11 +161,12 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	err = rpcServer.Start()
 
 	if errors.Is(err, http.ErrServerClosed) {
-		// Returning nil to exit the program with exit code 0
+		// Set err to nil to exit the program with exit code 0
 		// and to avoid a FATAL ERROR entry in log files
-		return nil
-	} else if err != nil {
-		return err
+		//
+		// NOTE: The ErrServerClosed error happens only when the server is told
+		// to shutdown or close
+		err = nil
 	}
 
 	// err can get set in defer blocks, so return err or use an empty
