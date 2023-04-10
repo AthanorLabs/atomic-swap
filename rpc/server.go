@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/rpc/v2"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -101,11 +102,17 @@ func NewServer(cfg *Config) (*Server, error) {
 		},
 	}
 
-	return &Server{
+	s := &Server{
 		ctx:        cfg.Ctx,
 		listener:   ln,
 		httpServer: server,
-	}, nil
+	}
+
+	if err = rpcServer.RegisterService(NewDaemonService(s, cfg), "daemon"); err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 // HttpURL returns the URL used for HTTP requests
@@ -172,6 +179,7 @@ type ProtocolBackend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SwapTimeout() time.Duration
 	SwapManager() swap.Manager
+	SwapCreatorAddr() ethcommon.Address
 	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	ETHClient() extethclient.EthClient

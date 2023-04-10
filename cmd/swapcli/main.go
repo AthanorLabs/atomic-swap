@@ -308,6 +308,14 @@ var (
 					swapdPortFlag,
 				},
 			},
+			{
+				Name:   "version",
+				Usage:  "Get versioning information",
+				Action: runGetVersions,
+				Flags:  []cli.Flag{
+					swapdPortFlag,
+				},
+			},
 		},
 	}
 
@@ -877,6 +885,22 @@ func printOffer(o *types.Offer, index int, indent string) error {
 	return nil
 }
 
+func runGetVersions(ctx *cli.Context) error {
+	fmt.Printf("swapcli: %s\n", cliutil.GetVersion())
+
+	c := newRRPClient(ctx)
+	resp, err := c.Version()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("swapd: %s\n", resp.SwapdVersion)
+	fmt.Printf("go-p2p-net version: %s\n", resp.P2PVersion)
+	fmt.Printf("env: %s\n", resp.Env)
+	fmt.Printf("swap creator address: %s\n", resp.SwapCreatorAddr)
+
+	return nil
+}
 func providesStrToVal(providesStr string) (coins.ProvidesCoin, error) {
 	var provides coins.ProvidesCoin
 
