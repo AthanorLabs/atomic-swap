@@ -903,7 +903,7 @@ func runGetVersions(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("swapd: %s\n", resp.SwapdVersion)
-	fmt.Printf("go-p2p-net version: %s\n", resp.P2PVersion)
+	fmt.Printf("p2p version: %s\n", resp.P2PVersion)
 	fmt.Printf("env: %s\n", resp.Env)
 	fmt.Printf("swap creator address: %s\n", resp.SwapCreatorAddr)
 

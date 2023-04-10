@@ -8,6 +8,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/net"
 )
 
 // DaemonService handles general daemon operations
@@ -49,22 +50,8 @@ type VersionResponse struct {
 // Version returns version & misc info about swapd and its dependencies
 func (s *DaemonService) Version(_ *http.Request, req *VersionRequest, resp *VersionResponse) error {
 	resp.SwapdVersion = cliutil.GetVersion()
-
-	resp.P2PVersion = func() string {
-		info, ok := debug.ReadBuildInfo()
-		if !ok {
-			return "N/A (Can't read build info)"
-		}
-
-		for _, e := range info.Deps {
-			if e.Path == "github.com/athanorlabs/go-p2p-net" {
-				return e.Version
-			}
-		}
-		return "N/A"
-	}()
-
 	resp.Env = s.cfg.ProtocolBackend.Env()
 	resp.SwapCreatorAddr = s.cfg.ProtocolBackend.SwapCreatorAddr()
+	resp.P2PVersion = net.ProtocolID
 	return nil
 }
