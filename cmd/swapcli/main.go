@@ -312,7 +312,7 @@ var (
 				Name:   "version",
 				Usage:  "Get versioning information",
 				Action: runGetVersions,
-				Flags:  []cli.Flag{
+				Flags: []cli.Flag{
 					swapdPortFlag,
 				},
 			},
@@ -320,7 +320,7 @@ var (
 				Name:   "shutdown",
 				Usage:  "Shutdown swapd",
 				Action: runShutdown,
-				Flags:  []cli.Flag{
+				Flags: []cli.Flag{
 					swapdPortFlag,
 				},
 			},

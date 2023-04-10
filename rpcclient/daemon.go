@@ -8,10 +8,9 @@ func (c *Client) Shutdown() error {
 	const (
 		method = "daemon_shutdown"
 	)
-	c.Post(method, nil, nil); // Does not expect a response from swapd
+	c.Post(method, nil, nil) // Does not expect a response from swapd
 	return nil
 }
-
 
 func (c *Client) Version() (*rpc.VersionResponse, error) {
 	const (
@@ -23,4 +22,3 @@ func (c *Client) Version() (*rpc.VersionResponse, error) {
 	}
 	return resp, nil
 }
-
