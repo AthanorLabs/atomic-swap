@@ -22,6 +22,13 @@ func NewDaemonService (server *Server, cfg *Config) *DaemonService {
 	}
 }
 
+type ShutdownRequest struct {}
+type ShutdownResponse struct {}
+
+func (s *DaemonService) Shutdown(_ *http.Request, req *ShutdownRequest, resp *ShutdownResponse) error {
+	return s.server.Stop()
+}
+
 type VersionRequest struct {}
 type VersionResponse struct {
 	SwapdVersion string `json:"swapd_version" validate:"required"`

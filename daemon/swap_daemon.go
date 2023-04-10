@@ -45,8 +45,7 @@ type SwapdConfig struct {
 
 // RunSwapDaemon assembles and runs a swapd instance blocking until swapd is
 // shut down. Typically, shutdown happens because a signal handler cancels the
-// passed in context, but we may add a shutdown method to the RPC instance in
-// the future.
+// passed in context, or when the shutdown RPC method is called.
 func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	// Note: err can be modified in defer blocks, so it needs to be a named return
 	//       value above.
@@ -158,8 +157,14 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	})
 
 	log.Infof("starting swapd with data-dir %s", conf.EnvConf.DataDir)
-	err = rpcServer.Start() // blocks until server is shutdown or context is cancelled
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+
+	err = rpcServer.Start()
+
+	if errors.Is(err, http.ErrServerClosed) {
+		// Returning nil to exit the program with exit code 0
+		// and to avoid a FATAL ERROR entry in log files
+		return nil
+	} else if err != nil {
 		return err
 	}
 

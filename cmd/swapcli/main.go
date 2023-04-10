@@ -316,6 +316,14 @@ var (
 					swapdPortFlag,
 				},
 			},
+			{
+				Name:   "shutdown",
+				Usage:  "Shutdown swapd",
+				Action: runShutdown,
+				Flags:  []cli.Flag{
+					swapdPortFlag,
+				},
+			},
 		},
 	}
 
@@ -901,6 +909,16 @@ func runGetVersions(ctx *cli.Context) error {
 
 	return nil
 }
+
+func runShutdown(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	err := c.Shutdown()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func providesStrToVal(providesStr string) (coins.ProvidesCoin, error) {
 	var provides coins.ProvidesCoin
 

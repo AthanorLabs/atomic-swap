@@ -4,6 +4,15 @@ import (
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
+func (c *Client) Shutdown() error {
+	const (
+		method = "daemon_shutdown"
+	)
+	c.Post(method, nil, nil); // Does not expect a response from swapd
+	return nil
+}
+
+
 func (c *Client) Version() (*rpc.VersionResponse, error) {
 	const (
 		method = "daemon_version"
@@ -14,3 +23,4 @@ func (c *Client) Version() (*rpc.VersionResponse, error) {
 	}
 	return resp, nil
 }
+
