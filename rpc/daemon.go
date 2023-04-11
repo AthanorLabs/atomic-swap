@@ -24,19 +24,10 @@ func NewDaemonService(server *Server, pb ProtocolBackend) *DaemonService {
 	}
 }
 
-// ShutdownRequest ...
-type ShutdownRequest struct{}
-
-// ShutdownResponse ...
-type ShutdownResponse struct{}
-
 // Shutdown swapd
-func (s *DaemonService) Shutdown(_ *http.Request, req *ShutdownRequest, resp *ShutdownResponse) error {
+func (s *DaemonService) Shutdown(_ *http.Request, _ *interface{}, _ *interface{}) error {
 	return s.server.Stop()
 }
-
-// VersionRequest ...
-type VersionRequest struct{}
 
 // VersionResponse ...
 type VersionResponse struct {
@@ -47,7 +38,7 @@ type VersionResponse struct {
 }
 
 // Version returns version & misc info about swapd and its dependencies
-func (s *DaemonService) Version(_ *http.Request, req *VersionRequest, resp *VersionResponse) error {
+func (s *DaemonService) Version(_ *http.Request, _ *interface{}, resp *VersionResponse) error {
 	resp.SwapdVersion = cliutil.GetVersion()
 	resp.P2PVersion = net.ProtocolID
 	resp.Env = s.pb.Env()
