@@ -310,7 +310,7 @@ var (
 			},
 			{
 				Name:   "version",
-				Usage:  "Get versioning information",
+				Usage:  "Get the client and server versions",
 				Action: runGetVersions,
 				Flags: []cli.Flag{
 					swapdPortFlag,
