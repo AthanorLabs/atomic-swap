@@ -10,7 +10,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/net"
 )
 
-// DaemonService handles general daemon operations
+// DaemonService handles RPC requests for swapd version, administration and (in the future) status requests.
 type DaemonService struct {
 	server *Server
 	pb     ProtocolBackend
