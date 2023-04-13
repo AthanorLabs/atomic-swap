@@ -8,7 +8,10 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -178,6 +181,16 @@ func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 
 func launchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	swapdCtx, swapdCancel := context.WithCancel(ctx)
+
+	go func() { // Handle signals
+		sigc := make(chan os.Signal, 1)
+		signal.Ignore(syscall.SIGHUP)
+		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+
+		<-sigc
+		swapdCancel()
+	}()
 
 	var wg sync.WaitGroup
 	t.Cleanup(func() {
@@ -194,7 +207,7 @@ func launchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := RunSwapDaemon(ctx, conf)
+			err := RunSwapDaemon(swapdCtx, conf)
 			require.ErrorIs(t, err, context.Canceled)
 		}()
 		WaitForSwapdStart(t, conf.RPCPort)
@@ -596,4 +609,18 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 	require.NotEmpty(t, versionResp.SwapdVersion)
 	require.Equal(t, conf.EnvConf.SwapCreatorAddr, versionResp.SwapCreatorAddr)
 	require.Equal(t, protocolVersion, versionResp.P2PVersion)
+}
+
+// Tests the shutdown RPC method
+func TestRunSwapDaemon_RPC_Shutdown(t *testing.T) {
+	conf := createTestConf(t, tests.GetMakerTestKey(t))
+	timeout := time.Minute
+	ctx := launchDaemons(t, timeout, conf)
+
+	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
+	err := c.Shutdown()
+	require.NoError(t, err)
+
+	err = c.Shutdown()
+	require.ErrorIs(t, err, syscall.ECONNREFUSED)
 }
