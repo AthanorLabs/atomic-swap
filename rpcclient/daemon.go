@@ -10,7 +10,7 @@ func (c *Client) Shutdown() error {
 		method = "daemon_shutdown"
 	)
 	if err := c.Post(method, nil, nil); err != nil {
-		return nil // Does not expect a response from swapd
+		return err
 	}
 	return nil
 }
