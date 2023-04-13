@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"fmt"
 	"net/http"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -40,7 +41,7 @@ type VersionResponse struct {
 // Version returns version & misc info about swapd and its dependencies
 func (s *DaemonService) Version(_ *http.Request, _ *any, resp *VersionResponse) error {
 	resp.SwapdVersion = cliutil.GetVersion()
-	resp.P2PVersion = net.ProtocolID
+	resp.P2PVersion = fmt.Sprintf("%s/%d", net.ProtocolID, s.pb.ETHClient().ChainID())
 	resp.Env = s.pb.Env()
 	resp.SwapCreatorAddr = s.pb.SwapCreatorAddr()
 	return nil
