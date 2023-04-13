@@ -38,7 +38,7 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 
 	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 	balance := new(big.Int).Mul(big.NewInt(9999999), decimals)
-	erc20Addr, erc20Tx, _, err := contracts.DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, balance)
+	erc20Addr, erc20Tx, _, err := contracts.DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", 18, addr, balance)
 	require.NoError(t, err)
 	_, err = block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
