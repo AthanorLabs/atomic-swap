@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"net/http"
+	"syscall"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -27,7 +28,7 @@ func NewDaemonService(server *Server, pb ProtocolBackend) *DaemonService {
 
 // Shutdown swapd
 func (s *DaemonService) Shutdown(req *http.Request, _ *any, _ *any) error {
-	return s.server.Stop()
+	return syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 }
 
 // VersionResponse ...
