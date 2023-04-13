@@ -28,6 +28,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
@@ -578,4 +579,21 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
 	require.Equal(t, bobExpectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+}
+
+// Tests the version and shutdown RPC methods
+func TestRunSwapDaemon_RPC_Version(t *testing.T) {
+	conf := createTestConf(t, tests.GetMakerTestKey(t))
+	protocolVersion := fmt.Sprintf("%s/%d", net.ProtocolID, conf.EthereumClient.ChainID())
+	timeout := time.Minute
+	ctx := launchDaemons(t, timeout, conf)
+
+	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
+	versionResp, err := c.Version()
+	require.NoError(t, err)
+
+	require.Equal(t, conf.EnvConf.Env, versionResp.Env)
+	require.NotEmpty(t, versionResp.SwapdVersion)
+	require.Equal(t, conf.EnvConf.SwapCreatorAddr, versionResp.SwapCreatorAddr)
+	require.Equal(t, protocolVersion, versionResp.P2PVersion)
 }
