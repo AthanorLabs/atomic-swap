@@ -48,6 +48,7 @@ type Config struct {
 	XMRTaker        XMRTaker
 	XMRMaker        XMRMaker
 	ProtocolBackend ProtocolBackend
+	RecoveryDB      RecoveryDB
 }
 
 // NewServer ...
@@ -74,6 +75,11 @@ func NewServer(cfg *Config) (*Server, error) {
 		cfg.ProtocolBackend,
 	)
 	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
+		return nil, err
+	}
+
+	databaseService := NewDatabaseService(cfg.RecoveryDB)
+	if err = rpcServer.RegisterService(databaseService, "database"); err != nil {
 		return nil, err
 	}
 
