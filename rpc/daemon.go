@@ -3,7 +3,6 @@ package rpc
 import (
 	"fmt"
 	"net/http"
-	"syscall"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -14,21 +13,19 @@ import (
 
 // DaemonService handles RPC requests for swapd version, administration and (in the future) status requests.
 type DaemonService struct {
-	server *Server
-	pb     ProtocolBackend
+	stopServer func()
+	pb         ProtocolBackend
 }
 
 // NewDaemonService ...
-func NewDaemonService(server *Server, pb ProtocolBackend) *DaemonService {
-	return &DaemonService{
-		server,
-		pb,
-	}
+func NewDaemonService(stopServer func(), pb ProtocolBackend) *DaemonService {
+	return &DaemonService{stopServer, pb}
 }
 
 // Shutdown swapd
-func (s *DaemonService) Shutdown(req *http.Request, _ *any, _ *any) error {
-	return syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+func (s *DaemonService) Shutdown(_ *http.Request, _ *any, _ *any) error {
+	s.stopServer()
+	return nil
 }
 
 // VersionResponse ...
