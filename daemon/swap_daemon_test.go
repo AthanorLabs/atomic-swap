@@ -8,8 +8,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"os"
-	"os/signal"
 	"sync"
 	"syscall"
 	"testing"
@@ -181,16 +179,6 @@ func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 
 func launchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	swapdCtx, swapdCancel := context.WithCancel(ctx)
-
-	go func() { // Handle signals
-		sigc := make(chan os.Signal, 1)
-		signal.Ignore(syscall.SIGHUP)
-		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigc
-		swapdCancel()
-	}()
 
 	var wg sync.WaitGroup
 	t.Cleanup(func() {
@@ -207,7 +195,7 @@ func launchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := RunSwapDaemon(swapdCtx, conf)
+			err := RunSwapDaemon(ctx, conf)
 			require.ErrorIs(t, err, context.Canceled)
 		}()
 		WaitForSwapdStart(t, conf.RPCPort)
