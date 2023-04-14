@@ -141,10 +141,10 @@ func TestSepoliaContract(t *testing.T) {
 	if errors.Is(err, errInvalidSwapCreatorContract) && sepoliaKey != "" {
 		pk, err := ethcrypto.HexToECDSA(sepoliaKey) //nolint:govet // shadow declaration of err
 		require.NoError(t, err)
-		forwarderAddr := deployForwarder(t, ec, pk)
+		forwarderAddr := common.StagenetConfig().ForwarderAddr
 		sfAddr, _, err := DeploySwapCreatorWithKey(context.Background(), ec, pk, forwarderAddr)
 		require.NoError(t, err)
-		t.Logf("New Sepolia SwapCreator deployed with TrustedForwarder=%s", forwarderAddr)
+		t.Logf("New Sepolia SwapCreator deployed with TrustedForwarder %s", forwarderAddr)
 		t.Fatalf("Update common.StagenetConfig.ContractAddress with %s", sfAddr.Hex())
 	} else {
 		require.NoError(t, err)
