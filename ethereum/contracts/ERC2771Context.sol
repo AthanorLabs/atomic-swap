@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (metatx/ERC2771Context.sol)
 
-pragma solidity ^0.8.9 .0;
+pragma solidity 0.8.19;
 
 import {Context} from "./Context.sol";
 
@@ -31,14 +31,6 @@ abstract contract ERC2771Context is Context {
             }
         } else {
             return super._msgSender();
-        }
-    }
-
-    function _msgData() internal view virtual override returns (bytes calldata) {
-        if (isTrustedForwarder(msg.sender)) {
-            return msg.data[:msg.data.length - 20];
-        } else {
-            return super._msgData();
         }
     }
 }
