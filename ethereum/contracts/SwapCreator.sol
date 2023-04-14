@@ -93,7 +93,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
 
     // returned when the provided secret does not match the expected public key
     error InvalidSecret();
-    
+
     constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {} // solhint-disable-line
 
     // newSwap creates a new Swap instance with the given parameters.
@@ -112,7 +112,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     ) public payable returns (bytes32) {
         if (_value == 0) revert ZeroValue();
         if (_asset == address(0)) {
-            if(_value != msg.value) revert InvalidValue();
+            if (_value != msg.value) revert InvalidValue();
         } else {
             // transfer ERC-20 token into this contract
             // TODO: potentially check token balance before/after this step
@@ -135,7 +135,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         bytes32 swapID = keccak256(abi.encode(swap));
 
         // make sure this isn't overriding an existing swap
-        if(swaps[swapID] != Stage.INVALID) revert SwapAlreadyExists();
+        if (swaps[swapID] != Stage.INVALID) revert SwapAlreadyExists();
 
         emit New(
             swapID,
@@ -153,8 +153,8 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // Alice should call setReady() within t_0 once she verifies the XMR has been locked
     function setReady(Swap memory _swap) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
-        if(swaps[swapID] != Stage.PENDING) revert SwapNotPending();
-        if(_swap.owner != msg.sender) revert OnlySwapOwner();
+        if (swaps[swapID] != Stage.PENDING) revert SwapNotPending();
+        if (_swap.owner != msg.sender) revert OnlySwapOwner();
         swaps[swapID] = Stage.READY;
         emit Ready(swapID);
     }
@@ -181,7 +181,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // Bob can claim if:
     // - Alice has set the swap to `ready` or it's past t_0 but before t_1
     function claimRelayer(Swap memory _swap, bytes32 _s, uint256 fee) public {
-        if(!isTrustedForwarder(msg.sender)) revert OnlyTrustedForwarder();
+        if (!isTrustedForwarder(msg.sender)) revert OnlyTrustedForwarder();
         _claim(_swap, _s);
 
         // send ether to swap claimant, subtracting the relayer fee
@@ -205,11 +205,11 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     function _claim(Swap memory _swap, bytes32 _s) internal {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
-        if(swapStage == Stage.INVALID) revert InvalidSwap();
-        if(swapStage == Stage.COMPLETED) revert SwapCompleted();
-        if( _msgSender() != _swap.claimer) revert OnlySwapClaimer();
-        if(block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
-        if(block.timestamp >= _swap.timeout1) revert TooLateToClaim();
+        if (swapStage == Stage.INVALID) revert InvalidSwap();
+        if (swapStage == Stage.COMPLETED) revert SwapCompleted();
+        if (_msgSender() != _swap.claimer) revert OnlySwapClaimer();
+        if (block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
+        if (block.timestamp >= _swap.timeout1) revert TooLateToClaim();
 
         verifySecret(_s, _swap.pubKeyClaim);
         emit Claimed(swapID, _s);
@@ -222,11 +222,13 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     function refund(Swap memory _swap, bytes32 _s) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
-        if(swapStage == Stage.INVALID) revert InvalidSwap();
-        if(swapStage == Stage.COMPLETED) revert SwapCompleted();
-        if(_swap.owner != msg.sender) revert OnlySwapOwner();
-        if(block.timestamp < _swap.timeout1 &&
-                (block.timestamp > _swap.timeout0 || swapStage == Stage.READY)) revert NotTimeToRefund();
+        if (swapStage == Stage.INVALID) revert InvalidSwap();
+        if (swapStage == Stage.COMPLETED) revert SwapCompleted();
+        if (_swap.owner != msg.sender) revert OnlySwapOwner();
+        if (
+            block.timestamp < _swap.timeout1 &&
+            (block.timestamp > _swap.timeout0 || swapStage == Stage.READY)
+        ) revert NotTimeToRefund();
 
         verifySecret(_s, _swap.pubKeyRefund);
         emit Refunded(swapID, _s);
@@ -241,6 +243,6 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal pure {
-        if(!mulVerify(uint256(_s), uint256(pubKey))) revert InvalidSecret();
+        if (!mulVerify(uint256(_s), uint256(pubKey))) revert InvalidSecret();
     }
 }
