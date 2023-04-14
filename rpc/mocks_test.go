@@ -222,3 +222,7 @@ func (*mockProtocolBackend) ClearXMRDepositAddress(types.Hash) {
 func (*mockProtocolBackend) ETHClient() extethclient.EthClient {
 	panic("not implemented")
 }
+
+func (*mockProtocolBackend) SwapCreatorAddr() ethcommon.Address {
+	panic("not implemented")
+}
