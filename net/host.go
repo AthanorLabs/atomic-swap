@@ -7,6 +7,8 @@ package net
 
 import (
 	"context"
+	"errors"
+	"io"
 	"sync"
 	"time"
 
@@ -29,6 +31,7 @@ const (
 	ProtocolID          = "/atomic-swap/0.3"
 	maxMessageSize      = 1 << 17
 	maxRelayMessageSize = 2048
+	connectionTimeout   = time.Second * 5
 )
 
 var log = logging.Logger("net")
@@ -230,7 +233,9 @@ func nextStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) <-cha
 		for {
 			msg, err := readStreamMessage(stream, maxMessageSize)
 			if err != nil {
-				log.Warnf("failed to read stream message: %s", err)
+				if !errors.Is(err, io.EOF) {
+					log.Warnf("failed to read stream message: %s", err)
+				}
 				close(ch)
 				return
 			}

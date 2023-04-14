@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	swapID          = "/swap/0"
-	protocolTimeout = time.Second * 5
+	swapID = "/swap/0"
 )
 
 // Initiate attempts to initiate a swap with the given peer by sending a SendKeysMessage,
@@ -36,7 +35,7 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 		return errSwapAlreadyInProgress
 	}
 
-	ctx, cancel := context.WithTimeout(h.ctx, protocolTimeout)
+	ctx, cancel := context.WithTimeout(h.ctx, connectionTimeout)
 	defer cancel()
 
 	if h.h.Connectedness(who.ID) != libp2pnetwork.Connected {
@@ -188,7 +187,7 @@ func (h *Host) handleProtocolStreamClose(stream libp2pnetwork.Stream, s SwapStat
 
 	log.Debugf("exiting swap...")
 	if err := s.Exit(); err != nil {
-		log.Errorf("failed to exit protocol: err=%s", err)
+		log.Errorf("failed to exit protocol: %s", err)
 	}
 	h.swapMu.Lock()
 	delete(h.swaps, s.OfferID())

@@ -18,7 +18,6 @@ import (
 
 const (
 	queryProtocolID = "/query/0"
-	queryTimeout    = time.Second * 5
 )
 
 func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
@@ -35,7 +34,7 @@ func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
 
 // Query queries the given peer for its offers.
 func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
-	ctx, cancel := context.WithTimeout(h.ctx, queryTimeout)
+	ctx, cancel := context.WithTimeout(h.ctx, connectionTimeout)
 	defer cancel()
 
 	if err := h.h.Connect(ctx, peer.AddrInfo{ID: who}); err != nil {
