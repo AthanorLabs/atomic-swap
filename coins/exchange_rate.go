@@ -51,7 +51,7 @@ func (r *ExchangeRate) MarshalText() ([]byte, error) {
 	return r.Decimal().MarshalText()
 }
 
-// ToXMR converts an ether amount to a monero amount with the given exchange rate
+// ToXMR converts an ETH amount to an XMR amount with the given exchange rate
 func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	xmrAmt := new(apd.Decimal)
 	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.Decimal())
@@ -64,13 +64,14 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	return xmrAmt, nil
 }
 
-// ToETH converts a monero amount to an eth amount with the given exchange rate
+// ToETH converts an XMR amount to an ETH amount with the given exchange rate
 func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	ethAmt := new(apd.Decimal)
 	_, err := decimalCtx.Mul(ethAmt, r.Decimal(), xmrAmount)
 	if err != nil {
 		return nil, err
 	}
+
 	// Assuming the xmrAmount was capped at 12 decimal places and the exchange
 	// rate was capped at 6 decimal places, you can't generate more than 18
 	// decimal places below, so no rounding occurs.
@@ -78,6 +79,19 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 		return nil, err
 	}
 	return ethAmt, nil
+}
+
+// ToERC20Amount converts an XMR amount to an ERC20TokenAmount with the given exchange rate
+func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenInfo) (*ERC20TokenAmount, error) {
+	erc20Amount := new(apd.Decimal)
+	_, err := decimalCtx.Mul(erc20Amount, r.Decimal(), xmrAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	// The token, if required, will get rounded to whole token units in
+	// the method below.
+	return NewERC20TokenAmountFromDecimals(erc20Amount, token), nil
 }
 
 func (r *ExchangeRate) String() string {

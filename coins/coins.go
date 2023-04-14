@@ -126,11 +126,11 @@ type EthAssetAmount interface {
 	AsStandard() *apd.Decimal
 }
 
-// WeiAmount represents some amount of ether in the smallest denomination (wei)
+// WeiAmount represents some amount of ETH in the smallest denomination (Wei)
 type WeiAmount apd.Decimal
 
 // NewWeiAmount converts the passed *big.Int representation of a
-// wei amount to the WeiAmount type. The returned value is a copy
+// Wei amount to the WeiAmount type. The returned value is a copy
 // with no references to the passed value.
 func NewWeiAmount(amount *big.Int) *WeiAmount {
 	a := new(apd.BigInt).SetMathBigInt(amount)
@@ -168,12 +168,12 @@ func (a *WeiAmount) MarshalText() ([]byte, error) {
 	return a.Decimal().MarshalText()
 }
 
-// ToWeiAmount casts an *apd.Decimal to *WeiAmount
+// ToWeiAmount casts an *apd.Decimal that is already in Wei to *WeiAmount
 func ToWeiAmount(wei *apd.Decimal) *WeiAmount {
 	return (*WeiAmount)(wei)
 }
 
-// EtherToWei converts some amount of standard ether to an WeiAmount.
+// EtherToWei converts some amount of standard ETH to a WeiAmount.
 func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	weiAmt := new(apd.Decimal).Set(ethAmt)
 	increaseExponent(weiAmt, NumEtherDecimals)
@@ -189,7 +189,7 @@ func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 // BigInt returns the given WeiAmount as a *big.Int
 func (a *WeiAmount) BigInt() *big.Int {
 	// Passing Quantize(...) zero as the exponent sets the coefficient to a whole-number
-	// wei value. Round-half-up is used by default. Assuming no rounding occurs, the
+	// Wei value. Round-half-up is used by default. Assuming no rounding occurs, the
 	// operation below is the opposite of Reduce(...) which lops off even factors of
 	// 10 from the coefficient, placing them on the exponent.
 	wholeWeiVal := new(apd.Decimal)
@@ -198,13 +198,13 @@ func (a *WeiAmount) BigInt() *big.Int {
 		panic(err)
 	}
 	if cond.Inexact() {
-		// We round when converting from Ether to Wei, so we shouldn't see this
+		// We round when converting from ETH to Wei, so we shouldn't see this
 		log.Warnf("converting WeiAmount=%s to big.Int required rounding", a.String())
 	}
 	return new(big.Int).SetBytes(wholeWeiVal.Coeff.Bytes())
 }
 
-// AsEther returns the wei amount as ether
+// AsEther returns the Wei amount as ETH
 func (a *WeiAmount) AsEther() *apd.Decimal {
 	ether := new(apd.Decimal).Set(a.Decimal())
 	decreaseExponent(ether, NumEtherDecimals)
@@ -212,28 +212,28 @@ func (a *WeiAmount) AsEther() *apd.Decimal {
 	return ether
 }
 
-// AsEtherString converts the wei amount to an eth amount string
+// AsEtherString converts the Wei amount to an ETH amount string
 func (a *WeiAmount) AsEtherString() string {
 	return a.AsEther().Text('f')
 }
 
-// AsStandard is an alias for AsEther, returning the wei amount as ether
+// AsStandard is an alias for AsEther, returning the Wei amount as ETH
 func (a *WeiAmount) AsStandard() *apd.Decimal {
 	return a.AsEther()
 }
 
-// AsStandardString is an alias for AsEtherString, returning the wei amount as
-// an ether string
+// AsStandardString is an alias for AsEtherString, returning the Wei amount as
+// an ETH string
 func (a *WeiAmount) AsStandardString() *apd.Decimal {
 	return a.AsEther()
 }
 
-// String returns the wei amount as a base10 string
+// String returns the Wei amount as a base10 string
 func (a *WeiAmount) String() string {
 	return a.Decimal().Text('f')
 }
 
-// FmtWeiAsETH takes wei as input and produces a formatted string of the amount
+// FmtWeiAsETH takes Wei as input and produces a formatted string of the amount
 // in ETH.
 func FmtWeiAsETH(wei *big.Int) string {
 	return NewWeiAmount(wei).AsEther().Text('f')
@@ -329,7 +329,7 @@ func (a *ERC20TokenAmount) AsStandardString() string {
 
 // Symbol returns the token's symbol in a format that is safe to log and display
 func (a *ERC20TokenAmount) Symbol() string {
-	return strconv.QuoteToASCII(a.TokenInfo.Symbol)
+	return strconv.Quote(a.TokenInfo.Symbol)
 }
 
 // String returns the ERC20TokenAmount as a base10 string of the token's smallest,

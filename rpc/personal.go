@@ -57,7 +57,7 @@ type SetGasPriceRequest struct {
 	GasPrice uint64 `json:"gasPrice" validate:"required"`
 }
 
-// SetGasPrice sets the gas price (in wei) to be used for ethereum transactions.
+// SetGasPrice sets the gas price (in Wei) to be used for ethereum transactions.
 func (s *PersonalService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, _ *interface{}) error {
 	s.pb.ETHClient().SetGasPrice(req.GasPrice)
 	return nil

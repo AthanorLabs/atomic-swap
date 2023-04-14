@@ -25,7 +25,7 @@ import (
 
 func createTestTokenAddress(t *testing.T, ec extethclient.EthClient) ethcommon.Address {
 	ctx := context.Background()
-	balance := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18))
+	balance := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e12)) // our token has 12 decimal places
 	txOpts, err := ec.TxOpts(ctx)
 	require.NoError(t, err)
 
@@ -34,6 +34,7 @@ func createTestTokenAddress(t *testing.T, ec extethclient.EthClient) ethcommon.A
 		ec.Raw(),
 		"Atomic Token",
 		"ATOMIC",
+		12,
 		ec.Address(),
 		balance,
 	)
@@ -50,19 +51,18 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	maxXMR := coins.StrToDecimal("2")
 	exRate := coins.StrToExchangeRate("1.5")
 
-	// TODO: This next line is wrong. We need to add support for tokens that have fewer
-	//       than 18 decimals.
-	providesAmt, err := exRate.ToETH(maxXMR)
-	require.NoError(t, err)
-
 	bobConf := createTestConf(t, tests.GetMakerTestKey(t))
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
 	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
 
 	tokenAddr := createTestTokenAddress(t, aliceConf.EthereumClient)
-	require.NoError(t, err)
 	tokenAsset := types.EthAsset(tokenAddr)
+	tokenInfo, err := aliceConf.EthereumClient.ERC20Info(context.Background(), tokenAddr)
+	require.NoError(t, err)
+
+	providesAmt, err := exRate.ToERC20Amount(maxXMR, tokenInfo)
+	require.NoError(t, err)
 
 	timeout := 7 * time.Minute
 	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
@@ -75,7 +75,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
 	require.NoError(t, err)
 
-	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
+	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt.AsStandard())
 	require.NoError(t, err)
 
 	var statusWG sync.WaitGroup
@@ -131,5 +131,5 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	t.Logf("Balances: %#v", balances)
 
 	require.NotEmpty(t, balances.TokenBalances)
-	require.Equal(t, providesAmt.Text('f'), balances.TokenBalances[0].AsStandardString())
+	require.Equal(t, providesAmt.AsStandardString(), balances.TokenBalances[0].AsStandardString())
 }

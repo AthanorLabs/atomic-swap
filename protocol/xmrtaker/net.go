@@ -10,7 +10,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color"
@@ -66,31 +65,34 @@ func (inst *Instance) initiate(
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := inst.backend.ETHClient().Balance(inst.backend.Ctx())
+	ethBalance, err := inst.backend.ETHClient().Balance(inst.backend.Ctx())
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
-	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
+	if ethAsset == types.EthAssetETH && ethBalance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
 		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
-			inst.backend.ETHClient().Address(), balance.AsEtherString(), providesAmount.AsStandard())
-		return nil, errBalanceTooLow
+			inst.backend.ETHClient().Address(), ethBalance.AsEtherString(), providesAmount.AsStandard())
+		return nil, errAssetBalanceTooLow{
+			providedAmount: providesAmount.AsStandard(),
+			balance:        ethBalance.AsEther(),
+			symbol:         "ETH",
+		}
 	}
 
 	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), inst.backend.ETHClient().Raw()) //nolint:govet
+		tokenBalance, err := inst.backend.ETHClient().ERC20Balance(inst.backend.Ctx(), ethAsset.Address())
 		if err != nil {
 			return nil, err
 		}
 
-		balance, err := erc20Contract.BalanceOf(inst.backend.ETHClient().CallOpts(inst.backend.Ctx()), inst.backend.ETHClient().Address()) //nolint:lll
-		if err != nil {
-			return nil, err
-		}
-
-		if balance.Cmp(providesAmount.BigInt()) <= 0 {
-			return nil, errBalanceTooLow
+		if tokenBalance.AsStandard().Cmp(providesAmount.AsStandard()) <= 0 {
+			return nil, errAssetBalanceTooLow{
+				providedAmount: providesAmount.AsStandard(),
+				balance:        tokenBalance.AsStandard(),
+				symbol:         tokenBalance.Symbol(),
+			}
 		}
 	}
 

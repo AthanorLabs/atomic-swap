@@ -36,7 +36,7 @@ func StrToExchangeRate(rate string) *ExchangeRate {
 	return r
 }
 
-// IntToWei converts some amount of wei into an WeiAmount for unit tests.
+// IntToWei converts some amount of Wei into an WeiAmount for unit tests.
 func IntToWei(amount int64) *WeiAmount {
 	if amount < 0 {
 		panic(fmt.Sprintf("Wei amount %d is negative", amount)) // test only function

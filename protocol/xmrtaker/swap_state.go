@@ -256,6 +256,18 @@ func newSwapState(
 		return nil, err
 	}
 
+	var providedAmt coins.EthAssetAmount
+	if info.EthAsset == types.EthAssetETH {
+		providedAmt = coins.EtherToWei(info.ProvidedAmount)
+	} else {
+		tokenInfo, err := b.ETHClient().ERC20Info(b.Ctx(), info.EthAsset.Address())
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		providedAmt = coins.NewERC20TokenAmountFromDecimals(info.ProvidedAmount, tokenInfo)
+	}
+
 	// note: if this is recovering an ongoing swap, this will only
 	// be invoked if our status is ETHLocked or ContractReady; ie.
 	// we've locked ETH, but not yet claimed or refunded.
@@ -279,11 +291,12 @@ func newSwapState(
 		claimedCh:         make(chan struct{}),
 		done:              make(chan struct{}),
 		info:              info,
-		providedAmount:    coins.EtherToWei(info.ProvidedAmount),
+		providedAmount:    providedAmt,
 		statusCh:          info.StatusCh(),
 	}
 
 	if err := s.generateAndSetKeys(); err != nil {
+		cancel()
 		return nil, err
 	}
 
@@ -549,24 +562,14 @@ func (s *swapState) setXMRMakerKeys(
 	return s.Backend.RecoveryDB().PutCounterpartySwapKeys(s.info.OfferID, sk, vk)
 }
 
-func (s *swapState) approveToken() error {
-	token, err := contracts.NewIERC20(s.info.EthAsset.Address(), s.ETHClient().Raw())
-	if err != nil {
-		return fmt.Errorf("failed to instantiate IERC20: %w", err)
-	}
-
-	balance, err := token.BalanceOf(s.ETHClient().CallOpts(s.ctx), s.ETHClient().Address())
-	if err != nil {
-		return fmt.Errorf("failed to get balance for token: %w", err)
-	}
-
+func (s *swapState) approveToken(amt *coins.ERC20TokenAmount) error {
 	log.Info("approving token for use by the swap contract...")
-	_, err = s.sender.Approve(s.SwapCreatorAddr(), balance)
+	_, err := s.sender.Approve(s.SwapCreatorAddr(), amt.BigInt())
 	if err != nil {
 		return fmt.Errorf("failed to approve token: %w", err)
 	}
 
-	log.Info("approved token for use by the swap contract")
+	log.Infof("approved %s %s for use by the swap contract", amt.AsStandardString(), amt.Symbol())
 	return nil
 }
 
@@ -582,7 +585,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	}
 
 	if s.info.EthAsset != types.EthAssetETH {
-		err = s.approveToken()
+		err = s.approveToken(s.providedAmount.(*coins.ERC20TokenAmount))
 		if err != nil {
 			return nil, err
 		}
