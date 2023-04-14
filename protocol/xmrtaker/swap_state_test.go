@@ -144,13 +144,13 @@ func newTestSwapState(t *testing.T) *swapState {
 	return s
 }
 
-func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.ERC20Mock) {
+func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.TestERC20) {
 	b := newBackend(t)
 
 	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
 	require.NoError(t, err)
 
-	_, tx, contract, err := contracts.DeployERC20Mock(
+	_, tx, contract, err := contracts.DeployTestERC20(
 		txOpts,
 		b.ETHClient().Raw(),
 		"Mock",

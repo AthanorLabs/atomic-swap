@@ -30,15 +30,15 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 	return auth, conn, pk
 }
 
-// deploys ERC20Mock.sol and assigns the whole token balance to the XMRTaker default address.
-func deployERC20Mock(t *testing.T) ethcommon.Address {
+// deploys TestERC20.sol and assigns the whole token balance to the XMRTaker default address.
+func deployTestERC20(t *testing.T) ethcommon.Address {
 	auth, conn, pkA := setupXMRTakerAuth(t)
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := ethcrypto.PubkeyToAddress(*pub)
 
 	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 	balance := new(big.Int).Mul(big.NewInt(9999999), decimals)
-	erc20Addr, erc20Tx, _, err := contracts.DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, balance)
+	erc20Addr, erc20Tx, _, err := contracts.DeployTestERC20(auth, conn, "TestERC20", "MOCK", addr, balance)
 	require.NoError(t, err)
 	_, err = block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -46,29 +46,29 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 }
 
 func (s *IntegrationTestSuite) TestXMRTaker_ERC20_Query() {
-	s.testXMRTakerQuery(types.EthAsset(deployERC20Mock(s.T())))
+	s.testXMRTakerQuery(types.EthAsset(deployTestERC20(s.T())))
 }
 
 func (s *IntegrationTestSuite) TestSuccess_ERC20_OneSwap() {
-	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), false)
+	s.testSuccessOneSwap(types.EthAsset(deployTestERC20(s.T())), false)
 }
 
 func (s *IntegrationTestSuite) TestRefund_ERC20_XMRTakerCancels() {
-	s.testRefundXMRTakerCancels(types.EthAsset(deployERC20Mock(s.T())))
+	s.testRefundXMRTakerCancels(types.EthAsset(deployTestERC20(s.T())))
 }
 
 func (s *IntegrationTestSuite) TestAbort_ERC20_XMRTakerCancels() {
-	s.testAbortXMRTakerCancels(types.EthAsset(deployERC20Mock(s.T())))
+	s.testAbortXMRTakerCancels(types.EthAsset(deployTestERC20(s.T())))
 }
 
 func (s *IntegrationTestSuite) TestAbort_ERC20_XMRMakerCancels() {
-	s.testAbortXMRMakerCancels(types.EthAsset(deployERC20Mock(s.T())))
+	s.testAbortXMRMakerCancels(types.EthAsset(deployTestERC20(s.T())))
 }
 
 func (s *IntegrationTestSuite) TestError_ERC20_ShouldOnlyTakeOfferOnce() {
-	s.testErrorShouldOnlyTakeOfferOnce(types.EthAsset(deployERC20Mock(s.T())))
+	s.testErrorShouldOnlyTakeOfferOnce(types.EthAsset(deployTestERC20(s.T())))
 }
 
 func (s *IntegrationTestSuite) TestSuccess_ERC20_ConcurrentSwaps() {
-	s.testSuccessConcurrentSwaps(types.EthAsset(deployERC20Mock(s.T())))
+	s.testSuccessConcurrentSwaps(types.EthAsset(deployTestERC20(s.T())))
 }

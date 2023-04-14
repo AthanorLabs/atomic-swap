@@ -46,7 +46,7 @@ func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ec
 func approveERC20(t *testing.T,
 	auth *bind.TransactOpts,
 	conn *ethclient.Client,
-	erc20Contract *ERC20Mock,
+	erc20Contract *TestERC20,
 	swapCreatorAddress ethcommon.Address,
 	value *big.Int,
 ) {
@@ -58,7 +58,7 @@ func approveERC20(t *testing.T,
 	t.Logf("gas cost to call Approve: %d", receipt.GasUsed)
 }
 
-func testNewSwap(t *testing.T, asset ethcommon.Address, erc20Contract *ERC20Mock) {
+func testNewSwap(t *testing.T, asset ethcommon.Address, erc20Contract *TestERC20) {
 	auth, conn, _ := setupXMRTakerAuth(t)
 	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
 	require.NoError(t, err)
@@ -217,7 +217,7 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	require.Equal(t, StageCompleted, stage)
 }
 
-func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *big.Int, erc20Contract *ERC20Mock) {
+func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *big.Int, erc20Contract *TestERC20) {
 	// generate claim secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -307,7 +307,7 @@ func TestSwapCreator_Claim_random(t *testing.T) {
 	testClaim(t, ethAssetAddress, 0, defaultSwapValue, nil)
 }
 
-func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, erc20Contract *ERC20Mock, newLogIndex int) {
+func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, erc20Contract *TestERC20, newLogIndex int) {
 	// generate refund secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -382,7 +382,7 @@ func TestSwapCreator_Refund_beforeT0(t *testing.T) {
 	testRefundBeforeT0(t, ethAssetAddress, nil, 0)
 }
 
-func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *ERC20Mock, newLogIndex int) {
+func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *TestERC20, newLogIndex int) {
 	// generate refund secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
