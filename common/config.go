@@ -90,8 +90,8 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xba3De644bbFa6F5f6493d505142d3aD273ab2d21"),
-		ForwarderAddr:   ethcommon.HexToAddress("0xd9E77Bb1d3Ed6790BA31c667054647a7991762a7"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x1C1e32CA0D28A37eC8BBdB2696619E5f503CB407"),
+		ForwarderAddr:   ethcommon.HexToAddress("0xa030E074b8398005a454CB7c51E9b7CDb966744a"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
