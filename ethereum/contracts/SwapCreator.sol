@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPLv3
-pragma solidity 0.8.19;
+pragma solidity 0.8.19 .0;
 
 import {ERC2771Context} from "./ERC2771Context.sol";
 import {IERC20} from "./IERC20.sol";
