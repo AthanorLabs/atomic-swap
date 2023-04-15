@@ -135,7 +135,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	// Check Bob's token balance via RPC method instead of doing it directly
 	//
 	bRPC := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", bobConf.RPCPort))
-	balances, err := bRPC.Balances(&rpctypes.BalancesRequest{TokenAddrs: []types.EthAsset{tokenAsset}})
+	balances, err := bRPC.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAddr}})
 	require.NoError(t, err)
 	t.Logf("Balances: %#v", balances)
 

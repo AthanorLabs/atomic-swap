@@ -98,10 +98,10 @@ func (s *PersonalService) Balances(
 	var tokenBalances []*coins.ERC20TokenAmount
 	if req != nil {
 		ec := s.pb.ETHClient()
-		for _, token := range req.TokenAddrs {
-			balance, err := ec.ERC20Balance(s.ctx, token.Address())
+		for _, tokenAddr := range req.TokenAddrs {
+			balance, err := ec.ERC20Balance(s.ctx, tokenAddr)
 			if err != nil {
-				return fmt.Errorf("unable to get balance for %s: %w", token, err)
+				return fmt.Errorf("unable to get balance for %s: %w", tokenAddr, err)
 			}
 
 			tokenBalances = append(tokenBalances, balance)

@@ -402,12 +402,11 @@ func runBalances(ctx *cli.Context) error {
 
 	request := &rpctypes.BalancesRequest{}
 	tokens := ctx.StringSlice(flagToken)
-	for _, token := range tokens {
-		asset, err := types.NewEthAsset(token)
-		if err != nil {
-			return err
+	for _, tokenAddr := range tokens {
+		if !ethcommon.IsHexAddress(tokenAddr) {
+			return fmt.Errorf("invalid token address: %q", tokenAddr)
 		}
-		request.TokenAddrs = append(request.TokenAddrs, asset)
+		request.TokenAddrs = append(request.TokenAddrs, ethcommon.HexToAddress(tokenAddr))
 	}
 
 	balances, err := c.Balances(request)

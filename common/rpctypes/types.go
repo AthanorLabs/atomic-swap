@@ -126,7 +126,7 @@ type TokenInfoResponse = coins.ERC20TokenInfo
 // BalancesRequest is used to request the combined Monero and Ethereum balances
 // as well as the balances of any tokens included in the request.
 type BalancesRequest struct {
-	TokenAddrs []types.EthAsset `json:"tokensAddrs" validate:"dive,required"`
+	TokenAddrs []ethcommon.Address `json:"tokensAddrs" validate:"dive,required"`
 }
 
 // BalancesResponse holds the response for the combined Monero, Ethereum and

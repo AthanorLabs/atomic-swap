@@ -14,7 +14,6 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
-	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
@@ -64,7 +63,7 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 	MineTransaction(t, ec.Raw(), tx)
 
 	tokenBalReq := &rpctypes.BalancesRequest{
-		TokenAddrs: []types.EthAsset{types.EthAsset(erc20Addr)},
+		TokenAddrs: []ethcommon.Address{erc20Addr},
 	}
 
 	// verify that the XMR Taker has exactly 1000 tokens
