@@ -5,6 +5,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 
 const (
 	queryProtocolID = "/query/0"
-	queryTimeout    = time.Second * 5
 )
 
 func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
@@ -34,7 +34,7 @@ func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {
 
 // Query queries the given peer for its offers.
 func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
-	ctx, cancel := context.WithTimeout(h.ctx, queryTimeout)
+	ctx, cancel := context.WithTimeout(h.ctx, connectionTimeout)
 	defer cancel()
 
 	if err := h.h.Connect(ctx, peer.AddrInfo{ID: who}); err != nil {
@@ -56,17 +56,23 @@ func (h *Host) Query(who peer.ID) (*QueryResponse, error) {
 }
 
 func receiveQueryResponse(stream libp2pnetwork.Stream) (*QueryResponse, error) {
-	msg, err := readStreamMessage(stream, maxMessageSize)
-	if err != nil {
-		return nil, fmt.Errorf("error reading QueryResponse: %w", err)
-	}
+	const queryResponseTimeout = time.Second * 15
 
-	resp, ok := msg.(*QueryResponse)
-	if !ok {
-		return nil, fmt.Errorf("expected %s message but received %s",
-			message.TypeToString(message.QueryResponseType),
-			message.TypeToString(msg.Type()))
-	}
+	select {
+	case msg := <-nextStreamMessage(stream, maxMessageSize):
+		if msg == nil {
+			return nil, errors.New("failed to read QueryResponse")
+		}
 
-	return resp, nil
+		resp, ok := msg.(*QueryResponse)
+		if !ok {
+			return nil, fmt.Errorf("expected %s message but received %s",
+				message.TypeToString(message.QueryResponseType),
+				message.TypeToString(msg.Type()))
+		}
+
+		return resp, nil
+	case <-time.After(queryResponseTimeout):
+		return nil, errors.New("timed out waiting for QueryResponse")
+	}
 }

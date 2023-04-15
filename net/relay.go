@@ -5,6 +5,7 @@ package net
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,8 +17,7 @@ import (
 )
 
 const (
-	relayProtocolID   = "/relay/0"
-	relayClaimTimeout = time.Second * 30 // TODO: Vet this value
+	relayProtocolID = "/relay/0"
 
 	// RelayerProvidesStr is the DHT namespace advertised by nodes willing to relay
 	// claims for arbitrary XMR makers.
@@ -93,13 +93,7 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 
 // SubmitClaimToRelayer sends a request to relay a swap claim to a peer.
 func (h *Host) SubmitClaimToRelayer(relayerID peer.ID, request *RelayClaimRequest) (*RelayClaimResponse, error) {
-	// The timeout should be short enough, that the Maker can try multiple relayers
-	// before T1 expires even if the receiving node accepts the relay request and
-	// just sits on it without doing anything.
-	// TODO: https://github.com/AthanorLabs/atomic-swap/issues/375
-	//       The context below needs extension to cover the response. Right now
-	//       only covers the Connect(...).
-	ctx, cancel := context.WithTimeout(h.ctx, relayClaimTimeout)
+	ctx, cancel := context.WithTimeout(h.ctx, connectionTimeout)
 	defer cancel()
 
 	if err := h.h.Connect(ctx, peer.AddrInfo{ID: relayerID}); err != nil {
@@ -123,17 +117,26 @@ func (h *Host) SubmitClaimToRelayer(relayerID peer.ID, request *RelayClaimReques
 }
 
 func receiveRelayClaimResponse(stream libp2pnetwork.Stream) (*RelayClaimResponse, error) {
-	msg, err := readStreamMessage(stream, maxRelayMessageSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read RelayClaimResponse: %w", err)
-	}
+	// The timeout should be short enough, that the Maker can try multiple relayers
+	// before T1 expires even if the receiving node accepts the relay request and
+	// just sits on it without doing anything.
+	const relayResponseTimeout = time.Second * 45
 
-	resp, ok := msg.(*RelayClaimResponse)
-	if !ok {
-		return nil, fmt.Errorf("expected %s message but received %s",
-			message.TypeToString(message.RelayClaimResponseType),
-			message.TypeToString(msg.Type()))
-	}
+	select {
+	case msg := <-nextStreamMessage(stream, maxMessageSize):
+		if msg == nil {
+			return nil, errors.New("failed to read RelayClaimResponse")
+		}
 
-	return resp, nil
+		resp, ok := msg.(*RelayClaimResponse)
+		if !ok {
+			return nil, fmt.Errorf("expected %s message but received %s",
+				message.TypeToString(message.RelayClaimResponseType),
+				message.TypeToString(msg.Type()))
+		}
+
+		return resp, nil
+	case <-time.After(relayResponseTimeout):
+		return nil, errors.New("timed out waiting for QueryResponse")
+	}
 }

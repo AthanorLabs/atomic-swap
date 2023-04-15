@@ -284,6 +284,5 @@ func (s *swapState) handleEventETHRefunded(e *EventETHRefunded) error {
 	}
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
-	s.CloseProtocolStream(s.OfferID())
 	return nil
 }

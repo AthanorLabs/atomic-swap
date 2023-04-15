@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"reflect"
 	"strings"
 	"time"
 
@@ -287,30 +286,9 @@ func newSwapState(
 		return nil, err
 	}
 
-	go s.waitForSendKeysMessage()
 	go s.runHandleEvents()
 	go s.runContractEventWatcher()
 	return s, nil
-}
-
-func (s *swapState) waitForSendKeysMessage() {
-	waitDuration := time.Minute * 5
-	timer := time.After(waitDuration)
-	select {
-	case <-s.ctx.Done():
-		return
-	case <-timer:
-	}
-
-	// check if we've received a response from the counterparty yet
-	if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventKeysReceived{}) {
-		return
-	}
-
-	// if not, just exit the swap
-	if err := s.Exit(); err != nil {
-		log.Warnf("Swap exit failure: %s", err)
-	}
 }
 
 // SendKeysMessage ...
@@ -349,6 +327,8 @@ func (s *swapState) Exit() error {
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
 	defer func() {
+		s.CloseProtocolStream(s.OfferID())
+
 		err := s.SwapManager().CompleteOngoingSwap(s.info)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.OfferID, err)
