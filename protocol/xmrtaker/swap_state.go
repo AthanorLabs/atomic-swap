@@ -568,15 +568,11 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		panic(errCounterpartyKeysNotSet)
 	}
 
-	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
-	if err != nil {
-		return nil, err
-	}
-
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
+	providedAmt := s.providedAmount
 
-	log.Debugf("locking %s in contract", symbol)
+	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
 
 	nonce := generateNonce()
 	receipt, err := s.sender.NewSwap(
@@ -585,8 +581,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		s.xmrmakerAddress,
 		big.NewInt(int64(s.SwapTimeout().Seconds())),
 		nonce,
-		s.info.EthAsset,
-		s.providedAmount.BigInt(),
+		providedAmt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
@@ -647,7 +642,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", providedAmt.StandardSymbol())
 	return receipt, nil
 }
 

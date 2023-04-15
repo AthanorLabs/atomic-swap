@@ -17,8 +17,8 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	logging "github.com/ipfs/go-log"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
@@ -38,8 +38,7 @@ type Sender interface {
 		claimer ethcommon.Address,
 		timeoutDuration *big.Int,
 		nonce *big.Int,
-		ethAsset types.EthAsset,
-		amount *big.Int,
+		amount coins.EthAssetAmount,
 	) (*ethtypes.Receipt, error)
 	SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.Receipt, error)
 	Claim(swap *contracts.SwapCreatorSwap, secret [32]byte) (*ethtypes.Receipt, error)
@@ -47,29 +46,32 @@ type Sender interface {
 }
 
 type privateKeySender struct {
-	ctx           context.Context
-	ethClient     extethclient.EthClient
-	swapContract  *contracts.SwapCreator
-	erc20Contract *contracts.IERC20
+	ctx             context.Context
+	ethClient       extethclient.EthClient
+	swapCreatorAddr ethcommon.Address
+	swapCreator     *contracts.SwapCreator
+	erc20Contract   *contracts.IERC20
 }
 
 // NewSenderWithPrivateKey returns a new *privateKeySender
 func NewSenderWithPrivateKey(
 	ctx context.Context,
 	ethClient extethclient.EthClient,
-	swapContract *contracts.SwapCreator,
+	swapCreatorAddr ethcommon.Address,
+	swapCreator *contracts.SwapCreator,
 	erc20Contract *contracts.IERC20,
 ) Sender {
 	return &privateKeySender{
-		ctx:           ctx,
-		ethClient:     ethClient,
-		swapContract:  swapContract,
-		erc20Contract: erc20Contract,
+		ctx:             ctx,
+		ethClient:       ethClient,
+		swapCreatorAddr: swapCreatorAddr,
+		swapCreator:     swapCreator,
+		erc20Contract:   erc20Contract,
 	}
 }
 
 func (s *privateKeySender) SetContract(contract *contracts.SwapCreator) {
-	s.swapContract = contract
+	s.swapCreator = contract
 }
 
 func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
@@ -80,23 +82,24 @@ func (s *privateKeySender) NewSwap(
 	claimer ethcommon.Address,
 	timeoutDuration *big.Int,
 	nonce *big.Int,
-	ethAsset types.EthAsset,
-	value *big.Int,
+	amount coins.EthAssetAmount,
 ) (*ethtypes.Receipt, error) {
 	s.ethClient.Lock()
 	defer s.ethClient.Unlock()
+
+	value := amount.BigInt()
 
 	// For token swaps, approving our contract to transfer tokens, and calling
 	// NewSwap which performs the transfer, needs to be inside the same wallet
 	// lock grab in case there are other simultaneous swaps happening with the
 	// same token.
-	if ethAsset.IsToken() {
+	if amount.IsToken() {
 		txOpts, err := s.ethClient.TxOpts(s.ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		tx, err := s.erc20Contract.Approve(txOpts, s.ethClient.Address(), value)
+		tx, err := s.erc20Contract.Approve(txOpts, s.swapCreatorAddr, value)
 		if err != nil {
 			return nil, fmt.Errorf("approve tx creation failed, %w", err)
 		}
@@ -106,7 +109,9 @@ func (s *privateKeySender) NewSwap(
 			return nil, fmt.Errorf("approve failed, %w", err)
 		}
 
-		log.Infof("approve transaction included %s", common.ReceiptInfo(receipt))
+		log.Debugf("approve transaction included %s", common.ReceiptInfo(receipt))
+		log.Infof("%s %s approved for use by SwapCreator's new_swap",
+			amount.AsStandard().Text('f'), amount.StandardSymbol())
 	}
 
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
@@ -115,12 +120,12 @@ func (s *privateKeySender) NewSwap(
 	}
 
 	// transfer ETH if we're not doing an ERC20 swap
-	if ethAsset.IsETH() {
+	if !amount.IsToken() {
 		txOpts.Value = value
 	}
 
-	tx, err := s.swapContract.NewSwap(txOpts, pubKeyClaim, pubKeyRefund, claimer, timeoutDuration, timeoutDuration,
-		ethcommon.Address(ethAsset), value, nonce)
+	tx, err := s.swapCreator.NewSwap(txOpts, pubKeyClaim, pubKeyRefund, claimer, timeoutDuration, timeoutDuration,
+		amount.TokenAddress(), value, nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
 		return nil, err
@@ -143,7 +148,7 @@ func (s *privateKeySender) SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.
 		return nil, err
 	}
 
-	tx, err := s.swapContract.SetReady(txOpts, *swap)
+	tx, err := s.swapCreator.SetReady(txOpts, *swap)
 	if err != nil {
 		err = fmt.Errorf("set_ready tx creation failed, %w", err)
 		return nil, err
@@ -169,7 +174,7 @@ func (s *privateKeySender) Claim(
 		return nil, err
 	}
 
-	tx, err := s.swapContract.Claim(txOpts, *swap, secret)
+	tx, err := s.swapCreator.Claim(txOpts, *swap, secret)
 	if err != nil {
 		err = fmt.Errorf("claim tx creation failed, %w", err)
 		return nil, err
@@ -195,7 +200,7 @@ func (s *privateKeySender) Refund(
 		return nil, err
 	}
 
-	tx, err := s.swapContract.Refund(txOpts, *swap, secret)
+	tx, err := s.swapCreator.Refund(txOpts, *swap, secret)
 	if err != nil {
 		err = fmt.Errorf("refund tx creation failed, %w", err)
 		return nil, err

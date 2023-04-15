@@ -160,7 +160,7 @@ func (b *backend) NewTxSender(asset ethcommon.Address, erc20Contract *contracts.
 		return txsender.NewExternalSender(b.ctx, b.env, b.ethClient.Raw(), b.swapCreatorAddr, asset)
 	}
 
-	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETHClient(), b.swapCreator, erc20Contract), nil
+	return txsender.NewSenderWithPrivateKey(b.ctx, b.ETHClient(), b.swapCreatorAddr, b.swapCreator, erc20Contract), nil
 }
 
 func (b *backend) RecoveryDB() RecoveryDB {

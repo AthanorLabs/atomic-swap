@@ -125,6 +125,8 @@ type EthAssetAmount interface {
 	BigInt() *big.Int
 	AsStandard() *apd.Decimal
 	StandardSymbol() string
+	IsToken() bool
+	TokenAddress() ethcommon.Address
 }
 
 // WeiAmount represents some amount of ETH in the smallest denomination (Wei)
@@ -234,6 +236,16 @@ func (a *WeiAmount) StandardSymbol() string {
 	return "ETH"
 }
 
+// IsToken returns false, as WeiAmount is not an ERC20 token
+func (a *WeiAmount) IsToken() bool {
+	return false
+}
+
+// TokenAddress returns the all-zero address as WeiAmount is not an ERC20 token
+func (a *WeiAmount) TokenAddress() ethcommon.Address {
+	return ethcommon.Address{}
+}
+
 // String returns the Wei amount as a base10 string
 func (a *WeiAmount) String() string {
 	return a.Decimal().Text('f')
@@ -336,6 +348,16 @@ func (a *ERC20TokenAmount) AsStandardString() string {
 // StandardSymbol returns the token's symbol in a format that is safe to log and display
 func (a *ERC20TokenAmount) StandardSymbol() string {
 	return strconv.Quote(a.TokenInfo.Symbol)
+}
+
+// IsToken returns true, because ERC20TokenAmount represents and ERC20 token
+func (a *ERC20TokenAmount) IsToken() bool {
+	return true
+}
+
+// TokenAddress returns the ERC20 token's ethereum contract address
+func (a *ERC20TokenAmount) TokenAddress() ethcommon.Address {
+	return a.TokenInfo.Address
 }
 
 // String returns the ERC20TokenAmount as a base10 string of the token's smallest,

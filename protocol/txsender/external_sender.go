@@ -116,26 +116,23 @@ func (s *ExternalSender) NewSwap(
 	claimer ethcommon.Address,
 	timeoutDuration *big.Int,
 	nonce *big.Int,
-	ethAsset types.EthAsset,
-	value *big.Int,
+	amount coins.EthAssetAmount,
 ) (*ethtypes.Receipt, error) {
-
 	// TODO: Add ERC20 token support and approve new_swap for the token transfer
-	if ethAsset.IsToken() {
+	if amount.IsToken() {
 		return nil, errors.New("external sender does not support ERC20 token swaps")
 	}
 
 	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
-		ethAsset, value, nonce)
+		amount.TokenAddress(), amount.BigInt(), nonce)
 	if err != nil {
 		return nil, err
 	}
 
-	valueWei := coins.NewWeiAmount(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  input,
-		Value: valueWei.AsEther(),
+		Value: amount.AsStandard(),
 	}
 
 	s.Lock()

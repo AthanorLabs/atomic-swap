@@ -41,6 +41,7 @@ const (
 	defaultXMRTakerSwapdWSEndpoint = "ws://localhost:5000/ws"
 	defaultXMRMakerSwapdEndpoint   = "http://localhost:5001"
 	defaultXMRMakerSwapdWSEndpoint = "ws://localhost:5001/ws"
+	defaultCharlieSwapdEndpoint    = "http://localhost:5002"
 	defaultCharlieSwapdWSEndpoint  = "ws://localhost:5002/ws"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
@@ -55,13 +56,16 @@ var (
 
 type IntegrationTestSuite struct {
 	suite.Suite
+	testToken types.EthAsset
 }
 
 func TestRunIntegrationTests(t *testing.T) {
 	if testing.Short() || os.Getenv(testsEnv) != integrationMode {
 		t.Skip()
 	}
-	suite.Run(t, new(IntegrationTestSuite))
+	s := new(IntegrationTestSuite)
+	s.testToken = types.EthAsset(deployERC20Mock(t))
+	suite.Run(t, s)
 }
 
 func (s *IntegrationTestSuite) SetupTest() {
