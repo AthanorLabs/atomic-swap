@@ -50,6 +50,7 @@ func NewSwapService(
 }
 
 // PastSwap represents a past swap returned by swap_getPast.
+// TODO: This struct does not have needed fields for swaps of ERC20 tokens.
 type PastSwap struct {
 	ID             types.Hash          `json:"id" validate:"required"`
 	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
@@ -122,6 +123,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 }
 
 // OngoingSwap represents an ongoing swap returned by swap_getOngoing.
+// TODO: This struct does not have needed fields for swaps of ERC20 tokens.
 type OngoingSwap struct {
 	ID                        types.Hash          `json:"id" validate:"required"`
 	Provided                  coins.ProvidesCoin  `json:"provided" validate:"required"`

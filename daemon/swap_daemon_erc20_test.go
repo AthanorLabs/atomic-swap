@@ -58,24 +58,33 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 
 	tokenAddr := createTestTokenAddress(t, aliceConf.EthereumClient)
 	tokenAsset := types.EthAsset(tokenAddr)
-	tokenInfo, err := aliceConf.EthereumClient.ERC20Info(context.Background(), tokenAddr)
-	require.NoError(t, err)
-
-	providesAmt, err := exRate.ToERC20Amount(maxXMR, tokenInfo)
-	require.NoError(t, err)
 
 	timeout := 7 * time.Minute
-	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
+	ctx := launchDaemons(t, timeout, aliceConf, bobConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
 	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
 	require.NoError(t, err)
 
-	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
+	_, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
+	require.NoError(t, err)
+	time.Sleep(250 * time.Millisecond) // offer propagation time
+
+	// Have Alice query all the offer information back
+	aRPC := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", aliceConf.RPCPort))
+	peersWithOffers, err := aRPC.QueryAll(coins.ProvidesXMR, 3)
+	require.NoError(t, err)
+	require.Len(t, peersWithOffers, 1)
+	require.Len(t, peersWithOffers[0].Offers, 1)
+	peerID := peersWithOffers[0].PeerID
+	offer := peersWithOffers[0].Offers[0]
+	tokenInfo, err := aRPC.TokenInfo(offer.EthAsset.Address())
+	require.NoError(t, err)
+	providesAmt, err := exRate.ToERC20Amount(offer.MaxAmount, tokenInfo)
 	require.NoError(t, err)
 
-	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt.AsStandard())
+	aliceStatusCh, err := ac.TakeOfferAndSubscribe(peerID, offer.ID, providesAmt)
 	require.NoError(t, err)
 
 	var statusWG sync.WaitGroup
@@ -131,5 +140,5 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	t.Logf("Balances: %#v", balances)
 
 	require.NotEmpty(t, balances.TokenBalances)
-	require.Equal(t, providesAmt.AsStandardString(), balances.TokenBalances[0].AsStandardString())
+	require.Equal(t, providesAmt.Text('f'), balances.TokenBalances[0].AsStandardString())
 }

@@ -82,7 +82,7 @@ func (inst *Instance) initiate(
 	}
 
 	if ethAsset != types.EthAssetETH {
-		tokenBalance, err := inst.backend.ETHClient().ERC20Balance(inst.backend.Ctx(), ethAsset.Address())
+		tokenBalance, err := inst.backend.ETHClient().ERC20Balance(inst.backend.Ctx(), ethAsset.Address()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func (inst *Instance) initiate(
 			return nil, errAssetBalanceTooLow{
 				providedAmount: providesAmount.AsStandard(),
 				balance:        tokenBalance.AsStandard(),
-				symbol:         tokenBalance.Symbol(),
+				symbol:         tokenBalance.StandardSymbol(),
 			}
 		}
 	}

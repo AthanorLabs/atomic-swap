@@ -8,9 +8,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/skip2/go-qrcode"
@@ -519,6 +521,8 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+
 	min, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
 		return err
@@ -529,35 +533,56 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
-	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
-	if err != nil {
-		return err
-	}
-	exchangeRate := coins.ToExchangeRate(exchangeRateDec)
-	// TODO: How to handle this if the other asset is not ETH?
-	otherMin, err := exchangeRate.ToETH(min)
-	if err != nil {
-		return err
-	}
-	otherMax, err := exchangeRate.ToETH(max)
-	if err != nil {
-		return err
-	}
-
 	ethAssetStr := ctx.String("eth-asset")
 	ethAsset := types.EthAssetETH
 	if ethAssetStr != "" {
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
 	}
+	isETH := ethAsset == types.EthAssetETH
 
-	c := newRRPClient(ctx)
+	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
+	if err != nil {
+		return err
+	}
+	exchangeRate := coins.ToExchangeRate(exchangeRateDec)
+
+	var otherMin, otherMax *apd.Decimal
+	var symbol string
+
+	if isETH {
+		symbol = "ETH"
+
+		if otherMin, err = exchangeRate.ToETH(min); err != nil {
+			return err
+		}
+
+		if otherMax, err = exchangeRate.ToETH(max); err != nil {
+			return err
+		}
+	} else {
+		tokenInfo, err := c.TokenInfo(ethAsset.Address()) //nolint:govet
+		if err != nil {
+			return err
+		}
+
+		symbol = strconv.Quote(tokenInfo.Symbol)
+
+		if otherMin, err = exchangeRate.ToERC20Amount(min, tokenInfo); err != nil {
+			return err
+		}
+
+		if otherMax, err = exchangeRate.ToERC20Amount(max, tokenInfo); err != nil {
+			return err
+		}
+
+	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
 		fmt.Printf("\tPeer ID:   %s\n", offerResp.PeerID)
-		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), ethAsset)
-		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
+		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), symbol)
+		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), symbol)
 	}
 
 	alwaysUseRelayer := ctx.Bool(flagUseRelayer)
@@ -677,9 +702,10 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 			fmt.Printf("---\n")
 		}
 
-		receivedCoin := "ETH"
+		// TODO: This code is not correctly handling ERC20 tokens.
+		receivedCoin := coins.ProvidesETH.String()
 		if info.Provided == coins.ProvidesETH {
-			receivedCoin = "XMR"
+			receivedCoin = coins.ProvidesXMR.String()
 		}
 
 		fmt.Printf("ID: %s\n", info.ID)
@@ -893,7 +919,7 @@ func printOffer(o *types.Offer, index int, indent string) error {
 	}
 
 	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
-	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
+	fmt.Printf("%sProvides: %s\n", indent, o.Provides) // TODO: This code is not correctly handling ERC20 tokens.
 	fmt.Printf("%sTakes: %s\n", indent, o.EthAsset)
 	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, o.EthAsset, o.Provides)
 	fmt.Printf("%sMaker Min: %s %s\n", indent, o.MinAmount.Text('f'), o.Provides)

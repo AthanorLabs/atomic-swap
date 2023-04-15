@@ -63,6 +63,21 @@ func (s *PersonalService) SetGasPrice(_ *http.Request, req *SetGasPriceRequest, 
 	return nil
 }
 
+// TokenInfo looks up the ERC20 token's metadata
+func (s *PersonalService) TokenInfo(
+	_ *http.Request,
+	req *rpctypes.TokenInfoRequest,
+	resp *rpctypes.TokenInfoResponse,
+) error {
+	tokenInfo, err := s.pb.ETHClient().ERC20Info(s.ctx, req.TokenAddr)
+	if err != nil {
+		return err
+	}
+
+	*resp = *tokenInfo
+	return nil
+}
+
 // Balances returns combined information of both the Monero and Ethereum account addresses
 // and balances.
 func (s *PersonalService) Balances(

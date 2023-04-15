@@ -65,13 +65,11 @@ func TestExchangeRate_ToERC20Amount(t *testing.T) {
 	xmrAmount := StrToDecimal("2")
 	const tokenDecimals = 10
 	const expectedTokenStandardAmount = "3"
-	const expectedSmallestUnitAmount = "30000000000"
 	erc20Info := &ERC20TokenInfo{NumDecimals: tokenDecimals}
 
-	erc20Amount, err := rate.ToERC20Amount(xmrAmount, erc20Info)
+	erc20Amt, err := rate.ToERC20Amount(xmrAmount, erc20Info)
 	require.NoError(t, err)
-	assert.Equal(t, expectedTokenStandardAmount, erc20Amount.AsStandardString())
-	assert.Equal(t, expectedSmallestUnitAmount, erc20Amount.Amount.Text('f'))
+	assert.Equal(t, expectedTokenStandardAmount, erc20Amt.Text('f'))
 }
 
 func TestExchangeRate_ToERC20Amount_roundDown(t *testing.T) {
@@ -82,13 +80,11 @@ func TestExchangeRate_ToERC20Amount_roundDown(t *testing.T) {
 
 	const tokenDecimals = 6
 	const expectedTokenStandardAmount = "0.333333"
-	const expectedSmallestUnitAmount = "333333"
 	erc20Info := &ERC20TokenInfo{NumDecimals: tokenDecimals}
 
-	erc20Amount, err := rate.ToERC20Amount(xmrAmount, erc20Info)
+	erc20Amt, err := rate.ToERC20Amount(xmrAmount, erc20Info)
 	require.NoError(t, err)
-	assert.Equal(t, expectedTokenStandardAmount, erc20Amount.AsStandardString())
-	assert.Equal(t, expectedSmallestUnitAmount, erc20Amount.Amount.Text('f'))
+	assert.Equal(t, expectedTokenStandardAmount, erc20Amt.Text('f'))
 }
 
 func TestExchangeRate_ToERC20Amount_roundUp(t *testing.T) {
@@ -100,13 +96,11 @@ func TestExchangeRate_ToERC20Amount_roundUp(t *testing.T) {
 
 	const tokenDecimals = 6
 	const expectedTokenStandardAmount = "0.333334"
-	const expectedSmallestUnitAmount = "333334"
 	erc20Info := &ERC20TokenInfo{NumDecimals: tokenDecimals}
 
-	erc20Amount, err := rate.ToERC20Amount(xmrAmount, erc20Info)
+	erc20Amt, err := rate.ToERC20Amount(xmrAmount, erc20Info)
 	require.NoError(t, err)
-	assert.Equal(t, expectedTokenStandardAmount, erc20Amount.AsStandardString())
-	assert.Equal(t, expectedSmallestUnitAmount, erc20Amount.Amount.Text('f'))
+	assert.Equal(t, expectedTokenStandardAmount, erc20Amt.Text('f'))
 }
 
 func TestExchangeRate_String(t *testing.T) {

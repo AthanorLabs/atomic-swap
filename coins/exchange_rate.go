@@ -81,8 +81,9 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	return ethAmt, nil
 }
 
-// ToERC20Amount converts an XMR amount to an ERC20TokenAmount with the given exchange rate
-func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenInfo) (*ERC20TokenAmount, error) {
+// ToERC20Amount converts an XMR amount to a token amount in standard units with
+// the given exchange rate
+func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenInfo) (*apd.Decimal, error) {
 	erc20Amount := new(apd.Decimal)
 	_, err := decimalCtx.Mul(erc20Amount, r.Decimal(), xmrAmount)
 	if err != nil {
@@ -90,8 +91,8 @@ func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenIn
 	}
 
 	// The token, if required, will get rounded to whole token units in
-	// the method below.
-	return NewERC20TokenAmountFromDecimals(erc20Amount, token), nil
+	// NewERC20TokenAmountFromDecimals.
+	return NewERC20TokenAmountFromDecimals(erc20Amount, token).AsStandard(), nil
 }
 
 func (r *ExchangeRate) String() string {

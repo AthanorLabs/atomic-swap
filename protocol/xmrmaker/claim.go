@@ -36,7 +36,7 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("balance before claim: %s %s", balance.AsStandardString(), balance.Symbol())
+		log.Infof("balance before claim: %s %s", balance.AsStandardString(), balance.StandardSymbol())
 	}
 
 	var receipt *ethtypes.Receipt
@@ -75,7 +75,7 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 			return nil, err
 		}
 
-		log.Infof("balance after claim: %s %s", balance.AsStandardString(), balance.Symbol())
+		log.Infof("balance after claim: %s %s", balance.AsStandardString(), balance.StandardSymbol())
 	}
 
 	return receipt, nil

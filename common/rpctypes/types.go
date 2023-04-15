@@ -115,6 +115,14 @@ type SignerTxSigned struct {
 	TxHash  ethcommon.Hash `json:"txHash" validate:"required"`
 }
 
+// TokenInfoRequest is used to request lookup of the token's metadata.
+type TokenInfoRequest struct {
+	TokenAddr ethcommon.Address `json:"tokenAddr" validate:"required"`
+}
+
+// TokenInfoResponse contains the metadata for the requested token
+type TokenInfoResponse = coins.ERC20TokenInfo
+
 // BalancesRequest is used to request the combined Monero and Ethereum balances
 // as well as the balances of any tokens included in the request.
 type BalancesRequest struct {

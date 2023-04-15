@@ -569,7 +569,7 @@ func (s *swapState) approveToken(amt *coins.ERC20TokenAmount) error {
 		return fmt.Errorf("failed to approve token: %w", err)
 	}
 
-	log.Infof("approved %s %s for use by the swap contract", amt.AsStandardString(), amt.Symbol())
+	log.Infof("approved %s %s for use by the swap contract", amt.AsStandardString(), amt.StandardSymbol())
 	return nil
 }
 

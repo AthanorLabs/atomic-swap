@@ -124,6 +124,7 @@ func FmtPiconeroAsXMR(piconeros uint64) string {
 type EthAssetAmount interface {
 	BigInt() *big.Int
 	AsStandard() *apd.Decimal
+	StandardSymbol() string
 }
 
 // WeiAmount represents some amount of ETH in the smallest denomination (Wei)
@@ -228,6 +229,11 @@ func (a *WeiAmount) AsStandardString() *apd.Decimal {
 	return a.AsEther()
 }
 
+// StandardSymbol returns the string "ETH"
+func (a *WeiAmount) StandardSymbol() string {
+	return "ETH"
+}
+
 // String returns the Wei amount as a base10 string
 func (a *WeiAmount) String() string {
 	return a.Decimal().Text('f')
@@ -327,8 +333,8 @@ func (a *ERC20TokenAmount) AsStandardString() string {
 	return a.AsStandard().Text('f')
 }
 
-// Symbol returns the token's symbol in a format that is safe to log and display
-func (a *ERC20TokenAmount) Symbol() string {
+// StandardSymbol returns the token's symbol in a format that is safe to log and display
+func (a *ERC20TokenAmount) StandardSymbol() string {
 	return strconv.Quote(a.TokenInfo.Symbol)
 }
 
