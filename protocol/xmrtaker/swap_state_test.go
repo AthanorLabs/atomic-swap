@@ -34,10 +34,14 @@ import (
 )
 
 var (
-	_             = logging.SetLogLevel("protocol", "debug")
-	_             = logging.SetLogLevel("xmrtaker", "debug")
 	testPeerID, _ = peer.Decode("12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi")
 )
+
+func init() {
+	logging.SetLogLevel("xmrtaker", "debug")
+	logging.SetLogLevel("protocol", "debug")
+	logging.SetLogLevel("txsender", "debug")
+}
 
 type mockNet struct {
 	msgMu sync.Mutex     // lock needed, as SendSwapMessage is called async from timeout handlers
@@ -447,13 +451,27 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 func TestSwapState_ApproveToken(t *testing.T) {
 	const expectedAmtStr = "5678"
 	providesAmt := coins.StrToDecimal(expectedAmtStr)
+
 	s, contract := newTestSwapStateWithERC20(t, providesAmt)
-	err := s.approveToken(s.providedAmount.(*coins.ERC20TokenAmount))
+
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
+
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
+
+	// approve is called by NewSwap() in lockAsset()
+	s.lockAsset()
+
+	// Now that the tokens are locked in the contract, validate that
+	// the contract is no longer approved to transfer additional tokens
+	// from us.
 	callOpts := &bind.CallOpts{Context: s.ctx}
 	allowance, err := contract.Allowance(callOpts, s.ETHClient().Address(), s.SwapCreatorAddr())
 	require.NoError(t, err)
-	tokenInfo := s.providedAmount.(*coins.ERC20TokenAmount).TokenInfo
-	allowanceAmtStr := coins.NewERC20TokenAmountFromBigInt(allowance, tokenInfo).AsStandardString()
-	require.Equal(t, expectedAmtStr, allowanceAmtStr)
+	require.Equal(t, "0", allowance.String())
 }

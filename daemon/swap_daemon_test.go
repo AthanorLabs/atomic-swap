@@ -58,6 +58,7 @@ func init() {
 	_ = logging.SetLogLevel("protocol", level)
 	_ = logging.SetLogLevel("relayer", level) // external and internal
 	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("txsender", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("xmrtaker", level)
 }

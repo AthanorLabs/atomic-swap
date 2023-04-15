@@ -24,7 +24,7 @@ func (inst *Instance) MakeOffer(
 		return nil, errUnlockedBalanceTooLow{o.MaxAmount, unlockedBalance}
 	}
 
-	if useRelayer && o.EthAsset != types.EthAssetETH {
+	if useRelayer && o.EthAsset.IsToken() {
 		return nil, errRelayingWithNonEthAsset
 	}
 

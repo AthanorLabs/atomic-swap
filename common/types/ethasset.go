@@ -23,10 +23,20 @@ func NewEthAsset(assetStr string) (EthAsset, error) {
 	return asset, nil
 }
 
+// IsETH returns true of the asset is ETH, otherwise false
+func (asset EthAsset) IsETH() bool {
+	return asset == EthAssetETH
+}
+
+// IsToken returns true if the asset is an ERC20 token, otherwise false
+func (asset EthAsset) IsToken() bool {
+	return asset != EthAssetETH
+}
+
 // String implements fmt.Stringer, returning the asset's address in hex
 // prefixed by `ERC20@` if it's an ERC20 token, or ETH for ether.
 func (asset EthAsset) String() string {
-	if asset == EthAssetETH {
+	if asset.IsETH() {
 		return "ETH"
 	}
 
@@ -37,7 +47,7 @@ func (asset EthAsset) String() string {
 // MarshalText returns the hex representation of the EthAsset or,
 // in some cases, a short string.
 func (asset EthAsset) MarshalText() ([]byte, error) {
-	if asset == EthAssetETH {
+	if asset.IsETH() {
 		return []byte("ETH"), nil
 	}
 	return []byte(ethcommon.Address(asset).Hex()), nil

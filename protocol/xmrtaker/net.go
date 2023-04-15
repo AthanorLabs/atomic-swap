@@ -71,7 +71,7 @@ func (inst *Instance) initiate(
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
-	if ethAsset == types.EthAssetETH && ethBalance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
+	if ethAsset.IsETH() && ethBalance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
 		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
 			inst.backend.ETHClient().Address(), ethBalance.AsEtherString(), providesAmount.AsStandard())
 		return nil, errAssetBalanceTooLow{
@@ -81,7 +81,7 @@ func (inst *Instance) initiate(
 		}
 	}
 
-	if ethAsset != types.EthAssetETH {
+	if ethAsset.IsToken() {
 		tokenBalance, err := inst.backend.ETHClient().ERC20Balance(inst.backend.Ctx(), ethAsset.Address()) //nolint:govet
 		if err != nil {
 			return nil, err

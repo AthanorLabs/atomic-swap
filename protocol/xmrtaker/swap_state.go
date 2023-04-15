@@ -217,7 +217,7 @@ func newSwapState(
 	}
 
 	var sender txsender.Sender
-	if info.EthAsset != types.EthAssetETH {
+	if info.EthAsset.IsToken() {
 		erc20Contract, err := contracts.NewIERC20(info.EthAsset.Address(), b.ETHClient().Raw())
 		if err != nil {
 			return nil, err
@@ -257,7 +257,7 @@ func newSwapState(
 	}
 
 	var providedAmt coins.EthAssetAmount
-	if info.EthAsset == types.EthAssetETH {
+	if info.EthAsset.IsETH() {
 		providedAmt = coins.EtherToWei(info.ProvidedAmount)
 	} else {
 		tokenInfo, err := b.ETHClient().ERC20Info(b.Ctx(), info.EthAsset.Address())
@@ -562,17 +562,6 @@ func (s *swapState) setXMRMakerKeys(
 	return s.Backend.RecoveryDB().PutCounterpartySwapKeys(s.info.OfferID, sk, vk)
 }
 
-func (s *swapState) approveToken(amt *coins.ERC20TokenAmount) error {
-	log.Info("approving token for use by the swap contract...")
-	_, err := s.sender.Approve(s.SwapCreatorAddr(), amt.BigInt())
-	if err != nil {
-		return fmt.Errorf("failed to approve token: %w", err)
-	}
-
-	log.Infof("approved %s %s for use by the swap contract", amt.AsStandardString(), amt.StandardSymbol())
-	return nil
-}
-
 // lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
 func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	if s.xmrmakerPublicSpendKey == nil || s.xmrmakerPrivateViewKey == nil {
@@ -582,13 +571,6 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
 	if err != nil {
 		return nil, err
-	}
-
-	if s.info.EthAsset != types.EthAssetETH {
-		err = s.approveToken(s.providedAmount.(*coins.ERC20TokenAmount))
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()

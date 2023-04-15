@@ -94,8 +94,10 @@ func (s *ExternalSender) IncomingCh(id types.Hash) chan<- ethcommon.Hash {
 	return s.in
 }
 
-// Approve prompts the external sender to sign an ERC20 Approve transaction
-func (s *ExternalSender) Approve(
+// approve prompts the external sender to sign an ERC20 approve transaction
+//
+//nolint:unused // not used because external sender's NewSwap doesn't support ERC20 tokens
+func (s *ExternalSender) approve(
 	spender ethcommon.Address,
 	amount *big.Int,
 ) (*ethtypes.Receipt, error) {
@@ -117,6 +119,12 @@ func (s *ExternalSender) NewSwap(
 	ethAsset types.EthAsset,
 	value *big.Int,
 ) (*ethtypes.Receipt, error) {
+
+	// TODO: Add ERC20 token support and approve new_swap for the token transfer
+	if ethAsset.IsToken() {
+		return nil, errors.New("external sender does not support ERC20 token swaps")
+	}
+
 	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
 		ethAsset, value, nonce)
 	if err != nil {

@@ -538,7 +538,6 @@ func runMake(ctx *cli.Context) error {
 	if ethAssetStr != "" {
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
 	}
-	isETH := ethAsset == types.EthAssetETH
 
 	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
 	if err != nil {
@@ -549,7 +548,7 @@ func runMake(ctx *cli.Context) error {
 	var otherMin, otherMax *apd.Decimal
 	var symbol string
 
-	if isETH {
+	if ethAsset.IsETH() {
 		symbol = "ETH"
 
 		if otherMin, err = exchangeRate.ToETH(min); err != nil {

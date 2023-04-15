@@ -332,7 +332,7 @@ func newSwapState(
 	info *pswap.Info,
 ) (*swapState, error) {
 	var sender txsender.Sender
-	if offer.EthAsset != types.EthAssetETH {
+	if offer.EthAsset.IsToken() {
 		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETHClient().Raw())
 		if err != nil {
 			return nil, err
