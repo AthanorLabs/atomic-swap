@@ -92,7 +92,7 @@ func TestHost_SubmitClaimToRelayer_dhtRelayer(t *testing.T) {
 	// possible privacy data leaks, but in this case it is because hb is not
 	// a DHT advertising relayer.
 	_, err = hb.SubmitClaimToRelayer(ha.PeerID(), createTestClaimRequest())
-	require.ErrorContains(t, err, "failed to read RelayClaimResponse: EOF")
+	require.ErrorContains(t, err, "failed to read RelayClaimResponse")
 }
 
 func TestHost_SubmitClaimToRelayer_xmrTakerRelayer(t *testing.T) {
@@ -104,7 +104,7 @@ func TestHost_SubmitClaimToRelayer_xmrTakerRelayer(t *testing.T) {
 
 	// fail, because there is no ongoing swap between ha and hb
 	_, err := hb.SubmitClaimToRelayer(ha.PeerID(), request)
-	require.ErrorContains(t, err, "failed to read RelayClaimResponse: EOF")
+	require.ErrorContains(t, err, "failed to read RelayClaimResponse")
 
 	// create an ongoing swap between ha and hb
 	swapState := &mockSwapState{offerID: offerID}

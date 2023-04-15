@@ -16,6 +16,7 @@ import (
 
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -60,13 +61,16 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	err := rpcServer.RegisterService(NewPersonalService(cfg.Ctx, cfg.XMRMaker, cfg.ProtocolBackend), "personal")
+	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
+
+	err := rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), "personal")
 	if err != nil {
+		serverCancel()
 		return nil, err
 	}
 
 	swapService := NewSwapService(
-		cfg.Ctx,
+		serverCtx,
 		cfg.ProtocolBackend.SwapManager(),
 		cfg.XMRTaker,
 		cfg.XMRMaker,
@@ -74,14 +78,16 @@ func NewServer(cfg *Config) (*Server, error) {
 		cfg.ProtocolBackend,
 	)
 	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
+		serverCancel()
 		return nil, err
 	}
 
-	wsServer := newWsServer(cfg.Ctx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.XMRTaker)
+	wsServer := newWsServer(serverCtx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.XMRTaker)
 
 	lc := net.ListenConfig{}
-	ln, err := lc.Listen(cfg.Ctx, "tcp", cfg.Address)
+	ln, err := lc.Listen(serverCtx, "tcp", cfg.Address)
 	if err != nil {
+		serverCancel()
 		return nil, err
 	}
 
@@ -97,15 +103,22 @@ func NewServer(cfg *Config) (*Server, error) {
 		ReadHeaderTimeout: time.Second,
 		Handler:           handlers.CORS(headersOk, methodsOk, originsOk)(r),
 		BaseContext: func(listener net.Listener) context.Context {
-			return cfg.Ctx
+			return serverCtx
 		},
 	}
 
-	return &Server{
-		ctx:        cfg.Ctx,
+	s := &Server{
+		ctx:        serverCtx,
 		listener:   ln,
 		httpServer: server,
-	}, nil
+	}
+
+	if err = rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon"); err != nil {
+		serverCancel()
+		return nil, err
+	}
+
+	return s, nil
 }
 
 // HttpURL returns the URL used for HTTP requests
@@ -138,7 +151,8 @@ func (s *Server) Start() error {
 	case <-s.ctx.Done():
 		// Shutdown below is passed a closed context, which means it will shut down
 		// immediately without servicing already connected clients.
-		if err := s.httpServer.Shutdown(s.ctx); err != nil {
+		err := s.httpServer.Shutdown(s.ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Warnf("http server shutdown errored: %s", err)
 		}
 		// We shut down because the context was cancelled, so that's the error to return
@@ -172,6 +186,7 @@ type ProtocolBackend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SwapTimeout() time.Duration
 	SwapManager() swap.Manager
+	SwapCreatorAddr() ethcommon.Address
 	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	ETHClient() extethclient.EthClient
