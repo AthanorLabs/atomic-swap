@@ -316,6 +316,22 @@ var (
 					swapdPortFlag,
 				},
 			},
+			{
+				Name:   "version",
+				Usage:  "Get the client and server versions",
+				Action: runGetVersions,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "shutdown",
+				Usage:  "Shutdown swapd",
+				Action: runShutdown,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
 		},
 	}
 
@@ -925,6 +941,32 @@ func printOffer(o *types.Offer, index int, indent string) error {
 	fmt.Printf("%sMaker Max: %s %s\n", indent, o.MaxAmount.Text('f'), o.Provides)
 	fmt.Printf("%sTaker Min: %s %s\n", indent, minETH.Text('f'), o.EthAsset)
 	fmt.Printf("%sTaker Max: %s %s\n", indent, maxETH.Text('f'), o.EthAsset)
+	return nil
+}
+
+func runGetVersions(ctx *cli.Context) error {
+	fmt.Printf("swapcli: %s\n", cliutil.GetVersion())
+
+	c := newRRPClient(ctx)
+	resp, err := c.Version()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("swapd: %s\n", resp.SwapdVersion)
+	fmt.Printf("p2p version: %s\n", resp.P2PVersion)
+	fmt.Printf("env: %s\n", resp.Env)
+	fmt.Printf("swap creator address: %s\n", resp.SwapCreatorAddr)
+
+	return nil
+}
+
+func runShutdown(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+	err := c.Shutdown()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

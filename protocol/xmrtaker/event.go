@@ -324,7 +324,6 @@ func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
 	}
 
 	s.clearNextExpectedEvent(types.CompletedSuccess)
-	s.CloseProtocolStream(s.OfferID())
 	return nil
 }
 
