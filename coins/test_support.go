@@ -45,7 +45,8 @@ func IntToWei(amount int64) *WeiAmount {
 }
 
 // Sub returns the value of a-b in a newly allocated WeiAmount variable.
-// If a or b is NaN, this function will panic.
+// If a or b is NaN, this function will panic, but we exclude such values
+// during input validation.
 func (a *WeiAmount) Sub(b *WeiAmount) *WeiAmount {
 	result := new(WeiAmount)
 	_, err := decimalCtx.Sub(result.Decimal(), a.Decimal(), b.Decimal())
