@@ -30,8 +30,8 @@ var (
 
 // Sender signs and submits transactions to the chain
 type Sender interface {
-	SetContract(*contracts.SwapCreator)
-	SetContractAddress(ethcommon.Address)
+	SetSwapCreator(*contracts.SwapCreator)
+	SetSwapCreatorAddr(ethcommon.Address)
 	NewSwap(
 		pubKeyClaim [32]byte,
 		pubKeyRefund [32]byte,
@@ -70,11 +70,11 @@ func NewSenderWithPrivateKey(
 	}
 }
 
-func (s *privateKeySender) SetContract(contract *contracts.SwapCreator) {
+func (s *privateKeySender) SetSwapCreator(contract *contracts.SwapCreator) {
 	s.swapCreator = contract
 }
 
-func (s *privateKeySender) SetContractAddress(_ ethcommon.Address) {}
+func (s *privateKeySender) SetSwapCreatorAddr(_ ethcommon.Address) {}
 
 func (s *privateKeySender) NewSwap(
 	pubKeyClaim [32]byte,

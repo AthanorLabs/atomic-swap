@@ -63,7 +63,7 @@ type swapState struct {
 	pubkeys      *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it
-	contract        *contracts.SwapCreator
+	swapCreator     *contracts.SwapCreator
 	swapCreatorAddr ethcommon.Address
 	contractSwapID  [32]byte
 	contractSwap    *contracts.SwapCreatorSwap
@@ -624,18 +624,18 @@ func (s *swapState) setXMRTakerKeys(
 	return s.RecoveryDB().PutCounterpartySwapKeys(s.OfferID(), sk, vk)
 }
 
-// setContract sets the contract in which XMRTaker has locked her ETH.
+// setContract sets the swapCreator in which XMRTaker has locked her ETH.
 func (s *swapState) setContract(address ethcommon.Address) error {
 	s.swapCreatorAddr = address
 
 	var err error
-	s.contract, err = s.NewSwapCreator(address)
+	s.swapCreator, err = s.NewSwapCreator(address)
 	if err != nil {
 		return err
 	}
 
-	s.sender.SetContractAddress(address)
-	s.sender.SetContract(s.contract)
+	s.sender.SetSwapCreatorAddr(address)
+	s.sender.SetSwapCreator(s.swapCreator)
 	return nil
 }
 

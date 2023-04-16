@@ -76,11 +76,11 @@ func NewExternalSender(
 	}, nil
 }
 
-// SetContract ...
-func (s *ExternalSender) SetContract(_ *contracts.SwapCreator) {}
+// SetSwapCreator sets the bound contract for the SwapCreator
+func (s *ExternalSender) SetSwapCreator(_ *contracts.SwapCreator) {}
 
-// SetContractAddress ...
-func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
+// SetSwapCreatorAddr sets the address of the SwapCreator contract
+func (s *ExternalSender) SetSwapCreatorAddr(addr ethcommon.Address) {
 	s.contractAddr = addr
 }
 
