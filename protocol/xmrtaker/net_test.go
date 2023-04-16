@@ -27,8 +27,19 @@ func newTestXMRTaker(t *testing.T) *Instance {
 	return xmrtaker
 }
 
-func initiate(xmrtaker *Instance, providesAmount *apd.Decimal, minAmount *apd.Decimal, maxAmount *apd.Decimal) (*types.Offer, common.SwapState, error) {
-	offer := types.NewOffer(coins.ProvidesETH, minAmount, maxAmount, coins.ToExchangeRate(apd.New(1, 0)), types.EthAssetETH)
+func initiate(
+	xmrtaker *Instance,
+	providesAmount *apd.Decimal,
+	minAmount *apd.Decimal,
+	maxAmount *apd.Decimal,
+) (*types.Offer, common.SwapState, error) {
+	offer := types.NewOffer(
+		coins.ProvidesETH,
+		minAmount,
+		maxAmount,
+		coins.ToExchangeRate(apd.New(1, 0)),
+		types.EthAssetETH,
+	)
 	s, err := xmrtaker.InitiateProtocol(testPeerID, providesAmount, offer)
 	return offer, s, err
 }
