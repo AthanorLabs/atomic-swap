@@ -63,3 +63,12 @@ func TestEthAsset_UnmarshalText_fail(t *testing.T) {
 	err := json.Unmarshal([]byte(tooShortQuotedAddr), &asset)
 	require.ErrorContains(t, err, "invalid asset value")
 }
+
+func TestEthAsset_IsToken(t *testing.T) {
+	require.True(t, EthAssetETH.IsETH())
+	require.False(t, EthAssetETH.IsToken())
+
+	token := EthAsset(ethcommon.HexToAddress("0xa1E32d14AC4B6d8c1791CAe8E9baD46a1E15B7a8"))
+	require.False(t, token.IsETH())
+	require.True(t, token.IsToken())
+}

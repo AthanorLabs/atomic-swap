@@ -54,6 +54,7 @@ func NewSwapService(
 type PastSwap struct {
 	ID             types.Hash          `json:"id" validate:"required"`
 	Provided       coins.ProvidesCoin  `json:"provided" validate:"required"`
+	EthAsset       types.EthAsset      `json:"ethAsset"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
@@ -106,6 +107,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 		resp.Swaps[i] = &PastSwap{
 			ID:             info.OfferID,
 			Provided:       info.Provides,
+			EthAsset:       info.EthAsset,
 			ProvidedAmount: info.ProvidedAmount,
 			ExpectedAmount: info.ExpectedAmount,
 			ExchangeRate:   info.ExchangeRate,
@@ -123,10 +125,10 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 }
 
 // OngoingSwap represents an ongoing swap returned by swap_getOngoing.
-// TODO: This struct does not have needed fields for swaps of ERC20 tokens.
 type OngoingSwap struct {
 	ID                        types.Hash          `json:"id" validate:"required"`
 	Provided                  coins.ProvidesCoin  `json:"provided" validate:"required"`
+	EthAsset                  types.EthAsset      `json:"ethAsset"`
 	ProvidedAmount            *apd.Decimal        `json:"providedAmount" validate:"required"`
 	ExpectedAmount            *apd.Decimal        `json:"expectedAmount" validate:"required"`
 	ExchangeRate              *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
@@ -176,6 +178,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap := new(OngoingSwap)
 		swap.ID = info.OfferID
 		swap.Provided = info.Provides
+		swap.EthAsset = info.EthAsset
 		swap.ProvidedAmount = info.ProvidedAmount
 		swap.ExpectedAmount = info.ExpectedAmount
 		swap.ExchangeRate = info.ExchangeRate
@@ -281,7 +284,7 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 		return fmt.Errorf("failed to find swap state with ID %s", req.OfferID)
 	}
 
-	// Exit() is safe to be called concurrently, since it since it puts an exit event
+	// Exit() is safe to be called concurrently, as it puts an exit event
 	// into the swap state's eventCh, and events are handled sequentially.
 	if err = ss.Exit(); err != nil {
 		return err
@@ -336,7 +339,7 @@ func (s *SwapService) SuggestedExchangeRate(_ *http.Request, _ *interface{}, res
 	return nil
 }
 
-// estimatedTimeToCompletionreturns the estimated time for the swap to complete
+// estimatedTimeToCompletion returns the estimated time for the swap to complete
 // in the optimistic case based on the given status and the time the status was updated.
 func estimatedTimeToCompletion(
 	env common.Environment,

@@ -276,6 +276,11 @@ func NewERC20TokenInfo(address ethcommon.Address, decimals uint8, name string, s
 	}
 }
 
+// SanitizedSymbol quotes the symbol ensuring escape sequences, newlines, etc. are escaped.
+func (t *ERC20TokenInfo) SanitizedSymbol() string {
+	return strconv.Quote(t.Symbol)
+}
+
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
 type ERC20TokenAmount struct {
 	Amount    *apd.Decimal    `json:"amount" validate:"required"` // in smallest non-divisible units of token
@@ -347,7 +352,7 @@ func (a *ERC20TokenAmount) AsStandardString() string {
 
 // StandardSymbol returns the token's symbol in a format that is safe to log and display
 func (a *ERC20TokenAmount) StandardSymbol() string {
-	return strconv.Quote(a.TokenInfo.Symbol)
+	return a.TokenInfo.SanitizedSymbol()
 }
 
 // IsToken returns true, because ERC20TokenAmount represents and ERC20 token

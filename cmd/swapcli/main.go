@@ -82,6 +82,7 @@ var (
 					&cli.StringSliceFlag{
 						Name:    flagToken,
 						Aliases: []string{"t"},
+						EnvVars: []string{"SWAPCLI_TOKENS"},
 						Usage:   "Token address to include in the balance response",
 					},
 				},
@@ -688,6 +689,30 @@ func runTake(ctx *cli.Context) error {
 	return nil
 }
 
+func providedAndReceivedSymbols(
+	c *rpcclient.Client,
+	provides coins.ProvidesCoin,
+	ethAsset types.EthAsset,
+) (string, string, error) {
+	ethAssetSymbol := coins.ProvidesETH.String()
+	if ethAsset.IsToken() {
+		tokenInfo, err := c.TokenInfo(ethAsset.Address())
+		if err != nil {
+			return "", "", err
+		}
+		ethAssetSymbol = tokenInfo.SanitizedSymbol()
+	}
+
+	switch provides {
+	case coins.ProvidesETH:
+		return ethAssetSymbol, coins.ProvidesXMR.String(), nil
+	case coins.ProvidesXMR:
+		return coins.ProvidesXMR.String(), ethAssetSymbol, nil
+	default:
+		return "", "", fmt.Errorf("unhandled provides value %q", provides)
+	}
+}
+
 func runGetOngoingSwap(ctx *cli.Context) error {
 	var offerID *types.Hash
 
@@ -716,15 +741,14 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 			fmt.Printf("---\n")
 		}
 
-		// TODO: This code is not correctly handling ERC20 tokens.
-		receivedCoin := coins.ProvidesETH.String()
-		if info.Provided == coins.ProvidesETH {
-			receivedCoin = coins.ProvidesXMR.String()
+		providedCoin, receivedCoin, err := providedAndReceivedSymbols(c, info.Provided, info.EthAsset)
+		if err != nil {
+			return err
 		}
 
 		fmt.Printf("ID: %s\n", info.ID)
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
-		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
@@ -767,9 +791,9 @@ func runGetPastSwap(ctx *cli.Context) error {
 			fmt.Printf("---\n")
 		}
 
-		receivedCoin := "ETH"
-		if info.Provided == coins.ProvidesETH {
-			receivedCoin = "XMR"
+		providedCoin, receivedCoin, err := providedAndReceivedSymbols(c, info.Provided, info.EthAsset)
+		if err != nil {
+			return err
 		}
 
 		endTime := "-"
@@ -780,7 +804,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 		fmt.Printf("ID: %s\n", info.ID)
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
 		fmt.Printf("End time: %s\n", endTime)
-		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
 		fmt.Printf("Received: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
