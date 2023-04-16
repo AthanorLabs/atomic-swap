@@ -37,6 +37,15 @@ func (inst *Instance) InitiateProtocol(
 	offer *types.Offer,
 ) (common.SwapState, error) {
 	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
+
+	if expectedAmount.Cmp(offer.MinAmount) < 0 {
+		return nil, errAmountProvidedTooLow{providesAmount, offer.MinAmount}
+	}
+
+	if expectedAmount.Cmp(offer.MaxAmount) > 0 {
+		return nil, errAmountProvidedTooHigh{providesAmount, offer.MaxAmount}
+	}
+
 	if err != nil {
 		return nil, err
 	}
