@@ -45,7 +45,7 @@ func TestXMRTaker_InitiateProtocol(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, nil, s)
 
-	// Provided under maxAmount
+	// Provided under minAmount
 	offer = types.NewOffer(coins.ProvidesETH, one, one, coins.ToExchangeRate(one), types.EthAssetETH)
 	providesAmount = apd.New(1, -1) // 0.1
 	s, err = a.InitiateProtocol(testPeerID, providesAmount, offer)
