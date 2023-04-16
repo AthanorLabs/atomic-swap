@@ -36,6 +36,11 @@ func (inst *Instance) InitiateProtocol(
 	providesAmount *apd.Decimal,
 	offer *types.Offer,
 ) (common.SwapState, error) {
+	err := coins.ValidatePositive("providesAmount", coins.NumEtherDecimals, providesAmount)
+	if err != nil {
+		return nil, err
+	}
+
 	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
 	if err != nil {
 		return nil, err
