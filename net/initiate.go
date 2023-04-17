@@ -175,7 +175,7 @@ func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 
 		err = s.HandleProtocolMessage(msg)
 		if err != nil {
-			log.Warnf("failed to handle protocol message: err=%s", err)
+			log.Warnf("failed to handle protocol message: %s", err)
 			return
 		}
 	}

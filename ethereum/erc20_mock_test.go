@@ -21,7 +21,7 @@ func TestSwapCreator_NewSwap_ERC20(t *testing.T) {
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// deploy ERC20Mock
-	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestSwapCreator_Claim_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, erc20Contract, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, erc20Contract, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestSwapCreator_RefundBeforeT0_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestSwapCreator_RefundAfterT1_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, _, err := DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)

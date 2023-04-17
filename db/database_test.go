@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ChainSafe/chaindb"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
@@ -174,8 +175,9 @@ func TestDatabase_SwapTable(t *testing.T) {
 
 	one := coins.StrToDecimal("1")
 	oneEx := coins.ToExchangeRate(one)
+	ethAsset := types.EthAsset(ethcommon.HexToAddress("0xa1E32d14AC4B6d8c1791CAe8E9baD46a1E15B7a8"))
 
-	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, types.EthAssetETH)
+	offerA := types.NewOffer(coins.ProvidesXMR, one, one, oneEx, ethAsset)
 	err = db.PutOffer(offerA)
 	require.NoError(t, err)
 
@@ -211,7 +213,7 @@ func TestDatabase_SwapTable(t *testing.T) {
 		ProvidedAmount:       coins.StrToDecimal("1.5"),
 		ExpectedAmount:       coins.StrToDecimal("0.15"),
 		ExchangeRate:         coins.ToExchangeRate(coins.StrToDecimal("0.1")),
-		EthAsset:             types.EthAsset{},
+		EthAsset:             ethAsset,
 		Status:               types.XMRLocked,
 		LastStatusUpdateTime: time.Now(),
 		MoneroStartHeight:    12345,

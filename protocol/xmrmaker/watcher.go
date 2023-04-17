@@ -23,7 +23,6 @@ func (s *swapState) runContractEventWatcher() {
 				log.Errorf("failed to handle ready logs: %s", err)
 			}
 		case l := <-s.logRefundedCh:
-			log.Infof("got refunded logs: %s", l)
 			err := s.handleRefundLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle refund logs: %s", err)

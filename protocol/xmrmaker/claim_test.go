@@ -47,6 +47,7 @@ func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
 		conn,
 		"Mock",
 		"MOCK",
+		18,
 		addr,
 		initialBalance,
 	)

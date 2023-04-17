@@ -13,10 +13,20 @@ import (
 // EthAsset represents an Ethereum asset (ETH or a token address)
 type EthAsset ethcommon.Address
 
+// IsETH returns true of the asset is ETH, otherwise false
+func (asset EthAsset) IsETH() bool {
+	return asset == EthAssetETH
+}
+
+// IsToken returns true if the asset is an ERC20 token, otherwise false
+func (asset EthAsset) IsToken() bool {
+	return asset != EthAssetETH
+}
+
 // String implements fmt.Stringer, returning the asset's address in hex
 // prefixed by `ERC20@` if it's an ERC20 token, or ETH for ether.
 func (asset EthAsset) String() string {
-	if asset == EthAssetETH {
+	if asset.IsETH() {
 		return "ETH"
 	}
 
@@ -27,7 +37,7 @@ func (asset EthAsset) String() string {
 // MarshalText returns the hex representation of the EthAsset or,
 // in some cases, a short string.
 func (asset EthAsset) MarshalText() ([]byte, error) {
-	if asset == EthAssetETH {
+	if asset.IsETH() {
 		return []byte("ETH"), nil
 	}
 	return []byte(ethcommon.Address(asset).Hex()), nil
@@ -36,16 +46,18 @@ func (asset EthAsset) MarshalText() ([]byte, error) {
 // UnmarshalText assigns the EthAsset from the input text
 func (asset *EthAsset) UnmarshalText(input []byte) error {
 	inputStr := string(input)
-	switch {
-	case strings.EqualFold(inputStr, "ETH"):
-		*asset = EthAsset{}
+	if inputStr == "ETH" {
+		*asset = EthAssetETH
 		return nil
-	case ethcommon.IsHexAddress(inputStr):
+	}
+
+	inputStr = strings.TrimPrefix(inputStr, "ERC20@")
+	if ethcommon.IsHexAddress(inputStr) {
 		*asset = EthAsset(ethcommon.HexToAddress(inputStr))
 		return nil
-	default:
-		return fmt.Errorf("invalid asset value %q", inputStr)
 	}
+
+	return fmt.Errorf("invalid asset value %q", inputStr)
 }
 
 // Address ...
