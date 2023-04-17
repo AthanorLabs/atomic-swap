@@ -49,8 +49,7 @@ func TestEthAsset_UnmarshalText(t *testing.T) {
 
 	// Unmarshal addresses with the ERC20@ prefix that our String() method
 	// generates
-	expected, err = NewEthAsset("0xa1E32d14AC4B6d8c1791CAe8E9baD46a1E15B7a8")
-	require.NoError(t, err)
+	expected = EthAsset(ethcommon.HexToAddress("0xa1E32d14AC4B6d8c1791CAe8E9baD46a1E15B7a8"))
 	quotedAddr = fmt.Sprintf("%q", expected.String()) // will have ERC20@ prefix
 	err = json.Unmarshal([]byte(quotedAddr), &asset)
 	require.NoError(t, err)

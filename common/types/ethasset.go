@@ -13,16 +13,6 @@ import (
 // EthAsset represents an Ethereum asset (ETH or a token address)
 type EthAsset ethcommon.Address
 
-// NewEthAsset converts an unquoted string to the EthAsset type
-func NewEthAsset(assetStr string) (EthAsset, error) {
-	var asset EthAsset
-	err := asset.UnmarshalText([]byte(assetStr))
-	if err != nil {
-		return EthAsset{}, err
-	}
-	return asset, nil
-}
-
 // IsETH returns true of the asset is ETH, otherwise false
 func (asset EthAsset) IsETH() bool {
 	return asset == EthAssetETH
