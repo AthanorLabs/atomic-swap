@@ -465,7 +465,8 @@ func TestSwapState_ApproveToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// approve is called by NewSwap() in lockAsset()
-	s.lockAsset()
+	_, err = s.lockAsset()
+	require.NoError(t, err)
 
 	// Now that the tokens are locked in the contract, validate that
 	// the contract is no longer approved to transfer additional tokens
