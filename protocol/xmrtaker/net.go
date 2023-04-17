@@ -4,25 +4,16 @@
 package xmrtaker
 
 import (
-	"math/big"
-
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
 	"github.com/fatih/color"
 )
-
-// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
-type EthereumAssetAmount interface {
-	BigInt() *big.Int
-	AsStandard() *apd.Decimal
-}
 
 // Provides returns types.ProvidesETH
 func (inst *Instance) Provides() coins.ProvidesCoin {
@@ -53,7 +44,8 @@ func (inst *Instance) InitiateProtocol(
 	if expectedAmount.Cmp(offer.MaxAmount) > 0 {
 		return nil, errAmountProvidedTooHigh{providesAmount, offer.MaxAmount}
 	}
-	providedAmount, err := pcommon.GetEthereumAssetAmount(
+
+	providedAmount, err := pcommon.GetEthAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
 		providesAmount,
@@ -74,7 +66,7 @@ func (inst *Instance) InitiateProtocol(
 
 func (inst *Instance) initiate(
 	makerPeerID peer.ID,
-	providesAmount EthereumAssetAmount,
+	providesAmount coins.EthAssetAmount,
 	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
@@ -87,31 +79,34 @@ func (inst *Instance) initiate(
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	balance, err := inst.backend.ETHClient().Balance(inst.backend.Ctx())
+	ethBalance, err := inst.backend.ETHClient().Balance(inst.backend.Ctx())
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
-	if ethAsset == types.EthAssetETH && balance.Cmp(providesAmount.BigInt()) <= 0 {
+	if ethAsset.IsETH() && ethBalance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
 		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
-			inst.backend.ETHClient().Address(), coins.FmtWeiAsETH(balance), providesAmount.AsStandard())
-		return nil, errBalanceTooLow
+			inst.backend.ETHClient().Address(), ethBalance.AsEtherString(), providesAmount.AsStandard())
+		return nil, errAssetBalanceTooLow{
+			providedAmount: providesAmount.AsStandard(),
+			balance:        ethBalance.AsEther(),
+			symbol:         "ETH",
+		}
 	}
 
-	if ethAsset != types.EthAssetETH {
-		erc20Contract, err := contracts.NewIERC20(ethAsset.Address(), inst.backend.ETHClient().Raw()) //nolint:govet
+	if ethAsset.IsToken() {
+		tokenBalance, err := inst.backend.ETHClient().ERC20Balance(inst.backend.Ctx(), ethAsset.Address()) //nolint:govet
 		if err != nil {
 			return nil, err
 		}
 
-		balance, err := erc20Contract.BalanceOf(inst.backend.ETHClient().CallOpts(inst.backend.Ctx()), inst.backend.ETHClient().Address()) //nolint:lll
-		if err != nil {
-			return nil, err
-		}
-
-		if balance.Cmp(providesAmount.BigInt()) <= 0 {
-			return nil, errBalanceTooLow
+		if tokenBalance.AsStandard().Cmp(providesAmount.AsStandard()) <= 0 {
+			return nil, errAssetBalanceTooLow{
+				providedAmount: providesAmount.AsStandard(),
+				balance:        tokenBalance.AsStandard(),
+				symbol:         tokenBalance.StandardSymbol(),
+			}
 		}
 	}
 

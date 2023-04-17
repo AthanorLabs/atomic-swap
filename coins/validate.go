@@ -21,6 +21,9 @@ func ValidatePositive(jsonFieldName string, maxDecimals uint8, value *apd.Decima
 	if value.Negative {
 		return fmt.Errorf("%q cannot be negative", jsonFieldName)
 	}
+	if value.Form != apd.Finite {
+		return fmt.Errorf("%q must be finite", jsonFieldName)
+	}
 
 	// In most cases, this line won't do anything. If the coefficient is divisible
 	// by one or more multiples of 10, the zeros are chopped off and added to the

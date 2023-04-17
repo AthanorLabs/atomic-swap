@@ -36,10 +36,22 @@ func StrToExchangeRate(rate string) *ExchangeRate {
 	return r
 }
 
-// IntToWei converts some amount of wei into an WeiAmount for unit tests.
+// IntToWei converts some amount of Wei into an WeiAmount for unit tests.
 func IntToWei(amount int64) *WeiAmount {
 	if amount < 0 {
 		panic(fmt.Sprintf("Wei amount %d is negative", amount)) // test only function
 	}
 	return NewWeiAmount(big.NewInt(amount))
+}
+
+// Sub returns the value of a-b in a newly allocated WeiAmount variable.
+// If a or b is NaN, this function will panic, but we exclude such values
+// during input validation.
+func (a *WeiAmount) Sub(b *WeiAmount) *WeiAmount {
+	result := new(WeiAmount)
+	_, err := decimalCtx.Sub(result.Decimal(), a.Decimal(), b.Decimal())
+	if err != nil {
+		panic(err)
+	}
+	return result
 }

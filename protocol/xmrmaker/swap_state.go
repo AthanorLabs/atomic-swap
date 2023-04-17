@@ -63,7 +63,7 @@ type swapState struct {
 	pubkeys      *mcrypto.PublicKeyPair
 
 	// swap contract and timeouts in it
-	contract        *contracts.SwapCreator
+	swapCreator     *contracts.SwapCreator
 	swapCreatorAddr ethcommon.Address
 	contractSwapID  [32]byte
 	contractSwap    *contracts.SwapCreatorSwap
@@ -105,7 +105,7 @@ func newSwapStateFromStart(
 	offerExtra *types.OfferExtra,
 	om *offers.Manager,
 	providesAmount *coins.PiconeroAmount,
-	desiredAmount EthereumAssetAmount,
+	desiredAmount coins.EthAssetAmount,
 ) (*swapState, error) {
 	// at this point, we've received the counterparty's keys,
 	// and will send our own after this function returns.
@@ -332,7 +332,7 @@ func newSwapState(
 	info *pswap.Info,
 ) (*swapState, error) {
 	var sender txsender.Sender
-	if offer.EthAsset != types.EthAssetETH {
+	if offer.EthAsset.IsToken() {
 		erc20Contract, err := contracts.NewIERC20(offer.EthAsset.Address(), b.ETHClient().Raw())
 		if err != nil {
 			return nil, err
@@ -624,18 +624,18 @@ func (s *swapState) setXMRTakerKeys(
 	return s.RecoveryDB().PutCounterpartySwapKeys(s.OfferID(), sk, vk)
 }
 
-// setContract sets the contract in which XMRTaker has locked her ETH.
+// setContract sets the swapCreator in which XMRTaker has locked her ETH.
 func (s *swapState) setContract(address ethcommon.Address) error {
 	s.swapCreatorAddr = address
 
 	var err error
-	s.contract, err = s.NewSwapCreator(address)
+	s.swapCreator, err = s.NewSwapCreator(address)
 	if err != nil {
 		return err
 	}
 
-	s.sender.SetContractAddress(address)
-	s.sender.SetContract(s.contract)
+	s.sender.SetSwapCreatorAddr(address)
+	s.sender.SetSwapCreator(s.swapCreator)
 	return nil
 }
 

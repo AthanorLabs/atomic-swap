@@ -28,9 +28,21 @@ var (
 
 	// initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
-	errBalanceTooLow             = errors.New("eth balance lower than amount to be provided")
 	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not ETHLocked or ContractReady") //nolint:lll
 )
+
+type errAssetBalanceTooLow struct {
+	providedAmount *apd.Decimal
+	balance        *apd.Decimal
+	symbol         string
+}
+
+func (e errAssetBalanceTooLow) Error() string {
+	return fmt.Sprintf("balance of %s %s is below provided %s %s",
+		e.balance.Text('f'), e.symbol,
+		e.providedAmount.Text('f'), e.symbol,
+	)
+}
 
 func errContractAddrMismatch(addr string) error {
 	//nolint:lll

@@ -8,9 +8,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/skip2/go-qrcode"
@@ -40,11 +42,12 @@ const (
 	flagProvidesAmount = "provides-amount"
 	flagUseRelayer     = "use-relayer"
 	flagSearchTime     = "search-time"
+	flagToken          = "token"
 	flagDetached       = "detached"
 )
 
-var (
-	app = &cli.App{
+func cliApp() *cli.App {
+	return &cli.App{
 		Name:                 "swapcli",
 		Usage:                "Client for swapd",
 		Version:              cliutil.GetVersion(),
@@ -76,6 +79,12 @@ var (
 				Action:  runBalances,
 				Flags: []cli.Flag{
 					swapdPortFlag,
+					&cli.StringSliceFlag{
+						Name:    flagToken,
+						Aliases: []string{"t"},
+						EnvVars: []string{"SWAPCLI_TOKENS"},
+						Usage:   "Token address to include in the balance response",
+					},
 				},
 			},
 			{
@@ -174,8 +183,8 @@ var (
 						Usage: "Exit immediately instead of subscribing to notifications about the swap's status",
 					},
 					&cli.StringFlag{
-						Name:  "eth-asset",
-						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
+						Name:  flagToken,
+						Usage: "Use to pass the ethereum ERC20 token address to receive instead of ETH",
 					},
 					&cli.BoolFlag{
 						Name:  flagUseRelayer,
@@ -326,7 +335,9 @@ var (
 			},
 		},
 	}
+}
 
+var (
 	swapdPortFlag = &cli.UintFlag{
 		Name:    flagSwapdPort,
 		Aliases: []string{"p"},
@@ -337,7 +348,7 @@ var (
 )
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	if err := cliApp().Run(os.Args); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
@@ -391,7 +402,17 @@ func runPeers(ctx *cli.Context) error {
 
 func runBalances(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	balances, err := c.Balances()
+
+	request := &rpctypes.BalancesRequest{}
+	tokens := ctx.StringSlice(flagToken)
+	for _, tokenAddr := range tokens {
+		if !ethcommon.IsHexAddress(tokenAddr) {
+			return fmt.Errorf("invalid token address: %q", tokenAddr)
+		}
+		request.TokenAddrs = append(request.TokenAddrs, ethcommon.HexToAddress(tokenAddr))
+	}
+
+	balances, err := c.Balances(request)
 	if err != nil {
 		return err
 	}
@@ -399,6 +420,15 @@ func runBalances(ctx *cli.Context) error {
 	fmt.Printf("Ethereum address: %s\n", balances.EthAddress)
 	fmt.Printf("ETH Balance: %s\n", balances.WeiBalance.AsEtherString())
 	fmt.Println()
+
+	for _, tokenBalance := range balances.TokenBalances {
+		fmt.Printf("Token: %s\n", tokenBalance.TokenInfo.Address)
+		fmt.Printf("Name: %q\n", tokenBalance.TokenInfo.Name)
+		fmt.Printf("Symbol: %q\n", tokenBalance.TokenInfo.Symbol)
+		fmt.Printf("Balance: %s\n", tokenBalance.AsStandard().Text('f'))
+		fmt.Println()
+	}
+
 	fmt.Printf("Monero address: %s\n", balances.MoneroAddress)
 	fmt.Printf("XMR Balance: %s\n", balances.PiconeroBalance.AsMoneroString())
 	fmt.Printf("Unlocked XMR balance: %s\n",
@@ -409,7 +439,7 @@ func runBalances(ctx *cli.Context) error {
 
 func runETHAddress(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	balances, err := c.Balances()
+	balances, err := c.Balances(nil)
 	if err != nil {
 		return err
 	}
@@ -424,7 +454,7 @@ func runETHAddress(ctx *cli.Context) error {
 
 func runXMRAddress(ctx *cli.Context) error {
 	c := newRRPClient(ctx)
-	balances, err := c.Balances()
+	balances, err := c.Balances(nil)
 	if err != nil {
 		return err
 	}
@@ -468,7 +498,7 @@ func runQuery(ctx *cli.Context) error {
 	}
 
 	for i, o := range res.Offers {
-		err = printOffer(o, i, "")
+		err = printOffer(c, o, i, "")
 		if err != nil {
 			return err
 		}
@@ -498,7 +528,7 @@ func runQueryAll(ctx *cli.Context) error {
 		fmt.Printf("  Peer ID: %v\n", po.PeerID)
 		fmt.Printf("  Offers:\n")
 		for j, o := range po.Offers {
-			err = printOffer(o, j, "    ")
+			err = printOffer(c, o, j, "    ")
 			if err != nil {
 				return err
 			}
@@ -509,6 +539,8 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
+	c := newRRPClient(ctx)
+
 	min, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
 		return err
@@ -519,35 +551,55 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
-	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
-	if err != nil {
-		return err
-	}
-	exchangeRate := coins.ToExchangeRate(exchangeRateDec)
-	// TODO: How to handle this if the other asset is not ETH?
-	otherMin, err := exchangeRate.ToETH(min)
-	if err != nil {
-		return err
-	}
-	otherMax, err := exchangeRate.ToETH(max)
-	if err != nil {
-		return err
-	}
-
-	ethAssetStr := ctx.String("eth-asset")
+	ethAssetStr := ctx.String(flagToken)
 	ethAsset := types.EthAssetETH
 	if ethAssetStr != "" {
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
 	}
 
-	c := newRRPClient(ctx)
+	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
+	if err != nil {
+		return err
+	}
+	exchangeRate := coins.ToExchangeRate(exchangeRateDec)
+
+	var otherMin, otherMax *apd.Decimal
+	var symbol string
+
+	if ethAsset.IsETH() {
+		symbol = "ETH"
+
+		if otherMin, err = exchangeRate.ToETH(min); err != nil {
+			return err
+		}
+
+		if otherMax, err = exchangeRate.ToETH(max); err != nil {
+			return err
+		}
+	} else {
+		tokenInfo, err := c.TokenInfo(ethAsset.Address()) //nolint:govet
+		if err != nil {
+			return err
+		}
+
+		symbol = strconv.Quote(tokenInfo.Symbol)
+
+		if otherMin, err = exchangeRate.ToERC20Amount(min, tokenInfo); err != nil {
+			return err
+		}
+
+		if otherMax, err = exchangeRate.ToERC20Amount(max, tokenInfo); err != nil {
+			return err
+		}
+
+	}
 
 	printOfferSummary := func(offerResp *rpctypes.MakeOfferResponse) {
 		fmt.Println("Published:")
 		fmt.Printf("\tOffer ID:  %s\n", offerResp.OfferID)
 		fmt.Printf("\tPeer ID:   %s\n", offerResp.PeerID)
-		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), ethAsset)
-		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), ethAsset)
+		fmt.Printf("\tTaker Min: %s %s\n", otherMin.Text('f'), symbol)
+		fmt.Printf("\tTaker Max: %s %s\n", otherMax.Text('f'), symbol)
 	}
 
 	alwaysUseRelayer := ctx.Bool(flagUseRelayer)
@@ -667,14 +719,14 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 			fmt.Printf("---\n")
 		}
 
-		receivedCoin := "ETH"
-		if info.Provided == coins.ProvidesETH {
-			receivedCoin = "XMR"
+		providedCoin, receivedCoin, err := providedAndReceivedSymbols(c, info.Provided, info.EthAsset)
+		if err != nil {
+			return err
 		}
 
 		fmt.Printf("ID: %s\n", info.ID)
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
-		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
@@ -717,9 +769,9 @@ func runGetPastSwap(ctx *cli.Context) error {
 			fmt.Printf("---\n")
 		}
 
-		receivedCoin := "ETH"
-		if info.Provided == coins.ProvidesETH {
-			receivedCoin = "XMR"
+		providedCoin, receivedCoin, err := providedAndReceivedSymbols(c, info.Provided, info.EthAsset)
+		if err != nil {
+			return err
 		}
 
 		endTime := "-"
@@ -730,7 +782,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 		fmt.Printf("ID: %s\n", info.ID)
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
 		fmt.Printf("End time: %s\n", endTime)
-		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), info.Provided)
+		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
 		fmt.Printf("Received: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
@@ -797,7 +849,7 @@ func runGetOffers(ctx *cli.Context) error {
 	fmt.Println("Peer ID (self):", resp.PeerID)
 	fmt.Println("Offers:")
 	for i, offer := range resp.Offers {
-		err = printOffer(offer, i, "  ")
+		err = printOffer(c, offer, i, "  ")
 		if err != nil {
 			return err
 		}
@@ -864,32 +916,6 @@ func runSuggestedExchangeRate(ctx *cli.Context) error {
 	fmt.Printf("XMR/USD Price: %-13s (%s)\n", resp.XMRPrice, resp.XMRUpdatedAt)
 	fmt.Printf("ETH/USD Price: %-13s (%s)\n", resp.ETHPrice, resp.ETHUpdatedAt)
 
-	return nil
-}
-
-func printOffer(o *types.Offer, index int, indent string) error {
-	if index > 0 {
-		fmt.Printf("%s---\n", indent)
-	}
-
-	xRate := o.ExchangeRate
-	minETH, err := xRate.ToETH(o.MinAmount)
-	if err != nil {
-		return err
-	}
-	maxETH, err := xRate.ToETH(o.MaxAmount)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
-	fmt.Printf("%sProvides: %s\n", indent, o.Provides)
-	fmt.Printf("%sTakes: %s\n", indent, o.EthAsset)
-	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, o.EthAsset, o.Provides)
-	fmt.Printf("%sMaker Min: %s %s\n", indent, o.MinAmount.Text('f'), o.Provides)
-	fmt.Printf("%sMaker Max: %s %s\n", indent, o.MaxAmount.Text('f'), o.Provides)
-	fmt.Printf("%sTaker Min: %s %s\n", indent, minETH.Text('f'), o.EthAsset)
-	fmt.Printf("%sTaker Max: %s %s\n", indent, maxETH.Text('f'), o.EthAsset)
 	return nil
 }
 

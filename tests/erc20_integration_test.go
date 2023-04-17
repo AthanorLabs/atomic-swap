@@ -5,70 +5,106 @@ package tests
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
 )
 
-func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
-	conn, chainID := NewEthClient(t)
-	pk, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
+// deploys TestERC20.sol and assigns the whole token balance to the XMRTaker default address.
+func deployTestERC20(t *testing.T) ethcommon.Address {
+	ctx := context.Background()
+	aliceKey, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
-	require.NoError(t, err)
-	return auth, conn, pk
-}
 
-// deploys ERC20Mock.sol and assigns the whole token balance to the XMRTaker default address.
-func deployERC20Mock(t *testing.T) ethcommon.Address {
-	auth, conn, pkA := setupXMRTakerAuth(t)
-	pub := pkA.Public().(*ecdsa.PublicKey)
-	addr := ethcrypto.PubkeyToAddress(*pub)
+	ec := extethclient.CreateTestClient(t, aliceKey)
+	txOpts, err := ec.TxOpts(ctx)
+	require.NoError(t, err)
 
-	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	balance := new(big.Int).Mul(big.NewInt(9999999), decimals)
-	erc20Addr, erc20Tx, _, err := contracts.DeployERC20Mock(auth, conn, "ERC20Mock", "MOCK", addr, balance)
+	const (
+		initialTokenBalance = 1000 // standard units
+		decimals            = 18
+	)
+	tenToDecimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(decimals), nil)
+	totalSupply := new(big.Int).Mul(big.NewInt(initialTokenBalance*2), tenToDecimals)
+	halfSupply := new(big.Int).Mul(big.NewInt(initialTokenBalance), tenToDecimals)
+
+	erc20Addr, erc20Tx, tokenContract, err := contracts.DeployTestERC20(
+		txOpts,
+		ec.Raw(),
+		"Test ERC20 token",
+		"TEST",
+		decimals,
+		ec.Address(),
+		totalSupply,
+	)
 	require.NoError(t, err)
-	_, err = block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
+	MineTransaction(t, ec.Raw(), erc20Tx)
+
+	// Query Charlie's Ethereum address
+	charlieCli := rpcclient.NewClient(ctx, defaultCharlieSwapdEndpoint)
+	balResp, err := charlieCli.Balances(nil)
 	require.NoError(t, err)
+	charlieAddr := balResp.EthAddress
+
+	// Transfer half of the supply to Charlie (using Alice's extended ethereum client)
+	txOpts, err = ec.TxOpts(ctx)
+	require.NoError(t, err)
+	tx, err := tokenContract.Transfer(txOpts, charlieAddr, halfSupply)
+	require.NoError(t, err)
+	MineTransaction(t, ec.Raw(), tx)
+
+	tokenBalReq := &rpctypes.BalancesRequest{
+		TokenAddrs: []ethcommon.Address{erc20Addr},
+	}
+
+	// verify that the XMR Taker has exactly 1000 tokens
+	aliceCli := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
+	balResp, err = aliceCli.Balances(tokenBalReq)
+	require.NoError(t, err)
+	require.Equal(t, "1000", balResp.TokenBalances[0].AsStandardString())
+
+	// verify that Charlie also has exactly 1000 tokens
+	balResp, err = charlieCli.Balances(tokenBalReq)
+	require.NoError(t, err)
+	require.NoError(t, err)
+	require.Equal(t, "1000", balResp.TokenBalances[0].AsStandardString())
+
 	return erc20Addr
 }
 
 func (s *IntegrationTestSuite) TestXMRTaker_ERC20_Query() {
-	s.testXMRTakerQuery(types.EthAsset(deployERC20Mock(s.T())))
+	s.testXMRTakerQuery(s.testToken)
 }
 
 func (s *IntegrationTestSuite) TestSuccess_ERC20_OneSwap() {
-	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), false)
+	s.testSuccessOneSwap(s.testToken, false)
 }
 
 func (s *IntegrationTestSuite) TestRefund_ERC20_XMRTakerCancels() {
-	s.testRefundXMRTakerCancels(types.EthAsset(deployERC20Mock(s.T())))
+	s.testRefundXMRTakerCancels(s.testToken)
 }
 
 func (s *IntegrationTestSuite) TestAbort_ERC20_XMRTakerCancels() {
-	s.testAbortXMRTakerCancels(types.EthAsset(deployERC20Mock(s.T())))
+	s.testAbortXMRTakerCancels(s.testToken)
 }
 
 func (s *IntegrationTestSuite) TestAbort_ERC20_XMRMakerCancels() {
-	s.testAbortXMRMakerCancels(types.EthAsset(deployERC20Mock(s.T())))
+	s.testAbortXMRMakerCancels(s.testToken)
 }
 
 func (s *IntegrationTestSuite) TestError_ERC20_ShouldOnlyTakeOfferOnce() {
-	s.testErrorShouldOnlyTakeOfferOnce(types.EthAsset(deployERC20Mock(s.T())))
+	s.testErrorShouldOnlyTakeOfferOnce(s.testToken)
 }
 
 func (s *IntegrationTestSuite) TestSuccess_ERC20_ConcurrentSwaps() {
-	s.testSuccessConcurrentSwaps(types.EthAsset(deployERC20Mock(s.T())))
+	s.testSuccessConcurrentSwaps(s.testToken)
 }

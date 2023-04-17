@@ -115,14 +115,30 @@ type SignerTxSigned struct {
 	TxHash  ethcommon.Hash `json:"txHash" validate:"required"`
 }
 
-// BalancesResponse holds the response for the combined Monero and Ethereum Balances request
+// TokenInfoRequest is used to request lookup of the token's metadata.
+type TokenInfoRequest struct {
+	TokenAddr ethcommon.Address `json:"tokenAddr" validate:"required"`
+}
+
+// TokenInfoResponse contains the metadata for the requested token
+type TokenInfoResponse = coins.ERC20TokenInfo
+
+// BalancesRequest is used to request the combined Monero and Ethereum balances
+// as well as the balances of any tokens included in the request.
+type BalancesRequest struct {
+	TokenAddrs []ethcommon.Address `json:"tokensAddrs" validate:"dive,required"`
+}
+
+// BalancesResponse holds the response for the combined Monero, Ethereum and
+// optional token Balances request
 type BalancesResponse struct {
-	MoneroAddress           *mcrypto.Address      `json:"moneroAddress" validate:"required"`
-	PiconeroBalance         *coins.PiconeroAmount `json:"piconeroBalance" validate:"required"`
-	PiconeroUnlockedBalance *coins.PiconeroAmount `json:"piconeroUnlockedBalance" validate:"required"`
-	BlocksToUnlock          uint64                `json:"blocksToUnlock"`
-	EthAddress              ethcommon.Address     `json:"ethAddress" validate:"required"`
-	WeiBalance              *coins.WeiAmount      `json:"weiBalance" validate:"required"`
+	MoneroAddress           *mcrypto.Address          `json:"moneroAddress" validate:"required"`
+	PiconeroBalance         *coins.PiconeroAmount     `json:"piconeroBalance" validate:"required"`
+	PiconeroUnlockedBalance *coins.PiconeroAmount     `json:"piconeroUnlockedBalance" validate:"required"`
+	BlocksToUnlock          uint64                    `json:"blocksToUnlock"`
+	EthAddress              ethcommon.Address         `json:"ethAddress" validate:"required"`
+	WeiBalance              *coins.WeiAmount          `json:"weiBalance" validate:"required"`
+	TokenBalances           []*coins.ERC20TokenAmount `json:"tokenBalances" validate:"dive,required"`
 }
 
 // AddressesResponse ...
