@@ -46,8 +46,8 @@ const (
 	flagDetached       = "detached"
 )
 
-var (
-	app = &cli.App{
+func cliApp() *cli.App {
+	return &cli.App{
 		Name:                 "swapcli",
 		Usage:                "Client for swapd",
 		Version:              cliutil.GetVersion(),
@@ -183,8 +183,8 @@ var (
 						Usage: "Exit immediately instead of subscribing to notifications about the swap's status",
 					},
 					&cli.StringFlag{
-						Name:  "eth-asset",
-						Usage: "Ethereum ERC-20 token address to receive, or the zero address for regular ETH",
+						Name:  flagToken,
+						Usage: "Use to pass the ethereum ERC20 token address to receive instead of ETH",
 					},
 					&cli.BoolFlag{
 						Name:  flagUseRelayer,
@@ -335,7 +335,9 @@ var (
 			},
 		},
 	}
+}
 
+var (
 	swapdPortFlag = &cli.UintFlag{
 		Name:    flagSwapdPort,
 		Aliases: []string{"p"},
@@ -346,7 +348,7 @@ var (
 )
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	if err := cliApp().Run(os.Args); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
@@ -496,7 +498,7 @@ func runQuery(ctx *cli.Context) error {
 	}
 
 	for i, o := range res.Offers {
-		err = printOffer(o, i, "")
+		err = printOffer(c, o, i, "")
 		if err != nil {
 			return err
 		}
@@ -526,7 +528,7 @@ func runQueryAll(ctx *cli.Context) error {
 		fmt.Printf("  Peer ID: %v\n", po.PeerID)
 		fmt.Printf("  Offers:\n")
 		for j, o := range po.Offers {
-			err = printOffer(o, j, "    ")
+			err = printOffer(c, o, j, "    ")
 			if err != nil {
 				return err
 			}
@@ -549,7 +551,7 @@ func runMake(ctx *cli.Context) error {
 		return err
 	}
 
-	ethAssetStr := ctx.String("eth-asset")
+	ethAssetStr := ctx.String(flagToken)
 	ethAsset := types.EthAssetETH
 	if ethAssetStr != "" {
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
@@ -687,30 +689,6 @@ func runTake(ctx *cli.Context) error {
 
 	fmt.Printf("Initiated swap with offer ID %s\n", offerID)
 	return nil
-}
-
-func providedAndReceivedSymbols(
-	c *rpcclient.Client,
-	provides coins.ProvidesCoin,
-	ethAsset types.EthAsset,
-) (string, string, error) {
-	ethAssetSymbol := coins.ProvidesETH.String()
-	if ethAsset.IsToken() {
-		tokenInfo, err := c.TokenInfo(ethAsset.Address())
-		if err != nil {
-			return "", "", err
-		}
-		ethAssetSymbol = tokenInfo.SanitizedSymbol()
-	}
-
-	switch provides {
-	case coins.ProvidesETH:
-		return ethAssetSymbol, coins.ProvidesXMR.String(), nil
-	case coins.ProvidesXMR:
-		return coins.ProvidesXMR.String(), ethAssetSymbol, nil
-	default:
-		return "", "", fmt.Errorf("unhandled provides value %q", provides)
-	}
 }
 
 func runGetOngoingSwap(ctx *cli.Context) error {
@@ -871,7 +849,7 @@ func runGetOffers(ctx *cli.Context) error {
 	fmt.Println("Peer ID (self):", resp.PeerID)
 	fmt.Println("Offers:")
 	for i, offer := range resp.Offers {
-		err = printOffer(offer, i, "  ")
+		err = printOffer(c, offer, i, "  ")
 		if err != nil {
 			return err
 		}
@@ -938,32 +916,6 @@ func runSuggestedExchangeRate(ctx *cli.Context) error {
 	fmt.Printf("XMR/USD Price: %-13s (%s)\n", resp.XMRPrice, resp.XMRUpdatedAt)
 	fmt.Printf("ETH/USD Price: %-13s (%s)\n", resp.ETHPrice, resp.ETHUpdatedAt)
 
-	return nil
-}
-
-func printOffer(o *types.Offer, index int, indent string) error {
-	if index > 0 {
-		fmt.Printf("%s---\n", indent)
-	}
-
-	xRate := o.ExchangeRate
-	minETH, err := xRate.ToETH(o.MinAmount)
-	if err != nil {
-		return err
-	}
-	maxETH, err := xRate.ToETH(o.MaxAmount)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%sOffer ID: %s\n", indent, o.ID)
-	fmt.Printf("%sProvides: %s\n", indent, o.Provides) // TODO: This code is not correctly handling ERC20 tokens.
-	fmt.Printf("%sTakes: %s\n", indent, o.EthAsset)
-	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, o.EthAsset, o.Provides)
-	fmt.Printf("%sMaker Min: %s %s\n", indent, o.MinAmount.Text('f'), o.Provides)
-	fmt.Printf("%sMaker Max: %s %s\n", indent, o.MaxAmount.Text('f'), o.Provides)
-	fmt.Printf("%sTaker Min: %s %s\n", indent, minETH.Text('f'), o.EthAsset)
-	fmt.Printf("%sTaker Max: %s %s\n", indent, maxETH.Text('f'), o.EthAsset)
 	return nil
 }
 
