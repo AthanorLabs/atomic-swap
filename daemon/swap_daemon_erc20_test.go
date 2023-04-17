@@ -1,9 +1,7 @@
 package daemon
 
 import (
-	"context"
 	"fmt"
-	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -15,34 +13,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
-
-func createTestTokenAddress(t *testing.T, ec extethclient.EthClient) ethcommon.Address {
-	ctx := context.Background()
-	balance := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e12)) // our token has 12 decimal places
-	txOpts, err := ec.TxOpts(ctx)
-	require.NoError(t, err)
-
-	erc20Addr, erc20Tx, _, err := contracts.DeployERC20Mock(
-		txOpts,
-		ec.Raw(),
-		"Atomic Token",
-		"ATOMIC",
-		12,
-		ec.Address(),
-		balance,
-	)
-	require.NoError(t, err)
-	tests.MineTransaction(t, ec.Raw(), erc20Tx)
-
-	return erc20Addr
-}
 
 // Tests the scenario where Bob has XMR and enough ETH to pay gas fees for the token claim. He
 // exchanges 2 XMR for 3 of Alice's ERC20 tokens.
@@ -51,16 +26,16 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	maxXMR := coins.StrToDecimal("2")
 	exRate := coins.StrToExchangeRate("1.5")
 
-	bobConf := createTestConf(t, tests.GetMakerTestKey(t))
+	bobConf := CreateTestConf(t, tests.GetMakerTestKey(t))
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
-	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
+	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 
-	tokenAddr := createTestTokenAddress(t, aliceConf.EthereumClient)
+	tokenAddr := GetMockTokens(t, aliceConf.EthereumClient)[MockTether]
 	tokenAsset := types.EthAsset(tokenAddr)
 
 	timeout := 7 * time.Minute
-	ctx := launchDaemons(t, timeout, aliceConf, bobConf)
+	ctx := LaunchDaemons(t, timeout, aliceConf, bobConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
