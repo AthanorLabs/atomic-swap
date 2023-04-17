@@ -19,8 +19,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 )
 
-// deploys ERC20Mock.sol and assigns the whole token balance to the XMRTaker default address.
-func deployERC20Mock(t *testing.T) ethcommon.Address {
+// deploys TestERC20.sol and assigns the whole token balance to the XMRTaker default address.
+func deployTestERC20(t *testing.T) ethcommon.Address {
 	ctx := context.Background()
 	aliceKey, err := ethcrypto.HexToECDSA(common.DefaultPrivKeyXMRTaker)
 	require.NoError(t, err)
@@ -37,11 +37,11 @@ func deployERC20Mock(t *testing.T) ethcommon.Address {
 	totalSupply := new(big.Int).Mul(big.NewInt(initialTokenBalance*2), tenToDecimals)
 	halfSupply := new(big.Int).Mul(big.NewInt(initialTokenBalance), tenToDecimals)
 
-	erc20Addr, erc20Tx, tokenContract, err := contracts.DeployERC20Mock(
+	erc20Addr, erc20Tx, tokenContract, err := contracts.DeployTestERC20(
 		txOpts,
 		ec.Raw(),
-		"ERC20Mock",
-		"MOCK",
+		"Test ERC20 token",
+		"TEST",
 		decimals,
 		ec.Address(),
 		totalSupply,

@@ -42,7 +42,7 @@ func TestSwapState_ClaimRelayer_ERC20(t *testing.T) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(sk, chainID)
 	require.NoError(t, err)
 
-	_, tx, _, err := contracts.DeployERC20Mock(
+	_, tx, _, err := contracts.DeployTestERC20(
 		txOpts,
 		conn,
 		"Mock",

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPLv3
-pragma solidity ^0.8.5 .0;
+pragma solidity 0.8.19 .0;
 
 import {ERC2771Context} from "./ERC2771Context.sol";
 import {IERC20} from "./IERC20.sol";
@@ -10,7 +10,6 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // Alice sets Stage to READY when she sees the funds locked on the other chain.
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
     // Stage is set to COMPLETED upon the swap value being claimed or refunded.
-
     enum Stage {
         INVALID,
         PENDING,
@@ -56,6 +55,45 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     event Claimed(bytes32 indexed swapID, bytes32 indexed s);
     event Refunded(bytes32 indexed swapID, bytes32 indexed s);
 
+    // returned when trying to initiate a swap with a zero value
+    error ZeroValue();
+
+    // returned when the ether sent with a `newSwap` transaction does not match the value parameter
+    error InvalidValue();
+
+    // returned when trying to initiate a swap with an ID that already exists
+    error SwapAlreadyExists();
+
+    // returned when trying to call `setReady` on a swap that is not in the PENDING stage
+    error SwapNotPending();
+
+    // returned when the caller of `setReady` or `refund` is not the swap owner
+    error OnlySwapOwner();
+
+    // returned when `claimRelayer` is not called by the trusted forwarder
+    error OnlyTrustedForwarder();
+
+    // returned when the signer of the relayed transaction is not the swap's claimer
+    error OnlySwapClaimer();
+
+    // returned when trying to call `claim` or `refund` on an invalid swap
+    error InvalidSwap();
+
+    // returned when trying to call `claim` or `refund` on a swap that's already completed
+    error SwapCompleted();
+
+    // returned when trying to call `claim` on a swap that's not set to ready or the first timeout has not been reached
+    error TooEarlyToClaim();
+
+    // returned when trying to call `claim` on a swap where the second timeout has been reached
+    error TooLateToClaim();
+
+    // returned when it's the counterparty's turn to claim and refunding is not allowed
+    error NotTimeToRefund();
+
+    // returned when the provided secret does not match the expected public key
+    error InvalidSecret();
+
     constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {} // solhint-disable-line
 
     // newSwap creates a new Swap instance with the given parameters.
@@ -72,6 +110,17 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         uint256 _value,
         uint256 _nonce
     ) public payable returns (bytes32) {
+        if (_value == 0) revert ZeroValue();
+        if (_asset == address(0)) {
+            if (_value != msg.value) revert InvalidValue();
+        } else {
+            // transfer ERC-20 token into this contract
+            // TODO: potentially check token balance before/after this step
+            // and ensure the balance was increased by swap.value since fee-on-transfer
+            // tokens are not supported
+            IERC20(_asset).transferFrom(msg.sender, address(this), _value);
+        }
+
         Swap memory swap;
         swap.owner = payable(msg.sender);
         swap.pubKeyClaim = _pubKeyClaim;
@@ -81,21 +130,12 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         swap.timeout1 = block.timestamp + _timeoutDuration0 + _timeoutDuration1;
         swap.asset = _asset;
         swap.value = _value;
-        if (swap.asset == address(0)) {
-            require(swap.value == msg.value, "value not same as ETH amount sent");
-        } else {
-            // transfer ERC-20 token into this contract
-            // TODO: potentially check token balance before/after this step
-            // and ensure the balance was increased by swap.value since fee-on-transfer
-            // tokens are not supported
-            IERC20(swap.asset).transferFrom(msg.sender, address(this), swap.value);
-        }
         swap.nonce = _nonce;
 
         bytes32 swapID = keccak256(abi.encode(swap));
 
         // make sure this isn't overriding an existing swap
-        require(swaps[swapID] == Stage.INVALID, "swap already exists");
+        if (swaps[swapID] != Stage.INVALID) revert SwapAlreadyExists();
 
         emit New(
             swapID,
@@ -113,8 +153,8 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // Alice should call setReady() within t_0 once she verifies the XMR has been locked
     function setReady(Swap memory _swap) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
-        require(swaps[swapID] == Stage.PENDING, "swap is not in PENDING state");
-        require(_swap.owner == msg.sender, "only the swap owner can call setReady");
+        if (swaps[swapID] != Stage.PENDING) revert SwapNotPending();
+        if (_swap.owner != msg.sender) revert OnlySwapOwner();
         swaps[swapID] = Stage.READY;
         emit Ready(swapID);
     }
@@ -141,16 +181,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // Bob can claim if:
     // - Alice has set the swap to `ready` or it's past t_0 but before t_1
     function claimRelayer(Swap memory _swap, bytes32 _s, uint256 fee) public {
-        require(
-            isTrustedForwarder(msg.sender),
-            "claimRelayer can only be called by a trusted forwarder"
-        );
-
-        require(
-            _msgSender() == _swap.claimer,
-            "signer of the relayed transaction must be the claimer"
-        );
-
+        if (!isTrustedForwarder(msg.sender)) revert OnlyTrustedForwarder();
         _claim(_swap, _s);
 
         // send ether to swap claimant, subtracting the relayer fee
@@ -174,14 +205,11 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     function _claim(Swap memory _swap, bytes32 _s) internal {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
-        require(swapStage != Stage.INVALID, "invalid swap");
-        require(swapStage != Stage.COMPLETED, "swap is already completed");
-        require(_msgSender() == _swap.claimer, "only claimer can claim!");
-        require(
-            (block.timestamp >= _swap.timeout0 || swapStage == Stage.READY),
-            "too early to claim!"
-        );
-        require(block.timestamp < _swap.timeout1, "too late to claim!");
+        if (swapStage == Stage.INVALID) revert InvalidSwap();
+        if (swapStage == Stage.COMPLETED) revert SwapCompleted();
+        if (_msgSender() != _swap.claimer) revert OnlySwapClaimer();
+        if (block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
+        if (block.timestamp >= _swap.timeout1) revert TooLateToClaim();
 
         verifySecret(_s, _swap.pubKeyClaim);
         emit Claimed(swapID, _s);
@@ -194,16 +222,13 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     function refund(Swap memory _swap, bytes32 _s) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
-        require(
-            swapStage != Stage.COMPLETED && swapStage != Stage.INVALID,
-            "swap is already completed"
-        );
-        require(msg.sender == _swap.owner, "refund must be called by the swap owner");
-        require(
-            block.timestamp >= _swap.timeout1 ||
-                (block.timestamp < _swap.timeout0 && swapStage != Stage.READY),
-            "it's the counterparty's turn, unable to refund, try again later"
-        );
+        if (swapStage == Stage.INVALID) revert InvalidSwap();
+        if (swapStage == Stage.COMPLETED) revert SwapCompleted();
+        if (_swap.owner != msg.sender) revert OnlySwapOwner();
+        if (
+            block.timestamp < _swap.timeout1 &&
+            (block.timestamp > _swap.timeout0 || swapStage == Stage.READY)
+        ) revert NotTimeToRefund();
 
         verifySecret(_s, _swap.pubKeyRefund);
         emit Refunded(swapID, _s);
@@ -218,9 +243,6 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     }
 
     function verifySecret(bytes32 _s, bytes32 pubKey) internal pure {
-        require(
-            mulVerify(uint256(_s), uint256(pubKey)),
-            "provided secret does not match the expected public key"
-        );
+        if (!mulVerify(uint256(_s), uint256(pubKey))) revert InvalidSecret();
     }
 }

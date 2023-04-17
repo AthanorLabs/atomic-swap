@@ -4,8 +4,8 @@ pragma solidity ^0.8.0 .0;
 
 import {ERC20} from "./ERC20.sol";
 
-// mock class using ERC20
-contract ERC20Mock is ERC20 {
+// ERC20 token for testing purposes
+contract TestERC20 is ERC20 {
     uint8 private _decimals;
 
     constructor(

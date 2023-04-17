@@ -148,7 +148,7 @@ func newTestSwapState(t *testing.T) *swapState {
 	return s
 }
 
-func newTestSwapStateWithERC20(t *testing.T, providesAmt *apd.Decimal) (*swapState, *contracts.ERC20Mock) {
+func newTestSwapStateWithERC20(t *testing.T, providesAmt *apd.Decimal) (*swapState, *contracts.TestERC20) {
 	b := newBackend(t)
 	const numDecimals = 13
 
@@ -168,7 +168,7 @@ func newTestSwapStateWithERC20(t *testing.T, providesAmt *apd.Decimal) (*swapSta
 	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
 	require.NoError(t, err)
 
-	_, tx, contract, err := contracts.DeployERC20Mock(
+	_, tx, contract, err := contracts.DeployTestERC20(
 		txOpts,
 		b.ETHClient().Raw(),
 		"☢☣☠\a Obnoxious Token \a☠☣☢",

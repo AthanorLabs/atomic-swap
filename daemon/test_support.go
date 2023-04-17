@@ -182,7 +182,7 @@ func GetMockTokens(t *testing.T, ec extethclient.EthClient) map[string]ethcommon
 	txOpts, err := ec.TxOpts(ctx)
 	require.NoError(t, err)
 
-	mockDaiAddr, mockDaiTx, _, err := contracts.DeployERC20Mock(
+	mockDaiAddr, mockDaiTx, _, err := contracts.DeployTestERC20(
 		txOpts,
 		ec.Raw(),
 		"Dai Stablecoin",
@@ -198,7 +198,7 @@ func GetMockTokens(t *testing.T, ec extethclient.EthClient) map[string]ethcommon
 	txOpts, err = ec.TxOpts(ctx)
 	require.NoError(t, err)
 
-	mockTetherAddr, mockTetherTx, _, err := contracts.DeployERC20Mock(
+	mockTetherAddr, mockTetherTx, _, err := contracts.DeployTestERC20(
 		txOpts,
 		ec.Raw(),
 		"Tether USD",

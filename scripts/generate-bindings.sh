@@ -28,6 +28,6 @@ compile-contract() {
 }
 
 compile-contract SwapCreator SwapCreator swap_creator
-compile-contract ERC20Mock ERC20Mock erc20_mock
+compile-contract TestERC20 TestERC20 erc20_mock
 compile-contract IERC20Metadata IERC20 ierc20
 compile-contract AggregatorV3Interface AggregatorV3Interface aggregator_v3_interface

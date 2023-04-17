@@ -64,7 +64,7 @@ func TestRunIntegrationTests(t *testing.T) {
 		t.Skip()
 	}
 	s := new(IntegrationTestSuite)
-	s.testToken = types.EthAsset(deployERC20Mock(t))
+	s.testToken = types.EthAsset(deployTestERC20(t))
 	suite.Run(t, s)
 }
 
