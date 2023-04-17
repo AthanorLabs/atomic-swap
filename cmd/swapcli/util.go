@@ -117,7 +117,7 @@ func printOffer(c *rpcclient.Client, o *types.Offer, index int, indent string) e
 	if o.EthAsset.IsToken() {
 		fmt.Printf("%s       %s (self reported symbol)\n", indent, receivedCoin)
 	}
-	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, o.EthAsset, o.Provides)
+	fmt.Printf("%sExchange Rate: %s %s/%s\n", indent, o.ExchangeRate, receivedCoin, providedCoin)
 	fmt.Printf("%sMaker Min: %s %s\n", indent, o.MinAmount.Text('f'), providedCoin)
 	fmt.Printf("%sMaker Max: %s %s\n", indent, o.MaxAmount.Text('f'), providedCoin)
 	fmt.Printf("%sTaker Min: %s %s\n", indent, minTake.Text('f'), receivedCoin)
