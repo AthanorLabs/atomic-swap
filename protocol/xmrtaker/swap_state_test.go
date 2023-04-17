@@ -34,10 +34,14 @@ import (
 )
 
 var (
-	_             = logging.SetLogLevel("protocol", "debug")
-	_             = logging.SetLogLevel("xmrtaker", "debug")
 	testPeerID, _ = peer.Decode("12D3KooWQQRJuKTZ35eiHGNPGDpQqjpJSdaxEMJRxi6NWFrrvQVi")
 )
+
+func init() {
+	logging.SetLogLevel("xmrtaker", "debug")
+	logging.SetLogLevel("protocol", "debug")
+	logging.SetLogLevel("txsender", "debug")
+}
 
 type mockNet struct {
 	msgMu sync.Mutex     // lock needed, as SendSwapMessage is called async from timeout handlers
@@ -144,8 +148,22 @@ func newTestSwapState(t *testing.T) *swapState {
 	return s
 }
 
-func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapState, *contracts.TestERC20) {
+func newTestSwapStateWithERC20(t *testing.T, providesAmt *apd.Decimal) (*swapState, *contracts.TestERC20) {
 	b := newBackend(t)
+	const numDecimals = 13
+
+	// Increase the provided amount to token units, by adding to the exponent
+	providesAmtTokenUnits := apd.NewWithBigInt(&providesAmt.Coeff, providesAmt.Exponent+numDecimals)
+	require.Positive(t, providesAmtTokenUnits.Exponent)
+
+	// Set the exponent to zero pushing everything into the coefficient
+	_, err := coins.DecimalCtx().Quantize(providesAmtTokenUnits, providesAmtTokenUnits, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	// Now that everything is in the coefficient, we can convert to big.Int
+	providesAmtTokenUnitsBI := new(big.Int).SetBytes(providesAmtTokenUnits.Coeff.Bytes())
 
 	txOpts, err := b.ETHClient().TxOpts(b.Ctx())
 	require.NoError(t, err)
@@ -153,19 +171,25 @@ func newTestSwapStateWithERC20(t *testing.T, initialBalance *big.Int) (*swapStat
 	_, tx, contract, err := contracts.DeployTestERC20(
 		txOpts,
 		b.ETHClient().Raw(),
-		"Mock",
-		"MOCK",
+		"☢☣☠\a Obnoxious Token \a☠☣☢",
+		"\a☢\n☣\a☠", // ensure we escape this
+		13,
 		b.ETHClient().Address(),
-		initialBalance,
+		providesAmtTokenUnitsBI,
 	)
 	require.NoError(t, err)
 	addr, err := bind.WaitDeployed(b.Ctx(), b.ETHClient().Raw(), tx)
 	require.NoError(t, err)
 
+	tokenInfo, err := b.ETHClient().ERC20Info(b.Ctx(), addr)
+	require.NoError(t, err)
+
+	providesEthAssetAmt := coins.NewERC20TokenAmountFromDecimals(providesAmt, tokenInfo)
+
 	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
 	zeroPiconeros := coins.NewPiconeroAmount(0)
 	swapState, err := newSwapStateFromStart(b, testPeerID, types.Hash{}, false,
-		coins.IntToWei(1), zeroPiconeros, exchangeRate, types.EthAsset(addr))
+		providesEthAssetAmt, zeroPiconeros, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }
@@ -425,11 +449,30 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 }
 
 func TestSwapState_ApproveToken(t *testing.T) {
-	initialBalance := big.NewInt(999999)
-	s, contract := newTestSwapStateWithERC20(t, initialBalance)
-	err := s.approveToken()
+	const expectedAmtStr = "5678"
+	providesAmt := coins.StrToDecimal(expectedAmtStr)
+
+	s, contract := newTestSwapStateWithERC20(t, providesAmt)
+
+	xmrmakerKeysAndProof, err := generateKeys()
 	require.NoError(t, err)
-	allowance, err := contract.Allowance(&bind.CallOpts{}, s.ETHClient().Address(), s.SwapCreatorAddr())
+
+	err = s.setXMRMakerKeys(
+		xmrmakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrmakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrmakerKeysAndProof.Secp256k1PublicKey,
+	)
 	require.NoError(t, err)
-	require.Equal(t, initialBalance, allowance)
+
+	// approve is called by NewSwap() in lockAsset()
+	_, err = s.lockAsset()
+	require.NoError(t, err)
+
+	// Now that the tokens are locked in the contract, validate that
+	// the contract is no longer approved to transfer additional tokens
+	// from us.
+	callOpts := &bind.CallOpts{Context: s.ctx}
+	allowance, err := contract.Allowance(callOpts, s.ETHClient().Address(), s.SwapCreatorAddr())
+	require.NoError(t, err)
+	require.Equal(t, "0", allowance.String())
 }

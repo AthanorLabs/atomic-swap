@@ -4,9 +4,6 @@
 package xmrmaker
 
 import (
-	"math/big"
-
-	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -19,12 +16,6 @@ import (
 	"github.com/fatih/color"
 )
 
-// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
-type EthereumAssetAmount interface {
-	BigInt() *big.Int
-	AsStandard() *apd.Decimal
-}
-
 // Provides returns types.ProvidesXMR
 func (inst *Instance) Provides() coins.ProvidesCoin {
 	return coins.ProvidesXMR
@@ -35,7 +26,7 @@ func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	providesAmount *coins.PiconeroAmount,
-	desiredAmount EthereumAssetAmount,
+	desiredAmount coins.EthAssetAmount,
 ) (*swapState, error) {
 	if inst.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
@@ -146,7 +137,7 @@ func (inst *Instance) HandleInitiateMessage(
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	expectedAmount, err := pcommon.GetEthereumAssetAmount(
+	expectedAmount, err := pcommon.GetEthAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
 		msg.ProvidedAmount,

@@ -195,7 +195,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 }
 
 // completeSwap is called in the case where we find an ongoing swap in the db on startup,
-// and the swap already has the counterpary's swap secret stored.
+// and the swap already has the counterparty's swap secret stored.
 // In this case, we simply re-claim the XMR we locked, as we have both secrets required.
 // It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
 // us finding the counterparty's secret and claiming the XMR.

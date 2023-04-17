@@ -112,9 +112,9 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 	}
 
 	txCost := new(big.Int).Mul(gasPrice, big.NewInt(forwarderClaimGas))
-	if balance.Cmp(txCost) < 0 {
+	if balance.BigInt().Cmp(txCost) < 0 {
 		return nil, fmt.Errorf("balance %s ETH is under the minimum %s ETH to relay claim",
-			coins.FmtWeiAsETH(balance), coins.FmtWeiAsETH(txCost))
+			balance.AsEtherString(), coins.FmtWeiAsETH(txCost))
 	}
 
 	return gasPrice, nil

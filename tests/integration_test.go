@@ -41,6 +41,7 @@ const (
 	defaultXMRTakerSwapdWSEndpoint = "ws://localhost:5000/ws"
 	defaultXMRMakerSwapdEndpoint   = "http://localhost:5001"
 	defaultXMRMakerSwapdWSEndpoint = "ws://localhost:5001/ws"
+	defaultCharlieSwapdEndpoint    = "http://localhost:5002"
 	defaultCharlieSwapdWSEndpoint  = "ws://localhost:5002/ws"
 
 	defaultDiscoverTimeout = 2 // 2 seconds
@@ -55,13 +56,16 @@ var (
 
 type IntegrationTestSuite struct {
 	suite.Suite
+	testToken types.EthAsset
 }
 
 func TestRunIntegrationTests(t *testing.T) {
 	if testing.Short() || os.Getenv(testsEnv) != integrationMode {
 		t.Skip()
 	}
-	suite.Run(t, new(IntegrationTestSuite))
+	s := new(IntegrationTestSuite)
+	s.testToken = types.EthAsset(deployTestERC20(t))
+	suite.Run(t, s)
 }
 
 func (s *IntegrationTestSuite) SetupTest() {
@@ -90,7 +94,7 @@ func mineMinXMRMakerBalance(t *testing.T, minBalance *coins.PiconeroAmount) {
 	daemonCli := monerorpc.New(monero.MonerodRegtestEndpoint, nil).Daemon
 	ctx := context.Background()
 	for {
-		balances, err := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint).Balances()
+		balances, err := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint).Balances(nil)
 		require.NoError(t, err)
 		if balances.PiconeroUnlockedBalance.Cmp(minBalance) >= 0 {
 			break

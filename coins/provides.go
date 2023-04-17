@@ -27,6 +27,10 @@ func NewProvidesCoin(s string) (ProvidesCoin, error) {
 	}
 }
 
+func (c *ProvidesCoin) String() string {
+	return string(*c)
+}
+
 // MarshalText hands off JSON encoding to apd.Decimal
 func (c *ProvidesCoin) MarshalText() ([]byte, error) {
 	switch *c {

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -109,37 +110,40 @@ func TestWeiAmount_BigInt(t *testing.T) {
 }
 
 func TestERC20TokenAmount(t *testing.T) {
+	const numDecimals = 9
+	tokenInfo := NewERC20TokenInfo(ethcommon.Address{}, numDecimals, "", "")
+
 	amount := StrToDecimal("33.999999999")
-	wei := NewERC20TokenAmountFromDecimals(amount, 9)
+	wei := NewERC20TokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, amount.String(), wei.AsStandard().String())
 
 	amount = StrToDecimal("33.000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, 9)
+	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, "33.000000005", wei.AsStandard().String())
 
 	amount = StrToDecimal("33.0000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, 9)
+	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, "33.000000001", wei.AsStandard().String())
 
 	amount = StrToDecimal("999999999999999999.0000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, 9)
+	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, "999999999999999999.000000001", wei.AsStandard().String())
 
 	amountUint := int64(8181)
-	tokenAmt := NewERC20TokenAmount(amountUint, 9)
+	tokenAmt := NewERC20TokenAmount(amountUint, tokenInfo)
 	assert.Equal(t, amountUint, tokenAmt.BigInt().Int64())
 }
 
 func TestNewERC20TokenAmountFromBigInt(t *testing.T) {
 	bi := big.NewInt(4321)
-	token := NewERC20TokenAmountFromBigInt(bi, 2)
+	token := NewERC20TokenAmountFromBigInt(bi, &ERC20TokenInfo{NumDecimals: 2})
 	assert.Equal(t, "4321", token.String())
 	assert.Equal(t, "43.21", token.AsStandard().String())
 }
 
 func TestNewERC20TokenAmountFromDecimals(t *testing.T) {
 	stdAmount := StrToDecimal("0.19")
-	token := NewERC20TokenAmountFromDecimals(stdAmount, 1)
+	token := NewERC20TokenAmountFromDecimals(stdAmount, &ERC20TokenInfo{NumDecimals: 1})
 
 	// There's only one decimal place, so this is getting rounded to 2
 	// under the current implementation. It's not entirely clear what

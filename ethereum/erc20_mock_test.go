@@ -21,7 +21,8 @@ func TestSwapCreator_NewSwap_ERC20(t *testing.T) {
 	addr := crypto.PubkeyToAddress(*pub)
 
 	// deploy TestERC20
-	erc20Addr, erc20Tx, erc20Contract, err := DeployTestERC20(auth, conn, "TestERC20", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, erc20Contract, err :=
+		DeployTestERC20(auth, conn, "TestERC20", "MOCK", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -35,7 +36,7 @@ func TestSwapCreator_Claim_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, erc20Contract, err := DeployTestERC20(auth, conn, "TestERC20", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, erc20Contract, err := DeployTestERC20(auth, conn, "TestERC20", "TEST", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -53,7 +54,8 @@ func TestSwapCreator_RefundBeforeT0_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, erc20Contract, err := DeployTestERC20(auth, conn, "TestERC20", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, erc20Contract, err :=
+		DeployTestERC20(auth, conn, "TestERC20", "TEST", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)
@@ -67,7 +69,8 @@ func TestSwapCreator_RefundAfterT1_ERC20(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	erc20Addr, erc20Tx, erc20Contract, err := DeployTestERC20(auth, conn, "TestERC20", "MOCK", addr, big.NewInt(9999))
+	erc20Addr, erc20Tx, erc20Contract, err :=
+		DeployTestERC20(auth, conn, "TestERC20", "TestERC20", 18, addr, big.NewInt(9999))
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, erc20Tx.Hash())
 	require.NoError(t, err)

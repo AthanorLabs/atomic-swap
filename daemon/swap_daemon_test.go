@@ -17,15 +17,12 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -60,28 +57,9 @@ func init() {
 	_ = logging.SetLogLevel("protocol", level)
 	_ = logging.SetLogLevel("relayer", level) // external and internal
 	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("txsender", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("xmrtaker", level)
-}
-
-var _swapCreatorAddr *ethcommon.Address
-
-func getSwapCreatorAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address {
-	if _swapCreatorAddr != nil {
-		return *_swapCreatorAddr
-	}
-
-	ctx := context.Background()
-	ethKey := tests.GetTakerTestKey(t) // requester might not have ETH, so we don't pass the key in
-
-	forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, ethKey)
-	require.NoError(t, err)
-
-	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, ethKey, forwarderAddr)
-	require.NoError(t, err)
-
-	_swapCreatorAddr = &swapCreatorAddr
-	return swapCreatorAddr
 }
 
 func privKeyToAddr(privKey *ecdsa.PrivateKey) ethcommon.Address {
@@ -144,73 +122,7 @@ func minimumFundAlice(t *testing.T, ec extethclient.EthClient, providesAmt *apd.
 
 	bal, err := ec.Balance(context.Background())
 	require.NoError(t, err)
-	t.Logf("Alice's start balance is: %s ETH", coins.FmtWeiAsETH(bal))
-}
-
-func createTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
-	ctx := context.Background()
-	ec, err := extethclient.NewEthClient(ctx, common.Development, common.DefaultEthEndpoint, ethKey)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ec.Close()
-	})
-
-	rpcPort, err := common.GetFreeTCPPort()
-	require.NoError(t, err)
-
-	// We need a copy of the environment conf, as it is no longer a singleton
-	// when we are testing it here.
-	envConf := new(common.Config)
-	*envConf = *common.ConfigDefaultsForEnv(common.Development)
-	envConf.DataDir = t.TempDir()
-	envConf.SwapCreatorAddr = getSwapCreatorAddress(t, ec.Raw())
-
-	return &SwapdConfig{
-		EnvConf:        envConf,
-		MoneroClient:   monero.CreateWalletClient(t),
-		EthereumClient: ec,
-		Libp2pPort:     0,
-		Libp2pKeyfile:  "",
-		RPCPort:        uint16(rpcPort),
-		IsRelayer:      false,
-		NoTransferBack: false,
-	}
-}
-
-func launchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig) context.Context {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-
-	var wg sync.WaitGroup
-	t.Cleanup(func() {
-		cancel()
-		wg.Wait()
-	})
-
-	var bootNodes []string // First daemon to launch has no bootnodes
-
-	for n, conf := range configs {
-
-		conf.EnvConf.Bootnodes = bootNodes
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err := RunSwapDaemon(ctx, conf)
-			require.ErrorIs(t, err, context.Canceled)
-		}()
-		WaitForSwapdStart(t, conf.RPCPort)
-
-		// Configure remaining daemons to use the first one a bootnode
-		if n == 0 {
-			c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
-			addresses, err := c.Addresses()
-			require.NoError(t, err)
-			require.Greater(t, len(addresses.Addrs), 1)
-			bootNodes = []string{addresses.Addrs[0]}
-		}
-	}
-
-	return ctx
+	t.Logf("Alice's start balance is: %s ETH", bal.AsEtherString())
 }
 
 // Tests the scenario, where Bob has no ETH, there are no advertised relayers in
@@ -224,13 +136,13 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 
 	bobEthKey, err := crypto.GenerateKey() // Bob has no ETH (not a ganache key)
 	require.NoError(t, err)
-	bobConf := createTestConf(t, bobEthKey)
+	bobConf := CreateTestConf(t, bobEthKey)
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
-	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
+	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 
 	timeout := 7 * time.Minute
-	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
+	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -298,7 +210,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, expectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+	require.Equal(t, expectedBal.Text('f'), bobBalance.AsEtherString())
 }
 
 // Tests the scenario where Bob has no ETH, he can't find an advertised relayer,
@@ -314,16 +226,16 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 
 	bobEthKey, err := crypto.GenerateKey() // Bob has no ETH (not a ganache key)
 	require.NoError(t, err)
-	bobConf := createTestConf(t, bobEthKey)
+	bobConf := CreateTestConf(t, bobEthKey)
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
 	aliceEthKey, err := crypto.GenerateKey() // Alice has non-ganache key that we fund
 	require.NoError(t, err)
-	aliceConf := createTestConf(t, aliceEthKey)
+	aliceConf := CreateTestConf(t, aliceEthKey)
 	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
 
 	timeout := 8 * time.Minute
-	ctx := launchDaemons(t, timeout, bobConf, aliceConf)
+	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -392,23 +304,23 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 
 	bobEthKey, err := crypto.GenerateKey() // Bob has no ETH (not a ganache key)
 	require.NoError(t, err)
-	bobConf := createTestConf(t, bobEthKey)
+	bobConf := CreateTestConf(t, bobEthKey)
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
 	// Configure Alice with enough funds to complete the swap, but not to relay Bob's claim
 	aliceEthKey, err := crypto.GenerateKey() // Alice gets a key without enough funds to relay
 	require.NoError(t, err)
-	aliceConf := createTestConf(t, aliceEthKey)
+	aliceConf := CreateTestConf(t, aliceEthKey)
 	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
 
 	// Charlie can safely use the taker key, as Alice is not using it.
-	charlieConf := createTestConf(t, tests.GetTakerTestKey(t))
+	charlieConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 	charlieConf.IsRelayer = true
 	charlieStartBal, err := charlieConf.EthereumClient.Balance(context.Background())
 	require.NoError(t, err)
 
 	timeout := 7 * time.Minute
-	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
+	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -474,7 +386,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
-	require.Equal(t, bobExpectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+	require.Equal(t, bobExpectedBal.Text('f'), bobBalance.AsEtherString())
 
 	//
 	// Charlie should be wealthier now than at the start, despite paying the claim
@@ -484,8 +396,8 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	charlieBal, err := charlieEC.Balance(ctx)
 	require.NoError(t, err)
 	require.Greater(t, charlieBal.Cmp(charlieStartBal), 0)
-	charlieProfitWei := new(big.Int).Sub(charlieBal, charlieStartBal)
-	t.Logf("Charlie earned %s ETH", coins.FmtWeiAsETH(charlieProfitWei))
+	charlieProfitWei := charlieBal.Sub(charlieStartBal)
+	t.Logf("Charlie earned %s ETH", charlieProfitWei.AsEtherString())
 }
 
 // Tests the scenario where Charlie, an advertised relayer, has run out of ETH
@@ -500,20 +412,20 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 
 	bobEthKey, err := crypto.GenerateKey() // Bob has no ETH (not a ganache key)
 	require.NoError(t, err)
-	bobConf := createTestConf(t, bobEthKey)
+	bobConf := CreateTestConf(t, bobEthKey)
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
 	// Alice is fully funded with the taker key
-	aliceConf := createTestConf(t, tests.GetTakerTestKey(t))
+	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 
 	// Charlie is a relayer, but he has no ETH
 	charlieEthKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
-	charlieConf := createTestConf(t, charlieEthKey)
+	charlieConf := CreateTestConf(t, charlieEthKey)
 	charlieConf.IsRelayer = true
 
 	timeout := 7 * time.Minute
-	ctx := launchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
+	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -579,15 +491,15 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
-	require.Equal(t, bobExpectedBal.Text('f'), coins.FmtWeiAsETH(bobBalance))
+	require.Equal(t, bobExpectedBal.Text('f'), bobBalance.AsEtherString())
 }
 
 // Tests the version and shutdown RPC methods
 func TestRunSwapDaemon_RPC_Version(t *testing.T) {
-	conf := createTestConf(t, tests.GetMakerTestKey(t))
+	conf := CreateTestConf(t, tests.GetMakerTestKey(t))
 	protocolVersion := fmt.Sprintf("%s/%d", net.ProtocolID, conf.EthereumClient.ChainID())
 	timeout := time.Minute
-	ctx := launchDaemons(t, timeout, conf)
+	ctx := LaunchDaemons(t, timeout, conf)
 
 	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
 	versionResp, err := c.Version()
@@ -601,9 +513,9 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 
 // Tests the shutdown RPC method
 func TestRunSwapDaemon_RPC_Shutdown(t *testing.T) {
-	conf := createTestConf(t, tests.GetMakerTestKey(t))
+	conf := CreateTestConf(t, tests.GetMakerTestKey(t))
 	timeout := time.Minute
-	ctx := launchDaemons(t, timeout, conf)
+	ctx := LaunchDaemons(t, timeout, conf)
 
 	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
 	err := c.Shutdown()
