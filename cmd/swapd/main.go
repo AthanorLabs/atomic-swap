@@ -456,7 +456,7 @@ func createMoneroClient(c *cli.Context, envConf *common.Config) (monero.WalletCl
 		Env:                 envConf.Env,
 		WalletFilePath:      walletFilePath,
 		MonerodNodes:        envConf.MoneroNodes,
-		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
+		MoneroWalletRPCPath: "", // look for it in "./monero-bin/monero-wallet-rpc" and then the user's path
 		WalletPassword:      c.String(flagMoneroWalletPassword),
 		WalletPort:          c.Uint(flagMoneroWalletPort),
 	})
