@@ -13,7 +13,7 @@ require (
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cockroachdb/apd/v3 v3.1.2
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
-	github.com/ethereum/go-ethereum v1.11.5
+	github.com/ethereum/go-ethereum v1.11.3
 	github.com/fatih/color v1.15.0
 	github.com/go-playground/validator/v10 v10.12.0
 	github.com/golang/mock v1.6.0
