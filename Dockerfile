@@ -1,15 +1,25 @@
-FROM golang:1.19.8-alpine as builder
-RUN apk add gcc musl-dev linux-headers git bash curl
-RUN git clone https://github.com/AthanorLabs/atomic-swap
-WORKDIR atomic-swap
-RUN bash scripts/install-monero-linux.sh
-RUN go build --tags=prod,netgo,osusergo --ldflags '-extldflags "-static"' ./cmd/swapd/
+FROM golang:latest as builder
+# Download monero-wallet-rpc. We need bzip2 to unpack the tar file.
+RUN apt update && apt install -y bzip2
+RUN arch=$(uname -m | sed 's/x86_64/linux64/; s/aarch64/linuxarm8/') && \
+    curl -sSL "https://downloads.getmonero.org/cli/${arch}" -o monero.tar.bz2
+RUN tar xvjf monero.tar.bz2 --no-anchored monero-wallet-rpc --strip-components=1
 
-FROM ubuntu:22.04
+# Build the swapd and swapcli binaries
+RUN git clone --depth=1 https://github.com/AthanorLabs/atomic-swap
+WORKDIR atomic-swap
+RUN make build
+
+FROM debian:bullseye-slim
 RUN apt-get update && apt-get install -y ca-certificates
-WORKDIR /root/
-COPY --from=builder /go/atomic-swap/monero-bin/monero-wallet-rpc /usr/local/bin
-COPY --from=builder /go/atomic-swap/swapd .
-RUN ls /usr/local/bin
-RUN ./swapd --version
-CMD ["/root/swapd", "--env", "stagenet", "--ethereum-endpoint", "https://rpc.sepolia.org/"]
+COPY --from=builder /go/monero-wallet-rpc /usr/local/bin/
+COPY --from=builder /go/atomic-swap/bin/ /usr/local/bin/
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid "${USER_GID}" atomic && \
+    useradd --no-log-init --home-dir /atomic-swap \
+    --uid "${USER_UID}" --gid "${USER_GID}" -m atomic
+USER atomic
+WORKDIR /atomic-swap
+RUN swapd --version
+CMD ["swapd", "--env", "stagenet", "--ethereum-endpoint", "https://rpc.sepolia.org/"]
