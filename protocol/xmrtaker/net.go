@@ -27,10 +27,24 @@ func (inst *Instance) InitiateProtocol(
 	providesAmount *apd.Decimal,
 	offer *types.Offer,
 ) (common.SwapState, error) {
+	err := coins.ValidatePositive("providesAmount", coins.NumEtherDecimals, providesAmount)
+	if err != nil {
+		return nil, err
+	}
+
 	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
 	if err != nil {
 		return nil, err
 	}
+
+	if expectedAmount.Cmp(offer.MinAmount) < 0 {
+		return nil, errAmountProvidedTooLow{providesAmount, offer.MinAmount}
+	}
+
+	if expectedAmount.Cmp(offer.MaxAmount) > 0 {
+		return nil, errAmountProvidedTooHigh{providesAmount, offer.MaxAmount}
+	}
+
 	providedAmount, err := pcommon.GetEthAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
