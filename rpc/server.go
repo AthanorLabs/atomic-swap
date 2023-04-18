@@ -56,7 +56,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	rpcServer := rpc.NewServer()
 	rpcServer.RegisterCodec(NewCodec(), "application/json")
 
-	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager())
+	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager(), false)
 	if err := rpcServer.RegisterService(ns, "net"); err != nil {
 		return nil, err
 	}
@@ -94,6 +94,55 @@ func NewServer(cfg *Config) (*Server, error) {
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
+
+	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	server := &http.Server{
+		Addr:              ln.Addr().String(),
+		ReadHeaderTimeout: time.Second,
+		Handler:           handlers.CORS(headersOk, methodsOk, originsOk)(r),
+		BaseContext: func(listener net.Listener) context.Context {
+			return serverCtx
+		},
+	}
+
+	s := &Server{
+		ctx:        serverCtx,
+		listener:   ln,
+		httpServer: server,
+	}
+
+	if err = rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon"); err != nil {
+		serverCancel()
+		return nil, err
+	}
+
+	return s, nil
+}
+
+// NewBootnodeServer returns an RPC server used for a bootnode.
+// It only exposes the net and daemon services.
+func NewBootnodeServer(cfg *Config) (*Server, error) {
+	rpcServer := rpc.NewServer()
+	rpcServer.RegisterCodec(NewCodec(), "application/json")
+
+	ns := NewNetService(cfg.Net, nil, nil, nil, true)
+	if err := rpcServer.RegisterService(ns, "net"); err != nil {
+		return nil, err
+	}
+
+	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
+
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(serverCtx, "tcp", cfg.Address)
+	if err != nil {
+		serverCancel()
+		return nil, err
+	}
+
+	r := mux.NewRouter()
+	r.Handle("/", rpcServer)
 
 	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})

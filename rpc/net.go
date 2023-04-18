@@ -34,19 +34,21 @@ type Net interface {
 
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
-	net      Net
-	xmrtaker XMRTaker
-	xmrmaker XMRMaker
-	sm       SwapManager
+	net        Net
+	xmrtaker   XMRTaker
+	xmrmaker   XMRMaker
+	sm         SwapManager
+	isBootnode bool
 }
 
 // NewNetService ...
-func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager) *NetService {
+func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager, isBootnode bool) *NetService {
 	return &NetService{
-		net:      net,
-		xmrtaker: xmrtaker,
-		xmrmaker: xmrmaker,
-		sm:       sm,
+		net:        net,
+		xmrtaker:   xmrtaker,
+		xmrmaker:   xmrmaker,
+		sm:         sm,
+		isBootnode: isBootnode,
 	}
 }
 
