@@ -280,11 +280,8 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	}
 
 	// ensure we can't claim before setting contract to Ready
-	var s [32]byte
-	secret := proof.Secret()
-	copy(s[:], secret[:])
 	txOpts = *authOrig
-	_, err = contract.Claim(&txOpts, swap, s)
+	_, err = contract.Claim(&txOpts, swap, proof.Secret())
 	require.ErrorContains(t, err, "VM Exception while processing transaction: revert")
 
 	// set contract to Ready
@@ -297,7 +294,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 
 	// now let's try to claim
 	txOpts = *authOrig
-	tx, err = contract.Claim(&txOpts, swap, s)
+	tx, err = contract.Claim(&txOpts, swap, proof.Secret())
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -369,10 +366,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, erc20Contract *Te
 	}
 
 	// now let's try to refund
-	var s [32]byte
-	secret := proof.Secret()
-	copy(s[:], secret[:])
-	tx, err = contract.Refund(auth, swap, s)
+	tx, err = contract.Refund(auth, swap, proof.Secret())
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -414,7 +408,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 	}
 
 	nonce := big.NewInt(0)
-	timeout := big.NewInt(3) // T1 expires before we get the receipt for new_swap TX
+	timeout := big.NewInt(3)
 	auth.Value = defaultSwapValue
 	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout, timeout,
 		asset, defaultSwapValue, nonce)
@@ -432,7 +426,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	// ensure we can't refund before T1
+	// ensure we can't refund between T0 and T1
 	<-time.After(time.Until(time.Unix(t0.Int64()+1, 0)))
 	swap := SwapCreatorSwap{
 		Owner:        addr,
@@ -446,10 +440,8 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 		Nonce:        nonce,
 	}
 
-	var s [32]byte
 	secret := proof.Secret()
-	copy(s[:], secret[:])
-	tx, err = contract.Refund(auth, swap, s)
+	tx, err = contract.Refund(auth, swap, secret)
 	require.NoError(t, err)
 	_, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.ErrorContains(t, err, "VM Exception while processing transaction: revert")
@@ -457,7 +449,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
 
 	// now let's try to refund
-	tx, err = contract.Refund(auth, swap, s)
+	tx, err = contract.Refund(auth, swap, secret)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -520,9 +512,7 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 		res, err := dleq.Verify(proof)
 		require.NoError(t, err)
 
-		secret := proof.Secret()
-		copy(sc.secret[:], secret[:])
-
+		sc.secret = proof.Secret()
 		sc.walletKey = tests.GetTestKeyByIndex(t, i)
 		addrSwap := crypto.PubkeyToAddress(*sc.walletKey.Public().(*ecdsa.PublicKey))
 
