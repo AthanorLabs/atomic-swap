@@ -36,12 +36,12 @@ func NewDatabaseService(rdb RecoveryDB) *DatabaseService {
 
 // GetContractSwapInfoRequest ...
 type GetContractSwapInfoRequest struct {
-	ID types.Hash `json:"id" validate:"required"`
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
 // GetContractSwapInfoResponse ...
 type GetContractSwapInfoResponse struct {
-	StartNumber     *big.Int                   `json:"startNumber" validate:"required"`
+	StartNumber     *big.Int                   `json:"startBlockNumber" validate:"required"`
 	SwapID          types.Hash                 `json:"swapID" validate:"required"`
 	Swap            *contracts.SwapCreatorSwap `json:"swap" validate:"required"`
 	SwapCreatorAddr ethcommon.Address          `json:"swapCreatorAddr" validate:"required"`
@@ -53,7 +53,7 @@ func (s *DatabaseService) GetContractSwapInfo(
 	req *GetContractSwapInfoRequest,
 	resp *GetContractSwapInfoResponse,
 ) error {
-	info, err := s.rdb.GetContractSwapInfo(req.ID)
+	info, err := s.rdb.GetContractSwapInfo(req.OfferID)
 	if err != nil {
 		return err
 	}
@@ -65,52 +65,27 @@ func (s *DatabaseService) GetContractSwapInfo(
 	return nil
 }
 
-// GetSwapPrivateKeyRequest ...
-type GetSwapPrivateKeyRequest struct {
-	ID types.Hash `json:"id" validate:"required"`
+// GetSwapSecretRequest ...
+type GetSwapSecretRequest struct {
+	OfferID types.Hash `json:"offerID" validate:"required"`
 }
 
-// GetSwapPrivateKeyResponse ...
-type GetSwapPrivateKeyResponse struct {
-	PrivateKey *mcrypto.PrivateSpendKey `json:"privateKey" validate:"required"`
+// GetSwapSecretResponse ...
+type GetSwapSecretResponse struct {
+	Secret *mcrypto.PrivateSpendKey `json:"secret" validate:"required"`
 }
 
-// GetSwapPrivateKey returns the private key for the given swap ID from the database.
-func (s *DatabaseService) GetSwapPrivateKey(
+// GetSwapSecret returns our swap secret for the given swap ID from the database.
+func (s *DatabaseService) GetSwapSecret(
 	_ *http.Request,
-	req *GetSwapPrivateKeyRequest,
-	resp *GetSwapPrivateKeyResponse,
+	req *GetSwapSecretRequest,
+	resp *GetSwapSecretResponse,
 ) error {
-	key, err := s.rdb.GetSwapPrivateKey(req.ID)
+	key, err := s.rdb.GetSwapPrivateKey(req.OfferID)
 	if err != nil {
 		return err
 	}
 
-	resp.PrivateKey = key
-	return nil
-}
-
-// GetCounterpartySwapPrivateKeyRequest ...
-type GetCounterpartySwapPrivateKeyRequest struct {
-	ID types.Hash `json:"id" validate:"required"`
-}
-
-// GetCounterpartySwapPrivateKeyResponse ...
-type GetCounterpartySwapPrivateKeyResponse struct {
-	PrivateKey *mcrypto.PrivateSpendKey `json:"privateKey" validate:"required"`
-}
-
-// GetCounterpartySwapPrivateKey returns the counterparty's private key for the given swap ID from the database.
-func (s *DatabaseService) GetCounterpartySwapPrivateKey(
-	_ *http.Request,
-	req *GetCounterpartySwapPrivateKeyRequest,
-	resp *GetCounterpartySwapPrivateKeyResponse,
-) error {
-	key, err := s.rdb.GetCounterpartySwapPrivateKey(req.ID)
-	if err != nil {
-		return err
-	}
-
-	resp.PrivateKey = key
+	resp.Secret = key
 	return nil
 }
