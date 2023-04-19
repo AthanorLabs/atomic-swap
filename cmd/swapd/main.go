@@ -217,7 +217,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go signalHandler(ctx, cancel)
+	go cliutil.SignalHandler(ctx, cancel, log)
 
 	err := cliApp().RunContext(ctx, os.Args)
 	if err != nil {
