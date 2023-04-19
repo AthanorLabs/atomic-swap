@@ -1,0 +1,17 @@
+# This is the list of AthanorLabs/atomic-swap contributors for copyright purposes.
+# This list can be generated with:
+# git log --format='%aN <%aE>' | sort -uf
+
+Aleixo Sánchez <15819210+alxs@users.noreply.github.com>
+Dmitry Holodov <dimalinux@protonmail.com>
+doonte <111110597+doonte@users.noreply.github.com>
+Janaka-Steph <kakobaba1212@protonmail.com>
+Marcin Górny <marcin.gorny.94@protonmail.com>
+Matthew Di Ferrante <mattdf@users.noreply.github.com>
+Matt <stubbrn@protonmail.com>
+noot <36753753+noot@users.noreply.github.com>
+Oldzitoja <109732715+Oldzitoja@users.noreply.github.com>
+omahs <73983677+omahs@users.noreply.github.com>
+phazejeff <85849384+phazejeff@users.noreply.github.com>
+Robert Hambrock <roberthambrock@gmail.com>
+Thibaut Sardan <33178835+Tbaut@users.noreply.github.com>
