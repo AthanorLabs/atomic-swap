@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -26,21 +27,21 @@ func ErrorFromBlock(ctx context.Context, ec *ethclient.Client, receipt *ethtypes
 	if err != nil {
 		return fmt.Errorf("unable to determine error in mined block, %w", err)
 	}
-	txMessage, err := tx.AsMessage(ethtypes.LatestSignerForChainID(chainID), nil)
+	txMessage, err := core.TransactionToMessage(tx, ethtypes.LatestSignerForChainID(chainID), nil)
 	if err != nil {
 		return fmt.Errorf("unable to determine error in mined block, %w", err)
 	}
 
 	callMessage := ethereum.CallMsg{
-		From:       txMessage.From(),
-		To:         txMessage.To(),
-		Gas:        txMessage.Gas(),
-		GasPrice:   txMessage.GasPrice(),
-		GasFeeCap:  txMessage.GasFeeCap(),
-		GasTipCap:  txMessage.GasTipCap(),
-		Value:      txMessage.Value(),
-		Data:       txMessage.Data(),
-		AccessList: txMessage.AccessList(),
+		From:       txMessage.From,
+		To:         txMessage.To,
+		Gas:        txMessage.GasLimit,
+		GasPrice:   txMessage.GasPrice,
+		GasFeeCap:  txMessage.GasFeeCap,
+		GasTipCap:  txMessage.GasTipCap,
+		Value:      txMessage.Value,
+		Data:       txMessage.Data,
+		AccessList: txMessage.AccessList,
 	}
 	_, err = ec.CallContract(context.Background(), callMessage, receipt.BlockNumber)
 	if err == nil {
