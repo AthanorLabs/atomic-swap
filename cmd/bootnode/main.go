@@ -39,8 +39,8 @@ var log = logging.Logger("cmd")
 
 func cliApp() *cli.App {
 	return &cli.App{
-		Name:                 "swapd",
-		Usage:                "A program for doing atomic swaps between ETH and XMR",
+		Name:                 "bootnode",
+		Usage:                "A bootnode for the atomic swap p2p network.",
 		Version:              cliutil.GetVersion(),
 		Action:               runBootnode,
 		EnableBashCompletion: true,
