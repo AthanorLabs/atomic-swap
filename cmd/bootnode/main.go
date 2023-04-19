@@ -1,8 +1,9 @@
 // Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
-// Package main provides the entrypoint of the swapd executable, a daemon that
-// manages atomic swaps between monero and ethereum assets.
+// Package main provides the entrypoint of the bootnode executable,
+// a node that is only used to bootstrap the p2p network and does not run
+// any swap services.
 package main
 
 import (
@@ -69,7 +70,7 @@ func cliApp() *cli.App {
 			},
 			&cli.UintFlag{
 				Name:  flagRPCPort,
-				Usage: "Port for the daemon RPC server to run on",
+				Usage: "Port for the bootnode RPC server to run on",
 				Value: defaultRPCPort,
 			},
 			&cli.StringFlag{
