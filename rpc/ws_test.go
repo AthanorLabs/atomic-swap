@@ -35,6 +35,7 @@ func newServer(t *testing.T) *Server {
 		ProtocolBackend: newMockProtocolBackend(),
 		XMRTaker:        new(mockXMRTaker),
 		XMRMaker:        new(mockXMRMaker),
+		Namespaces:      AllNamespaces(),
 	}
 
 	s, err := NewServer(cfg)
