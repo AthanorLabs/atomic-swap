@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package coins
@@ -20,6 +20,9 @@ func ValidatePositive(jsonFieldName string, maxDecimals uint8, value *apd.Decima
 	}
 	if value.Negative {
 		return fmt.Errorf("%q cannot be negative", jsonFieldName)
+	}
+	if value.Form != apd.Finite {
+		return fmt.Errorf("%q must be finite", jsonFieldName)
 	}
 
 	// In most cases, this line won't do anything. If the coefficient is divisible

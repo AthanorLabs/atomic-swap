@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 // Package daemon is responsible for assembling, running and cleanly shutting
@@ -158,15 +158,11 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	})
 
 	log.Infof("starting swapd with data-dir %s", conf.EnvConf.DataDir)
-
 	err = rpcServer.Start()
 
 	if errors.Is(err, http.ErrServerClosed) {
-		// Set err to nil to exit the program with exit code 0
-		// and to avoid a FATAL ERROR entry in log files
-		//
-		// NOTE: The ErrServerClosed error happens only when the server is told
-		// to shutdown or close
+		// Remove the error for a clean program exit, as ErrServerClosed only
+		// happens when the server is told to shut down
 		err = nil
 	}
 

@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package xmrmaker
@@ -23,7 +23,6 @@ func (s *swapState) runContractEventWatcher() {
 				log.Errorf("failed to handle ready logs: %s", err)
 			}
 		case l := <-s.logRefundedCh:
-			log.Infof("got refunded logs: %s", l)
 			err := s.handleRefundLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle refund logs: %s", err)

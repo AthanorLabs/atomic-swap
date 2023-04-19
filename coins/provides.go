@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package coins
@@ -25,6 +25,10 @@ func NewProvidesCoin(s string) (ProvidesCoin, error) {
 	default:
 		return "", ErrInvalidCoin
 	}
+}
+
+func (c *ProvidesCoin) String() string {
+	return string(*c)
 }
 
 // MarshalText hands off JSON encoding to apd.Decimal

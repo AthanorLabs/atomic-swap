@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 // Package extethclient provides libraries for interacting with an ethereum node
@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
@@ -36,10 +37,10 @@ type EthClient interface {
 	HasPrivateKey() bool
 	Endpoint() string
 
-	Balance(ctx context.Context) (*big.Int, error)
-	ERC20Balance(ctx context.Context, token ethcommon.Address) (*big.Int, error)
+	Balance(ctx context.Context) (*coins.WeiAmount, error)
+	ERC20Balance(ctx context.Context, token ethcommon.Address) (*coins.ERC20TokenAmount, error)
 
-	ERC20Info(ctx context.Context, token ethcommon.Address) (name string, symbol string, decimals uint8, err error)
+	ERC20Info(ctx context.Context, tokenAddr ethcommon.Address) (*coins.ERC20TokenInfo, error)
 
 	SetGasPrice(uint64)
 	SetGasLimit(uint64)
@@ -129,13 +130,13 @@ func (c *ethClient) Endpoint() string {
 	return c.endpoint
 }
 
-func (c *ethClient) Balance(ctx context.Context) (*big.Int, error) {
+func (c *ethClient) Balance(ctx context.Context) (*coins.WeiAmount, error) {
 	addr := c.Address()
 	bal, err := c.ec.BalanceAt(ctx, addr, nil)
 	if err != nil {
 		return nil, err
 	}
-	return bal, nil
+	return coins.NewWeiAmount(bal), nil
 }
 
 // SuggestGasPrice returns the underlying eth client's suggested gas price
@@ -148,37 +149,56 @@ func (c *ethClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return c.Raw().SuggestGasPrice(ctx)
 }
 
-func (c *ethClient) ERC20Balance(ctx context.Context, token ethcommon.Address) (*big.Int, error) {
-	tokenContract, err := contracts.NewIERC20(token, c.ec)
+func (c *ethClient) ERC20Balance(ctx context.Context, tokenAddr ethcommon.Address) (*coins.ERC20TokenAmount, error) {
+	tokenContract, err := contracts.NewIERC20(tokenAddr, c.ec)
 	if err != nil {
-		return big.NewInt(0), err
+		return nil, err
 	}
-	return tokenContract.BalanceOf(c.CallOpts(ctx), c.Address())
+
+	bal, err := tokenContract.BalanceOf(c.CallOpts(ctx), c.Address())
+	if err != nil {
+		return nil, err
+	}
+
+	tokenInfo, err := c.erc20Info(ctx, tokenAddr, tokenContract)
+	if err != nil {
+		return nil, err
+	}
+
+	return coins.NewERC20TokenAmountFromBigInt(bal, tokenInfo), nil
 }
 
-func (c *ethClient) ERC20Info(ctx context.Context, token ethcommon.Address) (
-	name string,
-	symbol string,
-	decimals uint8,
-	err error,
-) {
-	tokenContract, err := contracts.NewIERC20(token, c.ec)
+func (c *ethClient) erc20Info(
+	ctx context.Context,
+	tokenAddr ethcommon.Address,
+	tokenContract *contracts.IERC20,
+) (*coins.ERC20TokenInfo, error) {
+	name, err := tokenContract.Name(c.CallOpts(ctx))
 	if err != nil {
-		return "", "", 18, err
+		return nil, err
 	}
-	name, err = tokenContract.Name(c.CallOpts(ctx))
+
+	symbol, err := tokenContract.Symbol(c.CallOpts(ctx))
 	if err != nil {
-		return "", "", 18, err
+		return nil, err
 	}
-	symbol, err = tokenContract.Symbol(c.CallOpts(ctx))
+
+	// TODO: Do we support ERC20 tokens that do not have this method?
+	decimals, err := tokenContract.Decimals(c.CallOpts(ctx))
 	if err != nil {
-		return "", "", 18, err
+		return nil, err
 	}
-	decimals, err = tokenContract.Decimals(c.CallOpts(ctx))
+
+	return coins.NewERC20TokenInfo(tokenAddr, decimals, name, symbol), nil
+}
+
+func (c *ethClient) ERC20Info(ctx context.Context, tokenAddr ethcommon.Address) (*coins.ERC20TokenInfo, error) {
+	tokenContract, err := contracts.NewIERC20(tokenAddr, c.ec)
 	if err != nil {
-		return "", "", 18, err
+		return nil, err
 	}
-	return name, symbol, decimals, nil
+
+	return c.erc20Info(ctx, tokenAddr, tokenContract)
 }
 
 // SetGasPrice sets the ethereum gas price (in wei) for use in transactions. In most

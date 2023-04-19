@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package txsender
@@ -76,11 +76,11 @@ func NewExternalSender(
 	}, nil
 }
 
-// SetContract ...
-func (s *ExternalSender) SetContract(_ *contracts.SwapCreator) {}
+// SetSwapCreator sets the bound contract for the SwapCreator
+func (s *ExternalSender) SetSwapCreator(_ *contracts.SwapCreator) {}
 
-// SetContractAddress ...
-func (s *ExternalSender) SetContractAddress(addr ethcommon.Address) {
+// SetSwapCreatorAddr sets the address of the SwapCreator contract
+func (s *ExternalSender) SetSwapCreatorAddr(addr ethcommon.Address) {
 	s.contractAddr = addr
 }
 
@@ -94,8 +94,10 @@ func (s *ExternalSender) IncomingCh(id types.Hash) chan<- ethcommon.Hash {
 	return s.in
 }
 
-// Approve prompts the external sender to sign an ERC20 Approve transaction
-func (s *ExternalSender) Approve(
+// approve prompts the external sender to sign an ERC20 approve transaction
+//
+//nolint:unused // not used because external sender's NewSwap doesn't support ERC20 tokens
+func (s *ExternalSender) approve(
 	spender ethcommon.Address,
 	amount *big.Int,
 ) (*ethtypes.Receipt, error) {
@@ -114,20 +116,23 @@ func (s *ExternalSender) NewSwap(
 	claimer ethcommon.Address,
 	timeoutDuration *big.Int,
 	nonce *big.Int,
-	ethAsset types.EthAsset,
-	value *big.Int,
+	amount coins.EthAssetAmount,
 ) (*ethtypes.Receipt, error) {
+	// TODO: Add ERC20 token support and approve new_swap for the token transfer
+	if amount.IsToken() {
+		return nil, errors.New("external sender does not support ERC20 token swaps")
+	}
+
 	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
-		ethAsset, value, nonce)
+		amount.TokenAddress(), amount.BigInt(), nonce)
 	if err != nil {
 		return nil, err
 	}
 
-	valueWei := coins.NewWeiAmount(value)
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  input,
-		Value: valueWei.AsEther(),
+		Value: amount.AsStandard(),
 	}
 
 	s.Lock()

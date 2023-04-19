@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package tests
@@ -18,7 +18,7 @@ func (s *IntegrationTestSuite) Test_Success_ClaimRelayer() {
 
 func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 	s.T().Skip("Claiming ERC20 tokens via relayer is not yet supported")
-	s.testSuccessOneSwap(types.EthAsset(deployERC20Mock(s.T())), true)
+	s.testSuccessOneSwap(types.EthAsset(deployTestERC20(s.T())), true)
 }
 
 func (s *IntegrationTestSuite) TestXMRMaker_DiscoverRelayer() {

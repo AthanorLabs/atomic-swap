@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 // Package main provides the entrypoint of the swapd executable, a daemon that
@@ -262,6 +262,7 @@ func setLogLevels(level string) {
 	_ = logging.SetLogLevel("protocol", level)
 	_ = logging.SetLogLevel("relayer", level) // external and internal
 	_ = logging.SetLogLevel("rpc", level)
+	_ = logging.SetLogLevel("txsender", level)
 	_ = logging.SetLogLevel("xmrmaker", level)
 	_ = logging.SetLogLevel("xmrtaker", level)
 }

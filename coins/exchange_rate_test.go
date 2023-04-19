@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package coins
@@ -58,6 +58,49 @@ func TestExchangeRate_ToETH(t *testing.T) {
 	ethAmount, err := rate.ToETH(xmrAmount)
 	require.NoError(t, err)
 	assert.Equal(t, expectedETHAmount, ethAmount.String())
+}
+
+func TestExchangeRate_ToERC20Amount(t *testing.T) {
+	rate := StrToExchangeRate("1.5") // 1.5 XMR * 2 = 3 Standard token units
+	xmrAmount := StrToDecimal("2")
+	const tokenDecimals = 10
+	const expectedTokenStandardAmount = "3"
+	erc20Info := &ERC20TokenInfo{NumDecimals: tokenDecimals}
+
+	erc20Amt, err := rate.ToERC20Amount(xmrAmount, erc20Info)
+	require.NoError(t, err)
+	assert.Equal(t, expectedTokenStandardAmount, erc20Amt.Text('f'))
+}
+
+func TestExchangeRate_ToERC20Amount_roundDown(t *testing.T) {
+	// 0.333333 * 1.0000015 = 0.333333499...
+	//                      = 0.333333 (token only supports 6 decimals)
+	rate := StrToExchangeRate("0.333333")
+	xmrAmount := StrToDecimal("1.0000015")
+
+	const tokenDecimals = 6
+	const expectedTokenStandardAmount = "0.333333"
+	erc20Info := &ERC20TokenInfo{NumDecimals: tokenDecimals}
+
+	erc20Amt, err := rate.ToERC20Amount(xmrAmount, erc20Info)
+	require.NoError(t, err)
+	assert.Equal(t, expectedTokenStandardAmount, erc20Amt.Text('f'))
+}
+
+func TestExchangeRate_ToERC20Amount_roundUp(t *testing.T) {
+	// 0.333333 * 1.000001501 = 0.333333500..
+	//                        = 0.333334 (token only supports 6 decimals)
+
+	rate := StrToExchangeRate("0.333333")
+	xmrAmount := StrToDecimal("1.000001501")
+
+	const tokenDecimals = 6
+	const expectedTokenStandardAmount = "0.333334"
+	erc20Info := &ERC20TokenInfo{NumDecimals: tokenDecimals}
+
+	erc20Amt, err := rate.ToERC20Amount(xmrAmount, erc20Info)
+	require.NoError(t, err)
+	assert.Equal(t, expectedTokenStandardAmount, erc20Amt.Text('f'))
 }
 
 func TestExchangeRate_String(t *testing.T) {

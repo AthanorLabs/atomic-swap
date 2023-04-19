@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package xmrtaker
@@ -6,6 +6,8 @@ package xmrtaker
 import (
 	"errors"
 	"fmt"
+
+	"github.com/cockroachdb/apd/v3"
 )
 
 var (
@@ -26,11 +28,47 @@ var (
 
 	// initiation errors
 	errProtocolAlreadyInProgress = errors.New("protocol already in progress")
-	errBalanceTooLow             = errors.New("eth balance lower than amount to be provided")
 	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not ETHLocked or ContractReady") //nolint:lll
 )
+
+type errAssetBalanceTooLow struct {
+	providedAmount *apd.Decimal
+	balance        *apd.Decimal
+	symbol         string
+}
+
+func (e errAssetBalanceTooLow) Error() string {
+	return fmt.Sprintf("balance of %s %s is below provided %s %s",
+		e.balance.Text('f'), e.symbol,
+		e.providedAmount.Text('f'), e.symbol,
+	)
+}
 
 func errContractAddrMismatch(addr string) error {
 	//nolint:lll
 	return fmt.Errorf("cannot recover from swap where contract address is not the one loaded at start-up; please restart with --contract-address=%s", addr)
+}
+
+type errAmountProvidedTooLow struct {
+	providedAmount *apd.Decimal
+	minAmount      *apd.Decimal
+}
+
+func (e errAmountProvidedTooLow) Error() string {
+	return fmt.Sprintf("%s ETH provided is under offer minimum of %s XMR",
+		e.providedAmount.String(),
+		e.minAmount.String(),
+	)
+}
+
+type errAmountProvidedTooHigh struct {
+	providedAmount *apd.Decimal
+	maxAmount      *apd.Decimal
+}
+
+func (e errAmountProvidedTooHigh) Error() string {
+	return fmt.Sprintf("%s ETH provided is over offer maximum of %s XMR",
+		e.providedAmount.String(),
+		e.maxAmount.String(),
+	)
 }

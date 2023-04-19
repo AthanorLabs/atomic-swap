@@ -1,12 +1,9 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package xmrmaker
 
 import (
-	"math/big"
-
-	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -19,12 +16,6 @@ import (
 	"github.com/fatih/color"
 )
 
-// EthereumAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
-type EthereumAssetAmount interface {
-	BigInt() *big.Int
-	AsStandard() *apd.Decimal
-}
-
 // Provides returns types.ProvidesXMR
 func (inst *Instance) Provides() coins.ProvidesCoin {
 	return coins.ProvidesXMR
@@ -35,7 +26,7 @@ func (inst *Instance) initiate(
 	offer *types.Offer,
 	offerExtra *types.OfferExtra,
 	providesAmount *coins.PiconeroAmount,
-	desiredAmount EthereumAssetAmount,
+	desiredAmount coins.EthAssetAmount,
 ) (*swapState, error) {
 	if inst.swapStates[offer.ID] != nil {
 		return nil, errProtocolAlreadyInProgress
@@ -135,18 +126,18 @@ func (inst *Instance) HandleInitiateMessage(
 	}
 
 	if providedAmount.Cmp(offer.MinAmount) < 0 {
-		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
+		return nil, nil, errAmountProvidedTooLow{msg.ProvidedAmount, offer.MinAmount}
 	}
 
 	if providedAmount.Cmp(offer.MaxAmount) > 0 {
-		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
+		return nil, nil, errAmountProvidedTooHigh{msg.ProvidedAmount, offer.MaxAmount}
 	}
 
 	providedPiconero := coins.MoneroToPiconero(providedAmount)
 
 	// check decimals if ERC20
 	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	expectedAmount, err := pcommon.GetEthereumAssetAmount(
+	expectedAmount, err := pcommon.GetEthAssetAmount(
 		inst.backend.Ctx(),
 		inst.backend.ETHClient(),
 		msg.ProvidedAmount,

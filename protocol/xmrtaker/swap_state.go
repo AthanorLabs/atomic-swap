@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 // Package xmrtaker manages the swap state of individual swaps where the local swapd
@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"reflect"
 	"strings"
 	"time"
 
@@ -54,7 +53,7 @@ type swapState struct {
 
 	info           *pswap.Info
 	statusCh       chan types.Status
-	providedAmount EthereumAssetAmount
+	providedAmount coins.EthAssetAmount
 
 	// our keys for this session
 	dleqProof    *dleq.Proof
@@ -101,7 +100,7 @@ func newSwapStateFromStart(
 	makerPeerID peer.ID,
 	offerID types.Hash,
 	noTransferBack bool,
-	providedAmount EthereumAssetAmount,
+	providedAmount coins.EthAssetAmount,
 	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
@@ -217,7 +216,7 @@ func newSwapState(
 	}
 
 	var sender txsender.Sender
-	if info.EthAsset != types.EthAssetETH {
+	if info.EthAsset.IsToken() {
 		erc20Contract, err := contracts.NewIERC20(info.EthAsset.Address(), b.ETHClient().Raw())
 		if err != nil {
 			return nil, err
@@ -256,6 +255,18 @@ func newSwapState(
 		return nil, err
 	}
 
+	var providedAmt coins.EthAssetAmount
+	if info.EthAsset.IsETH() {
+		providedAmt = coins.EtherToWei(info.ProvidedAmount)
+	} else {
+		tokenInfo, err := b.ETHClient().ERC20Info(b.Ctx(), info.EthAsset.Address())
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		providedAmt = coins.NewERC20TokenAmountFromDecimals(info.ProvidedAmount, tokenInfo)
+	}
+
 	// note: if this is recovering an ongoing swap, this will only
 	// be invoked if our status is ETHLocked or ContractReady; ie.
 	// we've locked ETH, but not yet claimed or refunded.
@@ -279,38 +290,18 @@ func newSwapState(
 		claimedCh:         make(chan struct{}),
 		done:              make(chan struct{}),
 		info:              info,
-		providedAmount:    coins.EtherToWei(info.ProvidedAmount),
+		providedAmount:    providedAmt,
 		statusCh:          info.StatusCh(),
 	}
 
 	if err := s.generateAndSetKeys(); err != nil {
+		cancel()
 		return nil, err
 	}
 
-	go s.waitForSendKeysMessage()
 	go s.runHandleEvents()
 	go s.runContractEventWatcher()
 	return s, nil
-}
-
-func (s *swapState) waitForSendKeysMessage() {
-	waitDuration := time.Minute * 5
-	timer := time.After(waitDuration)
-	select {
-	case <-s.ctx.Done():
-		return
-	case <-timer:
-	}
-
-	// check if we've received a response from the counterparty yet
-	if reflect.TypeOf(s.nextExpectedEvent) != reflect.TypeOf(&EventKeysReceived{}) {
-		return
-	}
-
-	// if not, just exit the swap
-	if err := s.Exit(); err != nil {
-		log.Warnf("Swap exit failure: %s", err)
-	}
 }
 
 // SendKeysMessage ...
@@ -349,6 +340,8 @@ func (s *swapState) Exit() error {
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
 func (s *swapState) exit() error {
 	defer func() {
+		s.CloseProtocolStream(s.OfferID())
+
 		err := s.SwapManager().CompleteOngoingSwap(s.info)
 		if err != nil {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.OfferID, err)
@@ -549,49 +542,17 @@ func (s *swapState) setXMRMakerKeys(
 	return s.Backend.RecoveryDB().PutCounterpartySwapKeys(s.info.OfferID, sk, vk)
 }
 
-func (s *swapState) approveToken() error {
-	token, err := contracts.NewIERC20(s.info.EthAsset.Address(), s.ETHClient().Raw())
-	if err != nil {
-		return fmt.Errorf("failed to instantiate IERC20: %w", err)
-	}
-
-	balance, err := token.BalanceOf(s.ETHClient().CallOpts(s.ctx), s.ETHClient().Address())
-	if err != nil {
-		return fmt.Errorf("failed to get balance for token: %w", err)
-	}
-
-	log.Info("approving token for use by the swap contract...")
-	_, err = s.sender.Approve(s.SwapCreatorAddr(), balance)
-	if err != nil {
-		return fmt.Errorf("failed to approve token: %w", err)
-	}
-
-	log.Info("approved token for use by the swap contract")
-	return nil
-}
-
 // lockAsset calls the Swap contract function new_swap and locks `amount` ether in it.
 func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	if s.xmrmakerPublicSpendKey == nil || s.xmrmakerPrivateViewKey == nil {
 		panic(errCounterpartyKeysNotSet)
 	}
 
-	symbol, err := pcommon.AssetSymbol(s.Backend, s.info.EthAsset)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.info.EthAsset != types.EthAssetETH {
-		err = s.approveToken()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
+	providedAmt := s.providedAmount
 
-	log.Debugf("locking %s in contract", symbol)
+	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
 
 	nonce := generateNonce()
 	receipt, err := s.sender.NewSwap(
@@ -600,8 +561,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		s.xmrmakerAddress,
 		big.NewInt(int64(s.SwapTimeout().Seconds())),
 		nonce,
-		s.info.EthAsset,
-		s.providedAmount.BigInt(),
+		providedAmt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
@@ -662,7 +622,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	log.Infof("locked %s in swap contract, waiting for XMR to be locked", symbol)
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", providedAmt.StandardSymbol())
 	return receipt, nil
 }
 

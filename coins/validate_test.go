@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package coins
@@ -65,6 +65,16 @@ func TestValidatePositive_errors(t *testing.T) {
 			numDecPlaces: NumEtherDecimals,
 			value:        StrToDecimal("1.12345678901234567890000000000000000000"), // zeros at end ignored
 			errContains:  `"testValue" has too many decimal points; found=19 max=18`,
+		},
+		{
+			numDecPlaces: NumEtherDecimals,
+			value:        &apd.Decimal{Form: apd.Infinite},
+			errContains:  `"testValue" must be finite`,
+		},
+		{
+			numDecPlaces: NumEtherDecimals,
+			value:        &apd.Decimal{Form: apd.NaN},
+			errContains:  `"testValue" must be finite`,
 		},
 	}
 	for _, entry := range testEntries {

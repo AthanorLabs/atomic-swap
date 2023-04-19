@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package main
@@ -22,6 +22,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/daemon"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -294,7 +295,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 
 	// make an offer
 	client := rpcclient.NewClient(ctx1, rpcEndpoint)
-	balance, err := client.Balances()
+	balance, err := client.Balances(new(rpctypes.BalancesRequest))
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, balance.PiconeroUnlockedBalance.Cmp(coins.MoneroToPiconero(one)), 0)
 

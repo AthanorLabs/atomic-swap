@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package common
@@ -64,6 +64,10 @@ func MainnetConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
+		SwapCreatorAddr: ethcommon.HexToAddress("0x"), // TODO
+		// ForwarderAddr is from https://docs.opengsn.org/networks/addresses.html
+		ForwarderAddr: ethcommon.HexToAddress("0xB2b5841DBeF766d4b521221732F9B618fCf34A87"),
+		Bootnodes:     []string{}, // TODO
 	}
 }
 
@@ -86,8 +90,8 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0x2C3b31E4379ab5B1B0Cb12B37D2B268FEf44d7f0"),
-		ForwarderAddr:   ethcommon.HexToAddress("0xF45e206B38f5901daBf9758fcC2CFce6aEe5B134"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x45cc2dB5021dc9C01513D9ee7914b61810bd6Ad6"),
+		ForwarderAddr:   ethcommon.HexToAddress("0xa030E074b8398005a454CB7c51E9b7CDb966744a"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",

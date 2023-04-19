@@ -1,4 +1,4 @@
-// Copyright 2023 Athanor Labs (ON)
+// Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
 package xmrmaker
@@ -284,6 +284,5 @@ func (s *swapState) handleEventETHRefunded(e *EventETHRefunded) error {
 	}
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
-	s.CloseProtocolStream(s.OfferID())
 	return nil
 }
