@@ -58,9 +58,10 @@ type P2pHost interface {
 
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
-	ctx       context.Context
-	h         P2pHost
-	isRelayer bool
+	ctx        context.Context
+	h          P2pHost
+	isRelayer  bool
+	isBootnode bool
 
 	makerHandler MakerHandler
 	relayHandler RelayHandler
@@ -80,6 +81,7 @@ type Config struct {
 	ProtocolID string
 	ListenIP   string
 	IsRelayer  bool
+	IsBootnode bool
 }
 
 // NewHost returns a new Host.
@@ -87,10 +89,11 @@ type Config struct {
 // messages (initiate and query).
 func NewHost(cfg *Config) (*Host, error) {
 	h := &Host{
-		ctx:       cfg.Ctx,
-		h:         nil, // set below
-		isRelayer: cfg.IsRelayer,
-		swaps:     make(map[types.Hash]*swap),
+		ctx:        cfg.Ctx,
+		h:          nil, // set below
+		isRelayer:  cfg.IsRelayer,
+		isBootnode: cfg.IsBootnode,
+		swaps:      make(map[types.Hash]*swap),
 	}
 
 	var err error
@@ -108,17 +111,18 @@ func NewHost(cfg *Config) (*Host, error) {
 		return nil, err
 	}
 
+	log.Debugf("using base protocol %s", cfg.ProtocolID)
 	return h, nil
 }
 
 func (h *Host) advertisedNamespaces() []string {
 	provides := []string{""}
 
-	if len(h.makerHandler.GetOffers()) > 0 {
+	if !h.isBootnode && len(h.makerHandler.GetOffers()) > 0 {
 		provides = append(provides, string(coins.ProvidesXMR))
 	}
 
-	if h.isRelayer {
+	if !h.isBootnode && h.isRelayer {
 		provides = append(provides, RelayerProvidesStr)
 	}
 
@@ -138,7 +142,7 @@ func (h *Host) SetHandlers(makerHandler MakerHandler, relayHandler RelayHandler)
 
 // Start starts the bootstrap and discovery process.
 func (h *Host) Start() error {
-	if h.makerHandler == nil || h.relayHandler == nil {
+	if (h.makerHandler == nil || h.relayHandler == nil) && !h.isBootnode {
 		return errNilHandler
 	}
 

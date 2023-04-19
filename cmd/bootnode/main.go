@@ -17,8 +17,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpc"
-	"github.com/hashicorp/go-multierror"
 
+	"github.com/hashicorp/go-multierror"
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 )
@@ -184,6 +184,7 @@ func runBootnode(c *cli.Context) error {
 		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, config.EthereumChainID.Int64()),
 		ListenIP:   hostListenIP,
 		IsRelayer:  false,
+		IsBootnode: true,
 	})
 	if err != nil {
 		return err
