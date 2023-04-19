@@ -73,7 +73,7 @@ func CreateTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 // started. If more than one config is passed, the bootnode settings of the
 // passed config are modified to make the first daemon the bootnode for the
 // remaining daemons.
-func LaunchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig) context.Context {
+func LaunchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	var wg sync.WaitGroup
@@ -106,7 +106,7 @@ func LaunchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig)
 		}
 	}
 
-	return ctx
+	return ctx, cancel
 }
 
 // WaitForSwapdStart takes the rpcPort of a swapd instance and waits for it to

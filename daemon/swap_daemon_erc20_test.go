@@ -35,7 +35,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	tokenAsset := types.EthAsset(tokenAddr)
 
 	timeout := 7 * time.Minute
-	ctx := LaunchDaemons(t, timeout, aliceConf, bobConf)
+	ctx, _ := LaunchDaemons(t, timeout, aliceConf, bobConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
