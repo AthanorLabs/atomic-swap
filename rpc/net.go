@@ -75,7 +75,7 @@ func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.Peers
 // QueryAll discovers peers who provide a certain coin and queries all of them for their current offers.
 func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.QueryAllRequest, resp *rpctypes.QueryAllResponse) error {
 	if s.isBootnode {
-		return fmt.Errorf("unsupported for bootnode")
+		return errUnsupportedForBootnode
 	}
 
 	peerIDs, err := s.discover(req)
@@ -115,7 +115,7 @@ func (s *NetService) discover(req *rpctypes.DiscoverRequest) ([]peer.ID, error) 
 // Discover discovers peers over the network that provide a certain coin up for `SearchTime` duration of time.
 func (s *NetService) Discover(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.DiscoverResponse) error {
 	if s.isBootnode {
-		return fmt.Errorf("unsupported for bootnode")
+		return errUnsupportedForBootnode
 	}
 
 	searchTime, err := time.ParseDuration(fmt.Sprintf("%ds", req.SearchTime))
@@ -142,7 +142,7 @@ func (s *NetService) QueryPeer(
 	resp *rpctypes.QueryPeerResponse,
 ) error {
 	if s.isBootnode {
-		return fmt.Errorf("unsupported for bootnode")
+		return errUnsupportedForBootnode
 	}
 
 	msg, err := s.net.Query(req.PeerID)
@@ -161,7 +161,7 @@ func (s *NetService) TakeOffer(
 	_ *interface{},
 ) error {
 	if s.isBootnode {
-		return fmt.Errorf("unsupported for bootnode")
+		return errUnsupportedForBootnode
 	}
 
 	_, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount)
@@ -229,7 +229,7 @@ func (s *NetService) TakeOfferSync(
 	resp *TakeOfferSyncResponse,
 ) error {
 	if s.isBootnode {
-		return fmt.Errorf("unsupported for bootnode")
+		return errUnsupportedForBootnode
 	}
 
 	if _, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount); err != nil {
@@ -264,7 +264,7 @@ func (s *NetService) MakeOffer(
 	resp *rpctypes.MakeOfferResponse,
 ) error {
 	if s.isBootnode {
-		return fmt.Errorf("unsupported for bootnode")
+		return errUnsupportedForBootnode
 	}
 
 	offerResp, _, err := s.makeOffer(req)

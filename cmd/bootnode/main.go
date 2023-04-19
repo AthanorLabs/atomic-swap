@@ -200,10 +200,11 @@ func runBootnode(c *cli.Context) error {
 	}
 
 	rpcPort := c.Uint(flagRPCPort)
-	rpcServer, err := rpc.NewBootnodeServer(&rpc.Config{
-		Ctx:     c.Context,
-		Address: fmt.Sprintf("127.0.0.1:%d", rpcPort),
-		Net:     host,
+	rpcServer, err := rpc.NewServer(&rpc.Config{
+		Ctx:        c.Context,
+		Address:    fmt.Sprintf("127.0.0.1:%d", rpcPort),
+		Net:        host,
+		Namespaces: map[string]struct{}{rpc.DaemonNamespace: {}, rpc.NetNamespace: {}},
 	})
 
 	log.Infof("starting bootnode with data-dir %s", config.DataDir)

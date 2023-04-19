@@ -32,6 +32,14 @@ import (
 	"github.com/athanorlabs/atomic-swap/protocol/txsender"
 )
 
+const (
+	DaemonNamespace   = "daemon"   //nolint:revive
+	DatabaseNamespace = "database" //nolint:revive
+	NetNamespace      = "net"      //nolint:revive
+	PersonalName      = "personal" //nolint:revive
+	SwapNamespace     = "swap"     //nolint:revive
+)
+
 var log = logging.Logger("rpc")
 
 // Server represents the JSON-RPC server
@@ -50,6 +58,18 @@ type Config struct {
 	XMRMaker        XMRMaker
 	ProtocolBackend ProtocolBackend
 	RecoveryDB      RecoveryDB
+	Namespaces      map[string]struct{}
+}
+
+// AllNamespaces returns a map with all RPC namespaces set for usage in the config.
+func AllNamespaces() map[string]struct{} {
+	return map[string]struct{}{
+		DaemonNamespace:   {},
+		DatabaseNamespace: {},
+		NetNamespace:      {},
+		PersonalName:      {},
+		SwapNamespace:     {},
+	}
 }
 
 // NewServer ...
@@ -57,39 +77,48 @@ func NewServer(cfg *Config) (*Server, error) {
 	rpcServer := rpc.NewServer()
 	rpcServer.RegisterCodec(NewCodec(), "application/json")
 
-	ns := NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager(), false)
-	if err := rpcServer.RegisterService(ns, "net"); err != nil {
+	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
+	err := rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon")
+	if err != nil {
 		return nil, err
 	}
 
-	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
-
-	err := rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), "personal")
+	var (
+		netService *NetService
+	)
+	for ns := range cfg.Namespaces {
+		switch ns {
+		case DaemonNamespace:
+			continue
+		case DatabaseNamespace:
+			err = rpcServer.RegisterService(NewDatabaseService(cfg.RecoveryDB), DatabaseNamespace)
+		case NetNamespace:
+			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager(), false)
+			err = rpcServer.RegisterService(netService, NetNamespace)
+		case PersonalName:
+			err = rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), PersonalName)
+		case SwapNamespace:
+			err = rpcServer.RegisterService(
+				NewSwapService(
+					serverCtx,
+					cfg.ProtocolBackend.SwapManager(),
+					cfg.XMRTaker,
+					cfg.XMRMaker,
+					cfg.Net,
+					cfg.ProtocolBackend,
+				),
+				SwapNamespace,
+			)
+		default:
+			err = fmt.Errorf("unknown namespace %s", ns)
+		}
+	}
 	if err != nil {
 		serverCancel()
 		return nil, err
 	}
 
-	swapService := NewSwapService(
-		serverCtx,
-		cfg.ProtocolBackend.SwapManager(),
-		cfg.XMRTaker,
-		cfg.XMRMaker,
-		cfg.Net,
-		cfg.ProtocolBackend,
-	)
-	if err = rpcServer.RegisterService(swapService, "swap"); err != nil {
-		serverCancel()
-		return nil, err
-	}
-
-	databaseService := NewDatabaseService(cfg.RecoveryDB)
-	if err = rpcServer.RegisterService(databaseService, "database"); err != nil {
-		serverCancel()
-		return nil, err
-	}
-
-	wsServer := newWsServer(serverCtx, cfg.ProtocolBackend.SwapManager(), ns, cfg.ProtocolBackend, cfg.XMRTaker)
+	wsServer := newWsServer(serverCtx, cfg.ProtocolBackend.SwapManager(), netService, cfg.ProtocolBackend, cfg.XMRTaker)
 
 	lc := net.ListenConfig{}
 	ln, err := lc.Listen(serverCtx, "tcp", cfg.Address)
@@ -114,67 +143,11 @@ func NewServer(cfg *Config) (*Server, error) {
 		},
 	}
 
-	s := &Server{
+	return &Server{
 		ctx:        serverCtx,
 		listener:   ln,
 		httpServer: server,
-	}
-
-	if err = rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon"); err != nil {
-		serverCancel()
-		return nil, err
-	}
-
-	return s, nil
-}
-
-// NewBootnodeServer returns an RPC server used for a bootnode.
-// It only exposes the net and daemon services.
-func NewBootnodeServer(cfg *Config) (*Server, error) {
-	rpcServer := rpc.NewServer()
-	rpcServer.RegisterCodec(NewCodec(), "application/json")
-
-	ns := NewNetService(cfg.Net, nil, nil, nil, true)
-	if err := rpcServer.RegisterService(ns, "net"); err != nil {
-		return nil, err
-	}
-
-	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
-
-	lc := net.ListenConfig{}
-	ln, err := lc.Listen(serverCtx, "tcp", cfg.Address)
-	if err != nil {
-		serverCancel()
-		return nil, err
-	}
-
-	r := mux.NewRouter()
-	r.Handle("/", rpcServer)
-
-	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	originsOk := handlers.AllowedOrigins([]string{"*"})
-	server := &http.Server{
-		Addr:              ln.Addr().String(),
-		ReadHeaderTimeout: time.Second,
-		Handler:           handlers.CORS(headersOk, methodsOk, originsOk)(r),
-		BaseContext: func(listener net.Listener) context.Context {
-			return serverCtx
-		},
-	}
-
-	s := &Server{
-		ctx:        serverCtx,
-		listener:   ln,
-		httpServer: server,
-	}
-
-	if err = rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon"); err != nil {
-		serverCancel()
-		return nil, err
-	}
-
-	return s, nil
+	}, nil
 }
 
 // HttpURL returns the URL used for HTTP requests

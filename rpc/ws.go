@@ -92,6 +92,10 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 	case rpctypes.SubscribeNewPeer:
 		return errUnimplemented
 	case rpctypes.NetDiscover:
+		if s.ns == nil {
+			return errNamespaceNotEnabled
+		}
+
 		params := new(rpctypes.DiscoverRequest)
 		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -105,6 +109,10 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 		return writeResponse(conn, resp)
 	case rpctypes.NetQueryPeer:
+		if s.ns == nil {
+			return errNamespaceNotEnabled
+		}
+
 		params := new(rpctypes.QueryPeerRequest)
 		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -125,6 +133,10 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 		return s.subscribeSwapStatus(s.ctx, conn, params.OfferID)
 	case rpctypes.SubscribeTakeOffer:
+		if s.ns == nil {
+			return errNamespaceNotEnabled
+		}
+
 		params := new(rpctypes.TakeOfferRequest)
 		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
@@ -137,6 +149,10 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 
 		return s.subscribeTakeOffer(s.ctx, conn, ch)
 	case rpctypes.SubscribeMakeOffer:
+		if s.ns == nil {
+			return errNamespaceNotEnabled
+		}
+
 		params := new(rpctypes.MakeOfferRequest)
 		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
