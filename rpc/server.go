@@ -83,9 +83,12 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	var (
-		netService *NetService
-	)
+	var swapManager swap.Manager
+	if cfg.ProtocolBackend != nil {
+		swapManager = cfg.ProtocolBackend.SwapManager()
+	}
+
+	var netService *NetService
 	for ns := range cfg.Namespaces {
 		switch ns {
 		case DaemonNamespace:
@@ -93,7 +96,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		case DatabaseNamespace:
 			err = rpcServer.RegisterService(NewDatabaseService(cfg.RecoveryDB), DatabaseNamespace)
 		case NetNamespace:
-			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, cfg.ProtocolBackend.SwapManager(), false)
+			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, swapManager, false)
 			err = rpcServer.RegisterService(netService, NetNamespace)
 		case PersonalName:
 			err = rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), PersonalName)
@@ -101,7 +104,7 @@ func NewServer(cfg *Config) (*Server, error) {
 			err = rpcServer.RegisterService(
 				NewSwapService(
 					serverCtx,
-					cfg.ProtocolBackend.SwapManager(),
+					swapManager,
 					cfg.XMRTaker,
 					cfg.XMRMaker,
 					cfg.Net,
@@ -118,7 +121,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	wsServer := newWsServer(serverCtx, cfg.ProtocolBackend.SwapManager(), netService, cfg.ProtocolBackend, cfg.XMRTaker)
+	wsServer := newWsServer(serverCtx, swapManager, netService, cfg.ProtocolBackend, cfg.XMRTaker)
 
 	lc := net.ListenConfig{}
 	ln, err := lc.Listen(serverCtx, "tcp", cfg.Address)
