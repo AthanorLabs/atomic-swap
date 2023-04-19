@@ -5,10 +5,13 @@ export type { NetDiscoverResult } from "./NetDiscoverResults"
 export type { OfferRaw, NetQueryPeerResult, Currency } from "./NetQueryPeerResults"
 
 export interface Offer {
-    peer: string
-    id: string
+    peerID: String
+    offerID: String
     provides: Currency
-    minAmount: number
-    maxAmount: number
-    exchangeRate: number
+    minAmount: Number
+    maxAmount: Number
+    exchangeRate: Number
+    version: String
+    ethAsset: Currency
+    nonce: Number
 }
