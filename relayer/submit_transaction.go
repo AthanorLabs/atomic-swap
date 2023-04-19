@@ -5,12 +5,17 @@ package relayer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -76,6 +81,19 @@ func ValidateAndSendTransaction(
 	}
 	txOpts.GasPrice = gasPrice
 
+	_, err = simulateExecute(
+		ctx,
+		ec,
+		&reqForwarderAddr,
+		txOpts,
+		*forwarderReq,
+		*domainSeparator,
+		req.Signature,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := reqForwarder.Execute(
 		txOpts,
 		*forwarderReq,
@@ -118,4 +136,69 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 	}
 
 	return gasPrice, nil
+}
+
+// simulateExecute calls the forwarder's execute method (defined in Forwarder.sol)
+// with CallContract which executes the method call without mining it into the blockchain.
+// https://pkg.go.dev/github.com/ethereum/go-ethereum/ethclient#Client.CallContract
+func simulateExecute(
+	ctx context.Context,
+	ec extethclient.EthClient,
+	reqForwarderAddr *ethcommon.Address,
+	txOpts *bind.TransactOpts,
+	forwarderReq gsnforwarder.IForwarderForwardRequest,
+	domainSeparator [32]byte,
+	sig []byte,
+) ([]byte, error) {
+	ForwarderABI, err := abi.JSON(strings.NewReader(gsnforwarder.ForwarderMetaData.ABI))
+	if err != nil {
+		return nil, err
+	}
+	// Pack the "execute" method call
+	packed, err := ForwarderABI.Pack(
+		"execute",
+		forwarderReq,
+		domainSeparator,
+		gsnforwarder.ForwardRequestTypehash,
+		[]byte{},
+		sig,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	callMessage := ethereum.CallMsg{
+		From:       txOpts.From,
+		To:         reqForwarderAddr,
+		Gas:        txOpts.GasLimit,
+		GasPrice:   txOpts.GasPrice,
+		GasFeeCap:  txOpts.GasFeeCap,
+		GasTipCap:  txOpts.GasTipCap,
+		Value:      txOpts.Value,
+		Data:       packed,
+		AccessList: []types.AccessTuple{},
+	}
+
+	// Call the "execute" method
+	data, err := ec.Raw().CallContract(ctx, callMessage, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unpack the response data
+	response := struct {
+		Success bool
+		Ret     []byte
+	}{Success: false, Ret: []byte{}}
+
+	err = ForwarderABI.UnpackIntoInterface(&response, "execute", data)
+	if err != nil {
+		return nil, err
+	}
+
+	if !response.Success {
+		return response.Ret, errors.New("relayed transaction failed on simulation")
+	}
+
+	return response.Ret, nil
 }
