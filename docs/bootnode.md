@@ -9,13 +9,17 @@ This repo comes with a `bootnode` program that runs only the p2p components of a
 
 ## Build and run
 
-To build the bootnode binary:
+To build and run the bootnode binary:
 ```bash
 make build-all
 ./bin/bootnode --env <environment>
 ```
 
+`environment` is one of `mainnet`, `stagenet`, or `dev`.
+
 To get the p2p addresses of the bootnode:
 ```bash
 ./bin/swapcli addresses
 ```
+
+You can then distribute these addresses for other swap nodes to connect to.
