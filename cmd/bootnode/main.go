@@ -8,18 +8,14 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 
+	"github.com/athanorlabs/atomic-swap/bootnode"
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
-	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/rpc"
 
-	"github.com/hashicorp/go-multierror"
 	logging "github.com/ipfs/go-log"
 	"github.com/urfave/cli/v2"
 )
@@ -133,50 +129,16 @@ func runBootnode(c *cli.Context) error {
 		hostListenIP = "127.0.0.1"
 	}
 
-	host, err := net.NewHost(&net.Config{
-		Ctx:        c.Context,
-		DataDir:    config.DataDir,
-		Port:       libp2pPort,
-		KeyFile:    libp2pKeyFile,
-		Bootnodes:  config.Bootnodes,
-		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, config.EthereumChainID.Int64()),
-		ListenIP:   hostListenIP,
-		IsRelayer:  false,
-		IsBootnode: true,
+	rpcPort := uint16(c.Uint(flagRPCPort))
+	return bootnode.RunBootnode(c.Context, &bootnode.Config{
+		DataDir:         config.DataDir,
+		Bootnodes:       config.Bootnodes,
+		HostListenIP:    hostListenIP,
+		Libp2pPort:      libp2pPort,
+		Libp2pKeyFile:   libp2pKeyFile,
+		RPCPort:         rpcPort,
+		EthereumChainID: config.EthereumChainID,
 	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if hostErr := host.Stop(); hostErr != nil {
-			err = multierror.Append(err, fmt.Errorf("error shutting down peer-to-peer services: %w", hostErr))
-		}
-	}()
-
-	if err = host.Start(); err != nil {
-		return err
-	}
-
-	rpcPort := c.Uint(flagRPCPort)
-	rpcServer, err := rpc.NewServer(&rpc.Config{
-		Ctx:        c.Context,
-		Address:    fmt.Sprintf("127.0.0.1:%d", rpcPort),
-		Net:        host,
-		Namespaces: map[string]struct{}{rpc.DaemonNamespace: {}, rpc.NetNamespace: {}},
-	})
-
-	log.Infof("starting bootnode with data-dir %s", config.DataDir)
-	err = rpcServer.Start()
-
-	if errors.Is(err, http.ErrServerClosed) {
-		// Remove the error for a clean program exit, as ErrServerClosed only
-		// happens when the server is told to shut down
-		err = nil
-	}
-
-	// err can get set in defer blocks, so return err or use an empty
-	// return statement below (not nil)
-	return err
 }
 
 func getEnvConfig(c *cli.Context) (*common.Config, error) {

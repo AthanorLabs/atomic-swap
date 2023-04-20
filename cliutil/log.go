@@ -31,12 +31,14 @@ func SetLogLevelsFromContext(c *cli.Context) error {
 		return fmt.Errorf("invalid log level %q", level)
 	}
 
-	setLogLevels(level)
+	SetLogLevels(level)
 	return nil
 }
 
-func setLogLevels(level string) {
+// SetLogLevels sets the log levels for all packages.
+func SetLogLevels(level string) {
 	// alphabetically ordered
+	_ = logging.SetLogLevel("bootnode", level)
 	_ = logging.SetLogLevel("cmd", level)
 	_ = logging.SetLogLevel("coins", level)
 	_ = logging.SetLogLevel("common", level)
