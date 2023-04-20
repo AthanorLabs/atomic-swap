@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultLibp2pPort = 9900
+	defaultLibp2pPort = 9909
 	defaultRPCPort    = common.DefaultSwapdPort
 
 	flagDataDir    = "data-dir"
@@ -46,7 +46,7 @@ func cliApp() *cli.App {
 			&cli.StringFlag{
 				Name:  flagDataDir,
 				Usage: "Path to store swap artifacts",
-				Value: "{HOME}/.atomicswap/{ENV}", // For --help only, actual default replaces variables
+				Value: "{HOME}/.atomicswap/{ENV}/bootnode", // For --help only, actual default replaces variables
 			},
 			&cli.StringFlag{
 				Name:  flagLibp2pKey,
@@ -156,6 +156,7 @@ func getEnvConfig(c *cli.Context) (*common.Config, error) {
 		}
 	}
 
+	conf.DataDir = path.Join(conf.DataDir, "bootnode")
 	if err = common.MakeDir(conf.DataDir); err != nil {
 		return nil, err
 	}
