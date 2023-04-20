@@ -114,10 +114,6 @@ func (s *NetService) discover(req *rpctypes.DiscoverRequest) ([]peer.ID, error) 
 
 // Discover discovers peers over the network that provide a certain coin up for `SearchTime` duration of time.
 func (s *NetService) Discover(_ *http.Request, req *rpctypes.DiscoverRequest, resp *rpctypes.DiscoverResponse) error {
-	if s.isBootnode {
-		return errUnsupportedForBootnode
-	}
-
 	searchTime, err := time.ParseDuration(fmt.Sprintf("%ds", req.SearchTime))
 	if err != nil {
 		return err
