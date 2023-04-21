@@ -58,9 +58,11 @@ type P2pHost interface {
 
 // Host represents a p2p node that implements the atomic swap protocol.
 type Host struct {
-	ctx        context.Context
-	h          P2pHost
-	isRelayer  bool
+	ctx       context.Context
+	h         P2pHost
+	isRelayer bool
+
+	// set to true if the node is a bootnode-only node
 	isBootnode bool
 
 	makerHandler MakerHandler
@@ -73,26 +75,30 @@ type Host struct {
 
 // Config holds the initialization parameters for the NewHost constructor.
 type Config struct {
-	Ctx        context.Context
-	DataDir    string
-	Port       uint16
-	KeyFile    string
-	Bootnodes  []string
-	ProtocolID string
-	ListenIP   string
-	IsRelayer  bool
-	IsBootnode bool
+	Ctx            context.Context
+	DataDir        string
+	Port           uint16
+	KeyFile        string
+	Bootnodes      []string
+	ProtocolID     string
+	ListenIP       string
+	IsRelayer      bool
+	IsBootnodeOnly bool
 }
 
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
 func NewHost(cfg *Config) (*Host, error) {
+	if cfg.IsBootnodeOnly && cfg.IsRelayer {
+		return nil, errBootnodeCannotRelay
+	}
+
 	h := &Host{
 		ctx:        cfg.Ctx,
 		h:          nil, // set below
 		isRelayer:  cfg.IsRelayer,
-		isBootnode: cfg.IsBootnode,
+		isBootnode: cfg.IsBootnodeOnly,
 		swaps:      make(map[types.Hash]*swap),
 	}
 

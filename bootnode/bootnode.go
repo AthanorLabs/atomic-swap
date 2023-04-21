@@ -37,15 +37,15 @@ type Config struct {
 // passed in context, or when the shutdown RPC method is called.
 func RunBootnode(ctx context.Context, cfg *Config) error {
 	host, err := net.NewHost(&net.Config{
-		Ctx:        ctx,
-		DataDir:    cfg.DataDir,
-		Port:       cfg.Libp2pPort,
-		KeyFile:    cfg.Libp2pKeyFile,
-		Bootnodes:  cfg.Bootnodes,
-		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, cfg.EthereumChainID.Int64()),
-		ListenIP:   cfg.HostListenIP,
-		IsRelayer:  false,
-		IsBootnode: true,
+		Ctx:            ctx,
+		DataDir:        cfg.DataDir,
+		Port:           cfg.Libp2pPort,
+		KeyFile:        cfg.Libp2pKeyFile,
+		Bootnodes:      cfg.Bootnodes,
+		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, cfg.EthereumChainID.Int64()),
+		ListenIP:       cfg.HostListenIP,
+		IsRelayer:      false,
+		IsBootnodeOnly: true,
 	})
 	if err != nil {
 		return err
