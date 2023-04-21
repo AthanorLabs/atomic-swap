@@ -11,7 +11,7 @@ TAG=master
 NETWORK=host
 
 # Note: We mount one directory above what swapd considers its "data-dir".
-DATA_MOUNT_DIR="${HOME}/.atomicswap/docker"
+DATA_MOUNT_DIR="${HOME}/.atomicswap/docker-maker"
 
 # Pre-create the mounted directory, or docker will create it with root
 # as the owner.

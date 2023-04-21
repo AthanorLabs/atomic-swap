@@ -41,7 +41,7 @@ file above. More information on what the individual files contain can be
 ### {DATA_DIR}/eth.key
 
 This is the default location of your Ethereum private key used by swaps. Alternate
-locations can be configured with `--ethereum-privkey`. If the file does not
+locations can be configured with `--eth-privkey`. If the file does not
 exist, a new random key will be created and placed in this location.
 
 ### {DATA_DIR}/net.key
@@ -72,7 +72,7 @@ By default, all relayer-related files will be placed in the `relayer` directory 
 
 ### {DATA_DIR}/relayer/eth.key
 
-The location of the Ethereum private key used by the relayer to submit transactions. Fees received by the relayer will also go into this account. Alternate locations can be configured with `--ethereum-privkey`. If the file does not exist, the relayer will error on startup.
+The location of the Ethereum private key used by the relayer to submit transactions. Fees received by the relayer will also go into this account. Alternate locations can be configured with `--eth-privkey`. If the file does not exist, the relayer will error on startup.
 
 ### {DATA_DIR}/relayer/net.key
 

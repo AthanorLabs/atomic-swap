@@ -54,7 +54,7 @@ EXPOSE 9900/tcp
 # (2) Use swapd's --env=ENVIRONMENT CLI flag, but set SWAPD_ENV to the
 #     identical environment or the empty string.
 ENV SWAPD_ENV=stagenet
-ENV SWAPD_ETHEREUM_ENDPOINT=https://rpc.sepolia.org/
+ENV SWAPD_ETH_ENDPOINT=https://rpc.sepolia.org/
 ENV SWAPD_LOG_LEVEL=info
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

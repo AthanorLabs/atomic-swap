@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -ex
 
-CONTAINER_NAME=atomic-stagenet
+CONTAINER_NAME=atomic-taker
 IMAGE_NAME=atomic-swap
 TAG=master
 
@@ -11,7 +11,7 @@ TAG=master
 NETWORK=host
 
 # Note: We mount one directory above what swapd considers its "data-dir".
-DATA_MOUNT_DIR="${HOME}/.atomicswap/docker"
+DATA_MOUNT_DIR="${HOME}/.atomicswap/docker-taker"
 
 # Pre-create the mounted directory, or docker will create it with root
 # as the owner.
@@ -23,4 +23,4 @@ docker run --rm -v "${DATA_MOUNT_DIR}:/data" \
 	--env SWAPD_LOG_LEVEL=debug \
 	--network="${NETWORK}" \
 	--name="${CONTAINER_NAME}" \
-	"${IMAGE_NAME}:${TAG}"
+	"${IMAGE_NAME}:${TAG}" swapd --rpc-port=5001
