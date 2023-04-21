@@ -59,6 +59,7 @@ type Config struct {
 	ProtocolBackend ProtocolBackend
 	RecoveryDB      RecoveryDB
 	Namespaces      map[string]struct{}
+	IsBootnodeOnly  bool
 }
 
 // AllNamespaces returns a map with all RPC namespaces set for usage in the config.
@@ -96,7 +97,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		case DatabaseNamespace:
 			err = rpcServer.RegisterService(NewDatabaseService(cfg.RecoveryDB), DatabaseNamespace)
 		case NetNamespace:
-			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, swapManager, false)
+			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, swapManager, cfg.IsBootnodeOnly)
 			err = rpcServer.RegisterService(netService, NetNamespace)
 		case PersonalName:
 			err = rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), PersonalName)

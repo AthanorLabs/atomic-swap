@@ -61,10 +61,14 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 	}
 
 	rpcServer, err := rpc.NewServer(&rpc.Config{
-		Ctx:        ctx,
-		Address:    fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
-		Net:        host,
-		Namespaces: map[string]struct{}{rpc.DaemonNamespace: {}, rpc.NetNamespace: {}},
+		Ctx:     ctx,
+		Address: fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
+		Net:     host,
+		Namespaces: map[string]struct{}{
+			rpc.DaemonNamespace: {},
+			rpc.NetNamespace:    {},
+		},
+		IsBootnodeOnly: true,
 	})
 
 	log.Infof("starting bootnode with data-dir %s", cfg.DataDir)
