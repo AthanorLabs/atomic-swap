@@ -111,9 +111,10 @@ func cliApp() *cli.App {
 				Value: defaultLibp2pPort,
 			},
 			&cli.StringFlag{
-				Name:  flagEnv,
-				Usage: "Environment to use: one of mainnet, stagenet, or dev",
-				Value: "dev",
+				Name:    flagEnv,
+				Usage:   "Environment to use: one of mainnet, stagenet, or dev",
+				EnvVars: []string{"SWAPD_ENV"},
+				Value:   "dev",
 			},
 			&cli.StringFlag{
 				Name:  flagMoneroDaemonHost,
@@ -141,8 +142,9 @@ func cliApp() *cli.App {
 				Hidden: true, // flag is for integration tests and won't be supported long term
 			},
 			&cli.StringFlag{
-				Name:  flagEthereumEndpoint,
-				Usage: "Ethereum client endpoint",
+				Name:    flagEthereumEndpoint,
+				Usage:   "Ethereum client endpoint",
+				EnvVars: []string{"SWAPD_ETHEREUM_ENDPOINT"},
 			},
 			&cli.StringFlag{
 				Name:  flagEthereumPrivKey,
@@ -188,9 +190,10 @@ func cliApp() *cli.App {
 				Usage: "Leave XMR in generated swap wallet instead of sweeping funds to primary.",
 			},
 			&cli.StringFlag{
-				Name:  flagLogLevel,
-				Usage: "Set log level: one of [error|warn|info|debug]",
-				Value: "info",
+				Name:    flagLogLevel,
+				Usage:   "Set log level: one of [error|warn|info|debug]",
+				Value:   "info",
+				EnvVars: []string{"SWAPD_LOG_LEVEL"},
 			},
 			&cli.BoolFlag{
 				Name:  flagUseExternalSigner,
