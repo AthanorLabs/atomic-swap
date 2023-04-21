@@ -8,7 +8,7 @@ support most 64-bit Linux distributions, macOS, and WSL on Windows both with X86
 and ARM processors.
 
 #### Installed Dependencies for Building/Testing
-- go 1.19+ (see [build instructions](./build.md) to download Go.)
+- go 1.20+ (see [build instructions](./build.md) to download Go.)
 - node/npm (to install ganache, see suggestions after list)
 - ganache (can be installed with `npm install --location=global ganache`)
 - jq, curl, bzip2, realpath

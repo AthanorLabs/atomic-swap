@@ -34,19 +34,21 @@ type Net interface {
 
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
-	net      Net
-	xmrtaker XMRTaker
-	xmrmaker XMRMaker
-	sm       SwapManager
+	net        Net
+	xmrtaker   XMRTaker
+	xmrmaker   XMRMaker
+	sm         SwapManager
+	isBootnode bool
 }
 
 // NewNetService ...
-func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager) *NetService {
+func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager, isBootnode bool) *NetService {
 	return &NetService{
-		net:      net,
-		xmrtaker: xmrtaker,
-		xmrmaker: xmrmaker,
-		sm:       sm,
+		net:        net,
+		xmrtaker:   xmrtaker,
+		xmrmaker:   xmrmaker,
+		sm:         sm,
+		isBootnode: isBootnode,
 	}
 }
 
@@ -72,6 +74,10 @@ func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.Peers
 
 // QueryAll discovers peers who provide a certain coin and queries all of them for their current offers.
 func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.QueryAllRequest, resp *rpctypes.QueryAllResponse) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
+
 	peerIDs, err := s.discover(req)
 	if err != nil {
 		return err
@@ -126,8 +132,14 @@ func (s *NetService) Discover(_ *http.Request, req *rpctypes.DiscoverRequest, re
 }
 
 // QueryPeer queries a peer for the coins they provide, their maximum amounts, and desired exchange rate.
-func (s *NetService) QueryPeer(_ *http.Request, req *rpctypes.QueryPeerRequest,
-	resp *rpctypes.QueryPeerResponse) error {
+func (s *NetService) QueryPeer(
+	_ *http.Request,
+	req *rpctypes.QueryPeerRequest,
+	resp *rpctypes.QueryPeerResponse,
+) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
 
 	msg, err := s.net.Query(req.PeerID)
 	if err != nil {
@@ -144,6 +156,10 @@ func (s *NetService) TakeOffer(
 	req *rpctypes.TakeOfferRequest,
 	_ *interface{},
 ) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
+
 	_, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
@@ -208,6 +224,9 @@ func (s *NetService) TakeOfferSync(
 	req *rpctypes.TakeOfferRequest,
 	resp *TakeOfferSyncResponse,
 ) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
 
 	if _, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount); err != nil {
 		return err
@@ -240,6 +259,10 @@ func (s *NetService) MakeOffer(
 	req *rpctypes.MakeOfferRequest,
 	resp *rpctypes.MakeOfferResponse,
 ) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
+
 	offerResp, _, err := s.makeOffer(req)
 	if err != nil {
 		return err

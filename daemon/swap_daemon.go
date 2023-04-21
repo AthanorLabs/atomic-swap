@@ -155,6 +155,7 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 		XMRMaker:        xmrMaker,
 		ProtocolBackend: swapBackend,
 		RecoveryDB:      sdb.RecoveryDB(),
+		Namespaces:      rpc.AllNamespaces(),
 	})
 
 	log.Infof("starting swapd with data-dir %s", conf.EnvConf.DataDir)
