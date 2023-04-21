@@ -126,11 +126,11 @@ func (inst *Instance) HandleInitiateMessage(
 	}
 
 	if providedAmount.Cmp(offer.MinAmount) < 0 {
-		return nil, nil, errAmountProvidedTooLow{providedAmount, offer.MinAmount}
+		return nil, nil, errAmountProvidedTooLow{msg.ProvidedAmount, offer.MinAmount}
 	}
 
 	if providedAmount.Cmp(offer.MaxAmount) > 0 {
-		return nil, nil, errAmountProvidedTooHigh{providedAmount, offer.MaxAmount}
+		return nil, nil, errAmountProvidedTooHigh{msg.ProvidedAmount, offer.MaxAmount}
 	}
 
 	providedPiconero := coins.MoneroToPiconero(providedAmount)

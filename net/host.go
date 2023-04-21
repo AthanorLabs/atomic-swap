@@ -62,6 +62,9 @@ type Host struct {
 	h         P2pHost
 	isRelayer bool
 
+	// set to true if the node is a bootnode-only node
+	isBootnode bool
+
 	makerHandler MakerHandler
 	relayHandler RelayHandler
 
@@ -72,25 +75,31 @@ type Host struct {
 
 // Config holds the initialization parameters for the NewHost constructor.
 type Config struct {
-	Ctx        context.Context
-	DataDir    string
-	Port       uint16
-	KeyFile    string
-	Bootnodes  []string
-	ProtocolID string
-	ListenIP   string
-	IsRelayer  bool
+	Ctx            context.Context
+	DataDir        string
+	Port           uint16
+	KeyFile        string
+	Bootnodes      []string
+	ProtocolID     string
+	ListenIP       string
+	IsRelayer      bool
+	IsBootnodeOnly bool
 }
 
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
 func NewHost(cfg *Config) (*Host, error) {
+	if cfg.IsBootnodeOnly && cfg.IsRelayer {
+		return nil, errBootnodeCannotRelay
+	}
+
 	h := &Host{
-		ctx:       cfg.Ctx,
-		h:         nil, // set below
-		isRelayer: cfg.IsRelayer,
-		swaps:     make(map[types.Hash]*swap),
+		ctx:        cfg.Ctx,
+		h:          nil, // set below
+		isRelayer:  cfg.IsRelayer,
+		isBootnode: cfg.IsBootnodeOnly,
+		swaps:      make(map[types.Hash]*swap),
 	}
 
 	var err error
@@ -108,17 +117,18 @@ func NewHost(cfg *Config) (*Host, error) {
 		return nil, err
 	}
 
+	log.Debugf("using base protocol %s", cfg.ProtocolID)
 	return h, nil
 }
 
 func (h *Host) advertisedNamespaces() []string {
 	provides := []string{""}
 
-	if len(h.makerHandler.GetOffers()) > 0 {
+	if !h.isBootnode && len(h.makerHandler.GetOffers()) > 0 {
 		provides = append(provides, string(coins.ProvidesXMR))
 	}
 
-	if h.isRelayer {
+	if !h.isBootnode && h.isRelayer {
 		provides = append(provides, RelayerProvidesStr)
 	}
 
@@ -138,7 +148,7 @@ func (h *Host) SetHandlers(makerHandler MakerHandler, relayHandler RelayHandler)
 
 // Start starts the bootstrap and discovery process.
 func (h *Host) Start() error {
-	if h.makerHandler == nil || h.relayHandler == nil {
+	if (h.makerHandler == nil || h.relayHandler == nil) && !h.isBootnode {
 		return errNilHandler
 	}
 

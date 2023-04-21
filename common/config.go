@@ -4,6 +4,7 @@
 package common
 
 import (
+	"math/big"
 	"os"
 	"path"
 	"time"
@@ -34,6 +35,7 @@ type MoneroNode struct {
 // Config contains constants that are defaults for various environments
 type Config struct {
 	Env             Environment
+	EthereumChainID *big.Int
 	DataDir         string
 	MoneroNodes     []*MoneroNode
 	SwapCreatorAddr ethcommon.Address
@@ -44,8 +46,9 @@ type Config struct {
 // MainnetConfig is the mainnet ethereum and monero configuration
 func MainnetConfig() *Config {
 	return &Config{
-		Env:     Mainnet,
-		DataDir: path.Join(baseDir, "mainnet"),
+		Env:             Mainnet,
+		EthereumChainID: big.NewInt(MainnetChainID),
+		DataDir:         path.Join(baseDir, "mainnet"),
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -74,8 +77,9 @@ func MainnetConfig() *Config {
 // StagenetConfig is the monero stagenet and ethereum Sepolia configuration
 func StagenetConfig() *Config {
 	return &Config{
-		Env:     Stagenet,
-		DataDir: path.Join(baseDir, "stagenet"),
+		Env:             Stagenet,
+		EthereumChainID: big.NewInt(SepoliaChainID),
+		DataDir:         path.Join(baseDir, "stagenet"),
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -108,8 +112,9 @@ func StagenetConfig() *Config {
 // DevelopmentConfig is the monero and ethereum development environment configuration
 func DevelopmentConfig() *Config {
 	return &Config{
-		Env:     Development,
-		DataDir: path.Join(baseDir, "dev"),
+		Env:             Development,
+		EthereumChainID: big.NewInt(1337),
+		DataDir:         path.Join(baseDir, "dev"),
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "127.0.0.1",

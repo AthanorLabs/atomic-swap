@@ -1,7 +1,7 @@
 // Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
-package main
+package cliutil
 
 import (
 	"context"
@@ -9,9 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	logging "github.com/ipfs/go-log"
 )
 
-func signalHandler(ctx context.Context, cancel context.CancelFunc) {
+// SignalHandler handles OS signals and shuts down the program if necessary.
+func SignalHandler(ctx context.Context, cancel context.CancelFunc, log *logging.ZapEventLogger) {
 	sigc := make(chan os.Signal, 1)
 	signal.Ignore(syscall.SIGHUP)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)

@@ -77,7 +77,7 @@ const (
 	flagForwarderAddress = "forwarder-address"
 	flagNoTransferBack   = "no-transfer-back"
 
-	flagLogLevel = "log-level"
+	flagLogLevel = cliutil.FlagLogLevel
 	flagProfile  = "profile"
 )
 
@@ -217,54 +217,12 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go signalHandler(ctx, cancel)
+	go cliutil.SignalHandler(ctx, cancel, log)
 
 	err := cliApp().RunContext(ctx, os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func setLogLevelsFromContext(c *cli.Context) error {
-	const (
-		levelError = "error"
-		levelWarn  = "warn"
-		levelInfo  = "info"
-		levelDebug = "debug"
-	)
-
-	level := c.String(flagLogLevel)
-	switch level {
-	case levelError, levelWarn, levelInfo, levelDebug:
-	default:
-		return fmt.Errorf("invalid log level %q", level)
-	}
-
-	setLogLevels(level)
-	return nil
-}
-
-func setLogLevels(level string) {
-	// alphabetically ordered
-	_ = logging.SetLogLevel("cmd", level)
-	_ = logging.SetLogLevel("coins", level)
-	_ = logging.SetLogLevel("common", level)
-	_ = logging.SetLogLevel("contracts", level)
-	_ = logging.SetLogLevel("cmd", level)
-	_ = logging.SetLogLevel("extethclient", level)
-	_ = logging.SetLogLevel("ethereum/watcher", level)
-	_ = logging.SetLogLevel("ethereum/block", level)
-	_ = logging.SetLogLevel("monero", level)
-	_ = logging.SetLogLevel("net", level)
-	_ = logging.SetLogLevel("offers", level)
-	_ = logging.SetLogLevel("p2pnet", level) // external
-	_ = logging.SetLogLevel("pricefeed", level)
-	_ = logging.SetLogLevel("protocol", level)
-	_ = logging.SetLogLevel("relayer", level) // external and internal
-	_ = logging.SetLogLevel("rpc", level)
-	_ = logging.SetLogLevel("txsender", level)
-	_ = logging.SetLogLevel("xmrmaker", level)
-	_ = logging.SetLogLevel("xmrtaker", level)
 }
 
 func runDaemon(c *cli.Context) error {
@@ -273,7 +231,7 @@ func runDaemon(c *cli.Context) error {
 		return fmt.Errorf("unknown command %q", c.Args().First())
 	}
 
-	if err := setLogLevelsFromContext(c); err != nil {
+	if err := cliutil.SetLogLevelsFromContext(c); err != nil {
 		return err
 	}
 
