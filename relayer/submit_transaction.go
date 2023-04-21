@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -81,7 +79,7 @@ func ValidateAndSendTransaction(
 	}
 	txOpts.GasPrice = gasPrice
 
-	_, err = simulateExecute(
+	err = simulateExecute(
 		ctx,
 		ec,
 		&reqForwarderAddr,
@@ -149,13 +147,13 @@ func simulateExecute(
 	forwarderReq gsnforwarder.IForwarderForwardRequest,
 	domainSeparator [32]byte,
 	sig []byte,
-) ([]byte, error) {
-	ForwarderABI, err := abi.JSON(strings.NewReader(gsnforwarder.ForwarderMetaData.ABI))
+) error {
+	forwarderABI, err := gsnforwarder.ForwarderMetaData.GetAbi()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Pack the "execute" method call
-	packed, err := ForwarderABI.Pack(
+	packed, err := forwarderABI.Pack(
 		"execute",
 		forwarderReq,
 		domainSeparator,
@@ -164,7 +162,7 @@ func simulateExecute(
 		sig,
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	callMessage := ethereum.CallMsg{
@@ -182,7 +180,7 @@ func simulateExecute(
 	// Call the "execute" method
 	data, err := ec.Raw().CallContract(ctx, callMessage, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Unpack the response data
@@ -191,14 +189,14 @@ func simulateExecute(
 		Ret     []byte
 	}{Success: false, Ret: []byte{}}
 
-	err = ForwarderABI.UnpackIntoInterface(&response, "execute", data)
+	err = forwarderABI.UnpackIntoInterface(&response, "execute", data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !response.Success {
-		return response.Ret, errors.New("relayed transaction failed on simulation")
+		return errors.New("relayed transaction failed on simulation")
 	}
 
-	return response.Ret, nil
+	return nil
 }
