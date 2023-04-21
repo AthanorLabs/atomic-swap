@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -26,7 +25,7 @@ const (
 )
 
 var (
-	errNoEthereumPrivateKey = errors.New("must provide --ethereum-privkey file for non-development environment")
+	errNoEthPrivateKey = fmt.Errorf("must provide --%s file for non-development environment", flagEthPrivKey)
 )
 
 type contractAddresses struct {
@@ -73,7 +72,7 @@ func deploySwapCreator(
 ) (ethcommon.Address, *contracts.SwapCreator, error) {
 
 	if privkey == nil {
-		return ethcommon.Address{}, nil, errNoEthereumPrivateKey
+		return ethcommon.Address{}, nil, errNoEthPrivateKey
 	}
 
 	if (forwarderAddr == ethcommon.Address{}) {

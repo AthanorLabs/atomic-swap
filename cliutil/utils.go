@@ -76,7 +76,7 @@ func GetEthereumPrivateKey(ethPrivKeyFile string, env common.Environment, devXMR
 
 	fileData, err := os.ReadFile(filepath.Clean(ethPrivKeyFile))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ethereum-privkey file: %w", err)
+		return nil, fmt.Errorf("failed to read eth-privkey file: %w", err)
 	}
 	ethPrivKeyHex := strings.TrimSpace(string(fileData))
 	privkey, err := ethcrypto.HexToECDSA(ethPrivKeyHex)

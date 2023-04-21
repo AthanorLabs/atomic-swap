@@ -10,7 +10,7 @@ lint-go:
 
 .PHONY: lint-shell
 lint-shell:
-	shellcheck --source-path=.:scripts scripts/*.sh
+	shellcheck --source-path=.:scripts scripts/*.sh scripts/*/*.sh
 
 .PHONY: lint-solidity
 lint-solidity: 
@@ -26,7 +26,7 @@ format-go:
 
 .PHONY: format-shell
 format-shell:
-	shfmt -w scripts/*.sh
+	shfmt -w scripts/*.sh scripts/*/*.sh
 
 .PHONY: format-solidity
 format-solidity:

@@ -54,9 +54,9 @@ cd atomic-swap
 make build
 ```
 
-10. Start the `swapd` daemon. Change `--ethereum-endpoint` to point to your endpoint.
+10. Start the `swapd` daemon. Change `--eth-endpoint` to point to your endpoint.
 ```bash
-./swapd --env stagenet --ethereum-endpoint=<sepolia-endpoint>
+./swapd --env stagenet --eth-endpoint SEPOLIA_ENDPOINT
 ```
 Note: You probably need additional flags above:
 * `--data-dir PATH`: Needed if you are launching more than one `swapd` instance

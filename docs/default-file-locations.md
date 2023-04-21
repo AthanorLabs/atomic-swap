@@ -41,7 +41,7 @@ file above. More information on what the individual files contain can be
 ### {DATA_DIR}/eth.key
 
 This is the default location of your Ethereum private key used by swaps. Alternate
-locations can be configured with `--ethereum-privkey`. If the file does not
+locations can be configured with `--eth-privkey`. If the file does not
 exist, a new random key will be created and placed in this location.
 
 ### {DATA_DIR}/net.key
