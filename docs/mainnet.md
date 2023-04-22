@@ -1,6 +1,6 @@
 # Mainnet swap usage
 
-The swap operates on a "maker"/"taker" paradigm, where one party is a "market maker" and publishes offers for swaps they wish to execute, and the other party is a "taker" which takes a published offer, fulfilling the swap counterparty role.
+The swap operates on a maker/taker paradigm, where one party is a "market maker" and publishes offers for swaps they wish to execute, and the other party is a "taker" which takes a published offer, fulfilling the swap counterparty role.
 
 Currently, due to protocol limitations, XMR holders who want ETH can only act as makers, and ETH holders who want XMR can only act as takers.
 
@@ -16,6 +16,7 @@ Currently, due to protocol limitations, XMR holders who want ETH can only act as
 * [swapcli commands](#swapcli-commands)
 * [Monero taker](#Monero-taker)
 * [Monero maker](#Monero-maker)
+* [Troubleshooting](#Troubleshooting)
 
 ## Build
 
