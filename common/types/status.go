@@ -32,6 +32,15 @@ const (
 	// ContractReady is the taker's state after verifying the locked XMR and
 	// setting the contract to ready.
 	ContractReady
+	// SweepingXMR is the taker's state after claiming the XMR and sweeping it
+	// back into their primary wallet.
+	// It can also be the maker's state if the maker refunds and is sweeping
+	// the XMR back into his primary wallet.
+	// Note: if sweeping is disabled, this stage does not occur.
+	// Also note that the swap protocol is technically "done" at this stage;
+	// however, this stage is required so that the node is aware that a sweep
+	// is occuring in case of a daemon restart.
+	SweepingXMR
 	// CompletedSuccess represents a successful swap.
 	CompletedSuccess
 	// CompletedRefund represents a swap that was refunded.
@@ -57,6 +66,8 @@ func NewStatus(str string) Status {
 		return XMRLocked
 	case "ContractReady":
 		return ContractReady
+	case "SweepingXMR":
+		return SweepingXMR
 	case "Success":
 		return CompletedSuccess
 	case "Refunded":
@@ -81,6 +92,8 @@ func (s Status) String() string {
 		return "XMRLocked"
 	case ContractReady:
 		return "ContractReady"
+	case SweepingXMR:
+		return "SweepingXMR"
 	case CompletedSuccess:
 		return "Success"
 	case CompletedRefund:
@@ -124,6 +137,8 @@ func (s Status) Description() string {
 		return "both the XMR and ETH providers have locked their funds"
 	case ContractReady:
 		return "the locked ether is ready to be claimed"
+	case SweepingXMR:
+		return "the XMR is being swept back into the primary wallet"
 	case CompletedSuccess:
 		return "the locked funds have been claimed and the swap has completed successfully"
 	case CompletedRefund:
@@ -138,7 +153,7 @@ func (s Status) Description() string {
 // IsOngoing returns true if the status means the swap has not completed
 func (s Status) IsOngoing() bool {
 	switch s {
-	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady:
+	case ExpectingKeys, KeysExchanged, ETHLocked, XMRLocked, ContractReady, SweepingXMR:
 		return true
 	case UnknownStatus:
 		panic("swap should not have UnknownStatus")
