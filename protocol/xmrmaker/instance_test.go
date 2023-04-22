@@ -170,7 +170,7 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	ec := inst.backend.ETHClient()
 	contract := inst.backend.SwapCreator()
 	contractSwap, contractSwapID, _ := newTestSwap(
-		t, ec, contract, [32]byte{}, [32]byte{}, big.NewInt(100), time.Minute*10,
+		t, ec, contract, fakeSwapKey, fakeSwapKey, big.NewInt(100), time.Minute*10,
 	)
 
 	txOpts, err := ec.TxOpts(context.Background())
