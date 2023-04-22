@@ -112,7 +112,7 @@ func (inst *Instance) checkForOngoingSwaps() error {
 				"found ongoing swap %s in DB where XMR was being swept back to the primary account, marking as completed",
 				s.OfferID,
 			)
-			s.Status = types.CompletedSuccess
+			s.Status = types.CompletedRefund
 			err = inst.backend.SwapManager().CompleteOngoingSwap(s)
 			if err != nil {
 				return fmt.Errorf("failed to mark swap as completed: %w", err)
