@@ -63,8 +63,8 @@ const (
 	flagMoneroWalletPath     = "wallet-file"
 	flagMoneroWalletPassword = "wallet-password"
 	flagMoneroWalletPort     = "wallet-port"
-	flagEthereumEndpoint     = "ethereum-endpoint"
-	flagEthereumPrivKey      = "ethereum-privkey"
+	flagEthEndpoint          = "eth-endpoint"
+	flagEthPrivKey           = "eth-privkey"
 	flagContractAddress      = "contract-address"
 	flagGasPrice             = "gas-price"
 	flagGasLimit             = "gas-limit"
@@ -91,9 +91,10 @@ func cliApp() *cli.App {
 		Suggest:              true,
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  flagRPCPort,
-				Usage: "Port for the daemon RPC server to run on",
-				Value: defaultRPCPort,
+				Name:    flagRPCPort,
+				Usage:   "Port for the daemon RPC server to run on",
+				Value:   defaultRPCPort,
+				EnvVars: []string{"SWAPD_RPC_PORT"},
 			},
 			&cli.StringFlag{
 				Name:  flagDataDir,
@@ -106,25 +107,28 @@ func cliApp() *cli.App {
 				Value: fmt.Sprintf("{DATA_DIR}/%s", common.DefaultLibp2pKeyFileName),
 			},
 			&cli.UintFlag{
-				Name:  flagLibp2pPort,
-				Usage: "libp2p port to listen on",
-				Value: defaultLibp2pPort,
+				Name:    flagLibp2pPort,
+				Usage:   "libp2p port to listen on",
+				Value:   defaultLibp2pPort,
+				EnvVars: []string{"SWAPD_LIBP2P_PORT"},
 			},
 			&cli.StringFlag{
-				Name:  flagEnv,
-				Usage: "Environment to use: one of mainnet, stagenet, or dev",
-				Value: "dev",
+				Name:    flagEnv,
+				Usage:   "Environment to use: one of mainnet, stagenet, or dev",
+				EnvVars: []string{"SWAPD_ENV"},
+				Value:   "dev",
 			},
 			&cli.StringFlag{
-				Name:  flagMoneroDaemonHost,
-				Usage: "monerod host",
-				Value: "127.0.0.1",
+				Name:    flagMoneroDaemonHost,
+				Usage:   "monerod host",
+				EnvVars: []string{"SWAPD_MONEROD_HOST"},
 			},
 			&cli.UintFlag{
 				Name: flagMoneroDaemonPort,
 				Usage: fmt.Sprintf("monerod port (--%s=stagenet changes default to %d)",
 					flagEnv, common.DefaultMoneroDaemonStagenetPort),
-				Value: common.DefaultMoneroDaemonMainnetPort, // at least for now, this is also the dev default
+				EnvVars: []string{"SWAPD_MONEROD_PORT"},
+				Value:   common.DefaultMoneroDaemonMainnetPort, // at least for now, this is also the dev default
 			},
 			&cli.StringFlag{
 				Name:  flagMoneroWalletPath,
@@ -141,13 +145,17 @@ func cliApp() *cli.App {
 				Hidden: true, // flag is for integration tests and won't be supported long term
 			},
 			&cli.StringFlag{
-				Name:  flagEthereumEndpoint,
-				Usage: "Ethereum client endpoint",
+				Name:    flagEthEndpoint,
+				Usage:   "Ethereum client endpoint",
+				Aliases: []string{"ethereum-endpoint"},
+				EnvVars: []string{"SWAPD_ETH_ENDPOINT"},
 			},
 			&cli.StringFlag{
-				Name:  flagEthereumPrivKey,
-				Usage: "File containing ethereum private key as hex, new key is generated if missing",
-				Value: fmt.Sprintf("{DATA-DIR}/%s", common.DefaultEthKeyFileName),
+				Name:    flagEthPrivKey,
+				Usage:   "File containing ethereum private key as hex, new key is generated if missing",
+				Aliases: []string{"ethereum-privkey"},
+				EnvVars: []string{"SWAPD_ETH_PRIVKEY"},
+				Value:   fmt.Sprintf("{DATA-DIR}/%s", common.DefaultEthKeyFileName),
 			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
@@ -188,9 +196,10 @@ func cliApp() *cli.App {
 				Usage: "Leave XMR in generated swap wallet instead of sweeping funds to primary.",
 			},
 			&cli.StringFlag{
-				Name:  flagLogLevel,
-				Usage: "Set log level: one of [error|warn|info|debug]",
-				Value: "info",
+				Name:    flagLogLevel,
+				Usage:   "Set log level: one of [error|warn|info|debug]",
+				Value:   "info",
+				EnvVars: []string{"SWAPD_LOG_LEVEL"},
 			},
 			&cli.BoolFlag{
 				Name:  flagUseExternalSigner,
@@ -414,7 +423,7 @@ func createMoneroClient(c *cli.Context, envConf *common.Config) (monero.WalletCl
 		Env:                 envConf.Env,
 		WalletFilePath:      walletFilePath,
 		MonerodNodes:        envConf.MoneroNodes,
-		MoneroWalletRPCPath: "", // look for it in "monero-bin/monero-wallet-rpc" and then the user's path
+		MoneroWalletRPCPath: "", // look for it in "./monero-bin/monero-wallet-rpc" and then the user's path
 		WalletPassword:      c.String(flagMoneroWalletPassword),
 		WalletPort:          c.Uint(flagMoneroWalletPort),
 	})
@@ -424,23 +433,23 @@ func createEthClient(c *cli.Context, envConf *common.Config) (extethclient.EthCl
 	env := envConf.Env
 
 	ethEndpoint := common.DefaultEthEndpoint
-	if c.String(flagEthereumEndpoint) != "" {
-		ethEndpoint = c.String(flagEthereumEndpoint)
+	if c.String(flagEthEndpoint) != "" {
+		ethEndpoint = c.String(flagEthEndpoint)
 	}
 
 	var ethPrivKey *ecdsa.PrivateKey
 
 	useExternalSigner := c.Bool(flagUseExternalSigner)
-	if useExternalSigner && c.IsSet(flagEthereumPrivKey) {
-		return nil, errFlagsMutuallyExclusive(flagUseExternalSigner, flagEthereumPrivKey)
+	if useExternalSigner && c.IsSet(flagEthPrivKey) {
+		return nil, errFlagsMutuallyExclusive(flagUseExternalSigner, flagEthPrivKey)
 	}
 
 	if !useExternalSigner {
 		ethPrivKeyFile := envConf.EthKeyFileName()
-		if c.IsSet(flagEthereumPrivKey) {
-			ethPrivKeyFile = c.String(flagEthereumPrivKey)
+		if c.IsSet(flagEthPrivKey) {
+			ethPrivKeyFile = c.String(flagEthPrivKey)
 			if ethPrivKeyFile == "" {
-				return nil, errFlagValueEmpty(flagEthereumPrivKey)
+				return nil, errFlagValueEmpty(flagEthPrivKey)
 			}
 		}
 
