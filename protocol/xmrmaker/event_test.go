@@ -24,7 +24,9 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 
 	duration, err := time.ParseDuration("10m")
 	require.NoError(t, err)
-	newSwap(t, s, fakeSwapKey, fakeSwapKey, desiredAmount.BigInt(), duration)
+
+	claimKey := s.secp256k1Pub.Keccak256()
+	newSwap(t, s, claimKey, fakeSwapKey, desiredAmount.BigInt(), duration)
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
