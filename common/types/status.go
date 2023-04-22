@@ -39,7 +39,7 @@ const (
 	// Note: if sweeping is disabled, this stage does not occur.
 	// Also note that the swap protocol is technically "done" at this stage;
 	// however, this stage is required so that the node is aware that a sweep
-	// is occuring in case of a daemon restart.
+	// is occurring in case of a daemon restart.
 	SweepingXMR
 	// CompletedSuccess represents a successful swap.
 	CompletedSuccess

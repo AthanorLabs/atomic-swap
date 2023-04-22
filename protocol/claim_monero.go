@@ -12,6 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -19,6 +20,11 @@ import (
 var (
 	log = logging.Logger("protocol")
 )
+
+// SwapManager is the interface for the swap manager.
+type SwapManager interface {
+	WriteSwapToDB(info *swap.Info) error
+}
 
 // GetClaimKeypair returns the private key pair required for a monero claim.
 // The key pair is the summation of each party's private spend and view keys:
@@ -38,15 +44,15 @@ func GetClaimKeypair(
 func ClaimMonero(
 	ctx context.Context,
 	env common.Environment,
-	id types.Hash,
+	info *swap.Info,
 	xmrClient monero.WalletClient,
-	walletScanHeight uint64,
 	kpAB *mcrypto.PrivateKeyPair,
 	depositAddr *mcrypto.Address,
 	noTransferBack bool,
+	sm SwapManager,
 ) error {
-	conf := xmrClient.CreateWalletConf(fmt.Sprintf("swap-wallet-claim-%s", id))
-	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, walletScanHeight)
+	conf := xmrClient.CreateWalletConf(fmt.Sprintf("swap-wallet-claim-%s", info.OfferID))
+	abWalletCli, err := monero.CreateSpendWalletFromKeys(conf, kpAB, info.MoneroStartHeight)
 	if err != nil {
 		return err
 	}
@@ -59,7 +65,7 @@ func ClaimMonero(
 	}
 	defer abWalletCli.CloseAndRemoveWallet()
 
-	log.Infof("monero claimed in account %s; transferring to deposit account %s",
+	log.Infof("monero claimed in account %s; transferring to primary account %s",
 		address, depositAddr)
 
 	err = depositAddr.ValidateEnv(env)
@@ -72,6 +78,12 @@ func ClaimMonero(
 		return err
 	}
 
+	err = setSweepStatus(info, sm)
+	if err != nil {
+		return err
+	}
+	log.Debugf("set swap's status to SweepingXMR; swap ID %s", info.OfferID)
+
 	transfers, err := abWalletCli.SweepAll(ctx, depositAddr, 0, monero.SweepToSelfConfirmations)
 	if err != nil {
 		return fmt.Errorf("failed to send funds to deposit account: %w", err)
@@ -83,6 +95,21 @@ func ClaimMonero(
 			coins.FmtPiconeroAsXMR(transfer.Amount),
 			coins.FmtPiconeroAsXMR(transfer.Fee),
 		)
+	}
+
+	return nil
+}
+
+// setSweepStatus sets the swap's status as `SweepingXMR` and writes it to the db.
+func setSweepStatus(info *swap.Info, sm SwapManager) error {
+	info.SetStatus(types.SweepingXMR)
+	err := sm.WriteSwapToDB(info)
+	if err != nil {
+		return err
+	}
+
+	if info.StatusCh() != nil {
+		info.StatusCh() <- types.SweepingXMR
 	}
 
 	return nil

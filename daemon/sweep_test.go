@@ -20,9 +20,9 @@ import (
 
 // This test starts a swap between Bob and Alice. Bob completes the swap
 // successfully, and then both swapd daemons are shut down before Alice
-// can transfer funds from the swap wallet back to her primary wallet.
-// When everything is working perfectly, Alice should be able to
-// complete the swap when restarted.
+// completes the sweep from the swap wallet back to her primary wallet.
+// The Alice restarts, she should not try to sweep again and instead know
+// that the swap is already complete.
 func TestIssue385(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
@@ -68,14 +68,13 @@ func TestIssue385(t *testing.T) {
 				t.Log("> Bob got status:", status)
 				if !status.IsOngoing() {
 					assert.Equal(t, types.CompletedSuccess.String(), status.String())
-					// Bob normally completes first, while Alice is still sweeping, but now we
-					// cancel the context of both servers to shut them down
-					cancel()
-					t.Log("cancelling context of Alice's and Bob's servers")
+					// note: we can cancel the context here, but there's a chance
+					// Alice hasn't started sweeping yet, in which case she'll start
+					// the sweep on restart. either way, the test passes
 					return
 				}
 			case <-ctx.Done():
-				t.Errorf("Bob's context cancelled before he completed the swap")
+				t.Errorf("Bob's context cancelled before he completed the swap [unexpected]")
 				return
 			}
 		}
@@ -92,6 +91,14 @@ func TestIssue385(t *testing.T) {
 			case status := <-aliceStatusCh:
 				t.Log("> Alice got status:", status)
 				if !status.IsOngoing() {
+					return
+				}
+
+				if status == types.SweepingXMR {
+					// Bob should be done at this point, and Alice is sweeping
+					// cancel and ensure the swaps are both complete on daemon restart
+					cancel()
+					t.Log("cancelling context of Alice's and Bob's servers")
 					return
 				}
 			case <-ctx.Done():
@@ -120,8 +127,10 @@ func TestIssue385(t *testing.T) {
 	pastSwap, err := ac.GetPastSwap(&makeResp.OfferID)
 	require.NoError(t, err)
 	t.Logf("Alice past status: %s", pastSwap.Swaps[0].Status)
+	require.Equal(t, types.CompletedSuccess, pastSwap.Swaps[0].Status)
 
 	pastSwap, err = bc.GetPastSwap(&makeResp.OfferID)
 	require.NoError(t, err)
 	t.Logf("Bob past status: %s", pastSwap.Swaps[0].Status)
+	require.Equal(t, types.CompletedSuccess, pastSwap.Swaps[0].Status)
 }
