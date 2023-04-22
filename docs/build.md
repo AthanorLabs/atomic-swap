@@ -1,5 +1,7 @@
 # Building the project
 
+## From source
+
 1. Install Golang
 
 On Ubuntu, the easiest way to keep up-to-date with the latest stable version of
@@ -28,4 +30,27 @@ cd atomic-swap
 make build
 ```
 
-This creates `swapd`, `swapcli` and `relayer` binaries in the `bin` folder.
+This creates `swapd` and `swapcli` binaries in the `bin` folder.
+
+Note: if you wish to run a bootnode (see [here](./bootnode.md)), run `make build-all`.
+
+## Docker
+
+1. Ensure docker is installed on your machine.
+
+2. Build the docker image:
+```bash
+./scripts/docker/build-docker-image.sh 
+```
+
+3. For an example of how to run `swapd` with docker:
+```bash
+./scripts/docker/example-docker-run.sh 
+```
+
+This runs `swapd` on stagenet. The container name is `atomic-stagenet`.
+
+You can interact with it by running `swapcli` inside the container:
+```bash
+docker exec CONTAINER_NAME_OR_ID swapcli SUBCOMMAND ...
+```
