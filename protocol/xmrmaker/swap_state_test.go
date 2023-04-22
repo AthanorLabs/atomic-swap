@@ -149,7 +149,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
-		[32]byte{}, big.NewInt(33), defaultTimeoutDuration)
+		fakeSwapKey, big.NewInt(33), defaultTimeoutDuration)
 
 	txOpts, err := swapState.ETHClient().TxOpts(swapState.ctx)
 	require.NoError(t, err)
@@ -274,7 +274,7 @@ func TestSwapState_handleRefund(t *testing.T) {
 	require.NoError(t, err)
 
 	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
+	newSwap(t, s, fakeSwapKey, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
 	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
@@ -322,7 +322,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 	require.NoError(t, err)
 
 	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, [32]byte{}, refundKey, desiredAmount.BigInt(), duration)
+	newSwap(t, s, fakeSwapKey, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
 	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
