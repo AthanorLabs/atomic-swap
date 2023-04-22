@@ -31,6 +31,7 @@ var (
 	defaultTimeoutDuration = big.NewInt(60) // 60 seconds
 	ethAssetAddress        = ethcommon.Address(types.EthAssetETH)
 	defaultSwapValue       = big.NewInt(100)
+	fakeSwapKey            = [32]byte{1} // dummy non-zero value for claim/refund key
 )
 
 func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
@@ -170,7 +171,7 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 
 	nonce := big.NewInt(0)
 	auth.Value = defaultSwapValue
-	tx, err = contract.NewSwap(auth, cmt, [32]byte{}, addr, defaultTimeoutDuration,
+	tx, err = contract.NewSwap(auth, cmt, fakeSwapKey, addr, defaultTimeoutDuration,
 		defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), defaultSwapValue, nonce)
 	require.NoError(t, err)
 	auth.Value = nil
@@ -190,7 +191,7 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
-		PubKeyRefund: [32]byte{},
+		PubKeyRefund: fakeSwapKey,
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Asset:        ethcommon.Address(types.EthAssetETH),
@@ -253,7 +254,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 		txOpts.Value = value
 	}
 
-	tx, err = contract.NewSwap(&txOpts, cmt, [32]byte{}, addr,
+	tx, err = contract.NewSwap(&txOpts, cmt, fakeSwapKey, addr,
 		defaultTimeoutDuration, defaultTimeoutDuration, asset, value, nonce)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
@@ -271,7 +272,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
-		PubKeyRefund: [32]byte{},
+		PubKeyRefund: fakeSwapKey,
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Asset:        asset,
@@ -337,7 +338,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, erc20Contract *Te
 
 	nonce := big.NewInt(0)
 	auth.Value = defaultSwapValue
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, defaultTimeoutDuration, defaultTimeoutDuration,
+	tx, err = contract.NewSwap(auth, fakeSwapKey, cmt, addr, defaultTimeoutDuration, defaultTimeoutDuration,
 		asset, defaultSwapValue, nonce)
 	require.NoError(t, err)
 	auth.Value = nil
@@ -356,7 +357,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, erc20Contract *Te
 	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
-		PubKeyClaim:  [32]byte{},
+		PubKeyClaim:  fakeSwapKey,
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
@@ -410,7 +411,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 	nonce := big.NewInt(0)
 	timeout := big.NewInt(3)
 	auth.Value = defaultSwapValue
-	tx, err = contract.NewSwap(auth, [32]byte{}, cmt, addr, timeout, timeout,
+	tx, err = contract.NewSwap(auth, fakeSwapKey, cmt, addr, timeout, timeout,
 		asset, defaultSwapValue, nonce)
 	require.NoError(t, err)
 	auth.Value = nil
@@ -431,7 +432,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
-		PubKeyClaim:  [32]byte{},
+		PubKeyClaim:  fakeSwapKey,
 		PubKeyRefund: cmt,
 		Timeout0:     t0,
 		Timeout1:     t1,
@@ -520,8 +521,8 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 			Owner:        addrSwap,
 			Claimer:      addrSwap,
 			PubKeyClaim:  res.Secp256k1PublicKey().Keccak256(),
-			PubKeyRefund: [32]byte{}, // no one calls refund in this test
-			Timeout0:     nil,        // timeouts initialised when swap is created
+			PubKeyRefund: fakeSwapKey, // no one calls refund in this test
+			Timeout0:     nil,         // timeouts initialised when swap is created
 			Timeout1:     nil,
 			Asset:        ethcommon.Address(types.EthAssetETH),
 			Value:        defaultSwapValue,
