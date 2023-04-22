@@ -70,7 +70,14 @@ func MainnetConfig() *Config {
 		SwapCreatorAddr: ethcommon.HexToAddress("0x"), // TODO
 		// ForwarderAddr is from https://docs.opengsn.org/networks/addresses.html
 		ForwarderAddr: ethcommon.HexToAddress("0xB2b5841DBeF766d4b521221732F9B618fCf34A87"),
-		Bootnodes:     []string{}, // TODO
+		Bootnodes: []string{
+			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
+			"/ip4/67.205.131.11/udp/9909/quic-v1/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
+			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
+			"/ip4/143.198.123.27/udp/9909/quic-v1/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
+			"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
+			"/ip4/67.207.89.83/udp/9909/quic-v1/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
+		},
 	}
 }
 
