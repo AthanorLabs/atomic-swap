@@ -121,16 +121,17 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
             IERC20(_asset).transferFrom(msg.sender, address(this), _value);
         }
 
-        Swap memory swap;
-        swap.owner = payable(msg.sender);
-        swap.pubKeyClaim = _pubKeyClaim;
-        swap.pubKeyRefund = _pubKeyRefund;
-        swap.claimer = _claimer;
-        swap.timeout0 = block.timestamp + _timeoutDuration0;
-        swap.timeout1 = block.timestamp + _timeoutDuration0 + _timeoutDuration1;
-        swap.asset = _asset;
-        swap.value = _value;
-        swap.nonce = _nonce;
+        Swap memory swap = Swap({
+            owner: payable(msg.sender),
+            pubKeyClaim: _pubKeyClaim,
+            pubKeyRefund: _pubKeyRefund,
+            claimer: _claimer,
+            timeout0: block.timestamp + _timeoutDuration0,
+            timeout1: block.timestamp + _timeoutDuration0 + _timeoutDuration1,
+            asset: _asset,
+            value: _value,
+            nonce: _nonce
+        });
 
         bytes32 swapID = keccak256(abi.encode(swap));
 
