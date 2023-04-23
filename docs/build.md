@@ -48,7 +48,7 @@ make docker-images
 ./scripts/docker-swapd/run-docker-image.sh
 ```
 
-This runs `swapd` on stagenet. The container name is `atomic-stagenet`.
+This runs `swapd` on stagenet. The container name is `swapd-stagenet`.
 
 You can interact with it by running `swapcli` inside the container:
 ```bash
