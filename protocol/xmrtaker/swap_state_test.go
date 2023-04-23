@@ -296,6 +296,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 		xmrmakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
+	s.xmrmakerAddress = fakeAddress
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -328,6 +329,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 		xmrmakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
+	s.xmrmakerAddress = fakeAddress
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -383,6 +385,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 		xmrmakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
+	s.xmrmakerAddress = fakeAddress
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -409,6 +412,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 		xmrmakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
+	s.xmrmakerAddress = fakeAddress
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -436,6 +440,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 		xmrmakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
+	s.xmrmakerAddress = fakeAddress
 
 	_, err = s.lockAsset()
 	require.NoError(t, err)
@@ -463,6 +468,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 		xmrmakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
+	s.xmrmakerAddress = fakeAddress
 
 	// approve is called by NewSwap() in lockAsset()
 	_, err = s.lockAsset()
