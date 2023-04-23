@@ -27,3 +27,30 @@ To get the p2p addresses of the bootnode:
 ```
 
 You can then distribute these addresses for other swap nodes to connect to.
+
+## Docker
+
+1. Ensure docker is installed on your machine.
+
+2. Build the docker image:
+```bash
+make docker-images
+```
+
+3. For an example of how to run `bootnode` with docker on stagenet:
+```bash
+./scripts/docker-bootnode/run-docker-image.sh
+```
+
+This runs `swapd` on stagenet. The container name is `bootnode-stagenet`.
+
+You can interact with it by running `swapcli` inside the container:
+```bash
+docker exec CONTAINER_NAME_OR_ID swapcli SUBCOMMAND ...
+```
+
+You can also set command line arguments with environment variables, eg. to run on mainnet:
+```bash
+SWAPD_ENV=mainnet ./scripts/docker-swapd/run-docker-image.sh
+```
+
