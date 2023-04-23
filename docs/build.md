@@ -40,12 +40,12 @@ Note: if you wish to run a bootnode (see [here](./bootnode.md)), run `make build
 
 2. Build the docker image:
 ```bash
-./scripts/docker/build-docker-image.sh 
+make docker-images
 ```
 
-3. For an example of how to run `swapd` with docker:
+3. For an example of how to run `swapd` with docker on stagenet:
 ```bash
-./scripts/docker/example-docker-run.sh 
+./scripts/docker-swapd/run-docker-image.sh
 ```
 
 This runs `swapd` on stagenet. The container name is `atomic-stagenet`.
@@ -53,4 +53,9 @@ This runs `swapd` on stagenet. The container name is `atomic-stagenet`.
 You can interact with it by running `swapcli` inside the container:
 ```bash
 docker exec CONTAINER_NAME_OR_ID swapcli SUBCOMMAND ...
+```
+
+You can also set command line arguments with environment variables, eg. to run on mainnet:
+```bash
+SWAPD_ENV=mainnet ./scripts/docker-swapd/run-docker-image.sh
 ```

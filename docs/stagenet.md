@@ -105,7 +105,7 @@ yarn start
 # [[/ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
-2. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
+2. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--peer-id"` field with one of the addresses returned in the above step):
 ```bash
 ./bin/swapcli query --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
 # Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
@@ -113,7 +113,7 @@ yarn start
 
 > Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. Since we're on testnet, it's not critical what you set it to. 
 
-3. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much GoETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
+3. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much SepETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
 ```bash
 ./bin/swapcli take --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv \
   --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05

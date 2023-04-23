@@ -4,9 +4,9 @@ The swap operates on a maker/taker paradigm, where one party is a "market maker"
 
 Currently, due to protocol limitations, XMR holders who want ETH can only act as makers, and ETH holders who want XMR can only act as takers.
 
-> Note: a swap on mainnet currently takes around 20-25 minutes due to block time.
+> **Note:** a swap on mainnet currently takes around 20-25 minutes due to block time.
 
-> Note: the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all funds in those accounts. It's recommended to only keep funds that will be used for a swap in those accounts. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
+> **Note:** the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all funds in those accounts. It's recommended to only keep funds that will be used for a swap in those accounts. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
 
 ## Contents
 
@@ -73,14 +73,14 @@ Note: You may need additional flags above:
 
 ## Relayer
  
-The Ethereum network requires that users have ether in an account to be able to execute any transactions from that account. For ETH-takers, this means that they would need to have an already-funded account to claim their swap funds. However, this is not ideal as it harms the private of the swap users. A workaround is to have users relay transactions on behalf of others, meaning that the relayer would pay the gas fee for the swap claim transaction and receive a small portion of the funds in return.
+The Ethereum network requires that users have ether in an account to be able to execute any transactions from that account. For ETH-takers, this means that they would need to have an already-funded account to claim their swap funds. However, this is not ideal for privacy. A workaround is to have users relay transactions on behalf of others, meaning that the relayer would pay the gas fee for the swap claim transaction and receive a small portion of the funds in return.
 
 To run a node as a relayer, pass the `--relayer` flag to `swapd`:
 ```bash
 ./bin/swapd --env stagenet --eth-endpoint MAINNET_ENDPOINT --relayer
 ```
 
-Note: the current fee sent to relayers is 0.009 ETH per swap. Subtract the gas cost from this to determine how much profit will be made. The gas required to do a relayer-claim transaction is `102048` gas. Multiply this by the transaction gas price for the gas cost. The gas price is set via oracle unless you manually set it with the `personal_setGasPrice` RPC call.
+**Note:** the current fee sent to relayers is 0.009 ETH per swap. Subtract the gas cost from this to determine how much profit will be made. The gas required to do a relayer-claim transaction is `102048` gas. Multiply this by the transaction gas price for the gas cost. The gas price is set via oracle unless you manually set it with the `personal_setGasPrice` RPC call.
 
 ## swapcli commands
 
@@ -107,20 +107,24 @@ You can see all available commands with `swapcli -h`.
 # [[/ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
-3. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
+3. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--peer-id"` field with one of the addresses returned in the above step):
 ```bash
 ./bin/swapcli query --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
 # Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
 ```
 
-> Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. 
+> **Note:** the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. 
 
-4. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much GoETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
+> **Note:** the XMR-maker's offer may have an `EthAsset` set, meaning they wish to swap for an ERC20 token, not ETH. In this case, your account must be funded with that token to be able to take the offer.
+
+4. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much ETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
 ```bash
 ./bin/swapcli take --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv \
   --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
 # Initiated swap with ID=0
 ```
+
+This will automatically provide you with pushed status updates. `CTRL+C` will stop the status updates, but does not stop the swap, so feel free to exit. 
 
 5. b. Alternatively, you can take the offer without getting notified of swap status updates:
 ```bash
@@ -146,11 +150,15 @@ If all goes well, you should see the node execute the swap protocol. If the swap
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
-> Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. You can see a suggested exchange rate from the Chainlink oracle using `swapcli suggested-exchange-rate`; however, you should always double check this against your own sources.
+This will automatically provide you with pushed status updates when the swap is taken. `CTRL+C` will stop the status updates, but does not stop the swap or remove the offer, so feel free to exit. 
+
+> **Note:** the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. You can see a suggested exchange rate from the Chainlink oracle using `swapcli suggested-exchange-rate`; however, you should always double check this against your own sources.
+
+> **Note:** if you wish to swap for an ERC20 instead of ETH, you can set the asset with `--eth-asset TOKEN-CONTRACT-ADDRESS`. However, you must have a funded ETH account to perform a swap for an ERC20, as relayers are not supported for token swaps.
 
 3. b. Alternatively, make an offer with `swapcli` without subscribing to updates:
 ```bash
-./bin/swapcli make --min-amount 0.1 --max-amount 1 --exchange-rate 0.5 --detached
+./bin/swapcli make --min-amount MIN-XMR-AMOUNT --max-amount MAX-XMR-AMOUNT --exchange-rate EXCHANGE-RATE --detached
 # Published offer with ID cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9
 ```
 
@@ -166,7 +174,7 @@ Neither of these should happen, so if they happen, it indicates an issue either 
 
 A few common errors are:
 - `Failed to get height`: double check that your `monerod` process is running.
-- `unlocked balance is less than maximum offer amount`: you will see this if you're a maker and try to make an offer but don't have enough balance. Either fund your account with more XMR or wait for your balance to unlock.
+- `unlocked balance is less than maximum offer amount`: you will see this if you're a maker and try to make an offer but don't have enough balance. Either fund your account with more XMR or wait for your balance to unlock. This can also happen if you make a transfer out of your swap wallet and a majority of your funds end up in a change output waiting for confirmations.
 - A bad Ethereum endpoint. If you're using a remote endpoint and it goes down, or you run out of requests, the swap daemon will not be able to make progress. You will probably see some Ethereum-related error logs in this case. Get a new endpoint and restart the swap daemon with it. Your swap progress will not be lost.
 
 ## Bug reports
