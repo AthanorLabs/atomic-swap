@@ -3,7 +3,7 @@
   import Button, { Label } from '@smui/button'
   import type { CancelResult } from 'src/types/Cancel'
   import type { NetTakeOfferSyncResult } from 'src/types/NetTakeOfferSync'
-  import { getCorrespondingToken, rpcRequest } from 'src/utils'
+  import { getCorrespondingToken, rpcRequest, getPort } from 'src/utils'
   import { selectedOffer } from '../stores/offerStore'
   import { getPeers } from '../stores/peerStore'
   import Textfield from '@smui/textfield'
@@ -14,7 +14,7 @@
   import HelperText from '@smui/textfield/helper-text'
   import { currentAccount, sign } from '../stores/metamask'
 
-  const WS_ADDRESS = 'ws://127.0.0.1:5001/ws'
+  const WS_ADDRESS = `ws://127.0.0.1:${getPort()}/ws`
 
   let amountProvided: number | null = null
   let isSuccess = false
