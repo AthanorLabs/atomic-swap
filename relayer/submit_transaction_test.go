@@ -54,7 +54,8 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	nonce := big.NewInt(0)
 	txOpts.Value = value
 
-	tx, err := swapCreator.NewSwap(txOpts, cmt, [32]byte{}, addr,
+	refundKey := [32]byte{1}
+	tx, err := swapCreator.NewSwap(txOpts, cmt, refundKey, addr,
 		testT0Timeout, testT1Timeout, types.EthAssetETH.Address(), value, nonce)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
@@ -74,7 +75,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
-		PubKeyRefund: [32]byte{},
+		PubKeyRefund: refundKey,
 		Timeout0:     t0,
 		Timeout1:     t1,
 		Asset:        types.EthAssetETH.Address(),

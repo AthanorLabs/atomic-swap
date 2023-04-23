@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -16,6 +17,8 @@ import (
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 	"github.com/athanorlabs/atomic-swap/protocol/backend"
 )
+
+var fakeAddress = ethcommon.Address{1}
 
 func setupSwapStateUntilETHLocked(t *testing.T) (*swapState, uint64) {
 	s := newTestSwapState(t)
@@ -36,6 +39,7 @@ func setupSwapStateUntilETHLocked(t *testing.T) (*swapState, uint64) {
 	)
 	require.NoError(t, err)
 
+	s.xmrmakerAddress = fakeAddress
 	_, err = s.lockAsset()
 	require.NoError(t, err)
 
