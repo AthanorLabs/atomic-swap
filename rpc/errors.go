@@ -9,9 +9,11 @@ import (
 
 var (
 	// net_ errors
-	errNoOfferWithID = errors.New("peer does not have offer with given ID")
+	errNoOfferWithID          = errors.New("peer does not have offer with given ID")
+	errUnsupportedForBootnode = errors.New("unsupported for bootnode")
 
 	// ws errors
-	errUnimplemented = errors.New("unimplemented")
-	errInvalidMethod = errors.New("invalid method")
+	errUnimplemented       = errors.New("unimplemented")
+	errInvalidMethod       = errors.New("invalid method")
+	errNamespaceNotEnabled = errors.New("namespace not enabled")
 )

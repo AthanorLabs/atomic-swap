@@ -21,7 +21,7 @@ log_level=info # change to "debug" for more logs
 
 ./bin/swapd --env stagenet \
 	"--log-level=${log_level}" \
-	"--ethereum-endpoint=${ETHEREUM_ENDPOINT}" \
+	"--eth-endpoint=${ETHEREUM_ENDPOINT}" \
 	&>swapd.log &
 
 echo "swapd start with logs in swapd.log"

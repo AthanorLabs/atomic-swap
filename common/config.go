@@ -4,6 +4,7 @@
 package common
 
 import (
+	"math/big"
 	"os"
 	"path"
 	"time"
@@ -34,6 +35,7 @@ type MoneroNode struct {
 // Config contains constants that are defaults for various environments
 type Config struct {
 	Env             Environment
+	EthereumChainID *big.Int
 	DataDir         string
 	MoneroNodes     []*MoneroNode
 	SwapCreatorAddr ethcommon.Address
@@ -44,8 +46,9 @@ type Config struct {
 // MainnetConfig is the mainnet ethereum and monero configuration
 func MainnetConfig() *Config {
 	return &Config{
-		Env:     Mainnet,
-		DataDir: path.Join(baseDir, "mainnet"),
+		Env:             Mainnet,
+		EthereumChainID: big.NewInt(MainnetChainID),
+		DataDir:         path.Join(baseDir, "mainnet"),
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -67,15 +70,20 @@ func MainnetConfig() *Config {
 		SwapCreatorAddr: ethcommon.HexToAddress("0x"), // TODO
 		// ForwarderAddr is from https://docs.opengsn.org/networks/addresses.html
 		ForwarderAddr: ethcommon.HexToAddress("0xB2b5841DBeF766d4b521221732F9B618fCf34A87"),
-		Bootnodes:     []string{}, // TODO
+		Bootnodes: []string{
+			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
+			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
+			"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
+		},
 	}
 }
 
 // StagenetConfig is the monero stagenet and ethereum Sepolia configuration
 func StagenetConfig() *Config {
 	return &Config{
-		Env:     Stagenet,
-		DataDir: path.Join(baseDir, "stagenet"),
+		Env:             Stagenet,
+		EthereumChainID: big.NewInt(SepoliaChainID),
+		DataDir:         path.Join(baseDir, "stagenet"),
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -90,7 +98,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0x45cc2dB5021dc9C01513D9ee7914b61810bd6Ad6"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x55D20fF84815795CED5efF61168f5258274A3f87"),
 		ForwarderAddr:   ethcommon.HexToAddress("0xa030E074b8398005a454CB7c51E9b7CDb966744a"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
@@ -108,8 +116,9 @@ func StagenetConfig() *Config {
 // DevelopmentConfig is the monero and ethereum development environment configuration
 func DevelopmentConfig() *Config {
 	return &Config{
-		Env:     Development,
-		DataDir: path.Join(baseDir, "dev"),
+		Env:             Development,
+		EthereumChainID: big.NewInt(1337),
+		DataDir:         path.Join(baseDir, "dev"),
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "127.0.0.1",
