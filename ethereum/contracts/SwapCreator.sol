@@ -19,7 +19,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
 
     struct Swap {
         // the swap initiator, Alice
-        // Alice is the only one who can call `refund`
+        // address allowed to refund the ether for this swap
         address payable owner;
         // address allowed to claim the ether for this swap, Bob
         address payable claimer;
@@ -178,7 +178,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     function claim(Swap memory _swap, bytes32 _s) public {
         _claim(_swap, _s);
 
-        // send ether to swap claimant
+        // send ether to swap claimer
         if (_swap.asset == address(0)) {
             _swap.claimer.transfer(_swap.value);
         } else {
@@ -200,7 +200,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         if (!isTrustedForwarder(msg.sender)) revert OnlyTrustedForwarder();
         _claim(_swap, _s);
 
-        // send ether to swap claimant, subtracting the relayer fee
+        // send ether to swap claimer, subtracting the relayer fee
         // which is sent to the originator of the transaction.
         // tx.origin is okay here, since it isn't for authentication purposes.
         if (_swap.asset == address(0)) {

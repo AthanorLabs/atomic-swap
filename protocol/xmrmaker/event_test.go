@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var fakeSwapKey = [32]byte{1}
+var dummySwapKey = [32]byte{1}
 
 func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	_, s := newTestSwapState(t)
@@ -26,7 +26,7 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 	require.NoError(t, err)
 
 	claimKey := s.secp256k1Pub.Keccak256()
-	newSwap(t, s, claimKey, fakeSwapKey, desiredAmount.BigInt(), duration)
+	newSwap(t, s, claimKey, dummySwapKey, desiredAmount.BigInt(), duration)
 
 	txOpts, err := s.ETHClient().TxOpts(s.ctx)
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestSwapState_handleEvent_EventETHRefunded(t *testing.T) {
 	require.NoError(t, err)
 
 	refundKey := xmrtakerKeysAndProof.Secp256k1PublicKey.Keccak256()
-	newSwap(t, s, fakeSwapKey, refundKey, desiredAmount.BigInt(), duration)
+	newSwap(t, s, dummySwapKey, refundKey, desiredAmount.BigInt(), duration)
 
 	// lock XMR
 	err = s.lockFunds(coins.MoneroToPiconero(s.info.ProvidedAmount))
