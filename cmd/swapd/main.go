@@ -21,6 +21,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/daemon"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/relayer"
@@ -350,7 +351,7 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 
 // validateOrDeployContracts validates or deploys the swap creator. The SwapCreatorAddr field
 // of envConf should be all zeros if deploying and its value will be replaced by the new deployed
-// contract.
+// contract. The ForwarderAddr field of envConf will be replaced by the swap creator's trusted forwarder.
 func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec extethclient.EthClient) error {
 	deploy := c.Bool(flagDeploy)
 	if deploy && envConf.SwapCreatorAddr != (ethcommon.Address{}) {
@@ -386,6 +387,17 @@ func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec exteth
 	}
 
 	envConf.SwapCreatorAddr = swapCreatorAddr
+
+	// Get the forwarder address from the swap creator contract
+	swapCreator, err := contracts.NewSwapCreator(swapCreatorAddr, ec.Raw())
+	if err != nil {
+		return err
+	}
+	forwarderAddr, err = swapCreator.TrustedForwarder(nil)
+	if err != nil {
+		return err
+	}
+	envConf.ForwarderAddr = forwarderAddr
 
 	return nil
 }
