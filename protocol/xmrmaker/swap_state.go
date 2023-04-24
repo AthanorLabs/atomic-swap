@@ -567,12 +567,12 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 	return pcommon.ClaimMonero(
 		s.ctx,
 		s.Env(),
-		s.OfferID(),
+		s.info,
 		s.XMRClient(),
-		s.moneroStartHeight,
 		kpAB,
 		s.XMRClient().PrimaryAddress(),
 		false, // always sweep back to our primary address
+		s.Backend.SwapManager(),
 	)
 }
 

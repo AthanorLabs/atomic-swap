@@ -111,9 +111,7 @@ func (f *EventFilter) Start() error {
 				f.logCh <- l
 			}
 
-			// the filter query is inclusive of the `ToBlock`, so we already checked `ToBlock`
-			// and we don't want to check it again, so increment by 1
-			f.filterQuery.FromBlock = big.NewInt(0).Add(currHeader.Number, big.NewInt(1))
+			f.filterQuery.FromBlock = currHeader.Number
 		}
 	}()
 

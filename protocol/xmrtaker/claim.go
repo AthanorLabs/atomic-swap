@@ -104,12 +104,12 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address,
 	err = pcommon.ClaimMonero(
 		s.ctx,
 		s.Env(),
-		s.info.OfferID,
+		s.info,
 		s.XMRClient(),
-		s.walletScanHeight,
 		kpAB,
 		depositAddr,
 		s.noTransferBack,
+		s.Backend.SwapManager(),
 	)
 	if err != nil {
 		return nil, err
