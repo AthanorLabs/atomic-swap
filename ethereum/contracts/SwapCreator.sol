@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPLv3
-pragma solidity 0.8.19 .0;
+pragma solidity ^0.8.19;
 
 import {ERC2771Context} from "./ERC2771Context.sol";
 import {IERC20} from "./IERC20.sol";
@@ -31,11 +31,11 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         bytes32 pubKeyRefund;
         // timestamp before which Alice can call either `setReady` or `refund`
         uint256 timeout0;
-        // timestamp after which Bob cannot claim, only Alice can refund.
+        // timestamp after which Bob cannot claim, only Alice can refund
         uint256 timeout1;
         // the asset being swapped: equal to address(0) for ETH, or an ERC-20 token address
         address asset;
-        // the value of this swap.
+        // the value of this swap
         uint256 value;
         // choose random
         uint256 nonce;
@@ -186,7 +186,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
             // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing
-
+            //
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
@@ -211,7 +211,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
             // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing
-
+            //
             // potential solution: wrap tokens into shares instead of absolute values
             // swap.value would then contain the share of the token
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
@@ -250,7 +250,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         verifySecret(_s, _swap.pubKeyRefund);
         emit Refunded(swapID, _s);
 
-        // send asset back to owner==caller (Alice)
+        // send asset back to swap owner
         swaps[swapID] = Stage.COMPLETED;
         if (_swap.asset == address(0)) {
             _swap.owner.transfer(_swap.value);
