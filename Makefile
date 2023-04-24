@@ -64,6 +64,11 @@ build-darwin:
 build-all: 
 	ALL=true $(MAKE) build
 
+.PHONY: docker-images
+docker-images:
+	scripts/docker-swapd/build-docker-image.sh
+	scripts/docker-bootnode/build-docker-image.sh
+
 # Go bindings for solidity contracts
 .PHONY: bindings
 bindings:

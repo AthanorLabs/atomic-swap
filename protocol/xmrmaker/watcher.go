@@ -37,7 +37,6 @@ func (s *swapState) runContractEventWatcher() {
 func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
 	err := pcommon.CheckSwapID(l, readyTopic, s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
-		log.Infof("log not for us")
 		return nil
 	}
 	if err != nil {
@@ -59,7 +58,6 @@ func (s *swapState) handleReadyLogs(l *ethtypes.Log) error {
 func (s *swapState) handleRefundLogs(ethlog *ethtypes.Log) error {
 	err := pcommon.CheckSwapID(ethlog, refundedTopic, s.contractSwapID)
 	if errors.Is(err, pcommon.ErrLogNotForUs) {
-		log.Warnf("ErrLogNotForUs")
 		return nil
 	}
 	if err != nil {
@@ -72,7 +70,6 @@ func (s *swapState) handleRefundLogs(ethlog *ethtypes.Log) error {
 	}
 
 	// swap was refunded, send EventRefunded
-	log.Infof("sending EventETHRefunded in s.eventCh")
 	event := newEventETHRefunded(sk)
 	s.eventCh <- event
 	return <-event.errCh

@@ -70,7 +70,11 @@ func MainnetConfig() *Config {
 		SwapCreatorAddr: ethcommon.HexToAddress("0x"), // TODO
 		// ForwarderAddr is from https://docs.opengsn.org/networks/addresses.html
 		ForwarderAddr: ethcommon.HexToAddress("0xB2b5841DBeF766d4b521221732F9B618fCf34A87"),
-		Bootnodes:     []string{}, // TODO
+		Bootnodes: []string{
+			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
+			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
+			"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
+		},
 	}
 }
 
@@ -94,7 +98,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0x45cc2dB5021dc9C01513D9ee7914b61810bd6Ad6"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x55D20fF84815795CED5efF61168f5258274A3f87"),
 		ForwarderAddr:   ethcommon.HexToAddress("0xa030E074b8398005a454CB7c51E9b7CDb966744a"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",

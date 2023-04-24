@@ -56,7 +56,7 @@ make build
 
 10. Start the `swapd` daemon. Change `--eth-endpoint` to point to your endpoint.
 ```bash
-./swapd --env stagenet --eth-endpoint SEPOLIA_ENDPOINT
+./bin/swapd --env stagenet --eth-endpoint SEPOLIA_ENDPOINT
 ```
 Note: You probably need additional flags above:
 * `--data-dir PATH`: Needed if you are launching more than one `swapd` instance
@@ -77,6 +77,8 @@ Note: You probably need additional flags above:
 As a taker, you can use either the UI or `swapcli` to discover and take offers.
 
 ### UI
+
+**WARNING: The UI is currently unmaintained and probably does not work; please use the CLI to take offers.**
 
 1. From the `atomic-swap` directory, build and start the UI. Note: you need to have node.js installed.
 ```bash
@@ -103,7 +105,7 @@ yarn start
 # [[/ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv /ip4/127.0.0.1/udp/9934/quic-v1/p2p/12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv]]
 ```
 
-2. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--multiaddr"` field with one of the addresses returned in the above step):
+2. Query a returned peer as to how much XMR they can provide and their preferred exchange rate (replace `"--peer-id"` field with one of the addresses returned in the above step):
 ```bash
 ./bin/swapcli query --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv
 # Offer ID=cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 Provides=XMR MinimumAmount=0.1 MaximumAmount=1 ExchangeRate=0.05
@@ -111,7 +113,7 @@ yarn start
 
 > Note: the exchange rate is the ratio of XMR:ETH price. So for example, a ratio of 0.05 would mean 20 XMR to 1 ETH. Since we're on testnet, it's not critical what you set it to. 
 
-3. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much GoETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
+3. a. Then, finding an offer you like, take the offer by copying the peer's multiaddress and offer ID into the command below. As well, specify how much SepETH you would like to provide, taking into account the offer's exchange rate and min/max XMR amounts.
 ```bash
 ./bin/swapcli take --peer-id 12D3KooWC547RfLcveQi1vBxACjnT6Uv15V11ortDTuxRWuhubGv \
   --offer-id cf4bf01a0775a0d13fa41b14516e4b89034300707a1754e0d99b65f6cb6fffb9 --provides-amount 0.05
@@ -125,9 +127,7 @@ yarn start
   --provides-amount 0.05 --detached --swapd-port 5001
 ```
 
-If all goes well, you should see the node execute the swap protocol. If the swap ends successfully, a Monero wallet will be generated in the `--wallet-dir` provided in the `monero-wallet-rpc` step (so `./node-keys`) named `swap-deposit-wallet`. This wallet will contained the received XMR.
-
-> Note: optionally, you can add the `--transfer-back` flag when starting `swapd` to automatically transfer received XMR back into your original wallet, if you have one opened on the endpoint when starting `swapd`.
+If all goes well, you should see the node execute the swap protocol. If the swap ends successfully, the XMR received will automatically be transferred back your original wallet.
 
 ## Maker
  
@@ -158,8 +158,6 @@ If you don't have any luck with these, please message me on twitter/reddit (@eli
 
 When a peer takes your offer, you will see logs in `swapd` notifying you that a swap has been initiated. If all goes well, you should receive the SepETH in the Sepolia account created earlier.
 
-> Note: if you exit the `swapd` process, your offers are currently not saved, so when you restart you will not have any offers.
-
 ## Troubleshooting
 
 Ideally, the exit case of the swap should be `Success`. If this is not the case, it will either be one of `Refunded` or `Aborted`.
@@ -171,7 +169,6 @@ Neither of these should happen, so if they happen, it indicates an issue either 
 A few common errors are:
 - `Failed to get height`: double check that your `monerod --stagenet` process is running.
 - `unlocked balance is less than maximum offer amount`: you will see this if you're a maker and try to make an offer but don't have enough balance. Either get more stagenet XMR or wait for your balance to unlock.
-- `already have ongoing swap`: either you or the remote peer already have a swap happening, so you need to wait for it to finish before starting another swap. Currently, `swapd` only supports one swap at a time, but support for concurrent swaps is planned.
 
 ## Trying the swap on a different network
 

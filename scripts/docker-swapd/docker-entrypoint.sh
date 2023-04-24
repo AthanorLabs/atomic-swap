@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 cmd="$(basename "${1}")"
@@ -36,7 +35,7 @@ fi
 
 # Run swapd and swapcli commands as the atomic user for reduced
 # privileges.
-if [[ "${cmd}" == 'swapd' || "${cmd}" == 'swacli' ]]; then
+if [[ "${cmd}" == 'swapd' || "${cmd}" == 'swapcli' ]]; then
 	exec gosu atomic "$@"
 fi
 
