@@ -17,8 +17,8 @@ compile-contract() {
 
 	echo "Generating go bindings for ${solidity_type_name}"
 
-	"${SOLC_BIN}" --abi "ethereum/contracts/${solidity_type_name}.sol" -o ethereum/abi/ --overwrite
-	"${SOLC_BIN}" --bin "ethereum/contracts/${solidity_type_name}.sol" -o ethereum/bin/ --overwrite
+	"${SOLC_BIN}" --optimize --optimize-runs=200 --abi "ethereum/contracts/${solidity_type_name}.sol" -o ethereum/abi/ --overwrite
+	"${SOLC_BIN}" --optimize --optimize-runs=200 --bin "ethereum/contracts/${solidity_type_name}.sol" -o ethereum/bin/ --overwrite
 	"${ABIGEN}" \
 		--abi "ethereum/abi/${solidity_type_name}.abi" \
 		--bin "ethereum/bin/${solidity_type_name}.bin" \
