@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 
 	"github.com/athanorlabs/go-relayer/common"
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
@@ -40,7 +39,6 @@ func DeploySwapCreatorWithKey(
 		}
 	}
 
-	txOpts.GasPrice = big.NewInt(20_000_000_000)
 	address, tx, sf, err := DeploySwapCreator(txOpts, ec, forwarderAddr)
 	if err != nil {
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap creator: %w", err)
@@ -62,7 +60,6 @@ func DeployGSNForwarderWithKey(
 	ec *ethclient.Client,
 	privKey *ecdsa.PrivateKey,
 ) (ethcommon.Address, error) {
-
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return ethcommon.Address{}, err
@@ -135,7 +132,6 @@ func registerDomainSeparator(
 	forwarderAddr ethcommon.Address,
 	forwarder *gsnforwarder.Forwarder,
 ) error {
-
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return err
