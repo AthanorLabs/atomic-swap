@@ -21,7 +21,7 @@ var (
 	log = logging.Logger("protocol")
 )
 
-// SwapManager is the interface for the swap manager.
+// SwapManager is the subset of the swap.Manager interface needed by ClaimMonero
 type SwapManager interface {
 	WriteSwapToDB(info *swap.Info) error
 }

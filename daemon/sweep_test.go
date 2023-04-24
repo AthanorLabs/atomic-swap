@@ -23,7 +23,7 @@ import (
 // completes the sweep from the swap wallet back to her primary wallet.
 // The Alice restarts, she should not try to sweep again and instead know
 // that the swap is already complete.
-func TestIssue385(t *testing.T) {
+func TestAliceStoppedAndRestartedDuringXMRSweep(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
 	exRate := coins.StrToExchangeRate("300")
