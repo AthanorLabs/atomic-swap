@@ -12,6 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,12 @@ var (
 	_ = logging.SetLogLevel("monero", "debug")
 	_ = logging.SetLogLevel("protocol", "debug")
 )
+
+type mockSwapManager struct{}
+
+func (*mockSwapManager) WriteSwapToDB(info *swap.Info) error {
+	return nil
+}
 
 func TestClaimMonero_NoTransferBack(t *testing.T) {
 	env := common.Development
@@ -44,15 +51,19 @@ func TestClaimMonero_NoTransferBack(t *testing.T) {
 	pnAmt := coins.MoneroToPiconero(xmrAmt)
 	monero.MineMinXMRBalance(t, moneroCli, pnAmt)
 
+	info := &swap.Info{
+		MoneroStartHeight: height,
+	}
+
 	err = ClaimMonero(
 		context.Background(),
 		common.Development,
-		[32]byte{},
+		info,
 		moneroCli,
-		height,
 		kp,
 		nil, // deposit address can be nil, as noTransferBack is true
 		true,
+		new(mockSwapManager),
 	)
 	require.NoError(t, err)
 }
@@ -84,15 +95,19 @@ func TestClaimMonero_WithTransferBack(t *testing.T) {
 	require.NoError(t, err)
 	depositAddr := kp2.PublicKeyPair().Address(env)
 
+	info := &swap.Info{
+		MoneroStartHeight: height,
+	}
+
 	err = ClaimMonero(
 		context.Background(),
 		common.Development,
-		[32]byte{},
+		info,
 		moneroCli,
-		height,
 		kp,
 		depositAddr,
 		false,
+		new(mockSwapManager),
 	)
 	require.NoError(t, err)
 }

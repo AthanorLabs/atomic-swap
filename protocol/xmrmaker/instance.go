@@ -107,6 +107,20 @@ func (inst *Instance) checkForOngoingSwaps() error {
 			continue
 		}
 
+		if s.Status == types.SweepingXMR {
+			log.Infof(
+				"found ongoing swap %s in DB where XMR was being swept back to the primary account, marking as completed",
+				s.OfferID,
+			)
+			s.Status = types.CompletedRefund
+			err = inst.backend.SwapManager().CompleteOngoingSwap(s)
+			if err != nil {
+				return fmt.Errorf("failed to mark swap as completed: %w", err)
+			}
+
+			continue
+		}
+
 		err = inst.createOngoingSwap(s)
 		if err != nil {
 			log.Errorf("%s", err)
@@ -231,12 +245,12 @@ func (inst *Instance) completeSwap(s *swap.Info, skA *mcrypto.PrivateSpendKey) e
 	err = pcommon.ClaimMonero(
 		inst.backend.Ctx(),
 		inst.backend.Env(),
-		s.OfferID,
+		s,
 		inst.backend.XMRClient(),
-		s.MoneroStartHeight,
 		kpAB,
 		inst.backend.XMRClient().PrimaryAddress(),
 		false, // always sweep back to our primary address
+		inst.backend.SwapManager(),
 	)
 	if err != nil {
 		return err

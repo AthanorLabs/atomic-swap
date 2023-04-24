@@ -122,7 +122,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 
 	timeout := 7 * time.Minute
-	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf)
+	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -215,7 +215,7 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
 
 	timeout := 8 * time.Minute
-	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf)
+	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -300,7 +300,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	require.NoError(t, err)
 
 	timeout := 7 * time.Minute
-	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
+	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -405,7 +405,7 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	charlieConf.IsRelayer = true
 
 	timeout := 7 * time.Minute
-	ctx := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
+	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
 	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
 	require.NoError(t, err)
@@ -479,7 +479,7 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 	conf := CreateTestConf(t, tests.GetMakerTestKey(t))
 	protocolVersion := fmt.Sprintf("%s/%d", net.ProtocolID, conf.EthereumClient.ChainID())
 	timeout := time.Minute
-	ctx := LaunchDaemons(t, timeout, conf)
+	ctx, _ := LaunchDaemons(t, timeout, conf)
 
 	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
 	versionResp, err := c.Version()
@@ -495,7 +495,7 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 func TestRunSwapDaemon_RPC_Shutdown(t *testing.T) {
 	conf := CreateTestConf(t, tests.GetMakerTestKey(t))
 	timeout := time.Minute
-	ctx := LaunchDaemons(t, timeout, conf)
+	ctx, _ := LaunchDaemons(t, timeout, conf)
 
 	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
 	err := c.Shutdown()

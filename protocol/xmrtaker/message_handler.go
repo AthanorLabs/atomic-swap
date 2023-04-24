@@ -63,6 +63,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
+	log.Debugf("setting status to %s", status)
 	s.info.SetStatus(status)
 	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
 	if err != nil {
