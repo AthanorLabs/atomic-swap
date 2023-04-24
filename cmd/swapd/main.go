@@ -198,8 +198,8 @@ func cliApp() *cli.App {
 			&cli.StringFlag{
 				Name:    flagLogLevel,
 				Usage:   "Set log level: one of [error|warn|info|debug]",
-				Value:   "info",
 				EnvVars: []string{"SWAPD_LOG_LEVEL"},
+				Value:   "info",
 			},
 			&cli.BoolFlag{
 				Name:  flagUseExternalSigner,
