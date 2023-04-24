@@ -13,20 +13,23 @@ import (
 )
 
 func (s *swapState) runContractEventWatcher() {
+	readyEventSent := false
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
 		case l := <-s.logReadyCh:
+			if readyEventSent {
+				// we already sent the ready event, ignore any Ready logs
+				continue
+			}
+
 			eventSent, err := s.handleReadyLogs(&l)
 			if err != nil {
 				log.Errorf("failed to handle ready logs: %s", err)
 			}
 
-			if eventSent {
-				log.Debugf("EventContractReady sent, returning from event watcher")
-				return
-			}
+			readyEventSent = eventSent
 		case l := <-s.logRefundedCh:
 			eventSent, err := s.handleRefundLogs(&l)
 			if err != nil {
