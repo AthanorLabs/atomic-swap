@@ -157,6 +157,9 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 		RecoveryDB:      sdb.RecoveryDB(),
 		Namespaces:      rpc.AllNamespaces(),
 	})
+	if err != nil {
+		return err
+	}
 
 	log.Infof("starting swapd with data-dir %s", conf.EnvConf.DataDir)
 	err = rpcServer.Start()
