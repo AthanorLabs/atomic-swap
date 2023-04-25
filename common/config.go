@@ -67,7 +67,7 @@ func MainnetConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0x"), // TODO
+		SwapCreatorAddr: ethcommon.HexToAddress("0xD3d19539D61bB0e7617E499C7262594E71CA1c66"),
 		// ForwarderAddr is from https://docs.opengsn.org/networks/addresses.html
 		ForwarderAddr: ethcommon.HexToAddress("0xB2b5841DBeF766d4b521221732F9B618fCf34A87"),
 		Bootnodes: []string{
