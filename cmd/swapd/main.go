@@ -159,7 +159,7 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
-				Usage: "Address of instance of SwapCreator.sol already deployed on-chain; required if running on mainnet",
+				Usage: "Address of instance of SwapCreator.sol already deployed on-chain",
 			},
 			&cli.StringSliceFlag{
 				Name:    flagBootnodes,

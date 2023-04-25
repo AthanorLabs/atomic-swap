@@ -123,7 +123,7 @@ start-daemons() {
 
 	start-swapd charlie "${CHARLIE_RPC_PORT}" \
 		"--env=dev"
-		"--log-level=${LOG_LEVEL}" \
+	"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
 		"--bootnodes=${ALICE_MULTIADDR}" \
