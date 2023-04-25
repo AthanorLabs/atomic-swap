@@ -86,7 +86,7 @@ func deploySwapCreator(
 			return ethcommon.Address{}, nil, err
 		}
 	} else {
-		// TODO: ignore this is the forwarderAddr is the one that's hardcoded for this network
+		// TODO: ignore this if the forwarderAddr is the one that's hardcoded for this network
 		if err := contracts.CheckForwarderContractCode(ctx, ec, forwarderAddr); err != nil {
 			return ethcommon.Address{}, nil, err
 		}
