@@ -78,6 +78,7 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 	txOpts.GasPrice = gasPrice
+	log.Debugf("relaying tx with gas price %s", gasPrice)
 
 	err = simulateExecute(
 		ctx,
@@ -89,6 +90,7 @@ func ValidateAndSendTransaction(
 		req.Signature,
 	)
 	if err != nil {
+		log.Errorf("failed to simulate execute: %s", err)
 		return nil, err
 	}
 
@@ -101,6 +103,7 @@ func ValidateAndSendTransaction(
 		req.Signature,
 	)
 	if err != nil {
+		log.Errorf("failed to call execute: %s", err)
 		return nil, err
 	}
 

@@ -60,7 +60,7 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 	// (2) If the request is purportedly from a maker to a taker of a current
 	//     swap, then:
 	//     (a) The swap should exist in our swaps map
-	//     (b) The peerID who sent us the request much match the peerID with
+	//     (b) The peerID who sent us the request must match the peerID with
 	//         whom we are performing the swap.
 	if req.OfferID == nil && !h.isRelayer {
 		return
