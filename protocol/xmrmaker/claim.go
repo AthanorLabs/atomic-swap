@@ -90,9 +90,11 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 
 // checkForMinClaimBalance check if we have enough balance to call claim.
 // return true if we do, false otherwise.
-// TODO: return gas price used for calc?
 func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (bool, error) {
-	const claimGas = 50000 // TODO: check for ERC20
+	// gas cost for ETH-claim is 42965
+	// gas cost for ERC20-claim is 47138
+	// add a bit of leeway to allow for sudden gas price spikes
+	const claimGas = 50000
 
 	balance, err := ec.Balance(ctx)
 	if err != nil {
