@@ -78,21 +78,21 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 	txOpts.GasPrice = gasPrice
-	log.Debugf("relaying tx with gas price %s", gasPrice)
+	txOpts.GasLimit = forwarderClaimGas
+	log.Debugf("relaying tx with gas price %s and gas limit %s", gasPrice, txOpts.GasLimit)
 
-	// err = simulateExecute(
-	// 	ctx,
-	// 	ec,
-	// 	&reqForwarderAddr,
-	// 	txOpts,
-	// 	*forwarderReq,
-	// 	*domainSeparator,
-	// 	req.Signature,
-	// )
-	// if err != nil {
-	// 	log.Errorf("failed to simulate execute: %s", err)
-	// 	return nil, err
-	// }
+	err = simulateExecute(
+		ctx,
+		ec,
+		&reqForwarderAddr,
+		txOpts,
+		*forwarderReq,
+		*domainSeparator,
+		req.Signature,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := reqForwarder.Execute(
 		txOpts,
