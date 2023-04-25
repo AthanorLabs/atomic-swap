@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
@@ -42,10 +43,12 @@ func getOrDeploySwapCreator(
 	forwarderAddr ethcommon.Address,
 ) (ethcommon.Address, error) {
 	var err error
+	if (swapCreatorAddr == ethcommon.Address{}) {
+		if env == common.Mainnet {
+			log.Warnf("you are deploying SwapCreator.sol on mainnet! giving you a few seconds to cancel if this is unintended")
+			time.Sleep(10 * time.Second)
+		}
 
-	if env != common.Mainnet && (swapCreatorAddr == ethcommon.Address{}) {
-		// we're on a development or testnet environment and we have no deployed contract,
-		// so let's deploy one
 		swapCreatorAddr, _, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), forwarderAddr, dataDir)
 		if err != nil {
 			return ethcommon.Address{}, fmt.Errorf("failed to deploy swap creator: %w", err)
@@ -83,6 +86,7 @@ func deploySwapCreator(
 			return ethcommon.Address{}, nil, err
 		}
 	} else {
+		// TODO: ignore this is the forwarderAddr is the one that's hardcoded for this network
 		if err := contracts.CheckForwarderContractCode(ctx, ec, forwarderAddr); err != nil {
 			return ethcommon.Address{}, nil, err
 		}

@@ -114,9 +114,9 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:    flagEnv,
-				Usage:   "Environment to use: one of mainnet, stagenet, or dev",
+				Usage:   "Environment to use: one of mainnet, stagenet, or dev: Default: mainnet",
 				EnvVars: []string{"SWAPD_ENV"},
-				Value:   "dev",
+				Value:   "mainnet",
 			},
 			&cli.StringFlag{
 				Name:    flagMoneroDaemonHost,
