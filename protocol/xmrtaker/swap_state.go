@@ -154,9 +154,6 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	log.Infof("s.privkeys.SpendKey()", s.privkeys.SpendKey())
-	log.Infof("s.privkeys.ViewKey()", s.privkeys.ViewKey())
-
 	statusCh <- stage
 	return s, nil
 }
@@ -176,9 +173,6 @@ func newSwapStateFromOngoing(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get xmrmaker swap keys from db: %w", err)
 	}
-
-	log.Infof("makerSk: %s", makerSk)
-	log.Infof("makerVk: %s", makerVk)
 
 	s, err := newSwapState(
 		b,
@@ -202,9 +196,6 @@ func newSwapStateFromOngoing(
 	s.contractSwap = ethSwapInfo.Swap
 	s.xmrmakerPublicSpendKey = makerSk
 	s.xmrmakerPrivateViewKey = makerVk
-
-	log.Infof("s.privkeys.SpendKey()", s.privkeys.SpendKey())
-	log.Infof("s.privkeys.ViewKey()", s.privkeys.ViewKey())
 
 	if info.Status == types.ETHLocked {
 		go s.checkForXMRLock()

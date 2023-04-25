@@ -96,11 +96,6 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address,
 		depositAddr = nil
 	}
 
-	log.Infof("skB", skB)
-	log.Infof("s.privkeys.SpendKey()", s.privkeys.SpendKey())
-	log.Infof("s.xmrmakerPrivateViewKey", s.xmrmakerPrivateViewKey)
-	log.Infof("s.privkeys.ViewKey()", s.privkeys.ViewKey())
-
 	kpAB := pcommon.GetClaimKeypair(
 		skB, s.privkeys.SpendKey(),
 		s.xmrmakerPrivateViewKey, s.privkeys.ViewKey(),
