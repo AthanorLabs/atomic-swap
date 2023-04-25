@@ -70,6 +70,9 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 		},
 		IsBootnodeOnly: true,
 	})
+	if err != nil {
+		return err
+	}
 
 	log.Infof("starting bootnode with data-dir %s", cfg.DataDir)
 	err = rpcServer.Start()
