@@ -79,7 +79,7 @@ func ValidateAndSendTransaction(
 	}
 	txOpts.GasPrice = gasPrice
 	txOpts.GasLimit = forwarderClaimGas
-	log.Debugf("relaying tx with gas price %s and gas limit %s", gasPrice, txOpts.GasLimit)
+	log.Debugf("relaying tx with gas price %s and gas limit %d", gasPrice, txOpts.GasLimit)
 
 	err = simulateExecute(
 		ctx,

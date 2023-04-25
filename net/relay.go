@@ -120,7 +120,7 @@ func receiveRelayClaimResponse(stream libp2pnetwork.Stream) (*RelayClaimResponse
 	// The timeout should be short enough, that the Maker can try multiple relayers
 	// before T1 expires even if the receiving node accepts the relay request and
 	// just sits on it without doing anything.
-	const relayResponseTimeout = time.Second * 45
+	const relayResponseTimeout = time.Minute
 
 	select {
 	case msg := <-nextStreamMessage(stream, maxMessageSize):
