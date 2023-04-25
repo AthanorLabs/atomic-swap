@@ -28,7 +28,6 @@ func DeploySwapCreatorWithKey(
 	privKey *ecdsa.PrivateKey,
 	forwarderAddr ethcommon.Address,
 ) (ethcommon.Address, *SwapCreator, error) {
-
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return ethcommon.Address{}, nil, err
@@ -51,7 +50,6 @@ func DeploySwapCreatorWithKey(
 	}
 
 	log.Infof("deployed SwapCreator.sol: address=%s tx hash=%s", address, tx.Hash())
-
 	return address, sf, nil
 }
 
@@ -62,7 +60,6 @@ func DeployGSNForwarderWithKey(
 	ec *ethclient.Client,
 	privKey *ecdsa.PrivateKey,
 ) (ethcommon.Address, error) {
-
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return ethcommon.Address{}, err
@@ -135,7 +132,6 @@ func registerDomainSeparator(
 	forwarderAddr ethcommon.Address,
 	forwarder *gsnforwarder.Forwarder,
 ) error {
-
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return err
