@@ -150,6 +150,8 @@ func getEnvConfig(c *cli.Context) (*common.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("starting bootnode, environment: %s", env)
+
 	conf := common.ConfigDefaultsForEnv(env)
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
