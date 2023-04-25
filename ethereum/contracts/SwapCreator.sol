@@ -125,9 +125,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
             if (_value != msg.value) revert InvalidValue();
         } else {
             // transfer ERC-20 token into this contract
-            // TODO: potentially check token balance before/after this step
-            // and ensure the balance was increased by swap.value since fee-on-transfer
-            // tokens are not supported
+            // WARN: fee-on-transfer tokens are not supported
             IERC20(_asset).transferFrom(msg.sender, address(this), _value);
         }
 
@@ -183,12 +181,9 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         if (_swap.asset == address(0)) {
             _swap.claimer.transfer(_swap.value);
         } else {
-            // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
+            // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
-            // exposing Bob's secret while giving him nothing
-            //
-            // potential solution: wrap tokens into shares instead of absolute values
-            // swap.value would then contain the share of the token
+            // exposing Bob's secret while giving him nothing.
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
         }
     }
@@ -208,12 +203,9 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
             _swap.claimer.transfer(_swap.value - fee);
             payable(tx.origin).transfer(fee); // solhint-disable-line
         } else {
-            // TODO: this will FAIL for fee-on-transfer or rebasing tokens if the token
+            // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
-            // exposing Bob's secret while giving him nothing
-            //
-            // potential solution: wrap tokens into shares instead of absolute values
-            // swap.value would then contain the share of the token
+            // exposing Bob's secret while giving him nothing.
             IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
             IERC20(_swap.asset).transfer(tx.origin, fee); // solhint-disable-line
         }

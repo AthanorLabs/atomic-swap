@@ -67,7 +67,7 @@ func TestExpectedSwapCreatorBytecodeHex(t *testing.T) {
 	allZeroTrustedForwarder := ethcommon.Address{}
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t, allZeroTrustedForwarder))
 	require.Equal(t, expectedSwapCreatorBytecodeHex, codeHex,
-		"update the expectedSwapCreatorBytecodeHex constant with the actual value to fix this test")
+		"update the expectedSwapCreatorBytecodeHex constant with the actual value tocat  fix this test")
 }
 
 // This test will fail if the compiled SwapCreator contract is updated, but the
