@@ -307,11 +307,10 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 	}
 
 	if devXMRMaker || devXMRTaker {
-		env = common.Mainnet
+		env = common.Development
 	}
 
 	log.Infof("starting swapd, environment: %s", env)
-
 	conf := common.ConfigDefaultsForEnv(env)
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
