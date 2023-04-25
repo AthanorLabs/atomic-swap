@@ -75,7 +75,7 @@ func cliApp() *cli.App {
 			{
 				Name:    "balances",
 				Aliases: []string{"b"},
-				Usage:   "Show our monero and ethereum account balances",
+				Usage:   "Show our Monero and Ethereum account balances",
 				Action:  runBalances,
 				Flags: []cli.Flag{
 					swapdPortFlag,
@@ -89,7 +89,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "eth-address",
-				Usage:  "Show our ethereum address with its QR code",
+				Usage:  "Show our Ethereum address with its QR code",
 				Action: runETHAddress,
 				Flags: []cli.Flag{
 					swapdPortFlag,
@@ -106,7 +106,7 @@ func cliApp() *cli.App {
 			{
 				Name:    "discover",
 				Aliases: []string{"d"},
-				Usage:   "Discover peers who provide a certain coin",
+				Usage:   "Discover peers who provide Monero or relayer services",
 				Action:  runDiscover,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -140,7 +140,7 @@ func cliApp() *cli.App {
 			{
 				Name:    "query-all",
 				Aliases: []string{"qall"},
-				Usage:   "discover peers that provide a certain coin and their offers",
+				Usage:   "Discover peers that provide Monero and their offers",
 				Action:  runQueryAll,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -160,7 +160,7 @@ func cliApp() *cli.App {
 			{
 				Name:    "make",
 				Aliases: []string{"m"},
-				Usage:   "Make a swap offer; currently monero holders must be the makers",
+				Usage:   "Make a swap offer; currently Monero holders must be the makers",
 				Action:  runMake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -196,7 +196,7 @@ func cliApp() *cli.App {
 			{
 				Name:    "take",
 				Aliases: []string{"t"},
-				Usage:   "Initiate a swap by taking an offer; currently only eth holders can be the takers",
+				Usage:   "Initiate a swap by taking an offer; currently only ETH holders can be the takers",
 				Action:  runTake,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
