@@ -18,10 +18,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-// This test starts a swap between Bob and Alice. The nodes restart *twice* after the contract
-// is ready but before Bob claims. Then, on second restart, Bob should have claimed and
+// This test starts a swap between Bob and Alice. The nodes restart *twice* after the xmr is locked
+// but before Bob claims. Then, on second restart, Bob should have claimed and
 // Alice should be able to get the XMR.
-func TestAliceDoubleRestartAfterContractReady(t *testing.T) {
+func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
 	exRate := coins.StrToExchangeRate("300")
@@ -94,12 +94,6 @@ func TestAliceDoubleRestartAfterContractReady(t *testing.T) {
 				if !status.IsOngoing() {
 					return
 				}
-
-				// if status == types.ETHLocked {
-				// 	cancel()
-				// 	t.Log("cancelling context of Alice's and Bob's servers")
-				// 	return
-				// }
 			case <-ctx.Done():
 				t.Logf("Alice's context cancelled before she completed the swap [expected]")
 				return
