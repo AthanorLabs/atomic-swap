@@ -122,6 +122,7 @@ start-daemons() {
 		"--contract-address=${SWAP_CREATOR_ADDR}"
 
 	start-swapd charlie "${CHARLIE_RPC_PORT}" \
+		"--env=dev" \
 		"--log-level=${LOG_LEVEL}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \

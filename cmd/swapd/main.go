@@ -114,9 +114,9 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:    flagEnv,
-				Usage:   "Environment to use: one of mainnet, stagenet, or dev",
+				Usage:   "Environment to use: one of mainnet, stagenet, or dev: Default: mainnet",
 				EnvVars: []string{"SWAPD_ENV"},
-				Value:   "dev",
+				Value:   "mainnet",
 			},
 			&cli.StringFlag{
 				Name:    flagMoneroDaemonHost,
@@ -159,7 +159,7 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:  flagContractAddress,
-				Usage: "Address of instance of SwapCreator.sol already deployed on-chain; required if running on mainnet",
+				Usage: "Address of instance of SwapCreator.sol already deployed on-chain",
 			},
 			&cli.StringSliceFlag{
 				Name:    flagBootnodes,
@@ -295,10 +295,22 @@ func runDaemon(c *cli.Context) error {
 // getEnvConfig returns the environment specific config, adjusting all values changed by
 // command line options.
 func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.Config, error) {
+	if c.IsSet(flagEnv) {
+		if c.String(flagEnv) != common.Development.String() && (devXMRMaker || devXMRTaker) {
+			return nil, errors.New("--dev-xmrmaker and --dev-xmrtaker are only valid with --env=dev")
+		}
+	}
+
 	env, err := common.NewEnv(c.String(flagEnv))
 	if err != nil {
 		return nil, err
 	}
+
+	if devXMRMaker || devXMRTaker {
+		env = common.Development
+	}
+
+	log.Infof("starting swapd, environment: %s", env)
 	conf := common.ConfigDefaultsForEnv(env)
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag

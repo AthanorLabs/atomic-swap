@@ -39,6 +39,7 @@ func DeploySwapCreatorWithKey(
 		}
 	}
 
+	log.Infof("deploying SwapCreator.sol with forwarderAddr %s", forwarderAddr)
 	address, tx, sf, err := DeploySwapCreator(txOpts, ec, forwarderAddr)
 	if err != nil {
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap creator: %w", err)
@@ -132,6 +133,7 @@ func registerDomainSeparator(
 	forwarderAddr ethcommon.Address,
 	forwarder *gsnforwarder.Forwarder,
 ) error {
+	log.Infof("registering domain separator for forwarder %s", forwarderAddr)
 	txOpts, err := newTXOpts(ctx, ec, privKey)
 	if err != nil {
 		return err

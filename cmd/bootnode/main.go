@@ -73,9 +73,9 @@ func cliApp() *cli.App {
 			},
 			&cli.StringFlag{
 				Name:    flagEnv,
-				Usage:   "Environment to use: one of mainnet, stagenet, or dev",
+				Usage:   "Environment to use: one of mainnet, stagenet, or dev. Default: mainnet",
 				EnvVars: []string{"SWAPD_ENV"},
-				Value:   "dev",
+				Value:   "mainnet",
 			},
 			&cli.StringFlag{
 				Name:    cliutil.FlagLogLevel,
@@ -150,6 +150,8 @@ func getEnvConfig(c *cli.Context) (*common.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("starting bootnode, environment: %s", env)
+
 	conf := common.ConfigDefaultsForEnv(env)
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
