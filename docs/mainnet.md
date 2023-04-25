@@ -53,7 +53,7 @@ For Linux 64-bit, you can do:
 ./bin/swapd --env stagenet --eth-endpoint MAINNET_ENDPOINT
 ```
 
-If you did not provide a Monero wallet file with `--wallet-file` above, a Monero wallet file is generated for you at `${HOME}/.atomicswap/mainnet/wallet/swap-wallet`. You can pass this to `monero-wallet-cli --wallet-file FILE` to interact with it.
+If you did not provide a Monero wallet file with `--wallet-file` above, a Monero wallet file is generated for you at `${HOME}/.atomicswap/mainnet/wallet/swap-wallet`. You can pass this to `monero-wallet-cli --wallet-file FILE` to interact with it. **The wallet password is empty by default.**
 
 Note: You may need additional flags above:
 * `--eth-privkey`: Path to a file containing an Ethereum private key (hex string). If you want to act as an XMR-taker (ETH provider), `swapd` needs access to a funded account. If you do not provide a key with this flag, you should transfer funds to the address logged when the node starts up.
