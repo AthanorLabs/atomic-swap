@@ -60,7 +60,7 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 	// (2) If the request is purportedly from a maker to a taker of a current
 	//     swap, then:
 	//     (a) The swap should exist in our swaps map
-	//     (b) The peerID who sent us the request much match the peerID with
+	//     (b) The peerID who sent us the request must match the peerID with
 	//         whom we are performing the swap.
 	if req.OfferID == nil && !h.isRelayer {
 		return
@@ -120,7 +120,7 @@ func receiveRelayClaimResponse(stream libp2pnetwork.Stream) (*RelayClaimResponse
 	// The timeout should be short enough, that the Maker can try multiple relayers
 	// before T1 expires even if the receiving node accepts the relay request and
 	// just sits on it without doing anything.
-	const relayResponseTimeout = time.Second * 45
+	const relayResponseTimeout = time.Minute
 
 	select {
 	case msg := <-nextStreamMessage(stream, maxMessageSize):

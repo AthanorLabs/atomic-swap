@@ -196,16 +196,9 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleNotifyETHLocked(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
-			if !s.fundsLocked {
-				return
-			}
 		}
 
-		err = s.setNextExpectedEvent(EventContractReadyType)
-		if err != nil {
-			e.errCh <- fmt.Errorf("failed to set next expected event to EventContractReadyType: %w", err)
-			return
-		}
+		// nextExpectedEvent was set in s.lockFunds()
 	case *EventContractReady:
 		log.Infof("EventContractReady")
 		defer close(e.errCh)
