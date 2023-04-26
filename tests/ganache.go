@@ -55,9 +55,9 @@ const (
 	repoName = "github.com/athanorlabs/atomic-swap/"
 )
 
-// fallbacks endpoints for tests that require mainnet or sepolia clients.
-// values set by ETH_MAINNET_ENDPOINT and ETH_SEPOLIA_ENDPOINT environment
-// variables have precedence.
+// Fallback endpoints for tests that require mainnet or sepolia clients.
+// Endpoint values set by ETH_MAINNET_ENDPOINT and ETH_SEPOLIA_ENDPOINT
+// environment variables have precedence.
 const (
 	fallbackMainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
 	fallbackSepoliaEndpoint = "https://rpc.sepolia.org/"
