@@ -33,7 +33,6 @@ var forwarderAddrIndices = []int{203, 1124}
 
 var (
 	errInvalidSwapCreatorContract = errors.New("given contract address does not contain correct SwapCreator code")
-	errInvalidForwarderContract   = errors.New("given contract address does not contain correct Forwarder code")
 )
 
 // CheckSwapCreatorContractCode checks that the bytecode at the given address matches the
@@ -91,7 +90,7 @@ func CheckSwapCreatorContractCode(
 
 	err = CheckForwarderContractCode(ctx, ec, forwarderAddr)
 	if err != nil {
-		return ethcommon.Address{}, err
+		return ethcommon.Address{}, fmt.Errorf("%w: %s", errInvalidSwapCreatorContract, err)
 	}
 
 	// return the trusted forwarder address that was parsed from the deployed contract byte code
@@ -105,30 +104,21 @@ func CheckForwarderContractCode(
 	ec *ethclient.Client,
 	contractAddr ethcommon.Address,
 ) error {
-	// mainnet override - since the forwarder contract deployed on mainnet is compiled
-	// with solidity 0.8.7, but we're using 0.8.19 for SwapCreator.sol, we can just
-	// check that the address is what's expected.
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
 		return err
 	}
 
-	if contractAddr == common.MainnetConfig().ForwarderAddr && chainID.Uint64() == common.MainnetChainID {
-		return nil
+	switch chainID.Uint64() {
+	case common.MainnetChainID:
+		if contractAddr == ethcommon.HexToAddress(gsnforwarder.MainnetForwarderAddrHex) {
+			return nil
+		}
+	case common.SepoliaChainID:
+		if contractAddr == ethcommon.HexToAddress(gsnforwarder.SepoliaForwarderAddrHex) {
+			return nil
+		}
 	}
 
-	code, err := ec.CodeAt(ctx, contractAddr, nil)
-	if err != nil {
-		return err
-	}
-
-	expectedCode := ethcommon.FromHex(gsnforwarder.ForwarderMetaData.Bin)
-
-	// expectedCode is the compiled code, while code is the deployed bytecode.
-	// the deployed bytecode is a subset of the compiled code.
-	if !bytes.Equal(expectedCode[705:9585], code) {
-		return errInvalidForwarderContract
-	}
-
-	return nil
+	return gsnforwarder.CheckForwarderContractCode(ctx, ec, contractAddr)
 }

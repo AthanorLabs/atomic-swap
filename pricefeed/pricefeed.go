@@ -22,9 +22,9 @@ import (
 
 const (
 	// mainnetEndpoint is a mainnet ethereum endpoint, from
-	// https://chainlist.org/chain/1, which stagenet users get pointed at for price
-	// feeds, as Goeri doesn't have an XMR feed. Mainnet users will use the same
-	// ethereum endpoint that they use for other swap transactions.
+	// https://chainlist.org/chain/1, which stagenet users get pointed at for
+	// price feeds, as Sepolia doesn't have an XMR feed. Mainnet users will use
+	// the same ethereum endpoint that they use for other swap transactions.
 	mainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
 
 	// https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
