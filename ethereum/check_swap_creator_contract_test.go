@@ -8,17 +8,16 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"os"
 	"testing"
 
+	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/tests"
-
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/require"
 )
 
 // deployContract is a test helper that deploys the SwapCreator contract and returns the
@@ -124,30 +123,31 @@ func TestCheckSwapCreatorContractCode_fail(t *testing.T) {
 }
 
 func TestSepoliaContract(t *testing.T) {
-	endpoint := os.Getenv("ETH_SEPOLIA_ENDPOINT")
-	if endpoint == "" {
-		endpoint = "https://rpc.sepolia.org/"
-	}
+	ctx := context.Background()
+	ec := tests.NewEthSepoliaClient(t)
 
 	// temporarily place a funded sepolia private key below to deploy the test contract
 	const sepoliaKey = ""
-
-	ctx := context.Background()
-	ec, err := ethclient.Dial(endpoint)
-	require.NoError(t, err)
-	defer ec.Close()
 
 	parsedTFAddr, err := CheckSwapCreatorContractCode(ctx, ec, common.StagenetConfig().SwapCreatorAddr)
 	if errors.Is(err, errInvalidSwapCreatorContract) && sepoliaKey != "" {
 		pk, err := ethcrypto.HexToECDSA(sepoliaKey) //nolint:govet // shadow declaration of err
 		require.NoError(t, err)
-		forwarderAddr := common.StagenetConfig().ForwarderAddr
-		sfAddr, _, err := DeploySwapCreatorWithKey(context.Background(), ec, pk, forwarderAddr)
+		forwarderAddr := ethcommon.HexToAddress(gsnforwarder.SepoliaForwarderAddrHex)
+		swapCreatorAddr, _, err := DeploySwapCreatorWithKey(ctx, ec, pk, forwarderAddr)
 		require.NoError(t, err)
-		t.Logf("New Sepolia SwapCreator deployed with TrustedForwarder %s", forwarderAddr)
-		t.Fatalf("Update common.StagenetConfig.ContractAddress with %s", sfAddr.Hex())
-	} else {
-		require.NoError(t, err)
-		t.Logf("Sepolia SwapCreator deployed with TrustedForwarder=%s", parsedTFAddr.Hex())
+		t.Fatalf("Update common.StagenetConfig()'s SwapCreatorAddr with %s", swapCreatorAddr.Hex())
 	}
+
+	require.NoError(t, err)
+	require.Equal(t, gsnforwarder.SepoliaForwarderAddrHex, parsedTFAddr.Hex())
+}
+
+func TestMainnetContract(t *testing.T) {
+	ctx := context.Background()
+	ec := tests.NewEthMainnetClient(t)
+	mainnetConf := common.MainnetConfig()
+	parsedTFAddr, err := CheckSwapCreatorContractCode(ctx, ec, mainnetConf.SwapCreatorAddr)
+	require.NoError(t, err)
+	require.Equal(t, gsnforwarder.MainnetForwarderAddrHex, parsedTFAddr.Hex())
 }

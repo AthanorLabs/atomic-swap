@@ -5,11 +5,8 @@ package pricefeed
 
 import (
 	"context"
-	"net/url"
-	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,23 +18,8 @@ func init() {
 	logging.SetLogLevel("pricefeed", "debug")
 }
 
-func getMainnetEndpoint(t *testing.T) string {
-	endpoint := os.Getenv("ETH_MAINNET_ENDPOINT")
-	if endpoint == "" {
-		endpoint = mainnetEndpoint
-	}
-	eURL, err := url.Parse(endpoint)
-	require.NoError(t, err)
-	// path and fragments may have API keys, so don't log them
-	t.Logf("mainnet endpoint is %s://%s", eURL.Scheme, eURL.Host)
-
-	return endpoint
-}
-
 func TestGetETHUSDPrice_mainnet(t *testing.T) {
-	ec, err := ethclient.Dial(getMainnetEndpoint(t))
-	require.NoError(t, err)
-	defer ec.Close()
+	ec := tests.NewEthMainnetClient(t)
 
 	feed, err := GetETHUSDPrice(context.Background(), ec)
 	require.NoError(t, err)
@@ -56,9 +38,7 @@ func TestGetETHUSDPrice_dev(t *testing.T) {
 }
 
 func TestGetXMRUSDPrice_mainnet(t *testing.T) {
-	ec, err := ethclient.Dial(getMainnetEndpoint(t))
-	require.NoError(t, err)
-	defer ec.Close()
+	ec := tests.NewEthMainnetClient(t)
 
 	feed, err := GetXMRUSDPrice(context.Background(), ec)
 	require.NoError(t, err)

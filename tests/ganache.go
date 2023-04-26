@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -52,6 +53,14 @@ var testPackages = []struct {
 
 const (
 	repoName = "github.com/athanorlabs/atomic-swap/"
+)
+
+// fallbacks endpoints for tests that require mainnet or sepolia clients.
+// values set by ETH_MAINNET_ENDPOINT and ETH_SEPOLIA_ENDPOINT environment
+// variables have precedence.
+const (
+	fallbackMainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
+	fallbackSepoliaEndpoint = "https://rpc.sepolia.org/"
 )
 
 // `ganache --deterministic --accounts=50` provides the following keys with
@@ -194,6 +203,44 @@ func NewEthClient(t *testing.T) (*ethclient.Client, *big.Int) {
 	chainID, err := ec.ChainID(context.Background())
 	require.NoError(t, err)
 	return ec, chainID
+}
+
+// NewEthMainnetClient returns a connection to a mainnet endpoint, set by an
+// ETH_MAINNET_ENDPOINT environment variable, for testing. If the environment
+// variable is empty, the test falls back to the `fallbackMainnetEndpoint`
+// constant.
+func NewEthMainnetClient(t *testing.T) *ethclient.Client {
+	endpoint := os.Getenv("ETH_MAINNET_ENDPOINT")
+	if endpoint == "" {
+		endpoint = fallbackMainnetEndpoint
+	}
+
+	ec, err := ethclient.Dial(endpoint)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
+
+	return ec
+}
+
+// NewEthSepoliaClient returns a connection to a Sepolia endpoint, set by an
+// ETH_SEPOLIA_ENDPOINT environment variable, for testing. If the environment
+// variable is empty, the test falls back to the `fallbackSepoliaEndpoint`
+// constant.
+func NewEthSepoliaClient(t *testing.T) *ethclient.Client {
+	endpoint := os.Getenv("ETH_SEPOLIA_ENDPOINT")
+	if endpoint == "" {
+		endpoint = fallbackSepoliaEndpoint
+	}
+
+	ec, err := ethclient.Dial(endpoint)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
+
+	return ec
 }
 
 // MineTransaction is a test helper that blocks until the transaction is included in a block
