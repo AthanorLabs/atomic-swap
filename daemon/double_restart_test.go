@@ -153,7 +153,7 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 
 	// Temporary solution until solution above can be uncommented
 	for i := 0; i < 5; i++ {
-		pastSwap, err := ac.GetPastSwap(&makeResp.OfferID)
+		pastSwap, err := ac.GetPastSwap(&makeResp.OfferID) //nolint:govet
 		require.NoError(t, err)
 		status := pastSwap.Swaps[0].Status
 		t.Logf("Alice past status: %s", status)
