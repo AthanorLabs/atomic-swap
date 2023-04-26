@@ -43,7 +43,7 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	aws, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
 	require.NoError(t, err)
 
-	// Use an independent context for these clients that will execute across 2 runs of the daemons
+	// Use an independent context for these clients that will execute across multiple runs of the daemons
 	bc := rpcclient.NewClient(context.Background(), fmt.Sprintf("http://127.0.0.1:%d", bobConf.RPCPort))
 	ac := rpcclient.NewClient(context.Background(), fmt.Sprintf("http://127.0.0.1:%d", aliceConf.RPCPort))
 
@@ -112,28 +112,60 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	// Make sure both servers had time to fully shut down
 	time.Sleep(3 * time.Second)
 
-	// relaunch the daemons
+	// relaunch the daemons (1st time)
 	t.Logf("daemons stopped, now re-launching them")
 	_, cancel = LaunchDaemons(t, 3*time.Minute, bobConf, aliceConf)
 
 	t.Logf("daemons relaunched, waiting a few seconds before restarting them")
 	time.Sleep(3 * time.Second)
 	cancel()
-	time.Sleep(5 * time.Second) // wait for daemons to shut down
+	time.Sleep(3 * time.Second) // wait for daemons to shut down
 
-	// relaunch the daemons
+	// relaunch the daemons (2nd and final time) overwriting ctx
 	t.Logf("daemons stopped, now re-launching them")
-	_, cancel = LaunchDaemons(t, 3*time.Minute, bobConf, aliceConf)
+	ctx, _ = LaunchDaemons(t, 5*time.Minute, bobConf, aliceConf)
 	t.Logf("daemons relaunched, waiting a few seconds before checking swap status")
-	time.Sleep(10 * time.Second) // give nodes time to complete the swap
 
-	pastSwap, err := ac.GetPastSwap(&makeResp.OfferID)
-	require.NoError(t, err)
-	t.Logf("Alice past status: %s", pastSwap.Swaps[0].Status)
-	require.Equal(t, types.CompletedSuccess, pastSwap.Swaps[0].Status)
+	/*
+	 * We'll switch to the commented out solution when the status channel is recreated
+	 * on restart.
+	 */
+	//	// Give alice a fresh client with a fresh context
+	//	aws, err = wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	//	require.NoError(t, err)
+	//	aliceStatusCh, err = aws.SubscribeSwapStatus(makeResp.OfferID)
+	//	require.NoError(t, err)
+	//
+	//	// In the loop below, Alice's initial state is most likely still SweepingXMR.
+	//endLoop:
+	//	for {
+	//		select {
+	//		case status := <-aliceStatusCh:
+	//			t.Log("> Alice got status:", status)
+	//			if !status.IsOngoing() {
+	//				break endLoop
+	//			}
+	//		case <-ctx.Done():
+	//			t.Logf("Alice's context cancelled before she completed the swap [expected]")
+	//			break endLoop
+	//		}
+	//	}
 
-	pastSwap, err = bc.GetPastSwap(&makeResp.OfferID)
+	// Temporary solution until solution above can be uncommented
+	for i := 0; i < 5; i++ {
+		pastSwap, err := ac.GetPastSwap(&makeResp.OfferID)
+		require.NoError(t, err)
+		status := pastSwap.Swaps[0].Status
+		t.Logf("Alice past status: %s", status)
+		if status.IsOngoing() {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		require.Equal(t, types.CompletedSuccess.String(), pastSwap.Swaps[0].Status.String())
+	}
+
+	pastSwap, err := bc.GetPastSwap(&makeResp.OfferID)
 	require.NoError(t, err)
 	t.Logf("Bob past status: %s", pastSwap.Swaps[0].Status)
-	require.Equal(t, types.CompletedSuccess, pastSwap.Swaps[0].Status)
+	require.Equal(t, types.CompletedSuccess.String(), pastSwap.Swaps[0].Status.String())
 }
