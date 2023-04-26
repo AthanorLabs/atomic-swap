@@ -399,6 +399,8 @@ func estimatedTimeToCompletionForStatus(env common.Environment, status types.Sta
 		return (moneroBlockTime * 10) + (ethBlockTime * 4), nil
 	case types.ContractReady:
 		return (moneroBlockTime * 2) + (ethBlockTime * 2), nil
+	case types.SweepingXMR:
+		return (moneroBlockTime * 2), nil
 	default:
 		return 0, fmt.Errorf("invalid status %s; must be ongoing status type", status)
 	}
