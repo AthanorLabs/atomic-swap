@@ -77,6 +77,7 @@ func MainnetConfig() *Config {
 			"/ip4/109.105.198.218/tcp/9909/p2p/12D3KooWRbAV4AU75JXVUedmwakiM1yzzDzDCdmZWzGdXGQ4Yqdv",
 			"/ip4/185.130.46.66/tcp/9909/p2p/12D3KooWDKf2FJG1AWTJthbs7fcCcsQa26f4pmCR25cktRg2X2aY",
 			"/ip4/93.95.228.200/tcp/9909/p2p/12D3KooWJParpZ1zHDspoV4kogkBsHKrGxMeq3UGFxQUm6TZPojn",
+			"/ip4/31.220.60.19/tcp/9909/p2p/12D3KooWLksqqtzwA4Epg5eCxA2EaJ3Q34RW554HSqUDp2bgromP",
 		},
 	}
 }
