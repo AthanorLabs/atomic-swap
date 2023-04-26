@@ -377,7 +377,7 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
 	case EventXMRLockedType, EventETHClaimedType:
-		// for EventXMRLocked, we already lock our ETH-asset,
+		// for EventXMRLocked, we already locked our ETH-asset,
 		// so we should call Refund().
 		//
 		// for EventETHClaimed, the XMR has been locked, but the

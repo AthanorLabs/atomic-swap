@@ -21,6 +21,8 @@ import (
 // This test starts a swap between Bob and Alice. The nodes restart *twice* after the xmr is locked
 // but before Bob claims. Then, on second restart, Bob should have claimed and
 // Alice should be able to get the XMR.
+// The test restarts twice specifically to check that the swap keys were not overwritten or
+// deleted from the database.
 func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
