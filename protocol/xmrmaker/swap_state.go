@@ -77,8 +77,6 @@ type swapState struct {
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
-	// set to true once funds are locked
-	fundsLocked bool
 
 	readyWatcher *watcher.EventFilter
 
@@ -567,12 +565,12 @@ func (s *swapState) reclaimMonero(skA *mcrypto.PrivateSpendKey) error {
 	return pcommon.ClaimMonero(
 		s.ctx,
 		s.Env(),
-		s.OfferID(),
+		s.info,
 		s.XMRClient(),
-		s.moneroStartHeight,
 		kpAB,
 		s.XMRClient().PrimaryAddress(),
 		false, // always sweep back to our primary address
+		s.Backend.SwapManager(),
 	)
 }
 
@@ -654,8 +652,15 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) error {
 
 	log.Debug("total XMR balance: ", coins.FmtPiconeroAsXMR(balance.Balance))
 	log.Info("unlocked XMR balance: ", coins.FmtPiconeroAsXMR(balance.UnlockedBalance))
-
 	log.Infof("Starting lock of %s XMR in address %s", amount.AsMoneroString(), swapDestAddr)
+
+	// set next expected event here, otherwise if we restart while `Transfer` is happening,
+	// we won't notice that we already locked the XMR on restart.
+	err = s.setNextExpectedEvent(EventContractReadyType)
+	if err != nil {
+		return fmt.Errorf("failed to set next expected event to EventContractReadyType: %w", err)
+	}
+
 	transfer, err := s.XMRClient().Transfer(s.ctx, swapDestAddr, 0, amount, monero.MinSpendConfirmations)
 	if err != nil {
 		return err
@@ -663,6 +668,5 @@ func (s *swapState) lockFunds(amount *coins.PiconeroAmount) error {
 
 	log.Infof("Successfully locked XMR funds: txID=%s address=%s block=%d",
 		transfer.TxID, swapDestAddr, transfer.Height)
-	s.fundsLocked = true
 	return nil
 }

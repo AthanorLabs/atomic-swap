@@ -3,7 +3,7 @@ set -e
 
 # SWAPD_ENV is only set if not already set. See further down for all the SWAPD_*
 # environment variables that can be set for the bootnode.
-SWAPD_ENV="${SWAPD_ENV:-"stagenet"}"
+SWAPD_ENV="${SWAPD_ENV:-"mainnet"}"
 
 # You can only run one container with the same name at the same time. Having
 # docker run fail because a same-named container already exists is good, as both
@@ -46,7 +46,10 @@ set -x
 # also run on a host where the public IP is directly on an interface of the
 # parent VM. This allows a bootnode to instantly know its libp2p IP and port on
 # start, without depending on multiple other nodes for IP address discovery.
-exec docker run --rm -v "${DATA_MOUNT_DIR}:/data" "${env_args[@]}" \
+# With the flags below, the container will automatically restart on reboot.
+exec docker run --restart=unless-stopped --detach \
+	-v "${DATA_MOUNT_DIR}:/data" \
+	"${env_args[@]}" \
 	--network=host \
 	--name="${CONTAINER_NAME}" \
 	"${IMAGE_NAME}:${VERSION}"

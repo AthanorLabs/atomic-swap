@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -15,9 +16,11 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
+	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/relayer"
 )
@@ -39,12 +42,16 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 		log.Infof("balance before claim: %s %s", balance.AsStandardString(), balance.StandardSymbol())
 	}
 
+	hasBalanceToClaim, err := checkForMinClaimBalance(s.ctx, s.ETHClient())
+	if err != nil {
+		return nil, err
+	}
+
 	var receipt *ethtypes.Receipt
 
 	// call swap.Swap.Claim() w/ b.privkeys.sk, revealing XMRMaker's secret spend key
-	if s.offerExtra.UseRelayer || weiBalance.Decimal().IsZero() {
+	if s.offerExtra.UseRelayer || !hasBalanceToClaim {
 		// relayer fee was set or we had insufficient funds to claim without a relayer
-		// TODO: Sufficient funds check above should be more specific
 		receipt, err = s.claimWithRelay()
 		if err != nil {
 			return nil, fmt.Errorf("failed to claim using relayers: %w", err)
@@ -81,6 +88,40 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 	return receipt, nil
 }
 
+// checkForMinClaimBalance check if we have enough balance to call claim.
+// return true if we do, false otherwise.
+func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (bool, error) {
+	// gas cost for ETH-claim is 42965
+	// gas cost for ERC20-claim is 47138
+	// add a bit of leeway to allow for sudden gas price spikes
+	const claimGas = 50000
+
+	balance, err := ec.Balance(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if balance.Decimal().IsZero() {
+		return false, nil
+	}
+
+	gasPrice, err := ec.SuggestGasPrice(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	txCost := new(big.Int).Mul(gasPrice, big.NewInt(claimGas))
+	if balance.BigInt().Cmp(txCost) < 0 {
+		log.Infof("balance %s ETH is under the minimum %s ETH to call claim, using a relayer",
+			balance.AsEtherString(),
+			coins.FmtWeiAsETH(txCost),
+		)
+		return false, nil
+	}
+
+	return true, nil
+}
+
 // relayClaimWithXMRTaker relays the claim to the swap's XMR taker, who should
 // process the claim even if they are not relaying claims for everyone.
 func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (*ethtypes.Receipt, error) {
@@ -106,7 +147,6 @@ func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (
 	}
 
 	log.Infof("relayer's claim via counterparty included and validated %s", common.ReceiptInfo(receipt))
-
 	return receipt, nil
 }
 
@@ -128,6 +168,7 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 			log.Debugf("skipping DHT-advertised relayer that is our swap counterparty")
 			continue
 		}
+
 		log.Debugf("submitting claim to relayer with peer ID %s", relayerPeerID)
 		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, request)
 		if err != nil {

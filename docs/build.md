@@ -57,5 +57,6 @@ docker exec CONTAINER_NAME_OR_ID swapcli SUBCOMMAND ...
 
 You can also set command line arguments with environment variables, eg. to run on mainnet:
 ```bash
-SWAPD_ENV=mainnet ./scripts/docker-swapd/run-docker-image.sh
+SWAPD_ENV=mainnet SWAPD_ETH_ENDPOINT=your-eth-endpoint ./scripts/docker-swapd/run-docker-image.sh
 ```
+

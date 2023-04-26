@@ -39,7 +39,6 @@ type Config struct {
 	DataDir         string
 	MoneroNodes     []*MoneroNode
 	SwapCreatorAddr ethcommon.Address
-	ForwarderAddr   ethcommon.Address
 	Bootnodes       []string
 }
 
@@ -67,13 +66,18 @@ func MainnetConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0x"), // TODO
-		// ForwarderAddr is from https://docs.opengsn.org/networks/addresses.html
-		ForwarderAddr: ethcommon.HexToAddress("0xB2b5841DBeF766d4b521221732F9B618fCf34A87"),
+		// Note: SwapCreator contract below is using GSN Forwarder address
+		// 0xB2b5841DBeF766d4b521221732F9B618fCf34A87
+		// https://docs.opengsn.org/networks/addresses.html
+		SwapCreatorAddr: ethcommon.HexToAddress("0xD3d19539D61bB0e7617E499C7262594E71CA1c66"),
 		Bootnodes: []string{
 			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
 			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
 			"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
+			"/ip4/109.105.198.218/tcp/9909/p2p/12D3KooWRbAV4AU75JXVUedmwakiM1yzzDzDCdmZWzGdXGQ4Yqdv",
+			"/ip4/185.130.46.66/tcp/9909/p2p/12D3KooWDKf2FJG1AWTJthbs7fcCcsQa26f4pmCR25cktRg2X2aY",
+			"/ip4/93.95.228.200/tcp/9909/p2p/12D3KooWJParpZ1zHDspoV4kogkBsHKrGxMeq3UGFxQUm6TZPojn",
+			"/ip4/31.220.60.19/tcp/9909/p2p/12D3KooWLksqqtzwA4Epg5eCxA2EaJ3Q34RW554HSqUDp2bgromP",
 		},
 	}
 }
@@ -98,8 +102,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0x55D20fF84815795CED5efF61168f5258274A3f87"),
-		ForwarderAddr:   ethcommon.HexToAddress("0xa030E074b8398005a454CB7c51E9b7CDb966744a"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0xEd014568991A9BE34F381Bf46d9c3f7623D4DEa5"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",

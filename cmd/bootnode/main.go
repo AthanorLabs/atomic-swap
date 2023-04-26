@@ -54,9 +54,10 @@ func cliApp() *cli.App {
 				Value: fmt.Sprintf("{DATA_DIR}/%s", common.DefaultLibp2pKeyFileName),
 			},
 			&cli.UintFlag{
-				Name:  flagLibp2pPort,
-				Usage: "libp2p port to listen on",
-				Value: defaultLibp2pPort,
+				Name:    flagLibp2pPort,
+				Usage:   "libp2p port to listen on",
+				EnvVars: []string{"SWAPD_LIBP2P_PORT"},
+				Value:   defaultLibp2pPort,
 			},
 			&cli.StringSliceFlag{
 				Name:    flagBootnodes,
@@ -65,19 +66,22 @@ func cliApp() *cli.App {
 				EnvVars: []string{"SWAPD_BOOTNODES"},
 			},
 			&cli.UintFlag{
-				Name:  flagRPCPort,
-				Usage: "Port for the bootnode RPC server to run on",
-				Value: defaultRPCPort,
+				Name:    flagRPCPort,
+				Usage:   "Port for the bootnode RPC server to run on",
+				Value:   defaultRPCPort,
+				EnvVars: []string{"SWAPD_RPC_PORT"},
 			},
 			&cli.StringFlag{
-				Name:  flagEnv,
-				Usage: "Environment to use: one of mainnet, stagenet, or dev",
-				Value: "dev",
+				Name:    flagEnv,
+				Usage:   "Environment to use: one of mainnet, stagenet, or dev. Default: mainnet",
+				EnvVars: []string{"SWAPD_ENV"},
+				Value:   "mainnet",
 			},
 			&cli.StringFlag{
-				Name:  cliutil.FlagLogLevel,
-				Usage: "Set log level: one of [error|warn|info|debug]",
-				Value: "info",
+				Name:    cliutil.FlagLogLevel,
+				Usage:   "Set log level: one of [error|warn|info|debug]",
+				EnvVars: []string{"SWAPD_LOG_LEVEL"},
+				Value:   "info",
 			},
 		},
 	}
@@ -146,6 +150,8 @@ func getEnvConfig(c *cli.Context) (*common.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("starting bootnode, environment: %s", env)
+
 	conf := common.ConfigDefaultsForEnv(env)
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag

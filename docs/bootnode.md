@@ -37,20 +37,17 @@ You can then distribute these addresses for other swap nodes to connect to.
 make docker-images
 ```
 
-3. For an example of how to run `bootnode` with docker on stagenet:
+3. For an example of how to run `bootnode` with docker on mainnet:
 ```bash
-./scripts/docker-bootnode/run-docker-image.sh
+SWAPD_ENV=mainnet ./scripts/docker-bootnode/run-docker-image.sh
 ```
 
-This runs `swapd` on stagenet. The container name is `bootnode-stagenet`.
+This runs `swapd` on mainnet. The container name is `bootnode-mainnet`.
+
+By default, `SWAPD_ENV` is currently set to `stagenet`, so be sure to set the environment variable to run on mainnet.
 
 You can interact with it by running `swapcli` inside the container:
 ```bash
 docker exec CONTAINER_NAME_OR_ID swapcli SUBCOMMAND ...
-```
-
-You can also set command line arguments with environment variables, eg. to run on mainnet:
-```bash
-SWAPD_ENV=mainnet ./scripts/docker-swapd/run-docker-image.sh
 ```
 

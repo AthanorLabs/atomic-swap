@@ -150,6 +150,10 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
+	if err := s.generateAndSetKeys(); err != nil {
+		return nil, err
+	}
+
 	statusCh <- stage
 	return s, nil
 }
@@ -294,11 +298,6 @@ func newSwapState(
 		statusCh:          info.StatusCh(),
 	}
 
-	if err := s.generateAndSetKeys(); err != nil {
-		cancel()
-		return nil, err
-	}
-
 	go s.runHandleEvents()
 	go s.runContractEventWatcher()
 	return s, nil
@@ -378,7 +377,7 @@ func (s *swapState) exit() error {
 		s.clearNextExpectedEvent(types.CompletedAbort)
 		return nil
 	case EventXMRLockedType, EventETHClaimedType:
-		// for EventXMRLocked, we already deployed the contract,
+		// for EventXMRLocked, we already locked our ETH-asset,
 		// so we should call Refund().
 		//
 		// for EventETHClaimed, the XMR has been locked, but the
@@ -636,6 +635,22 @@ func (s *swapState) ready() error {
 	}
 
 	if stage != contracts.StagePending {
+		if stage == contracts.StageReady {
+			log.Warnf("contract already set to ready, ignoring call to ready()")
+			return nil
+		}
+
+		if stage == contracts.StageCompleted {
+			log.Infof("contract aleady set to completed, ignoring call to ready() and sending EventExit")
+			go func() {
+				err = s.Exit()
+				if err != nil {
+					log.Errorf("failed to handle EventExit: %s", err)
+				}
+			}()
+			return nil
+		}
+
 		return fmt.Errorf("cannot set contract to ready when swap stage is %s", contracts.StageToString(stage))
 	}
 
