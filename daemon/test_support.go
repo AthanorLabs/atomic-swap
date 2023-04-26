@@ -85,7 +85,6 @@ func LaunchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig)
 	var bootNodes []string // First daemon to launch has no bootnodes
 
 	for n, conf := range configs {
-
 		conf.EnvConf.Bootnodes = bootNodes
 
 		wg.Add(1)
