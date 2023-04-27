@@ -99,8 +99,8 @@ func GetVersion() string {
 		return "unknown-version"
 	}
 
-	commitHash := "???????"
-	dirty := ""
+	commitHash := ""
+	sourcesModified := false
 
 	for _, setting := range info.Settings {
 		switch setting.Key {
@@ -108,17 +108,33 @@ func GetVersion() string {
 			commitHash = setting.Value
 		case "vcs.modified":
 			if setting.Value == "true" {
-				dirty = "-dirty"
+				sourcesModified = true
 			}
 		}
 	}
 
-	return fmt.Sprintf("%s %.7s%s-%s",
-		info.Main.Version, // " (devel)" unless passing a git tagged version to `go install`
-		commitHash,        // 7 bytes is what "git rev-parse --short HEAD" returns
-		dirty,             // add "-dirty" to commit hash if repo was not clean
-		info.GoVersion,
-	)
+	var version strings.Builder
+
+	// The first part a go.mod style version if using "go install" directly with
+	// github. If installing from locally checked out source, the string will be
+	// "(devel)".
+	version.WriteString(info.Main.Version)
+	version.WriteByte(' ')
+
+	// The commit hash will be present if installing from locally checked out
+	// sources, or empty if installing directly from the repo's github URL.
+	if commitHash != "" {
+		// 7 bytes is what "git rev-parse --short HEAD" returns
+		version.WriteString(fmt.Sprintf("%.7s", commitHash))
+		if sourcesModified {
+			version.WriteString("-dirty")
+		}
+	}
+
+	version.WriteByte('-')
+	version.WriteString(info.GoVersion)
+
+	return version.String()
 }
 
 // ReadUnsignedDecimalFlag reads a string flag and parses it into an *apd.Decimal.
