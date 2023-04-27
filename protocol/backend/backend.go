@@ -15,6 +15,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -65,7 +66,7 @@ type Backend interface {
 
 	// helpers
 	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
-	HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
+	HandleRelayClaimRequest(remotePeer peer.ID, request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
 
 	// getters
 	Ctx() context.Context
@@ -237,7 +238,31 @@ func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
 }
 
 // HandleRelayClaimRequest validates and sends the transaction for a relay claim request
-func (b *backend) HandleRelayClaimRequest(request *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+func (b *backend) HandleRelayClaimRequest(
+	remotePeer peer.ID,
+	request *message.RelayClaimRequest,
+) (*message.RelayClaimResponse, error) {
+	if request.OfferID != nil {
+		has := b.swapManager.HasOngoingSwap(*request.OfferID)
+		if !has {
+			return nil, fmt.Errorf("cannot relay taker-specific claim request; no ongoing swap for swap %s", *request.OfferID)
+		}
+
+		info, err := b.swapManager.GetOngoingSwap(*request.OfferID)
+		if err != nil {
+			return nil, err
+		}
+
+		if info.Provides != coins.ProvidesETH {
+			return nil, fmt.Errorf("cannot relay taker-specific claim request; not the xmr-taker for swap %s", *request.OfferID)
+		}
+
+		if remotePeer != info.PeerID {
+			return nil, fmt.Errorf("cannot relay taker-specific claim request from peer %s; unexpected peer for swap %s",
+				remotePeer, *request.OfferID)
+		}
+	}
+
 	// In the taker relay scenario, the net layer has already validated that we
 	// have an ongoing swap with the requesting peer that uses the passed
 	// offerID, but we have not verified that the claim in the swap matches the

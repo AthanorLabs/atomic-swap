@@ -26,6 +26,7 @@ type Manager interface {
 	GetOngoingSwap(types.Hash) (Info, error)
 	GetOngoingSwaps() ([]*Info, error)
 	CompleteOngoingSwap(info *Info) error
+	HasOngoingSwap(types.Hash) bool
 }
 
 // manager implements Manager.
@@ -183,6 +184,14 @@ func (m *manager) CompleteOngoingSwap(info *Info) error {
 
 	// re-write to db, as status has changed
 	return m.db.PutSwap(info)
+}
+
+// HasOngoingSwap returns true if the given ID is an ongoing swap.
+func (m *manager) HasOngoingSwap(id types.Hash) bool {
+	m.RLock()
+	defer m.RUnlock()
+	_, has := m.ongoing[id]
+	return has
 }
 
 func (m *manager) getSwapFromDB(id types.Hash) (*Info, error) {
