@@ -1,4 +1,4 @@
 
 export type NetDiscoverResult = {
-    peers: string[][]
+    peerIDs: string[]
 }
