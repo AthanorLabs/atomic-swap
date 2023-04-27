@@ -11,6 +11,7 @@
 
 # Generated binaries
 /bin/
+/release-bin/
 
 # Test binary, built with `go test -c`
 *.test
