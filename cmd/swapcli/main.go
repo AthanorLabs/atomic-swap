@@ -292,7 +292,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name: "claim",
-				Usage: "manually call claim() in the contract for a given swap." +
+				Usage: "manually call claim() in the contract for a given swap. " +
 					"WARNING: This should only be used if the normal swap process fails.",
 				Action: runClaim,
 				Flags: []cli.Flag{
@@ -306,7 +306,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name: "refund",
-				Usage: "manually call refund() in the contract for a given swap." +
+				Usage: "manually call refund() in the contract for a given swap. " +
 					"WARNING: This should only be used if the normal swap process fails.",
 				Action: runRefund,
 				Flags: []cli.Flag{
@@ -348,14 +348,14 @@ func cliApp() *cli.App {
 			{
 				Name: "get-contract-swap-info",
 				Usage: "Get information about a swap needed to call the contract functions. " +
-					"Returns the contract address, the swap's struct as represented in the contract," +
-					"and the hash of the swap's struct, which is used as its contract identifier." +
+					"Returns the contract address, the swap's struct as represented in the contract, " +
+					"and the hash of the swap's struct, which is used as its contract identifier. " +
 					"Note: this is only useful if you plan to manually call the contract functions.",
 				Action: runGetContractSwapInfo,
 				Flags: []cli.Flag{
-					&cli.UintFlag{
-						Name:     "duration",
-						Usage:    "Duration of timeout, in seconds",
+					&cli.StringFlag{
+						Name:     flagOfferID,
+						Usage:    "ID of swap for which query for",
 						Required: true,
 					},
 					swapdPortFlag,
@@ -364,14 +364,14 @@ func cliApp() *cli.App {
 			{
 				Name: "get-swap-secret",
 				Usage: "Get the secret for a swap. " +
-					"WARNING: do NOT share this secret with anyone. Doing so may result in a loss of funds." +
-					"You should not use this function unless you are sure of what you're doing." +
+					"WARNING: do NOT share this secret with anyone. Doing so may result in a loss of funds. " +
+					"You should not use this function unless you are sure of what you're doing. " +
 					"This function is only useful if you plan to try to manually recover funds.",
 				Action: runGetSwapSecret,
 				Flags: []cli.Flag{
-					&cli.UintFlag{
-						Name:     "duration",
-						Usage:    "Duration of timeout, in seconds",
+					&cli.StringFlag{
+						Name:     flagOfferID,
+						Usage:    "ID of swap for which to get the secret for",
 						Required: true,
 					},
 					swapdPortFlag,
