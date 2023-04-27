@@ -122,7 +122,7 @@ func GetVersion() string {
 	version.WriteByte(' ')
 
 	// The commit hash will be present if installing from locally checked out
-	// sources, or empty if installing directly from the repos github URL.
+	// sources, or empty if installing directly from the repo's github URL.
 	if commitHash != "" {
 		// 7 bytes is what "git rev-parse --short HEAD" returns
 		version.WriteString(fmt.Sprintf("%.7s", commitHash))

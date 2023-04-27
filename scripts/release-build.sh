@@ -32,7 +32,7 @@ mkdir "${dest_dir}"
 unset CGO_ENABLED
 
 # Unfortunately, GOBIN can't be set when doing cross platform builds and
-# go install doesn't take a -o flag:
+# go install doesn't take an -o flag:
 # https://github.com/golang/go/issues/57485
 # We are inside a go module project right now and we'll confuse tooling
 # if we put the GOPATH inside of the project. We are using "go install",
