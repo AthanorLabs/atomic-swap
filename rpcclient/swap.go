@@ -82,6 +82,42 @@ func (c *Client) ClearOffers(offerIDs []types.Hash) error {
 	return nil
 }
 
+func (c *Client) Claim(offerID types.Hash) (*rpc.ManualTransactionResponse, error) {
+	const (
+		method = "swap_claim"
+	)
+
+	req := &rpc.ManualTransactionRequest{
+		OfferID: offerID,
+	}
+
+	res := &rpc.ManualTransactionResponse{}
+
+	if err := c.Post(method, req, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (c *Client) Refund(offerID types.Hash) (*rpc.ManualTransactionResponse, error) {
+	const (
+		method = "swap_refund"
+	)
+
+	req := &rpc.ManualTransactionRequest{
+		OfferID: offerID,
+	}
+
+	res := &rpc.ManualTransactionResponse{}
+
+	if err := c.Post(method, req, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // SuggestedExchangeRate calls swap_suggestedExchangeRate
 func (c *Client) SuggestedExchangeRate() (*rpc.SuggestedExchangeRateResponse, error) {
 	const (

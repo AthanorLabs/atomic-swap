@@ -291,6 +291,32 @@ func cliApp() *cli.App {
 				},
 			},
 			{
+				Name:   "claim",
+				Usage:  "manually call claim() in the contract for a given swap. This should only be used if the normal swap process fails.",
+				Action: runClaim,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagOfferID,
+						Usage:    "ID of swap for which to call claim()",
+						Required: true,
+					},
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "refund",
+				Usage:  "manually call refund() in the contract for a given swap. This should only be used if the normal swap process fails.",
+				Action: runRefund,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagOfferID,
+						Usage:    "ID of swap for which to call refund()",
+						Required: true,
+					},
+					swapdPortFlag,
+				},
+			},
+			{
 				Name:   "set-swap-timeout",
 				Usage:  "Set the duration between swap initiation and t0 and t0 and t1, in seconds",
 				Action: runSetSwapTimeout,
@@ -875,6 +901,38 @@ func runGetStatus(ctx *cli.Context) error {
 
 	fmt.Printf("Start time: %s\n", resp.StartTime.Format(common.TimeFmtSecs))
 	fmt.Printf("Status=%s: %s\n", resp.Status, resp.Description)
+	return nil
+}
+
+func runClaim(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.Claim(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transaction hash: %s\n", resp.TxHash)
+	return nil
+}
+
+func runRefund(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.Refund(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transaction hash: %s\n", resp.TxHash)
 	return nil
 }
 
