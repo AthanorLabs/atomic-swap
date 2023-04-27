@@ -31,7 +31,7 @@ func (c *Client) GetContractSwapInfo(offerID types.Hash) (*rpc.GetContractSwapIn
 // GetSwapSecret calls database_getSwapSecret.
 func (c *Client) GetSwapSecret(offerID types.Hash) (*rpc.GetSwapSecretResponse, error) {
 	const (
-		method = "database_getContractSwapInfo"
+		method = "database_getSwapSecret"
 	)
 
 	req := &rpc.GetSwapSecretRequest{
