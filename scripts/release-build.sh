@@ -14,9 +14,9 @@ fi
 
 version="HEAD" # use "latest" for most recent tagged release
 install_targets=(
-  "github.com/athanorlabs/atomic-swap/cmd/swapd@${version}"
-  "github.com/athanorlabs/atomic-swap/cmd/swapcli@${version}"
-  "github.com/athanorlabs/atomic-swap/cmd/bootnode@${version}"
+	"github.com/athanorlabs/atomic-swap/cmd/swapd@${version}"
+	"github.com/athanorlabs/atomic-swap/cmd/swapcli@${version}"
+	"github.com/athanorlabs/atomic-swap/cmd/bootnode@${version}"
 )
 
 # turn on echo
@@ -37,25 +37,24 @@ unset CGO_ENABLED
 # We are inside a go module project right now and we'll confuse tooling
 # if we put the GOPATH inside of the project. We are using "go install",
 # so nothing will go wrong even if a go.mod exists at the top of /tmp.
-export GOPATH="$(mktemp -d /tmp/release-build-XXXXXXXXXX)"
+build_dir="$(mktemp -d /tmp/release-build-XXXXXXXXXX)"
 
 for os in linux darwin; do
-  for arch in amd64 arm64; do
-    GOOS="${os}" GOARCH="${arch}" go install -tags=prod "${install_targets[@]}"
-    from_dir="${GOPATH}/bin/${os}_${arch}"
-    to_dir="${dest_dir}/${os/darwin/macos}-${arch/amd64/x64}"
-    if [[ -d "${from_dir}" ]]; then
-      # non-native binaries
-      mv "${from_dir}" "${to_dir}"
-    else
-      # native binaries
-      mkdir "${to_dir}"
-      mv "${GOPATH}/bin/"* "${to_dir}"
-    fi
-  done
+	for arch in amd64 arm64; do
+		GOPATH="${build_dir}" GOOS="${os}" GOARCH="${arch}" \
+			go install -tags=prod "${install_targets[@]}"
+		from_dir="${build_dir}/bin/${os}_${arch}"
+		to_dir="${dest_dir}/${os/darwin/macos}-${arch/amd64/x64}"
+		if [[ -d "${from_dir}" ]]; then
+			# non-native binaries
+			mv "${from_dir}" "${to_dir}"
+		else
+			# native binaries
+			mkdir "${to_dir}"
+			mv "${build_dir}/bin/"* "${to_dir}"
+		fi
+	done
 done
 
-# We enabled exit on any error, so this will only delete
-# the non-default GOPATH that we successfully set above.
-chmod -R u+w "${GOPATH}"
-rm -rf "${GOPATH}"
+chmod -R u+w "${build_dir}"
+rm -rf "${build_dir}"
