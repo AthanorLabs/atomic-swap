@@ -345,7 +345,7 @@ func (s *SwapService) Claim(_ *http.Request, req *ManualTransactionRequest, resp
 		return err
 	}
 
-	tx, err := swapCreator.Claim(txOpts, *contractSwapInfo.Swap, [32]byte(secret.Bytes()))
+	tx, err := swapCreator.Claim(txOpts, *contractSwapInfo.Swap, [32]byte(common.Reverse(secret.Bytes())))
 	if err != nil {
 		return err
 	}
@@ -370,6 +370,9 @@ func (s *SwapService) Refund(_ *http.Request, req *ManualTransactionRequest, res
 		return err
 	}
 
+	fmt.Println(contractSwapInfo.Swap)
+	fmt.Println(secret)
+
 	ec := s.backend.ETHClient()
 	swapCreator, err := contracts.NewSwapCreator(contractSwapInfo.SwapCreatorAddr, ec.Raw())
 	if err != nil {
@@ -384,7 +387,7 @@ func (s *SwapService) Refund(_ *http.Request, req *ManualTransactionRequest, res
 		return err
 	}
 
-	tx, err := swapCreator.Refund(txOpts, *contractSwapInfo.Swap, [32]byte(secret.Bytes()))
+	tx, err := swapCreator.Refund(txOpts, *contractSwapInfo.Swap, [32]byte(common.Reverse(secret.Bytes())))
 	if err != nil {
 		return err
 	}
