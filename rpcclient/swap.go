@@ -82,6 +82,7 @@ func (c *Client) ClearOffers(offerIDs []types.Hash) error {
 	return nil
 }
 
+// Claim calls swap_claim
 func (c *Client) Claim(offerID types.Hash) (*rpc.ManualTransactionResponse, error) {
 	const (
 		method = "swap_claim"
@@ -100,6 +101,7 @@ func (c *Client) Claim(offerID types.Hash) (*rpc.ManualTransactionResponse, erro
 	return res, nil
 }
 
+// Refund calls swap_refund
 func (c *Client) Refund(offerID types.Hash) (*rpc.ManualTransactionResponse, error) {
 	const (
 		method = "swap_refund"

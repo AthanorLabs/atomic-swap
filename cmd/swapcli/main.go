@@ -291,8 +291,9 @@ func cliApp() *cli.App {
 				},
 			},
 			{
-				Name:   "claim",
-				Usage:  "manually call claim() in the contract for a given swap. This should only be used if the normal swap process fails.",
+				Name: "claim",
+				Usage: "manually call claim() in the contract for a given swap." +
+					"WARNING: This should only be used if the normal swap process fails.",
 				Action: runClaim,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -304,8 +305,9 @@ func cliApp() *cli.App {
 				},
 			},
 			{
-				Name:   "refund",
-				Usage:  "manually call refund() in the contract for a given swap. This should only be used if the normal swap process fails.",
+				Name: "refund",
+				Usage: "manually call refund() in the contract for a given swap." +
+					"WARNING: This should only be used if the normal swap process fails.",
 				Action: runRefund,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -340,6 +342,38 @@ func cliApp() *cli.App {
 				Usage:  "Get the duration between swap initiation and t0 and t0 and t1, in seconds",
 				Action: runGetSwapTimeout,
 				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name: "get-contract-swap-info",
+				Usage: "Get information about a swap needed to call the contract functions. " +
+					"Returns the contract address, the swap's struct as represented in the contract," +
+					"and the hash of the swap's struct, which is used as its contract identifier." +
+					"Note: this is only useful if you plan to manually call the contract functions.",
+				Action: runGetContractSwapInfo,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:     "duration",
+						Usage:    "Duration of timeout, in seconds",
+						Required: true,
+					},
+					swapdPortFlag,
+				},
+			},
+			{
+				Name: "get-swap-secret",
+				Usage: "Get the secret for a swap. " +
+					"WARNING: do NOT share this secret with anyone. Doing so may result in a loss of funds." +
+					"You should not use this function unless you are sure of what you're doing." +
+					"This function is only useful if you plan to try to manually recover funds.",
+				Action: runGetSwapSecret,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:     "duration",
+						Usage:    "Duration of timeout, in seconds",
+						Required: true,
+					},
 					swapdPortFlag,
 				},
 			},
@@ -1000,6 +1034,50 @@ func runShutdown(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func runGetContractSwapInfo(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.GetContractSwapInfo(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Contract address: %s\n", resp.SwapCreatorAddr)
+	fmt.Printf("Block at which newSwap was called: %d\n", resp.StartNumber)
+	fmt.Printf("Swap ID as stored in the contract: %s\n", resp.SwapID)
+	fmt.Printf("Swap struct as stored in the contract:\n")
+	fmt.Printf("\tOwner: %s\n", resp.Swap.Owner)
+	fmt.Printf("\tClaimer: %s\n", resp.Swap.Claimer)
+	fmt.Printf("\tPubKeyClaim: %x\n", resp.Swap.PubKeyClaim)
+	fmt.Printf("\tPubKeyRefund: %x\n", resp.Swap.PubKeyRefund)
+	fmt.Printf("\tTimeout0: %s\n", resp.Swap.Timeout0)
+	fmt.Printf("\tTimeout1: %s\n", resp.Swap.Timeout1)
+	fmt.Printf("\tAsset: %s\n", resp.Swap.Asset)
+	fmt.Printf("\tValue: %s\n", resp.Swap.Value)
+	fmt.Printf("\tNonce: %s\n", resp.Swap.Nonce)
+	return nil
+}
+
+func runGetSwapSecret(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.GetSwapSecret(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Swap secret: %s\n", resp.Secret.Hex())
 	return nil
 }
 
