@@ -97,17 +97,17 @@
       </Row>
     </Head>
     <Body>
-      {#each sortedOffers as offer (offer.id)}
+      {#each sortedOffers as offer (offer.offerID)}
         <Row>
           <Cell>
             <Wrapper>
-              <Identicon peerAddress={offer.peer} />
+              <Identicon peerAddress={offer.peerID} />
               <Tooltip xPos="center" style={'min-width: 100px'}>
-                {offer.peer}
+                {offer.peerID}
               </Tooltip>
             </Wrapper>
           </Cell>
-          <Cell class="idCell">{offer.id}</Cell>
+          <Cell class="idCell">{offer.offerID}</Cell>
           <Cell>{offer.exchangeRate}</Cell>
           <Cell>{offer.maxAmount}</Cell>
           <Cell>{offer.minAmount}</Cell>

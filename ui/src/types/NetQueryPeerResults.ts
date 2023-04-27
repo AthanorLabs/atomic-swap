@@ -1,11 +1,14 @@
 export type Currency = 'ETH' | 'XMR'
 
 export interface OfferRaw {
-    ID: number[]
-    Provides: Currency
-    MinimumAmount: number
-    MaximumAmount: number
-    ExchangeRate: number
+    offerID: String
+    provides: Currency
+    minAmount: Number
+    maxAmount: Number
+    exchangeRate: Number
+    version: String
+    ethAsset: Currency
+    nonce: Number
 }
 
 export interface NetQueryPeerResult {

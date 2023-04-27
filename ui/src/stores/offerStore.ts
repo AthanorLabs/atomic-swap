@@ -16,30 +16,23 @@ export const offers = derived<Readable<string[]>, Offer[]>(
     []
 )
 
+// Loop over all the peers to get their offers
 export const refreshOffers = ($peers: string[]) =>
-    // loop over all the peers the get their offers
     $peers.reduce(async (acc: Promise<Offer[]>, curr: string) => {
         const previousPeersOffers = await acc
         const currentOffers = await getOffers(curr) || []
         return [...previousPeersOffers, ...currentOffers]
-    }
-        , Promise.resolve([])
-    )
+    }, Promise.resolve([]))
 
 export const getOffers = async (peerAddress: string) => {
     isLoadingOffers.set(true)
-    return rpcRequest<NetQueryPeerResult | undefined>('net_queryPeer', { "multiaddr": peerAddress })
-        .then(({ result }): Offer[] => {
-
-            return result?.offers.map(off => ({
-                peer: peerAddress,
-                id: intToHexString(off.ID),
-                exchangeRate: off.ExchangeRate,
-                maxAmount: off.MaximumAmount,
-                minAmount: off.MinimumAmount,
-                provides: off.Provides
+    return rpcRequest<NetQueryPeerResult | undefined>('net_queryPeer', { "peerID": peerAddress })
+        .then(({ result }): Offer[] =>
+            result?.offers.map(offer => ({
+                peerID: peerAddress,
+                ...offer
             })) || []
-        })
+        )
         .catch(console.error)
         .finally(() => isLoadingOffers.set(false))
 }

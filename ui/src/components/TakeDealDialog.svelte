@@ -3,7 +3,7 @@
   import Button, { Label } from '@smui/button'
   import type { CancelResult } from 'src/types/Cancel'
   import type { NetTakeOfferSyncResult } from 'src/types/NetTakeOfferSync'
-  import { getCorrespondingToken, rpcRequest } from 'src/utils'
+  import { getCorrespondingToken, rpcRequest, getPort } from 'src/utils'
   import { selectedOffer } from '../stores/offerStore'
   import { getPeers } from '../stores/peerStore'
   import Textfield from '@smui/textfield'
@@ -14,10 +14,9 @@
   import HelperText from '@smui/textfield/helper-text'
   import { currentAccount, sign } from '../stores/metamask'
 
-  const WS_ADDRESS = 'ws://127.0.0.1:5001/ws'
+  const WS_ADDRESS = `ws://127.0.0.1:${getPort()}/ws`
 
   let amountProvided: number | null = null
-  let xmrAddress = ''
   let isSuccess = false
   let isLoadingSwap = false
   let error = ''
@@ -49,82 +48,49 @@
   }
 
   const handleSendTakeOffer = () => {
-    const offerID = $selectedOffer?.id
+    const offerID = $selectedOffer?.offerID
     const webSocket = new WebSocket(WS_ADDRESS)
 
     webSocket.onopen = () => {
-      console.log('opened')
-      console.log('sending ws signer msg')
+      console.log('WebSocket opened')
       const req = {
         jsonRPC: '2.0',
         id: 0,
-        method: 'signer_subscribe',
+        method: 'net_takeOfferAndSubscribe',
         params: {
+          peerID: $selectedOffer?.peerID,
           offerID,
-          ethAddress: $currentAccount,
-          xmrAddress,
+          providesAmount: amountProvided,
         },
       }
       webSocket.send(JSON.stringify(req))
-      console.log('sent ws signer msg', req)
+      console.log('takeOfferAndSubscribe sent', req)
     }
 
     webSocket.onmessage = async (msg) => {
-      console.log('message to sign:', msg.data)
-      const txHash = await sign(msg.data)
-      console.log('signed txHash', txHash)
-      if (txHash == "") {
-        // tx failed, cancel swap
-        rpcRequest<CancelResult | undefined>('swap_cancel', {
-          offerID,
-        }).then( ({result}) => {
-          console.log("cancelled swap")
-        })
+      const { result, err } = JSON.parse(msg.data)
+      // if (!result) ...
+      const { status } = result
+      console.log(status)      
+      if (status === "Success") {
+        isSuccess = true
+        isLoadingSwap = false
       }
-
-      const out = {
-        offerID,
-        txHash,
-      }
-      webSocket.send(JSON.stringify(out))
     }
 
-    webSocket.onclose = (e) => {
-      console.log('closed:', e)
+    webSocket.onclose = (event: Event) => {
+      console.log('closed:', event)
+      swapError = "Swapd websocket closed"
+      isLoadingSwap = false
     }
 
-    webSocket.onerror = (e) => {
-      console.log('error', e)
+    webSocket.onerror = (event: Event) => {
+      console.error(event)
+      swapError = event.toString()
+      isLoadingSwap = false
     }
 
     isLoadingSwap = true
-
-    rpcRequest<NetTakeOfferSyncResult | undefined>('net_takeOfferSync', {
-      multiaddr: $selectedOffer?.peer,
-      offerID,
-      providesAmount: Number(amountProvided),
-    })
-      .then(({ result }) => {
-        console.log('result NetTakeOfferSyncResult', result)
-
-        if (result?.status === 'Success') {
-          isSuccess = true
-          getPeers()
-        } else if (result?.status === 'Aborted') {
-          swapError = 'Something went wrong. Please check your node logs'
-        } else if (result?.status === 'Refunded') {
-          swapError =
-            'Something went wrong. Swap funds refunded, please check the logs for more info'
-        }
-      })
-      .catch((e: Error) => {
-        console.error('error when swapping', e)
-        swapError = e.message
-      })
-      .finally(() => {
-       // webSocket.close()
-        isLoadingSwap = false
-      })
   }
 
   const onReset = (resetOffer = true) => {
@@ -146,7 +112,7 @@
   >
     <div>
       <Title class="title" id="mandatory-title">
-        Swap offer {$selectedOffer.id}
+        Swap offer {$selectedOffer.offerID}
       </Title>
     </div>
     <Content id="mandatory-content">
@@ -157,13 +123,13 @@
               style="height: 48px; width: 48px;"
               indeterminate
             />
-            <p>Swapping, please be patient...</p>
+            <p>Swapping...</p>
           </div>
         {:else if isSuccess}
           <div class="flexBox">
             <span class="material-icons circleCheck">check_circle</span>
             <p class="successMessage">
-              Yay, you received {willReceive}{$selectedOffer.provides}
+              You received {willReceive}{$selectedOffer.provides}
             </p>
           </div>
         {:else if !!swapError}
@@ -183,11 +149,6 @@
           >
             <HelperText slot="helper">{error}</HelperText>
           </Textfield>
-          <Textfield
-            bind:value={xmrAddress}
-            variant="outlined"
-            label={'XMR address'}
-          />
           <Icon class="swapIcon" component={Svg} viewBox="0 0 24 24">
             <path fill="currentColor" d={mdiSwapVertical} />
           </Icon>
