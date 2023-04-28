@@ -291,34 +291,6 @@ func cliApp() *cli.App {
 				},
 			},
 			{
-				Name: "claim",
-				Usage: "manually call claim() in the contract for a given swap. " +
-					"WARNING: This should only be used if the normal swap process fails.",
-				Action: runClaim,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap for which to call claim()",
-						Required: true,
-					},
-					swapdPortFlag,
-				},
-			},
-			{
-				Name: "refund",
-				Usage: "manually call refund() in the contract for a given swap. " +
-					"WARNING: This should only be used if the normal swap process fails.",
-				Action: runRefund,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap for which to call refund()",
-						Required: true,
-					},
-					swapdPortFlag,
-				},
-			},
-			{
 				Name:   "set-swap-timeout",
 				Usage:  "Set the duration between swap initiation and t0 and t0 and t1, in seconds",
 				Action: runSetSwapTimeout,
@@ -346,38 +318,6 @@ func cliApp() *cli.App {
 				},
 			},
 			{
-				Name: "get-contract-swap-info",
-				Usage: "Get information about a swap needed to call the contract functions. " +
-					"Returns the contract address, the swap's struct as represented in the contract, " +
-					"and the hash of the swap's struct, which is used as its contract identifier. " +
-					"Note: this is only useful if you plan to manually call the contract functions.",
-				Action: runGetContractSwapInfo,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap for which query for",
-						Required: true,
-					},
-					swapdPortFlag,
-				},
-			},
-			{
-				Name: "get-swap-secret",
-				Usage: "Get the secret for a swap. " +
-					"WARNING: do NOT share this secret with anyone. Doing so may result in a loss of funds. " +
-					"You should not use this function unless you are sure of what you're doing. " +
-					"This function is only useful if you plan to try to manually recover funds.",
-				Action: runGetSwapSecret,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     flagOfferID,
-						Usage:    "ID of swap for which to get the secret for",
-						Required: true,
-					},
-					swapdPortFlag,
-				},
-			},
-			{
 				Name:   "version",
 				Usage:  "Get the client and server versions",
 				Action: runGetVersions,
@@ -391,6 +331,74 @@ func cliApp() *cli.App {
 				Action: runShutdown,
 				Flags: []cli.Flag{
 					swapdPortFlag,
+				},
+			},
+			{
+				Name:  "recovery",
+				Usage: "Methods that should only be used as a last resort in the case of an unrecoverable swap error.",
+				Subcommands: []*cli.Command{
+					{
+						Name: "get-contract-swap-info",
+						Usage: "Get information about a swap needed to call the contract functions.\n" +
+							"Returns the contract address, the swap's struct as represented in the contract,\n" +
+							"and the hash of the swap's struct, which is used as its contract identifier.\n" +
+							"Note: this is only useful if you plan to manually call the contract functions.",
+						Action: runGetContractSwapInfo,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which query for",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+					{
+						Name: "get-swap-secret",
+						Usage: "Get the secret for a swap.\n" +
+							"WARNING: do NOT share this secret with anyone. Doing so may result in a loss of funds.\n" +
+							"You should not use this function unless you are sure of what you're doing.\n" +
+							"This function is only useful if you plan to try to manually recover funds.",
+						Action: runGetSwapSecret,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which to get the secret for",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+					{
+						Name: "claim",
+						Usage: "Manually call claim() in the contract for a given swap.\n" +
+							"WARNING: This should only be used as a last resort if the normal swap process fails\n" +
+							"and restarting the node does not resolve the issue.",
+						Action: runClaim,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which to call claim()",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+					{
+						Name: "refund",
+						Usage: "Manually call refund() in the contract for a given swap.\n" +
+							"WARNING: This should only be used as a last resort if the normal swap process fails\n" +
+							"and restarting the node does not resolve the issue.",
+						Action: runRefund,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which to call refund()",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
 				},
 			},
 		},

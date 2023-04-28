@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test if Alice is able to manually call `refund()` via swapcli.
+// Test if Alice is able to call the Refund() RPC API (used by swapcli refund) immediately after locking her ETH.
 func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
