@@ -107,6 +107,10 @@ func (i *Info) StatusCh() <-chan types.Status {
 func (i *Info) SetStatus(s Status) {
 	i.Status = s
 	i.LastStatusUpdateTime = time.Now()
+	if i.statusCh == nil {
+		// this case only happens in tests.
+		return
+	}
 	i.statusCh <- s
 }
 
