@@ -27,7 +27,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -184,7 +183,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	// Bob's ending balance should be Alice's provided amount minus the relayer fee
 	//
 	expectedBal := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Sub(expectedBal, providesAmt, relayer.FeeEth)
+	_, err = coins.DecimalCtx().Sub(expectedBal, providesAmt, coins.RelayerFeeETH)
 	require.NoError(t, err)
 
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
@@ -362,7 +361,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	// Bob's ending balance should be Alice's provided amount minus the relayer fee
 	//
 	bobExpectedBal := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, relayer.FeeEth)
+	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, coins.RelayerFeeETH)
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
@@ -467,7 +466,7 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	// Bob's ending balance should be Alice's provided amount minus the relayer fee
 	//
 	bobExpectedBal := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, relayer.FeeEth)
+	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, coins.RelayerFeeETH)
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)

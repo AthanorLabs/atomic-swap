@@ -175,6 +175,11 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 			jsonData:    fmt.Sprintf(offerJSON, `"-1"`, `"1"`, `"0.1"`),
 			errContains: `"minAmount" cannot be negative`,
 		},
+		{
+			// 0.009 relayer fee is 0.09 XMR with exchange rate of 0.1
+			jsonData:    fmt.Sprintf(offerJSON, `"0.09"`, `"10"`, `"0.1"`),
+			errContains: `min amount must be greater than 0.009 ETH when converted (0.09 XMR)`,
+		},
 		// Max Amount checks
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `null`, `"0.1"`),
@@ -187,6 +192,10 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"1"`, `"-1E1"`, `"0.1"`),
 			errContains: `"maxAmount" cannot be negative`,
+		},
+		{
+			jsonData:    fmt.Sprintf(offerJSON, `"100"`, `"1000.1"`, `"0.1"`),
+			errContains: `1000.1 XMR exceed max offer amount of 1000 XMR`,
 		},
 		// Combo min/max check
 		{

@@ -85,6 +85,10 @@ func (inst *Instance) initiate(
 	}
 
 	// Ensure the user's balance is strictly greater than the amount they will provide
+	//
+	// UPDATE: The balance should be enough for:
+	// provided amount + cost of NewSwap + cost of SetReady + cost of Refund
+	//
 	if ethAsset.IsETH() && ethBalance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
 		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
 			inst.backend.ETHClient().Address(), ethBalance.AsEtherString(), providesAmount.AsStandard())

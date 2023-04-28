@@ -24,6 +24,12 @@ func (inst *Instance) MakeOffer(
 		return nil, errUnlockedBalanceTooLow{o.MaxAmount, unlockedBalance}
 	}
 
+	// If it is an XMR-for-ETH offer, the min offer amount converted to ETH
+	// must be less than relayer fee
+
+	// If it is an XMR-for-TOKEN offer, the maker must have sufficient ETH
+	// to claim
+
 	if useRelayer && o.EthAsset.IsToken() {
 		return nil, errRelayingWithNonEthAsset
 	}

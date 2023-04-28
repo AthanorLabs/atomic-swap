@@ -4,6 +4,8 @@
 package coins
 
 import (
+	"math/big"
+
 	"github.com/cockroachdb/apd/v3"
 	logging "github.com/ipfs/go-log"
 )
@@ -18,6 +20,13 @@ const (
 
 	// MaxCoinPrecision is a somewhat arbitrary precision upper bound (2^256 consumes 78 digits)
 	MaxCoinPrecision = 100
+)
+
+// RelayerFeeWei and RelayerFeeETH are the fixed 0.009 ETH fee for using a swap
+// relayer to claim.
+var (
+	RelayerFeeWei = big.NewInt(9e15)
+	RelayerFeeETH = NewWeiAmount(RelayerFeeWei).AsEther()
 )
 
 var (
