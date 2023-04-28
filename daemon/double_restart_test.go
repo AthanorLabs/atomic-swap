@@ -129,10 +129,6 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	ctx, _ = LaunchDaemons(t, 5*time.Minute, bobConf, aliceConf)
 	t.Logf("daemons relaunched, checking swap status")
 
-	/*
-	 * We'll switch to the commented out solution when the status channel is recreated
-	 * on restart.
-	 */
 	// Give alice a fresh client with a fresh context
 	aws, err = wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
 	require.NoError(t, err)
