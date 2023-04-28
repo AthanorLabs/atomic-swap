@@ -110,6 +110,7 @@ func NewServer(cfg *Config) (*Server, error) {
 					cfg.XMRMaker,
 					cfg.Net,
 					cfg.ProtocolBackend,
+					cfg.RecoveryDB,
 				),
 				SwapNamespace,
 			)
@@ -215,6 +216,7 @@ type Protocol interface {
 
 // ProtocolBackend represents protocol/backend.Backend
 type ProtocolBackend interface {
+	Ctx() context.Context
 	Env() common.Environment
 	SetSwapTimeout(timeout time.Duration)
 	SwapTimeout() time.Duration
