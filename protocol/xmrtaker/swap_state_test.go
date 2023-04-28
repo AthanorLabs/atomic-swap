@@ -250,7 +250,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().String(), s.xmrmakerPrivateViewKey.String())
 
 	// ensure we refund before t0
-	for status := range s.statusCh {
+	for status := range s.info.StatusCh() {
 		if status == types.CompletedRefund {
 			// check this is before t0
 			// TODO: remove the 10-second buffer, this is needed for now
@@ -344,7 +344,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 
-	for status := range s.statusCh {
+	for status := range s.info.StatusCh() {
 		if status == types.CompletedRefund {
 			// check this is after t1
 			require.Less(t, s.t1, time.Now())

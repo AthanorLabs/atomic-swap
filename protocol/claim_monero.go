@@ -105,11 +105,7 @@ func setSweepStatus(info *swap.Info, sm SwapManager) error {
 	info.SetStatus(types.SweepingXMR)
 	err := sm.WriteSwapToDB(info)
 	if err != nil {
-		return err
-	}
-
-	if info.StatusCh() != nil {
-		info.StatusCh() <- types.SweepingXMR
+		return fmt.Errorf("failed to write swap to db: %w", err)
 	}
 
 	return nil

@@ -18,6 +18,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
+const statusChSize = 6 // the max number of stages a swap can potentially go through
+
 var (
 	// CurInfoVersion is the latest supported version of a serialised Info struct
 	CurInfoVersion, _ = semver.NewVersion("0.3.0")
@@ -97,7 +99,7 @@ func NewInfo(
 }
 
 // StatusCh returns the swap's status update channel.
-func (i *Info) StatusCh() chan types.Status {
+func (i *Info) StatusCh() <-chan types.Status {
 	return i.statusCh
 }
 
@@ -105,6 +107,7 @@ func (i *Info) StatusCh() chan types.Status {
 func (i *Info) SetStatus(s Status) {
 	i.Status = s
 	i.LastStatusUpdateTime = time.Now()
+	i.statusCh <- s
 }
 
 // UnmarshalInfo deserializes a JSON Info struct, checking the version for compatibility
@@ -129,6 +132,8 @@ func UnmarshalInfo(jsonData []byte) (*Info, error) {
 	if err := vjson.UnmarshalStruct(jsonData, info); err != nil {
 		return nil, err
 	}
+
+	info.statusCh = make(chan types.Status, statusChSize)
 
 	// TODO: Are there additional sanity checks we can perform on the Provided and Received amounts
 	//       (or other fields) here when decoding the JSON?
