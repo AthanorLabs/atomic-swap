@@ -15,7 +15,6 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -253,7 +252,7 @@ func (b *backend) HandleRelayClaimRequest(
 			return nil, err
 		}
 
-		if info.Provides != coins.ProvidesETH {
+		if !info.IsTaker() {
 			return nil, fmt.Errorf("cannot relay taker-specific claim request; not the xmr-taker for swap %s", *request.OfferID)
 		}
 
