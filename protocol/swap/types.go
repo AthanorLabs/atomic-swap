@@ -107,6 +107,11 @@ func (i *Info) SetStatus(s Status) {
 	i.LastStatusUpdateTime = time.Now()
 }
 
+// IsTaker returns true if the node is the xmr-taker in the swap.
+func (i *Info) IsTaker() bool {
+	return i.Provides == coins.ProvidesETH
+}
+
 // UnmarshalInfo deserializes a JSON Info struct, checking the version for compatibility
 // before attempting to deserialize the whole blob.
 func UnmarshalInfo(jsonData []byte) (*Info, error) {

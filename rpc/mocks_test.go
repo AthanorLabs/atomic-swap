@@ -112,6 +112,10 @@ func (*mockSwapManager) CompleteOngoingSwap(_ *swap.Info) error {
 	panic("not implemented")
 }
 
+func (*mockSwapManager) HasOngoingSwap(_ types.Hash) bool {
+	panic("not implemented")
+}
+
 type mockXMRTaker struct{}
 
 func (*mockXMRTaker) Provides() coins.ProvidesCoin {

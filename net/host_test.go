@@ -50,7 +50,7 @@ type mockRelayHandler struct {
 	t *testing.T
 }
 
-func (h *mockRelayHandler) HandleRelayClaimRequest(_ *RelayClaimRequest) (*RelayClaimResponse, error) {
+func (h *mockRelayHandler) HandleRelayClaimRequest(_ peer.ID, _ *RelayClaimRequest) (*RelayClaimResponse, error) {
 	return &RelayClaimResponse{
 		TxHash: mockEthTXHash,
 	}, nil
