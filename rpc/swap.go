@@ -16,6 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/pricefeed"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
@@ -28,6 +29,7 @@ type SwapService struct {
 	xmrmaker XMRMaker
 	net      Net
 	backend  ProtocolBackend
+	rdb      RecoveryDB
 }
 
 // NewSwapService ...
@@ -38,6 +40,7 @@ func NewSwapService(
 	xmrmaker XMRMaker,
 	net Net,
 	b ProtocolBackend,
+	rdb RecoveryDB,
 ) *SwapService {
 	return &SwapService{
 		ctx:      ctx,
@@ -46,6 +49,7 @@ func NewSwapService(
 		xmrmaker: xmrmaker,
 		net:      net,
 		backend:  b,
+		rdb:      rdb,
 	}
 }
 
@@ -297,6 +301,98 @@ func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelRe
 	}
 
 	resp.Status = past.Status
+	return nil
+}
+
+// ManualTransactionRequest is used to call swap_claim or swap_refund.
+type ManualTransactionRequest struct {
+	OfferID types.Hash `json:"offerID" validate:"required"`
+}
+
+// ManualTransactionResponse is returned from swap_claim or swap_refund and contains
+// the transaction hash of the claim or refund transaction.
+type ManualTransactionResponse struct {
+	TxHash types.Hash `json:"txHash" validate:"required"`
+}
+
+// Claim calls the `claim` method on the swap contract given swap's offer ID.
+// It uses the swap recovery info stored in the database to do so.
+// It does not require the swap to be ongoing.
+// This is meant as a fail-safe in case of some unknown swap error.
+// It returns the transaction hash of the claim transaction.
+func (s *SwapService) Claim(_ *http.Request, req *ManualTransactionRequest, resp *ManualTransactionResponse) error {
+	contractSwapInfo, err := s.rdb.GetContractSwapInfo(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	secret, err := s.rdb.GetSwapPrivateKey(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	ec := s.backend.ETHClient()
+	swapCreator, err := contracts.NewSwapCreator(contractSwapInfo.SwapCreatorAddr, ec.Raw())
+	if err != nil {
+		return err
+	}
+
+	ec.Lock()
+	defer ec.Unlock()
+
+	txOpts, err := ec.TxOpts(s.backend.Ctx())
+	if err != nil {
+		return err
+	}
+
+	tx, err := swapCreator.Claim(txOpts, *contractSwapInfo.Swap, [32]byte(common.Reverse(secret.Bytes())))
+	if err != nil {
+		return err
+	}
+
+	resp.TxHash = tx.Hash()
+	return nil
+}
+
+// Refund calls the `refund` method on the swap contract given swap's offer ID.
+// It uses the swap recovery info stored in the database to do so.
+// It does not require the swap to be ongoing.
+// This is meant as a fail-safe in case of some unknown swap error.
+// It returns the transaction hash of the refund transaction.
+func (s *SwapService) Refund(_ *http.Request, req *ManualTransactionRequest, resp *ManualTransactionResponse) error {
+	contractSwapInfo, err := s.rdb.GetContractSwapInfo(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	secret, err := s.rdb.GetSwapPrivateKey(req.OfferID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(contractSwapInfo.Swap)
+	fmt.Println(secret)
+
+	ec := s.backend.ETHClient()
+	swapCreator, err := contracts.NewSwapCreator(contractSwapInfo.SwapCreatorAddr, ec.Raw())
+	if err != nil {
+		return err
+	}
+
+	ec.Lock()
+	defer ec.Unlock()
+
+	txOpts, err := ec.TxOpts(s.backend.Ctx())
+	if err != nil {
+		return err
+	}
+
+	tx, err := swapCreator.Refund(txOpts, *contractSwapInfo.Swap, [32]byte(common.Reverse(secret.Bytes())))
+	if err != nil {
+		return err
+	}
+
+	resp.TxHash = tx.Hash()
 	return nil
 }
 

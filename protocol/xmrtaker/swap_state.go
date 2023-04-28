@@ -8,6 +8,7 @@ package xmrtaker
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -385,6 +386,12 @@ func (s *swapState) exit() error {
 		// we should also refund in this case, since we might be past t1.
 		receipt, err := s.tryRefund()
 		if err != nil {
+			if errors.Is(err, errRefundSwapCompleted) {
+				s.clearNextExpectedEvent(types.CompletedRefund)
+				log.Infof("swap was already refunded")
+				return nil
+			}
+
 			if strings.Contains(err.Error(), revertSwapCompleted) {
 				// note: this should NOT ever error; it could if the ethclient
 				// or monero clients crash during the course of the claim,
@@ -473,25 +480,29 @@ func (s *swapState) tryRefund() (*ethtypes.Receipt, error) {
 		close(waitCh)
 	}()
 
-	select {
-	case event := <-s.eventCh:
-		log.Debugf("got event %s while waiting for T1", event.Type())
-		switch event.(type) {
-		case *EventShouldRefund:
-			return s.refund()
-		case *EventETHClaimed:
-			// we should claim; returning this error
-			// causes the calling function to claim
-			return nil, fmt.Errorf(revertSwapCompleted)
-		default:
-			panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event))
-		}
-	case err = <-waitCh:
-		if err != nil {
-			return nil, fmt.Errorf("failed to wait for T1: %w", err)
-		}
+	for {
+		select {
+		case event := <-s.eventCh:
+			log.Debugf("got event %s while waiting for T1", event.Type())
+			switch event.(type) {
+			case *EventShouldRefund:
+				return s.refund()
+			case *EventETHClaimed:
+				// we should claim; returning this error
+				// causes the calling function to claim
+				return nil, fmt.Errorf(revertSwapCompleted)
+			case *EventExit:
+				// do nothing, we're already exiting
+			default:
+				panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event.Type()))
+			}
+		case err = <-waitCh:
+			if err != nil {
+				return nil, fmt.Errorf("failed to wait for T1: %w", err)
+			}
 
-		return s.refund()
+			return s.refund()
+		}
 	}
 }
 

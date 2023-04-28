@@ -333,6 +333,74 @@ func cliApp() *cli.App {
 					swapdPortFlag,
 				},
 			},
+			{
+				Name:  "recovery",
+				Usage: "Methods that should only be used as a last resort in the case of an unrecoverable swap error.",
+				Subcommands: []*cli.Command{
+					{
+						Name: "get-contract-swap-info",
+						Usage: "Get information about a swap needed to call the contract functions.\n" +
+							"Returns the contract address, the swap's struct as represented in the contract,\n" +
+							"and the hash of the swap's struct, which is used as its contract identifier.\n" +
+							"Note: this is only useful if you plan to manually call the contract functions.",
+						Action: runGetContractSwapInfo,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which query for",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+					{
+						Name: "get-swap-secret",
+						Usage: "Get the secret for a swap.\n" +
+							"WARNING: do NOT share this secret with anyone. Doing so may result in a loss of funds.\n" +
+							"You should not use this function unless you are sure of what you're doing.\n" +
+							"This function is only useful if you plan to try to manually recover funds.",
+						Action: runGetSwapSecret,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which to get the secret for",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+					{
+						Name: "claim",
+						Usage: "Manually call claim() in the contract for a given swap.\n" +
+							"WARNING: This should only be used as a last resort if the normal swap process fails\n" +
+							"and restarting the node does not resolve the issue.",
+						Action: runClaim,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which to call claim()",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+					{
+						Name: "refund",
+						Usage: "Manually call refund() in the contract for a given swap.\n" +
+							"WARNING: This should only be used as a last resort if the normal swap process fails\n" +
+							"and restarting the node does not resolve the issue.",
+						Action: runRefund,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     flagOfferID,
+								Usage:    "ID of swap for which to call refund()",
+								Required: true,
+							},
+							swapdPortFlag,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -878,6 +946,38 @@ func runGetStatus(ctx *cli.Context) error {
 	return nil
 }
 
+func runClaim(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.Claim(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transaction hash: %s\n", resp.TxHash)
+	return nil
+}
+
+func runRefund(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.Refund(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transaction hash: %s\n", resp.TxHash)
+	return nil
+}
+
 func runSetSwapTimeout(ctx *cli.Context) error {
 	duration := ctx.Uint("duration")
 	if duration == 0 {
@@ -942,6 +1042,50 @@ func runShutdown(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func runGetContractSwapInfo(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.GetContractSwapInfo(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Contract address: %s\n", resp.SwapCreatorAddr)
+	fmt.Printf("Block at which newSwap was called: %d\n", resp.StartNumber)
+	fmt.Printf("Swap ID as stored in the contract: %s\n", resp.SwapID)
+	fmt.Printf("Swap struct as stored in the contract:\n")
+	fmt.Printf("\tOwner: %s\n", resp.Swap.Owner)
+	fmt.Printf("\tClaimer: %s\n", resp.Swap.Claimer)
+	fmt.Printf("\tPubKeyClaim: %x\n", resp.Swap.PubKeyClaim)
+	fmt.Printf("\tPubKeyRefund: %x\n", resp.Swap.PubKeyRefund)
+	fmt.Printf("\tTimeout0: %s\n", resp.Swap.Timeout0)
+	fmt.Printf("\tTimeout1: %s\n", resp.Swap.Timeout1)
+	fmt.Printf("\tAsset: %s\n", resp.Swap.Asset)
+	fmt.Printf("\tValue: %s\n", resp.Swap.Value)
+	fmt.Printf("\tNonce: %s\n", resp.Swap.Nonce)
+	return nil
+}
+
+func runGetSwapSecret(ctx *cli.Context) error {
+	offerID, err := types.HexToHash(ctx.String(flagOfferID))
+	if err != nil {
+		return errInvalidFlagValue(flagOfferID, err)
+	}
+
+	c := newRRPClient(ctx)
+	resp, err := c.GetSwapSecret(offerID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Swap secret: %s\n", resp.Secret.Hex())
 	return nil
 }
 

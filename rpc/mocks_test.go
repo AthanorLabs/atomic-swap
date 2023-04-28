@@ -4,6 +4,7 @@
 package rpc
 
 import (
+	"context"
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
@@ -193,6 +194,10 @@ func newMockProtocolBackend() *mockProtocolBackend {
 	return &mockProtocolBackend{
 		sm: new(mockSwapManager),
 	}
+}
+
+func (*mockProtocolBackend) Ctx() context.Context {
+	return context.Background()
 }
 
 func (*mockProtocolBackend) Env() common.Environment {
