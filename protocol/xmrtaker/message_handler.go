@@ -41,9 +41,6 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	s.nextExpectedEvent = EventNoneType
 	s.info.SetStatus(status)
-	if s.statusCh != nil {
-		s.statusCh <- status
-	}
 }
 
 func (s *swapState) setNextExpectedEvent(event EventType) error {
@@ -65,16 +62,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 
 	log.Debugf("setting status to %s", status)
 	s.info.SetStatus(status)
-	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
-	if err != nil {
-		return err
-	}
-
-	if s.info.StatusCh() != nil {
-		s.info.StatusCh() <- status
-	}
-
-	return nil
+	return s.Backend.SwapManager().WriteSwapToDB(s.info)
 }
 
 func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.Message, error) {
