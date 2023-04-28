@@ -64,27 +64,15 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 	//         whom we are performing the swap.
 	if req.OfferID == nil && !h.isRelayer {
 		return
-	} else if req.OfferID != nil {
-		h.swapMu.RLock()
-		swap, ok := h.swaps[*req.OfferID]
-		h.swapMu.RUnlock()
-
-		found := ok && swap.isTaker
-		if !found || curPeer != swap.stream.Conn().RemotePeer() {
-			log.Debugf("received invalid taker-specific claim request from peer=%s offerID=%s swap-found=%t",
-				curPeer, req.OfferID, found)
-			return
-		}
 	}
 
-	resp, err := h.relayHandler.HandleRelayClaimRequest(req)
+	resp, err := h.relayHandler.HandleRelayClaimRequest(curPeer, req)
 	if err != nil {
 		log.Debugf("did not handle relay request: %s", err)
 		return
 	}
 
 	log.Debugf("Relayed claim for %s with tx=%s", req.Swap.Claimer, resp.TxHash)
-
 	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send RelayClaimResponse message to peer: %s", err)
 		return

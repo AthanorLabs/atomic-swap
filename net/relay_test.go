@@ -9,7 +9,6 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -102,17 +101,7 @@ func TestHost_SubmitClaimToRelayer_xmrTakerRelayer(t *testing.T) {
 	offerID := types.Hash{0x1}
 	request.OfferID = &offerID
 
-	// fail, because there is no ongoing swap between ha and hb
-	_, err := hb.SubmitClaimToRelayer(ha.PeerID(), request)
-	require.ErrorContains(t, err, "failed to read RelayClaimResponse")
-
-	// create an ongoing swap between ha and hb
-	swapState := &mockSwapState{offerID: offerID}
-	err = ha.Initiate(peer.AddrInfo{ID: hb.PeerID()}, createSendKeysMessage(t), swapState)
-	require.NoError(t, err)
-	defer ha.CloseProtocolStream(offerID)
-
-	// same steps will succeed now, because we started a swap first
+	// should ignore offerID and succeed
 	response, err := hb.SubmitClaimToRelayer(ha.PeerID(), request)
 	require.NoError(t, err)
 	require.Equal(t, mockEthTXHash, response.TxHash)
