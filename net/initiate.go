@@ -127,6 +127,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	if h.swaps[im.OfferID] != nil {
 		log.Warnf("ignoring attempting initiation of swap %s: %s", im.OfferID, errSwapAlreadyInProgress)
 		h.swapMu.Unlock()
+		_ = stream.Close()
 		return
 	}
 

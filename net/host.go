@@ -192,7 +192,6 @@ func (h *Host) CloseProtocolStream(offerID types.Hash) {
 		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
 	)
 
-	// will this interrupt the remote side's read?????
 	_ = swap.stream.Close()
 }
 
