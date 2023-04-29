@@ -41,7 +41,7 @@ func (h *mockMakerHandler) HandleInitiateMessage(
 	msg *message.SendKeysMessage,
 ) (s SwapState, err error) {
 	if (h.id != types.Hash{}) {
-		return &mockSwapState{h.id} /*createSendKeysMessage(h.t),*/, nil
+		return &mockSwapState{h.id}, nil
 	}
 	return &mockSwapState{}, nil
 }

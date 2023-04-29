@@ -41,6 +41,4 @@ type RelayHandler interface {
 type swap struct {
 	swapState SwapState
 	stream    libp2pnetwork.Stream
-	// isTaker is true if we initiated the swap (created the outbound stream)
-	// isTaker bool
 }
