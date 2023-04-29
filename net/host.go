@@ -180,17 +180,14 @@ func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 
 // CloseProtocolStream closes the current swap protocol stream.
 func (h *Host) CloseProtocolStream(offerID types.Hash) {
-	h.swapMu.RLock()
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
 	swap, has := h.swaps[offerID]
-	h.swapMu.RUnlock()
 	if !has || swap.streamClosed {
 		return
 	}
 
-	h.swapMu.Lock()
 	swap.streamClosed = true
-	h.swapMu.Unlock()
-
 	log.Debugf("closing stream: peer=%s protocol=%s",
 		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
 	)
