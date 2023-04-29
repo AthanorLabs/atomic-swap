@@ -100,7 +100,6 @@ func newSwapStateFromStart(
 	offerID types.Hash,
 	noTransferBack bool,
 	providedAmount coins.EthAssetAmount,
-	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
@@ -122,12 +121,17 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
+	expectedAmount, err := exchangeRate.ToXMR(providedAmount.AsStandard())
+	if err != nil {
+		return nil, err
+	}
+
 	info := pswap.NewInfo(
 		makerPeerID,
 		offerID,
 		coins.ProvidesETH,
 		providedAmount.AsStandard(),
-		expectedAmount.AsMonero(),
+		expectedAmount,
 		exchangeRate,
 		ethAsset,
 		stage,

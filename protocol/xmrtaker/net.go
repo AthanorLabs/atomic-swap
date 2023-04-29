@@ -32,17 +32,32 @@ func (inst *Instance) InitiateProtocol(
 		return nil, err
 	}
 
-	expectedAmount, err := offer.ExchangeRate.ToXMR(providesAmount)
+	offerMinETH, err := offer.ExchangeRate.ToETH(offer.MinAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	if expectedAmount.Cmp(offer.MinAmount) < 0 {
-		return nil, errAmountProvidedTooLow{providesAmount, offer.MinAmount}
+	offerMaxETH, err := offer.ExchangeRate.ToETH(offer.MaxAmount)
+	if err != nil {
+		return nil, err
 	}
 
-	if expectedAmount.Cmp(offer.MaxAmount) > 0 {
-		return nil, errAmountProvidedTooHigh{providesAmount, offer.MaxAmount}
+	if offerMinETH.Cmp(providesAmount) > 0 {
+		return nil, errAmountProvidedTooLow{providesAmount, offerMinETH}
+	}
+
+	if offerMaxETH.Cmp(providesAmount) < 0 {
+		return nil, errAmountProvidedTooHigh{providesAmount, offerMaxETH}
+	}
+
+	err = validateMinBalance(
+		inst.backend.Ctx(),
+		inst.backend.ETHClient(),
+		providesAmount,
+		offer.EthAsset,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	providedAmount, err := pcommon.GetEthAssetAmount(
@@ -55,8 +70,7 @@ func (inst *Instance) InitiateProtocol(
 		return nil, err
 	}
 
-	state, err := inst.initiate(makerPeerID, providedAmount, coins.MoneroToPiconero(expectedAmount),
-		offer.ExchangeRate, offer.EthAsset, offer.ID)
+	state, err := inst.initiate(makerPeerID, providedAmount, offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +81,6 @@ func (inst *Instance) InitiateProtocol(
 func (inst *Instance) initiate(
 	makerPeerID peer.ID,
 	providesAmount coins.EthAssetAmount,
-	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 	offerID types.Hash,
@@ -79,48 +92,12 @@ func (inst *Instance) initiate(
 		return nil, errProtocolAlreadyInProgress
 	}
 
-	ethBalance, err := inst.backend.ETHClient().Balance(inst.backend.Ctx())
-	if err != nil {
-		return nil, err
-	}
-
-	// Ensure the user's balance is strictly greater than the amount they will provide
-	//
-	// UPDATE: The balance should be enough for:
-	// provided amount + cost of NewSwap + cost of SetReady + cost of Refund
-	//
-	if ethAsset.IsETH() && ethBalance.Cmp(providesAmount.(*coins.WeiAmount)) <= 0 {
-		log.Warnf("Account %s needs additional funds for swap balance=%s ETH providesAmount=%s ETH",
-			inst.backend.ETHClient().Address(), ethBalance.AsEtherString(), providesAmount.AsStandard())
-		return nil, errAssetBalanceTooLow{
-			providedAmount: providesAmount.AsStandard(),
-			balance:        ethBalance.AsEther(),
-			symbol:         "ETH",
-		}
-	}
-
-	if ethAsset.IsToken() {
-		tokenBalance, err := inst.backend.ETHClient().ERC20Balance(inst.backend.Ctx(), ethAsset.Address()) //nolint:govet
-		if err != nil {
-			return nil, err
-		}
-
-		if tokenBalance.AsStandard().Cmp(providesAmount.AsStandard()) <= 0 {
-			return nil, errAssetBalanceTooLow{
-				providedAmount: providesAmount.AsStandard(),
-				balance:        tokenBalance.AsStandard(),
-				symbol:         tokenBalance.StandardSymbol(),
-			}
-		}
-	}
-
 	s, err := newSwapStateFromStart(
 		inst.backend,
 		makerPeerID,
 		offerID,
 		inst.noTransferBack,
 		providesAmount,
-		expectedAmount,
 		exchangeRate,
 		ethAsset,
 	)
