@@ -187,7 +187,10 @@ func (h *Host) CloseProtocolStream(offerID types.Hash) {
 		return
 	}
 
+	h.swapMu.Lock()
 	swap.streamClosed = true
+	h.swapMu.Unlock()
+
 	log.Debugf("closing stream: peer=%s protocol=%s",
 		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
 	)
@@ -196,6 +199,8 @@ func (h *Host) CloseProtocolStream(offerID types.Hash) {
 }
 
 // DeleteOngoingSwap deletes an ongoing swap from the network's state.
+// Note: the caller of this function must ensure that `CloseProtocolStream`
+// has also been called.
 func (h *Host) DeleteOngoingSwap(offerID types.Hash) {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
