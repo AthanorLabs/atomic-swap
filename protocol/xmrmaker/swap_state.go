@@ -89,6 +89,9 @@ type swapState struct {
 	logReadyCh chan ethtypes.Log
 	// channel for `Refunded` logs seen on-chain
 	logRefundedCh chan ethtypes.Log
+	// channel for `Claimed` logs seen on-chain
+	logClaimedCh chan ethtypes.Log
+
 	// signals the t0 expiration handler to return
 	readyCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
@@ -352,6 +355,7 @@ func newSwapState(
 	const logChSize = 16 // arbitrary, we just don't want the watcher to block on writing
 	logReadyCh := make(chan ethtypes.Log, logChSize)
 	logRefundedCh := make(chan ethtypes.Log, logChSize)
+	logClaimedCh := make(chan ethtypes.Log, logChSize)
 
 	// Create per swap context that is canceled when the swap completes
 	ctx, cancel := context.WithCancel(b.Ctx())
@@ -374,6 +378,15 @@ func newSwapState(
 		logRefundedCh,
 	)
 
+	claimedWatcher := watcher.NewEventFilter(
+		ctx,
+		b.ETHClient().Raw(),
+		b.SwapCreatorAddr(),
+		ethStartNumber,
+		claimedTopic,
+		logClaimedCh,
+	)
+
 	err := readyWatcher.Start()
 	if err != nil {
 		cancel()
@@ -381,6 +394,12 @@ func newSwapState(
 	}
 
 	err = refundedWatcher.Start()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	err = claimedWatcher.Start()
 	if err != nil {
 		cancel()
 		return nil, err

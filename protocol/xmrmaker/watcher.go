@@ -40,7 +40,10 @@ func (s *swapState) runContractEventWatcher() {
 				log.Debugf("EventETHRefunded sent, returning from event watcher")
 				return
 			}
+		case l := <-s.logClaimedCh:
+
 		}
+
 	}
 }
 
