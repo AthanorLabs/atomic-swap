@@ -60,6 +60,8 @@ type mockSwapState struct {
 	offerID types.Hash
 }
 
+func (*mockSwapState) NotifyStreamClosed() {}
+
 func (s *mockSwapState) OfferID() types.Hash {
 	if (s.offerID != types.Hash{}) {
 		return s.offerID

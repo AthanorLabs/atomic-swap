@@ -39,6 +39,7 @@ type RelayHandler interface {
 }
 
 type swap struct {
-	swapState SwapState
-	stream    libp2pnetwork.Stream
+	swapState    SwapState
+	stream       libp2pnetwork.Stream
+	streamClosed bool
 }

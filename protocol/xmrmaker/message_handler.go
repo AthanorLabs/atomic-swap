@@ -39,11 +39,6 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 		if err != nil {
 			return err
 		}
-
-		// TODO: we can actually close the network stream after
-		// sending the XMRLocked message, but since the network
-		// calls Exit() when the stream closes, it needs to not
-		// do that in this case.
 	default:
 		return errUnexpectedMessageType
 	}

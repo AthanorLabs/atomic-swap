@@ -183,13 +183,16 @@ func (h *Host) CloseProtocolStream(offerID types.Hash) {
 	h.swapMu.RLock()
 	swap, has := h.swaps[offerID]
 	h.swapMu.RUnlock()
-	if !has {
+	if !has || swap.streamClosed {
 		return
 	}
 
+	swap.streamClosed = true
 	log.Debugf("closing stream: peer=%s protocol=%s",
 		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
 	)
+
+	// will this interrupt the remote side's read?????
 	_ = swap.stream.Close()
 }
 

@@ -68,7 +68,7 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 }
 
 func (h *Host) receiveInitiateResponse(stream libp2pnetwork.Stream, s SwapState) {
-	defer h.handleProtocolStreamClose(stream)
+	defer h.handleProtocolStreamClose(stream, s)
 
 	const initiateResponseTimeout = time.Minute
 
@@ -158,7 +158,7 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 
 // handleProtocolStreamInner is called to handle a protocol stream, in both ingoing and outgoing cases.
 func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapState) {
-	defer h.handleProtocolStreamClose(stream)
+	defer h.handleProtocolStreamClose(stream, s)
 
 	for {
 		msg, err := readStreamMessage(stream, maxMessageSize)
@@ -183,7 +183,10 @@ func (h *Host) handleProtocolStreamInner(stream libp2pnetwork.Stream, s SwapStat
 	}
 }
 
-func (h *Host) handleProtocolStreamClose(stream libp2pnetwork.Stream) {
+func (h *Host) handleProtocolStreamClose(stream libp2pnetwork.Stream, s SwapState) {
 	log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 	_ = stream.Close()
+
+	// notify swap state that the stream has closed
+	s.NotifyStreamClosed()
 }

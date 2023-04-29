@@ -202,6 +202,10 @@ func (s *swapState) handleEvent(event Event) {
 			}
 		}
 
+		// close the stream to the remote peer, since we won't be
+		// receiving any more messages.
+		s.Backend.CloseProtocolStream(s.OfferID())
+
 		// nextExpectedEvent was set in s.lockFunds()
 	case *EventContractReady:
 		log.Infof("EventContractReady")

@@ -306,12 +306,14 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 					continue
 				}
 				switch status {
-				case types.CompletedRefund:
+				case types.CompletedRefund | types.CompletedAbort:
 					// Do nothing, desired outcome
+					// either state is fine, as it depends on if the maker became
+					// aware of the cancellation before or after locking XMR
 				case types.CompletedSuccess:
 					s.T().Log("XMRMaker completed swap before XMRTaker's cancel took affect")
 				default:
-					errCh <- fmt.Errorf("swap did not succeed or refund for XMRMaker: status=%s", status)
+					errCh <- fmt.Errorf("swap did not succeed or refund/abort for XMRMaker: status=%s", status)
 				}
 				return
 			case <-ctx.Done():
