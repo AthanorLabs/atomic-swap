@@ -14,10 +14,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-const (
-	maxTestERC20DeployGas = 798226 // internal only const, using long token names will increase this
-)
-
 func TestSwapCreator_NewSwap_ERC20(t *testing.T) {
 	pkA := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
