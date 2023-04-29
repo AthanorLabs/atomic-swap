@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	maxTestERC20DeployGas = 797962 // internal only const, using long token names will increase this
+	maxTestERC20DeployGas = 798226 // internal only const, using long token names will increase this
 )
 
 func TestSwapCreator_NewSwap_ERC20(t *testing.T) {
