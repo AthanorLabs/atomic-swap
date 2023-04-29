@@ -23,7 +23,7 @@ func createSendKeysMessage(t *testing.T) *message.SendKeysMessage {
 	require.NoError(t, err)
 
 	return &message.SendKeysMessage{
-		OfferID:            types.Hash{0x1},
+		OfferID:            testID,
 		ProvidedAmount:     coins.StrToDecimal("0.5"),
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),
@@ -46,7 +46,7 @@ func TestHost_Initiate(t *testing.T) {
 
 	err = ha.Initiate(hb.h.AddrInfo(), createSendKeysMessage(t), new(mockSwapState))
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second * 2)
 
 	ha.swapMu.RLock()
 	require.NotNil(t, ha.swaps[testID])
