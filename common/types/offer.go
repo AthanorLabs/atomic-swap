@@ -148,21 +148,18 @@ func (o *Offer) validate() error {
 		return errExchangeRateNil
 	}
 
-	if o.EthAsset.IsETH() {
-		// We want to prevent offers whose claim value is so low that a relayer
-		// can't be used to complete the swap if the maker does not have sufficient
-		// ETH to make the claim themselves. Relayers are not used with ERC20 swaps,
-		// so the best we can do in that case is ensure (elsewhere) that the maker
-		// has sufficient ETH to make a claim when they create the offer.
-		relayerFeeAsXMR, err := o.ExchangeRate.ToXMR(coins.RelayerFeeETH)
-		if err != nil {
-			return err
-		}
-		if o.MinAmount.Cmp(relayerFeeAsXMR) <= 0 {
-			return fmt.Errorf(
-				"min amount must be greater than %s ETH when converted (%s XMR)",
-				coins.RelayerFeeETH.Text('f'), relayerFeeAsXMR.Text('f'))
-		}
+	// We want to prevent offers whose claim value is so low that a relayer
+	// can't be used to complete the swap if the maker does not have sufficient
+	// ETH to make the claim themselves. While relayers are not used with ERC20
+	// swaps, we still want a minimum swap amount, so we use the same value.
+	relayerFeeAsXMR, err := o.ExchangeRate.ToXMR(coins.RelayerFeeETH)
+	if err != nil {
+		return err
+	}
+	if o.MinAmount.Cmp(relayerFeeAsXMR) <= 0 {
+		return fmt.Errorf(
+			"min amount must be greater than %s ETH when converted (%s XMR)",
+			coins.RelayerFeeETH.Text('f'), relayerFeeAsXMR.Text('f'))
 	}
 
 	if o.MaxAmount.Cmp(maxOfferValue) > 0 {
