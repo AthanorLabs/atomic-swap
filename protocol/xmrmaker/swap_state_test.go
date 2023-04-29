@@ -246,7 +246,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 
 	go s.runT0ExpirationHandler()
 
-	for status := range s.offerExtra.StatusCh {
+	for status := range s.info.StatusCh() {
 		if status == types.CompletedSuccess {
 			break
 		} else if !status.IsOngoing() {

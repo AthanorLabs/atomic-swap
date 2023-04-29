@@ -53,7 +53,6 @@ type swapState struct {
 	noTransferBack bool
 
 	info           *pswap.Info
-	statusCh       chan types.Status
 	providedAmount coins.EthAssetAmount
 
 	// our keys for this session
@@ -296,7 +295,6 @@ func newSwapState(
 		done:              make(chan struct{}),
 		info:              info,
 		providedAmount:    providedAmt,
-		statusCh:          info.StatusCh(),
 	}
 
 	go s.runHandleEvents()

@@ -127,47 +127,36 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	// relaunch the daemons (2nd and final time) overwriting ctx
 	t.Logf("daemons stopped, now re-launching them")
 	ctx, _ = LaunchDaemons(t, 5*time.Minute, bobConf, aliceConf)
-	t.Logf("daemons relaunched, waiting a few seconds before checking swap status")
+	t.Logf("daemons relaunched, checking swap status")
 
-	/*
-	 * We'll switch to the commented out solution when the status channel is recreated
-	 * on restart.
-	 */
-	//	// Give alice a fresh client with a fresh context
-	//	aws, err = wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	//	require.NoError(t, err)
-	//	aliceStatusCh, err = aws.SubscribeSwapStatus(makeResp.OfferID)
-	//	require.NoError(t, err)
-	//
-	//	// In the loop below, Alice's initial state is most likely still SweepingXMR.
-	//endLoop:
-	//	for {
-	//		select {
-	//		case status := <-aliceStatusCh:
-	//			t.Log("> Alice got status:", status)
-	//			if !status.IsOngoing() {
-	//				break endLoop
-	//			}
-	//		case <-ctx.Done():
-	//			t.Logf("Alice's context cancelled before she completed the swap [expected]")
-	//			break endLoop
-	//		}
-	//	}
+	// Give alice a fresh client with a fresh context
+	aws, err = wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	require.NoError(t, err)
+	aliceStatusCh, err = aws.SubscribeSwapStatus(makeResp.OfferID)
+	require.NoError(t, err)
+	t.Logf("subscribed to Alice's swap status")
 
-	// Temporary solution until solution above can be uncommented
-	for i := 0; i < 5; i++ {
-		pastSwap, err := ac.GetPastSwap(&makeResp.OfferID) //nolint:govet
-		require.NoError(t, err)
-		status := pastSwap.Swaps[0].Status
-		t.Logf("Alice past status: %s", status)
-		if status.IsOngoing() {
-			time.Sleep(2 * time.Second)
-			continue
+	// In the loop below, Alice's initial state is most likely still SweepingXMR.
+endLoop:
+	for {
+		select {
+		case status := <-aliceStatusCh:
+			t.Log("> Alice got status:", status)
+			if !status.IsOngoing() {
+				break endLoop
+			}
+		case <-ctx.Done():
+			t.Logf("Alice's context cancelled before she completed the swap [expected]")
+			break endLoop
 		}
-		require.Equal(t, types.CompletedSuccess.String(), pastSwap.Swaps[0].Status.String())
 	}
 
-	pastSwap, err := bc.GetPastSwap(&makeResp.OfferID)
+	pastSwap, err := ac.GetPastSwap(&makeResp.OfferID)
+	require.NoError(t, err)
+	t.Logf("Alice past status: %s", pastSwap.Swaps[0].Status)
+	require.Equal(t, types.CompletedSuccess.String(), pastSwap.Swaps[0].Status.String())
+
+	pastSwap, err = bc.GetPastSwap(&makeResp.OfferID)
 	require.NoError(t, err)
 	t.Logf("Bob past status: %s", pastSwap.Swaps[0].Status)
 	require.Equal(t, types.CompletedSuccess.String(), pastSwap.Swaps[0].Status.String())
