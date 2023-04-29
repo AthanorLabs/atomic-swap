@@ -196,6 +196,10 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleNotifyETHLocked(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
+			err = s.exit()
+			if err != nil {
+				log.Warnf("failed to exit swap: %s", err)
+			}
 		}
 
 		// nextExpectedEvent was set in s.lockFunds()

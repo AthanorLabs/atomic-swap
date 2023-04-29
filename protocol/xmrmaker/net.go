@@ -4,10 +4,11 @@
 package xmrmaker
 
 import (
+	"fmt"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
-	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -75,6 +76,7 @@ func (inst *Instance) initiate(
 
 	symbol, err := pcommon.AssetSymbol(inst.backend, offer.EthAsset)
 	if err != nil {
+		_ = s.Exit()
 		return nil, err
 	}
 
@@ -93,7 +95,7 @@ func (inst *Instance) initiate(
 func (inst *Instance) HandleInitiateMessage(
 	takerPeerID peer.ID,
 	msg *message.SendKeysMessage,
-) (net.SwapState, common.Message, error) {
+) (net.SwapState, error) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 
@@ -105,32 +107,32 @@ func (inst *Instance) HandleInitiateMessage(
 
 	// get offer and determine expected amount
 	if types.IsHashZero(msg.OfferID) {
-		return nil, nil, errOfferIDNotSet
+		return nil, errOfferIDNotSet
 	}
 
 	// TODO: If this is not ETH, we need quick/easy access to the number
 	//       of token decimal places. Should it be in the OfferExtra struct?
 	err := coins.ValidatePositive("providedAmount", coins.NumEtherDecimals, msg.ProvidedAmount)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if providedAmount.Cmp(offer.MinAmount) < 0 {
-		return nil, nil, errAmountProvidedTooLow{msg.ProvidedAmount, offer.MinAmount}
+		return nil, errAmountProvidedTooLow{msg.ProvidedAmount, offer.MinAmount}
 	}
 
 	if providedAmount.Cmp(offer.MaxAmount) > 0 {
-		return nil, nil, errAmountProvidedTooHigh{msg.ProvidedAmount, offer.MaxAmount}
+		return nil, errAmountProvidedTooHigh{msg.ProvidedAmount, offer.MaxAmount}
 	}
 
 	providedPiconero := coins.MoneroToPiconero(providedAmount)
@@ -144,18 +146,25 @@ func (inst *Instance) HandleInitiateMessage(
 		offer.EthAsset,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	state, err := inst.initiate(takerPeerID, offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err = state.handleSendKeysMessage(msg); err != nil {
-		return nil, nil, err
+		_ = state.Exit()
+		return nil, err
 	}
 
 	resp := state.SendKeysMessage()
-	return state, resp, nil
+	err = inst.backend.SendSwapMessage(resp, offer.ID)
+	if err != nil {
+		_ = state.Exit()
+		return nil, fmt.Errorf("failed to send SendKeysMessage to remote peer: %w", err)
+	}
+
+	return state, nil
 }

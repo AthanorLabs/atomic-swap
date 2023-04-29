@@ -39,11 +39,11 @@ func (h *mockMakerHandler) GetOffers() []*types.Offer {
 func (h *mockMakerHandler) HandleInitiateMessage(
 	_ peer.ID,
 	msg *message.SendKeysMessage,
-) (s SwapState, resp Message, err error) {
+) (s SwapState, err error) {
 	if (h.id != types.Hash{}) {
-		return &mockSwapState{h.id}, createSendKeysMessage(h.t), nil
+		return &mockSwapState{h.id} /*createSendKeysMessage(h.t),*/, nil
 	}
-	return &mockSwapState{}, msg, nil
+	return &mockSwapState{}, nil
 }
 
 type mockRelayHandler struct {

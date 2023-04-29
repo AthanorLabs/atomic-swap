@@ -31,6 +31,7 @@ import (
 // NetSender consists of Host methods invoked by the Maker/Taker
 type NetSender interface {
 	SendSwapMessage(common.Message, types.Hash) error
+	DeleteOngoingSwap(offerID types.Hash)
 	CloseProtocolStream(id types.Hash)
 	DiscoverRelayers() ([]peer.ID, error)                                                          // Only used by Maker
 	SubmitClaimToRelayer(peer.ID, *message.RelayClaimRequest) (*message.RelayClaimResponse, error) // Only used by Taker

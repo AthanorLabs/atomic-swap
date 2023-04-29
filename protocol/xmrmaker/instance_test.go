@@ -58,15 +58,16 @@ func (n *mockNet) SendSwapMessage(msg common.Message, _ types.Hash) error {
 	return nil
 }
 
-func (n *mockNet) DiscoverRelayers() ([]peer.ID, error) {
+func (*mockNet) DiscoverRelayers() ([]peer.ID, error) {
 	return nil, nil
 }
 
-func (n *mockNet) SubmitClaimToRelayer(_ peer.ID, _ *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+func (*mockNet) SubmitClaimToRelayer(_ peer.ID, _ *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
 	return new(message.RelayClaimResponse), nil
 }
 
-func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
+func (*mockNet) CloseProtocolStream(_ types.Hash) {}
+func (*mockNet) DeleteOngoingSwap(_ types.Hash)   {}
 
 func newSwapManager(t *testing.T) pswap.Manager {
 	ctrl := gomock.NewController(t)

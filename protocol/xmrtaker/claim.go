@@ -117,11 +117,5 @@ func (s *swapState) claimMonero(skB *mcrypto.PrivateSpendKey) (*mcrypto.Address,
 
 	close(s.claimedCh)
 	log.Infof("monero claimed and swept to original account %s", depositAddr)
-	go func() {
-		err = s.Exit()
-		if err != nil {
-			log.Warnf("failed to exit: %v", err)
-		}
-	}()
 	return kpAB.PublicKeyPair().Address(s.Env()), nil
 }

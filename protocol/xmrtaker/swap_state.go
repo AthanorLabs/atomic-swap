@@ -346,6 +346,9 @@ func (s *swapState) exit() error {
 			return
 		}
 
+		// delete from network state
+		s.Backend.DeleteOngoingSwap(s.OfferID())
+
 		err = s.Backend.RecoveryDB().DeleteSwap(s.OfferID())
 		if err != nil {
 			log.Warnf("failed to delete temporary swap info %s from db: %s", s.OfferID(), err)

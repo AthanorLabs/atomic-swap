@@ -25,7 +25,7 @@ type SwapState interface {
 type SwapStateNet interface {
 	HandleProtocolMessage(msg Message) error
 	OfferID() types.Hash
-	Exit() error
+	//Exit() error
 }
 
 // SwapStateRPC contains the methods used by the RPC server into the SwapState.

@@ -29,7 +29,7 @@ type (
 // implemented by *xmrmaker.Instance.
 type MakerHandler interface {
 	GetOffers() []*types.Offer
-	HandleInitiateMessage(peerID peer.ID, msg *SendKeysMessage) (SwapState, Message, error)
+	HandleInitiateMessage(peerID peer.ID, msg *SendKeysMessage) (SwapState, error)
 }
 
 // RelayHandler handles relay claim requests. It is implemented by
@@ -42,5 +42,5 @@ type swap struct {
 	swapState SwapState
 	stream    libp2pnetwork.Stream
 	// isTaker is true if we initiated the swap (created the outbound stream)
-	isTaker bool
+	// isTaker bool
 }

@@ -193,6 +193,13 @@ func (h *Host) CloseProtocolStream(offerID types.Hash) {
 	_ = swap.stream.Close()
 }
 
+// DeleteOngoingSwap deletes an ongoing swap from the network's state.
+func (h *Host) DeleteOngoingSwap(offerID types.Hash) {
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
+	delete(h.swaps, offerID)
+}
+
 // Advertise advertises the namespaces now instead of waiting for the next periodic
 // update. We use it when a new advertised namespace is added.
 func (h *Host) Advertise() {
