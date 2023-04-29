@@ -30,7 +30,6 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 	defer h.swapMu.Unlock()
 
 	id := s.OfferID()
-
 	if h.swaps[id] != nil {
 		return errSwapAlreadyInProgress
 	}
@@ -115,7 +114,6 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	curPeer := stream.Conn().RemotePeer()
-
 	log.Debugf("received message from peer=%s type=%s", curPeer, message.TypeToString(msg.Type()))
 
 	im, ok := msg.(*SendKeysMessage)
@@ -125,18 +123,34 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
+	h.swapMu.Lock()
+	if h.swaps[im.OfferID] != nil {
+		log.Warnf("ignoring attempting initiation of swap %s: %s", im.OfferID, errSwapAlreadyInProgress)
+		h.swapMu.Unlock()
+		return
+	}
+
+	// set the stream here but not the swapState, since we don't have it yet
+	// HandleInitiateMessage requires the network to be aware of the swap's stream,
+	// since it sends the SendKeysMessage response using that stream.
+	h.swaps[im.OfferID] = &swap{
+		stream: stream,
+	}
+	h.swapMu.Unlock()
+
 	s, err := h.makerHandler.HandleInitiateMessage(curPeer, im)
 	if err != nil {
 		log.Warnf("failed to handle protocol message: err=%s", err)
 		_ = stream.Close()
+		h.swapMu.Lock()
+		delete(h.swaps, im.OfferID)
+		h.swapMu.Unlock()
 		return
 	}
 
+	// set the swapState here
 	h.swapMu.Lock()
-	h.swaps[s.OfferID()] = &swap{
-		swapState: s,
-		stream:    stream,
-	}
+	h.swaps[im.OfferID].swapState = s
 	h.swapMu.Unlock()
 
 	h.handleProtocolStreamInner(stream, s)
