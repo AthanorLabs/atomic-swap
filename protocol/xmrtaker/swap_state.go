@@ -7,7 +7,6 @@ package xmrtaker
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -562,7 +561,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 
 	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
 
-	nonce := generateNonce()
+	nonce := contracts.GenerateNewSwapNonce()
 	receipt, err := s.sender.NewSwap(
 		cmtXMRMaker,
 		cmtXMRTaker,
@@ -697,11 +696,4 @@ func (s *swapState) refund() (*ethtypes.Receipt, error) {
 // and a DLEq proof proving that the two keys correspond.
 func generateKeys() (*pcommon.KeysAndProof, error) {
 	return pcommon.GenerateKeysAndProof()
-}
-
-func generateNonce() *big.Int {
-	u256PlusOne := new(big.Int).Lsh(big.NewInt(1), 256)
-	maxU256 := new(big.Int).Sub(u256PlusOne, big.NewInt(1))
-	n, _ := rand.Int(rand.Reader, maxU256)
-	return n
 }

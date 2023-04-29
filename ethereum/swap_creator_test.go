@@ -15,6 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
@@ -33,45 +34,49 @@ var (
 	dummySwapKey           = [32]byte{1} // dummy non-zero value for claim/refund key
 )
 
-func setupXMRTakerAuth(t *testing.T) (*bind.TransactOpts, *ethclient.Client, *ecdsa.PrivateKey) {
-	conn, _ := tests.NewEthClient(t)
-	pkA := tests.GetTakerTestKey(t)
-	chainID, err := conn.ChainID(context.Background())
+func getAuth(t *testing.T, pk *ecdsa.PrivateKey) *bind.TransactOpts {
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
 	require.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(pkA, chainID)
+	return txOpts
+}
+
+func getReceipt(t *testing.T, ec *ethclient.Client, tx *ethtypes.Transaction) *ethtypes.Receipt {
+	receipt, err := block.WaitForReceipt(context.Background(), ec, tx.Hash())
 	require.NoError(t, err)
-	return auth, conn, pkA
+	return receipt
 }
 
 func approveERC20(t *testing.T,
-	auth *bind.TransactOpts,
-	conn *ethclient.Client,
+	ec *ethclient.Client,
+	pk *ecdsa.PrivateKey,
 	erc20Contract *TestERC20,
 	swapCreatorAddress ethcommon.Address,
 	value *big.Int,
 ) {
 	require.NotNil(t, erc20Contract)
-	tx, err := erc20Contract.Approve(auth, swapCreatorAddress, value)
+
+	tx, err := erc20Contract.Approve(getAuth(t, pk), swapCreatorAddress, value)
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt := getReceipt(t, ec, tx)
+
 	t.Logf("gas cost to call Approve %d (delta %d)", receipt.GasUsed, MaxTokenApproveGas-int(receipt.GasUsed))
 	require.GreaterOrEqual(t, MaxTokenApproveGas, int(receipt.GasUsed), "Token Approve")
 }
 
 func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
-	auth, conn, _ := setupXMRTakerAuth(t)
-	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	pk := tests.GetTakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+
+	swapCreatorAddr, tx, contract, err := DeploySwapCreator(getAuth(t, pk), ec, ethcommon.Address{})
 	require.NoError(t, err)
-	require.NotEqual(t, ethcommon.Address{}, address)
+	require.NotEqual(t, ethcommon.Address{}, swapCreatorAddr)
 	require.NotNil(t, tx)
 	require.NotNil(t, contract)
 
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt := getReceipt(t, ec, tx)
 	require.Equal(t, swapCreatorDeployGas, int(receipt.GasUsed))
 
-	owner := auth.From
+	owner := crypto.PubkeyToAddress(pk.PublicKey)
 	claimer := common.EthereumPrivateKeyToAddress(tests.GetMakerTestKey(t))
 
 	var pubKeyClaim, pubKeyRefund [32]byte
@@ -83,15 +88,16 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 	nonce, err := rand.Prime(rand.Reader, 256)
 	require.NoError(t, err)
 
+	txOpts := getAuth(t, pk)
 	value := defaultSwapValue
 	if asset.IsETH() {
-		auth.Value = value
+		txOpts.Value = value
 	} else {
-		approveERC20(t, auth, conn, erc20Contract, address, value)
+		approveERC20(t, ec, pk, erc20Contract, swapCreatorAddr, value)
 	}
 
 	tx, err = contract.NewSwap(
-		auth,
+		txOpts,
 		pubKeyClaim,
 		pubKeyRefund,
 		claimer,
@@ -103,8 +109,7 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 	)
 	require.NoError(t, err)
 
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH NewSwap: %d (delta %d)",
 			receipt.GasUsed, MaxNewSwapETHGas-int(receipt.GasUsed))
@@ -165,25 +170,24 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	cmt := pk.Keccak256()
 
 	// deploy swap contract with claim key hash
-	auth, conn, pkA := setupXMRTakerAuth(t)
-	pub := pkA.Public().(*ecdsa.PublicKey)
-	addr := crypto.PubkeyToAddress(*pub)
+	pkA := tests.GetTakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(getAuth(t, pkA), ec, ethcommon.Address{})
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt := getReceipt(t, ec, tx)
 	require.Equal(t, swapCreatorDeployGas, int(receipt.GasUsed))
 
+	txOpts := getAuth(t, pkA)
+	txOpts.Value = defaultSwapValue
+
 	nonce := big.NewInt(0)
-	auth.Value = defaultSwapValue
-	tx, err = contract.NewSwap(auth, cmt, dummySwapKey, addr, defaultTimeoutDuration,
+	tx, err = contract.NewSwap(txOpts, cmt, dummySwapKey, addr, defaultTimeoutDuration,
 		defaultTimeoutDuration, ethcommon.Address(types.EthAssetETH), defaultSwapValue, nonce)
 	require.NoError(t, err)
-	auth.Value = nil
 
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
 	t.Logf("gas cost to call ETH NewSwap: %d (delta %d)", receipt.GasUsed, MaxNewSwapETHGas-int(receipt.GasUsed))
 	require.GreaterOrEqual(t, MaxNewSwapETHGas, int(receipt.GasUsed), "ETH NewSwap")
 
@@ -207,18 +211,17 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	}
 
 	// set contract to Ready
-	tx, err = contract.SetReady(auth, swap)
+	tx, err = contract.SetReady(getAuth(t, pkA), swap)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
+
 	t.Logf("gas cost to call SetReady: %d (delta %d)", receipt.GasUsed, MaxSetReadyGas-int(receipt.GasUsed))
 	require.GreaterOrEqual(t, MaxSetReadyGas, int(receipt.GasUsed), "SetReady")
 
 	// now let's try to claim
-	tx, err = contract.Claim(auth, swap, s)
+	tx, err = contract.Claim(getAuth(t, pkA), swap, s)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
 	t.Logf("gas cost to call ETH Claim: %d (delta %d)", receipt.GasUsed, MaxClaimETHGas-int(receipt.GasUsed))
 	require.GreaterOrEqual(t, MaxClaimETHGas, int(receipt.GasUsed), "ETH Claim")
 
@@ -239,35 +242,31 @@ func testClaim(t *testing.T, asset types.EthAsset, newLogIndex int, value *big.I
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with claim key hash
-	authOrig, conn, pkA := setupXMRTakerAuth(t)
-	pub := pkA.Public().(*ecdsa.PublicKey)
-	addr := crypto.PubkeyToAddress(*pub)
+	pkA := tests.GetTakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	// TODO: Rewrite this code to avoid the awkward use of txOpts. Code was using
-	//       same TxOpts for multiple transactions and we needed a quick fix to get
-	//       CI working.
-	txOpts := *authOrig
-	swapCreatorAddr, tx, contract, err := DeploySwapCreator(&txOpts, conn, ethcommon.Address{})
+	swapCreatorAddr, tx, contract, err := DeploySwapCreator(getAuth(t, pkA), ec, ethcommon.Address{})
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt := getReceipt(t, ec, tx)
 	require.Equal(t, swapCreatorDeployGas, int(receipt.GasUsed))
 
 	if asset.IsToken() {
-		approveERC20(t, authOrig, conn, erc20Contract, swapCreatorAddr, value)
+		approveERC20(t, ec, pkA, erc20Contract, swapCreatorAddr, value)
 	}
 
-	nonce := big.NewInt(0)
-	txOpts = *authOrig
+	txOpts := getAuth(t, pkA)
+	require.NoError(t, err)
 	if asset.IsETH() {
 		txOpts.Value = value
 	}
 
-	tx, err = contract.NewSwap(&txOpts, cmt, dummySwapKey, addr,
+	nonce := GenerateNewSwapNonce()
+	tx, err = contract.NewSwap(txOpts, cmt, dummySwapKey, addr,
 		defaultTimeoutDuration, defaultTimeoutDuration, asset.Address(), value, nonce)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+
+	receipt = getReceipt(t, ec, tx)
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH NewSwap: %d (delta %d)",
 			receipt.GasUsed, MaxNewSwapETHGas-int(receipt.GasUsed))
@@ -298,25 +297,21 @@ func testClaim(t *testing.T, asset types.EthAsset, newLogIndex int, value *big.I
 	}
 
 	// ensure we can't claim before setting contract to Ready
-	txOpts = *authOrig
-	_, err = contract.Claim(&txOpts, swap, proof.Secret())
+	_, err = contract.Claim(getAuth(t, pkA), swap, proof.Secret())
 	require.ErrorContains(t, err, "VM Exception while processing transaction: revert")
 
 	// set contract to Ready
-	txOpts = *authOrig
-	tx, err = contract.SetReady(&txOpts, swap)
+	tx, err = contract.SetReady(getAuth(t, pkA), swap)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	receipt = getReceipt(t, ec, tx)
 	t.Logf("gas cost to call SetReady: %d (delta %d)", receipt.GasUsed, MaxSetReadyGas-int(receipt.GasUsed))
 	require.GreaterOrEqual(t, MaxSetReadyGas, int(receipt.GasUsed), "SetReady")
-	require.NoError(t, err)
 
 	// now let's try to claim
-	txOpts = *authOrig
-	tx, err = contract.Claim(&txOpts, swap, proof.Secret())
+	tx, err = contract.Claim(getAuth(t, pkA), swap, proof.Secret())
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
+
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH Claim: %d (delta %d)", receipt.GasUsed, MaxClaimETHGas-int(receipt.GasUsed))
 		require.GreaterOrEqual(t, MaxClaimETHGas, int(receipt.GasUsed), "ETH Claim")
@@ -346,29 +341,29 @@ func testRefundBeforeT0(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with refund key hash
-	auth, conn, pkA := setupXMRTakerAuth(t)
-	pub := pkA.Public().(*ecdsa.PublicKey)
-	addr := crypto.PubkeyToAddress(*pub)
+	pkA := tests.GetTakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	address, tx, contract, err := DeploySwapCreator(getAuth(t, pkA), ec, ethcommon.Address{})
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+
+	receipt := getReceipt(t, ec, tx)
 	require.Equal(t, swapCreatorDeployGas, int(receipt.GasUsed))
 
 	if asset.IsToken() {
-		approveERC20(t, auth, conn, erc20Contract, address, defaultSwapValue)
+		approveERC20(t, ec, pkA, erc20Contract, address, defaultSwapValue)
 	}
 
-	nonce := big.NewInt(0)
-	auth.Value = defaultSwapValue
-	tx, err = contract.NewSwap(auth, dummySwapKey, cmt, addr, defaultTimeoutDuration, defaultTimeoutDuration,
+	txOpts := getAuth(t, pkA)
+	txOpts.Value = defaultSwapValue
+
+	nonce := GenerateNewSwapNonce()
+	tx, err = contract.NewSwap(txOpts, dummySwapKey, cmt, addr, defaultTimeoutDuration, defaultTimeoutDuration,
 		asset.Address(), defaultSwapValue, nonce)
 	require.NoError(t, err)
-	auth.Value = nil
 
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH NewSwap: %d (delta %d)",
 			receipt.GasUsed, MaxNewSwapETHGas-int(receipt.GasUsed))
@@ -399,10 +394,10 @@ func testRefundBeforeT0(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 	}
 
 	// now let's try to refund
-	tx, err = contract.Refund(auth, swap, proof.Secret())
+	tx, err = contract.Refund(getAuth(t, pkA), swap, proof.Secret())
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
+
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH Refund: %d (delta %d)",
 			receipt.GasUsed, MaxRefundETHGas-int(receipt.GasUsed))
@@ -423,6 +418,8 @@ func TestSwapCreator_Refund_beforeT0(t *testing.T) {
 }
 
 func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20, newLogIndex int) {
+	ctx := context.Background()
+
 	// generate refund secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -434,30 +431,29 @@ func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	cmt := res.Secp256k1PublicKey().Keccak256()
 
 	// deploy swap contract with refund key hash
-	auth, conn, pkA := setupXMRTakerAuth(t)
-	pub := pkA.Public().(*ecdsa.PublicKey)
-	addr := crypto.PubkeyToAddress(*pub)
+	pkA := tests.GetTakerTestKey(t)
+	ec, _ := tests.NewEthClient(t)
+	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	address, tx, contract, err := DeploySwapCreator(getAuth(t, pkA), ec, ethcommon.Address{})
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt := getReceipt(t, ec, tx)
 	require.Equal(t, swapCreatorDeployGas, int(receipt.GasUsed))
 
 	if asset.IsToken() {
-		approveERC20(t, auth, conn, erc20Contract, address, defaultSwapValue)
+		approveERC20(t, ec, pkA, erc20Contract, address, defaultSwapValue)
 	}
 
-	nonce := big.NewInt(0)
+	txOpts := getAuth(t, pkA)
+	txOpts.Value = defaultSwapValue
+
+	nonce := GenerateNewSwapNonce()
 	timeout := big.NewInt(3)
-	auth.Value = defaultSwapValue
-	tx, err = contract.NewSwap(auth, dummySwapKey, cmt, addr, timeout, timeout,
+	tx, err = contract.NewSwap(txOpts, dummySwapKey, cmt, addr, timeout, timeout,
 		asset.Address(), defaultSwapValue, nonce)
 	require.NoError(t, err)
-	auth.Value = nil
+	receipt = getReceipt(t, ec, tx)
 
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH NewSwap: %d (delta %d)",
 			receipt.GasUsed, MaxNewSwapETHGas-int(receipt.GasUsed))
@@ -490,18 +486,18 @@ func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	}
 
 	secret := proof.Secret()
-	tx, err = contract.Refund(auth, swap, secret)
+	tx, err = contract.Refund(getAuth(t, pkA), swap, secret)
 	require.NoError(t, err)
-	_, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
+	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 	require.ErrorContains(t, err, "VM Exception while processing transaction: revert")
 
 	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
 
 	// now let's try to refund
-	tx, err = contract.Refund(auth, swap, secret)
+	tx, err = contract.Refund(getAuth(t, pkA), swap, secret)
 	require.NoError(t, err)
-	receipt, err = block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt = getReceipt(t, ec, tx)
+
 	if asset.IsETH() {
 		t.Logf("gas cost to call ETH Refund: %d (delta %d)",
 			receipt.GasUsed, MaxRefundETHGas-int(receipt.GasUsed))
@@ -512,11 +508,7 @@ func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 		require.GreaterOrEqual(t, MaxRefundTokenGas, int(receipt.GasUsed), "Token Refund")
 	}
 
-	callOpts := &bind.CallOpts{
-		From:    crypto.PubkeyToAddress(*pub),
-		Context: context.Background(),
-	}
-
+	callOpts := &bind.CallOpts{Context: ctx}
 	stage, err := contract.Swaps(callOpts, id)
 	require.NoError(t, err)
 	require.Equal(t, StageCompleted, stage)
@@ -526,18 +518,14 @@ func TestSwapCreator_Refund_afterT1(t *testing.T) {
 	testRefundAfterT1(t, types.EthAssetETH, nil, 0)
 }
 
+// test case where contract has multiple swaps happening at once
 func TestSwapCreator_MultipleSwaps(t *testing.T) {
-	// test case where contract has multiple swaps happening at once
-	conn, chainID := tests.NewEthClient(t)
-
 	pkContractCreator := tests.GetTestKeyByIndex(t, 0)
-	auth, err := bind.NewKeyedTransactorWithChainID(pkContractCreator, chainID)
-	require.NoError(t, err)
+	ec, _ := tests.NewEthClient(t)
 
-	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(getAuth(t, pkContractCreator), ec, ethcommon.Address{})
 	require.NoError(t, err)
-	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-	require.NoError(t, err)
+	receipt := getReceipt(t, ec, tx)
 	require.Equal(t, swapCreatorDeployGas, int(receipt.GasUsed))
 
 	const numSwaps = 16
@@ -547,12 +535,6 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 		id        [32]byte
 		secret    [32]byte
 		swap      SwapCreatorSwap
-	}
-
-	getAuth := func(sc *swapCase) *bind.TransactOpts {
-		auth, err := bind.NewKeyedTransactorWithChainID(sc.walletKey, chainID)
-		require.NoError(t, err)
-		return auth
 	}
 
 	swapCases := [numSwaps]swapCase{}
@@ -595,7 +577,8 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 	for i := 0; i < numSwaps; i++ {
 		go func(sc *swapCase) {
 			defer wg.Done()
-			auth := getAuth(sc)
+
+			auth := getAuth(t, sc.walletKey)
 			auth.Value = sc.swap.Value
 			tx, err := contract.NewSwap(
 				auth,
@@ -604,15 +587,13 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 				sc.swap.Claimer,
 				defaultTimeoutDuration,
 				defaultTimeoutDuration,
-				ethcommon.Address(types.EthAssetETH),
+				types.EthAssetETH.Address(),
 				sc.swap.Value,
 				sc.swap.Nonce,
 			)
 			require.NoError(t, err)
-			auth.Value = nil
+			receipt = getReceipt(t, ec, tx)
 
-			receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-			require.NoError(t, err)
 			t.Logf("gas cost to call ETH NewSwap[%d]: %d (delta %d)",
 				sc.index, receipt.GasUsed, MaxNewSwapETHGas-int(receipt.GasUsed))
 			require.GreaterOrEqual(t, MaxNewSwapETHGas, int(receipt.GasUsed), "ETH NewSwap")
@@ -632,14 +613,12 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 	for i := 0; i < numSwaps; i++ {
 		go func(sc *swapCase) {
 			defer wg.Done()
-			tx, err := contract.SetReady(getAuth(sc), sc.swap)
+			tx, err := contract.SetReady(getAuth(t, sc.walletKey), sc.swap)
 			require.NoError(t, err)
-			receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-			require.NoError(t, err)
+			receipt = getReceipt(t, ec, tx)
 			t.Logf("gas cost to call SetReady[%d]: %d (delta %d)",
 				sc.index, receipt.GasUsed, MaxSetReadyGas-int(receipt.GasUsed))
 			require.GreaterOrEqual(t, MaxSetReadyGas, int(receipt.GasUsed), "SetReady")
-
 		}(&swapCases[i])
 	}
 	wg.Wait() // set_ready called on all swaps
@@ -649,10 +628,9 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 	for i := 0; i < numSwaps; i++ {
 		go func(sc *swapCase) {
 			defer wg.Done()
-			tx, err := contract.Claim(getAuth(sc), sc.swap, sc.secret)
+			tx, err := contract.Claim(getAuth(t, sc.walletKey), sc.swap, sc.secret)
 			require.NoError(t, err)
-			receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
-			require.NoError(t, err)
+			receipt = getReceipt(t, ec, tx)
 			t.Logf("gas cost to call ETH Claim[%d]: %d (delta %d)",
 				sc.index, receipt.GasUsed, MaxClaimETHGas-int(receipt.GasUsed))
 			require.GreaterOrEqual(t, MaxClaimETHGas, int(receipt.GasUsed), "ETH Claim")

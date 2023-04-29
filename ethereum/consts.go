@@ -7,10 +7,10 @@ const (
 	swapCreatorDeployGas = 1004649 // constant, so no "max" prefix
 	MaxNewSwapETHGas     = 50589
 	MaxNewSwapTokenGas   = 86218
-	MaxSetReadyGas       = 31488
-	MaxClaimETHGas       = 42977
-	MaxClaimTokenGas     = 47138
-	MaxRefundETHGas      = 42736
-	MaxRefundTokenGas    = 46898
+	MaxSetReadyGas       = 31872
+	MaxClaimETHGas       = 43349
+	MaxClaimTokenGas     = 47522
+	MaxRefundETHGas      = 43120
+	MaxRefundTokenGas    = 47282
 	MaxTokenApproveGas   = 47000 // 46223 with our contract
 )
