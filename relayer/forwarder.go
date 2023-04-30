@@ -16,6 +16,7 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
@@ -74,7 +75,7 @@ func createForwarderRequest(
 	secret *[32]byte,
 ) (*gsnforwarder.IForwarderForwardRequest, error) {
 
-	calldata, err := getClaimRelayerTxCalldata(FeeWei, swap, secret)
+	calldata, err := getClaimRelayerTxCalldata(coins.RelayerFeeWei, swap, secret)
 	if err != nil {
 		return nil, err
 	}

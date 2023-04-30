@@ -31,15 +31,15 @@ var (
 	errInvalidStageForRecovery   = errors.New("cannot create ongoing swap state if stage is not ETHLocked or ContractReady") //nolint:lll
 )
 
-type errAssetBalanceTooLow struct {
-	providedAmount *apd.Decimal
-	balance        *apd.Decimal
+type errTokenBalanceTooLow struct {
+	providedAmount *apd.Decimal // standard units
+	tokenBalance   *apd.Decimal // standard units
 	symbol         string
 }
 
-func (e errAssetBalanceTooLow) Error() string {
+func (e errTokenBalanceTooLow) Error() string {
 	return fmt.Sprintf("balance of %s %s is below provided %s %s",
-		e.balance.Text('f'), e.symbol,
+		e.tokenBalance.Text('f'), e.symbol,
 		e.providedAmount.Text('f'), e.symbol,
 	)
 }
@@ -50,25 +50,37 @@ func errContractAddrMismatch(addr string) error {
 }
 
 type errAmountProvidedTooLow struct {
-	providedAmount *apd.Decimal
-	minAmount      *apd.Decimal
+	providedAmtETH *apd.Decimal
+	offerMinAmtETH *apd.Decimal
 }
 
 func (e errAmountProvidedTooLow) Error() string {
-	return fmt.Sprintf("%s ETH provided is under offer minimum of %s XMR",
-		e.providedAmount.String(),
-		e.minAmount.String(),
+	return fmt.Sprintf("%s ETH provided is under offer minimum of %s ETH",
+		e.providedAmtETH.Text('f'),
+		e.offerMinAmtETH.Text('f'),
 	)
 }
 
 type errAmountProvidedTooHigh struct {
-	providedAmount *apd.Decimal
-	maxAmount      *apd.Decimal
+	providedAmtETH *apd.Decimal
+	offerMaxETH    *apd.Decimal
 }
 
 func (e errAmountProvidedTooHigh) Error() string {
-	return fmt.Sprintf("%s ETH provided is over offer maximum of %s XMR",
-		e.providedAmount.String(),
-		e.maxAmount.String(),
+	return fmt.Sprintf("%s ETH provided is over offer maximum of %s ETH",
+		e.providedAmtETH.Text('f'),
+		e.offerMaxETH.Text('f'),
+	)
+}
+
+type errETHBalanceTooLow struct {
+	currentBalanceETH  *apd.Decimal
+	requiredBalanceETH *apd.Decimal
+}
+
+func (e errETHBalanceTooLow) Error() string {
+	return fmt.Sprintf("balance of %s ETH is under required amount of %s ETH",
+		e.currentBalanceETH.Text('f'),
+		e.requiredBalanceETH.Text('f'),
 	)
 }

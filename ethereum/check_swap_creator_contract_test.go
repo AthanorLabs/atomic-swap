@@ -6,46 +6,24 @@ package contracts
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"errors"
 	"testing"
 
 	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-// deployContract is a test helper that deploys the SwapCreator contract and returns the
-// deployed address
-func deployContract(
-	t *testing.T,
-	ec *ethclient.Client,
-	pk *ecdsa.PrivateKey,
-	trustedForwarder ethcommon.Address,
-) ethcommon.Address {
-	ctx := context.Background()
-	contractAddr, _, err := DeploySwapCreatorWithKey(ctx, ec, pk, trustedForwarder)
-	require.NoError(t, err)
-	return contractAddr
-}
-
-func deployForwarder(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) ethcommon.Address {
-	addr, err := DeployGSNForwarderWithKey(context.Background(), ec, pk)
-	require.NoError(t, err)
-	return addr
-}
-
 // getContractCode is a test helper that deploys the swap creator contract to read back
 // and return the finalised byte code post deployment.
-func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
+func getContractCode(t *testing.T, forwarderAddr ethcommon.Address) []byte {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	contractAddr := deployContract(t, ec, pk, trustedForwarder)
+	contractAddr, _ := deploySwapCreatorWithForwarder(t, ec, pk, forwarderAddr)
 	code, err := ec.CodeAt(context.Background(), contractAddr, nil)
 	require.NoError(t, err)
 	return code
@@ -54,8 +32,8 @@ func getContractCode(t *testing.T, trustedForwarder ethcommon.Address) []byte {
 func TestCheckForwarderContractCode(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	trustedForwarder := deployForwarder(t, ec, pk)
-	err := CheckForwarderContractCode(context.Background(), ec, trustedForwarder)
+	forwarderAddr := deployForwarder(t, ec, pk)
+	err := CheckForwarderContractCode(context.Background(), ec, forwarderAddr)
 	require.NoError(t, err)
 }
 
@@ -66,7 +44,7 @@ func TestExpectedSwapCreatorBytecodeHex(t *testing.T) {
 	allZeroTrustedForwarder := ethcommon.Address{}
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t, allZeroTrustedForwarder))
 	require.Equal(t, expectedSwapCreatorBytecodeHex, codeHex,
-		"update the expectedSwapCreatorBytecodeHex constant with the actual value tocat  fix this test")
+		"update the expectedSwapCreatorBytecodeHex constant with the actual value to fix this test")
 }
 
 // This test will fail if the compiled SwapCreator contract is updated, but the
@@ -75,12 +53,12 @@ func TestExpectedSwapCreatorBytecodeHex(t *testing.T) {
 func TestForwarderAddrIndexes(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	trustedForwarder := deployForwarder(t, ec, pk)
-	contactBytes := getContractCode(t, trustedForwarder)
+	forwarderAddr := deployForwarder(t, ec, pk)
+	contactBytes := getContractCode(t, forwarderAddr)
 
 	addressLocations := make([]int, 0) // at the current time, there should always be 2
 	for i := 0; i < len(contactBytes)-ethAddrByteLen; i++ {
-		if bytes.Equal(contactBytes[i:i+ethAddrByteLen], trustedForwarder[:]) {
+		if bytes.Equal(contactBytes[i:i+ethAddrByteLen], forwarderAddr[:]) {
 			addressLocations = append(addressLocations, i)
 			i += ethAddrByteLen - 1 // -1 since the loop will increment by 1
 		}
@@ -96,15 +74,15 @@ func TestForwarderAddrIndexes(t *testing.T) {
 func TestCheckSwapCreatorContractCode(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	trustedForwarderAddrs := []string{
+	forwarderAddrs := []string{
 		deployForwarder(t, ec, pk).Hex(),
 		deployForwarder(t, ec, pk).Hex(),
 		deployForwarder(t, ec, pk).Hex(),
 	}
 
-	for _, addrHex := range trustedForwarderAddrs {
+	for _, addrHex := range forwarderAddrs {
 		tfAddr := ethcommon.HexToAddress(addrHex)
-		contractAddr := deployContract(t, ec, pk, tfAddr)
+		contractAddr, _ := deploySwapCreatorWithForwarder(t, ec, pk, tfAddr)
 		parsedTFAddr, err := CheckSwapCreatorContractCode(context.Background(), ec, contractAddr)
 		require.NoError(t, err)
 		require.Equal(t, addrHex, parsedTFAddr.Hex())
