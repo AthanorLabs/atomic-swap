@@ -4,7 +4,6 @@
 package xmrmaker
 
 import (
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
@@ -13,22 +12,16 @@ func (inst *Instance) MakeOffer(
 	o *types.Offer,
 	useRelayer bool,
 ) (*types.OfferExtra, error) {
-	// get monero balance
-	balance, err := inst.backend.XMRClient().GetBalance(0)
+	err := validateMinBalance(
+		inst.backend.Ctx(),
+		inst.backend.XMRClient(),
+		inst.backend.ETHClient(),
+		o.MaxAmount,
+		o.EthAsset,
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	unlockedBalance := coins.NewPiconeroAmount(balance.UnlockedBalance).AsMonero()
-	if unlockedBalance.Cmp(o.MaxAmount) <= 0 {
-		return nil, errUnlockedBalanceTooLow{o.MaxAmount, unlockedBalance}
-	}
-
-	// If it is an XMR-for-ETH offer, the min offer amount converted to ETH
-	// must be less than relayer fee
-
-	// If it is an XMR-for-TOKEN offer, the maker must have sufficient ETH
-	// to claim
 
 	if useRelayer && o.EthAsset.IsToken() {
 		return nil, errRelayingWithNonEthAsset

@@ -12,6 +12,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 )
 
+// validateMinBalance validates that the Taker has sufficient funds to take an
+// offer
 func validateMinBalance(
 	ctx context.Context,
 	ec extethclient.EthClient,
@@ -40,6 +42,8 @@ func validateMinBalance(
 	return validateMinBalForTokenSwap(weiBalance, tokenBalance, providesAmt, gasPrice)
 }
 
+// validateMinBalForETHSwap validates that the Taker has sufficient funds to take an
+// offer of XMR for ETH
 func validateMinBalForETHSwap(weiBalance *coins.WeiAmount, providesAmt *apd.Decimal, gasPriceWei *big.Int) error {
 	providedAmtWei := coins.EtherToWei(providesAmt).BigInt()
 	neededGas := big.NewInt(
@@ -62,6 +66,9 @@ func validateMinBalForETHSwap(weiBalance *coins.WeiAmount, providesAmt *apd.Deci
 	return nil
 }
 
+// validateMinBalForTokenSwap validates that the Taker has sufficient tokens for
+// to take an XMR->Token swap, and sufficient ETH funds to pay for the gas of
+// the swap.
 func validateMinBalForTokenSwap(
 	weiBalance *coins.WeiAmount,
 	tokenBalance *coins.ERC20TokenAmount,
