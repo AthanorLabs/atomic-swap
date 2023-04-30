@@ -34,6 +34,9 @@ func (h *Host) DiscoverRelayers() ([]peer.ID, error) {
 	return h.Discover(RelayerProvidesStr, defaultDiscoverTime)
 }
 
+// we need the relayer to send a message containing
+// the address to send the fee to, so that the requester
+// can sign it.
 func (h *Host) handleRelayerQueryStream(stream libp2pnetwork.Stream) {
 	defer func() { _ = stream.Close() }()
 
@@ -44,7 +47,7 @@ func (h *Host) handleRelayerQueryStream(stream libp2pnetwork.Stream) {
 	}
 
 	addrResp := &message.RelayerQueryResponse{
-		Address: h.relayHandler.GetRelayerAddress(),
+		Address: h.relayHandler.GetRelayerPayoutAddress(),
 	}
 
 	log.Debugf("sending RelayerQueryResponse to peer %s", stream.Conn().RemotePeer())
@@ -100,10 +103,6 @@ func receiveRelayerQueryResponse(stream libp2pnetwork.Stream) (ethcommon.Address
 }
 
 func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
-	// TODO: we need the relayer to send a message containing
-	// the address to send the fee to, so that the requester
-	// can sign it.
-
 	defer func() { _ = stream.Close() }()
 
 	// TODO: add timeout for receiving request
@@ -153,8 +152,6 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 }
 
 // SubmitRelayRequest sends a request to relay a swap claim to a peer.
-// Note: there must already be an open stream with the relayer, ie.
-// QueryRelayerAddress must have been called first.
 func (h *Host) SubmitRelayRequest(relayerID peer.ID, request *RelayClaimRequest) (*RelayClaimResponse, error) {
 	ctx, cancel := context.WithTimeout(h.ctx, connectionTimeout)
 	defer cancel()

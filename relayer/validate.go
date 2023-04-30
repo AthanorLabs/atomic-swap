@@ -85,13 +85,13 @@ func validateClaimSignature(
 	msg := request.RelaySwap.Hash()
 	var sig [65]byte
 	copy(sig[:], request.Signature)
-	sig[64] -= 27
+	sig[64] -= 27 // ecrecover requires 0/1 while EVM requires 27/28
+
 	signer, err := ethcrypto.Ecrecover(msg[:], sig[:])
 	if err != nil {
 		return err
 	}
 
-	// decompressed -> pubkey??
 	pubkey, err := ethcrypto.UnmarshalPubkey(signer)
 	if err != nil {
 		return err

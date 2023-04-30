@@ -67,7 +67,7 @@ type Backend interface {
 	// helpers
 	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
 	HandleRelayClaimRequest(remotePeer peer.ID, request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
-	GetRelayerAddress() ethcommon.Address
+	GetRelayerPayoutAddress() ethcommon.Address
 	SubmitClaimToRelayer(
 		peer.ID,
 		*types.Hash,
@@ -294,7 +294,7 @@ func (b *backend) HandleRelayClaimRequest(
 	)
 }
 
-func (b *backend) GetRelayerAddress() ethcommon.Address {
+func (b *backend) GetRelayerPayoutAddress() ethcommon.Address {
 	return b.ETHClient().Address()
 }
 

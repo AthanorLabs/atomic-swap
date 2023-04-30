@@ -183,8 +183,6 @@ func (s *swapState) claimWithAdvertisedRelayers() (*ethtypes.Receipt, error) {
 			continue
 		}
 
-		// TODO: get relayer's addresses and set it in SubmitClaimToRelayer
-
 		log.Debugf("submitting claim to relayer with peer ID %s", relayerPeerID)
 		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, &s.offer.ID, relaySwap, secret)
 		if err != nil {

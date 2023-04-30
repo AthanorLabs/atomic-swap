@@ -50,7 +50,7 @@ type mockRelayHandler struct {
 	t *testing.T
 }
 
-func (h *mockRelayHandler) GetRelayerAddress() ethcommon.Address {
+func (h *mockRelayHandler) GetRelayerPayoutAddress() ethcommon.Address {
 	return ethcommon.Address{99}
 }
 

@@ -35,7 +35,7 @@ type MakerHandler interface {
 // RelayHandler handles relay claim requests. It is implemented by
 // *backend.backend.
 type RelayHandler interface {
-	GetRelayerAddress() ethcommon.Address
+	GetRelayerPayoutAddress() ethcommon.Address
 	HandleRelayClaimRequest(remotePeer peer.ID, msg *RelayClaimRequest) (*RelayClaimResponse, error)
 }
 
