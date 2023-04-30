@@ -153,7 +153,9 @@ type GetOngoingResponse struct {
 	Swaps []*OngoingSwap `json:"swaps" validate:"dive,required"`
 }
 
-// GetOngoing returns information about the ongoing swap with the given ID, if there is one.
+// GetOngoing returns information about an ongoing swap given its ID.
+// If no ID is provided, all ongoing swaps are returned.
+// It sorts them in order from newest to oldest.
 func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
 	env := s.backend.Env()
 
@@ -199,7 +201,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
+		return resp.Swaps[j].StartTime.UnixNano() < resp.Swaps[i].StartTime.UnixNano()
 	})
 
 	return nil
