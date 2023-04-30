@@ -32,8 +32,9 @@ import (
 type NetSender interface {
 	SendSwapMessage(common.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
-	DiscoverRelayers() ([]peer.ID, error)                                                          // Only used by Maker
-	SubmitClaimToRelayer(peer.ID, *message.RelayClaimRequest) (*message.RelayClaimResponse, error) // Only used by Taker
+	DiscoverRelayers() ([]peer.ID, error)                                                        // Only used by Maker
+	GetRelayerAddress(peer.ID) (ethcommon.Address, error)                                        // only used by taker
+	SubmitRelayRequest(peer.ID, *message.RelayClaimRequest) (*message.RelayClaimResponse, error) // only used by taker
 }
 
 // RecoveryDB is implemented by *db.RecoveryDB
@@ -66,6 +67,7 @@ type Backend interface {
 	// helpers
 	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
 	HandleRelayClaimRequest(remotePeer peer.ID, request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
+	SubmitClaimToRelayer(peer.ID, *types.Hash, *contracts.SwapCreatorRelaySwap, [32]byte) (*message.RelayClaimResponse, error) // Only used by Taker
 
 	// getters
 	Ctx() context.Context
@@ -273,7 +275,7 @@ func (b *backend) HandleRelayClaimRequest(
 		if err != nil {
 			return nil, fmt.Errorf("swap info for taker claim request not found: %w", err)
 		}
-		if swapInfo.SwapID != request.Swap.SwapID() {
+		if swapInfo.SwapID != request.RelaySwap.Swap.SwapID() {
 			return nil, errors.New("counterparty claim request has invalid swap ID")
 		}
 	}
@@ -284,4 +286,24 @@ func (b *backend) HandleRelayClaimRequest(
 		b.ETHClient(),
 		b.SwapCreatorAddr(),
 	)
+}
+
+func (b *backend) SubmitClaimToRelayer(relayerID peer.ID, offerID *types.Hash, relaySwap *contracts.SwapCreatorRelaySwap, secret [32]byte) (*message.RelayClaimResponse, error) {
+	relayerAddr, err := b.GetRelayerAddress(relayerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// set relayer address and sign as front-run prevention
+	relaySwap.Relayer = relayerAddr
+	req, err := relayer.CreateRelayClaimRequest(b.ctx, b.ETHClient().PrivateKey(), b.ETHClient().Raw(), relaySwap, secret)
+	if err != nil {
+		return nil, err
+	}
+
+	if offerID != nil {
+		req.OfferID = *&offerID
+	}
+
+	return b.SubmitRelayRequest(relayerID, req)
 }

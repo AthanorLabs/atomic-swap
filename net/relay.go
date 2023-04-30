@@ -32,6 +32,10 @@ func (h *Host) DiscoverRelayers() ([]peer.ID, error) {
 }
 
 func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
+	// TODO: we need the relayer to send a message containing
+	// the address to send the fee to, so that the requester
+	// can sign it.
+
 	defer func() { _ = stream.Close() }()
 
 	msg, err := readStreamMessage(stream, maxRelayMessageSize)
@@ -72,7 +76,7 @@ func (h *Host) handleRelayStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	log.Debugf("Relayed claim for %s with tx=%s", req.Swap.Claimer, resp.TxHash)
+	log.Debugf("Relayed claim for %s with tx=%s", req.RelaySwap.Swap.Claimer, resp.TxHash)
 	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
 		log.Warnf("failed to send RelayClaimResponse message to peer: %s", err)
 		return

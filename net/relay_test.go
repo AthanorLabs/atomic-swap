@@ -58,18 +58,24 @@ func createTestClaimRequest() *message.RelayClaimRequest {
 	secret := [32]byte{0x1}
 	sig := [65]byte{0x1}
 
+	swap := contracts.SwapCreatorSwap{
+		Owner:        ethcommon.Address{0x1},
+		Claimer:      ethcommon.Address{0x1},
+		PubKeyClaim:  [32]byte{0x1},
+		PubKeyRefund: [32]byte{0x1},
+		Timeout0:     big.NewInt(time.Now().Add(30 * time.Minute).Unix()),
+		Timeout1:     big.NewInt(time.Now().Add(60 * time.Minute).Unix()),
+		Asset:        ethcommon.Address(types.EthAssetETH),
+		Value:        big.NewInt(1e18),
+		Nonce:        big.NewInt(1),
+	}
+
 	req := &message.RelayClaimRequest{
-		SwapCreatorAddr: ethcommon.Address{0x1},
-		Swap: &contracts.SwapCreatorSwap{
-			Owner:        ethcommon.Address{0x1},
-			Claimer:      ethcommon.Address{0x1},
-			PubKeyClaim:  [32]byte{0x1},
-			PubKeyRefund: [32]byte{0x1},
-			Timeout0:     big.NewInt(time.Now().Add(30 * time.Minute).Unix()),
-			Timeout1:     big.NewInt(time.Now().Add(60 * time.Minute).Unix()),
-			Asset:        ethcommon.Address(types.EthAssetETH),
-			Value:        big.NewInt(1e18),
-			Nonce:        big.NewInt(1),
+		RelaySwap: &contracts.SwapCreatorRelaySwap{
+			Swap:        swap,
+			Fee:         big.NewInt(9e15),
+			Relayer:     ethcommon.Address{0x2},
+			SwapCreator: ethcommon.Address{0x3},
 		},
 		Secret:    secret[:],
 		Signature: sig[:],

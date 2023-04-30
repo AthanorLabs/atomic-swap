@@ -22,24 +22,19 @@ import (
 
 // Speed up tests a little by giving deployContracts(...) a package-level cache.
 // These variables should not be accessed by other functions.
-var _forwarderAddr *ethcommon.Address
 var _swapCreatorAddr *ethcommon.Address
 
 // deployContracts deploys and returns the swapCreator and forwarder addresses.
-func deployContracts(t *testing.T, ec *ethclient.Client, key *ecdsa.PrivateKey) (ethcommon.Address, ethcommon.Address) {
+func deployContracts(t *testing.T, ec *ethclient.Client, key *ecdsa.PrivateKey) ethcommon.Address {
 	ctx := context.Background()
 
-	if _forwarderAddr == nil || _swapCreatorAddr == nil {
-		forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, key)
-		require.NoError(t, err)
-		_forwarderAddr = &forwarderAddr
-
-		swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, key, forwarderAddr)
+	if _swapCreatorAddr == nil {
+		swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, key)
 		require.NoError(t, err)
 		_swapCreatorAddr = &swapCreatorAddr
 	}
 
-	return *_swapCreatorAddr, *_forwarderAddr
+	return *_swapCreatorAddr
 }
 
 func createTestSwap(claimer ethcommon.Address) *contracts.SwapCreatorSwap {
@@ -62,16 +57,22 @@ func TestCreateRelayClaimRequest(t *testing.T) {
 	claimer := crypto.PubkeyToAddress(*ethKey.Public().(*ecdsa.PublicKey))
 	ec, _ := tests.NewEthClient(t)
 	secret := [32]byte{0x1}
-	swapCreatorAddr, forwarderAddr := deployContracts(t, ec, ethKey)
+	swapCreatorAddr := deployContracts(t, ec, ethKey)
 
 	// success path
 	swap := createTestSwap(claimer)
-	req, err := CreateRelayClaimRequest(ctx, ethKey, ec, swapCreatorAddr, forwarderAddr, swap, &secret)
+	relaySwap := &contracts.SwapCreatorRelaySwap{
+		Swap:        *swap,
+		Fee:         big.NewInt(1),
+		SwapCreator: swapCreatorAddr,
+		Relayer:     ethcommon.Address{},
+	}
+	req, err := CreateRelayClaimRequest(ctx, ethKey, ec, relaySwap, secret)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
 	// change the ethkey to not match the claimer address to trigger the error path
 	ethKey = tests.GetTakerTestKey(t)
-	_, err = CreateRelayClaimRequest(ctx, ethKey, ec, swapCreatorAddr, forwarderAddr, swap, &secret)
+	_, err = CreateRelayClaimRequest(ctx, ethKey, ec, relaySwap, secret)
 	require.ErrorContains(t, err, "signing key does not match claimer")
 }

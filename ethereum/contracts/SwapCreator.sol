@@ -50,6 +50,8 @@ contract SwapCreator is Secp256k1 {
         uint256 fee;
         // the address to the paid the relayer fee
         address relayer;
+        // address of the swap contract this transaction is meant for
+        address swapCreator;
     }
 
     mapping(bytes32 => Stage) public swaps;
@@ -117,6 +119,9 @@ contract SwapCreator is Secp256k1 {
 
     // returned when the signature of a `RelaySwap` is invalid
     error InvalidSignature();
+
+    // returned when the SwapCreator address is a `RelaySwap` is not the addres of this contract
+    error InvalidContractAddress();
 
     // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
@@ -187,6 +192,7 @@ contract SwapCreator is Secp256k1 {
     // Bob can claim if:
     // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
     function claim(Swap memory _swap, bytes32 _secret) public {
+        if (msg.sender != _swap.claimer) revert OnlySwapClaimer();
         _claim(_swap, _secret);
 
         // send ether to swap claimer
@@ -215,6 +221,7 @@ contract SwapCreator is Secp256k1 {
     ) public {
         address signer = ecrecover(keccak256(abi.encode(_relaySwap)), v, r, s);
         if (signer != _relaySwap.swap.claimer) revert InvalidSignature();
+        if (address(this) != _relaySwap.swapCreator) revert InvalidContractAddress();
 
         _claim(_relaySwap.swap, _secret);
 
@@ -241,7 +248,6 @@ contract SwapCreator is Secp256k1 {
         Stage swapStage = swaps[swapID];
         if (swapStage == Stage.INVALID) revert InvalidSwap();
         if (swapStage == Stage.COMPLETED) revert SwapCompleted();
-        if (msg.sender != _swap.claimer) revert OnlySwapClaimer();
         if (block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
         if (block.timestamp >= _swap.timeout1) revert TooLateToClaim();
 
