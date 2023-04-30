@@ -5,7 +5,6 @@ package relayer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -68,17 +67,17 @@ func ValidateAndSendTransaction(
 	r := [32]byte(req.Signature[:32])
 	s := [32]byte(req.Signature[32:64])
 
-	// err = simulateClaimRelayer(
-	// 	ctx,
-	// 	ec,
-	// 	txOpts,
-	// 	req.RelaySwap,
-	// 	secret,
-	// 	v, r, s,
-	// )
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err = simulateClaimRelayer(
+		ctx,
+		ec,
+		txOpts,
+		req.RelaySwap,
+		secret,
+		v, r, s,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := reqSwapCreator.ClaimRelayer(
 		txOpts,
@@ -127,7 +126,7 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 // simulateExecute calls the swap creator's ClaimRelayer function
 // with CallContract which executes the method call without mining it into the blockchain.
 // https://pkg.go.dev/github.com/ethereum/go-ethereum/ethclient#Client.CallContract
-func simulateClaimRelayer( //nolint:unused
+func simulateClaimRelayer(
 	ctx context.Context,
 	ec extethclient.EthClient,
 	txOpts *bind.TransactOpts,
@@ -139,7 +138,7 @@ func simulateClaimRelayer( //nolint:unused
 	// Pack the "claimRelayer" method call
 	packed, err := contracts.SwapCreatorParsedABI.Pack(
 		"claimRelayer",
-		relaySwap,
+		*relaySwap,
 		secret,
 		v,
 		r,
@@ -162,24 +161,10 @@ func simulateClaimRelayer( //nolint:unused
 	}
 
 	// Call the "claimRelayer" method
-	data, err := ec.Raw().CallContract(ctx, callMessage, nil)
+	// will return a revert error on failure
+	_, err = ec.Raw().CallContract(ctx, callMessage, nil)
 	if err != nil {
 		return err
-	}
-
-	// Unpack the response data
-	response := struct {
-		Success bool
-		Ret     []byte
-	}{Success: false, Ret: []byte{}}
-
-	err = contracts.SwapCreatorParsedABI.UnpackIntoInterface(&response, "claimRelayer", data)
-	if err != nil {
-		return err
-	}
-
-	if !response.Success {
-		return errors.New("relayed transaction failed on simulation")
 	}
 
 	return nil

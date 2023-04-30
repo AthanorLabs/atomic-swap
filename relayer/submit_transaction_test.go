@@ -133,12 +133,11 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, contracts.StageCompleted, stage)
 
-	// TODO: fix simulation
-	// // Now let's try to claim a second time and verify that we fail on the simulated
-	// // execution.
-	// req, err = CreateRelayClaimRequest(ctx, claimerSk, ec.Raw(), relaySwap, &secret)
-	// require.NoError(t, err)
+	// Now let's try to claim a second time and verify that we fail on the simulated
+	// execution.
+	req, err = CreateRelayClaimRequest(ctx, claimerSk, ec.Raw(), relaySwap, secret)
+	require.NoError(t, err)
 
-	// _, err = ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr)
-	// require.ErrorContains(t, err, "relayed transaction failed on simulation")
+	_, err = ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr)
+	require.ErrorContains(t, err, "revert")
 }
