@@ -78,7 +78,7 @@ type GetPastResponse struct {
 
 // GetPast returns information about a past swap given its ID.
 // If no ID is provided, all past swaps are returned.
-// It sorts them in order from oldest to newest.
+// It sorts them in order from newest to oldest.
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
 	var swaps []*swap.Info
 
@@ -121,7 +121,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
+		return resp.Swaps[j].StartTime.UnixNano() < resp.Swaps[i].StartTime.UnixNano()
 	})
 
 	return nil
