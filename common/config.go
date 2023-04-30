@@ -69,6 +69,7 @@ func MainnetConfig() *Config {
 		// Note: SwapCreator contract below is using GSN Forwarder address
 		// 0xB2b5841DBeF766d4b521221732F9B618fCf34A87
 		// https://docs.opengsn.org/networks/addresses.html
+		// TODO: this needs to be redeployed before this PR is merged
 		SwapCreatorAddr: ethcommon.HexToAddress("0xD3d19539D61bB0e7617E499C7262594E71CA1c66"),
 		Bootnodes: []string{
 			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
@@ -102,7 +103,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xEd014568991A9BE34F381Bf46d9c3f7623D4DEa5"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x90119FA88abE871B3e26DF3a57C29A450f006065"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",

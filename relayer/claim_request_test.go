@@ -24,7 +24,7 @@ import (
 // These variables should not be accessed by other functions.
 var _swapCreatorAddr *ethcommon.Address
 
-// deployContracts deploys and returns the swapCreator and forwarder addresses.
+// deployContracts deploys and returns the swapCreator addresses.
 func deployContracts(t *testing.T, ec *ethclient.Client, key *ecdsa.PrivateKey) ethcommon.Address {
 	ctx := context.Background()
 

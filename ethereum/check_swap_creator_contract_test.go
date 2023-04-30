@@ -51,7 +51,7 @@ func getContractCode(t *testing.T) []byte {
 func TestExpectedSwapCreatorBytecodeHex(t *testing.T) {
 	codeHex := ethcommon.Bytes2Hex(getContractCode(t))
 	require.Equal(t, expectedSwapCreatorBytecodeHex, codeHex,
-		"update the expectedSwapCreatorBytecodeHex constant with the actual value tocat  fix this test")
+		"update the expectedSwapCreatorBytecodeHex constant with the actual value to fix this test")
 }
 
 // Tests that we fail when the wrong contract byte code is found

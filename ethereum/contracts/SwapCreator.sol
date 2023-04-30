@@ -93,9 +93,6 @@ contract SwapCreator is Secp256k1 {
     // returned when the caller of `setReady` or `refund` is not the swap owner
     error OnlySwapOwner();
 
-    // returned when `claimRelayer` is not called by the trusted forwarder
-    error OnlyTrustedForwarder();
-
     // returned when the signer of the relayed transaction is not the swap's claimer
     error OnlySwapClaimer();
 
@@ -208,8 +205,7 @@ contract SwapCreator is Secp256k1 {
 
     // Bob can claim if:
     // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
-    // This function is only callable by the trusted forwarder.
-    // It transfers the fee to the originator of the transaction.
+    // It transfers the fee to the relayer address specified in `_relaySwap`.
     // Note: this function will revert if the swa value is less than the relayer fee;
     // in that case, `claim` must be called instead.
     function claimRelayer(
@@ -226,8 +222,6 @@ contract SwapCreator is Secp256k1 {
         _claim(_relaySwap.swap, _secret);
 
         // send ether to swap claimer, subtracting the relayer fee
-        // which is sent to the originator of the transaction.
-        // tx.origin is okay here, since it isn't for authentication purposes.
         if (_relaySwap.swap.asset == address(0)) {
             _relaySwap.swap.claimer.transfer(_relaySwap.swap.value - _relaySwap.fee);
             payable(_relaySwap.relayer).transfer(_relaySwap.fee); // solhint-disable-line
