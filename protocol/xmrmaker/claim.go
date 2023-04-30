@@ -184,7 +184,7 @@ func (s *swapState) claimWithAdvertisedRelayers() (*ethtypes.Receipt, error) {
 		}
 
 		log.Debugf("submitting claim to relayer with peer ID %s", relayerPeerID)
-		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, &s.offer.ID, relaySwap, secret)
+		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, nil, relaySwap, secret)
 		if err != nil {
 			log.Warnf("failed to submit tx to relayer: %s", err)
 			continue
