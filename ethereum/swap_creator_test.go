@@ -61,7 +61,7 @@ func approveERC20(t *testing.T,
 
 func testNewSwap(t *testing.T, asset ethcommon.Address, erc20Contract *TestERC20) {
 	auth, conn, _ := setupXMRTakerAuth(t)
-	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	address, tx, contract, err := DeploySwapCreator(auth, conn)
 	require.NoError(t, err)
 	require.NotEqual(t, ethcommon.Address{}, address)
 	require.NotNil(t, tx)
@@ -163,7 +163,7 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(auth, conn)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func testClaim(t *testing.T, asset ethcommon.Address, newLogIndex int, value *bi
 	//       same TxOpts for multiple transactions and we needed a quick fix to get
 	//       CI working.
 	txOpts := *authOrig
-	swapCreatorAddr, tx, contract, err := DeploySwapCreator(&txOpts, conn, ethcommon.Address{})
+	swapCreatorAddr, tx, contract, err := DeploySwapCreator(&txOpts, conn)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func testRefundBeforeT0(t *testing.T, asset ethcommon.Address, erc20Contract *Te
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	address, tx, contract, err := DeploySwapCreator(auth, conn)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -398,7 +398,7 @@ func testRefundAfterT1(t *testing.T, asset ethcommon.Address, erc20Contract *Tes
 	pub := pkA.Public().(*ecdsa.PublicKey)
 	addr := crypto.PubkeyToAddress(*pub)
 
-	address, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	address, tx, contract, err := DeploySwapCreator(auth, conn)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)
@@ -478,7 +478,7 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(pkContractCreator, chainID)
 	require.NoError(t, err)
 
-	_, tx, contract, err := DeploySwapCreator(auth, conn, ethcommon.Address{})
+	_, tx, contract, err := DeploySwapCreator(auth, conn)
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(context.Background(), conn, tx.Hash())
 	require.NoError(t, err)

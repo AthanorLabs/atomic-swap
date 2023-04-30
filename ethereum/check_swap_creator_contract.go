@@ -9,9 +9,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/athanorlabs/atomic-swap/common"
-
-	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -36,89 +33,26 @@ var (
 )
 
 // CheckSwapCreatorContractCode checks that the bytecode at the given address matches the
-// SwapCreator.sol contract. The trusted forwarder address that the contract was deployed
-// with is parsed out from the byte code and returned.
+// SwapCreator.sol contract.
 func CheckSwapCreatorContractCode(
 	ctx context.Context,
 	ec *ethclient.Client,
 	contractAddr ethcommon.Address,
-) (ethcommon.Address, error) {
+) error {
 	code, err := ec.CodeAt(ctx, contractAddr, nil)
 	if err != nil {
-		return ethcommon.Address{}, err
+		return fmt.Errorf("failed to get code at %s: %w", contractAddr, err)
 	}
 
 	expectedCode := ethcommon.FromHex(expectedSwapCreatorBytecodeHex)
 
 	if len(code) != len(expectedCode) {
-		return ethcommon.Address{}, fmt.Errorf("length mismatch: %w", errInvalidSwapCreatorContract)
+		return fmt.Errorf("length mismatch: %w", errInvalidSwapCreatorContract)
 	}
 
-	allZeroAddr := ethcommon.Address{}
-
-	// we fill this in with the trusted forwarder that the contract was deployed with
-	var forwarderAddr ethcommon.Address
-
-	for i, addrIndex := range forwarderAddrIndices {
-		curAddr := code[addrIndex : addrIndex+ethAddrByteLen]
-		if i == 0 {
-			// initialise the trusted forwarder address on the first index
-			copy(forwarderAddr[:], curAddr)
-		} else {
-			// check that any remaining forwarder addresses match the one we found at the first index
-			if !bytes.Equal(curAddr, forwarderAddr[:]) {
-				return ethcommon.Address{}, errInvalidSwapCreatorContract
-			}
-		}
-
-		// Zero out the trusted forwarder address in the code, so that we can compare the
-		// read in byte code with a copy of the contract code that was deployed using an
-		// all-zero trusted forwarder address. curAddr and code have the same backing
-		// array, so we are updating expectedCode as well here:
-		copy(curAddr, allZeroAddr[:])
-	}
-
-	// Now that the trusted forwarder addresses have been zeroed out, the read-in contract code should
-	// match the expected code.
 	if !bytes.Equal(expectedCode, code) {
-		return ethcommon.Address{}, errInvalidSwapCreatorContract
+		return errInvalidSwapCreatorContract
 	}
 
-	if (forwarderAddr == ethcommon.Address{}) {
-		return forwarderAddr, nil
-	}
-
-	err = CheckForwarderContractCode(ctx, ec, forwarderAddr)
-	if err != nil {
-		return ethcommon.Address{}, fmt.Errorf("%w: %s", errInvalidSwapCreatorContract, err)
-	}
-
-	// return the trusted forwarder address that was parsed from the deployed contract byte code
-	return forwarderAddr, nil
-}
-
-// CheckForwarderContractCode checks that the trusted forwarder contract used by
-// the given swap contract has the expected bytecode.
-func CheckForwarderContractCode(
-	ctx context.Context,
-	ec *ethclient.Client,
-	contractAddr ethcommon.Address,
-) error {
-	chainID, err := ec.ChainID(ctx)
-	if err != nil {
-		return err
-	}
-
-	switch chainID.Uint64() {
-	case common.MainnetChainID:
-		if contractAddr == ethcommon.HexToAddress(gsnforwarder.MainnetForwarderAddrHex) {
-			return nil
-		}
-	case common.SepoliaChainID:
-		if contractAddr == ethcommon.HexToAddress(gsnforwarder.SepoliaForwarderAddrHex) {
-			return nil
-		}
-	}
-
-	return gsnforwarder.CheckForwarderContractCode(ctx, ec, contractAddr)
+	return nil
 }

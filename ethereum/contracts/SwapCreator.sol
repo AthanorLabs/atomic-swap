@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.19;
 
-//import {ERC2771Context} from "./ERC2771Context.sol";
 import {IERC20} from "./IERC20.sol";
 import {Secp256k1} from "./Secp256k1.sol";
 
@@ -187,8 +186,8 @@ contract SwapCreator is Secp256k1 {
 
     // Bob can claim if:
     // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
-    function claim(Swap memory _swap, bytes32 _s) public {
-        _claim(_swap, _s);
+    function claim(Swap memory _swap, bytes32 _secret) public {
+        _claim(_swap, _secret);
 
         // send ether to swap claimer
         if (_swap.asset == address(0)) {
@@ -237,7 +236,7 @@ contract SwapCreator is Secp256k1 {
         }
     }
 
-    function _claim(Swap memory _swap, bytes32 _s) internal {
+    function _claim(Swap memory _swap, bytes32 _secret) internal {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
         if (swapStage == Stage.INVALID) revert InvalidSwap();
@@ -246,15 +245,15 @@ contract SwapCreator is Secp256k1 {
         if (block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
         if (block.timestamp >= _swap.timeout1) revert TooLateToClaim();
 
-        verifySecret(_s, _swap.pubKeyClaim);
-        emit Claimed(swapID, _s);
+        verifySecret(_secret, _swap.pubKeyClaim);
+        emit Claimed(swapID, _secret);
         swaps[swapID] = Stage.COMPLETED;
     }
 
     // Alice can claim a refund:
     // - Until timeout0 unless she calls setReady
     // - After timeout1
-    function refund(Swap memory _swap, bytes32 _s) public {
+    function refund(Swap memory _swap, bytes32 _secret) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
         if (swapStage == Stage.INVALID) revert InvalidSwap();
@@ -265,8 +264,8 @@ contract SwapCreator is Secp256k1 {
             (block.timestamp > _swap.timeout0 || swapStage == Stage.READY)
         ) revert NotTimeToRefund();
 
-        verifySecret(_s, _swap.pubKeyRefund);
-        emit Refunded(swapID, _s);
+        verifySecret(_secret, _swap.pubKeyRefund);
+        emit Refunded(swapID, _secret);
 
         // send asset back to swap owner
         swaps[swapID] = Stage.COMPLETED;
@@ -277,7 +276,7 @@ contract SwapCreator is Secp256k1 {
         }
     }
 
-    function verifySecret(bytes32 _s, bytes32 _hashedPubkey) internal pure {
-        if (!mulVerify(uint256(_s), uint256(_hashedPubkey))) revert InvalidSecret();
+    function verifySecret(bytes32 _secret, bytes32 _hashedPubkey) internal pure {
+        if (!mulVerify(uint256(_secret), uint256(_hashedPubkey))) revert InvalidSecret();
     }
 }

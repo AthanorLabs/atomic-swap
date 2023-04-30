@@ -94,8 +94,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, ec.ChainID())
 	require.NoError(t, err)
 
-	var forwarderAddr ethcommon.Address
-	_, tx, _, err := contracts.DeploySwapCreator(txOpts, ec.Raw(), forwarderAddr)
+	_, tx, _, err := contracts.DeploySwapCreator(txOpts, ec.Raw())
 	require.NoError(t, err)
 
 	addr, err := bind.WaitDeployed(ctx, ec.Raw(), tx)

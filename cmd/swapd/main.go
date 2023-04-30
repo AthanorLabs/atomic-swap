@@ -71,11 +71,10 @@ const (
 	flagUseExternalSigner    = "external-signer"
 	flagRelayer              = "relayer"
 
-	flagDevXMRTaker      = "dev-xmrtaker"
-	flagDevXMRMaker      = "dev-xmrmaker"
-	flagDeploy           = "deploy"
-	flagForwarderAddress = "forwarder-address"
-	flagNoTransferBack   = "no-transfer-back"
+	flagDevXMRTaker    = "dev-xmrtaker"
+	flagDevXMRMaker    = "dev-xmrmaker"
+	flagDeploy         = "deploy"
+	flagNoTransferBack = "no-transfer-back"
 
 	flagLogLevel = cliutil.FlagLogLevel
 	flagProfile  = "profile"
@@ -186,10 +185,6 @@ func cliApp() *cli.App {
 			&cli.BoolFlag{
 				Name:  flagDeploy,
 				Usage: "Deploy an instance of the swap contract",
-			},
-			&cli.StringFlag{
-				Name:  flagForwarderAddress,
-				Usage: "Ethereum address of the trusted forwarder contract to use when deploying the swap contract",
 			},
 			&cli.BoolFlag{
 				Name:  flagNoTransferBack,
@@ -369,36 +364,18 @@ func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec exteth
 		panic("contract address should have been zeroed when envConf was initialized")
 	}
 
-	// forwarderAddr is set only if we're deploying the swap creator contract
-	// and the --forwarder-address flag is set. Otherwise, if we're deploying
-	// and this flag isn't set, we deploy both the forwarder and the swap
-	// creator contracts.
-	var forwarderAddr ethcommon.Address
-	forwarderAddrStr := c.String(flagForwarderAddress)
-	if deploy && forwarderAddrStr != "" {
-		if !ethcommon.IsHexAddress(forwarderAddrStr) {
-			return fmt.Errorf("%q requires a valid ethereum address", flagForwarderAddress)
-		}
-
-		forwarderAddr = ethcommon.HexToAddress(forwarderAddrStr)
-	} else if !deploy && forwarderAddrStr != "" {
-		return fmt.Errorf("using flag %q requires the %q flag", flagForwarderAddress, flagDeploy)
-	}
-
 	swapCreatorAddr, err := getOrDeploySwapCreator(
 		c.Context,
 		envConf.SwapCreatorAddr,
 		envConf.Env,
 		envConf.DataDir,
 		ec,
-		forwarderAddr,
 	)
 	if err != nil {
 		return err
 	}
 
 	envConf.SwapCreatorAddr = swapCreatorAddr
-
 	return nil
 }
 
