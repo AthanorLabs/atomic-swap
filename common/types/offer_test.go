@@ -195,7 +195,7 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 		},
 		{
 			jsonData:    fmt.Sprintf(offerJSON, `"100"`, `"1000.1"`, `"0.1"`),
-			errContains: `1000.1 XMR exceed max offer amount of 1000 XMR`,
+			errContains: `1000.1 XMR exceeds max offer amount of 1000 XMR`,
 		},
 		// Combo min/max check
 		{
