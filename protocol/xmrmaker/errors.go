@@ -86,3 +86,15 @@ func (e errUnlockedBalanceTooLow) Error() string {
 		e.maxOfferAmount.String(),
 	)
 }
+
+type errETHBalanceTooLowForTokenSwap struct {
+	ethBalance         *apd.Decimal
+	requiredETHToClaim *apd.Decimal
+}
+
+func (e errETHBalanceTooLowForTokenSwap) Error() string {
+	return fmt.Sprintf("balance of %s ETH insufficient for token swap, %s ETH required to claim",
+		e.ethBalance.Text('f'),
+		e.requiredETHToClaim.Text('f'),
+	)
+}
