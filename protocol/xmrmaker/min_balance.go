@@ -27,7 +27,7 @@ func validateMinBalance(
 		return err
 	}
 
-	// Maker needs a sufficient XMR balance regardless if it is an ETH or toke swap
+	// Maker needs a sufficient XMR balance regardless if it is an ETH or token swap
 	unlockedBalance := coins.NewPiconeroAmount(piconeroBalance.UnlockedBalance).AsMonero()
 	if unlockedBalance.Cmp(offerMaxAmt) <= 0 {
 		return errUnlockedBalanceTooLow{offerMaxAmt, unlockedBalance}
