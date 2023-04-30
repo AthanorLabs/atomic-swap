@@ -83,14 +83,14 @@ func minimumFundAlice(t *testing.T, ec extethclient.EthClient, providesAmt *apd.
 	//   newSwap:     53787
 	//   setReady:    34452
 	//   refund:      46692
-	//   relayClaim: 130507
+	//   relayClaim: 83967
 	//
 	const (
-		aliceGasRation = 150000 // roughly 10% more than newSwap+setRead+refund
+		aliceGasRation = 120000 // roughly 10% more than newSwap+setRead+refund
 	)
 	// We give Alice enough gas money to refund if needed, but not enough to
 	// relay a claim:
-	//    150000 - (53787 + 34452) = 61761
+	//    120000 - (53787 + 34452) = 51761
 	//
 	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(context.Background())
 	require.NoError(t, err)
