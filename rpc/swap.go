@@ -121,7 +121,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[j].StartTime.UnixNano() < resp.Swaps[i].StartTime.UnixNano()
+		return resp.Swaps[j].StartTime.Before(resp.Swaps[i].StartTime)
 	})
 
 	return nil
@@ -201,7 +201,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[j].StartTime.UnixNano() < resp.Swaps[i].StartTime.UnixNano()
+		return resp.Swaps[j].StartTime.Before(resp.Swaps[i].StartTime)
 	})
 
 	return nil
