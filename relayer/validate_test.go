@@ -147,7 +147,8 @@ func Test_validateSignature(t *testing.T) {
 	// failure path (tamper with an arbitrary byte of the signature)
 	req.Signature[10]++
 	err = validateClaimSignature(req)
-	require.ErrorContains(t, err, "signer of message is not swap claimer")
+	// can be "recovery failed" or "signer of message is not swap claimer"
+	require.Error(t, err)
 }
 
 func Test_validateClaimRequest(t *testing.T) {
