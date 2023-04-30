@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.19;
 
-import {ERC2771Context} from "./ERC2771Context.sol";
+//import {ERC2771Context} from "./ERC2771Context.sol";
 import {IERC20} from "./IERC20.sol";
 import {Secp256k1} from "./Secp256k1.sol";
 
-contract SwapCreator is ERC2771Context, Secp256k1 {
+contract SwapCreator is Secp256k1 {
     // Swap state is PENDING when the swap is first created and funded
     // Alice sets Stage to READY when she sees the funds locked on the other chain.
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
@@ -39,6 +39,18 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         uint256 value;
         // choose random
         uint256 nonce;
+    }
+
+    // RelaySwap contains additional information required for relayed transactions.
+    // This entire structure is encoded and signed by the swap claimer, and the signature is
+    // passed to the `claimRelayer` function.
+    struct RelaySwap {
+        // the swap the transaction is for
+        Swap swap;
+        // the fee, in wei, paid to the relayer
+        uint256 fee;
+        // the address to the paid the relayer fee
+        address relayer;
     }
 
     mapping(bytes32 => Stage) public swaps;
@@ -104,7 +116,8 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // returned when the provided secret does not match the expected public key
     error InvalidSecret();
 
-    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {} // solhint-disable-line
+    // returned when the signature of a `RelaySwap` is invalid
+    error InvalidSignature();
 
     // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
@@ -192,22 +205,35 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
     // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
     // This function is only callable by the trusted forwarder.
     // It transfers the fee to the originator of the transaction.
-    function claimRelayer(Swap memory _swap, bytes32 _s, uint256 fee) public {
-        if (!isTrustedForwarder(msg.sender)) revert OnlyTrustedForwarder();
-        _claim(_swap, _s);
+    // Note: this function will revert if the swa value is less than the relayer fee;
+    // in that case, `claim` must be called instead.
+    function claimRelayer(
+        RelaySwap memory _relaySwap,
+        bytes32 _secret,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public {
+        address signer = ecrecover(keccak256(abi.encode(_relaySwap)), v, r, s);
+        if (signer != _relaySwap.swap.claimer) revert InvalidSignature();
+
+        _claim(_relaySwap.swap, _secret);
 
         // send ether to swap claimer, subtracting the relayer fee
         // which is sent to the originator of the transaction.
         // tx.origin is okay here, since it isn't for authentication purposes.
-        if (_swap.asset == address(0)) {
-            _swap.claimer.transfer(_swap.value - fee);
-            payable(tx.origin).transfer(fee); // solhint-disable-line
+        if (_relaySwap.swap.asset == address(0)) {
+            _relaySwap.swap.claimer.transfer(_relaySwap.swap.value - _relaySwap.fee);
+            payable(_relaySwap.relayer).transfer(_relaySwap.fee); // solhint-disable-line
         } else {
             // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing.
-            IERC20(_swap.asset).transfer(_swap.claimer, _swap.value - fee);
-            IERC20(_swap.asset).transfer(tx.origin, fee); // solhint-disable-line
+            IERC20(_relaySwap.swap.asset).transfer(
+                _relaySwap.swap.claimer,
+                _relaySwap.swap.value - _relaySwap.fee
+            );
+            IERC20(_relaySwap.swap.asset).transfer(_relaySwap.relayer, _relaySwap.fee); // solhint-disable-line
         }
     }
 
@@ -216,7 +242,7 @@ contract SwapCreator is ERC2771Context, Secp256k1 {
         Stage swapStage = swaps[swapID];
         if (swapStage == Stage.INVALID) revert InvalidSwap();
         if (swapStage == Stage.COMPLETED) revert SwapCompleted();
-        if (_msgSender() != _swap.claimer) revert OnlySwapClaimer();
+        if (msg.sender != _swap.claimer) revert OnlySwapClaimer();
         if (block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
         if (block.timestamp >= _swap.timeout1) revert TooLateToClaim();
 
