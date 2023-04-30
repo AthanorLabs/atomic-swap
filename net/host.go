@@ -71,10 +71,6 @@ type Host struct {
 	// swap instance info
 	swapMu sync.RWMutex
 	swaps  map[types.Hash]*swap
-
-	// open relayer streams
-	relayerStreamsMu sync.RWMutex
-	relayerStreams   map[peer.ID]libp2pnetwork.Stream
 }
 
 // Config holds the initialization parameters for the NewHost constructor.
@@ -99,12 +95,11 @@ func NewHost(cfg *Config) (*Host, error) {
 	}
 
 	h := &Host{
-		ctx:            cfg.Ctx,
-		h:              nil, // set below
-		isRelayer:      cfg.IsRelayer,
-		isBootnode:     cfg.IsBootnodeOnly,
-		swaps:          make(map[types.Hash]*swap),
-		relayerStreams: make(map[peer.ID]libp2pnetwork.Stream),
+		ctx:        cfg.Ctx,
+		h:          nil, // set below
+		isRelayer:  cfg.IsRelayer,
+		isBootnode: cfg.IsBootnodeOnly,
+		swaps:      make(map[types.Hash]*swap),
 	}
 
 	var err error
@@ -243,7 +238,7 @@ func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (comm
 // nextStreamMessage returns a channel that will receive the next message from the stream.
 // if there is an error reading from the stream, the channel will be closed, thus
 // the received value will be nil.
-func nextStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) <-chan common.Message {
+func nextStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) <-chan common.Message { //nolint:unparam
 	ch := make(chan common.Message)
 	go func() {
 		for {

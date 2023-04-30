@@ -111,7 +111,7 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 
 	// We tested --deploy with the taker, so test passing the contract address here
-	swapCreatorAddr, _, err := deploySwapCreator(context.Background(), ec, key, t.TempDir())
+	swapCreatorAddr, err := deploySwapCreator(context.Background(), ec, key, t.TempDir())
 	require.NoError(t, err)
 
 	flags := []string{
@@ -148,7 +148,7 @@ func TestDaemon_BadFlags(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx, _ := newTestContext(t)
 
-	swapCreatorAddr, _, err := deploySwapCreator(ctx, ec, key, t.TempDir())
+	swapCreatorAddr, err := deploySwapCreator(ctx, ec, key, t.TempDir())
 	require.NoError(t, err)
 
 	baseFlags := []string{

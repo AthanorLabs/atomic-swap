@@ -47,7 +47,7 @@ func getOrDeploySwapCreator(
 			time.Sleep(10 * time.Second)
 		}
 
-		swapCreatorAddr, _, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), dataDir)
+		swapCreatorAddr, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), dataDir)
 		if err != nil {
 			return ethcommon.Address{}, fmt.Errorf("failed to deploy swap creator: %w", err)
 		}
@@ -69,14 +69,14 @@ func deploySwapCreator(
 	ec *ethclient.Client,
 	privkey *ecdsa.PrivateKey,
 	dataDir string,
-) (ethcommon.Address, *contracts.SwapCreator, error) {
+) (ethcommon.Address, error) {
 	if privkey == nil {
-		return ethcommon.Address{}, nil, errNoEthPrivateKey
+		return ethcommon.Address{}, errNoEthPrivateKey
 	}
 
-	swapCreatorAddr, sf, err := contracts.DeploySwapCreatorWithKey(ctx, ec, privkey)
+	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, privkey)
 	if err != nil {
-		return ethcommon.Address{}, nil, err
+		return ethcommon.Address{}, err
 	}
 
 	// store the contract addresses on disk
@@ -87,10 +87,10 @@ func deploySwapCreator(
 		},
 	)
 	if err != nil {
-		return ethcommon.Address{}, nil, fmt.Errorf("failed to write contract address to file: %w", err)
+		return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	return swapCreatorAddr, sf, nil
+	return swapCreatorAddr, nil
 }
 
 // writeContractAddressesToFile writes the contract addresses to the given file

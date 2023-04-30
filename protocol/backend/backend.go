@@ -68,7 +68,12 @@ type Backend interface {
 	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
 	HandleRelayClaimRequest(remotePeer peer.ID, request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
 	GetRelayerAddress() ethcommon.Address
-	SubmitClaimToRelayer(peer.ID, *types.Hash, *contracts.SwapCreatorRelaySwap, [32]byte) (*message.RelayClaimResponse, error) // Only used by Taker
+	SubmitClaimToRelayer(
+		peer.ID,
+		*types.Hash,
+		*contracts.SwapCreatorRelaySwap,
+		[32]byte,
+	) (*message.RelayClaimResponse, error) // Only used by Taker
 
 	// getters
 	Ctx() context.Context
@@ -293,7 +298,12 @@ func (b *backend) GetRelayerAddress() ethcommon.Address {
 	return b.ETHClient().Address()
 }
 
-func (b *backend) SubmitClaimToRelayer(relayerID peer.ID, offerID *types.Hash, relaySwap *contracts.SwapCreatorRelaySwap, secret [32]byte) (*message.RelayClaimResponse, error) {
+func (b *backend) SubmitClaimToRelayer(
+	relayerID peer.ID,
+	offerID *types.Hash,
+	relaySwap *contracts.SwapCreatorRelaySwap,
+	secret [32]byte,
+) (*message.RelayClaimResponse, error) {
 	if offerID == nil {
 		// this isn't a counterparty-relay, get the relayer's eth address
 		relayerAddr, err := b.QueryRelayerAddress(relayerID)

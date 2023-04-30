@@ -127,7 +127,7 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 // simulateExecute calls the swap creator's ClaimRelayer function
 // with CallContract which executes the method call without mining it into the blockchain.
 // https://pkg.go.dev/github.com/ethereum/go-ethereum/ethclient#Client.CallContract
-func simulateClaimRelayer(
+func simulateClaimRelayer( //nolint:unused
 	ctx context.Context,
 	ec extethclient.EthClient,
 	txOpts *bind.TransactOpts,

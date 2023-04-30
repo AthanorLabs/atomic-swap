@@ -13,6 +13,8 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 )
 
+// RelayerQueryResponse is sent from a relayer to the opener of
+// a /relayerquery/0 stream.
 type RelayerQueryResponse struct {
 	Address ethcommon.Address `json:"address" validate:"required"`
 }

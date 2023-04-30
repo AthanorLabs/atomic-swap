@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 
+	rcommon "github.com/athanorlabs/go-relayer/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
@@ -17,7 +18,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
-	rcommon "github.com/athanorlabs/go-relayer/common"
 )
 
 // FeeWei and FeeEth are the fixed 0.009 ETH fee for using a swap relayer to claim.
@@ -38,9 +38,7 @@ func CreateRelayClaimRequest(
 	secret [32]byte,
 ) (*message.RelayClaimRequest, error) {
 	signature, err := createRelayClaimSignature(
-		ctx,
 		claimerEthKey,
-		ec,
 		relaySwap,
 	)
 	if err != nil {
@@ -56,9 +54,7 @@ func CreateRelayClaimRequest(
 }
 
 func createRelayClaimSignature(
-	ctx context.Context,
 	claimerEthKey *ecdsa.PrivateKey,
-	ec *ethclient.Client,
 	relaySwap *contracts.SwapCreatorRelaySwap,
 ) ([]byte, error) {
 	signerAddress := ethcrypto.PubkeyToAddress(claimerEthKey.PublicKey)
