@@ -163,7 +163,7 @@ func (o *Offer) validate() error {
 	}
 
 	if o.MaxAmount.Cmp(maxOfferValue) > 0 {
-		return fmt.Errorf("%s XMR exceed max offer amount of %s XMR",
+		return fmt.Errorf("%s XMR exceeds max offer amount of %s XMR",
 			o.MaxAmount.Text('f'), maxOfferValue.Text('f'))
 	}
 
