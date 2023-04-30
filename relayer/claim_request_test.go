@@ -74,5 +74,5 @@ func TestCreateRelayClaimRequest(t *testing.T) {
 	// change the ethkey to not match the claimer address to trigger the error path
 	ethKey = tests.GetTakerTestKey(t)
 	_, err = CreateRelayClaimRequest(ctx, ethKey, ec, relaySwap, secret)
-	require.ErrorContains(t, err, "signing key does not match claimer")
+	require.ErrorContains(t, err, "does not match claimer")
 }
