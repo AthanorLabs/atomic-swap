@@ -78,7 +78,7 @@ type GetPastResponse struct {
 
 // GetPast returns information about a past swap given its ID.
 // If no ID is provided, all past swaps are returned.
-// It sorts them in order from oldest to newest.
+// It sorts them in order from newest to oldest.
 func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPastResponse) error {
 	var swaps []*swap.Info
 
@@ -121,7 +121,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
+		return resp.Swaps[j].StartTime.Before(resp.Swaps[i].StartTime)
 	})
 
 	return nil
@@ -153,7 +153,9 @@ type GetOngoingResponse struct {
 	Swaps []*OngoingSwap `json:"swaps" validate:"dive,required"`
 }
 
-// GetOngoing returns information about the ongoing swap with the given ID, if there is one.
+// GetOngoing returns information about an ongoing swap given its ID.
+// If no ID is provided, all ongoing swaps are returned.
+// It sorts them in order from newest to oldest.
 func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *GetOngoingResponse) error {
 	env := s.backend.Env()
 
@@ -199,7 +201,7 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	}
 
 	sort.Slice(resp.Swaps, func(i, j int) bool {
-		return resp.Swaps[i].StartTime.UnixNano() < resp.Swaps[j].StartTime.UnixNano()
+		return resp.Swaps[j].StartTime.Before(resp.Swaps[i].StartTime)
 	})
 
 	return nil
