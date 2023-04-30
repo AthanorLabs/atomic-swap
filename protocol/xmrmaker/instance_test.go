@@ -62,11 +62,15 @@ func (n *mockNet) DiscoverRelayers() ([]peer.ID, error) {
 	return nil, nil
 }
 
-func (n *mockNet) SubmitClaimToRelayer(_ peer.ID, _ *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
+func (n *mockNet) SubmitRelayRequest(_ peer.ID, _ *message.RelayClaimRequest) (*message.RelayClaimResponse, error) {
 	return new(message.RelayClaimResponse), nil
 }
 
 func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
+
+func (n *mockNet) QueryRelayerAddress(_ peer.ID) (ethcommon.Address, error) {
+	return ethcommon.Address{}, nil
+}
 
 func newSwapManager(t *testing.T) pswap.Manager {
 	ctrl := gomock.NewController(t)
@@ -88,8 +92,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, chainID)
 	require.NoError(t, err)
 
-	var forwarderAddr ethcommon.Address
-	_, tx, _, err := contracts.DeploySwapCreator(txOpts, ec, forwarderAddr)
+	_, tx, _, err := contracts.DeploySwapCreator(txOpts, ec)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

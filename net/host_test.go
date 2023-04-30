@@ -50,6 +50,10 @@ type mockRelayHandler struct {
 	t *testing.T
 }
 
+func (h *mockRelayHandler) GetRelayerAddress() ethcommon.Address {
+	return ethcommon.Address{99}
+}
+
 func (h *mockRelayHandler) HandleRelayClaimRequest(_ peer.ID, _ *RelayClaimRequest) (*RelayClaimResponse, error) {
 	return &RelayClaimResponse{
 		TxHash: mockEthTXHash,

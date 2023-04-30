@@ -294,13 +294,17 @@ func (b *backend) GetRelayerAddress() ethcommon.Address {
 }
 
 func (b *backend) SubmitClaimToRelayer(relayerID peer.ID, offerID *types.Hash, relaySwap *contracts.SwapCreatorRelaySwap, secret [32]byte) (*message.RelayClaimResponse, error) {
-	relayerAddr, err := b.QueryRelayerAddress(relayerID)
-	if err != nil {
-		return nil, err
+	if offerID == nil {
+		// this isn't a counterparty-relay, get the relayer's eth address
+		relayerAddr, err := b.QueryRelayerAddress(relayerID)
+		if err != nil {
+			return nil, err
+		}
+
+		// set relayer address and sign as front-run prevention
+		relaySwap.Relayer = relayerAddr
 	}
 
-	// set relayer address and sign as front-run prevention
-	relaySwap.Relayer = relayerAddr
 	req, err := relayer.CreateRelayClaimRequest(b.ctx, b.ETHClient().PrivateKey(), b.ETHClient().Raw(), relaySwap, secret)
 	if err != nil {
 		return nil, err

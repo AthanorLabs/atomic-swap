@@ -87,8 +87,11 @@ func createTestClaimRequest() *message.RelayClaimRequest {
 func TestHost_SubmitClaimToRelayer_dhtRelayer(t *testing.T) {
 	ha, hb := twoHostRelayerSetup(t)
 
+	_, err := ha.QueryRelayerAddress(hb.PeerID())
+	require.NoError(t, err)
+
 	// success path ha->hb, hb is a DHT relayer
-	resp, err := ha.SubmitClaimToRelayer(hb.PeerID(), createTestClaimRequest())
+	resp, err := ha.SubmitRelayRequest(hb.PeerID(), createTestClaimRequest())
 	require.NoError(t, err)
 	require.Equal(t, mockEthTXHash.Hex(), resp.TxHash.Hex())
 
@@ -96,7 +99,7 @@ func TestHost_SubmitClaimToRelayer_dhtRelayer(t *testing.T) {
 	// does not pass back the exact reason for rejecting a claim to avoid
 	// possible privacy data leaks, but in this case it is because hb is not
 	// a DHT advertising relayer.
-	_, err = hb.SubmitClaimToRelayer(ha.PeerID(), createTestClaimRequest())
+	_, err = hb.SubmitRelayRequest(ha.PeerID(), createTestClaimRequest())
 	require.ErrorContains(t, err, "failed to read RelayClaimResponse")
 }
 
@@ -108,7 +111,7 @@ func TestHost_SubmitClaimToRelayer_xmrTakerRelayer(t *testing.T) {
 	request.OfferID = &offerID
 
 	// should ignore offerID and succeed
-	response, err := hb.SubmitClaimToRelayer(ha.PeerID(), request)
+	response, err := hb.SubmitRelayRequest(ha.PeerID(), request)
 	require.NoError(t, err)
 	require.Equal(t, mockEthTXHash, response.TxHash)
 }
@@ -118,11 +121,11 @@ func TestHost_SubmitClaimToRelayer_fail(t *testing.T) {
 
 	req := createTestClaimRequest()
 	req.Secret = []byte{0x1} // wrong size
-	_, err := ha.SubmitClaimToRelayer(hb.PeerID(), req)
+	_, err := ha.SubmitRelayRequest(hb.PeerID(), req)
 	require.ErrorContains(t, err, "Field validation for 'Secret' failed on the 'len' tag")
 
 	req = createTestClaimRequest()
 	req.Signature = []byte{0x1, 0x2} // wrong size
-	_, err = ha.SubmitClaimToRelayer(hb.PeerID(), req)
+	_, err = ha.SubmitRelayRequest(hb.PeerID(), req)
 	require.ErrorContains(t, err, "Field validation for 'Signature' failed on the 'len' tag")
 }

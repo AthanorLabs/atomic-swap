@@ -129,8 +129,9 @@ func (s *swapState) relayClaimWithXMRTaker() (*ethtypes.Receipt, error) {
 		Swap:        *s.contractSwap,
 		SwapCreator: s.swapCreatorAddr,
 		Fee:         relayer.FeeWei,
-		// this is set when we receive the relayer's address in `SubmitClaimToRelayer`
-		Relayer: ethcommon.Address{},
+		// we can assume the xmrtaker will use the same address
+		// to relay as to initiate the swap.
+		Relayer: s.contractSwap.Owner,
 	}
 
 	response, err := s.Backend.SubmitClaimToRelayer(s.info.PeerID, &s.offer.ID, relaySwap, secret)
