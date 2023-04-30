@@ -71,6 +71,10 @@ type Host struct {
 	// swap instance info
 	swapMu sync.RWMutex
 	swaps  map[types.Hash]*swap
+
+	// open relayer streams
+	relayerStreamsMu sync.RWMutex
+	relayerStreams   map[peer.ID]libp2pnetwork.Stream
 }
 
 // Config holds the initialization parameters for the NewHost constructor.
@@ -95,11 +99,12 @@ func NewHost(cfg *Config) (*Host, error) {
 	}
 
 	h := &Host{
-		ctx:        cfg.Ctx,
-		h:          nil, // set below
-		isRelayer:  cfg.IsRelayer,
-		isBootnode: cfg.IsBootnodeOnly,
-		swaps:      make(map[types.Hash]*swap),
+		ctx:            cfg.Ctx,
+		h:              nil, // set below
+		isRelayer:      cfg.IsRelayer,
+		isBootnode:     cfg.IsBootnodeOnly,
+		swaps:          make(map[types.Hash]*swap),
+		relayerStreams: make(map[peer.ID]libp2pnetwork.Stream),
 	}
 
 	var err error

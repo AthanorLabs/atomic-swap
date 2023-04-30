@@ -33,7 +33,7 @@ type NetSender interface {
 	SendSwapMessage(common.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
 	DiscoverRelayers() ([]peer.ID, error)                                                        // Only used by Maker
-	GetRelayerAddress(peer.ID) (ethcommon.Address, error)                                        // only used by taker
+	QueryRelayerAddress(peer.ID) (ethcommon.Address, error)                                      // only used by taker
 	SubmitRelayRequest(peer.ID, *message.RelayClaimRequest) (*message.RelayClaimResponse, error) // only used by taker
 }
 
@@ -67,6 +67,7 @@ type Backend interface {
 	// helpers
 	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
 	HandleRelayClaimRequest(remotePeer peer.ID, request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
+	GetRelayerAddress() ethcommon.Address
 	SubmitClaimToRelayer(peer.ID, *types.Hash, *contracts.SwapCreatorRelaySwap, [32]byte) (*message.RelayClaimResponse, error) // Only used by Taker
 
 	// getters
@@ -288,8 +289,12 @@ func (b *backend) HandleRelayClaimRequest(
 	)
 }
 
+func (b *backend) GetRelayerAddress() ethcommon.Address {
+	return b.ETHClient().Address()
+}
+
 func (b *backend) SubmitClaimToRelayer(relayerID peer.ID, offerID *types.Hash, relaySwap *contracts.SwapCreatorRelaySwap, secret [32]byte) (*message.RelayClaimResponse, error) {
-	relayerAddr, err := b.GetRelayerAddress(relayerID)
+	relayerAddr, err := b.QueryRelayerAddress(relayerID)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +307,7 @@ func (b *backend) SubmitClaimToRelayer(relayerID peer.ID, offerID *types.Hash, r
 	}
 
 	if offerID != nil {
-		req.OfferID = *&offerID
+		req.OfferID = offerID
 	}
 
 	return b.SubmitRelayRequest(relayerID, req)
