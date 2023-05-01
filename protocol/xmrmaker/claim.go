@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -19,10 +18,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/net/message"
-	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
@@ -124,12 +122,17 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (bo
 
 // relayClaimWithXMRTaker relays the claim to the swap's XMR taker, who should
 // process the claim even if they are not relaying claims for everyone.
-func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (*ethtypes.Receipt, error) {
-	// only requests to the XMR taker set the offerID field
-	request.OfferID = &s.offer.ID
-	defer func() { request.OfferID = nil }()
+func (s *swapState) relayClaimWithXMRTaker() (*ethtypes.Receipt, error) {
+	secret := s.getSecret()
+	relaySwap := &contracts.SwapCreatorRelaySwap{
+		Swap:        *s.contractSwap,
+		SwapCreator: s.swapCreatorAddr,
+		Fee:         coins.RelayerFeeWei,
+		// this is set when we receive the relayer's address hash
+		RelayerHash: types.Hash{},
+	}
 
-	response, err := s.Backend.SubmitClaimToRelayer(s.info.PeerID, request)
+	response, err := s.Backend.SubmitClaimToRelayer(s.info.PeerID, &s.offer.ID, relaySwap, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +156,16 @@ func (s *swapState) relayClaimWithXMRTaker(request *message.RelayClaimRequest) (
 // claimWithAdvertisedRelayers relays the claim to nodes that advertise
 // themselves as relayers in the DHT until the claim succeeds, all relayers have
 // been tried, or the context is cancelled.
-func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimRequest) (*ethtypes.Receipt, error) {
+func (s *swapState) claimWithAdvertisedRelayers() (*ethtypes.Receipt, error) {
+	secret := s.getSecret()
+	relaySwap := &contracts.SwapCreatorRelaySwap{
+		Swap:        *s.contractSwap,
+		SwapCreator: s.swapCreatorAddr,
+		Fee:         coins.RelayerFeeWei,
+		// this is set when we receive the relayer's address hash
+		RelayerHash: types.Hash{},
+	}
+
 	relayers, err := s.Backend.DiscoverRelayers()
 	if err != nil {
 		return nil, err
@@ -170,7 +182,7 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 		}
 
 		log.Debugf("submitting claim to relayer with peer ID %s", relayerPeerID)
-		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, request)
+		resp, err := s.Backend.SubmitClaimToRelayer(relayerPeerID, nil, relaySwap, secret)
 		if err != nil {
 			log.Warnf("failed to submit tx to relayer: %s", err)
 			continue
@@ -204,31 +216,11 @@ func (s *swapState) claimWithAdvertisedRelayers(request *message.RelayClaimReque
 // operations more generally. Note that the receipt returned is for a
 // transaction created by the remote relayer, not by us.
 func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
-	forwarderAddr, err := s.SwapCreator().TrustedForwarder(&bind.CallOpts{Context: s.ctx})
-	if err != nil {
-		return nil, err
-	}
-
-	secret := s.getSecret()
-
-	request, err := relayer.CreateRelayClaimRequest(
-		s.ctx,
-		s.ETHClient().PrivateKey(),
-		s.ETHClient().Raw(),
-		s.swapCreatorAddr,
-		forwarderAddr,
-		s.contractSwap,
-		&secret,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	receipt, err := s.claimWithAdvertisedRelayers(request)
+	receipt, err := s.claimWithAdvertisedRelayers()
 	if err != nil {
 		log.Warnf("failed to relay with DHT-advertised relayers: %s", err)
 		log.Infof("falling back to swap counterparty as relayer")
-		return s.relayClaimWithXMRTaker(request)
+		return s.relayClaimWithXMRTaker()
 	}
 	return receipt, nil
 }

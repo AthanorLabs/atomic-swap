@@ -46,11 +46,7 @@ func validateMinBalance(
 // offer of XMR for ETH
 func validateMinBalForETHSwap(weiBalance *coins.WeiAmount, providesAmt *apd.Decimal, gasPriceWei *big.Int) error {
 	providedAmtWei := coins.EtherToWei(providesAmt).BigInt()
-	neededGas := big.NewInt(
-		contracts.MaxNewSwapETHGas +
-			contracts.MaxSetReadyGas +
-			contracts.MaxRefundTokenGas,
-	)
+	neededGas := big.NewInt(contracts.MaxNewSwapETHGas + contracts.MaxSetReadyGas + contracts.MaxRefundETHGas)
 	neededWeiForGas := new(big.Int).Mul(neededGas, gasPriceWei)
 	neededBalanceWei := new(big.Int).Add(providedAmtWei, neededWeiForGas)
 

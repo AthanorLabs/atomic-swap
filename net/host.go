@@ -143,6 +143,7 @@ func (h *Host) SetHandlers(makerHandler MakerHandler, relayHandler RelayHandler)
 
 	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
 	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
+	h.h.SetStreamHandler(relayerQueryProtocolID, h.handleRelayerQueryStream)
 	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 }
 

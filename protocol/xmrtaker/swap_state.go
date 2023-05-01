@@ -409,20 +409,24 @@ func (s *swapState) exit() error {
 		// we should also refund in this case, since we might be past t1.
 		receipt, err := s.tryRefund()
 		if err != nil {
-			if errors.Is(err, errRefundSwapCompleted) {
-				s.clearNextExpectedEvent(types.CompletedRefund)
-				log.Infof("swap was already refunded")
-				return nil
-			}
+			if errors.Is(err, errRefundSwapCompleted) || strings.Contains(err.Error(), revertSwapCompleted) {
+				log.Infof("swap was already completed")
 
-			if strings.Contains(err.Error(), revertSwapCompleted) {
-				// note: this should NOT ever error; it could if the ethclient
-				// or monero clients crash during the course of the claim,
-				// but that would be very bad.
 				err = s.tryClaim()
 				if err != nil {
+					if errors.Is(err, errNoClaimLogsFound) {
+						// in this case, assume we refunded
+						s.clearNextExpectedEvent(types.CompletedRefund)
+						return nil
+					}
+
+					// note: this should NOT occur; it could if the ethclient
+					// or monero clients crash during the course of the claim,
+					// but that would be very bad.
 					return fmt.Errorf("failed to claim even though swap was completed on-chain: %w", err)
 				}
+
+				return nil
 			}
 
 			return fmt.Errorf("failed to refund: %w", err)

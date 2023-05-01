@@ -4,13 +4,12 @@
 package net
 
 import (
+	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
-
-	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 )
 
 type SwapState = common.SwapStateNet //nolint:revive
@@ -35,7 +34,9 @@ type MakerHandler interface {
 // RelayHandler handles relay claim requests. It is implemented by
 // *backend.backend.
 type RelayHandler interface {
+	GetRelayerAddressHash() (types.Hash, error)
 	HandleRelayClaimRequest(remotePeer peer.ID, msg *RelayClaimRequest) (*RelayClaimResponse, error)
+	HasOngoingSwapAsTaker(remotePeer peer.ID) error
 }
 
 type swap struct {

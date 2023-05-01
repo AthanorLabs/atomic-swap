@@ -63,19 +63,8 @@ func approveERC20(t *testing.T,
 	require.GreaterOrEqual(t, MaxTokenApproveGas, int(receipt.GasUsed), "Token Approve")
 }
 
-func deployForwarder(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) ethcommon.Address {
-	forwarderAddr, err := DeployGSNForwarderWithKey(context.Background(), ec, pk)
-	require.NoError(t, err)
-	return forwarderAddr
-}
-
-func deploySwapCreatorWithForwarder(
-	t *testing.T,
-	ec *ethclient.Client,
-	pk *ecdsa.PrivateKey,
-	forwarderAddr ethcommon.Address,
-) (ethcommon.Address, *SwapCreator) {
-	swapCreatorAddr, tx, swapCreator, err := DeploySwapCreator(getAuth(t, pk), ec, forwarderAddr)
+func deploySwapCreator(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) (ethcommon.Address, *SwapCreator) {
+	swapCreatorAddr, tx, swapCreator, err := DeploySwapCreator(getAuth(t, pk), ec)
 	require.NoError(t, err)
 	receipt := getReceipt(t, ec, tx)
 
@@ -84,11 +73,6 @@ func deploySwapCreatorWithForwarder(
 	require.GreaterOrEqual(t, maxSwapCreatorDeployGas, int(receipt.GasUsed), "deploy SwapCreator")
 
 	return swapCreatorAddr, swapCreator
-}
-
-func deploySwapCreator(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) (ethcommon.Address, *SwapCreator) {
-	forwarderAddr := deployForwarder(t, ec, pk)
-	return deploySwapCreatorWithForwarder(t, ec, pk, forwarderAddr)
 }
 
 func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {

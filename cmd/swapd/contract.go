@@ -31,7 +31,6 @@ var (
 
 type contractAddresses struct {
 	SwapCreatorAddr ethcommon.Address `json:"swapCreatorAddr" validate:"required"`
-	ForwarderAddr   ethcommon.Address `json:"forwarderAddr" validate:"required"`
 }
 
 func getOrDeploySwapCreator(
@@ -40,7 +39,6 @@ func getOrDeploySwapCreator(
 	env common.Environment,
 	dataDir string,
 	ec extethclient.EthClient,
-	forwarderAddr ethcommon.Address,
 ) (ethcommon.Address, error) {
 	var err error
 	if (swapCreatorAddr == ethcommon.Address{}) {
@@ -49,7 +47,7 @@ func getOrDeploySwapCreator(
 			time.Sleep(10 * time.Second)
 		}
 
-		swapCreatorAddr, _, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), forwarderAddr, dataDir)
+		swapCreatorAddr, err = deploySwapCreator(ctx, ec.Raw(), ec.PrivateKey(), dataDir)
 		if err != nil {
 			return ethcommon.Address{}, fmt.Errorf("failed to deploy swap creator: %w", err)
 		}
@@ -57,7 +55,7 @@ func getOrDeploySwapCreator(
 		// otherwise, load the contract from the given address
 		// and check that its bytecode is valid (ie. matches the
 		// bytecode of this repo's swap contract)
-		_, err = contracts.CheckSwapCreatorContractCode(ctx, ec.Raw(), swapCreatorAddr)
+		err = contracts.CheckSwapCreatorContractCode(ctx, ec.Raw(), swapCreatorAddr)
 		if err != nil {
 			return ethcommon.Address{}, err
 		}
@@ -70,31 +68,15 @@ func deploySwapCreator(
 	ctx context.Context,
 	ec *ethclient.Client,
 	privkey *ecdsa.PrivateKey,
-	forwarderAddr ethcommon.Address,
 	dataDir string,
-) (ethcommon.Address, *contracts.SwapCreator, error) {
-
+) (ethcommon.Address, error) {
 	if privkey == nil {
-		return ethcommon.Address{}, nil, errNoEthPrivateKey
+		return ethcommon.Address{}, errNoEthPrivateKey
 	}
 
-	if (forwarderAddr == ethcommon.Address{}) {
-		// deploy forwarder contract as well
-		var err error
-		forwarderAddr, err = contracts.DeployGSNForwarderWithKey(ctx, ec, privkey)
-		if err != nil {
-			return ethcommon.Address{}, nil, err
-		}
-	} else {
-		// TODO: ignore this if the forwarderAddr is the one that's hardcoded for this network
-		if err := contracts.CheckForwarderContractCode(ctx, ec, forwarderAddr); err != nil {
-			return ethcommon.Address{}, nil, err
-		}
-	}
-
-	swapCreatorAddr, sf, err := contracts.DeploySwapCreatorWithKey(ctx, ec, privkey, forwarderAddr)
+	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, privkey)
 	if err != nil {
-		return ethcommon.Address{}, nil, err
+		return ethcommon.Address{}, err
 	}
 
 	// store the contract addresses on disk
@@ -102,14 +84,13 @@ func deploySwapCreator(
 		path.Join(dataDir, contractAddressesFile),
 		&contractAddresses{
 			SwapCreatorAddr: swapCreatorAddr,
-			ForwarderAddr:   forwarderAddr,
 		},
 	)
 	if err != nil {
-		return ethcommon.Address{}, nil, fmt.Errorf("failed to write contract address to file: %w", err)
+		return ethcommon.Address{}, fmt.Errorf("failed to write contract address to file: %w", err)
 	}
 
-	return swapCreatorAddr, sf, nil
+	return swapCreatorAddr, nil
 }
 
 // writeContractAddressesToFile writes the contract addresses to the given file

@@ -4,12 +4,12 @@ package contracts
 // ever see in a test, so you would need to adjust upwards a little to use as a
 // gas limit. We use these values to estimate minimum required balances.
 const (
-	MaxNewSwapETHGas   = 50589
+	MaxNewSwapETHGas   = 50639
 	MaxNewSwapTokenGas = 86218
-	MaxSetReadyGas     = 31872
+	MaxSetReadyGas     = 32054
 	MaxClaimETHGas     = 43349
 	MaxClaimTokenGas   = 47522
-	MaxRefundETHGas    = 43120
-	MaxRefundTokenGas  = 47282
+	MaxRefundETHGas    = 43132
+	MaxRefundTokenGas  = 47294
 	MaxTokenApproveGas = 47000 // 46223 with our contract
 )
