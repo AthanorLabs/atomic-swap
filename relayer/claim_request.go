@@ -5,25 +5,14 @@
 package relayer
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 
-	rcommon "github.com/athanorlabs/go-relayer/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
-)
-
-// FeeWei and FeeEth are the fixed 0.009 ETH fee for using a swap relayer to claim.
-var (
-	FeeWei = big.NewInt(9e15)
-	FeeEth = coins.NewWeiAmount(FeeWei).AsEther()
 )
 
 var log = logging.Logger("relayer")
@@ -31,9 +20,7 @@ var log = logging.Logger("relayer")
 // CreateRelayClaimRequest fills and returns a RelayClaimRequest ready for
 // submission to a relayer.
 func CreateRelayClaimRequest(
-	ctx context.Context,
 	claimerEthKey *ecdsa.PrivateKey,
-	ec *ethclient.Client,
 	relaySwap *contracts.SwapCreatorRelaySwap,
 	secret [32]byte,
 ) (*message.RelayClaimRequest, error) {
@@ -62,13 +49,23 @@ func createRelayClaimSignature(
 		return nil, fmt.Errorf("signing key %s does not match claimer %s", signerAddress, relaySwap.Swap.Claimer)
 	}
 
-	msg := relaySwap.Hash()
-
 	// signature format is (r || s || v), v = 27/28
-	signature, err := rcommon.NewKeyFromPrivateKey(claimerEthKey).Sign(msg)
+	signature, err := Sign(claimerEthKey, relaySwap.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign forward request digest: %w", err)
 	}
 
 	return signature, nil
+}
+
+// Sign signs the given digest and returns a 65-byte signature in (r,s,v) format.
+func Sign(key *ecdsa.PrivateKey, digest [32]byte) ([]byte, error) {
+	sig, err := ethcrypto.Sign(digest[:], key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ethereum wants 27/28 for v
+	sig[64] += 27
+	return sig, nil
 }

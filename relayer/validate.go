@@ -65,9 +65,9 @@ func validateClaimValues(
 	}
 
 	// The relayer fee must be strictly less than the swap value
-	if FeeWei.Cmp(request.RelaySwap.Swap.Value) >= 0 {
+	if coins.RelayerFeeWei.Cmp(request.RelaySwap.Swap.Value) >= 0 {
 		return fmt.Errorf("swap value of %s ETH is too low to support %s ETH relayer fee",
-			coins.FmtWeiAsETH(request.RelaySwap.Swap.Value), coins.FmtWeiAsETH(FeeWei))
+			coins.FmtWeiAsETH(request.RelaySwap.Swap.Value), coins.RelayerFeeETH.Text('f'))
 	}
 
 	if request.RelaySwap.Relayer != ourAddress {

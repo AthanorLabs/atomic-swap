@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	claimRelayerGas = 100000 // worst case gas usage for the claimRelayer call (ether)
+	maxClaimRelayerETHGas = 87000 // worst case gas usage for the claimRelayer call (ether)
 	// actual cost is 83967 but that fails in unit tests on "out of gas".
 )
 
@@ -60,7 +60,7 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 	txOpts.GasPrice = gasPrice
-	txOpts.GasLimit = claimRelayerGas
+	txOpts.GasLimit = maxClaimRelayerETHGas
 	log.Debugf("relaying tx with gas price %s and gas limit %d", gasPrice, txOpts.GasLimit)
 
 	v := req.Signature[64]
@@ -114,7 +114,7 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 		return nil, err
 	}
 
-	txCost := new(big.Int).Mul(gasPrice, big.NewInt(claimRelayerGas))
+	txCost := new(big.Int).Mul(gasPrice, big.NewInt(maxClaimRelayerETHGas))
 	if balance.BigInt().Cmp(txCost) < 0 {
 		return nil, fmt.Errorf("balance %s ETH is under the minimum %s ETH to relay claim",
 			balance.AsEtherString(), coins.FmtWeiAsETH(txCost))

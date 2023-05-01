@@ -52,7 +52,6 @@ func createTestSwap(claimer ethcommon.Address) *contracts.SwapCreatorSwap {
 }
 
 func TestCreateRelayClaimRequest(t *testing.T) {
-	ctx := context.Background()
 	ethKey := tests.GetMakerTestKey(t)
 	claimer := crypto.PubkeyToAddress(*ethKey.Public().(*ecdsa.PublicKey))
 	ec, _ := tests.NewEthClient(t)
@@ -67,12 +66,12 @@ func TestCreateRelayClaimRequest(t *testing.T) {
 		SwapCreator: swapCreatorAddr,
 		Relayer:     ethcommon.Address{},
 	}
-	req, err := CreateRelayClaimRequest(ctx, ethKey, ec, relaySwap, secret)
+	req, err := CreateRelayClaimRequest(ethKey, relaySwap, secret)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
 	// change the ethkey to not match the claimer address to trigger the error path
 	ethKey = tests.GetTakerTestKey(t)
-	_, err = CreateRelayClaimRequest(ctx, ethKey, ec, relaySwap, secret)
+	_, err = CreateRelayClaimRequest(ethKey, relaySwap, secret)
 	require.ErrorContains(t, err, "does not match claimer")
 }

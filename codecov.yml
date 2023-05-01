@@ -15,7 +15,7 @@ coverage:
 ignore:
   - ethereum/swap_creator.go
   - ethereum/aggregator_v3_interface.go
-  - ethereum/erc20_mock.go
+  - ethereum/erc20_token.go
   - ethereum/ierc20.go
   - ethereum/block/ut_contract_test.go
   - cmd/swapd/profile.go

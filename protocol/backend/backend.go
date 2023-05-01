@@ -315,7 +315,7 @@ func (b *backend) SubmitClaimToRelayer(
 		relaySwap.Relayer = relayerAddr
 	}
 
-	req, err := relayer.CreateRelayClaimRequest(b.ctx, b.ETHClient().PrivateKey(), b.ETHClient().Raw(), relaySwap, secret)
+	req, err := relayer.CreateRelayClaimRequest(b.ETHClient().PrivateKey(), relaySwap, secret)
 	if err != nil {
 		return nil, err
 	}

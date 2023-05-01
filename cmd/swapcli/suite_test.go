@@ -23,7 +23,7 @@ type swapCLITestSuite struct {
 	mockTokens map[string]ethcommon.Address
 }
 
-func TestRunIntegrationTests(t *testing.T) {
+func TestRunSwapcliWithDaemonTests(t *testing.T) {
 	s := new(swapCLITestSuite)
 
 	s.conf = daemon.CreateTestConf(t, tests.GetMakerTestKey(t))

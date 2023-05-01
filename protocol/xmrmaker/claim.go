@@ -21,7 +21,6 @@ import (
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
-	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 // claimFunds redeems XMRMaker's ETH funds by calling Claim() on the contract
@@ -128,7 +127,7 @@ func (s *swapState) relayClaimWithXMRTaker() (*ethtypes.Receipt, error) {
 	relaySwap := &contracts.SwapCreatorRelaySwap{
 		Swap:        *s.contractSwap,
 		SwapCreator: s.swapCreatorAddr,
-		Fee:         relayer.FeeWei,
+		Fee:         coins.RelayerFeeWei,
 		// we can assume the xmrtaker will use the same address
 		// to relay as to initiate the swap.
 		Relayer: s.contractSwap.Owner,
@@ -163,7 +162,7 @@ func (s *swapState) claimWithAdvertisedRelayers() (*ethtypes.Receipt, error) {
 	relaySwap := &contracts.SwapCreatorRelaySwap{
 		Swap:        *s.contractSwap,
 		SwapCreator: s.swapCreatorAddr,
-		Fee:         relayer.FeeWei,
+		Fee:         coins.RelayerFeeWei,
 		// this is set when we receive the relayer's address
 		Relayer: ethcommon.Address{},
 	}

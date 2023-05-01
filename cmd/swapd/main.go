@@ -18,12 +18,12 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/daemon"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/relayer"
 )
 
 const (
@@ -204,7 +204,7 @@ func cliApp() *cli.App {
 				Name: flagRelayer,
 				Usage: fmt.Sprintf(
 					"Relay claims for XMR makers and earn %s ETH (minus gas fees) per transaction",
-					relayer.FeeEth.Text('f'),
+					coins.RelayerFeeETH.Text('f'),
 				),
 				Value: false,
 			},

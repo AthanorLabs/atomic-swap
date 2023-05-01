@@ -76,7 +76,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
+	require.GreaterOrEqual(t, contracts.MaxNewSwapETHGas, int(receipt.GasUsed))
 	txOpts.Value = big.NewInt(0)
 
 	logIndex := 0 // change to 2 for ERC20, but ERC20 swaps cannot use the relayer
@@ -103,8 +103,8 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	tx, err = swapCreator.SetReady(txOpts, swap)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
-	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
 	require.NoError(t, err)
+	require.GreaterOrEqual(t, contracts.MaxSetReadyGas, int(receipt.GasUsed))
 
 	secret := proof.Secret()
 
@@ -116,7 +116,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 		Fee:         big.NewInt(1),
 	}
 
-	req, err := CreateRelayClaimRequest(ctx, claimerSk, ec.Raw(), relaySwap, secret)
+	req, err := CreateRelayClaimRequest(claimerSk, relaySwap, secret)
 	require.NoError(t, err)
 
 	resp, err := ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr)
@@ -124,6 +124,10 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 
 	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), resp.TxHash)
 	require.NoError(t, err)
+	t.Logf("gas cost to call claimRelayer: %d (delta %d)",
+		receipt.GasUsed, maxClaimRelayerETHGas-int(receipt.GasUsed))
+	require.GreaterOrEqual(t, maxClaimRelayerETHGas, int(receipt.GasUsed), "claimRelayer")
+
 	t.Logf("gas cost to call Claim via relayer: %d", receipt.GasUsed)
 
 	// expected 1 Claimed log (ERC20 swaps have 3, but we don't support relaying with ERC20 swaps)
@@ -135,7 +139,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 
 	// Now let's try to claim a second time and verify that we fail on the simulated
 	// execution.
-	req, err = CreateRelayClaimRequest(ctx, claimerSk, ec.Raw(), relaySwap, secret)
+	req, err = CreateRelayClaimRequest(claimerSk, relaySwap, secret)
 	require.NoError(t, err)
 
 	_, err = ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr)

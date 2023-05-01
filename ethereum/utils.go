@@ -7,6 +7,7 @@ package contracts
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -292,4 +293,13 @@ func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
 	t0 := res[3].(*big.Int)
 	t1 := res[4].(*big.Int)
 	return t0, t1, nil
+}
+
+// GenerateNewSwapNonce generates a random nonce value for use with NewSwap
+// transactions.
+func GenerateNewSwapNonce() *big.Int {
+	u256PlusOne := new(big.Int).Lsh(big.NewInt(1), 256)
+	maxU256 := new(big.Int).Sub(u256PlusOne, big.NewInt(1))
+	n, _ := rand.Int(rand.Reader, maxU256)
+	return n
 }
