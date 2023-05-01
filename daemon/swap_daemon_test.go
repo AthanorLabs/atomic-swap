@@ -23,6 +23,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
@@ -78,19 +79,11 @@ func transfer(t *testing.T, fromKey *ecdsa.PrivateKey, toAddress ethcommon.Addre
 func minimumFundAlice(t *testing.T, ec extethclient.EthClient, providesAmt *apd.Decimal) {
 	fundingKey := tests.GetTakerTestKey(t)
 
-	// When this comment was written, sample gas costs were:
-	//   newSwap:     53787
-	//   setReady:    34452
-	//   refund:      46692
-	//   relayClaim: 130507
-	//
 	const (
-		aliceGasRation = 150000 // roughly 10% more than newSwap+setRead+refund
+		aliceGasRation = contracts.MaxNewSwapETHGas + contracts.MaxSetReadyGas + contracts.MaxRefundETHGas
 	)
 	// We give Alice enough gas money to refund if needed, but not enough to
-	// relay a claim:
-	//    150000 - (53787 + 34452) = 61761
-	//
+	// relay a claim
 	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(context.Background())
 	require.NoError(t, err)
 	gasCostWei := new(big.Int).Mul(suggestedGasPrice, big.NewInt(aliceGasRation))

@@ -5,11 +5,10 @@ package relayer
 
 import (
 	"context"
-	"errors"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
-	"github.com/athanorlabs/go-relayer/impls/gsnforwarder"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -23,46 +22,31 @@ import (
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
+const (
+	maxClaimRelayerETHGas = 100000 // worst case gas usage for the claimRelayer call (ether)
+	// actual cost is 85040 but that fails in unit tests on "out of gas".
+)
+
 // ValidateAndSendTransaction sends the relayed transaction to the network if it validates successfully.
 func ValidateAndSendTransaction(
 	ctx context.Context,
 	req *message.RelayClaimRequest,
 	ec extethclient.EthClient,
-	ourSFContractAddr ethcommon.Address,
+	ourSwapCreatorAddr ethcommon.Address,
+	salt [4]byte,
 ) (*message.RelayClaimResponse, error) {
-
-	err := validateClaimRequest(ctx, req, ec.Raw(), ourSFContractAddr)
+	err := validateClaimRequest(ctx, req, ec.Raw(), ec.Address(), salt, ourSwapCreatorAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	reqSwapCreator, err := contracts.NewSwapCreator(req.SwapCreatorAddr, ec.Raw())
-	if err != nil {
-		return nil, err
-	}
-
-	reqForwarderAddr, err := reqSwapCreator.TrustedForwarder(&bind.CallOpts{Context: ctx})
-	if err != nil {
-		return nil, err
-	}
-
-	reqForwarder, domainSeparator, err := getForwarderAndDomainSeparator(ctx, ec.Raw(), reqForwarderAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce, err := reqForwarder.GetNonce(&bind.CallOpts{Context: ctx}, req.Swap.Claimer)
+	reqSwapCreator, err := contracts.NewSwapCreator(req.RelaySwap.SwapCreator, ec.Raw())
 	if err != nil {
 		return nil, err
 	}
 
 	// The size of request.Secret was vetted when it was deserialized
-	secret := (*[32]byte)(req.Secret)
-
-	forwarderReq, err := createForwarderRequest(nonce, req.SwapCreatorAddr, req.Swap, secret)
-	if err != nil {
-		return nil, err
-	}
+	secret := [32]byte(req.Secret)
 
 	gasPrice, err := checkForMinClaimBalance(ctx, ec)
 	if err != nil {
@@ -78,32 +62,40 @@ func ValidateAndSendTransaction(
 		return nil, err
 	}
 	txOpts.GasPrice = gasPrice
-	txOpts.GasLimit = forwarderClaimGas
+	txOpts.GasLimit = maxClaimRelayerETHGas
 	log.Debugf("relaying tx with gas price %s and gas limit %d", gasPrice, txOpts.GasLimit)
 
-	err = simulateExecute(
+	v := req.Signature[64]
+	r := [32]byte(req.Signature[:32])
+	s := [32]byte(req.Signature[32:64])
+
+	saltU32 := binary.BigEndian.Uint32(salt[:])
+	err = simulateClaimRelayer(
 		ctx,
 		ec,
-		&reqForwarderAddr,
 		txOpts,
-		*forwarderReq,
-		*domainSeparator,
-		req.Signature,
+		req.RelaySwap,
+		secret,
+		ec.Address(),
+		saltU32,
+		v, r, s,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := reqForwarder.Execute(
+	tx, err := reqSwapCreator.ClaimRelayer(
 		txOpts,
-		*forwarderReq,
-		*domainSeparator,
-		gsnforwarder.ForwardRequestTypehash,
-		nil,
-		req.Signature,
+		*req.RelaySwap,
+		secret,
+		ec.Address(),
+		saltU32,
+		v,
+		r,
+		s,
 	)
 	if err != nil {
-		log.Errorf("failed to call execute: %s", err)
+		log.Errorf("failed to call ClaimRelayer: %s", err)
 		return nil, err
 	}
 
@@ -113,7 +105,6 @@ func ValidateAndSendTransaction(
 	}
 
 	log.Infof("relayed claim %s", common.ReceiptInfo(receipt))
-
 	return &message.RelayClaimResponse{TxHash: tx.Hash()}, nil
 }
 
@@ -130,7 +121,7 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 		return nil, err
 	}
 
-	txCost := new(big.Int).Mul(gasPrice, big.NewInt(forwarderClaimGas))
+	txCost := new(big.Int).Mul(gasPrice, big.NewInt(maxClaimRelayerETHGas))
 	if balance.BigInt().Cmp(txCost) < 0 {
 		return nil, fmt.Errorf("balance %s ETH is under the minimum %s ETH to relay claim",
 			balance.AsEtherString(), coins.FmtWeiAsETH(txCost))
@@ -139,30 +130,30 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (*b
 	return gasPrice, nil
 }
 
-// simulateExecute calls the forwarder's execute method (defined in Forwarder.sol)
+// simulateExecute calls the swap creator's ClaimRelayer function
 // with CallContract which executes the method call without mining it into the blockchain.
 // https://pkg.go.dev/github.com/ethereum/go-ethereum/ethclient#Client.CallContract
-func simulateExecute(
+func simulateClaimRelayer(
 	ctx context.Context,
 	ec extethclient.EthClient,
-	reqForwarderAddr *ethcommon.Address,
 	txOpts *bind.TransactOpts,
-	forwarderReq gsnforwarder.IForwarderForwardRequest,
-	domainSeparator [32]byte,
-	sig []byte,
+	relaySwap *contracts.SwapCreatorRelaySwap,
+	secret [32]byte,
+	relayer ethcommon.Address,
+	salt uint32,
+	v uint8,
+	r, s [32]byte,
 ) error {
-	forwarderABI, err := gsnforwarder.ForwarderMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-	// Pack the "execute" method call
-	packed, err := forwarderABI.Pack(
-		"execute",
-		forwarderReq,
-		domainSeparator,
-		gsnforwarder.ForwardRequestTypehash,
-		[]byte{},
-		sig,
+	// Pack the "claimRelayer" method call
+	packed, err := contracts.SwapCreatorParsedABI.Pack(
+		"claimRelayer",
+		*relaySwap,
+		secret,
+		relayer,
+		salt,
+		v,
+		r,
+		s,
 	)
 	if err != nil {
 		return err
@@ -170,7 +161,7 @@ func simulateExecute(
 
 	callMessage := ethereum.CallMsg{
 		From:       txOpts.From,
-		To:         reqForwarderAddr,
+		To:         &relaySwap.SwapCreator,
 		Gas:        txOpts.GasLimit,
 		GasPrice:   txOpts.GasPrice,
 		GasFeeCap:  txOpts.GasFeeCap,
@@ -180,25 +171,11 @@ func simulateExecute(
 		AccessList: []types.AccessTuple{},
 	}
 
-	// Call the "execute" method
-	data, err := ec.Raw().CallContract(ctx, callMessage, nil)
+	// Call the "claimRelayer" method
+	// will return a revert error on failure
+	_, err = ec.Raw().CallContract(ctx, callMessage, nil)
 	if err != nil {
 		return err
-	}
-
-	// Unpack the response data
-	response := struct {
-		Success bool
-		Ret     []byte
-	}{Success: false, Ret: []byte{}}
-
-	err = forwarderABI.UnpackIntoInterface(&response, "execute", data)
-	if err != nil {
-		return err
-	}
-
-	if !response.Success {
-		return errors.New("relayed transaction failed on simulation")
 	}
 
 	return nil

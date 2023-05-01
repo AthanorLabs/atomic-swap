@@ -32,7 +32,7 @@ type mockMakerHandler struct {
 	id types.Hash
 }
 
-func (h *mockMakerHandler) GetOffers() []*types.Offer {
+func (*mockMakerHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
@@ -50,7 +50,15 @@ type mockRelayHandler struct {
 	t *testing.T
 }
 
-func (h *mockRelayHandler) HandleRelayClaimRequest(_ peer.ID, _ *RelayClaimRequest) (*RelayClaimResponse, error) {
+func (*mockRelayHandler) GetRelayerAddressHash() (types.Hash, error) {
+	return types.Hash{99}, nil
+}
+
+func (*mockRelayHandler) HasOngoingSwapAsTaker(_ peer.ID) error {
+	return nil
+}
+
+func (*mockRelayHandler) HandleRelayClaimRequest(_ peer.ID, _ *RelayClaimRequest) (*RelayClaimResponse, error) {
 	return &RelayClaimResponse{
 		TxHash: mockEthTXHash,
 	}, nil
@@ -68,11 +76,11 @@ func (s *mockSwapState) OfferID() types.Hash {
 	return testID
 }
 
-func (s *mockSwapState) HandleProtocolMessage(_ Message) error {
+func (*mockSwapState) HandleProtocolMessage(_ Message) error {
 	return nil
 }
 
-func (s *mockSwapState) Exit() error {
+func (*mockSwapState) Exit() error {
 	return nil
 }
 

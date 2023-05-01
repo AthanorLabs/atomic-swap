@@ -56,6 +56,86 @@ func StageToString(stage byte) string {
 	}
 }
 
+// Hash abi-encodes the RelaySwap and returns the keccak256 hash of the encoded value.
+func (s *SwapCreatorRelaySwap) Hash() types.Hash {
+	uint256Ty, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create uint256 type: %s", err))
+	}
+
+	bytes32Ty, err := abi.NewType("bytes32", "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create bytes32 type: %s", err))
+	}
+
+	addressTy, err := abi.NewType("address", "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create address type: %s", err))
+	}
+
+	arguments := abi.Arguments{
+		{
+			Type: addressTy,
+		},
+		{
+			Type: addressTy,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: addressTy,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: uint256Ty,
+		},
+		{
+			Type: bytes32Ty,
+		},
+		{
+			Type: addressTy,
+		},
+	}
+
+	args, err := arguments.Pack(
+		s.Swap.Owner,
+		s.Swap.Claimer,
+		s.Swap.PubKeyClaim,
+		s.Swap.PubKeyRefund,
+		s.Swap.Timeout0,
+		s.Swap.Timeout1,
+		s.Swap.Asset,
+		s.Swap.Value,
+		s.Swap.Nonce,
+		s.Fee,
+		s.RelayerHash,
+		s.SwapCreator,
+	)
+	if err != nil {
+		// As long as none of the *big.Int fields are nil, this cannot fail.
+		// When receiving SwapCreatorRelaySwap objects from peers in
+		// JSON, all *big.Int values are pre-validated to be non-nil.
+		panic(fmt.Sprintf("failed to pack arguments: %s", err))
+	}
+
+	return crypto.Keccak256Hash(args)
+}
+
 // SwapID calculates and returns the same hashed swap identifier that newSwap
 // emits and that is used to track the on-chain stage of a swap.
 func (sfs *SwapCreatorSwap) SwapID() types.Hash {
@@ -131,17 +211,6 @@ func GetSecretFromLog(log *ethtypes.Log, eventTopic [32]byte) (*mcrypto.PrivateS
 		return nil, errors.New("invalid event, must be one of Claimed or Refunded")
 	}
 
-	// abiSF, err := abi.JSON(strings.NewReader(SwapCreatorMetaData.ABI))
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// data := log.Data
-	// res, err := abiSF.Unpack(event, data)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	if len(log.Topics) < 3 {
 		return nil, errors.New("log had not enough parameters")
 	}
@@ -164,17 +233,6 @@ func CheckIfLogIDMatches(log ethtypes.Log, eventTopic, id [32]byte) (bool, error
 	if eventTopic != claimedTopic && eventTopic != refundedTopic {
 		return false, errors.New("invalid event, must be one of Claimed or Refunded")
 	}
-
-	// abi, err := abi.JSON(strings.NewReader(SwapCreatorMetaData.ABI))
-	// if err != nil {
-	// 	return false, err
-	// }
-
-	// data := log.Data
-	// res, err := abi.Unpack(event, data)
-	// if err != nil {
-	// 	return false, err
-	// }
 
 	if len(log.Topics) < 2 {
 		return false, errors.New("log had not enough parameters")

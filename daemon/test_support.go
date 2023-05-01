@@ -148,10 +148,7 @@ func getSwapCreatorAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address
 	ctx := context.Background()
 	ethKey := tests.GetTakerTestKey(t) // requester might not have ETH, so we don't pass the key in
 
-	forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, ethKey)
-	require.NoError(t, err)
-
-	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, ethKey, forwarderAddr)
+	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, ethKey)
 	require.NoError(t, err)
 
 	_swapCreatorAddr = &swapCreatorAddr
