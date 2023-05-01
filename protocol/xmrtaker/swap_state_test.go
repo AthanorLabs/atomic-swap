@@ -136,10 +136,9 @@ func newBackend(t *testing.T) backend.Backend {
 func newTestSwapStateAndNet(t *testing.T) (*swapState, *mockNet) {
 	b, net := newBackendAndNet(t)
 	providedAmt := coins.EtherToWei(coins.StrToDecimal("1"))
-	expectedAmt := coins.MoneroToPiconero(coins.StrToDecimal("1"))
 	exchangeRate := coins.ToExchangeRate(coins.StrToDecimal("1.0")) // 100%
 	swapState, err := newSwapStateFromStart(b, testPeerID, types.Hash{}, true,
-		providedAmt, expectedAmt, exchangeRate, types.EthAssetETH)
+		providedAmt, exchangeRate, types.EthAssetETH)
 	require.NoError(t, err)
 	return swapState, net
 }
@@ -188,9 +187,8 @@ func newTestSwapStateWithERC20(t *testing.T, providesAmt *apd.Decimal) (*swapSta
 	providesEthAssetAmt := coins.NewERC20TokenAmountFromDecimals(providesAmt, tokenInfo)
 
 	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
-	zeroPiconeros := coins.NewPiconeroAmount(0)
 	swapState, err := newSwapStateFromStart(b, testPeerID, types.Hash{}, false,
-		providesEthAssetAmt, zeroPiconeros, exchangeRate, types.EthAsset(addr))
+		providesEthAssetAmt, exchangeRate, types.EthAsset(addr))
 	require.NoError(t, err)
 	return swapState, contract
 }

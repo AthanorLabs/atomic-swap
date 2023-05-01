@@ -60,7 +60,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
 	require.NoError(t, err)
-	t.Logf("gas cost to call new_swap: %d", receipt.GasUsed)
+	require.GreaterOrEqual(t, contracts.MaxNewSwapETHGas, int(receipt.GasUsed))
 	txOpts.Value = big.NewInt(0)
 
 	logIndex := 0 // change to 2 for ERC20, but ERC20 swaps cannot use the relayer
@@ -87,8 +87,8 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	tx, err = swapCreator.SetReady(txOpts, *swap)
 	require.NoError(t, err)
 	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), tx.Hash())
-	t.Logf("gas cost to call SetReady: %d", receipt.GasUsed)
 	require.NoError(t, err)
+	require.GreaterOrEqual(t, contracts.MaxSetReadyGas, int(receipt.GasUsed))
 
 	secret := proof.Secret()
 
