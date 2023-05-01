@@ -202,9 +202,14 @@ func (h *Host) DeleteOngoingSwap(offerID types.Hash) {
 	h.swapMu.Lock()
 	defer h.swapMu.Unlock()
 
-	if !h.swaps[offerID].streamClosed {
+	swap, has := h.swaps[offerID]
+	if !has {
+		return
+	}
+
+	if !swap.streamClosed {
 		log.Errorf("deleting ongoing swap where stream isn't closed: peer=%s protocol=%s",
-			h.swaps[offerID].stream.Conn().RemotePeer(), h.swaps[offerID].stream.Protocol(),
+			swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
 		)
 	}
 
