@@ -238,7 +238,7 @@ func readStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) (comm
 // nextStreamMessage returns a channel that will receive the next message from the stream.
 // if there is an error reading from the stream, the channel will be closed, thus
 // the received value will be nil.
-func nextStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) <-chan common.Message { //nolint:unparam
+func nextStreamMessage(stream libp2pnetwork.Stream, maxMessageSize uint32) <-chan common.Message {
 	ch := make(chan common.Message)
 	go func() {
 		for {

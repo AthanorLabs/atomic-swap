@@ -52,7 +52,7 @@ func createRelayClaimSignature(
 	// signature format is (r || s || v), v = 27/28
 	signature, err := Sign(claimerEthKey, relaySwap.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign forward request digest: %w", err)
+		return nil, fmt.Errorf("failed to sign relay request: %w", err)
 	}
 
 	return signature, nil

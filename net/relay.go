@@ -84,7 +84,7 @@ func receiveRelayerQueryResponse(stream libp2pnetwork.Stream) (ethcommon.Address
 	const relayResponseTimeout = time.Second * 15
 
 	select {
-	case msg := <-nextStreamMessage(stream, maxMessageSize):
+	case msg := <-nextStreamMessage(stream, maxRelayMessageSize):
 		if msg == nil {
 			return ethcommon.Address{}, errors.New("failed to read RelayerQueryResponse")
 		}
@@ -165,6 +165,7 @@ func (h *Host) SubmitRelayRequest(relayerID peer.ID, request *RelayClaimRequest)
 		return nil, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
 	defer func() { _ = stream.Close() }()
+	log.Debugf("opened relay stream with peer %s", relayerID)
 
 	if err := p2pnet.WriteStreamMessage(stream, request, relayerID); err != nil {
 		log.Warnf("failed to send RelayClaimRequest to peer: err=%s", err)

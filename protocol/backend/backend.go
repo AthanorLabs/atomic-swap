@@ -312,6 +312,7 @@ func (b *backend) SubmitClaimToRelayer(
 		}
 
 		// set relayer address and sign as front-run prevention
+		// note: this will be set in the caller if offerID is set
 		relaySwap.Relayer = relayerAddr
 	}
 

@@ -48,7 +48,7 @@ contract SwapCreator is Secp256k1 {
         Swap swap;
         // the fee, in wei, paid to the relayer
         uint256 fee;
-        // the address to the paid the relayer fee
+        // the address to be paid the relayer fee
         address relayer;
         // address of the swap contract this transaction is meant for
         address swapCreator;
@@ -206,7 +206,7 @@ contract SwapCreator is Secp256k1 {
     // Bob can claim if:
     // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
     // It transfers the fee to the relayer address specified in `_relaySwap`.
-    // Note: this function will revert if the swa value is less than the relayer fee;
+    // Note: this function will revert if the swap value is less than the relayer fee;
     // in that case, `claim` must be called instead.
     function claimRelayer(
         RelaySwap memory _relaySwap,
@@ -224,7 +224,7 @@ contract SwapCreator is Secp256k1 {
         // send ether to swap claimer, subtracting the relayer fee
         if (_relaySwap.swap.asset == address(0)) {
             _relaySwap.swap.claimer.transfer(_relaySwap.swap.value - _relaySwap.fee);
-            payable(_relaySwap.relayer).transfer(_relaySwap.fee); // solhint-disable-line
+            payable(_relaySwap.relayer).transfer(_relaySwap.fee);
         } else {
             // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
@@ -233,7 +233,7 @@ contract SwapCreator is Secp256k1 {
                 _relaySwap.swap.claimer,
                 _relaySwap.swap.value - _relaySwap.fee
             );
-            IERC20(_relaySwap.swap.asset).transfer(_relaySwap.relayer, _relaySwap.fee); // solhint-disable-line
+            IERC20(_relaySwap.swap.asset).transfer(_relaySwap.relayer, _relaySwap.fee);
         }
     }
 
