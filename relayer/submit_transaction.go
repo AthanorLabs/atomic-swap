@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	maxClaimRelayerETHGas = 88000 // worst case gas usage for the claimRelayer call (ether)
-	// actual cost is 84783 but that fails in unit tests on "out of gas".
+	maxClaimRelayerETHGas = 100000 // worst case gas usage for the claimRelayer call (ether)
+	// actual cost is 85040 but that fails in unit tests on "out of gas".
 )
 
 // ValidateAndSendTransaction sends the relayed transaction to the network if it validates successfully.
