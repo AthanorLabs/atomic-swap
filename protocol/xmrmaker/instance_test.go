@@ -31,7 +31,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -68,8 +67,8 @@ func (n *mockNet) SubmitRelayRequest(_ peer.ID, _ *message.RelayClaimRequest) (*
 
 func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
 
-func (n *mockNet) QueryRelayerAddress(_ peer.ID) (ethcommon.Address, error) {
-	return ethcommon.Address{}, nil
+func (n *mockNet) QueryRelayerAddress(_ peer.ID) (types.Hash, error) {
+	return types.Hash{}, nil
 }
 
 func newSwapManager(t *testing.T) pswap.Manager {

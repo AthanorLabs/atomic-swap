@@ -64,7 +64,7 @@ func TestCreateRelayClaimRequest(t *testing.T) {
 		Swap:        *swap,
 		Fee:         big.NewInt(1),
 		SwapCreator: swapCreatorAddr,
-		Relayer:     ethcommon.Address{},
+		RelayerHash: types.Hash{},
 	}
 	req, err := CreateRelayClaimRequest(ethKey, relaySwap, secret)
 	require.NoError(t, err)

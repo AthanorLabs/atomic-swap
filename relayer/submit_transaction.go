@@ -5,6 +5,7 @@ package relayer
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -32,8 +33,9 @@ func ValidateAndSendTransaction(
 	req *message.RelayClaimRequest,
 	ec extethclient.EthClient,
 	ourSwapCreatorAddr ethcommon.Address,
+	salt [4]byte,
 ) (*message.RelayClaimResponse, error) {
-	err := validateClaimRequest(ctx, req, ec.Raw(), ec.Address(), ourSwapCreatorAddr)
+	err := validateClaimRequest(ctx, req, ec.Raw(), ec.Address(), salt, ourSwapCreatorAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +69,15 @@ func ValidateAndSendTransaction(
 	r := [32]byte(req.Signature[:32])
 	s := [32]byte(req.Signature[32:64])
 
+	saltU32 := binary.BigEndian.Uint32(salt[:])
 	err = simulateClaimRelayer(
 		ctx,
 		ec,
 		txOpts,
 		req.RelaySwap,
 		secret,
+		ec.Address(),
+		saltU32,
 		v, r, s,
 	)
 	if err != nil {
@@ -83,6 +88,8 @@ func ValidateAndSendTransaction(
 		txOpts,
 		*req.RelaySwap,
 		secret,
+		ec.Address(),
+		saltU32,
 		v,
 		r,
 		s,
@@ -132,6 +139,8 @@ func simulateClaimRelayer(
 	txOpts *bind.TransactOpts,
 	relaySwap *contracts.SwapCreatorRelaySwap,
 	secret [32]byte,
+	relayer ethcommon.Address,
+	salt uint32,
 	v uint8,
 	r, s [32]byte,
 ) error {
@@ -140,6 +149,8 @@ func simulateClaimRelayer(
 		"claimRelayer",
 		*relaySwap,
 		secret,
+		relayer,
+		salt,
 		v,
 		r,
 		s,

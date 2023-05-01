@@ -48,8 +48,8 @@ contract SwapCreator is Secp256k1 {
         Swap swap;
         // the fee, in wei, paid to the relayer
         uint256 fee;
-        // the address to be paid the relayer fee
-        address relayer;
+        // hash of (relayer's payout address || 4-byte salt)
+        bytes32 relayerHash;
         // address of the swap contract this transaction is meant for
         address swapCreator;
     }
@@ -119,6 +119,10 @@ contract SwapCreator is Secp256k1 {
 
     // returned when the SwapCreator address is a `RelaySwap` is not the addres of this contract
     error InvalidContractAddress();
+
+    // returned when the hash of the relayer address and salt passed to `claimRelayer`
+    // does not match the relayer hash in `RelaySwap`
+    error InvalidRelayerAddress();
 
     // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
@@ -211,6 +215,8 @@ contract SwapCreator is Secp256k1 {
     function claimRelayer(
         RelaySwap memory _relaySwap,
         bytes32 _secret,
+        address payable _relayer,
+        uint32 _salt,
         uint8 v,
         bytes32 r,
         bytes32 s
@@ -218,13 +224,15 @@ contract SwapCreator is Secp256k1 {
         address signer = ecrecover(keccak256(abi.encode(_relaySwap)), v, r, s);
         if (signer != _relaySwap.swap.claimer) revert InvalidSignature();
         if (address(this) != _relaySwap.swapCreator) revert InvalidContractAddress();
+        if (keccak256(abi.encodePacked(_relayer, _salt)) != _relaySwap.relayerHash)
+            revert InvalidRelayerAddress();
 
         _claim(_relaySwap.swap, _secret);
 
         // send ether to swap claimer, subtracting the relayer fee
         if (_relaySwap.swap.asset == address(0)) {
             _relaySwap.swap.claimer.transfer(_relaySwap.swap.value - _relaySwap.fee);
-            payable(_relaySwap.relayer).transfer(_relaySwap.fee);
+            payable(_relayer).transfer(_relaySwap.fee);
         } else {
             // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
@@ -233,7 +241,7 @@ contract SwapCreator is Secp256k1 {
                 _relaySwap.swap.claimer,
                 _relaySwap.swap.value - _relaySwap.fee
             );
-            IERC20(_relaySwap.swap.asset).transfer(_relaySwap.relayer, _relaySwap.fee);
+            IERC20(_relaySwap.swap.asset).transfer(_relayer, _relaySwap.fee);
         }
     }
 

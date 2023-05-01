@@ -27,6 +27,10 @@ func TestValidateRelayerFee(t *testing.T) {
 	key := tests.GetTakerTestKey(t)
 	swapCreatorAddr := deployContracts(t, ec, key)
 
+	// 20-byte empty address, 4-byte zero salt
+	empty := [24]byte{}
+	relayerHash := crypto.Keccak256Hash(empty[:])
+
 	type testCase struct {
 		description string
 		value       *big.Int
@@ -68,12 +72,12 @@ func TestValidateRelayerFee(t *testing.T) {
 				Swap:        swap,
 				Fee:         big.NewInt(1),
 				SwapCreator: swapCreatorAddr,
-				Relayer:     ethcommon.Address{},
+				RelayerHash: relayerHash,
 			},
 			Secret: make([]byte, 32),
 		}
 
-		err := validateClaimValues(ctx, request, ec, ethcommon.Address{}, swapCreatorAddr)
+		err := validateClaimValues(ctx, request, ec, ethcommon.Address{}, [4]byte{}, swapCreatorAddr)
 		if tc.expectErr != "" {
 			require.ErrorContains(t, err, tc.expectErr, tc.description)
 		} else {
@@ -98,7 +102,7 @@ func Test_validateClaimValues_takerClaim_contractAddressNotEqualFail(t *testing.
 		},
 	}
 
-	err := validateClaimValues(context.Background(), request, nil, ethcommon.Address{}, swapCreatorAddrOurs)
+	err := validateClaimValues(context.Background(), request, nil, ethcommon.Address{}, [4]byte{}, swapCreatorAddrOurs)
 	require.ErrorContains(t, err, "taker claim swap creator mismatch")
 }
 
@@ -118,7 +122,7 @@ func Test_validateClaimValues_dhtClaim_contractAddressNotEqual(t *testing.T) {
 		},
 	}
 
-	err := validateClaimValues(context.Background(), request, ec, ethcommon.Address{}, swapCreatorAddr)
+	err := validateClaimValues(context.Background(), request, ec, ethcommon.Address{}, [4]byte{}, swapCreatorAddr)
 	require.ErrorContains(t, err, "contract address does not contain correct SwapCreator code")
 }
 
@@ -133,7 +137,7 @@ func Test_validateSignature(t *testing.T) {
 	relaySwap := &contracts.SwapCreatorRelaySwap{
 		SwapCreator: swapCreatorAddr,
 		Swap:        *swap,
-		Relayer:     ethcommon.Address{},
+		RelayerHash: types.Hash{},
 		Fee:         big.NewInt(1),
 	}
 
@@ -159,11 +163,15 @@ func Test_validateClaimRequest(t *testing.T) {
 	secret := [32]byte{0x1}
 	swapCreatorAddr := deployContracts(t, ec, ethKey)
 
+	// 20-byte empty address, 4-byte zero salt
+	empty := [24]byte{}
+	relayerHash := crypto.Keccak256Hash(empty[:])
+
 	swap := createTestSwap(claimer)
 	relaySwap := &contracts.SwapCreatorRelaySwap{
 		SwapCreator: swapCreatorAddr,
 		Swap:        *swap,
-		Relayer:     ethcommon.Address{},
+		RelayerHash: relayerHash,
 		Fee:         big.NewInt(1),
 	}
 
@@ -171,12 +179,12 @@ func Test_validateClaimRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	// success path
-	err = validateClaimRequest(ctx, req, ec, ethcommon.Address{}, swapCreatorAddr)
+	err = validateClaimRequest(ctx, req, ec, ethcommon.Address{}, [4]byte{}, swapCreatorAddr)
 	require.NoError(t, err)
 
 	// test failure path by passing a non-eth asset
 	asset := ethcommon.Address{0x1}
 	req.RelaySwap.Swap.Asset = asset
-	err = validateClaimRequest(ctx, req, ec, ethcommon.Address{}, swapCreatorAddr)
+	err = validateClaimRequest(ctx, req, ec, ethcommon.Address{}, [4]byte{}, swapCreatorAddr)
 	require.ErrorContains(t, err, fmt.Sprintf("relaying for ETH Asset %s is not supported", types.EthAsset(asset)))
 }

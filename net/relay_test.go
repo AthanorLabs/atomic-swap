@@ -74,7 +74,7 @@ func createTestClaimRequest() *message.RelayClaimRequest {
 		RelaySwap: &contracts.SwapCreatorRelaySwap{
 			Swap:        swap,
 			Fee:         big.NewInt(9e15),
-			Relayer:     ethcommon.Address{0x2},
+			RelayerHash: [32]byte{1},
 			SwapCreator: ethcommon.Address{0x3},
 		},
 		Secret:    secret[:],

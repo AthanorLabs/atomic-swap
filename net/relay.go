@@ -10,10 +10,10 @@ import (
 	"time"
 
 	p2pnet "github.com/athanorlabs/go-p2p-net"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
 
@@ -41,13 +41,22 @@ func (h *Host) handleRelayerQueryStream(stream libp2pnetwork.Stream) {
 	defer func() { _ = stream.Close() }()
 
 	if !h.isRelayer {
-		// we don't respond to address requests even from our swap counterparty,
-		// this is ok because the swap counterparty already knows our ETH address
+		err := h.relayHandler.HasOngoingSwapAsTaker(stream.Conn().RemotePeer())
+		if err != nil {
+			// the returned error logs the peer ID
+			log.Debugf("ignoring relayer query: %s", err)
+			return
+		}
+	}
+
+	addressHash, err := h.relayHandler.GetRelayerAddressHash()
+	if err != nil {
+		log.Warnf("failed to get relayer address hash: %s", err)
 		return
 	}
 
 	addrResp := &message.RelayerQueryResponse{
-		Address: h.relayHandler.GetRelayerPayoutAddress(),
+		AddressHash: addressHash[:],
 	}
 
 	log.Debugf("sending RelayerQueryResponse to peer %s", stream.Conn().RemotePeer())
@@ -58,47 +67,47 @@ func (h *Host) handleRelayerQueryStream(stream libp2pnetwork.Stream) {
 
 // QueryRelayerAddress opens a relay stream with a peer, and if they are a relayer,
 // they will respond with their relayer payout address.
-func (h *Host) QueryRelayerAddress(relayerID peer.ID) (ethcommon.Address, error) {
+func (h *Host) QueryRelayerAddress(relayerID peer.ID) (types.Hash, error) {
 	ctx, cancel := context.WithTimeout(h.ctx, connectionTimeout)
 	defer cancel()
 
 	if err := h.h.Connect(ctx, peer.AddrInfo{ID: relayerID}); err != nil {
-		return ethcommon.Address{}, err
+		return types.Hash{}, err
 	}
 
 	stream, err := h.h.NewStream(ctx, relayerID, relayerQueryProtocolID)
 	if err != nil {
-		return ethcommon.Address{}, fmt.Errorf("failed to open stream with peer: err=%w", err)
+		return types.Hash{}, fmt.Errorf("failed to open stream with peer: err=%w", err)
 	}
 
 	log.Debugf("opened relayer query stream: %s", stream.Conn())
 	resp, err := receiveRelayerQueryResponse(stream)
 	if err != nil {
-		return ethcommon.Address{}, err
+		return types.Hash{}, err
 	}
 
 	return resp, nil
 }
 
-func receiveRelayerQueryResponse(stream libp2pnetwork.Stream) (ethcommon.Address, error) {
+func receiveRelayerQueryResponse(stream libp2pnetwork.Stream) (types.Hash, error) {
 	const relayResponseTimeout = time.Second * 15
 
 	select {
 	case msg := <-nextStreamMessage(stream, maxRelayMessageSize):
 		if msg == nil {
-			return ethcommon.Address{}, errors.New("failed to read RelayerQueryResponse")
+			return types.Hash{}, errors.New("failed to read RelayerQueryResponse")
 		}
 
 		resp, ok := msg.(*message.RelayerQueryResponse)
 		if !ok {
-			return ethcommon.Address{}, fmt.Errorf("expected %s message but received %s",
+			return types.Hash{}, fmt.Errorf("expected %s message but received %s",
 				message.TypeToString(message.RelayClaimResponseType),
 				message.TypeToString(msg.Type()))
 		}
 
-		return resp.Address, nil
+		return [32]byte(resp.AddressHash), nil
 	case <-time.After(relayResponseTimeout):
-		return ethcommon.Address{}, errors.New("timed out waiting for QueryResponse")
+		return types.Hash{}, errors.New("timed out waiting for QueryResponse")
 	}
 }
 

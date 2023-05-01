@@ -22,9 +22,10 @@ func validateClaimRequest(
 	request *message.RelayClaimRequest,
 	ec *ethclient.Client,
 	ourAddress ethcommon.Address,
+	salt [4]byte,
 	ourSwapCreatorAddr ethcommon.Address,
 ) error {
-	err := validateClaimValues(ctx, request, ec, ourAddress, ourSwapCreatorAddr)
+	err := validateClaimValues(ctx, request, ec, ourAddress, salt, ourSwapCreatorAddr)
 	if err != nil {
 		return err
 	}
@@ -36,12 +37,13 @@ func validateClaimRequest(
 //  1. the claim request's SwapCreator bytecode matches ours
 //  2. the swap is for ETH and not an ERC20 token
 //  3. the swap value is strictly greater than the relayer fee
-//  4. the claim request's relayer payout address matches ours
+//  4. the claim request's relayer hash matches keccak256(ourAddress || salt)
 func validateClaimValues(
 	ctx context.Context,
 	request *message.RelayClaimRequest,
 	ec *ethclient.Client,
 	ourAddress ethcommon.Address,
+	salt [4]byte,
 	ourSwapCreatorAddr ethcommon.Address,
 ) error {
 	isTakerRelay := request.OfferID != nil
@@ -70,8 +72,12 @@ func validateClaimValues(
 			coins.FmtWeiAsETH(request.RelaySwap.Swap.Value), coins.RelayerFeeETH.Text('f'))
 	}
 
-	if request.RelaySwap.Relayer != ourAddress {
-		return fmt.Errorf("relay request payout address %s does not match ours (%s)", request.RelaySwap.Relayer, ourAddress)
+	hash := ethcrypto.Keccak256Hash(append(ourAddress.Bytes(), salt[:]...))
+	if request.RelaySwap.RelayerHash != hash {
+		return fmt.Errorf("relay request payout address hash %s does not match expected (%s)",
+			request.RelaySwap.RelayerHash,
+			hash,
+		)
 	}
 
 	return nil

@@ -105,7 +105,7 @@ func (s *SwapCreatorRelaySwap) Hash() types.Hash {
 			Type: uint256Ty,
 		},
 		{
-			Type: addressTy,
+			Type: bytes32Ty,
 		},
 		{
 			Type: addressTy,
@@ -123,7 +123,7 @@ func (s *SwapCreatorRelaySwap) Hash() types.Hash {
 		s.Swap.Value,
 		s.Swap.Nonce,
 		s.Fee,
-		s.Relayer,
+		s.RelayerHash,
 		s.SwapCreator,
 	)
 	if err != nil {

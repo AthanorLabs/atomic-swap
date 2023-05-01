@@ -16,7 +16,7 @@ import (
 // RelayerQueryResponse is sent from a relayer to the opener of
 // a /relayerquery/0 stream.
 type RelayerQueryResponse struct {
-	Address ethcommon.Address `json:"address" validate:"required"`
+	AddressHash []byte `json:"address" validate:"required,len=32"`
 }
 
 // String converts the RelayerQueryResponse to a string usable for debugging purposes

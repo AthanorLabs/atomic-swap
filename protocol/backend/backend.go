@@ -7,12 +7,14 @@ package backend
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -33,7 +35,7 @@ type NetSender interface {
 	SendSwapMessage(common.Message, types.Hash) error
 	CloseProtocolStream(id types.Hash)
 	DiscoverRelayers() ([]peer.ID, error)                                                        // Only used by Maker
-	QueryRelayerAddress(peer.ID) (ethcommon.Address, error)                                      // only used by taker
+	QueryRelayerAddress(peer.ID) (types.Hash, error)                                             // only used by taker
 	SubmitRelayRequest(peer.ID, *message.RelayClaimRequest) (*message.RelayClaimResponse, error) // only used by taker
 }
 
@@ -67,7 +69,8 @@ type Backend interface {
 	// helpers
 	NewSwapCreator(addr ethcommon.Address) (*contracts.SwapCreator, error)
 	HandleRelayClaimRequest(remotePeer peer.ID, request *message.RelayClaimRequest) (*message.RelayClaimResponse, error)
-	GetRelayerPayoutAddress() ethcommon.Address
+	GetRelayerAddressHash() (types.Hash, error)
+	HasOngoingSwapAsTaker(peer.ID) error
 	SubmitClaimToRelayer(
 		peer.ID,
 		*types.Hash,
@@ -115,6 +118,10 @@ type backend struct {
 
 	// network interface
 	NetSender
+
+	// map of hash(relayer address || salt) -> salt
+	relayerHashMu sync.RWMutex
+	relayerHash   map[types.Hash][4]byte
 }
 
 // Config is the config for the Backend
@@ -152,6 +159,7 @@ func NewBackend(cfg *Config) (Backend, error) {
 		NetSender:             cfg.Net,
 		perSwapXMRDepositAddr: make(map[types.Hash]*mcrypto.Address),
 		recoveryDB:            cfg.RecoveryDB,
+		relayerHash:           make(map[types.Hash][4]byte),
 	}, nil
 }
 
@@ -244,11 +252,34 @@ func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
 	delete(b.perSwapXMRDepositAddr, offerID)
 }
 
+// HasOngoingSwapAsTaker returns nil if we have an ongoing swap with the given peer where
+// we're the xmrtaker, otherwise returns an error.
+func (b *backend) HasOngoingSwapAsTaker(remotePeer peer.ID) error {
+	swaps, err := b.swapManager.GetOngoingSwaps()
+	if err != nil {
+		return err
+	}
+
+	for _, swap := range swaps {
+		if swap.PeerID != remotePeer {
+			continue
+		}
+
+		if swap.IsTaker() {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("do not have an ongoing swap with peer %s as taker", remotePeer)
+}
+
 // HandleRelayClaimRequest validates and sends the transaction for a relay claim request
 func (b *backend) HandleRelayClaimRequest(
 	remotePeer peer.ID,
 	request *message.RelayClaimRequest,
 ) (*message.RelayClaimResponse, error) {
+	defer b.clearRelayerAddressHash(request.RelaySwap.RelayerHash)
+
 	if request.OfferID != nil {
 		has := b.swapManager.HasOngoingSwap(*request.OfferID)
 		if !has {
@@ -286,16 +317,38 @@ func (b *backend) HandleRelayClaimRequest(
 		}
 	}
 
+	b.relayerHashMu.RLock()
+	salt := b.relayerHash[request.RelaySwap.RelayerHash]
+	b.relayerHashMu.RUnlock()
+
 	return relayer.ValidateAndSendTransaction(
 		b.Ctx(),
 		request,
 		b.ETHClient(),
 		b.SwapCreatorAddr(),
+		salt,
 	)
 }
 
-func (b *backend) GetRelayerPayoutAddress() ethcommon.Address {
-	return b.ETHClient().Address()
+func (b *backend) GetRelayerAddressHash() (types.Hash, error) {
+	address := b.ETHClient().Address()
+	var salt [4]byte
+	_, err := rand.Read(salt[:])
+	if err != nil {
+		return types.Hash{}, err
+	}
+
+	hash := crypto.Keccak256Hash(append(address.Bytes(), salt[:]...))
+	b.relayerHashMu.Lock()
+	defer b.relayerHashMu.Unlock()
+	b.relayerHash[hash] = salt
+	return hash, nil
+}
+
+func (b *backend) clearRelayerAddressHash(hash types.Hash) {
+	b.relayerHashMu.Lock()
+	defer b.relayerHashMu.Unlock()
+	delete(b.relayerHash, hash)
 }
 
 func (b *backend) SubmitClaimToRelayer(
@@ -304,17 +357,14 @@ func (b *backend) SubmitClaimToRelayer(
 	relaySwap *contracts.SwapCreatorRelaySwap,
 	secret [32]byte,
 ) (*message.RelayClaimResponse, error) {
-	if offerID == nil {
-		// this isn't a counterparty-relay, get the relayer's eth address
-		relayerAddr, err := b.QueryRelayerAddress(relayerID)
-		if err != nil {
-			return nil, err
-		}
-
-		// set relayer address and sign as front-run prevention
-		// note: this will be set in the caller if offerID is set
-		relaySwap.Relayer = relayerAddr
+	// get the relayer's address hash
+	relayerAddrHash, err := b.QueryRelayerAddress(relayerID)
+	if err != nil {
+		return nil, err
 	}
+
+	// set relayer address hash and sign as front-run prevention
+	relaySwap.RelayerHash = relayerAddrHash
 
 	req, err := relayer.CreateRelayClaimRequest(b.ETHClient().PrivateKey(), relaySwap, secret)
 	if err != nil {

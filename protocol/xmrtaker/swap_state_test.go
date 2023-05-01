@@ -71,8 +71,8 @@ func (n *mockNet) SubmitRelayRequest(_ peer.ID, _ *message.RelayClaimRequest) (*
 
 func (n *mockNet) CloseProtocolStream(_ types.Hash) {}
 
-func (*mockNet) QueryRelayerAddress(_ peer.ID) (ethcommon.Address, error) {
-	return ethcommon.Address{99}, nil
+func (*mockNet) QueryRelayerAddress(_ peer.ID) (types.Hash, error) {
+	return types.Hash{99}, nil
 }
 
 func newSwapManager(t *testing.T) pswap.Manager {

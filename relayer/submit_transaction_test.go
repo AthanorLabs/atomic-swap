@@ -6,6 +6,7 @@ package relayer
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"math/big"
 	"testing"
 
@@ -108,18 +109,24 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 
 	secret := proof.Secret()
 
+	// generate relayer hash
+	var salt [4]byte
+	_, err = rand.Read(salt[:])
+	require.NoError(t, err)
+	relayerHash := crypto.Keccak256Hash(relayerAddr[:], salt[:])
+
 	// now let's try to claim
 	relaySwap := &contracts.SwapCreatorRelaySwap{
 		Swap:        swap,
 		SwapCreator: swapCreatorAddr,
-		Relayer:     relayerAddr,
+		RelayerHash: relayerHash,
 		Fee:         big.NewInt(1),
 	}
 
 	req, err := CreateRelayClaimRequest(claimerSk, relaySwap, secret)
 	require.NoError(t, err)
 
-	resp, err := ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr)
+	resp, err := ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr, salt)
 	require.NoError(t, err)
 
 	receipt, err = block.WaitForReceipt(ctx, ec.Raw(), resp.TxHash)
@@ -142,6 +149,6 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	req, err = CreateRelayClaimRequest(claimerSk, relaySwap, secret)
 	require.NoError(t, err)
 
-	_, err = ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr)
+	_, err = ValidateAndSendTransaction(ctx, req, ec, swapCreatorAddr, salt)
 	require.ErrorContains(t, err, "revert")
 }
