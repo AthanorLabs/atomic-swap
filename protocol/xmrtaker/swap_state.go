@@ -347,7 +347,11 @@ func (s *swapState) NotifyStreamClosed() {
 func (s *swapState) Exit() error {
 	event := newEventExit()
 	s.eventCh <- event
-	return <-event.errCh
+	err := <-event.errCh
+	if err != nil {
+		log.Errorf("failed to exit swap: %s", err)
+	}
+	return err
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.

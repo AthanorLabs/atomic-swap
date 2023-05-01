@@ -46,7 +46,7 @@ func TestHost_Initiate(t *testing.T) {
 
 	err = ha.Initiate(hb.h.AddrInfo(), createSendKeysMessage(t), new(mockSwapState))
 	require.NoError(t, err)
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 500)
 
 	ha.swapMu.RLock()
 	require.NotNil(t, ha.swaps[testID])
