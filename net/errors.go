@@ -11,5 +11,6 @@ var (
 	errBootnodeCannotRelay   = errors.New("bootnode cannot be a relayer")
 	errNilHandler            = errors.New("handler is nil")
 	errNoOngoingSwap         = errors.New("no swap currently happening")
-	errSwapAlreadyInProgress = errors.New("already have ongoing swap")
+	errOfferUnavailable      = errors.New("offer no longer available")
+	errSwapAlreadyInProgress = errors.New("swap is already in progress")
 )
