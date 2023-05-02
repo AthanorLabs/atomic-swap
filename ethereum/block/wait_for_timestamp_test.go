@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -51,12 +53,17 @@ func TestWaitForEthBlockAfterTimestamp_cancelledCtxWaitingForHeaders(t *testing.
 
 // Tests failure to subscribe to new block headers
 func TestWaitForEthBlockAfterTimestamp_failToSubscribe(t *testing.T) {
-	ec, _ := tests.NewEthClient(t)
+	// Using websockets connection so we can close to get more error test coverage
+	ec, err := ethclient.Dial(common.DefaultGanacheWSEndpoint)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ec.Close()
+	})
 
 	ts := time.Now()
 	ctx := context.Background()
-	ec.Close() // make SubscribeNewHead return an error
-	_, err := WaitForEthBlockAfterTimestamp(ctx, ec, ts)
+	ec.Close() // make HeaderByNumber return an error
+	_, err = WaitForEthBlockAfterTimestamp(ctx, ec, ts)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "closed")
 }

@@ -421,9 +421,13 @@ func createMoneroClient(c *cli.Context, envConf *common.Config) (monero.WalletCl
 func createEthClient(c *cli.Context, envConf *common.Config) (extethclient.EthClient, error) {
 	env := envConf.Env
 
-	ethEndpoint := common.DefaultEthEndpoint
-	if c.String(flagEthEndpoint) != "" {
+	ethEndpoint := envConf.EthEndpoint
+	if c.IsSet(flagEthEndpoint) {
 		ethEndpoint = c.String(flagEthEndpoint)
+	}
+	if ethEndpoint == "" {
+		// Message is mainnet specific, because we have defaults for dev/stagenet
+		return nil, errors.New("missing ETH endpoint; completely open endpoints are not reliable for swaps")
 	}
 
 	var ethPrivKey *ecdsa.PrivateKey
