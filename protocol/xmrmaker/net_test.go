@@ -14,7 +14,7 @@ import (
 )
 
 func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
-	b, db := newTestInstanceAndDB(t)
+	b, db, net := newTestInstanceAndDBAndNet(t)
 	min := coins.StrToDecimal("0.001")
 	max := coins.StrToDecimal("0.002")
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
@@ -32,8 +32,8 @@ func TestXMRMaker_HandleInitiateMessage(t *testing.T) {
 	msg.ProvidedAmount, err = offer.ExchangeRate.ToETH(offer.MinAmount)
 	require.NoError(t, err)
 
-	_, resp, err := b.HandleInitiateMessage("", msg)
+	_, err = b.HandleInitiateMessage("", msg)
 	require.NoError(t, err)
-	require.Equal(t, message.SendKeysType, resp.Type())
+	require.Equal(t, message.SendKeysType, net.msg.Type())
 	require.NotNil(t, b.swapStates[offer.ID])
 }
