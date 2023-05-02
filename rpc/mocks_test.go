@@ -174,6 +174,8 @@ func (*mockXMRMaker) GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceRes
 
 type mockSwapState struct{}
 
+func (*mockSwapState) NotifyStreamClosed() {}
+
 func (*mockSwapState) HandleProtocolMessage(_ common.Message) error {
 	return nil
 }

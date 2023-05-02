@@ -273,6 +273,11 @@ func (s *swapState) handleEvent(event Event) {
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 		}
+
+		err = s.exit()
+		if err != nil {
+			log.Warnf("failed to exit swap: %s", err)
+		}
 	case *EventShouldRefund:
 		log.Infof("EventShouldRefund")
 		defer close(e.errCh)
@@ -314,7 +319,16 @@ func (s *swapState) handleEventKeysReceived(event *EventKeysReceived) error {
 		return err
 	}
 
-	return s.SendSwapMessage(resp, s.OfferID())
+	// send NotifyETHLocked message
+	err = s.SendSwapMessage(resp, s.OfferID())
+	if err != nil {
+		return err
+	}
+
+	// close the stream to the remote peer, since we won't be
+	// sending any more messages.
+	s.Backend.CloseProtocolStream(s.OfferID())
+	return nil
 }
 
 func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {

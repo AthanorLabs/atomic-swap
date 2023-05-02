@@ -23,7 +23,7 @@ func createSendKeysMessage(t *testing.T) *message.SendKeysMessage {
 	require.NoError(t, err)
 
 	return &message.SendKeysMessage{
-		OfferID:            types.Hash{0x1},
+		OfferID:            testID,
 		ProvidedAmount:     coins.StrToDecimal("0.5"),
 		PublicSpendKey:     keysAndProof.PublicKeyPair.SpendKey(),
 		PrivateViewKey:     keysAndProof.PrivateKeyPair.ViewKey(),

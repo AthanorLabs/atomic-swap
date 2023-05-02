@@ -442,13 +442,32 @@ func (s *swapState) OfferID() types.Hash {
 	return s.info.OfferID
 }
 
+// NotifyStreamClosed is called by the network when the swap stream closes.
+func (s *swapState) NotifyStreamClosed() {
+	switch s.nextExpectedEvent {
+	case EventETHLockedType:
+		// exit the swap, the remote peer closed the stream
+		// before we received all expected messages
+		err := s.Exit()
+		if err != nil {
+			log.Errorf("failed to exit swap: %s", err)
+		}
+	default:
+		// do nothing, as we're not waiting for more network messages
+	}
+}
+
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
 	event := newEventExit()
 	s.eventCh <- event
-	return <-event.errCh
+	err := <-event.errCh
+	if err != nil {
+		log.Errorf("failed to exit swap: %s", err)
+	}
+	return err
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
@@ -480,6 +499,9 @@ func (s *swapState) exit() error {
 				log.Warnf("failed to delete offer %s from db: %s", s.offer.ID, err)
 			}
 		}
+
+		// delete from network state
+		s.Backend.DeleteOngoingSwap(s.offer.ID)
 
 		err = s.Backend.RecoveryDB().DeleteSwap(s.offer.ID)
 		if err != nil {

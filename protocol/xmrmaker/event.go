@@ -196,7 +196,15 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleNotifyETHLocked(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
+			err = s.exit()
+			if err != nil {
+				log.Warnf("failed to exit swap: %s", err)
+			}
 		}
+
+		// close the stream to the remote peer, since we won't be
+		// receiving any more messages.
+		s.Backend.CloseProtocolStream(s.OfferID())
 
 		// nextExpectedEvent was set in s.lockFunds()
 	case *EventContractReady:

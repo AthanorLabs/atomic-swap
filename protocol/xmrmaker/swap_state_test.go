@@ -194,16 +194,12 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	msg := &message.NotifyETHLocked{}
-	err = s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingAddress))
-
 	duration := common.SwapTimeoutFromEnv(common.Development)
 	hash := newSwap(t, s, s.secp256k1Pub.Keccak256(), s.xmrtakerSecp256K1PublicKey.Keccak256(),
 		desiredAmount.BigInt(), duration)
 	addr := s.SwapCreatorAddr()
 
-	msg = &message.NotifyETHLocked{
+	msg := &message.NotifyETHLocked{
 		Address:        addr,
 		ContractSwapID: s.contractSwapID,
 		TxHash:         hash,
@@ -212,6 +208,25 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_ok(t *testing.T) {
 
 	err = s.HandleProtocolMessage(msg)
 	require.NoError(t, err)
+}
+
+func TestSwapState_HandleProtocolMessage_NotifyETHLocked_invalid(t *testing.T) {
+	_, s := newTestSwapState(t)
+	defer s.cancel()
+	s.nextExpectedEvent = EventETHLockedType
+
+	xmrtakerKeysAndProof, err := generateKeys()
+	require.NoError(t, err)
+	err = s.setXMRTakerKeys(
+		xmrtakerKeysAndProof.PublicKeyPair.SpendKey(),
+		xmrtakerKeysAndProof.PrivateKeyPair.ViewKey(),
+		xmrtakerKeysAndProof.Secp256k1PublicKey,
+	)
+	require.NoError(t, err)
+
+	msg := &message.NotifyETHLocked{}
+	err = s.HandleProtocolMessage(msg)
+	require.True(t, errors.Is(err, errMissingAddress))
 }
 
 func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
@@ -226,10 +241,6 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 		xmrtakerKeysAndProof.Secp256k1PublicKey,
 	)
 	require.NoError(t, err)
-
-	msg := &message.NotifyETHLocked{}
-	err = s.HandleProtocolMessage(msg)
-	require.True(t, errors.Is(err, errMissingAddress))
 
 	duration, err := time.ParseDuration("5s")
 	require.NoError(t, err)
