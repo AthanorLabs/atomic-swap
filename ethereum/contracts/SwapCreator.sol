@@ -132,8 +132,8 @@ contract SwapCreator is Secp256k1 {
         bytes32 _pubKeyClaim,
         bytes32 _pubKeyRefund,
         address payable _claimer,
-        uint256 _timeoutDuration0,
         uint256 _timeoutDuration1,
+        uint256 _timeoutDuration2,
         address _asset,
         uint256 _value,
         uint256 _nonce
@@ -149,15 +149,15 @@ contract SwapCreator is Secp256k1 {
 
         if (_pubKeyClaim == 0 || _pubKeyRefund == 0) revert InvalidSwapKey();
         if (_claimer == address(0)) revert InvalidClaimer();
-        if (_timeoutDuration0 == 0 || _timeoutDuration1 == 0) revert InvalidTimeout();
+        if (_timeoutDuration1 == 0 || _timeoutDuration2 == 0) revert InvalidTimeout();
 
         Swap memory swap = Swap({
             owner: payable(msg.sender),
             pubKeyClaim: _pubKeyClaim,
             pubKeyRefund: _pubKeyRefund,
             claimer: _claimer,
-            timeout1: block.timestamp + _timeoutDuration0,
-            timeout2: block.timestamp + _timeoutDuration0 + _timeoutDuration1,
+            timeout1: block.timestamp + _timeoutDuration1,
+            timeout2: block.timestamp + _timeoutDuration1 + _timeoutDuration2,
             asset: _asset,
             value: _value,
             nonce: _nonce
