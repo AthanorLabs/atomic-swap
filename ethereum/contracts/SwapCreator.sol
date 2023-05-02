@@ -190,8 +190,9 @@ contract SwapCreator is Secp256k1 {
         emit Ready(swapID);
     }
 
-    // Bob can claim if:
-    // - (Alice has set the swap to `ready` or it's past timeout1) and it's before timeout2
+    // Bob can call claim if either of these hold true:
+    // (1) Alice has set the swap to `ready` and it's before timeout1
+    // (2) It is between timeout0 and timeout1
     function claim(Swap memory _swap, bytes32 _secret) public {
         if (msg.sender != _swap.claimer) revert OnlySwapClaimer();
         _claim(_swap, _secret);
@@ -207,11 +208,14 @@ contract SwapCreator is Secp256k1 {
         }
     }
 
-    // Bob can claim if:
-    // - (Alice has set the swap to `ready` or it's past timeout1) and it's before timeout2
-    // It transfers the fee to the relayer address specified in `_relaySwap`.
-    // Note: this function will revert if the swap value is less than the relayer fee;
-    // in that case, `claim` must be called instead.
+    // Anyone can call claimRelayer if they receive a signed _relaySwap object
+    // from Bob. The same rules for when Bob can call claim() apply here when a
+    // 3rd party relays a claim for Bob. This version of claiming transfers a
+    // _relaySwap.fee to _relayer. To prevent front-running, while not requiring
+    // Bob to know the relayer's payout address, Bob only signs a salted hash of
+    // the relayer's payout address in _relaySwap.relayerHash.
+    // Note: claimRelayer will revert if the swap value is less than the relayer
+    // fee; in that case, Bob must call claim directly himself.
     function claimRelayer(
         RelaySwap memory _relaySwap,
         bytes32 _secret,
