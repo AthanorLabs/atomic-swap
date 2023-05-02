@@ -215,7 +215,7 @@ contract SwapCreator is Secp256k1 {
     // Bob to know the relayer's payout address, Bob only signs a salted hash of
     // the relayer's payout address in _relaySwap.relayerHash.
     // Note: claimRelayer will revert if the swap value is less than the relayer
-    // fee; in that case, Bob must call claim directly himself.
+    // fee; in that case, Bob must call claim directly.
     function claimRelayer(
         RelaySwap memory _relaySwap,
         bytes32 _secret,
