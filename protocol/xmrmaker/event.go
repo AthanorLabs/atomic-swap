@@ -24,10 +24,10 @@ const (
 	EventETHLockedType EventType = iota
 
 	// EventContractReadyType is triggered when the taker sets the contract to
-	// "ready" or timeout0 is reached. When this event occurs, we can claim ETH
+	// "ready" or timeout1 is reached. When this event occurs, we can claim ETH
 	// from the contract. After this event, the other possible events are
 	// EventETHRefundedType (which would only happen if we go offline until
-	// timeout1, causing us to refund), or EventExitType (refund).
+	// timeout2, causing us to refund), or EventExitType (refund).
 	EventContractReadyType
 
 	// EventETHRefundedType is triggered when the taker refunds the

@@ -138,8 +138,8 @@ type OngoingSwap struct {
 	Status                    types.Status        `json:"status" validate:"required"`
 	LastStatusUpdateTime      time.Time           `json:"lastStatusUpdateTime" validate:"required"`
 	StartTime                 time.Time           `json:"startTime" validate:"required"`
-	Timeout0                  *time.Time          `json:"timeout0"`
 	Timeout1                  *time.Time          `json:"timeout1"`
+	Timeout2                  *time.Time          `json:"timeout2"`
 	EstimatedTimeToCompletion time.Duration       `json:"estimatedTimeToCompletion" validate:"required"`
 }
 
@@ -190,8 +190,8 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 		swap.Status = info.Status
 		swap.LastStatusUpdateTime = info.LastStatusUpdateTime
 		swap.StartTime = info.StartTime
-		swap.Timeout0 = info.Timeout0
 		swap.Timeout1 = info.Timeout1
+		swap.Timeout2 = info.Timeout2
 		swap.EstimatedTimeToCompletion, err = estimatedTimeToCompletion(env, info.Status, info.LastStatusUpdateTime)
 		if err != nil {
 			return fmt.Errorf("failed to estimate time to completion for swap %s: %w", info.OfferID, err)

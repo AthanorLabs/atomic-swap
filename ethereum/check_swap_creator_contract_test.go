@@ -59,7 +59,6 @@ func TestCheckSwapCreatorContractCode_fail(t *testing.T) {
 }
 
 func TestSepoliaContract(t *testing.T) {
-	t.Skip("needs to be redeployed before merge")
 	ctx := context.Background()
 	ec := tests.NewEthSepoliaClient(t)
 

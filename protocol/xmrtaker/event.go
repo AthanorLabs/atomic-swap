@@ -39,8 +39,8 @@ const (
 	EventETHClaimedType
 
 	// EventShouldRefundType is triggered when we should refund, either because
-	// we are nearing the timeout0 threshold and the maker hasn't locked XMR, or
-	// because we've reached the timeout1 threshold and the maker hasn't claimed
+	// we are nearing the timeout1 threshold and the maker hasn't locked XMR, or
+	// because we've reached the timeout2 threshold and the maker hasn't claimed
 	// the ETH. It causes us to refund the contract locked ETH locked to
 	// ourselves. After this event, the only possible event is EventExitType
 	// (refund path).
@@ -168,7 +168,7 @@ func newEventETHClaimed(sk *mcrypto.PrivateSpendKey) *EventETHClaimed {
 }
 
 // EventShouldRefund is an optional event. It occurs when the XMR-maker doesn't
-// lock before t0, so we should refund the ETH.
+// lock before t1, so we should refund the ETH.
 type EventShouldRefund struct {
 	errCh    chan error
 	txHashCh chan ethcommon.Hash // contains the refund tx hash, if successful

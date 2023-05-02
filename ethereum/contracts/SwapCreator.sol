@@ -29,9 +29,9 @@ contract SwapCreator is Secp256k1 {
         // this public key is a point on the secp256k1 curve
         bytes32 pubKeyRefund;
         // timestamp before which Alice can call either `setReady` or `refund`
-        uint256 timeout0;
-        // timestamp after which Bob cannot claim, only Alice can refund
         uint256 timeout1;
+        // timestamp after which Bob cannot claim, only Alice can refund
+        uint256 timeout2;
         // the asset being swapped: equal to address(0) for ETH, or an ERC-20 token address
         address asset;
         // the value of this swap
@@ -60,8 +60,8 @@ contract SwapCreator is Secp256k1 {
         bytes32 swapID,
         bytes32 claimKey,
         bytes32 refundKey,
-        uint256 timeout0,
         uint256 timeout1,
+        uint256 timeout2,
         address asset,
         uint256 value
     );
@@ -78,7 +78,7 @@ contract SwapCreator is Secp256k1 {
     // returned when the claimer parameter for `newSwap` is the zero address
     error InvalidClaimer();
 
-    // returned when the timeout0 or timeout1 parameters for `newSwap` are zero
+    // returned when the timeout1 or timeout2 parameters for `newSwap` are zero
     error InvalidTimeout();
 
     // returned when the ether sent with a `newSwap` transaction does not match the value parameter
@@ -126,14 +126,14 @@ contract SwapCreator is Secp256k1 {
 
     // newSwap creates a new Swap instance with the given parameters.
     // it returns the swap's ID.
-    // _timeoutDuration0: duration between the current timestamp and timeout0
-    // _timeoutDuration1: duration between timeout0 and timeout1
+    // _timeoutDuration0: duration between the current timestamp and timeout1
+    // _timeoutDuration1: duration between timeout1 and timeout2
     function newSwap(
         bytes32 _pubKeyClaim,
         bytes32 _pubKeyRefund,
         address payable _claimer,
-        uint256 _timeoutDuration0,
         uint256 _timeoutDuration1,
+        uint256 _timeoutDuration2,
         address _asset,
         uint256 _value,
         uint256 _nonce
@@ -149,15 +149,15 @@ contract SwapCreator is Secp256k1 {
 
         if (_pubKeyClaim == 0 || _pubKeyRefund == 0) revert InvalidSwapKey();
         if (_claimer == address(0)) revert InvalidClaimer();
-        if (_timeoutDuration0 == 0 || _timeoutDuration1 == 0) revert InvalidTimeout();
+        if (_timeoutDuration1 == 0 || _timeoutDuration2 == 0) revert InvalidTimeout();
 
         Swap memory swap = Swap({
             owner: payable(msg.sender),
             pubKeyClaim: _pubKeyClaim,
             pubKeyRefund: _pubKeyRefund,
             claimer: _claimer,
-            timeout0: block.timestamp + _timeoutDuration0,
-            timeout1: block.timestamp + _timeoutDuration0 + _timeoutDuration1,
+            timeout1: block.timestamp + _timeoutDuration1,
+            timeout2: block.timestamp + _timeoutDuration1 + _timeoutDuration2,
             asset: _asset,
             value: _value,
             nonce: _nonce
@@ -172,8 +172,8 @@ contract SwapCreator is Secp256k1 {
             swapID,
             _pubKeyClaim,
             _pubKeyRefund,
-            swap.timeout0,
             swap.timeout1,
+            swap.timeout2,
             swap.asset,
             swap.value
         );
@@ -181,7 +181,7 @@ contract SwapCreator is Secp256k1 {
         return swapID;
     }
 
-    // Alice should call setReady() before timeout0 once she verifies the XMR has been locked
+    // Alice should call setReady() before timeout1 once she verifies the XMR has been locked
     function setReady(Swap memory _swap) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         if (swaps[swapID] != Stage.PENDING) revert SwapNotPending();
@@ -190,8 +190,9 @@ contract SwapCreator is Secp256k1 {
         emit Ready(swapID);
     }
 
-    // Bob can claim if:
-    // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
+    // Bob can call claim if either of these hold true:
+    // (1) Alice has set the swap to `ready` and it's before timeout1
+    // (2) It is between timeout0 and timeout1
     function claim(Swap memory _swap, bytes32 _secret) public {
         if (msg.sender != _swap.claimer) revert OnlySwapClaimer();
         _claim(_swap, _secret);
@@ -207,11 +208,14 @@ contract SwapCreator is Secp256k1 {
         }
     }
 
-    // Bob can claim if:
-    // - (Alice has set the swap to `ready` or it's past timeout0) and it's before timeout1
-    // It transfers the fee to the relayer address specified in `_relaySwap`.
-    // Note: this function will revert if the swap value is less than the relayer fee;
-    // in that case, `claim` must be called instead.
+    // Anyone can call claimRelayer if they receive a signed _relaySwap object
+    // from Bob. The same rules for when Bob can call claim() apply here when a
+    // 3rd party relays a claim for Bob. This version of claiming transfers a
+    // _relaySwap.fee to _relayer. To prevent front-running, while not requiring
+    // Bob to know the relayer's payout address, Bob only signs a salted hash of
+    // the relayer's payout address in _relaySwap.relayerHash.
+    // Note: claimRelayer will revert if the swap value is less than the relayer
+    // fee; in that case, Bob must call claim directly.
     function claimRelayer(
         RelaySwap memory _relaySwap,
         bytes32 _secret,
@@ -250,8 +254,8 @@ contract SwapCreator is Secp256k1 {
         Stage swapStage = swaps[swapID];
         if (swapStage == Stage.INVALID) revert InvalidSwap();
         if (swapStage == Stage.COMPLETED) revert SwapCompleted();
-        if (block.timestamp < _swap.timeout0 && swapStage != Stage.READY) revert TooEarlyToClaim();
-        if (block.timestamp >= _swap.timeout1) revert TooLateToClaim();
+        if (block.timestamp < _swap.timeout1 && swapStage != Stage.READY) revert TooEarlyToClaim();
+        if (block.timestamp >= _swap.timeout2) revert TooLateToClaim();
 
         verifySecret(_secret, _swap.pubKeyClaim);
         emit Claimed(swapID, _secret);
@@ -259,8 +263,8 @@ contract SwapCreator is Secp256k1 {
     }
 
     // Alice can claim a refund:
-    // - Until timeout0 unless she calls setReady
-    // - After timeout1
+    // - Until timeout1 unless she calls setReady
+    // - After timeout2
     function refund(Swap memory _swap, bytes32 _secret) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
@@ -268,8 +272,8 @@ contract SwapCreator is Secp256k1 {
         if (swapStage == Stage.COMPLETED) revert SwapCompleted();
         if (_swap.owner != msg.sender) revert OnlySwapOwner();
         if (
-            block.timestamp < _swap.timeout1 &&
-            (block.timestamp > _swap.timeout0 || swapStage == Stage.READY)
+            block.timestamp < _swap.timeout2 &&
+            (block.timestamp > _swap.timeout1 || swapStage == Stage.READY)
         ) revert NotTimeToRefund();
 
         verifySecret(_secret, _swap.pubKeyRefund);

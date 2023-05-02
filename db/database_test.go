@@ -57,8 +57,8 @@ func TestDatabase_OfferTable(t *testing.T) {
 		MoneroStartHeight:    12345,
 		StartTime:            time.Now().Add(-30 * time.Minute),
 		EndTime:              nil,
-		Timeout0:             nil,
 		Timeout1:             nil,
+		Timeout2:             nil,
 	}
 
 	err = db.PutSwap(infoA)
@@ -123,8 +123,8 @@ func TestDatabase_GetAllOffers_InvalidEntry(t *testing.T) {
 		Status:               types.ExpectingKeys,
 		LastStatusUpdateTime: time.Now(),
 		MoneroStartHeight:    12345,
-		Timeout0:             nil,
 		Timeout1:             nil,
+		Timeout2:             nil,
 		StartTime:            time.Now().Add(-30 * time.Minute),
 		EndTime:              nil,
 	}
@@ -182,8 +182,8 @@ func TestDatabase_SwapTable(t *testing.T) {
 	require.NoError(t, err)
 
 	startTime := time.Now().Add(-2 * time.Minute)
-	timeout0 := time.Now().Add(30 * time.Minute)
-	timeout1 := time.Now().Add(60 * time.Minute)
+	timeout1 := time.Now().Add(30 * time.Minute)
+	timeout2 := time.Now().Add(60 * time.Minute)
 
 	infoA := &swap.Info{
 		Version:              swap.CurInfoVersion,
@@ -199,8 +199,8 @@ func TestDatabase_SwapTable(t *testing.T) {
 		MoneroStartHeight:    12345,
 		StartTime:            startTime,
 		EndTime:              nil,
-		Timeout0:             &timeout0,
 		Timeout1:             &timeout1,
+		Timeout2:             &timeout2,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)
@@ -219,8 +219,8 @@ func TestDatabase_SwapTable(t *testing.T) {
 		MoneroStartHeight:    12345,
 		StartTime:            startTime,
 		EndTime:              nil,
-		Timeout0:             &timeout0,
 		Timeout1:             &timeout1,
+		Timeout2:             &timeout2,
 	}
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
@@ -242,8 +242,8 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	startTime := time.Now().Add(-2 * time.Minute)
-	timeout0 := time.Now().Add(30 * time.Minute)
-	timeout1 := time.Now().Add(60 * time.Minute)
+	timeout1 := time.Now().Add(30 * time.Minute)
+	timeout2 := time.Now().Add(60 * time.Minute)
 
 	goodInfo := &swap.Info{
 		Version:              swap.CurInfoVersion,
@@ -259,8 +259,8 @@ func TestDatabase_GetAllSwaps_InvalidEntry(t *testing.T) {
 		MoneroStartHeight:    12345,
 		StartTime:            startTime,
 		EndTime:              nil,
-		Timeout0:             &timeout0,
 		Timeout1:             &timeout1,
+		Timeout2:             &timeout2,
 	}
 	err = db.PutSwap(goodInfo)
 	require.NoError(t, err)
@@ -306,8 +306,8 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 
 	id := types.Hash{0x1}
 	startTime := time.Now().Add(-2 * time.Minute)
-	timeout0 := time.Now().Add(30 * time.Minute)
-	timeout1 := time.Now().Add(60 * time.Minute)
+	timeout1 := time.Now().Add(30 * time.Minute)
+	timeout2 := time.Now().Add(60 * time.Minute)
 
 	infoA := &swap.Info{
 		Version:              swap.CurInfoVersion,
@@ -323,8 +323,8 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 		MoneroStartHeight:    12345,
 		StartTime:            startTime,
 		EndTime:              nil,
-		Timeout0:             &timeout0,
 		Timeout1:             &timeout1,
+		Timeout2:             &timeout2,
 	}
 	err = db.PutSwap(infoA)
 	require.NoError(t, err)

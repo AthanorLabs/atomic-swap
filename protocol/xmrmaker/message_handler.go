@@ -128,7 +128,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 		return err
 	}
 
-	err = s.checkAndSetTimeouts(msg.ContractSwap.Timeout0, msg.ContractSwap.Timeout1)
+	err = s.checkAndSetTimeouts(msg.ContractSwap.Timeout1, msg.ContractSwap.Timeout2)
 	if err != nil {
 		return err
 	}
@@ -138,14 +138,14 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 		return fmt.Errorf("failed to lock funds: %w", err)
 	}
 
-	go s.runT0ExpirationHandler()
+	go s.runT1ExpirationHandler()
 	return nil
 }
 
-func (s *swapState) runT0ExpirationHandler() {
-	log.Debugf("time until t0 (%s): %vs",
-		s.t0.Format(common.TimeFmtSecs),
-		time.Until(s.t0).Seconds(),
+func (s *swapState) runT1ExpirationHandler() {
+	log.Debugf("time until t1 (%s): %vs",
+		s.t1.Format(common.TimeFmtSecs),
+		time.Until(s.t1).Seconds(),
 	)
 
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
@@ -155,7 +155,7 @@ func (s *swapState) runT0ExpirationHandler() {
 	// with --miner.blockTime!!!
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t0)
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t1)
 		close(waitCh)
 	}()
 
@@ -163,27 +163,27 @@ func (s *swapState) runT0ExpirationHandler() {
 	case <-s.ctx.Done():
 		return
 	case <-s.readyCh:
-		log.Debugf("returning from runT0ExpirationHandler as contract was set to ready")
+		log.Debugf("returning from runT1ExpirationHandler as contract was set to ready")
 		return
 	case err := <-waitCh:
 		if err != nil {
 			// TODO: Do we propagate this error? If we retry, the logic should probably be inside
 			// WaitForTimestamp. (#162)
-			log.Errorf("Failure waiting for T0 timeout: err=%s", err)
+			log.Errorf("Failure waiting for T1 timeout: err=%s", err)
 			return
 		}
-		log.Debugf("reached t0, time to claim")
-		s.handleT0Expired()
+		log.Debugf("reached t1, time to claim")
+		s.handleT1Expired()
 	}
 }
 
-func (s *swapState) handleT0Expired() {
+func (s *swapState) handleT1Expired() {
 	event := newEventContractReady()
 	s.eventCh <- event
 	err := <-event.errCh
 	if err != nil {
 		// TODO: this is quite bad, how should this be handled? (#162)
-		log.Errorf("failed to handle t0 expiration: %s", err)
+		log.Errorf("failed to handle t1 expiration: %s", err)
 	}
 }
 

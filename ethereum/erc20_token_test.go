@@ -81,7 +81,7 @@ func TestSwapCreator_Claim_ERC20(t *testing.T) {
 	testClaim(t, types.EthAsset(tokenAddr), 2, big.NewInt(99), tokenContract)
 }
 
-func TestSwapCreator_RefundBeforeT0_ERC20(t *testing.T) {
+func TestSwapCreator_RefundBeforeT1_ERC20(t *testing.T) {
 	pkA := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
 
@@ -95,10 +95,10 @@ func TestSwapCreator_RefundBeforeT0_ERC20(t *testing.T) {
 		9999,
 	)
 
-	testRefundBeforeT0(t, types.EthAsset(tokenAddr), tokenContract, 2)
+	testRefundBeforeT1(t, types.EthAsset(tokenAddr), tokenContract, 2)
 }
 
-func TestSwapCreator_RefundAfterT1_ERC20(t *testing.T) {
+func TestSwapCreator_RefundAfterT2_ERC20(t *testing.T) {
 	pkA := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
 
@@ -112,5 +112,5 @@ func TestSwapCreator_RefundAfterT1_ERC20(t *testing.T) {
 		9999,
 	)
 
-	testRefundAfterT1(t, types.EthAsset(tokenAddr), tokenContract, 2)
+	testRefundAfterT2(t, types.EthAsset(tokenAddr), tokenContract, 2)
 }

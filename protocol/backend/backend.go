@@ -208,8 +208,8 @@ func (b *backend) SwapTimeout() time.Duration {
 	return b.swapTimeout
 }
 
-// SetSwapTimeout sets the duration between the swap being initiated on-chain and the timeout t0,
-// and the duration between t0 and t1.
+// SetSwapTimeout sets the duration between the swap being initiated on-chain and the timeout t1,
+// and the duration between t1 and t2.
 func (b *backend) SetSwapTimeout(timeout time.Duration) {
 	b.swapTimeout = timeout
 }

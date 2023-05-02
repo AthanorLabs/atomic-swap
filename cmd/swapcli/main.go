@@ -292,7 +292,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "set-swap-timeout",
-				Usage:  "Set the duration between swap initiation and t0 and t0 and t1, in seconds",
+				Usage:  "Set the duration between swap initiation and t1 and t1 and t2, in seconds",
 				Action: runSetSwapTimeout,
 				Flags: []cli.Flag{
 					&cli.UintFlag{
@@ -311,7 +311,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "get-swap-timeout",
-				Usage:  "Get the duration between swap initiation and t0 and t0 and t1, in seconds",
+				Usage:  "Get the duration between swap initiation and t1 and t1 and t2, in seconds",
 				Action: runGetSwapTimeout,
 				Flags: []cli.Flag{
 					swapdPortFlag,
@@ -799,9 +799,9 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
 		fmt.Printf("Time status was last updated: %s\n", info.LastStatusUpdateTime.Format(common.TimeFmtSecs))
-		if info.Timeout0 != nil && info.Timeout1 != nil {
-			fmt.Printf("First timeout: %s\n", info.Timeout0.Format(common.TimeFmtSecs))
-			fmt.Printf("Second timeout: %s\n", info.Timeout1.Format(common.TimeFmtSecs))
+		if info.Timeout1 != nil && info.Timeout2 != nil {
+			fmt.Printf("First timeout: %s\n", info.Timeout1.Format(common.TimeFmtSecs))
+			fmt.Printf("Second timeout: %s\n", info.Timeout2.Format(common.TimeFmtSecs))
 		}
 		fmt.Printf("Estimated time to completion: %s\n", info.EstimatedTimeToCompletion)
 	}
@@ -1065,8 +1065,8 @@ func runGetContractSwapInfo(ctx *cli.Context) error {
 	fmt.Printf("\tClaimer: %s\n", resp.Swap.Claimer)
 	fmt.Printf("\tPubKeyClaim: %x\n", resp.Swap.PubKeyClaim)
 	fmt.Printf("\tPubKeyRefund: %x\n", resp.Swap.PubKeyRefund)
-	fmt.Printf("\tTimeout0: %s\n", resp.Swap.Timeout0)
 	fmt.Printf("\tTimeout1: %s\n", resp.Swap.Timeout1)
+	fmt.Printf("\tTimeout2: %s\n", resp.Swap.Timeout2)
 	fmt.Printf("\tAsset: %s\n", resp.Swap.Asset)
 	fmt.Printf("\tValue: %s\n", resp.Swap.Value)
 	fmt.Printf("\tNonce: %s\n", resp.Swap.Nonce)

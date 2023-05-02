@@ -134,7 +134,7 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 	swapID, err := GetIDFromLog(receipt.Logs[newSwapLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newSwapLogIndex])
+	t1, t2, err := GetTimeoutsFromLog(receipt.Logs[newSwapLogIndex])
 	require.NoError(t, err)
 
 	// validate that off-chain swapID calculation matches the on-chain value
@@ -143,8 +143,8 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 		Claimer:      claimer,
 		PubKeyClaim:  pubKeyClaim,
 		PubKeyRefund: pubKeyRefund,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        asset.Address(),
 		Value:        value,
 		Nonce:        nonce,
@@ -197,7 +197,7 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	id, err := GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[0])
+	t1, t2, err := GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	swap := SwapCreatorSwap{
@@ -205,8 +205,8 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
 		PubKeyRefund: dummySwapKey,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        ethcommon.Address(types.EthAssetETH),
 		Value:        defaultSwapValue,
 		Nonce:        nonce,
@@ -280,7 +280,7 @@ func testClaim(t *testing.T, asset types.EthAsset, newLogIndex int, value *big.I
 	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
+	t1, t2, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
 	swap := SwapCreatorSwap{
@@ -288,8 +288,8 @@ func testClaim(t *testing.T, asset types.EthAsset, newLogIndex int, value *big.I
 		Claimer:      addr,
 		PubKeyClaim:  cmt,
 		PubKeyRefund: dummySwapKey,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        asset.Address(),
 		Value:        value,
 		Nonce:        nonce,
@@ -328,7 +328,7 @@ func TestSwapCreator_Claim_random(t *testing.T) {
 	testClaim(t, types.EthAssetETH, 0, defaultSwapValue, nil)
 }
 
-func testRefundBeforeT0(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20, newLogIndex int) {
+func testRefundBeforeT1(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20, newLogIndex int) {
 	// generate refund secret and public key
 	dleq := &dleq.DefaultDLEq{}
 	proof, err := dleq.Prove()
@@ -373,7 +373,7 @@ func testRefundBeforeT0(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
+	t1, t2, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
 	swap := SwapCreatorSwap{
@@ -381,8 +381,8 @@ func testRefundBeforeT0(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 		Claimer:      addr,
 		PubKeyClaim:  dummySwapKey,
 		PubKeyRefund: cmt,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        asset.Address(),
 		Value:        defaultSwapValue,
 		Nonce:        nonce,
@@ -408,11 +408,11 @@ func testRefundBeforeT0(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwapCreator_Refund_beforeT0(t *testing.T) {
-	testRefundBeforeT0(t, types.EthAssetETH, nil, 0)
+func TestSwapCreator_Refund_beforeT1(t *testing.T) {
+	testRefundBeforeT1(t, types.EthAssetETH, nil, 0)
 }
 
-func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20, newLogIndex int) {
+func testRefundAfterT2(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20, newLogIndex int) {
 	ctx := context.Background()
 
 	// generate refund secret and public key
@@ -460,18 +460,18 @@ func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	id, err := GetIDFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
+	t1, t2, err := GetTimeoutsFromLog(receipt.Logs[newLogIndex])
 	require.NoError(t, err)
 
-	// ensure we can't refund between T0 and T1
-	<-time.After(time.Until(time.Unix(t0.Int64()+1, 0)))
+	// ensure we can't refund between T1 and T2
+	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
 	swap := SwapCreatorSwap{
 		Owner:        addr,
 		Claimer:      addr,
 		PubKeyClaim:  dummySwapKey,
 		PubKeyRefund: cmt,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        asset.Address(),
 		Value:        defaultSwapValue,
 		Nonce:        nonce,
@@ -483,7 +483,7 @@ func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	_, err = block.WaitForReceipt(ctx, ec, tx.Hash())
 	require.ErrorContains(t, err, "VM Exception while processing transaction: revert")
 
-	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
+	<-time.After(time.Until(time.Unix(t2.Int64()+1, 0)))
 
 	// now let's try to refund
 	tx, err = swapCreator.Refund(getAuth(t, pkA), swap, secret)
@@ -506,8 +506,8 @@ func testRefundAfterT1(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	require.Equal(t, StageCompleted, stage)
 }
 
-func TestSwapCreator_Refund_afterT1(t *testing.T) {
-	testRefundAfterT1(t, types.EthAssetETH, nil, 0)
+func TestSwapCreator_Refund_afterT2(t *testing.T) {
+	testRefundAfterT2(t, types.EthAssetETH, nil, 0)
 }
 
 // test case where contract has multiple swaps happening at once
@@ -549,8 +549,8 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 			Claimer:      addrSwap,
 			PubKeyClaim:  res.Secp256k1PublicKey().Keccak256(),
 			PubKeyRefund: dummySwapKey, // no one calls refund in this test
-			Timeout0:     nil,          // timeouts initialised when swap is created
-			Timeout1:     nil,
+			Timeout1:     nil,          // timeouts initialised when swap is created
+			Timeout2:     nil,
 			Asset:        ethcommon.Address(types.EthAssetETH),
 			Value:        defaultSwapValue,
 			Nonce:        big.NewInt(int64(i)),
@@ -591,7 +591,7 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 			sc.id, err = GetIDFromLog(receipt.Logs[0])
 			require.NoError(t, err)
 
-			sc.swap.Timeout0, sc.swap.Timeout1, err = GetTimeoutsFromLog(receipt.Logs[0])
+			sc.swap.Timeout1, sc.swap.Timeout2, err = GetTimeoutsFromLog(receipt.Logs[0])
 			require.NoError(t, err)
 		}(&swapCases[i])
 	}

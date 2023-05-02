@@ -67,7 +67,7 @@ type swapState struct {
 	swapCreatorAddr ethcommon.Address
 	contractSwapID  [32]byte
 	contractSwap    *contracts.SwapCreatorSwap
-	t0, t1          time.Time
+	t1, t2          time.Time
 
 	// XMRTaker's keys for this session
 	xmrtakerPublicSpendKey     *mcrypto.PublicKey
@@ -89,7 +89,7 @@ type swapState struct {
 	logReadyCh chan ethtypes.Log
 	// channel for `Refunded` logs seen on-chain
 	logRefundedCh chan ethtypes.Log
-	// signals the t0 expiration handler to return
+	// signals the t1 expiration handler to return
 	readyCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
 	done chan struct{}
@@ -312,7 +312,7 @@ func newSwapStateFromOngoing(
 		return nil, err
 	}
 
-	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
+	s.setTimeouts(ethSwapInfo.Swap.Timeout1, ethSwapInfo.Swap.Timeout2)
 	s.privkeys = sk
 	s.pubkeys = sk.PublicKeyPair()
 	s.contractSwapID = ethSwapInfo.SwapID

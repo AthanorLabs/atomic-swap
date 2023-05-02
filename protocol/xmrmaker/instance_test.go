@@ -210,8 +210,8 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 		SwapCreatorAddr: inst.backend.SwapCreatorAddr(),
 		SwapID:          contractSwapID,
 		Swap: &contracts.SwapCreatorSwap{
-			Timeout0: big.NewInt(1),
-			Timeout1: big.NewInt(2),
+			Timeout1: big.NewInt(1),
+			Timeout2: big.NewInt(2),
 		},
 	}, nil)
 	rdb.EXPECT().GetSwapPrivateKey(s.OfferID).Return(

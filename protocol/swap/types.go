@@ -53,17 +53,17 @@ type Info struct {
 	// EndTime is the time at which the swap completes; ie.
 	// when the node has claimed or refunded its funds.
 	EndTime *time.Time `json:"endTime,omitempty"`
-	// Timeout0 is the first swap timeout; before this timeout,
+	// Timeout1 is the first swap timeout; before this timeout,
 	// the ETH-maker is able to refund the ETH (if `ready` has not
 	// been set to true in the contract). After this timeout,
 	// the ETH-taker is able to claim, and the ETH-maker can
 	// no longer refund.
-	Timeout0 *time.Time `json:"timeout0,omitempty"`
-	// Timeout1 is the second swap timeout; before this timeout
-	// (and after Timeout0), the ETH-taker is able to claim, but
+	Timeout1 *time.Time `json:"timeout1,omitempty"`
+	// Timeout2 is the second swap timeout; before this timeout
+	// (and after Timeout1), the ETH-taker is able to claim, but
 	// after this timeout, the ETH-taker can no longer claim, only
 	// the ETH-maker can refund.
-	Timeout1 *time.Time        `json:"timeout1,omitempty"`
+	Timeout2 *time.Time        `json:"timeout2,omitempty"`
 	statusCh chan types.Status `json:"-"`
 }
 
