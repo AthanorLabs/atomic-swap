@@ -188,7 +188,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 // Tests the scenario where Bob has no ETH, he can't find an advertised relayer,
 // and Alice does not have enough ETH to relay his claim. The end result should
 // be a refund. Note that this test has a long pause, as the refund cannot
-// happen until T1 expires.
+// happen until T2 expires.
 func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR

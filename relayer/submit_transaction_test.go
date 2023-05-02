@@ -55,8 +55,8 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	swapCreator, err := contracts.NewSwapCreator(swapCreatorAddr, ec.Raw())
 	require.NoError(t, err)
 
-	testT0Timeout := big.NewInt(300) // 5 minutes
-	testT1Timeout := testT0Timeout
+	testT1Timeout := big.NewInt(300) // 5 minutes
+	testT2Timeout := testT1Timeout
 
 	value := big.NewInt(9e16)
 	nonce := big.NewInt(0)
@@ -68,8 +68,8 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 		cmt,
 		refundKey,
 		claimerAddr,
-		testT0Timeout,
 		testT1Timeout,
+		testT2Timeout,
 		types.EthAssetETH.Address(),
 		value,
 		nonce,
@@ -85,7 +85,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	id, err := contracts.GetIDFromLog(receipt.Logs[logIndex])
 	require.NoError(t, err)
 
-	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[logIndex])
+	t1, t2, err := contracts.GetTimeoutsFromLog(receipt.Logs[logIndex])
 	require.NoError(t, err)
 
 	swap := contracts.SwapCreatorSwap{
@@ -93,8 +93,8 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 		Claimer:      claimerAddr,
 		PubKeyClaim:  cmt,
 		PubKeyRefund: refundKey,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        types.EthAssetETH.Address(),
 		Value:        value,
 		Nonce:        nonce,

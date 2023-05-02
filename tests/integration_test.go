@@ -385,11 +385,11 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
 }
 
-// TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker
+// TestRefund_XMRMakerCancels_untilAfterT2 tests the case where XMRTaker and XMRMaker
 // both lock their funds, but XMRMaker goes offline
-// until time t1 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
+// until time t2 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
 // "come online" to see, and he will then refund also.
-func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_untilAfterT1() {
+func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_untilAfterT2() {
 	// Skipping test as it can't guarantee that the refund will happen before the swap completes
 	// successfully:  // https://github.com/athanorlabs/atomic-swap/issues/144
 	s.T().Skip()
@@ -398,7 +398,7 @@ func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_untilAfterT1() {
 }
 
 // TestRefund_XMRMakerCancels_afterIsReady tests the case where XMRTaker and XMRMaker both lock their
-// funds, but XMRMaker goes offline until past isReady==true and t0, but comes online before t1. When
+// funds, but XMRMaker goes offline until past isReady==true and t1, but comes online before t2. When
 // XMRMaker comes back online, he should claim the ETH, causing XMRTaker to also claim the XMR.
 func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_afterIsReady() {
 	// Skipping test as it can't guarantee that the refund will happen before the swap completes

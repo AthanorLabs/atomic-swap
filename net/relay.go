@@ -186,7 +186,7 @@ func (h *Host) SubmitRelayRequest(relayerID peer.ID, request *RelayClaimRequest)
 
 func receiveRelayClaimResponse(stream libp2pnetwork.Stream) (*RelayClaimResponse, error) {
 	// The timeout should be short enough, that the Maker can try multiple relayers
-	// before T1 expires even if the receiving node accepts the relay request and
+	// before T2 expires even if the receiving node accepts the relay request and
 	// just sits on it without doing anything.
 	const relayResponseTimeout = time.Minute
 

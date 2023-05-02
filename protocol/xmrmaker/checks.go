@@ -102,13 +102,14 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	return nil
 }
 
-// checkAndSetTimeouts checks that the timeouts set by the counterparty when initiating the swap
-// are not too short or too long.
-// we expect the timeout to be of a certain length (1 hour for mainnet/stagenet), and allow a 3 minute
-// variation between now and the expected time until the first timeout t0, to allow for block confirmations.
-// the time between t0 and t1 should always be the exact length we expect.
-func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
-	s.setTimeouts(t0, t1)
+// checkAndSetTimeouts checks that the timeouts set by the counterparty when
+// initiating a swap are not too short or long. We expect the timeout to be of a
+// certain length (1 hour for mainnet/stagenet), and allow a 3 minute variation
+// between now and the expected time until the first timeout t1, to allow for
+// block confirmations. The time between t1 and t2 should always be the exact
+// length we expect.
+func (s *swapState) checkAndSetTimeouts(t1, t2 *big.Int) error {
+	s.setTimeouts(t1, t2)
 
 	// we ignore the timeout for development, as unit tests and integration tests
 	// often set different timeouts.
@@ -119,20 +120,20 @@ func (s *swapState) checkAndSetTimeouts(t0, t1 *big.Int) error {
 	expectedTimeout := common.SwapTimeoutFromEnv(s.Backend.Env())
 	allowableTimeDiff := expectedTimeout / 20
 
-	if s.t1.Sub(s.t0) != expectedTimeout {
-		return errInvalidT1
+	if s.t2.Sub(s.t1) != expectedTimeout {
+		return errInvalidT2
 	}
 
-	if time.Now().Add(expectedTimeout).Sub(s.t0).Abs() > allowableTimeDiff {
-		return errInvalidT0
+	if time.Now().Add(expectedTimeout).Sub(s.t1).Abs() > allowableTimeDiff {
+		return errInvalidT1
 	}
 
 	return nil
 }
 
-func (s *swapState) setTimeouts(t0, t1 *big.Int) {
-	s.t0 = time.Unix(t0.Int64(), 0)
+func (s *swapState) setTimeouts(t1, t2 *big.Int) {
 	s.t1 = time.Unix(t1.Int64(), 0)
-	s.info.Timeout0 = &s.t0
+	s.t2 = time.Unix(t2.Int64(), 0)
 	s.info.Timeout1 = &s.t1
+	s.info.Timeout2 = &s.t2
 }

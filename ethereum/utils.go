@@ -117,8 +117,8 @@ func (s *SwapCreatorRelaySwap) Hash() types.Hash {
 		s.Swap.Claimer,
 		s.Swap.PubKeyClaim,
 		s.Swap.PubKeyRefund,
-		s.Swap.Timeout0,
 		s.Swap.Timeout1,
+		s.Swap.Timeout2,
 		s.Swap.Asset,
 		s.Swap.Value,
 		s.Swap.Nonce,
@@ -189,8 +189,8 @@ func (sfs *SwapCreatorSwap) SwapID() types.Hash {
 		sfs.Claimer,
 		sfs.PubKeyClaim,
 		sfs.PubKeyRefund,
-		sfs.Timeout0,
 		sfs.Timeout1,
+		sfs.Timeout2,
 		sfs.Asset,
 		sfs.Value,
 		sfs.Nonce,
@@ -290,9 +290,9 @@ func GetTimeoutsFromLog(log *ethtypes.Log) (*big.Int, *big.Int, error) {
 		return nil, nil, errors.New("log didn't have enough parameters")
 	}
 
-	t0 := res[3].(*big.Int)
-	t1 := res[4].(*big.Int)
-	return t0, t1, nil
+	t1 := res[3].(*big.Int)
+	t2 := res[4].(*big.Int)
+	return t1, t2, nil
 }
 
 // GenerateNewSwapNonce generates a random nonce value for use with NewSwap

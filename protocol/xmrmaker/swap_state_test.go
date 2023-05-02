@@ -97,7 +97,7 @@ func newTestSwap(
 	contractSwapID, err := contracts.GetIDFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
-	t0, t1, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
+	t1, t2, err := contracts.GetTimeoutsFromLog(receipt.Logs[0])
 	require.NoError(t, err)
 
 	contractSwap := &contracts.SwapCreatorSwap{
@@ -105,8 +105,8 @@ func newTestSwap(
 		Claimer:      ethAddr,
 		PubKeyClaim:  claimKey,
 		PubKeyRefund: refundKey,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        ethcommon.Address(asset),
 		Value:        amount,
 		Nonce:        nonce,
@@ -133,7 +133,7 @@ func newSwap(
 
 	ss.contractSwapID = contractSwapID
 	ss.contractSwap = contractSwap
-	ss.setTimeouts(contractSwap.Timeout0, contractSwap.Timeout1)
+	ss.setTimeouts(contractSwap.Timeout1, contractSwap.Timeout2)
 	return txHash
 }
 
@@ -241,10 +241,10 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 	require.NoError(t, err)
 	err = s.setNextExpectedEvent(EventContractReadyType)
 	require.NoError(t, err)
-	require.Equal(t, duration, s.t1.Sub(s.t0))
+	require.Equal(t, duration, s.t2.Sub(s.t1))
 	require.Equal(t, EventContractReadyType, s.nextExpectedEvent)
 
-	go s.runT0ExpirationHandler()
+	go s.runT1ExpirationHandler()
 
 	for status := range s.info.StatusCh() {
 		if status == types.CompletedSuccess {
