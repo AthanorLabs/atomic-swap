@@ -427,7 +427,9 @@ func createEthClient(c *cli.Context, envConf *common.Config) (extethclient.EthCl
 	}
 	if ethEndpoint == "" {
 		// Message is mainnet specific, because we have defaults for dev/stagenet
-		return nil, errors.New("missing ETH endpoint; completely open endpoints are not reliable for swaps")
+		return nil, fmt.Errorf(
+			"--%s flag required, note that open endpoints are unreliable for mainnet swaps", flagEthEndpoint,
+		)
 	}
 
 	var ethPrivKey *ecdsa.PrivateKey
