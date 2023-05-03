@@ -566,6 +566,7 @@ func (s *swapState) generateAndSetKeys() error {
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
 func (s *swapState) getSecret() [32]byte {
 	if s.dleqProof == nil {
+		// the EVM expects the bytes to be big endian, and the ed25519 lib uses little endian
 		return [32]byte(common.Reverse(s.privkeys.SpendKey().Bytes()))
 	}
 
