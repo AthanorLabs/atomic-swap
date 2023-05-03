@@ -70,7 +70,7 @@ func TestValidateRelayerFee(t *testing.T) {
 		request := &message.RelayClaimRequest{
 			RelaySwap: &contracts.SwapCreatorRelaySwap{
 				Swap:        swap,
-				Fee:         big.NewInt(1),
+				Fee:         coins.RelayerFeeWei,
 				SwapCreator: swapCreatorAddr,
 				RelayerHash: relayerHash,
 			},

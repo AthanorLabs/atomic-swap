@@ -38,6 +38,7 @@ func validateClaimRequest(
 //  2. the swap is for ETH and not an ERC20 token
 //  3. the swap value is strictly greater than the relayer fee
 //  4. the claim request's relayer hash matches keccak256(ourAddress || salt)
+//  5. the relayer fee is greater than or equal the expected relayer fee
 func validateClaimValues(
 	ctx context.Context,
 	request *message.RelayClaimRequest,
@@ -77,6 +78,14 @@ func validateClaimValues(
 		return fmt.Errorf("relay request payout address hash %s does not match expected (%s)",
 			request.RelaySwap.RelayerHash,
 			hash,
+		)
+	}
+
+	// the relayer fee must be greater than or equal the expected relayer fee
+	if coins.RelayerFeeWei.Cmp(request.RelaySwap.Fee) > 0 {
+		return fmt.Errorf("relayer fee of %s ETH is less than expected %s ETH",
+			coins.FmtWeiAsETH(request.RelaySwap.Fee),
+			coins.RelayerFeeETH.Text('f'),
 		)
 	}
 
