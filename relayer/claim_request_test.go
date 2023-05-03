@@ -4,7 +4,6 @@
 package relayer
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"math/big"
 	"testing"
@@ -12,30 +11,12 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
-
-// Speed up tests a little by giving deployContracts(...) a package-level cache.
-// These variables should not be accessed by other functions.
-var _swapCreatorAddr *ethcommon.Address
-
-// deployContracts deploys and returns the swapCreator addresses.
-func deployContracts(t *testing.T, ec *ethclient.Client, key *ecdsa.PrivateKey) ethcommon.Address {
-	ctx := context.Background()
-
-	if _swapCreatorAddr == nil {
-		swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, key)
-		require.NoError(t, err)
-		_swapCreatorAddr = &swapCreatorAddr
-	}
-
-	return *_swapCreatorAddr
-}
 
 func createTestSwap(claimer ethcommon.Address) *contracts.SwapCreatorSwap {
 	return &contracts.SwapCreatorSwap{
@@ -56,7 +37,7 @@ func TestCreateRelayClaimRequest(t *testing.T) {
 	claimer := crypto.PubkeyToAddress(*ethKey.Public().(*ecdsa.PublicKey))
 	ec, _ := tests.NewEthClient(t)
 	secret := [32]byte{0x1}
-	swapCreatorAddr := deployContracts(t, ec, ethKey)
+	swapCreatorAddr, _ := contracts.DevDeploySwapCreator(t, ec, ethKey)
 
 	// success path
 	swap := createTestSwap(claimer)

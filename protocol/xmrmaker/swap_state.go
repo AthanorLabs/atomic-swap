@@ -106,7 +106,7 @@ func newSwapStateFromStart(
 	desiredAmount coins.EthAssetAmount,
 ) (*swapState, error) {
 	// at this point, we've received the counterparty's keys,
-	// and will send our own after this function returns.
+	// and we'll send our own after this function returns.
 	// see HandleInitiateMessage().
 	stage := types.KeysExchanged
 	if offerExtra.StatusCh == nil {

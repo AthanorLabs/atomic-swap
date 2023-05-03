@@ -5,10 +5,14 @@ package xmrmaker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
@@ -77,6 +81,46 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	return nil
 }
 
+// waitForNewSwapReceipt waits for the newSwap transaction, that locks the
+// taker's ETH, to be seen as included in a block by our endpoint. This is a
+// pre-requirement for validating the newSwap transaction, which should be done
+// after calling this method.
+func waitForNewSwapReceipt(
+	ctx context.Context,
+	ec *ethclient.Client,
+	txHash ethcommon.Hash,
+) (*ethtypes.Receipt, error) {
+	const loopPause = 1500 * time.Millisecond // 1.5 seconds
+
+	// In mainnet testing, when the maker and taker are using different ETH
+	// endpoints, we've seen cases where the taker receives a TX receipt and
+	// transmits the hash to the maker before the maker's side thinks the TX has
+	// been included in a block. We wait for up to 15 seconds if our attempts at
+	// getting the transaction receipt return NotFound.
+	for i := 0; i < 10; i++ {
+		receipt, err := ec.TransactionReceipt(ctx, txHash)
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
+			return nil, err
+		}
+		// If err is still set, the error was ethereum.NotFound, which is returned
+		// even if our endpoint sees the TX as pending.
+		if err != nil {
+			if err = common.SleepWithContext(ctx, loopPause); err != nil {
+				return nil, err // context expired
+			}
+			continue
+		}
+
+		if receipt.Status != ethtypes.ReceiptStatusSuccessful {
+			return nil, fmt.Errorf("received newSwap tx=%s was reverted", txHash.Hex())
+		}
+
+		return receipt, nil
+	}
+
+	return nil, ethereum.NotFound
+}
+
 func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 	if msg.Address == (ethcommon.Address{}) {
 		return errMissingAddress
@@ -96,7 +140,7 @@ func (s *swapState) handleNotifyETHLocked(msg *message.NotifyETHLocked) error {
 	s.contractSwapID = msg.ContractSwapID
 	s.contractSwap = msg.ContractSwap
 
-	receipt, err := s.Backend.ETHClient().Raw().TransactionReceipt(s.ctx, msg.TxHash)
+	receipt, err := waitForNewSwapReceipt(s.ctx, s.Backend.ETHClient().Raw(), msg.TxHash)
 	if err != nil {
 		return err
 	}

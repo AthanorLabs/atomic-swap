@@ -51,9 +51,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	claimerAddr := crypto.PubkeyToAddress(*pub)
 	t.Log("claimerAddr: ", claimerAddr)
 
-	swapCreatorAddr := deployContracts(t, ec.Raw(), sk)
-	swapCreator, err := contracts.NewSwapCreator(swapCreatorAddr, ec.Raw())
-	require.NoError(t, err)
+	swapCreatorAddr, swapCreator := contracts.DevDeploySwapCreator(t, ec.Raw(), sk)
 
 	testT1Timeout := big.NewInt(300) // 5 minutes
 	testT2Timeout := testT1Timeout
