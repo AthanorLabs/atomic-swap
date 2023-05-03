@@ -12,7 +12,9 @@ if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
 	exit 1
 fi
 
-version="HEAD" # use "latest" for most recent tagged release
+# Using "latest" below gives you the last tagged release. Change it to "HEAD" if
+# you want the most recent, pushed to github, commit on the master branch.
+version="latest"
 install_targets=(
 	"github.com/athanorlabs/atomic-swap/cmd/swapd@${version}"
 	"github.com/athanorlabs/atomic-swap/cmd/swapcli@${version}"

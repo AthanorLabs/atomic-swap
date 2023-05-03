@@ -34,7 +34,7 @@ sudo apt install curl bzip2 jq
 On macOS, you'll need to install `realpath` (from the `coreutils` package). If you
 are using Homebrew, you can use these commands to install all the needed tools:
 ```bash
-brew install coreutils go jq nvm
+brew install coreutils go jq nvm bash
 nvm install node
 npm install --location=global ganache
 ```
@@ -61,12 +61,24 @@ rm -rf "${TMPDIR:-/tmp}"/xmr[mt]aker-*
 
 ### Build the Executables
 
-Build binary:
+You have several options. If you are looking to do production swaps, use one of
+the first two release options. All 3 options create `swapd` and `swapcli`
+binaries in the `bin` directory at the top of the project.
+
+#### Build the most recent tagged release using Go
+```bash
+make build-release
+```
+
+#### Build the most recent tagged release using docker (Go not required)
+```bash
+make build-release-in-docker
+```
+
+#### Build the checked-out sources as-is
 ```bash
 make build
 ```
-
-This creates `swapd` and `swapcli` binaries in the `bin` directory at the top of the project.
 
 ### Launch Alice and Bob's swapd Instances
 

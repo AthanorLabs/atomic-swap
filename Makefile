@@ -43,6 +43,24 @@ test:
 test-integration: 
 	./scripts/run-integration-tests.sh 2>&1 | tee test-integration.log
 
+# Instead of building from the local checked-out source, this will install
+# the most recent commit with a release tag. Use the most recent tagged release
+# for production swaps.
+.PHONY: build-release
+build-release:
+	go install -tags=prod github.com/athanorlabs/atomic-swap/cmd/...@latest
+	mkdir -p bin
+	mv $(GOPATH)/bin/swapd $(GOPATH)/bin/swapcli $(GOPATH)/bin/bootnode bin/
+
+# If you don't have go installed but do have docker, you can build the most
+# recent release using docker.
+.PHONY: build-release-in-docker
+build-release-in-docker:
+	mkdir -p bin
+	docker run --rm -v "$(PWD)/bin:/go/bin" "golang:1.20" bash -c \
+		"go install -tags=prod github.com/athanorlabs/atomic-swap/cmd/...@latest && \
+		chown $$(id -u):$$(id -g) bin/{swapd,swapcli,bootnode}"
+
 # Install all the binaries into $HOME/go/bin (or alternative GOPATH bin directory)
 .PHONY: install
 install: 
