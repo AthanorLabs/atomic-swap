@@ -9,7 +9,8 @@ const (
 	DefaultMoneroDaemonMainnetPort  = 18081
 	DefaultMoneroDaemonDevPort      = DefaultMoneroDaemonMainnetPort
 	DefaultMoneroDaemonStagenetPort = 38081
-	DefaultEthEndpoint              = "ws://127.0.0.1:8545"
+	DefaultGanacheEndpoint          = "http://127.0.0.1:8545"
+	DefaultGanacheWSEndpoint        = "ws://127.0.0.1:8545"
 	DefaultSwapdPort                = 5000
 )
 

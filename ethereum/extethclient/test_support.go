@@ -22,7 +22,7 @@ import (
 // wallet key. Cleanup on test completion is handled automatically.
 func CreateTestClient(t *testing.T, ethKey *ecdsa.PrivateKey) EthClient {
 	ctx := context.Background()
-	ec, err := NewEthClient(ctx, common.Development, common.DefaultEthEndpoint, ethKey)
+	ec, err := NewEthClient(ctx, common.Development, common.DefaultGanacheEndpoint, ethKey)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ec.Close()

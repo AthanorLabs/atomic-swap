@@ -35,8 +35,9 @@ type MoneroNode struct {
 // Config contains constants that are defaults for various environments
 type Config struct {
 	Env             Environment
-	EthereumChainID *big.Int
 	DataDir         string
+	EthereumChainID *big.Int
+	EthEndpoint     string
 	MoneroNodes     []*MoneroNode
 	SwapCreatorAddr ethcommon.Address
 	Bootnodes       []string
@@ -46,8 +47,9 @@ type Config struct {
 func MainnetConfig() *Config {
 	return &Config{
 		Env:             Mainnet,
-		EthereumChainID: big.NewInt(MainnetChainID),
 		DataDir:         path.Join(baseDir, "mainnet"),
+		EthereumChainID: big.NewInt(MainnetChainID),
+		EthEndpoint:     "", // No mainnet default (permissionless URLs are not reliable)
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -83,8 +85,9 @@ func MainnetConfig() *Config {
 func StagenetConfig() *Config {
 	return &Config{
 		Env:             Stagenet,
-		EthereumChainID: big.NewInt(SepoliaChainID),
 		DataDir:         path.Join(baseDir, "stagenet"),
+		EthereumChainID: big.NewInt(SepoliaChainID),
+		EthEndpoint:     "https://rpc.sepolia.org/",
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -119,6 +122,7 @@ func DevelopmentConfig() *Config {
 		Env:             Development,
 		EthereumChainID: big.NewInt(1337),
 		DataDir:         path.Join(baseDir, "dev"),
+		EthEndpoint:     DefaultGanacheEndpoint,
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "127.0.0.1",

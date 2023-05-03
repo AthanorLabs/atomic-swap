@@ -195,7 +195,7 @@ func GetTakerTestKey(t *testing.T) *ecdsa.PrivateKey {
 // NewEthClient returns a connection to the local ganache instance for unit tests along
 // with its chain ID. The connection is automatically closed when the test completes.
 func NewEthClient(t *testing.T) (*ethclient.Client, *big.Int) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	ec, err := ethclient.Dial(common.DefaultGanacheEndpoint)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ec.Close()

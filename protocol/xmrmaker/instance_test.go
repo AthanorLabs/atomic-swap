@@ -113,7 +113,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
-	extendedEC, err := extethclient.NewEthClient(ctx, env, common.DefaultEthEndpoint, pk)
+	extendedEC, err := extethclient.NewEthClient(ctx, env, common.DefaultGanacheEndpoint, pk)
 	require.NoError(t, err)
 
 	net := new(mockNet)
