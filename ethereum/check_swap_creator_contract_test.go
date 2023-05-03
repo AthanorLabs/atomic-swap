@@ -21,7 +21,7 @@ import (
 func getContractCode(t *testing.T) []byte {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
-	contractAddr, _ := deploySwapCreator(t, ec, pk)
+	contractAddr, _ := DevDeploySwapCreator(t, ec, pk)
 	code, err := ec.CodeAt(context.Background(), contractAddr, nil)
 	require.NoError(t, err)
 	return code
@@ -42,7 +42,7 @@ func TestCheckSwapCreatorContractCode(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	pk := tests.GetMakerTestKey(t)
 
-	contractAddr, _ := deploySwapCreator(t, ec, pk)
+	contractAddr, _ := DevDeploySwapCreator(t, ec, pk)
 	err := CheckSwapCreatorContractCode(context.Background(), ec, contractAddr)
 	require.NoError(t, err)
 }

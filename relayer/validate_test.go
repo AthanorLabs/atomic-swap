@@ -25,7 +25,7 @@ func TestValidateRelayerFee(t *testing.T) {
 	ctx := context.Background()
 	ec, _ := tests.NewEthClient(t)
 	key := tests.GetTakerTestKey(t)
-	swapCreatorAddr := deployContracts(t, ec, key)
+	swapCreatorAddr, _ := contracts.DevDeploySwapCreator(t, ec, key)
 
 	// 20-byte empty address, 4-byte zero salt
 	empty := [24]byte{}
@@ -112,7 +112,7 @@ func Test_validateClaimValues_takerClaim_contractAddressNotEqualFail(t *testing.
 func Test_validateClaimValues_dhtClaim_contractAddressNotEqual(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	key := tests.GetTakerTestKey(t)
-	swapCreatorAddr := deployContracts(t, ec, key)
+	swapCreatorAddr, _ := contracts.DevDeploySwapCreator(t, ec, key)
 
 	request := &message.RelayClaimRequest{
 		OfferID: nil, // DHT relayer claim
@@ -131,7 +131,7 @@ func Test_validateSignature(t *testing.T) {
 	claimer := crypto.PubkeyToAddress(*ethKey.Public().(*ecdsa.PublicKey))
 	ec, _ := tests.NewEthClient(t)
 	secret := [32]byte{0x1}
-	swapCreatorAddr := deployContracts(t, ec, ethKey)
+	swapCreatorAddr, _ := contracts.DevDeploySwapCreator(t, ec, ethKey)
 
 	swap := createTestSwap(claimer)
 	relaySwap := &contracts.SwapCreatorRelaySwap{
@@ -161,7 +161,7 @@ func Test_validateClaimRequest(t *testing.T) {
 	claimer := crypto.PubkeyToAddress(*ethKey.Public().(*ecdsa.PublicKey))
 	ec, _ := tests.NewEthClient(t)
 	secret := [32]byte{0x1}
-	swapCreatorAddr := deployContracts(t, ec, ethKey)
+	swapCreatorAddr, _ := contracts.DevDeploySwapCreator(t, ec, ethKey)
 
 	// 20-byte empty address, 4-byte zero salt
 	empty := [24]byte{}

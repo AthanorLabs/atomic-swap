@@ -203,6 +203,9 @@ func newSwapStateFromOngoing(
 	if info.Status == types.ETHLocked {
 		go s.checkForXMRLock()
 	}
+
+	go s.runT1ExpirationHandler()
+	go s.runT2ExpirationHandler()
 	return s, nil
 }
 
@@ -540,12 +543,14 @@ func (s *swapState) setTimeouts(t1, t2 *big.Int) {
 	s.info.Timeout2 = &s.t2
 }
 
+// generateAndSetKeys generates and sets the XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// and a DLEq proof proving that the two keys correspond.
 func (s *swapState) generateAndSetKeys() error {
 	if s.privkeys != nil {
 		panic("generateAndSetKeys should only be called once")
 	}
 
-	keysAndProof, err := generateKeys()
+	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	if err != nil {
 		return err
 	}
@@ -560,6 +565,11 @@ func (s *swapState) generateAndSetKeys() error {
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
 func (s *swapState) getSecret() [32]byte {
+	if s.dleqProof == nil {
+		// the EVM expects the bytes to be big endian, and the ed25519 lib uses little endian
+		return [32]byte(common.Reverse(s.privkeys.SpendKey().Bytes()))
+	}
+
 	secret := s.dleqProof.Secret()
 	var sc [32]byte
 	copy(sc[:], secret[:])
@@ -720,10 +730,4 @@ func (s *swapState) refund() (*ethtypes.Receipt, error) {
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
 	return receipt, nil
-}
-
-// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
-// and a DLEq proof proving that the two keys correspond.
-func generateKeys() (*pcommon.KeysAndProof, error) {
-	return pcommon.GenerateKeysAndProof()
 }

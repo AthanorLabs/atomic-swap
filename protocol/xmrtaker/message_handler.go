@@ -188,6 +188,11 @@ func (s *swapState) checkForXMRLock() {
 func (s *swapState) runT1ExpirationHandler() {
 	defer log.Debugf("returning from runT1ExpirationHandler")
 
+	if time.Until(s.t1) <= 0 {
+		log.Debugf("T1 already passed, not starting T1 expiration handler")
+		return
+	}
+
 	// TODO: this variable is so that we definitely refund before t1.
 	// Current algorithm is to trigger the timeout when only 15% of the allotted
 	// time is remaining. If the block interval is 1 second on a test network and

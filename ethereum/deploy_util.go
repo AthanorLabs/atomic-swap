@@ -31,7 +31,7 @@ func DeploySwapCreatorWithKey(
 	}
 
 	log.Infof("deploying SwapCreator.sol")
-	address, tx, sf, err := DeploySwapCreator(txOpts, ec)
+	address, tx, sc, err := DeploySwapCreator(txOpts, ec)
 	if err != nil {
 		return ethcommon.Address{}, nil, fmt.Errorf("failed to deploy swap creator: %w", err)
 	}
@@ -42,7 +42,7 @@ func DeploySwapCreatorWithKey(
 	}
 
 	log.Infof("deployed SwapCreator.sol: address=%s tx hash=%s", address, tx.Hash())
-	return address, sf, nil
+	return address, sc, nil
 }
 
 func newTXOpts(ctx context.Context, ec *ethclient.Client, privkey *ecdsa.PrivateKey) (*bind.TransactOpts, error) {

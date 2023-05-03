@@ -6,6 +6,8 @@ package protocol
 import (
 	"testing"
 
+	"github.com/athanorlabs/atomic-swap/common"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,4 +23,5 @@ func TestKeysAndProof(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, kp.Secp256k1PublicKey.String(), res.Secp256k1PublicKey.String())
 	require.Equal(t, kp.PublicKeyPair.SpendKey().String(), res.Ed25519PublicKey.String())
+	require.Equal(t, [32]byte(common.Reverse(kp.PrivateKeyPair.SpendKey().Bytes())), kp.DLEqProof.Secret())
 }

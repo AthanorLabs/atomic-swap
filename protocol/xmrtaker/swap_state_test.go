@@ -289,7 +289,7 @@ func TestSwapState_NotifyXMRLock(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
 
-	xmrmakerKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	err = s.setXMRMakerKeys(
@@ -322,7 +322,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	s.nextExpectedEvent = EventXMRLockedType
 	s.SetSwapTimeout(time.Second * 3)
 
-	xmrmakerKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	err = s.setXMRMakerKeys(
@@ -378,7 +378,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventXMRLockedType
 
-	xmrmakerKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	err = s.setXMRMakerKeys(
@@ -405,7 +405,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventETHClaimedType
 
-	xmrmakerKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	err = s.setXMRMakerKeys(
@@ -433,7 +433,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	defer s.cancel()
 	s.nextExpectedEvent = EventExitType
 
-	xmrmakerKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	err = s.setXMRMakerKeys(
@@ -461,7 +461,7 @@ func TestSwapState_ApproveToken(t *testing.T) {
 
 	s, contract := newTestSwapStateWithERC20(t, providesAmt)
 
-	xmrmakerKeysAndProof, err := generateKeys()
+	xmrmakerKeysAndProof, err := pcommon.GenerateKeysAndProof()
 	require.NoError(t, err)
 
 	err = s.setXMRMakerKeys(
