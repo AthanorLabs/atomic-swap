@@ -22,10 +22,10 @@ const (
 	MaxCoinPrecision = 100
 )
 
-// RelayerFeeWei and RelayerFeeETH are the fixed 0.009 ETH fee for using a swap
+// RelayerFeeWei and RelayerFeeETH are the fixed 0.01 ETH fee for using a swap
 // relayer to claim.
 var (
-	RelayerFeeWei = big.NewInt(9e15)
+	RelayerFeeWei = big.NewInt(1e16)
 	RelayerFeeETH = NewWeiAmount(RelayerFeeWei).AsEther()
 )
 
