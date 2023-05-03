@@ -203,6 +203,9 @@ func newSwapStateFromOngoing(
 	if info.Status == types.ETHLocked {
 		go s.checkForXMRLock()
 	}
+
+	go s.runT1ExpirationHandler()
+	go s.runT2ExpirationHandler()
 	return s, nil
 }
 
