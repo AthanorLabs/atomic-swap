@@ -118,8 +118,7 @@ func GetVersion() string {
 	// The first part a go.mod style version if using "go install" directly with
 	// github. If installing from locally checked out source, the string will be
 	// "(devel)".
-	version.WriteString(info.Main.Version)
-	version.WriteByte(' ')
+	version.WriteString(strings.Replace(info.Main.Version, "(devel)", "dev-", 1))
 
 	// The commit hash will be present if installing from locally checked out
 	// sources, or empty if installing directly from the repo's github URL.
