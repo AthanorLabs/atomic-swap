@@ -47,6 +47,7 @@ func Test_waitForNewSwapReceipt(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	defer wg.Wait()
 	go func() {
 		defer wg.Done()
 		time.Sleep(2 * time.Second)
