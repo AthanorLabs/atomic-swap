@@ -317,6 +317,8 @@ func newSwapStateFromOngoing(
 	s.pubkeys = sk.PublicKeyPair()
 	s.contractSwapID = ethSwapInfo.SwapID
 	s.contractSwap = ethSwapInfo.Swap
+
+	go s.runT1ExpirationHandler()
 	return s, nil
 }
 

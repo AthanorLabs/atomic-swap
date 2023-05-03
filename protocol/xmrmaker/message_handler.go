@@ -192,6 +192,13 @@ func (s *swapState) runT1ExpirationHandler() {
 		time.Until(s.t1).Seconds(),
 	)
 
+	if time.Until(s.t2) < 0 {
+		log.Debugf("t2 (%s) has already passed; not starting t1 expiration handler",
+			s.t2.Format(common.TimeFmtSecs),
+		)
+		return
+	}
+
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
 
