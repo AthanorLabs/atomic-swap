@@ -421,9 +421,15 @@ func createMoneroClient(c *cli.Context, envConf *common.Config) (monero.WalletCl
 func createEthClient(c *cli.Context, envConf *common.Config) (extethclient.EthClient, error) {
 	env := envConf.Env
 
-	ethEndpoint := common.DefaultEthEndpoint
-	if c.String(flagEthEndpoint) != "" {
+	ethEndpoint := envConf.EthEndpoint
+	if c.IsSet(flagEthEndpoint) {
 		ethEndpoint = c.String(flagEthEndpoint)
+	}
+	if ethEndpoint == "" {
+		// Message is mainnet specific, because we have defaults for dev/stagenet
+		return nil, fmt.Errorf(
+			"--%s flag required, note that public endpoints are unreliable for mainnet swaps", flagEthEndpoint,
+		)
 	}
 
 	var ethPrivKey *ecdsa.PrivateKey

@@ -41,7 +41,7 @@ const (
 // for testing
 func CreateTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	ctx := context.Background()
-	ec, err := extethclient.NewEthClient(ctx, common.Development, common.DefaultEthEndpoint, ethKey)
+	ec, err := extethclient.NewEthClient(ctx, common.Development, common.DefaultGanacheEndpoint, ethKey)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ec.Close()

@@ -78,7 +78,7 @@ func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 					refundResp, err := acHTTP.Refund(makeResp.OfferID)
 					require.NoError(t, err)
 
-					ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+					ec, err := ethclient.Dial(common.DefaultGanacheEndpoint)
 					require.NoError(t, err)
 
 					t.Log("> Alice got refund response tx:", refundResp.TxHash)
