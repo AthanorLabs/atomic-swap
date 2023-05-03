@@ -63,23 +63,11 @@ func approveERC20(t *testing.T,
 	require.GreaterOrEqual(t, MaxTokenApproveGas, int(receipt.GasUsed), "Token Approve")
 }
 
-func deploySwapCreator(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) (ethcommon.Address, *SwapCreator) {
-	swapCreatorAddr, tx, swapCreator, err := DeploySwapCreator(getAuth(t, pk), ec)
-	require.NoError(t, err)
-	receipt := getReceipt(t, ec, tx)
-
-	t.Logf("gas cost to deploy SwapCreator.sol: %d (delta %d)",
-		receipt.GasUsed, maxSwapCreatorDeployGas-int(receipt.GasUsed))
-	require.GreaterOrEqual(t, maxSwapCreatorDeployGas, int(receipt.GasUsed), "deploy SwapCreator")
-
-	return swapCreatorAddr, swapCreator
-}
-
 func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 	pk := tests.GetTakerTestKey(t)
 	ec, _ := tests.NewEthClient(t)
 
-	swapCreatorAddr, swapCreator := deploySwapCreator(t, ec, pk)
+	swapCreatorAddr, swapCreator := DevDeploySwapCreator(t, ec, pk)
 
 	owner := crypto.PubkeyToAddress(pk.PublicKey)
 	claimer := common.EthereumPrivateKeyToAddress(tests.GetMakerTestKey(t))
@@ -179,7 +167,7 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	_, swapCreator := deploySwapCreator(t, ec, pkA)
+	_, swapCreator := DevDeploySwapCreator(t, ec, pkA)
 
 	txOpts := getAuth(t, pkA)
 	txOpts.Value = defaultSwapValue
@@ -248,7 +236,7 @@ func testClaim(t *testing.T, asset types.EthAsset, newLogIndex int, value *big.I
 	ec, _ := tests.NewEthClient(t)
 	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	swapCreatorAddr, swapCreator := deploySwapCreator(t, ec, pkA)
+	swapCreatorAddr, swapCreator := DevDeploySwapCreator(t, ec, pkA)
 
 	if asset.IsToken() {
 		approveERC20(t, ec, pkA, erc20Contract, swapCreatorAddr, value)
@@ -344,7 +332,7 @@ func testRefundBeforeT1(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 	ec, _ := tests.NewEthClient(t)
 	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	swapCreatorAddr, swapCreator := deploySwapCreator(t, ec, pkA)
+	swapCreatorAddr, swapCreator := DevDeploySwapCreator(t, ec, pkA)
 
 	if asset.IsToken() {
 		approveERC20(t, ec, pkA, erc20Contract, swapCreatorAddr, defaultSwapValue)
@@ -430,7 +418,7 @@ func testRefundAfterT2(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	ec, _ := tests.NewEthClient(t)
 	addr := crypto.PubkeyToAddress(pkA.PublicKey)
 
-	swapCreatorAddr, swapCreator := deploySwapCreator(t, ec, pkA)
+	swapCreatorAddr, swapCreator := DevDeploySwapCreator(t, ec, pkA)
 
 	if asset.IsToken() {
 		approveERC20(t, ec, pkA, erc20Contract, swapCreatorAddr, defaultSwapValue)
@@ -515,7 +503,7 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 	pkContractCreator := tests.GetTestKeyByIndex(t, 0)
 	ec, _ := tests.NewEthClient(t)
 
-	_, swapCreator := deploySwapCreator(t, ec, pkContractCreator)
+	_, swapCreator := DevDeploySwapCreator(t, ec, pkContractCreator)
 
 	const numSwaps = 16
 	type swapCase struct {

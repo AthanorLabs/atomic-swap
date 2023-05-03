@@ -13,3 +13,9 @@ const (
 	MaxRefundTokenGas  = 47294
 	MaxTokenApproveGas = 47000 // 46223 with our contract
 )
+
+// constants that are interesting to track, but not used by swaps
+const (
+	maxSwapCreatorDeployGas = 1094089
+	maxTestERC20DeployGas   = 798286 // using long token names or symbols will increase this
+)
