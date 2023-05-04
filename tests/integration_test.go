@@ -529,7 +529,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 
-	min := coins.StrToDecimal("0.2")
+	min := coins.StrToDecimal("0.21")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
 		exchangeRate, asset, false)
 	require.NoError(s.T(), err)
