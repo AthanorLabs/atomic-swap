@@ -372,9 +372,6 @@ func (s *SwapService) Refund(_ *http.Request, req *ManualTransactionRequest, res
 		return err
 	}
 
-	fmt.Println(contractSwapInfo.Swap)
-	fmt.Println(secret)
-
 	ec := s.backend.ETHClient()
 	swapCreator, err := contracts.NewSwapCreator(contractSwapInfo.SwapCreatorAddr, ec.Raw())
 	if err != nil {
