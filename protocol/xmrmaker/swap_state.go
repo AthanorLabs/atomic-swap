@@ -427,6 +427,7 @@ func newSwapState(
 		nextExpectedEvent: nextExpectedEventFromStatus(info.Status),
 		logReadyCh:        logReadyCh,
 		logRefundedCh:     logRefundedCh,
+		logClaimedCh:      logClaimedCh,
 		eventCh:           make(chan Event, 1),
 		readyCh:           make(chan struct{}),
 		info:              info,

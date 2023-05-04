@@ -48,7 +48,7 @@ func (s *swapState) runContractEventWatcher() {
 			}
 
 			if eventSent {
-				log.Debugf("EventETHClaimed sent, returning from event watcher")
+				log.Debugf("EventExit sent, returning from event watcher")
 				return
 			}
 		}
