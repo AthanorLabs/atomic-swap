@@ -24,7 +24,6 @@ var (
 	errInvalidETHLockedTransaction   = errors.New("eth locked tx was not to correct contract address")
 	errInvalidT1                     = errors.New("invalid t1 value; asset was locked too far in the past")
 	errInvalidT2                     = errors.New("invalid swap timeout set by counterparty")
-	errRelayedTransactionTimeout     = errors.New("relayed transaction was not included within one minute")
 	errClaimedLogInvalidContractAddr = errors.New("log was not emitted by correct contract")
 	errClaimedLogWrongTopicLength    = errors.New("log did not have 3 topics")
 	errClaimedLogWrongEvent          = errors.New("log did not have the Claimed event as its first topic")
