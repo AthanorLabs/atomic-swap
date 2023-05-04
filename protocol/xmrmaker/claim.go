@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -60,9 +61,19 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 		sc := s.getSecret()
 		receipt, err = s.sender.Claim(s.contractSwap, sc)
 		if err != nil {
-			return nil, err
+			if strings.Contains(err.Error(), "insufficient funds for gas * price + value") {
+				// if we get this error, we need to use a relayer
+				receipt, err = s.claimWithRelay()
+				if err != nil {
+					return nil, fmt.Errorf("failed to claim using relayers: %w", err)
+				}
+				log.Infof("claim transaction was relayed: %s", common.ReceiptInfo(receipt))
+			} else {
+				return nil, err
+			}
+		} else {
+			log.Infof("claim transaction %s", common.ReceiptInfo(receipt))
 		}
-		log.Infof("claim transaction %s", common.ReceiptInfo(receipt))
 	}
 	if err != nil {
 		return nil, err
@@ -117,6 +128,10 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (bo
 		return false, nil
 	}
 
+	log.Debugf("balance %s ETH is above the minimum %s ETH to call claim",
+		balance.AsEtherString(),
+		coins.FmtWeiAsETH(txCost),
+	)
 	return true, nil
 }
 

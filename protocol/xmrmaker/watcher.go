@@ -6,6 +6,7 @@ package xmrmaker
 import (
 	"errors"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
@@ -40,7 +41,20 @@ func (s *swapState) runContractEventWatcher() {
 				log.Debugf("EventETHRefunded sent, returning from event watcher")
 				return
 			}
+		case l := <-s.logClaimedCh:
+			eventSent, err := s.handleClaimedLogs(&l)
+			if err != nil {
+				// we don't return here, as err can be set when eventSent is true,
+				// and we only want to return on eventSent == true
+				log.Errorf("failed to handle claim logs: %s", err)
+			}
+
+			if eventSent {
+				log.Debugf("EventExit sent, returning from event watcher")
+				return
+			}
 		}
+
 	}
 }
 
@@ -62,6 +76,7 @@ func (s *swapState) handleReadyLogs(l *ethtypes.Log) (bool, error) {
 			log.Errorf("failed to handle EventReady: %s", err)
 		}
 	}()
+	log.Warnf("send EventContractReady")
 	return true, nil
 }
 
@@ -81,6 +96,22 @@ func (s *swapState) handleRefundLogs(ethlog *ethtypes.Log) (bool, error) {
 
 	// swap was refunded, send EventRefunded
 	event := newEventETHRefunded(sk)
+	s.eventCh <- event
+	return true, <-event.errCh
+}
+
+func (s *swapState) handleClaimedLogs(ethlog *ethtypes.Log) (bool, error) {
+	err := pcommon.CheckSwapID(ethlog, claimedTopic, s.contractSwapID)
+	if errors.Is(err, pcommon.ErrLogNotForUs) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	log.Infof("got Claimed logs in tx hash %s, exiting swap", ethlog.TxHash)
+	s.clearNextExpectedEvent(types.CompletedSuccess)
+	event := newEventExit()
 	s.eventCh <- event
 	return true, <-event.errCh
 }
