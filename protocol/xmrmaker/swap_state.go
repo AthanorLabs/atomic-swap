@@ -210,8 +210,6 @@ func checkIfAlreadyClaimed(
 		Addresses: []ethcommon.Address{ethSwapInfo.SwapCreatorAddr},
 	}
 
-	claimedTopic := common.GetTopic(common.ClaimedEventSignature)
-
 	// let's see if we have logs
 	logs, err := b.ETHClient().Raw().FilterLogs(b.Ctx(), filterQuery)
 	if err != nil {

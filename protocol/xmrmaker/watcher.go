@@ -6,6 +6,7 @@ package xmrmaker
 import (
 	"errors"
 
+	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 
@@ -41,7 +42,15 @@ func (s *swapState) runContractEventWatcher() {
 				return
 			}
 		case l := <-s.logClaimedCh:
+			eventSent, err := s.handleClaimedLogs(&l)
+			if err != nil {
+				log.Errorf("failed to handle claim logs: %s", err)
+			}
 
+			if eventSent {
+				log.Debugf("EventETHClaimed sent, returning from event watcher")
+				return
+			}
 		}
 
 	}
@@ -84,6 +93,22 @@ func (s *swapState) handleRefundLogs(ethlog *ethtypes.Log) (bool, error) {
 
 	// swap was refunded, send EventRefunded
 	event := newEventETHRefunded(sk)
+	s.eventCh <- event
+	return true, <-event.errCh
+}
+
+func (s *swapState) handleClaimedLogs(ethlog *ethtypes.Log) (bool, error) {
+	err := pcommon.CheckSwapID(ethlog, claimedTopic, s.contractSwapID)
+	if errors.Is(err, pcommon.ErrLogNotForUs) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	log.Infof("got Claimed logs in tx hash %s, exiting swap", ethlog.TxHash)
+	s.clearNextExpectedEvent(types.CompletedSuccess)
+	event := newEventExit()
 	s.eventCh <- event
 	return true, <-event.errCh
 }

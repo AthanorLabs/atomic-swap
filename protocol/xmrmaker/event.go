@@ -222,10 +222,8 @@ func (s *swapState) handleEvent(event Event) {
 			return
 		}
 
-		err = s.exit()
-		if err != nil {
-			log.Warnf("failed to exit swap: %s", err)
-		}
+		// we don't need to call exit() here, as the Claimed log
+		// watcher will trigger an exit event.
 	case *EventETHRefunded:
 		log.Infof("EventETHRefunded")
 		defer close(e.errCh)
