@@ -176,9 +176,9 @@ func TestOffer_UnmarshalJSON_BadAmountsOrRate(t *testing.T) {
 			errContains: `"minAmount" cannot be negative`,
 		},
 		{
-			// 0.009 relayer fee is 0.09 XMR with exchange rate of 0.1
-			jsonData:    fmt.Sprintf(offerJSON, `"0.09"`, `"10"`, `"0.1"`),
-			errContains: `min amount must be greater than 0.009 ETH when converted (0.09 XMR)`,
+			// 0.01 relayer fee is 0.1 XMR with exchange rate of 0.1
+			jsonData:    fmt.Sprintf(offerJSON, `"0.01"`, `"10"`, `"0.1"`),
+			errContains: `min amount must be greater than 0.01 ETH when converted (0.1 XMR)`,
 		},
 		// Max Amount checks
 		{

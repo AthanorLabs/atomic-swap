@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
@@ -118,7 +119,7 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 		Swap:        swap,
 		SwapCreator: swapCreatorAddr,
 		RelayerHash: relayerHash,
-		Fee:         big.NewInt(1),
+		Fee:         coins.RelayerFeeWei,
 	}
 
 	req, err := CreateRelayClaimRequest(claimerSk, relaySwap, secret)
