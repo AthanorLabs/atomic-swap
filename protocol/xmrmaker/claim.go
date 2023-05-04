@@ -92,7 +92,7 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (bo
 	// gas cost for ETH-claim is 42965
 	// gas cost for ERC20-claim is 47138
 	// add a bit of leeway to allow for sudden gas price spikes
-	const claimGas = 55000
+	const claimGas = 60000
 
 	balance, err := ec.Balance(ctx)
 	if err != nil {
@@ -117,6 +117,10 @@ func checkForMinClaimBalance(ctx context.Context, ec extethclient.EthClient) (bo
 		return false, nil
 	}
 
+	log.Debugf("balance %s ETH is above the minimum %s ETH to call claim",
+		balance.AsEtherString(),
+		coins.FmtWeiAsETH(txCost),
+	)
 	return true, nil
 }
 
