@@ -225,6 +225,9 @@ type ProtocolBackend interface {
 	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
 	ETHClient() extethclient.EthClient
+	TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error)
+	SweepXMR(to *mcrypto.Address) ([]string, error)
+	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (types.Hash, error)
 }
 
 // XMRTaker ...

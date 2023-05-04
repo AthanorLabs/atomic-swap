@@ -23,7 +23,9 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/net"
+	"github.com/athanorlabs/atomic-swap/rpc"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
@@ -44,6 +46,9 @@ const (
 	flagSearchTime     = "search-time"
 	flagToken          = "token"
 	flagDetached       = "detached"
+	flagTo             = "to"
+	flagAmount         = "amount"
+	flagEnv            = "env"
 )
 
 func cliApp() *cli.App {
@@ -315,6 +320,65 @@ func cliApp() *cli.App {
 				Usage:  "Get the duration between swap initiation and t1 and t1 and t2, in seconds",
 				Action: runGetSwapTimeout,
 				Flags: []cli.Flag{
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "transfer-xmr",
+				Usage:  "Transfer XMR from the swap wallet to another address.",
+				Action: runTransferXMR,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagTo,
+						Usage:    "Address to send XMR to",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     flagAmount,
+						Usage:    "Amount of XMR to send",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  flagEnv,
+						Usage: "Environment to use. Options are [mainnet, stagenet, dev]. Default = mainnet.",
+						Value: "mainnet",
+					},
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "sweep-xmr",
+				Usage:  "Sweep all XMR from the swap wallet to another address.",
+				Action: runSweepXMR,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagTo,
+						Usage:    "Address to send XMR to",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  flagEnv,
+						Usage: "Environment to use. Options are [mainnet, stagenet, dev]. Default = mainnet.",
+						Value: "mainnet",
+					},
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "transfer-eth",
+				Usage:  "Transfer ETH from the swap wallet to another address.",
+				Action: runTransferETH,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagTo,
+						Usage:    "Address to send ETH to",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     flagAmount,
+						Usage:    "Amount of ETH to send",
+						Required: true,
+					},
 					swapdPortFlag,
 				},
 			},
@@ -1087,6 +1151,101 @@ func runGetSwapSecret(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Swap secret: %s\n", resp.Secret.Hex())
+	return nil
+}
+
+func runTransferXMR(ctx *cli.Context) error {
+	env, err := common.NewEnv(ctx.String(flagEnv))
+	if err != nil {
+		return err
+	}
+
+	to, err := mcrypto.NewAddress(ctx.String(flagTo), env)
+	if err != nil {
+		return err
+	}
+
+	amount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagAmount)
+	if err != nil {
+		return err
+	}
+
+	c := newRRPClient(ctx)
+	req := &rpc.TransferXMRRequest{
+		To:     to,
+		Amount: amount,
+	}
+
+	fmt.Printf("Transferring %s XMR to %s, waiting 1 block for confirmation\n", amount, to)
+	resp, err := c.TransferXMR(req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transferred %s XMR to %s\n", amount, to)
+	fmt.Printf("Transaction ID: %s\n", resp.TxID)
+	return nil
+}
+
+func runSweepXMR(ctx *cli.Context) error {
+	env, err := common.NewEnv(ctx.String(flagEnv))
+	if err != nil {
+		return err
+	}
+
+	to, err := mcrypto.NewAddress(ctx.String(flagTo), env)
+	if err != nil {
+		return err
+	}
+
+	c := newRRPClient(ctx)
+	request := &rpctypes.BalancesRequest{}
+	balances, err := c.Balances(request)
+	if err != nil {
+		return err
+	}
+
+	req := &rpc.SweepXMRRequest{
+		To: to,
+	}
+
+	fmt.Printf("Sweeping %s XMR to %s, waiting 1 block for confirmation\n", balances.PiconeroBalance.AsMoneroString(), to)
+	resp, err := c.SweepXMR(req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transferred %s XMR to %s\n", balances.PiconeroBalance.AsMoneroString(), to)
+	fmt.Printf("Transaction IDs: %s\n", resp.TxIDs)
+	return nil
+}
+
+func runTransferETH(ctx *cli.Context) error {
+	ok := ethcommon.IsHexAddress(ctx.String(flagTo))
+	if !ok {
+		return fmt.Errorf("invalid address: %s", ctx.String(flagTo))
+	}
+
+	to := ethcommon.HexToAddress(ctx.String(flagTo))
+	amount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagAmount)
+	if err != nil {
+		return err
+	}
+
+	c := newRRPClient(ctx)
+	req := &rpc.TransferETHRequest{
+		To:     to,
+		Amount: amount,
+	}
+
+	fmt.Printf("Transferring %s ETH to %s\n", amount, to)
+	resp, err := c.TransferETH(req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transferred %s ETH to %s\n", amount, to)
+	fmt.Printf("Transaction ID: %s\n", resp.TxHash)
 	return nil
 }
 

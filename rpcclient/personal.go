@@ -72,3 +72,45 @@ func (c *Client) Balances(request *rpctypes.BalancesRequest) (*rpctypes.Balances
 
 	return balances, nil
 }
+
+// TransferXMR calls personal_transferXMR
+func (c *Client) TransferXMR(request *rpc.TransferXMRRequest) (*rpc.TransferXMRResponse, error) {
+	const (
+		method = "personal_transferXMR"
+	)
+
+	resp := new(rpc.TransferXMRResponse)
+	if err := c.Post(method, request, resp); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// SweepXMR calls personal_sweepXMR
+func (c *Client) SweepXMR(request *rpc.SweepXMRRequest) (*rpc.SweepXMRResponse, error) {
+	const (
+		method = "personal_sweepXMR"
+	)
+
+	resp := new(rpc.SweepXMRResponse)
+	if err := c.Post(method, request, resp); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// TransferETH calls personal_transferETH
+func (c *Client) TransferETH(request *rpc.TransferETHRequest) (*rpc.TransferETHResponse, error) {
+	const (
+		method = "personal_transferETH"
+	)
+
+	resp := new(rpc.TransferETHResponse)
+	if err := c.Post(method, request, resp); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
