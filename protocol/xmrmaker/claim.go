@@ -234,8 +234,8 @@ func waitForClaimRelayerReceipt(
 	secret [32]byte,
 ) (*ethtypes.Receipt, error) {
 	const (
-		checkInterval = 15000 * time.Second // 1.5 seconds between poll attempts
-		maxPolls      = 10                  // We'll wait up to 15 seconds
+		checkInterval = 1500 * time.Millisecond // 1.5 seconds between poll attempts
+		maxPolls      = 10                      // We'll wait up to 15 seconds
 	)
 
 	// The relayer can see the transaction as included in a block and send us
