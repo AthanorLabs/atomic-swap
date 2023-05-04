@@ -148,7 +148,8 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	_, swapState := newTestSwapState(t)
 	// don't handle Ready logs, as handling Ready logs calls claimFunds()
 	// which we want to call in this function instead
-	swapState.logReadyCh = nil
+	swapState.watcherCancel = make(chan struct{})
+	close(swapState.watcherCancel)
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
@@ -165,7 +166,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	receipt, err := swapState.claimFunds()
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
-	require.False(t, swapState.info.Status.IsOngoing())
+	require.True(t, swapState.info.Status.IsOngoing())
 }
 
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
