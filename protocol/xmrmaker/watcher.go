@@ -19,9 +19,6 @@ func (s *swapState) runContractEventWatcher() {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-s.watcherCancel:
-			log.Debug("cancelled event watcher")
-			return
 		case l := <-s.logReadyCh:
 			if readyEventSent {
 				// we already sent the ready event, ignore any Ready logs
@@ -79,6 +76,7 @@ func (s *swapState) handleReadyLogs(l *ethtypes.Log) (bool, error) {
 			log.Errorf("failed to handle EventReady: %s", err)
 		}
 	}()
+	log.Warnf("send EventContractReady")
 	return true, nil
 }
 

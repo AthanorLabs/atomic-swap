@@ -96,9 +96,6 @@ type swapState struct {
 	readyCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
 	done chan struct{}
-
-	// cancels the event watcher; only used in tests
-	watcherCancel chan struct{}
 }
 
 // newSwapStateFromStart returns a new *swapState for a fresh swap.
