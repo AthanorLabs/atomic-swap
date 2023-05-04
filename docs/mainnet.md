@@ -80,7 +80,7 @@ To run a node as a relayer, pass the `--relayer` flag to `swapd`:
 ./bin/swapd --env stagenet --eth-endpoint MAINNET_ENDPOINT --relayer
 ```
 
-**Note:** the current fee sent to relayers is 0.009 ETH per swap. Subtract the gas cost from this to determine how much profit will be made. The gas required to do a relayer-claim transaction is `102048` gas. Multiply this by the transaction gas price for the gas cost. The gas price is set via oracle unless you manually set it with the `personal_setGasPrice` RPC call.
+**Note:** the current fee sent to relayers is 0.01 ETH per swap. Subtract the gas cost from this to determine how much profit will be made. The gas required to do a relayer-claim transaction is `85040` gas. Multiply this by the transaction gas price for the gas cost. The gas price is set via oracle unless you manually set it with the `personal_setGasPrice` RPC call.
 
 ## swapcli commands
 
