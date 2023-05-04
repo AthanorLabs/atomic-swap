@@ -137,7 +137,7 @@ func (s *swapState) relayClaimWithXMRTaker() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	receipt, err := waitForClaimReceipt(
+	receipt, err := waitForClaimRelayerReceipt(
 		s.ctx,
 		s.ETHClient().Raw(),
 		response.TxHash,
@@ -188,7 +188,7 @@ func (s *swapState) claimWithAdvertisedRelayers() (*ethtypes.Receipt, error) {
 			continue
 		}
 
-		receipt, err := waitForClaimReceipt(
+		receipt, err := waitForClaimRelayerReceipt(
 			s.ctx,
 			s.ETHClient().Raw(),
 			resp.TxHash,
@@ -197,7 +197,7 @@ func (s *swapState) claimWithAdvertisedRelayers() (*ethtypes.Receipt, error) {
 			s.getSecret(),
 		)
 		if err != nil {
-			log.Warnf("failed to get receipt of relayer's tx: %s", err)
+			log.Warnf("failed to get receipt of relayer's tx=%s: %s", resp.TxHash.Hex(), err)
 			continue
 		}
 
@@ -225,7 +225,7 @@ func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 	return receipt, nil
 }
 
-func waitForClaimReceipt(
+func waitForClaimRelayerReceipt(
 	ctx context.Context,
 	ec *ethclient.Client,
 	txHash ethcommon.Hash,
@@ -234,63 +234,58 @@ func waitForClaimReceipt(
 	secret [32]byte,
 ) (*ethtypes.Receipt, error) {
 	const (
-		checkInterval = time.Second // time between transaction polls
-		maxWait       = time.Minute // max wait for the tx to be included in a block
-		maxNotFound   = 10          // max failures where the tx is not even found in the mempool
+		checkInterval = 15000 * time.Second // 1.5 seconds between poll attempts
+		maxPolls      = 10                  // We'll wait up to 15 seconds
 	)
 
-	start := time.Now()
-
-	var notFoundCount int
-	// wait for inclusion
-	for {
-		// sleep before the first check, b/c we want to give the tx some time to propagate
-		// into the node we're using
-		err := common.SleepWithContext(ctx, checkInterval)
-		if err != nil {
+	// The relayer can see the transaction as included in a block and send us
+	// the hash before our end sees it included in a block. The synchronization
+	// should happen significantly faster, but we allow a full 15 seconds before
+	// we give-up and decide that the relayer gave us a bad tx hash.
+	for i := 0; i < maxPolls; i++ {
+		receipt, err := ec.TransactionReceipt(ctx, txHash)
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return nil, err
 		}
-
-		_, isPending, err := ec.TransactionByHash(ctx, txHash)
+		// If err is still set, the error was ethereum.NotFound, which is returned
+		// by TransactionReceipt even if our endpoint sees the TX as pending.
 		if err != nil {
-			// allow up to 5 NotFound errors, in case there's some network problems
-			if errors.Is(err, ethereum.NotFound) && notFoundCount >= maxNotFound {
-				notFoundCount++
-				continue
+			if err = common.SleepWithContext(ctx, checkInterval); err != nil {
+				return nil, err // context expired
 			}
-
-			return nil, err
+			continue
 		}
 
-		if time.Since(start) > maxWait {
-			// the tx is taking too long, return an error so we try with another relayer
-			return nil, errRelayedTransactionTimeout
-		}
-
-		if !isPending {
-			break
-		}
+		// no error, return the receipt if validation passes
+		return validateClaimRelayerReceipt(ctx, ec, receipt, contractAddr, contractSwapID, secret)
 	}
 
-	receipt, err := ec.TransactionReceipt(ctx, txHash)
-	if err != nil {
-		return nil, err
-	}
+	// if we made it here, we exceeded maxPolls of the error ethereum.NotFound
+	return nil, ethereum.NotFound
+}
 
+func validateClaimRelayerReceipt(
+	ctx context.Context,
+	ec *ethclient.Client,
+	receipt *ethtypes.Receipt,
+	contractAddr ethcommon.Address,
+	contractSwapID [32]byte,
+	secret [32]byte,
+) (*ethtypes.Receipt, error) {
 	if receipt.Status != ethtypes.ReceiptStatusSuccessful {
-		err = fmt.Errorf("relayer's claim transaction failed (gas-lost=%d tx=%s block=%d), %w",
-			receipt.GasUsed, txHash, receipt.BlockNumber, block.ErrorFromBlock(ctx, ec, receipt))
+		err := fmt.Errorf("relayer's claim transaction failed (gas-lost=%d tx=%s block=%d), %w",
+			receipt.GasUsed, receipt.TxHash, receipt.BlockNumber, block.ErrorFromBlock(ctx, ec, receipt))
 		return nil, err
 	}
 
 	if len(receipt.Logs) == 0 {
 		return nil, fmt.Errorf("relayer's claim transaction had no logs (tx=%s block=%d)",
-			txHash, receipt.BlockNumber)
+			receipt.TxHash, receipt.BlockNumber)
 	}
 
-	if err = checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret); err != nil {
+	if err := checkClaimedLog(receipt.Logs[0], contractAddr, contractSwapID, secret); err != nil {
 		return nil, fmt.Errorf("relayer's claim had logs error (tx=%s block=%d): %w",
-			txHash, receipt.BlockNumber, err)
+			receipt.TxHash, receipt.BlockNumber, err)
 	}
 
 	return receipt, nil
