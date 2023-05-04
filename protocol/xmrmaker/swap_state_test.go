@@ -146,10 +146,15 @@ func TestNewSwapState_generateAndSetKeys(t *testing.T) {
 
 func TestSwapState_ClaimFunds(t *testing.T) {
 	_, swapState := newTestSwapState(t)
+	// don't handle Ready logs, as handling Ready logs calls claimFunds()
+	// which we want to call in this function instead
+	swapState.logReadyCh = nil
 
 	claimKey := swapState.secp256k1Pub.Keccak256()
 	newSwap(t, swapState, claimKey,
 		dummySwapKey, big.NewInt(33), defaultTimeoutDuration)
+
+	swapState.setNextExpectedEvent(EventContractReadyType)
 
 	txOpts, err := swapState.ETHClient().TxOpts(swapState.ctx)
 	require.NoError(t, err)
@@ -160,7 +165,7 @@ func TestSwapState_ClaimFunds(t *testing.T) {
 	receipt, err := swapState.claimFunds()
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
-	require.True(t, swapState.info.Status.IsOngoing())
+	require.False(t, swapState.info.Status.IsOngoing())
 }
 
 func TestSwapState_handleSendKeysMessage(t *testing.T) {
