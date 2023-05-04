@@ -1176,6 +1176,7 @@ func runTransferXMR(ctx *cli.Context) error {
 		Amount: amount,
 	}
 
+	fmt.Printf("Transferring %s XMR to %s, waiting 1 block for confirmation\n", amount, to)
 	resp, err := c.TransferXMR(req)
 	if err != nil {
 		return err
@@ -1208,6 +1209,7 @@ func runSweepXMR(ctx *cli.Context) error {
 		To: to,
 	}
 
+	fmt.Printf("Sweeping %s XMR to %s, waiting 1 block for confirmation\n", balances.PiconeroBalance.AsMoneroString(), to)
 	resp, err := c.SweepXMR(req)
 	if err != nil {
 		return err
@@ -1236,6 +1238,7 @@ func runTransferETH(ctx *cli.Context) error {
 		Amount: amount,
 	}
 
+	fmt.Printf("Transferring %s ETH to %s\n", amount, to)
 	resp, err := c.TransferETH(req)
 	if err != nil {
 		return err
