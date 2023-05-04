@@ -22,6 +22,11 @@ Currently, due to protocol limitations, XMR holders who want ETH can only act as
 
 See the [build instructions](./build.md) to build the swapd and swapcli programs.
 
+Alternatively, you can install the pre-built binaries provided with the [releases](https://github.com/AthanorLabs/atomic-swap/releases). After downloading the `swapd` and `swapcli` binaries for your machine, you can install them in your PATH. For example, on Linux:
+```bash
+sudo mv ~/Downloads/swapd-linux-x64 /usr/local/bin/swapd && sudo chmod +x /usr/local/bin/swapd
+```
+
 ## Swap daemon setup 
 
 The atomic swap daemon requires access to a fully synced Monero client and Ethereum client. It's recommended to run your own node, but you can also use a remote node.
@@ -41,7 +46,7 @@ For Linux 64-bit, you can do:
 
 3. Optional: If you have a Monero wallet file you wish to use, place it in `{DATA_DIR}/wallet/` and call it
    `swap-wallet`. By default `{DATA_DIR}` is `${HOME}/.atomicswap/mainnet`, but if you
-   are creating multiple stagenet `swapd` instances on the same host, you should pass
+   are creating multiple `swapd` instances on the same host, you should pass
    `swapd` the `--data-dir` flag so each instance has a separate directory to store its
    data. If you skip this step, a new wallet will be created that you can later fund for
    swaps.
@@ -50,7 +55,7 @@ For Linux 64-bit, you can do:
 
 5. Start the `swapd` daemon. Change `--eth-endpoint` to point to your endpoint.
 ```bash
-./bin/swapd --env stagenet --eth-endpoint MAINNET_ENDPOINT
+./bin/swapd --eth-endpoint MAINNET_ENDPOINT
 ```
 
 If you did not provide a Monero wallet file with `--wallet-file` above, a Monero wallet file is generated for you at `${HOME}/.atomicswap/mainnet/wallet/swap-wallet`. You can pass this to `monero-wallet-cli --wallet-file FILE` to interact with it. **The wallet password is empty by default.**
@@ -77,7 +82,7 @@ The Ethereum network requires that users have ether in an account to be able to 
 
 To run a node as a relayer, pass the `--relayer` flag to `swapd`:
 ```bash
-./bin/swapd --env stagenet --eth-endpoint MAINNET_ENDPOINT --relayer
+./bin/swapd --eth-endpoint MAINNET_ENDPOINT --relayer
 ```
 
 **Note:** the current fee sent to relayers is 0.01 ETH per swap. Subtract the gas cost from this to determine how much profit will be made. The gas required to do a relayer-claim transaction is `85040` gas. Multiply this by the transaction gas price for the gas cost. The gas price is set via oracle unless you manually set it with the `personal_setGasPrice` RPC call.
