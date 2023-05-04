@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -92,6 +93,11 @@ type Backend interface {
 	SetSwapTimeout(timeout time.Duration)
 	SetXMRDepositAddress(*mcrypto.Address, types.Hash)
 	ClearXMRDepositAddress(types.Hash)
+
+	// transfer helpers
+	TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error)
+	SweepXMR(to *mcrypto.Address) ([]string, error)
+	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (types.Hash, error)
 }
 
 type backend struct {
@@ -377,4 +383,32 @@ func (b *backend) SubmitClaimToRelayer(
 	}
 
 	return b.SubmitRelayRequest(relayerID, req)
+}
+
+func (b *backend) TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error) {
+	res, err := b.moneroWallet.Transfer(b.ctx, to, 0, amount, 1)
+	if err != nil {
+		return "", err
+	}
+
+	return res.TxID, nil
+
+}
+
+func (b *backend) SweepXMR(to *mcrypto.Address) ([]string, error) {
+	res, err := b.moneroWallet.SweepAll(b.ctx, to, 0, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	txIDs := make([]string, len(res))
+	for i, transfer := range res {
+		txIDs[i] = transfer.TxID
+	}
+
+	return txIDs, nil
+}
+
+func (b *backend) TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (types.Hash, error) {
+	return b.ethClient.Transfer(b.ctx, to, amount)
 }
