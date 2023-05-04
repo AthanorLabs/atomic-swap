@@ -11,6 +11,10 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
+	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+
+	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // PersonalService handles private keys and wallets.
@@ -117,5 +121,70 @@ func (s *PersonalService) Balances(
 		WeiBalance:              eBal,
 		TokenBalances:           tokenBalances,
 	}
+	return nil
+}
+
+// TransferXMRRequest ...
+type TransferXMRRequest struct {
+	To     *mcrypto.Address `json:"to" validate:"required"`
+	Amount *apd.Decimal     `json:"amount" validate:"required"`
+}
+
+// TransferXMRResponse ...
+type TransferXMRResponse struct {
+	TxID string `json:"txID"`
+}
+
+// TransferXMR transfers XMR from the swapd wallet.
+func (s *PersonalService) TransferXMR(_ *http.Request, req *TransferXMRRequest, resp *TransferXMRResponse) error {
+	txID, err := s.pb.TransferXMR(req.To, coins.MoneroToPiconero(req.Amount))
+	if err != nil {
+		return err
+	}
+
+	resp.TxID = txID
+	return nil
+}
+
+// SweepXMRRequest ...
+type SweepXMRRequest struct {
+	To *mcrypto.Address `json:"to" validate:"required"`
+}
+
+// SweepXMRResponse ...
+type SweepXMRResponse struct {
+	TxIDs []string `json:"txIds"`
+}
+
+// SweepXMR sweeps XMR from the swapd wallet.
+func (s *PersonalService) SweepXMR(_ *http.Request, req *SweepXMRRequest, resp *SweepXMRResponse) error {
+	txIDs, err := s.pb.SweepXMR(req.To)
+	if err != nil {
+		return err
+	}
+
+	resp.TxIDs = txIDs
+	return nil
+}
+
+// TransferETHRequest ...
+type TransferETHRequest struct {
+	To     ethcommon.Address `json:"to" validate:"required"`
+	Amount *apd.Decimal      `json:"amount" validate:"required"`
+}
+
+// TransferETHResponse ...
+type TransferETHResponse struct {
+	TxHash ethcommon.Hash `json:"txHash"`
+}
+
+// TransferETH transfers ETH from the swapd wallet.
+func (s *PersonalService) TransferETH(_ *http.Request, req *TransferETHRequest, resp *TransferETHResponse) error {
+	txHash, err := s.pb.TransferETH(req.To, coins.EtherToWei(req.Amount))
+	if err != nil {
+		return err
+	}
+
+	resp.TxHash = txHash
 	return nil
 }

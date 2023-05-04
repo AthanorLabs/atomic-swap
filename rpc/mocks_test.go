@@ -237,3 +237,15 @@ func (*mockProtocolBackend) ETHClient() extethclient.EthClient {
 func (*mockProtocolBackend) SwapCreatorAddr() ethcommon.Address {
 	panic("not implemented")
 }
+
+func (*mockProtocolBackend) TransferXMR(_ *mcrypto.Address, _ *coins.PiconeroAmount) (string, error) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) SweepXMR(_ *mcrypto.Address) ([]string, error) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) TransferETH(_ ethcommon.Address, _ *coins.WeiAmount) (ethcommon.Hash, error) {
+	panic("not implemented")
+}
