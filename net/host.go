@@ -143,6 +143,7 @@ func (h *Host) SetHandlers(makerHandler MakerHandler, relayHandler RelayHandler)
 
 	h.h.SetStreamHandler(queryProtocolID, h.handleQueryStream)
 	h.h.SetStreamHandler(relayProtocolID, h.handleRelayStream)
+	h.h.SetStreamHandler(relayerQueryProtocolID, h.handleRelayerQueryStream)
 	h.h.SetStreamHandler(swapID, h.handleProtocolStream)
 }
 
@@ -180,17 +181,40 @@ func (h *Host) SendSwapMessage(msg Message, id types.Hash) error {
 
 // CloseProtocolStream closes the current swap protocol stream.
 func (h *Host) CloseProtocolStream(offerID types.Hash) {
-	h.swapMu.RLock()
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
 	swap, has := h.swaps[offerID]
-	h.swapMu.RUnlock()
+	if !has || swap.streamClosed {
+		return
+	}
+
+	swap.streamClosed = true
+	log.Debugf("closing stream: peer=%s protocol=%s",
+		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
+	)
+
+	_ = swap.stream.Close()
+}
+
+// DeleteOngoingSwap deletes an ongoing swap from the network's state.
+// Note: the caller of this function must ensure that `CloseProtocolStream`
+// has also been called.
+func (h *Host) DeleteOngoingSwap(offerID types.Hash) {
+	h.swapMu.Lock()
+	defer h.swapMu.Unlock()
+
+	swap, has := h.swaps[offerID]
 	if !has {
 		return
 	}
 
-	log.Debugf("closing stream: peer=%s protocol=%s",
-		swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
-	)
-	_ = swap.stream.Close()
+	if !swap.streamClosed {
+		log.Errorf("deleting ongoing swap where stream isn't closed: peer=%s protocol=%s",
+			swap.stream.Conn().RemotePeer(), swap.stream.Protocol(),
+		)
+	}
+
+	delete(h.swaps, offerID)
 }
 
 // Advertise advertises the namespaces now instead of waiting for the next periodic

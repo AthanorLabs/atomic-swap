@@ -24,6 +24,7 @@ import (
 const (
 	Unknown byte = iota // occupies the uninitialized value
 	QueryResponseType
+	RelayerQueryResponseType
 	RelayClaimRequestType
 	RelayClaimResponseType
 	SendKeysType
@@ -39,6 +40,8 @@ func TypeToString(t byte) string {
 		return "SendKeysMessage"
 	case NotifyETHLockedType:
 		return "NotifyETHLocked"
+	case RelayerQueryResponseType:
+		return "RelayerQueryResponseType"
 	case RelayClaimRequestType:
 		return "RelayClaimRequestType"
 	case RelayClaimResponseType:
@@ -62,6 +65,8 @@ func DecodeMessage(b []byte) (common.Message, error) {
 	switch msgType {
 	case QueryResponseType:
 		msg = new(QueryResponse)
+	case RelayerQueryResponseType:
+		msg = new(RelayerQueryResponse)
 	case RelayClaimRequestType:
 		msg = new(RelayClaimRequest)
 	case RelayClaimResponseType:

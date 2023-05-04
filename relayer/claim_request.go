@@ -5,28 +5,14 @@
 package relayer
 
 import (
-	"context"
 	"crypto/ecdsa"
-	"math/big"
+	"fmt"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	logging "github.com/ipfs/go-log"
 
-	"github.com/athanorlabs/atomic-swap/coins"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"
-)
-
-const (
-	relayedClaimGas   = 70000  // worst case gas usage for the claimRelayer swapFactory call
-	forwarderClaimGas = 156000 // worst case gas usage when using forwarder to claim
-)
-
-// FeeWei and FeeEth are the fixed 0.009 ETH fee for using a swap relayer to claim.
-var (
-	FeeWei = big.NewInt(9e15)
-	FeeEth = coins.NewWeiAmount(FeeWei).AsEther()
 )
 
 var log = logging.Logger("relayer")
@@ -34,33 +20,52 @@ var log = logging.Logger("relayer")
 // CreateRelayClaimRequest fills and returns a RelayClaimRequest ready for
 // submission to a relayer.
 func CreateRelayClaimRequest(
-	ctx context.Context,
 	claimerEthKey *ecdsa.PrivateKey,
-	ec *ethclient.Client,
-	swapCreatorAddr ethcommon.Address,
-	forwarderAddr ethcommon.Address,
-	swap *contracts.SwapCreatorSwap,
-	secret *[32]byte,
+	relaySwap *contracts.SwapCreatorRelaySwap,
+	secret [32]byte,
 ) (*message.RelayClaimRequest, error) {
-
-	signature, err := createForwarderSignature(
-		ctx,
+	signature, err := createRelayClaimSignature(
 		claimerEthKey,
-		ec,
-		swapCreatorAddr,
-		forwarderAddr,
-		swap,
-		secret,
+		relaySwap,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &message.RelayClaimRequest{
-		OfferID:         nil, // set elsewhere if sending to counterparty
-		SwapCreatorAddr: swapCreatorAddr,
-		Swap:            swap,
-		Secret:          secret[:],
-		Signature:       signature,
+		OfferID:   nil, // set elsewhere if sending to counterparty
+		RelaySwap: relaySwap,
+		Secret:    secret[:],
+		Signature: signature,
 	}, nil
+}
+
+func createRelayClaimSignature(
+	claimerEthKey *ecdsa.PrivateKey,
+	relaySwap *contracts.SwapCreatorRelaySwap,
+) ([]byte, error) {
+	signerAddress := ethcrypto.PubkeyToAddress(claimerEthKey.PublicKey)
+	if relaySwap.Swap.Claimer != signerAddress {
+		return nil, fmt.Errorf("signing key %s does not match claimer %s", signerAddress, relaySwap.Swap.Claimer)
+	}
+
+	// signature format is (r || s || v), v = 27/28
+	signature, err := Sign(claimerEthKey, relaySwap.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign relay request: %w", err)
+	}
+
+	return signature, nil
+}
+
+// Sign signs the given digest and returns a 65-byte signature in (r,s,v) format.
+func Sign(key *ecdsa.PrivateKey, digest [32]byte) ([]byte, error) {
+	sig, err := ethcrypto.Sign(digest[:], key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ethereum wants 27/28 for v
+	sig[64] += 27
+	return sig, nil
 }

@@ -22,8 +22,8 @@ var (
 	errSwapIDMismatch                = errors.New("hash of swap struct does not match swap ID")
 	errLockTxReverted                = errors.New("other party failed to lock ETH asset (transaction reverted)")
 	errInvalidETHLockedTransaction   = errors.New("eth locked tx was not to correct contract address")
-	errInvalidT0                     = errors.New("invalid t0 value; asset was locked too far in the past")
-	errInvalidT1                     = errors.New("invalid swap timeout set by counterparty")
+	errInvalidT1                     = errors.New("invalid t1 value; asset was locked too far in the past")
+	errInvalidT2                     = errors.New("invalid swap timeout set by counterparty")
 	errRelayedTransactionTimeout     = errors.New("relayed transaction was not included within one minute")
 	errClaimedLogInvalidContractAddr = errors.New("log was not emitted by correct contract")
 	errClaimedLogWrongTopicLength    = errors.New("log did not have 3 topics")
@@ -84,5 +84,17 @@ func (e errUnlockedBalanceTooLow) Error() string {
 	return fmt.Sprintf("balance %s XMR is too low for maximum offer amount of %s XMR",
 		e.unlockedBalance.String(),
 		e.maxOfferAmount.String(),
+	)
+}
+
+type errETHBalanceTooLowForTokenSwap struct {
+	ethBalance         *apd.Decimal
+	requiredETHToClaim *apd.Decimal
+}
+
+func (e errETHBalanceTooLowForTokenSwap) Error() string {
+	return fmt.Sprintf("balance of %s ETH insufficient for token swap, %s ETH required to claim",
+		e.ethBalance.Text('f'),
+		e.requiredETHToClaim.Text('f'),
 	)
 }

@@ -24,10 +24,10 @@ const (
 	EventETHLockedType EventType = iota
 
 	// EventContractReadyType is triggered when the taker sets the contract to
-	// "ready" or timeout0 is reached. When this event occurs, we can claim ETH
+	// "ready" or timeout1 is reached. When this event occurs, we can claim ETH
 	// from the contract. After this event, the other possible events are
 	// EventETHRefundedType (which would only happen if we go offline until
-	// timeout1, causing us to refund), or EventExitType (refund).
+	// timeout2, causing us to refund), or EventExitType (refund).
 	EventContractReadyType
 
 	// EventETHRefundedType is triggered when the taker refunds the
@@ -196,7 +196,15 @@ func (s *swapState) handleEvent(event Event) {
 		err := s.handleNotifyETHLocked(e.message)
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle EventETHLocked: %w", err)
+			err = s.exit()
+			if err != nil {
+				log.Warnf("failed to exit swap: %s", err)
+			}
 		}
+
+		// close the stream to the remote peer, since we won't be
+		// receiving any more messages.
+		s.Backend.CloseProtocolStream(s.OfferID())
 
 		// nextExpectedEvent was set in s.lockFunds()
 	case *EventContractReady:

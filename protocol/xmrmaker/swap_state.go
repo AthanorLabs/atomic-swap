@@ -67,7 +67,7 @@ type swapState struct {
 	swapCreatorAddr ethcommon.Address
 	contractSwapID  [32]byte
 	contractSwap    *contracts.SwapCreatorSwap
-	t0, t1          time.Time
+	t1, t2          time.Time
 
 	// XMRTaker's keys for this session
 	xmrtakerPublicSpendKey     *mcrypto.PublicKey
@@ -92,7 +92,7 @@ type swapState struct {
 	// channel for `Claimed` logs seen on-chain
 	logClaimedCh chan ethtypes.Log
 
-	// signals the t0 expiration handler to return
+	// signals the t1 expiration handler to return
 	readyCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
 	done chan struct{}
@@ -109,7 +109,7 @@ func newSwapStateFromStart(
 	desiredAmount coins.EthAssetAmount,
 ) (*swapState, error) {
 	// at this point, we've received the counterparty's keys,
-	// and will send our own after this function returns.
+	// and we'll send our own after this function returns.
 	// see HandleInitiateMessage().
 	stage := types.KeysExchanged
 	if offerExtra.StatusCh == nil {
@@ -315,11 +315,13 @@ func newSwapStateFromOngoing(
 		return nil, err
 	}
 
-	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
+	s.setTimeouts(ethSwapInfo.Swap.Timeout1, ethSwapInfo.Swap.Timeout2)
 	s.privkeys = sk
 	s.pubkeys = sk.PublicKeyPair()
 	s.contractSwapID = ethSwapInfo.SwapID
 	s.contractSwap = ethSwapInfo.Swap
+
+	go s.runT1ExpirationHandler()
 	return s, nil
 }
 
@@ -461,13 +463,32 @@ func (s *swapState) OfferID() types.Hash {
 	return s.info.OfferID
 }
 
+// NotifyStreamClosed is called by the network when the swap stream closes.
+func (s *swapState) NotifyStreamClosed() {
+	switch s.nextExpectedEvent {
+	case EventETHLockedType:
+		// exit the swap, the remote peer closed the stream
+		// before we received all expected messages
+		err := s.Exit()
+		if err != nil {
+			log.Errorf("failed to exit swap: %s", err)
+		}
+	default:
+		// do nothing, as we're not waiting for more network messages
+	}
+}
+
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
 	event := newEventExit()
 	s.eventCh <- event
-	return <-event.errCh
+	err := <-event.errCh
+	if err != nil {
+		log.Errorf("failed to exit swap: %s", err)
+	}
+	return err
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
@@ -499,6 +520,9 @@ func (s *swapState) exit() error {
 				log.Warnf("failed to delete offer %s from db: %s", s.offer.ID, err)
 			}
 		}
+
+		// delete from network state
+		s.Backend.DeleteOngoingSwap(s.offer.ID)
 
 		err = s.Backend.RecoveryDB().DeleteSwap(s.offer.ID)
 		if err != nil {

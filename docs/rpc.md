@@ -328,7 +328,7 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 
 ### `personal_setSwapTimeout`
 
-Sets the duration between swap initiation and t0 and t0 and t1, in seconds.
+Sets the duration between swap initiation and t1 and t1 and t2, in seconds.
 
 Parameters:
 - `duration`: duration of timeout, in seconds
@@ -344,7 +344,7 @@ curl -X POST http://127.0.0.1:5002 -d '{"jsonrpc":"2.0","id":"0","method":"perso
 
 ### `personal_getSwapTimeout`
 
-Returns the duration between swap initiation and t0 and t0 and t1, in seconds
+Returns the duration between swap initiation and t1 and t1 and t2, in seconds
 
 Parameters:
 - none
@@ -398,8 +398,8 @@ Each items in `swaps` contains:
 - `exchangeRate`: the exchange rate of the swap, expressed in a ratio of XMR/ETH.
 - `status`: the swap's status.
 - `startTime`: the start time of the swap (in RFC 3339 format).
-- `timeout0`: the time at which the ETH-taker can always claim ETH, and the ETH-maker can no longer refund.
-- `timeout1`: the time at which the ETH-taker can no longer claim ETH, and the ETH-maker is able to refund.
+- `timeout1`: the time at which the ETH-taker can always claim ETH, and the ETH-maker can no longer refund.
+- `timeout2`: the time at which the ETH-taker can no longer claim ETH, and the ETH-maker is able to refund.
 
 Example:
 ```bash
@@ -420,8 +420,8 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
         "exchangeRate": "0.05",
         "status": "ETHLocked",
         "startTime": "2023-03-18T16:47:50.598029743-04:00",
-        "timeout0": "2023-03-18T16:49:55-04:00",
-        "timeout1": "2023-03-18T16:51:55-04:00"
+        "timeout1": "2023-03-18T16:49:55-04:00",
+        "timeout2": "2023-03-18T16:51:55-04:00"
       }
     ]
   },
@@ -447,8 +447,8 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
         "exchangeRate": "1",
         "status": "ETHLocked",
         "startTime": "2023-03-18T16:52:56.304958446-04:00",
-        "timeout0": "2023-03-18T16:55:01-04:00",
-        "timeout1": "2023-03-18T16:57:01-04:00"
+        "timeout1": "2023-03-18T16:55:01-04:00",
+        "timeout2": "2023-03-18T16:57:01-04:00"
       },
       {
         "id": "0x8f23b7e187b1db26fcfd23c1699c3e56221153fd7225ada0b0cae8fdbd1cab65",
@@ -458,8 +458,8 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
         "exchangeRate": "1",
         "status": "ETHLocked",
         "startTime": "2023-03-18T16:53:02.642556563-04:00",
-        "timeout0": "2023-03-18T16:55:07-04:00",
-        "timeout1": "2023-03-18T16:57:07-04:00"
+        "timeout1": "2023-03-18T16:55:07-04:00",
+        "timeout2": "2023-03-18T16:57:07-04:00"
       }
     ]
   },

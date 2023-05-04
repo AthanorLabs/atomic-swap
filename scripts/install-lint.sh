@@ -2,7 +2,7 @@
 # Installs golangci-lint (https://golangci-lint.run) into the user's personal GOPATH bin directory if it is
 # not there already or if the version does not match the value defined below.
 
-VERSION="v1.51.1"
+VERSION="v1.51.2"
 GOBIN="$(go env GOPATH)/bin"
 LINT="${GOBIN}/golangci-lint"
 

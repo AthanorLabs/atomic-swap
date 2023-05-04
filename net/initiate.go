@@ -30,7 +30,6 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 	defer h.swapMu.Unlock()
 
 	id := s.OfferID()
-
 	if h.swaps[id] != nil {
 		return errSwapAlreadyInProgress
 	}
@@ -62,7 +61,6 @@ func (h *Host) Initiate(who peer.AddrInfo, sendKeysMessage common.Message, s com
 	h.swaps[id] = &swap{
 		swapState: s,
 		stream:    stream,
-		isTaker:   true,
 	}
 
 	go h.receiveInitiateResponse(stream, s)
@@ -116,7 +114,6 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 	}
 
 	curPeer := stream.Conn().RemotePeer()
-
 	log.Debugf("received message from peer=%s type=%s", curPeer, message.TypeToString(msg.Type()))
 
 	im, ok := msg.(*SendKeysMessage)
@@ -126,29 +123,35 @@ func (h *Host) handleProtocolStream(stream libp2pnetwork.Stream) {
 		return
 	}
 
-	var s SwapState
-	s, resp, err := h.makerHandler.HandleInitiateMessage(curPeer, im)
+	h.swapMu.Lock()
+	if h.swaps[im.OfferID] != nil {
+		log.Warnf("ignoring initiation from peer %s for swap %s: %s", curPeer, im.OfferID, errOfferUnavailable)
+		h.swapMu.Unlock()
+		_ = stream.Close()
+		return
+	}
+
+	// set the stream here but not the swapState, since we don't have it yet
+	// HandleInitiateMessage requires the network to be aware of the swap's stream,
+	// since it sends the SendKeysMessage response using that stream.
+	h.swaps[im.OfferID] = &swap{
+		stream: stream,
+	}
+	h.swapMu.Unlock()
+
+	s, err := h.makerHandler.HandleInitiateMessage(curPeer, im)
 	if err != nil {
 		log.Warnf("failed to handle protocol message: err=%s", err)
 		_ = stream.Close()
+		h.swapMu.Lock()
+		delete(h.swaps, im.OfferID)
+		h.swapMu.Unlock()
 		return
 	}
 
-	if err := p2pnet.WriteStreamMessage(stream, resp, stream.Conn().RemotePeer()); err != nil {
-		log.Warnf("failed to send response to peer: %s", err)
-		if err = s.Exit(); err != nil {
-			log.Warnf("Swap exit failure: %s", err)
-		}
-		_ = stream.Close()
-		return
-	}
-
+	// set the swapState here
 	h.swapMu.Lock()
-	h.swaps[s.OfferID()] = &swap{
-		swapState: s,
-		stream:    stream,
-		isTaker:   false,
-	}
+	h.swaps[im.OfferID].swapState = s
 	h.swapMu.Unlock()
 
 	h.handleProtocolStreamInner(stream, s)
@@ -185,11 +188,6 @@ func (h *Host) handleProtocolStreamClose(stream libp2pnetwork.Stream, s SwapStat
 	log.Debugf("closing stream: peer=%s protocol=%s", stream.Conn().RemotePeer(), stream.Protocol())
 	_ = stream.Close()
 
-	log.Debugf("exiting swap...")
-	if err := s.Exit(); err != nil {
-		log.Errorf("failed to exit protocol: %s", err)
-	}
-	h.swapMu.Lock()
-	delete(h.swaps, s.OfferID())
-	h.swapMu.Unlock()
+	// notify swap state that the stream has closed
+	s.NotifyStreamClosed()
 }

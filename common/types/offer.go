@@ -22,6 +22,12 @@ var (
 	// CurOfferVersion is the latest supported version of a serialised Offer struct
 	CurOfferVersion, _ = semver.NewVersion("1.0.0")
 
+	// Don't allow offers over 1000 XMR. Mainly to prevent fat-finger errors, it
+	// could be raised if users need it.
+	maxOfferValue = apd.New(1, 3) // 1000 XMR
+)
+
+var (
 	errOfferVersionMissing = errors.New(`required "version" field missing in offer`)
 	errOfferIDNotSet       = errors.New(`"offerID" is not set`)
 	errExchangeRateNil     = errors.New(`"exchangeRate" is not set`)
@@ -131,6 +137,7 @@ func (o *Offer) validate() error {
 		return err
 	}
 
+	// It is an error if the min is greater than the max
 	if o.MinAmount.Cmp(o.MaxAmount) > 0 {
 		return errMinGreaterThanMax
 	}
@@ -139,6 +146,25 @@ func (o *Offer) validate() error {
 	// it won't get invoked when the value is not present.
 	if o.ExchangeRate == nil {
 		return errExchangeRateNil
+	}
+
+	// We want to prevent offers whose claim value is so low that a relayer
+	// can't be used to complete the swap if the maker does not have sufficient
+	// ETH to make the claim themselves. While relayers are not used with ERC20
+	// swaps, we still want a minimum swap amount, so we use the same value.
+	relayerFeeAsXMR, err := o.ExchangeRate.ToXMR(coins.RelayerFeeETH)
+	if err != nil {
+		return err
+	}
+	if o.MinAmount.Cmp(relayerFeeAsXMR) <= 0 {
+		return fmt.Errorf(
+			"min amount must be greater than %s ETH when converted (%s XMR)",
+			coins.RelayerFeeETH.Text('f'), relayerFeeAsXMR.Text('f'))
+	}
+
+	if o.MaxAmount.Cmp(maxOfferValue) > 0 {
+		return fmt.Errorf("%s XMR exceeds max offer amount of %s XMR",
+			o.MaxAmount.Text('f'), maxOfferValue.Text('f'))
 	}
 
 	if o.ID != o.hash() {

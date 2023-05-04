@@ -7,7 +7,6 @@ package xmrtaker
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -73,7 +72,7 @@ type swapState struct {
 	// swap contract and timeouts in it; set once contract is deployed
 	contractSwapID [32]byte
 	contractSwap   *contracts.SwapCreatorSwap
-	t0, t1         time.Time
+	t1, t2         time.Time
 
 	// tracks the state of the swap
 	nextExpectedEvent EventType
@@ -87,9 +86,9 @@ type swapState struct {
 	eventCh chan Event
 	// channel for `Claimed` logs seen on-chain
 	logClaimedCh chan ethtypes.Log
-	// signals the t0 expiration handler to return
-	xmrLockedCh chan struct{}
 	// signals the t1 expiration handler to return
+	xmrLockedCh chan struct{}
+	// signals the t2 expiration handler to return
 	claimedCh chan struct{}
 	// signals to the creator xmrmaker instance that it can delete this swap
 	done chan struct{}
@@ -101,7 +100,6 @@ func newSwapStateFromStart(
 	offerID types.Hash,
 	noTransferBack bool,
 	providedAmount coins.EthAssetAmount,
-	expectedAmount *coins.PiconeroAmount,
 	exchangeRate *coins.ExchangeRate,
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
@@ -123,12 +121,17 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
+	expectedAmount, err := exchangeRate.ToXMR(providedAmount.AsStandard())
+	if err != nil {
+		return nil, err
+	}
+
 	info := pswap.NewInfo(
 		makerPeerID,
 		offerID,
 		coins.ProvidesETH,
 		providedAmount.AsStandard(),
-		expectedAmount.AsMonero(),
+		expectedAmount,
 		exchangeRate,
 		ethAsset,
 		stage,
@@ -189,7 +192,7 @@ func newSwapStateFromOngoing(
 		return nil, errContractAddrMismatch(ethSwapInfo.SwapCreatorAddr.String())
 	}
 
-	s.setTimeouts(ethSwapInfo.Swap.Timeout0, ethSwapInfo.Swap.Timeout1)
+	s.setTimeouts(ethSwapInfo.Swap.Timeout1, ethSwapInfo.Swap.Timeout2)
 	s.privkeys = sk
 	s.pubkeys = sk.PublicKeyPair()
 	s.contractSwapID = ethSwapInfo.SwapID
@@ -200,6 +203,9 @@ func newSwapStateFromOngoing(
 	if info.Status == types.ETHLocked {
 		go s.checkForXMRLock()
 	}
+
+	go s.runT1ExpirationHandler()
+	go s.runT2ExpirationHandler()
 	return s, nil
 }
 
@@ -326,13 +332,32 @@ func (s *swapState) OfferID() types.Hash {
 	return s.info.OfferID
 }
 
+// NotifyStreamClosed is called by the network when the swap stream closes.
+func (s *swapState) NotifyStreamClosed() {
+	switch s.nextExpectedEvent {
+	case EventKeysReceivedType:
+		// exit the swap, the remote peer closed the stream
+		// before we received all expected messages
+		err := s.Exit()
+		if err != nil {
+			log.Errorf("failed to exit swap: %s", err)
+		}
+	default:
+		// do nothing, as we're not waiting for more network messages
+	}
+}
+
 // Exit is called by the network when the protocol stream closes, or if the swap_refund RPC endpoint is called.
 // It exists the swap by refunding if necessary. If no locking has been done, it simply aborts the swap.
 // If the swap already completed successfully, this function does not do anything regarding the protocol.
 func (s *swapState) Exit() error {
 	event := newEventExit()
 	s.eventCh <- event
-	return <-event.errCh
+	err := <-event.errCh
+	if err != nil {
+		log.Errorf("failed to exit swap: %s", err)
+	}
+	return err
 }
 
 // exit is the same as Exit, but assumes the calling code block already holds the swapState lock.
@@ -345,6 +370,9 @@ func (s *swapState) exit() error {
 			log.Warnf("failed to mark swap %s as completed: %s", s.info.OfferID, err)
 			return
 		}
+
+		// delete from network state
+		s.Backend.DeleteOngoingSwap(s.OfferID())
 
 		err = s.Backend.RecoveryDB().DeleteSwap(s.OfferID())
 		if err != nil {
@@ -381,23 +409,27 @@ func (s *swapState) exit() error {
 		//
 		// for EventETHClaimed, the XMR has been locked, but the
 		// ETH hasn't been claimed, but the contract has been set to ready.
-		// we should also refund in this case, since we might be past t1.
+		// we should also refund in this case, since we might be past t2.
 		receipt, err := s.tryRefund()
 		if err != nil {
-			if errors.Is(err, errRefundSwapCompleted) {
-				s.clearNextExpectedEvent(types.CompletedRefund)
-				log.Infof("swap was already refunded")
-				return nil
-			}
+			if errors.Is(err, errRefundSwapCompleted) || strings.Contains(err.Error(), revertSwapCompleted) {
+				log.Infof("swap was already completed")
 
-			if strings.Contains(err.Error(), revertSwapCompleted) {
-				// note: this should NOT ever error; it could if the ethclient
-				// or monero clients crash during the course of the claim,
-				// but that would be very bad.
 				err = s.tryClaim()
 				if err != nil {
+					if errors.Is(err, errNoClaimLogsFound) {
+						// in this case, assume we refunded
+						s.clearNextExpectedEvent(types.CompletedRefund)
+						return nil
+					}
+
+					// note: this should NOT occur; it could if the ethclient
+					// or monero clients crash during the course of the claim,
+					// but that would be very bad.
 					return fmt.Errorf("failed to claim even though swap was completed on-chain: %w", err)
 				}
+
+				return nil
 			}
 
 			return fmt.Errorf("failed to refund: %w", err)
@@ -440,48 +472,48 @@ func (s *swapState) tryRefund() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	log.Debugf("tryRefund isReady=%v untilT0=%vs untilT1=%vs",
-		isReady, s.t0.Sub(ts).Seconds(), s.t1.Sub(ts).Seconds())
+	log.Debugf("tryRefund isReady=%v untilT1=%vs untilT2=%vs",
+		isReady, s.t1.Sub(ts).Seconds(), s.t2.Sub(ts).Seconds())
 
-	if ts.Before(s.t0) && !isReady {
+	if ts.Before(s.t1) && !isReady {
 		receipt, err := s.refund() //nolint:govet
 		// TODO: Have refund() return errors that we can use errors.Is to check against
 		if err == nil {
 			return receipt, nil
 		}
 
-		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T0
-		// even though the current block is before T0. In this case, the transaction will be reverted, the
-		// gas fee is lost, but we can wait until T1 and try again.
+		// There is a small, but non-zero chance that our transaction gets placed in a block that is after T1
+		// even though the current block is before T1. In this case, the transaction will be reverted, the
+		// gas fee is lost, but we can wait until T2 and try again.
 		log.Warnf("first refund attempt failed: err=%s", err)
 	}
 
-	if ts.After(s.t1) {
+	if ts.After(s.t2) {
 		return s.refund()
 	}
 
 	// the contract is "ready", so we can't do anything until
-	// the counterparty claims or until t1 passes.
+	// the counterparty claims or until t2 passes.
 	//
-	// we let the runT1ExpirationHandler() routine continue to run and read
+	// we let the runT2ExpirationHandler() routine continue to run and read
 	// from s.eventCh for EventShouldRefund or EventETHClaimed.
 	// (since this function is called from inside the event handler routine,
 	// it won't handle those events while this function is executing.)
-	log.Infof("waiting until time %s to refund", s.t1)
+	log.Infof("waiting until time %s to refund", s.t2)
 
 	waitCtx, waitCtxCancel := context.WithCancel(s.ctx)
 	defer waitCtxCancel()
 
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t1)
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t2)
 		close(waitCh)
 	}()
 
 	for {
 		select {
 		case event := <-s.eventCh:
-			log.Debugf("got event %s while waiting for T1", event.Type())
+			log.Debugf("got event %s while waiting for T2", event.Type())
 			switch event.(type) {
 			case *EventShouldRefund:
 				return s.refund()
@@ -492,11 +524,11 @@ func (s *swapState) tryRefund() (*ethtypes.Receipt, error) {
 			case *EventExit:
 				// do nothing, we're already exiting
 			default:
-				panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T1: %s", event.Type()))
+				panic(fmt.Sprintf("got unexpected event while waiting for Claimed/T2: %s", event.Type()))
 			}
 		case err = <-waitCh:
 			if err != nil {
-				return nil, fmt.Errorf("failed to wait for T1: %w", err)
+				return nil, fmt.Errorf("failed to wait for T2: %w", err)
 			}
 
 			return s.refund()
@@ -504,19 +536,21 @@ func (s *swapState) tryRefund() (*ethtypes.Receipt, error) {
 	}
 }
 
-func (s *swapState) setTimeouts(t0, t1 *big.Int) {
-	s.t0 = time.Unix(t0.Int64(), 0)
+func (s *swapState) setTimeouts(t1, t2 *big.Int) {
 	s.t1 = time.Unix(t1.Int64(), 0)
-	s.info.Timeout0 = &s.t0
+	s.t2 = time.Unix(t2.Int64(), 0)
 	s.info.Timeout1 = &s.t1
+	s.info.Timeout2 = &s.t2
 }
 
+// generateAndSetKeys generates and sets the XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
+// and a DLEq proof proving that the two keys correspond.
 func (s *swapState) generateAndSetKeys() error {
 	if s.privkeys != nil {
 		panic("generateAndSetKeys should only be called once")
 	}
 
-	keysAndProof, err := generateKeys()
+	keysAndProof, err := pcommon.GenerateKeysAndProof()
 	if err != nil {
 		return err
 	}
@@ -531,6 +565,11 @@ func (s *swapState) generateAndSetKeys() error {
 
 // getSecret secrets returns the current secret scalar used to unlock funds from the contract.
 func (s *swapState) getSecret() [32]byte {
+	if s.dleqProof == nil {
+		// the EVM expects the bytes to be big endian, and the ed25519 lib uses little endian
+		return [32]byte(common.Reverse(s.privkeys.SpendKey().Bytes()))
+	}
+
 	secret := s.dleqProof.Secret()
 	var sc [32]byte
 	copy(sc[:], secret[:])
@@ -562,7 +601,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 
 	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
 
-	nonce := generateNonce()
+	nonce := contracts.GenerateNewSwapNonce()
 	receipt, err := s.sender.NewSwap(
 		cmtXMRMaker,
 		cmtXMRTaker,
@@ -592,10 +631,10 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, fmt.Errorf("swap ID not found in transaction receipt's logs: %w", err)
 	}
 
-	var t0 *big.Int
 	var t1 *big.Int
+	var t2 *big.Int
 	for _, log := range receipt.Logs {
-		t0, t1, err = contracts.GetTimeoutsFromLog(log)
+		t1, t2, err = contracts.GetTimeoutsFromLog(log)
 		if err == nil {
 			break
 		}
@@ -605,15 +644,15 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	}
 
 	s.fundsLocked = true
-	s.setTimeouts(t0, t1)
+	s.setTimeouts(t1, t2)
 
 	s.contractSwap = &contracts.SwapCreatorSwap{
 		Owner:        s.ETHClient().Address(),
 		Claimer:      s.xmrmakerAddress,
 		PubKeyClaim:  cmtXMRMaker,
 		PubKeyRefund: cmtXMRTaker,
-		Timeout0:     t0,
 		Timeout1:     t1,
+		Timeout2:     t2,
 		Asset:        ethcommon.Address(s.info.EthAsset),
 		Value:        s.providedAmount.BigInt(),
 		Nonce:        nonce,
@@ -691,17 +730,4 @@ func (s *swapState) refund() (*ethtypes.Receipt, error) {
 
 	s.clearNextExpectedEvent(types.CompletedRefund)
 	return receipt, nil
-}
-
-// generateKeys generates XMRTaker's monero spend and view keys (S_b, V_b), a secp256k1 public key,
-// and a DLEq proof proving that the two keys correspond.
-func generateKeys() (*pcommon.KeysAndProof, error) {
-	return pcommon.GenerateKeysAndProof()
-}
-
-func generateNonce() *big.Int {
-	u256PlusOne := new(big.Int).Lsh(big.NewInt(1), 256)
-	maxU256 := new(big.Int).Sub(u256PlusOne, big.NewInt(1))
-	n, _ := rand.Int(rand.Reader, maxU256)
-	return n
 }

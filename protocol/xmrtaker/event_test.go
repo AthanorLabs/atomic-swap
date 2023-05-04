@@ -84,7 +84,7 @@ func TestSwapState_handleEvent_EventETHClaimed(t *testing.T) {
 	resp := net.LastSentMessage()
 	require.NotNil(t, resp)
 	require.Equal(t, message.NotifyETHLockedType, resp.Type())
-	require.Equal(t, time.Minute*2, s.t1.Sub(s.t0))
+	require.Equal(t, time.Minute*2, s.t2.Sub(s.t1))
 	require.Equal(t, msg.PublicSpendKey.Hex(), s.xmrmakerPublicSpendKey.Hex())
 	require.Equal(t, msg.PrivateViewKey.Hex(), s.xmrmakerPrivateViewKey.Hex())
 

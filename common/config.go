@@ -35,8 +35,9 @@ type MoneroNode struct {
 // Config contains constants that are defaults for various environments
 type Config struct {
 	Env             Environment
-	EthereumChainID *big.Int
 	DataDir         string
+	EthereumChainID *big.Int
+	EthEndpoint     string
 	MoneroNodes     []*MoneroNode
 	SwapCreatorAddr ethcommon.Address
 	Bootnodes       []string
@@ -46,8 +47,9 @@ type Config struct {
 func MainnetConfig() *Config {
 	return &Config{
 		Env:             Mainnet,
-		EthereumChainID: big.NewInt(MainnetChainID),
 		DataDir:         path.Join(baseDir, "mainnet"),
+		EthereumChainID: big.NewInt(MainnetChainID),
+		EthEndpoint:     "", // No mainnet default (permissionless URLs are not reliable)
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -66,10 +68,7 @@ func MainnetConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
-		// Note: SwapCreator contract below is using GSN Forwarder address
-		// 0xB2b5841DBeF766d4b521221732F9B618fCf34A87
-		// https://docs.opengsn.org/networks/addresses.html
-		SwapCreatorAddr: ethcommon.HexToAddress("0xD3d19539D61bB0e7617E499C7262594E71CA1c66"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0xa55aa5557ec22e85804729bc6935029bb84cf16a"),
 		Bootnodes: []string{
 			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
 			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
@@ -86,8 +85,9 @@ func MainnetConfig() *Config {
 func StagenetConfig() *Config {
 	return &Config{
 		Env:             Stagenet,
-		EthereumChainID: big.NewInt(SepoliaChainID),
 		DataDir:         path.Join(baseDir, "stagenet"),
+		EthereumChainID: big.NewInt(SepoliaChainID),
+		EthEndpoint:     "https://rpc.sepolia.org/",
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -102,7 +102,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xEd014568991A9BE34F381Bf46d9c3f7623D4DEa5"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0xbf2B7a6dCE5598Cf002B3507a8D62cf2C35cE5c6"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWSc4yFkPWBFmPToTMbhChH3FAgGH96DNzSg5fio1pQYoN",
@@ -122,6 +122,7 @@ func DevelopmentConfig() *Config {
 		Env:             Development,
 		EthereumChainID: big.NewInt(1337),
 		DataDir:         path.Join(baseDir, "dev"),
+		EthEndpoint:     DefaultGanacheEndpoint,
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "127.0.0.1",

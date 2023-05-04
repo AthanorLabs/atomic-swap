@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -89,8 +88,8 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	}
 
 	//
-	// Validate that --deploy created a contract address file and that we
-	// deployed a forwarder. At some future point, we will ask the RPC endpoint
+	// Validate that --deploy created a contract address file.
+	// At some future point, we will ask the RPC endpoint
 	// what the contract addresses are instead of using this file.
 	//
 	data, err := os.ReadFile(path.Join(dataDir, contractAddressesFile))
@@ -99,19 +98,10 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &m))
 	swapCreatorAddr, ok := m["swapCreatorAddr"]
 	require.True(t, ok)
-	forwarderAddr, ok := m["forwarderAddr"]
-	require.True(t, ok)
 
 	ec, _ := tests.NewEthClient(t)
 	ecCtx := context.Background()
-	discoveredForwarderAddr, err :=
-		contracts.CheckSwapCreatorContractCode(ecCtx, ec, ethcommon.HexToAddress(swapCreatorAddr))
-	require.NoError(t, err)
-	require.Equal(t, strings.ToLower(discoveredForwarderAddr.Hex()), forwarderAddr)
-
-	// something is seriously wrong if this next check fails, as CheckSwapCreatorContractCode
-	// should have already validated the forwarder bytecode
-	err = contracts.CheckForwarderContractCode(ecCtx, ec, ethcommon.HexToAddress(forwarderAddr))
+	err = contracts.CheckSwapCreatorContractCode(ecCtx, ec, ethcommon.HexToAddress(swapCreatorAddr))
 	require.NoError(t, err)
 }
 
@@ -121,7 +111,7 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 
 	// We tested --deploy with the taker, so test passing the contract address here
-	swapCreatorAddr, _, err := deploySwapCreator(context.Background(), ec, key, ethcommon.Address{}, t.TempDir())
+	swapCreatorAddr, err := deploySwapCreator(context.Background(), ec, key, t.TempDir())
 	require.NoError(t, err)
 
 	flags := []string{
@@ -158,9 +148,7 @@ func TestDaemon_BadFlags(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx, _ := newTestContext(t)
 
-	swapCreatorAddr, swapCreator, err := deploySwapCreator(ctx, ec, key, ethcommon.Address{}, t.TempDir())
-	require.NoError(t, err)
-	forwarderAddr, err := swapCreator.TrustedForwarder(nil)
+	swapCreatorAddr, err := deploySwapCreator(ctx, ec, key, t.TempDir())
 	require.NoError(t, err)
 
 	baseFlags := []string{
@@ -185,34 +173,9 @@ func TestDaemon_BadFlags(t *testing.T) {
 			expectErr:   `flag "deploy" or "contract-address" is required for env=dev`,
 		},
 		{
-			description: "deploy SwapCreator with invalid forwarder",
-			extraFlags: []string{
-				fmt.Sprintf("--%s", flagDeploy),
-				fmt.Sprintf("--%s=%s", flagForwarderAddress, swapCreatorAddr), // passing wrong contract
-			},
-			expectErr: "does not contain correct Forwarder code",
-		},
-		{
-			description: "pass invalid forwarder address (wrong length)",
-			extraFlags: []string{
-				fmt.Sprintf("--%s", flagDeploy),
-				fmt.Sprintf("--%s=%sAB", flagForwarderAddress, forwarderAddr), // one byte too long
-			},
-			expectErr: fmt.Sprintf(`"%s" requires a valid ethereum address`, flagForwarderAddress),
-		},
-		{
-			description: "pass forwarder address without deploy flag",
-			extraFlags: []string{
-				fmt.Sprintf("--%s=%s", flagForwarderAddress, forwarderAddr),
-				// next flag is needed, or we fail on a different error first
-				fmt.Sprintf("--%s=%s", flagContractAddress, swapCreatorAddr),
-			},
-			expectErr: fmt.Sprintf(`using flag "%s" requires the "%s" flag`, flagForwarderAddress, flagDeploy),
-		},
-		{
 			description: "pass invalid SwapCreator contract",
 			extraFlags: []string{
-				fmt.Sprintf("--%s=%s", flagContractAddress, forwarderAddr), // passing wrong contract
+				fmt.Sprintf("--%s=%s", flagContractAddress, ethcommon.Address{9}), // passing wrong contract
 			},
 			expectErr: "does not contain correct SwapCreator code",
 		},

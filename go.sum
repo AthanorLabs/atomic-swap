@@ -41,8 +41,6 @@ github.com/athanorlabs/go-dleq v0.1.0 h1:0/llWZG8fz2uintMBKOiBC502zCsDA8nt8vxI73
 github.com/athanorlabs/go-dleq v0.1.0/go.mod h1:DWry6jSD7A13MKmeZA0AX3/xBeQCXDoygX99VPwL3yU=
 github.com/athanorlabs/go-p2p-net v0.2.0 h1:+VpAN10Ys0B28QDXQRaDySvNfHS99Jt83Qq1sUhEnG4=
 github.com/athanorlabs/go-p2p-net v0.2.0/go.mod h1:egbDohZq6I4FzKaVytR+xZKUwA2OqTE6mr9dsNQPPbE=
-github.com/athanorlabs/go-relayer v0.2.0 h1:cYwEadgLWotWBlCx+uhLZphQna3EKEekHhNViHgaSSo=
-github.com/athanorlabs/go-relayer v0.2.0/go.mod h1:xh6P9KTXNS9zENAT3QyOBP3sdyHtefrtBLugKeI8oJ4=
 github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible/go.mod h1:osfaiScAUVup+UC9Nfq76eWqDhXlp+4UYaA8uhTBO6g=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

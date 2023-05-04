@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/athanorlabs/atomic-swap/common"
-	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 
@@ -16,26 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetOrDeploySwapCreator_DeployNoForwarder(t *testing.T) {
-	pk := tests.GetTakerTestKey(t)
-	ec := extethclient.CreateTestClient(t, pk)
-	tmpDir := t.TempDir()
-
-	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec.Raw(), pk)
-	require.NoError(t, err)
-
-	_, err = getOrDeploySwapCreator(
-		context.Background(),
-		ethcommon.Address{},
-		common.Development,
-		tmpDir,
-		ec,
-		forwarder,
-	)
-	require.NoError(t, err)
-}
-
-func TestGetOrDeploySwapCreator_DeployForwarderAlso(t *testing.T) {
+func TestGetOrDeploySwapCreator_Deploy(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
 	tmpDir := t.TempDir()
@@ -46,7 +26,6 @@ func TestGetOrDeploySwapCreator_DeployForwarderAlso(t *testing.T) {
 		common.Development,
 		tmpDir,
 		ec,
-		ethcommon.Address{},
 	)
 	require.NoError(t, err)
 }
@@ -56,10 +35,6 @@ func TestGetOrDeploySwapCreator_Get(t *testing.T) {
 	ec := extethclient.CreateTestClient(t, pk)
 	tmpDir := t.TempDir()
 
-	forwarder, err := contracts.DeployGSNForwarderWithKey(context.Background(), ec.Raw(), pk)
-	require.NoError(t, err)
-	t.Log(forwarder)
-
 	// deploy and get address
 	address, err := getOrDeploySwapCreator(
 		context.Background(),
@@ -67,7 +42,6 @@ func TestGetOrDeploySwapCreator_Get(t *testing.T) {
 		common.Development,
 		tmpDir,
 		ec,
-		forwarder,
 	)
 	require.NoError(t, err)
 
@@ -77,7 +51,6 @@ func TestGetOrDeploySwapCreator_Get(t *testing.T) {
 		common.Development,
 		tmpDir,
 		ec,
-		ethcommon.Address{},
 	)
 	require.NoError(t, err)
 	require.Equal(t, address, addr2)

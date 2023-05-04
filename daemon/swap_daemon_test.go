@@ -23,11 +23,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
-	"github.com/athanorlabs/atomic-swap/relayer"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -79,19 +79,11 @@ func transfer(t *testing.T, fromKey *ecdsa.PrivateKey, toAddress ethcommon.Addre
 func minimumFundAlice(t *testing.T, ec extethclient.EthClient, providesAmt *apd.Decimal) {
 	fundingKey := tests.GetTakerTestKey(t)
 
-	// When this comment was written, sample gas costs were:
-	//   newSwap:     53787
-	//   setReady:    34452
-	//   refund:      46692
-	//   relayClaim: 130507
-	//
 	const (
-		aliceGasRation = 150000 // roughly 10% more than newSwap+setRead+refund
+		aliceGasRation = contracts.MaxNewSwapETHGas + contracts.MaxSetReadyGas + contracts.MaxRefundETHGas
 	)
 	// We give Alice enough gas money to refund if needed, but not enough to
-	// relay a claim:
-	//    150000 - (53787 + 34452) = 61761
-	//
+	// relay a claim
 	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(context.Background())
 	require.NoError(t, err)
 	gasCostWei := new(big.Int).Mul(suggestedGasPrice, big.NewInt(aliceGasRation))
@@ -184,7 +176,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	// Bob's ending balance should be Alice's provided amount minus the relayer fee
 	//
 	expectedBal := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Sub(expectedBal, providesAmt, relayer.FeeEth)
+	_, err = coins.DecimalCtx().Sub(expectedBal, providesAmt, coins.RelayerFeeETH)
 	require.NoError(t, err)
 
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
@@ -196,7 +188,7 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 // Tests the scenario where Bob has no ETH, he can't find an advertised relayer,
 // and Alice does not have enough ETH to relay his claim. The end result should
 // be a refund. Note that this test has a long pause, as the refund cannot
-// happen until T1 expires.
+// happen until T2 expires.
 func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
@@ -362,7 +354,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	// Bob's ending balance should be Alice's provided amount minus the relayer fee
 	//
 	bobExpectedBal := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, relayer.FeeEth)
+	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, coins.RelayerFeeETH)
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)
@@ -467,7 +459,7 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	// Bob's ending balance should be Alice's provided amount minus the relayer fee
 	//
 	bobExpectedBal := new(apd.Decimal)
-	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, relayer.FeeEth)
+	_, err = coins.DecimalCtx().Sub(bobExpectedBal, providesAmt, coins.RelayerFeeETH)
 	require.NoError(t, err)
 	bobBalance, err := bobConf.EthereumClient.Balance(ctx)
 	require.NoError(t, err)

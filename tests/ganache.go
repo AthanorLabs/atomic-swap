@@ -195,7 +195,7 @@ func GetTakerTestKey(t *testing.T) *ecdsa.PrivateKey {
 // NewEthClient returns a connection to the local ganache instance for unit tests along
 // with its chain ID. The connection is automatically closed when the test completes.
 func NewEthClient(t *testing.T) (*ethclient.Client, *big.Int) {
-	ec, err := ethclient.Dial(common.DefaultEthEndpoint)
+	ec, err := ethclient.Dial(common.DefaultGanacheEndpoint)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ec.Close()
@@ -251,4 +251,17 @@ func MineTransaction(t *testing.T, ec bind.DeployBackend, tx *ethtypes.Transacti
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.ReceiptStatusSuccessful, receipt.Status) // Make sure the transaction was not reverted
 	return receipt
+}
+
+// TxOpts returns a fresh TransactOpts for use in tests
+func TxOpts(t *testing.T, pk *ecdsa.PrivateKey) *bind.TransactOpts {
+	return TxOptsWithValue(t, pk, nil)
+}
+
+// TxOptsWithValue returns a fresh TransactOpts with a set value for use in tests
+func TxOptsWithValue(t *testing.T, pk *ecdsa.PrivateKey, value *big.Int) *bind.TransactOpts {
+	txOpts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(common.GanacheChainID))
+	require.NoError(t, err)
+	txOpts.Value = value
+	return txOpts
 }

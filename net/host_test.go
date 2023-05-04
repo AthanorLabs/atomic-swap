@@ -32,25 +32,33 @@ type mockMakerHandler struct {
 	id types.Hash
 }
 
-func (h *mockMakerHandler) GetOffers() []*types.Offer {
+func (*mockMakerHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
 func (h *mockMakerHandler) HandleInitiateMessage(
 	_ peer.ID,
 	msg *message.SendKeysMessage,
-) (s SwapState, resp Message, err error) {
+) (s SwapState, err error) {
 	if (h.id != types.Hash{}) {
-		return &mockSwapState{h.id}, createSendKeysMessage(h.t), nil
+		return &mockSwapState{h.id}, nil
 	}
-	return &mockSwapState{}, msg, nil
+	return &mockSwapState{}, nil
 }
 
 type mockRelayHandler struct {
 	t *testing.T
 }
 
-func (h *mockRelayHandler) HandleRelayClaimRequest(_ peer.ID, _ *RelayClaimRequest) (*RelayClaimResponse, error) {
+func (*mockRelayHandler) GetRelayerAddressHash() (types.Hash, error) {
+	return types.Hash{99}, nil
+}
+
+func (*mockRelayHandler) HasOngoingSwapAsTaker(_ peer.ID) error {
+	return nil
+}
+
+func (*mockRelayHandler) HandleRelayClaimRequest(_ peer.ID, _ *RelayClaimRequest) (*RelayClaimResponse, error) {
 	return &RelayClaimResponse{
 		TxHash: mockEthTXHash,
 	}, nil
@@ -60,6 +68,8 @@ type mockSwapState struct {
 	offerID types.Hash
 }
 
+func (*mockSwapState) NotifyStreamClosed() {}
+
 func (s *mockSwapState) OfferID() types.Hash {
 	if (s.offerID != types.Hash{}) {
 		return s.offerID
@@ -68,11 +78,11 @@ func (s *mockSwapState) OfferID() types.Hash {
 	return testID
 }
 
-func (s *mockSwapState) HandleProtocolMessage(_ Message) error {
+func (*mockSwapState) HandleProtocolMessage(_ Message) error {
 	return nil
 }
 
-func (s *mockSwapState) Exit() error {
+func (*mockSwapState) Exit() error {
 	return nil
 }
 

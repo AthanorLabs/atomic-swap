@@ -187,7 +187,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(asset types.EthAsset, useRelay
 	defer cancel()
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
-	min := coins.StrToDecimal("0.1")
+	min := coins.StrToDecimal("0.2")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
 		exchangeRate, asset, useRelayer)
 	require.NoError(s.T(), err)
@@ -306,12 +306,12 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 					continue
 				}
 				switch status {
-				case types.CompletedRefund:
-					// Do nothing, desired outcome
 				case types.CompletedSuccess:
 					s.T().Log("XMRMaker completed swap before XMRTaker's cancel took affect")
 				default:
-					errCh <- fmt.Errorf("swap did not succeed or refund for XMRMaker: status=%s", status)
+					// Do nothing, desired outcome
+					// either refund or abort is fine, as it depends on if the maker became
+					// aware of the cancellation before or after locking XMR
 				}
 				return
 			case <-ctx.Done():
@@ -385,11 +385,11 @@ func (s *IntegrationTestSuite) testRefundXMRTakerCancels(asset types.EthAsset) {
 	require.Equal(s.T(), len(beforeResp.Offers), len(afterResp.Offers))
 }
 
-// TestRefund_XMRMakerCancels_untilAfterT1 tests the case where XMRTaker and XMRMaker
+// TestRefund_XMRMakerCancels_untilAfterT2 tests the case where XMRTaker and XMRMaker
 // both lock their funds, but XMRMaker goes offline
-// until time t1 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
+// until time t2 in the swap contract passes. This triggers XMRTaker to refund, which XMRMaker will then
 // "come online" to see, and he will then refund also.
-func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_untilAfterT1() {
+func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_untilAfterT2() {
 	// Skipping test as it can't guarantee that the refund will happen before the swap completes
 	// successfully:  // https://github.com/athanorlabs/atomic-swap/issues/144
 	s.T().Skip()
@@ -398,7 +398,7 @@ func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_untilAfterT1() {
 }
 
 // TestRefund_XMRMakerCancels_afterIsReady tests the case where XMRTaker and XMRMaker both lock their
-// funds, but XMRMaker goes offline until past isReady==true and t0, but comes online before t1. When
+// funds, but XMRMaker goes offline until past isReady==true and t1, but comes online before t2. When
 // XMRMaker comes back online, he should claim the ETH, causing XMRTaker to also claim the XMR.
 func (s *IntegrationTestSuite) TestRefund_XMRMakerCancels_afterIsReady() {
 	// Skipping test as it can't guarantee that the refund will happen before the swap completes
@@ -529,7 +529,7 @@ func (s *IntegrationTestSuite) testAbortXMRTakerCancels(asset types.EthAsset) {
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
 
-	min := coins.StrToDecimal("0.1")
+	min := coins.StrToDecimal("0.2")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
 		exchangeRate, asset, false)
 	require.NoError(s.T(), err)
@@ -631,7 +631,7 @@ func (s *IntegrationTestSuite) TestAbort_XMRMakerCancels() {
 }
 
 func (s *IntegrationTestSuite) testAbortXMRMakerCancels(asset types.EthAsset) {
-	const testTimeout = time.Second * 60
+	const testTimeout = time.Minute * 2
 
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()

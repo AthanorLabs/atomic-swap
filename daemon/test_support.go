@@ -17,7 +17,6 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/common"
@@ -41,7 +40,7 @@ const (
 // for testing
 func CreateTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	ctx := context.Background()
-	ec, err := extethclient.NewEthClient(ctx, common.Development, common.DefaultEthEndpoint, ethKey)
+	ec, err := extethclient.NewEthClient(ctx, common.Development, common.DefaultGanacheEndpoint, ethKey)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ec.Close()
@@ -55,7 +54,8 @@ func CreateTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	envConf := new(common.Config)
 	*envConf = *common.ConfigDefaultsForEnv(common.Development)
 	envConf.DataDir = t.TempDir()
-	envConf.SwapCreatorAddr = getSwapCreatorAddress(t, ec.Raw())
+	// Passed in ETH key may not have funds, deploy contract with the funded taker key
+	envConf.SwapCreatorAddr, _ = contracts.DevDeploySwapCreator(t, ec.Raw(), tests.GetTakerTestKey(t))
 
 	return &SwapdConfig{
 		EnvConf:        envConf,
@@ -131,31 +131,6 @@ func WaitForSwapdStart(t *testing.T, rpcPort uint16) {
 		time.Sleep(time.Second)
 	}
 	t.Fatalf("giving up, swapd RPC port %d is not listening after %d seconds", rpcPort, maxSeconds)
-}
-
-// these variables are only for use by getSwapCreatorAddress
-var _swapCreatorAddr *ethcommon.Address
-var _swapCreatorAddrMu sync.Mutex
-
-func getSwapCreatorAddress(t *testing.T, ec *ethclient.Client) ethcommon.Address {
-	_swapCreatorAddrMu.Lock()
-	defer _swapCreatorAddrMu.Unlock()
-
-	if _swapCreatorAddr != nil {
-		return *_swapCreatorAddr
-	}
-
-	ctx := context.Background()
-	ethKey := tests.GetTakerTestKey(t) // requester might not have ETH, so we don't pass the key in
-
-	forwarderAddr, err := contracts.DeployGSNForwarderWithKey(ctx, ec, ethKey)
-	require.NoError(t, err)
-
-	swapCreatorAddr, _, err := contracts.DeploySwapCreatorWithKey(ctx, ec, ethKey, forwarderAddr)
-	require.NoError(t, err)
-
-	_swapCreatorAddr = &swapCreatorAddr
-	return swapCreatorAddr
 }
 
 // these variables are only for use by GetMockTokens

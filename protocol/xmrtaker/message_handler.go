@@ -119,7 +119,7 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 	}
 
 	// start goroutine to check that XMRMaker locks before t_0
-	go s.runT0ExpirationHandler()
+	go s.runT1ExpirationHandler()
 
 	// start goroutine to check for xmr being locked
 	go s.checkForXMRLock()
@@ -185,20 +185,25 @@ func (s *swapState) checkForXMRLock() {
 	}
 }
 
-func (s *swapState) runT0ExpirationHandler() {
-	defer log.Debugf("returning from runT0ExpirationHandler")
+func (s *swapState) runT1ExpirationHandler() {
+	defer log.Debugf("returning from runT1ExpirationHandler")
 
-	// TODO: this variable is so that we definitely refund before t0.
+	if time.Until(s.t1) <= 0 {
+		log.Debugf("T1 already passed, not starting T1 expiration handler")
+		return
+	}
+
+	// TODO: this variable is so that we definitely refund before t1.
 	// Current algorithm is to trigger the timeout when only 15% of the allotted
 	// time is remaining. If the block interval is 1 second on a test network and
-	// and T0 is 7 seconds after swap creation, we need the refund to trigger more
-	// than one second before the block with a timestamp exactly equal to T0 to
+	// and T1 is 7 seconds after swap creation, we need the refund to trigger more
+	// than one second before the block with a timestamp exactly equal to T1 to
 	// satisfy the strictly less than requirement. 7s * 15% = 1.05s. 15% remaining
 	// may be reasonable even with large timeouts on production networks, but more
 	// research is needed.
-	t0Delta := s.t1.Sub(s.t0) // time between swap start and T0 is equal to T1-T0
-	deltaBeforeT0ToGiveUp := time.Duration(float64(t0Delta) * 0.15)
-	deltaUntilGiveUp := time.Until(s.t0) - deltaBeforeT0ToGiveUp
+	t1Delta := s.t2.Sub(s.t1) // time between swap start and T1 is equal to T2-T1
+	deltaBeforeT1ToGiveUp := time.Duration(float64(t1Delta) * 0.15)
+	deltaUntilGiveUp := time.Until(s.t1) - deltaBeforeT1ToGiveUp
 	giveUpAndRefundTimer := time.NewTimer(deltaUntilGiveUp)
 	defer giveUpAndRefundTimer.Stop() // don't wait for the timeout to garbage collect
 	log.Debugf("time until refund: %vs", deltaUntilGiveUp.Seconds())
@@ -209,7 +214,7 @@ func (s *swapState) runT0ExpirationHandler() {
 	case <-s.xmrLockedCh:
 		return
 	case <-giveUpAndRefundTimer.C:
-		log.Infof("approaching T0, attempting to refund ETH")
+		log.Infof("approaching T1, attempting to refund ETH")
 		event := newEventShouldRefund()
 		s.eventCh <- event
 		err := <-event.errCh
@@ -234,24 +239,24 @@ func (s *swapState) handleNotifyXMRLock() error {
 		return fmt.Errorf("failed to call Ready: %w", err)
 	}
 
-	go s.runT1ExpirationHandler()
+	go s.runT2ExpirationHandler()
 	return nil
 }
 
-func (s *swapState) runT1ExpirationHandler() {
-	log.Debugf("time until t1 (%s): %vs",
-		s.t1.Format(common.TimeFmtSecs),
-		time.Until(s.t1).Seconds(),
+func (s *swapState) runT2ExpirationHandler() {
+	log.Debugf("time until t2 (%s): %vs",
+		s.t2.Format(common.TimeFmtSecs),
+		time.Until(s.t2).Seconds(),
 	)
 
-	defer log.Debugf("returning from runT1ExpirationHandler")
+	defer log.Debugf("returning from runT2ExpirationHandler")
 
 	waitCtx, waitCtxCancel := context.WithCancel(context.Background())
 	defer waitCtxCancel() // Unblock WaitForTimestamp if still running when we exit
 
 	waitCh := make(chan error)
 	go func() {
-		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t1)
+		waitCh <- s.ETHClient().WaitForTimestamp(waitCtx, s.t2)
 		close(waitCh)
 	}()
 
@@ -264,15 +269,15 @@ func (s *swapState) runT1ExpirationHandler() {
 		if err != nil {
 			// TODO: Do we propagate this error? If we retry, the logic should probably be inside
 			// WaitForTimestamp. (#162)
-			log.Errorf("failure waiting for T1 timeout: %s", err)
+			log.Errorf("failure waiting for T2 timeout: %s", err)
 			return
 		}
-		s.handleT1Expired()
+		s.handleT2Expired()
 	}
 }
 
-func (s *swapState) handleT1Expired() {
-	log.Debugf("handling T1")
+func (s *swapState) handleT2Expired() {
+	log.Debugf("handling T2")
 	event := newEventShouldRefund()
 	s.eventCh <- event
 	err := <-event.errCh

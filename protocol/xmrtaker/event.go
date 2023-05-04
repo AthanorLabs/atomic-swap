@@ -39,8 +39,8 @@ const (
 	EventETHClaimedType
 
 	// EventShouldRefundType is triggered when we should refund, either because
-	// we are nearing the timeout0 threshold and the maker hasn't locked XMR, or
-	// because we've reached the timeout1 threshold and the maker hasn't claimed
+	// we are nearing the timeout1 threshold and the maker hasn't locked XMR, or
+	// because we've reached the timeout2 threshold and the maker hasn't claimed
 	// the ETH. It causes us to refund the contract locked ETH locked to
 	// ourselves. After this event, the only possible event is EventExitType
 	// (refund path).
@@ -168,7 +168,7 @@ func newEventETHClaimed(sk *mcrypto.PrivateSpendKey) *EventETHClaimed {
 }
 
 // EventShouldRefund is an optional event. It occurs when the XMR-maker doesn't
-// lock before t0, so we should refund the ETH.
+// lock before t1, so we should refund the ETH.
 type EventShouldRefund struct {
 	errCh    chan error
 	txHashCh chan ethcommon.Hash // contains the refund tx hash, if successful
@@ -273,6 +273,11 @@ func (s *swapState) handleEvent(event Event) {
 		if err != nil {
 			e.errCh <- fmt.Errorf("failed to handle %s: %w", e.Type(), err)
 		}
+
+		err = s.exit()
+		if err != nil {
+			log.Warnf("failed to exit swap: %s", err)
+		}
 	case *EventShouldRefund:
 		log.Infof("EventShouldRefund")
 		defer close(e.errCh)
@@ -314,7 +319,16 @@ func (s *swapState) handleEventKeysReceived(event *EventKeysReceived) error {
 		return err
 	}
 
-	return s.SendSwapMessage(resp, s.OfferID())
+	// send NotifyETHLocked message
+	err = s.SendSwapMessage(resp, s.OfferID())
+	if err != nil {
+		return err
+	}
+
+	// close the stream to the remote peer, since we won't be
+	// sending any more messages.
+	s.Backend.CloseProtocolStream(s.OfferID())
+	return nil
 }
 
 func (s *swapState) handleEventETHClaimed(event *EventETHClaimed) error {
