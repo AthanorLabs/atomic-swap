@@ -1,20 +1,24 @@
 # ETH-XMR Atomic Swaps
 
-This is a WIP implementation of ETH-XMR atomic swaps, currently in the pre-production development phase. It currently consists of `swapd` and `swapcli` binaries, the swap daemon and swap CLI tool respectively, which allow for peers to discover each other over the network, query peers for their current available offers, and the ability to make and take swap offers and perform the swap protocol. The `swapd` program has a JSON-RPC endpoint which the user can use to interact with it. `swapcli` is a command-line utility that interacts with `swapd` by performing RPC calls. 
-
-## Protocol
-
-Please see the [protocol documentation](docs/protocol.md) for how it works.
+This is an implementation of ETH-XMR atomic swaps, currently in beta. It currently consists of `swapd` and `swapcli` binaries, the swap daemon and swap CLI tool respectively, which allow for nodes to discover each other over the p2p network, to query nodes for their current available offers, and the ability to make and take swap offers and perform the swap protocol. The `swapd` program has a JSON-RPC endpoint which the user can use to interact with it. `swapcli` is a command-line utility that interacts with `swapd` by performing RPC calls. 
 
 ## Swap instructions
+
+### Trying it on mainnet
+
+To try the swap on Ethereum and Monero mainnet, follow the instructions [here](./docs/mainnet.md).
+
+### Trying it on Monero's stagenet and Ethereum's Sepolia testnet
+
+To try the swap on Stagenet/Sepolia, follow the instructions [here](./docs/stagenet.md).
 
 ### Trying it locally
 
 To try the swap locally with two nodes (maker and taker) on a development environment, follow the instructions [here](./docs/local.md).
 
-### Trying it on Monero's stagenet and Ethereum's Sepolia testnet
+## Protocol
 
-To try the swap on Stagenet/Sepolia, follow the instructions [here](./docs/stagenet.md).
+Please see the [protocol documentation](docs/protocol.md) for how it works.
 
 ## Additional documentation
 
