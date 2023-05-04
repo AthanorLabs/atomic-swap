@@ -187,7 +187,7 @@ func (s *IntegrationTestSuite) testSuccessOneSwap(asset types.EthAsset, useRelay
 	defer cancel()
 
 	bwsc := s.newSwapdWSClient(ctx, defaultXMRMakerSwapdWSEndpoint)
-	min := coins.StrToDecimal("0.2")
+	min := coins.StrToDecimal("0.21")
 	offerResp, statusCh, err := bwsc.MakeOfferAndSubscribe(min, xmrmakerProvideAmount,
 		exchangeRate, asset, useRelayer)
 	require.NoError(s.T(), err)
