@@ -172,7 +172,7 @@ func Test_validateClaimRequest(t *testing.T) {
 		SwapCreator: swapCreatorAddr,
 		Swap:        *swap,
 		RelayerHash: relayerHash,
-		Fee:         big.NewInt(1),
+		Fee:         coins.RelayerFeeWei,
 	}
 
 	req, err := CreateRelayClaimRequest(ethKey, relaySwap, secret)
