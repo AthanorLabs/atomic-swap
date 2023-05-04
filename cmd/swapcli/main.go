@@ -223,7 +223,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "ongoing",
-				Usage:  "Get information about ongoing swap(s).",
+				Usage:  "Get information about your ongoing swap(s).",
 				Action: runGetOngoingSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -235,7 +235,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "past",
-				Usage:  "Get information about past swap(s)",
+				Usage:  "Get information about your past swap(s)",
 				Action: runGetPastSwap,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -259,7 +259,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "clear-offers",
-				Usage:  "Clear current offers. If no offer IDs are provided, clears all current offers.",
+				Usage:  "Clear your current offers. If no offer IDs are provided, clear all current offers.",
 				Action: runClearOffers,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -271,7 +271,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "get-offers",
-				Usage:  "Get all current offers.",
+				Usage:  "Get all of your current offers.",
 				Action: runGetOffers,
 				Flags: []cli.Flag{
 					swapdPortFlag,
@@ -304,10 +304,11 @@ func cliApp() *cli.App {
 				},
 			},
 			{
-				Name:   "suggested-exchange-rate",
-				Usage:  "Returns the current mainnet exchange rate based on ETH/USD and XMR/USD price feeds.",
-				Action: runSuggestedExchangeRate,
-				Flags:  []cli.Flag{swapdPortFlag},
+				Name:    "suggested-exchange-rate",
+				Aliases: []string{"price-feed"},
+				Usage:   "Returns the current mainnet exchange rate based on ETH/USD and XMR/USD price feeds.",
+				Action:  runSuggestedExchangeRate,
+				Flags:   []cli.Flag{swapdPortFlag},
 			},
 			{
 				Name:   "get-swap-timeout",
