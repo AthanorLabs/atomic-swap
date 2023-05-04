@@ -44,6 +44,8 @@ func (s *swapState) runContractEventWatcher() {
 		case l := <-s.logClaimedCh:
 			eventSent, err := s.handleClaimedLogs(&l)
 			if err != nil {
+				// we don't return here, as err can be set when eventSent is true,
+				// and we only want to return on eventSent == true
 				log.Errorf("failed to handle claim logs: %s", err)
 			}
 
