@@ -23,6 +23,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
@@ -132,9 +134,12 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
+	SetupMetrics(serverCtx, cfg.Net, swapManager, cfg.ProtocolBackend, cfg.XMRMaker)
+
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
+	r.Handle("/metrics", promhttp.Handler())
 
 	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
