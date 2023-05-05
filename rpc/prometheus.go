@@ -5,6 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/exp/slices"
 
@@ -27,8 +28,13 @@ type Metrics struct {
 	averageSwapDuration   prometheus.GaugeFunc
 }
 
-func pastSwapsMetric(swapManager SwapManager, status swap.Status, statusLabel string) prometheus.GaugeFunc {
-	return promauto.NewGaugeFunc(
+func pastSwapsMetric(
+	factory promauto.Factory,
+	swapManager SwapManager,
+	status swap.Status,
+	statusLabel string,
+) prometheus.GaugeFunc {
+	return factory.NewGaugeFunc(
 		prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Name:        "past_swaps_count",
@@ -60,9 +66,18 @@ func pastSwapsMetric(swapManager SwapManager, status swap.Status, statusLabel st
 }
 
 // SetupMetrics creates prometheus metrics and returns a new Metrics
-func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb ProtocolBackend, maker XMRMaker) Metrics {
-	return Metrics{
-		peersCount: promauto.NewGaugeFunc(
+func SetupMetrics(
+	ctx context.Context,
+	reg *prometheus.Registry,
+	net Net,
+	pb ProtocolBackend,
+	maker XMRMaker,
+) *Metrics {
+	factory := promauto.With(reg)
+	swapManager := pb.SwapManager()
+
+	return &Metrics{
+		peersCount: factory.NewGaugeFunc(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "peers_count",
@@ -86,7 +101,7 @@ func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb Prot
 			},
 		),
 
-		ongoingSwapsCount: promauto.NewGaugeFunc(
+		ongoingSwapsCount: factory.NewGaugeFunc(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "ongoing_swaps_count",
@@ -101,11 +116,11 @@ func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb Prot
 			},
 		),
 
-		pastSwapsSuccessCount: pastSwapsMetric(swapManager, types.CompletedSuccess, "success"),
-		pastSwapsRefundCount:  pastSwapsMetric(swapManager, types.CompletedRefund, "refund"),
-		pastSwapsAbortCount:   pastSwapsMetric(swapManager, types.CompletedAbort, "abort"),
+		pastSwapsSuccessCount: pastSwapsMetric(factory, swapManager, types.CompletedSuccess, "success"),
+		pastSwapsRefundCount:  pastSwapsMetric(factory, swapManager, types.CompletedRefund, "refund"),
+		pastSwapsAbortCount:   pastSwapsMetric(factory, swapManager, types.CompletedAbort, "abort"),
 
-		offersCount: promauto.NewGaugeFunc(
+		offersCount: factory.NewGaugeFunc(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "owned_offers_count",
@@ -117,7 +132,7 @@ func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb Prot
 			},
 		),
 
-		moneroBalance: promauto.NewGaugeFunc(
+		moneroBalance: factory.NewGaugeFunc(
 			prometheus.GaugeOpts{
 				Namespace:   namespace,
 				Name:        "balance",
@@ -133,7 +148,7 @@ func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb Prot
 			},
 		),
 
-		ethereumBalance: promauto.NewGaugeFunc(
+		ethereumBalance: factory.NewGaugeFunc(
 			prometheus.GaugeOpts{
 				Namespace:   namespace,
 				Name:        "balance",
@@ -153,7 +168,7 @@ func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb Prot
 			},
 		),
 
-		averageSwapDuration: promauto.NewGaugeFunc(
+		averageSwapDuration: factory.NewGaugeFunc(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "avg_swap_duration_seconds",
@@ -184,4 +199,23 @@ func SetupMetrics(ctx context.Context, net Net, swapManager SwapManager, pb Prot
 			},
 		),
 	}
+}
+
+// NewPrometheusRegistry returns a new prometheus registry with default collectors registered
+func NewPrometheusRegistry() (*prometheus.Registry, error) {
+	reg := prometheus.NewRegistry()
+	err := reg.Register(collectors.NewBuildInfoCollector())
+	if err != nil {
+		return nil, err
+	}
+	err = reg.Register(collectors.NewGoCollector())
+	if err != nil {
+		return nil, err
+	}
+	err = reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	if err != nil {
+		return nil, err
+	}
+
+	return reg, nil
 }

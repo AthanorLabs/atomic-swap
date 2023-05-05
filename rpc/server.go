@@ -134,12 +134,17 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	SetupMetrics(serverCtx, cfg.Net, swapManager, cfg.ProtocolBackend, cfg.XMRMaker)
+	reg, err := NewPrometheusRegistry()
+	if err != nil {
+		return nil, err
+	}
+
+	SetupMetrics(serverCtx, reg, cfg.Net, cfg.ProtocolBackend, cfg.XMRMaker)
 
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
-	r.Handle("/metrics", promhttp.Handler())
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
