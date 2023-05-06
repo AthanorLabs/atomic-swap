@@ -36,7 +36,6 @@ type MoneroNode struct {
 type Config struct {
 	Env             Environment
 	DataDir         string
-	EthereumChainID *big.Int
 	EthEndpoint     string
 	MoneroNodes     []*MoneroNode
 	SwapCreatorAddr ethcommon.Address
@@ -46,10 +45,9 @@ type Config struct {
 // MainnetConfig is the mainnet ethereum and monero configuration
 func MainnetConfig() *Config {
 	return &Config{
-		Env:             Mainnet,
-		DataDir:         path.Join(baseDir, "mainnet"),
-		EthereumChainID: big.NewInt(MainnetChainID),
-		EthEndpoint:     "", // No mainnet default (permissionless URLs are not reliable)
+		Env:         Mainnet,
+		DataDir:     path.Join(baseDir, "mainnet"),
+		EthEndpoint: "", // No mainnet default (permissionless URLs are not reliable)
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -84,10 +82,9 @@ func MainnetConfig() *Config {
 // StagenetConfig is the monero stagenet and ethereum Sepolia configuration
 func StagenetConfig() *Config {
 	return &Config{
-		Env:             Stagenet,
-		DataDir:         path.Join(baseDir, "stagenet"),
-		EthereumChainID: big.NewInt(SepoliaChainID),
-		EthEndpoint:     "https://rpc.sepolia.org/",
+		Env:         Stagenet,
+		DataDir:     path.Join(baseDir, "stagenet"),
+		EthEndpoint: "https://rpc.sepolia.org/",
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "node.sethforprivacy.com",
@@ -119,10 +116,9 @@ func StagenetConfig() *Config {
 // DevelopmentConfig is the monero and ethereum development environment configuration
 func DevelopmentConfig() *Config {
 	return &Config{
-		Env:             Development,
-		EthereumChainID: big.NewInt(1337),
-		DataDir:         path.Join(baseDir, "dev"),
-		EthEndpoint:     DefaultGanacheEndpoint,
+		Env:         Development,
+		DataDir:     path.Join(baseDir, "dev"),
+		EthEndpoint: DefaultGanacheEndpoint,
 		MoneroNodes: []*MoneroNode{
 			{
 				Host: "127.0.0.1",
@@ -186,6 +182,21 @@ func DefaultMoneroPortFromEnv(env Environment) uint {
 		return DefaultMoneroDaemonStagenetPort
 	case Development:
 		return DefaultMoneroDaemonDevPort
+	default:
+		panic("invalid environment")
+	}
+}
+
+// ChainIDFromEnv returns the expected chainID that we should find on the
+// ethereum endpoint when running int the passed environment.
+func ChainIDFromEnv(env Environment) *big.Int {
+	switch env {
+	case Development:
+		return big.NewInt(GanacheChainID)
+	case Stagenet:
+		return big.NewInt(SepoliaChainID)
+	case Mainnet:
+		return big.NewInt(MainnetChainID)
 	default:
 		panic("invalid environment")
 	}

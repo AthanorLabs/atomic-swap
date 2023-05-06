@@ -32,41 +32,62 @@ create-eth-keys() {
 		echo "${GANACHE_KEYS[${i}]}" >"${key_file}"
 	done
 }
-# This is the local multiaddr created when using ./tests/alice-libp2p.key on the default libp2p port
-ALICE_MULTIADDR=/ip4/127.0.0.1/tcp/9933/p2p/12D3KooWAAxG7eTEHr2uBVw3BDMxYsxyqfKvj3qqqpRGtTfuzTuH
-ALICE_LIBP2PKEY=./tests/alice-libp2p.key
+
 LOG_LEVEL=debug
 
+BOOTNODE_RPC_PORT=4999
 ALICE_RPC_PORT=5000
 BOB_RPC_PORT=5001
 CHARLIE_RPC_PORT=5002
 
+start-bootnode() {
+	local flags=(
+		"--rpc-port=${BOOTNODE_RPC_PORT}"
+		--env=dev
+		"--log-level=${LOG_LEVEL}"
+	)
+	local log_file="${SWAP_TEST_DATA_DIR}/bootnode.log"
+
+	echo "Starting bootnode, logs in ${log_file}"
+	./bin/bootnode "${flags[@]}" &>"${log_file}" &
+	local pid="${!}"
+	echo "${pid}" >"${SWAP_TEST_DATA_DIR}/bootnode.pid"
+
+	if wait-rpc-started "bootnode" "${pid}" "${BOOTNODE_RPC_PORT}"; then
+		return 0 # success
+	fi
+
+	echo "Failed to start bootnode"
+	echo "=============== Failed logs  ==============="
+	cat "${log_file}"
+	echo "============================================"
+	stop-daemons
+	exit 1
+}
+
+stop-bootnode() {
+	stop-program "bootnode"
+}
+
 start-swapd() {
 	local swapd_user="${1:?}"
 	local rpc_port="${2:?}"
-	local swapd_flags=("${@:3}" "--rpc-port=${rpc_port}")
+	local swapd_flags=(
+		"${@:3}"
+		--env=dev
+		"--rpc-port=${rpc_port}"
+		"--log-level=${LOG_LEVEL}"
+	)
 	local log_file="${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
 
-	echo "Starting ${swapd_user^}'s swapd, logs in ${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.log"
+	echo "Starting ${swapd_user^}'s swapd, logs in ${log_file}"
 	./bin/swapd "${swapd_flags[@]}" &>"${log_file}" &
 	local swapd_pid="${!}"
 	echo "${swapd_pid}" >"${SWAP_TEST_DATA_DIR}/${swapd_user}-swapd.pid"
 
-	# Wait up to 60 seconds for the daemon's port to be listening
-	for i in {1..60}; do
-		sleep 1
-
-		# Test if pid is still alive, leave loop if it is not
-		if ! kill -0 "${swapd_pid}" 2>/dev/null; then
-			break
-		fi
-
-		# Test if RPC port is listening, exit success if it is
-		if is-port-open "${rpc_port}"; then
-			echo "${swapd_user^}'s swapd instance is listening after ${i} seconds"
-			return
-		fi
-	done
+	if wait-rpc-started "${swapd_user}" "${swapd_pid}" "${rpc_port}"; then
+		return 0 # success, bypass failure code below
+	fi
 
 	echo "Failed to start ${swapd_user^}'s swapd"
 	echo "=============== Failed logs  ==============="
@@ -81,21 +102,44 @@ stop-swapd() {
 	stop-program "${swapd_user}-swapd"
 }
 
+# Waits for up to 60 seconds for the RPC port to be listening.
+# If the passed PID exits, we stop waiting. This method only
+# returns success(0)/failure(1) and will not exit the script.
 wait-rpc-started() {
-	local swapd_user="${1}"
-	local rpc_port="${1}"
+	local user="${1}"
+	local pid="${2}"
+	local port="${3}"
 
+	# Wait up to 60 seconds for the daemon's port to be listening
+	for i in {1..60}; do
+		sleep 1
+
+		# Test if pid is still alive, fail if it isn't
+		if ! kill -0 "${pid}" 2>/dev/null; then
+			return 1 # fail
+		fi
+
+		# Test if RPC port is listening, return success if it is
+		if is-port-open "${port}"; then
+			echo "${user^}'s instance is listening after ${i} seconds"
+			return 0 # success
+		fi
+	done
+
+	return 1 # fail
 }
 
 start-daemons() {
 	start-monerod-regtest
 	start-ganache
+	start-bootnode
 
+	local bootnode_addr
+	bootnode_addr="$(./bin/swapcli addresses --swapd-port ${BOOTNODE_RPC_PORT} | grep '^1:' | sed 's/.* //')"
 	start-swapd alice "${ALICE_RPC_PORT}" \
 		--dev-xmrtaker \
-		"--log-level=${LOG_LEVEL}" \
+		"--bootnodes=${bootnode_addr}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
-		"--libp2p-key=${ALICE_LIBP2PKEY}" \
 		--deploy
 
 	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-addresses.json"
@@ -105,8 +149,9 @@ start-daemons() {
 		exit 1
 	fi
 
-	SWAP_CREATOR_ADDR="$(jq -r .swapCreatorAddr "${CONTRACT_ADDR_FILE}")"
-	if [[ -z "${SWAP_CREATOR_ADDR}" ]]; then
+  local contract_addr
+  contract_addr="$(./bin/swapcli version | grep '^swap creator address' | sed 's/.*: //')}"
+	if [[ -z "${contract_addr}" ]]; then
 		echo "Failed to get Alice's deployed contract addresses"
 		stop-daemons
 		exit 1
@@ -114,19 +159,16 @@ start-daemons() {
 
 	start-swapd bob "${BOB_RPC_PORT}" \
 		--dev-xmrmaker \
-		"--log-level=${LOG_LEVEL}" \
+		"--bootnodes=${bootnode_addr}" \
 		"--data-dir=${SWAP_TEST_DATA_DIR}/bob" \
 		--libp2p-port=9944 \
-		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${SWAP_CREATOR_ADDR}"
+		"--contract-address=${contract_addr}"
 
 	start-swapd charlie "${CHARLIE_RPC_PORT}" \
-		"--env=dev" \
-		"--log-level=${LOG_LEVEL}" \
+		"--bootnodes=${bootnode_addr}" \
 		--data-dir "${SWAP_TEST_DATA_DIR}/charlie" \
 		--libp2p-port=9955 \
-		"--bootnodes=${ALICE_MULTIADDR}" \
-		"--contract-address=${SWAP_CREATOR_ADDR}" \
+		"--contract-address=${contract_addr}" \
 		"--relayer"
 }
 
@@ -134,6 +176,7 @@ stop-daemons() {
 	stop-swapd charlie
 	stop-swapd bob
 	stop-swapd alice
+	stop-bootnode
 	stop-monerod-regtest
 	stop-ganache
 }
@@ -149,7 +192,7 @@ KEEP_TEST_DATA="${OK}" stop-daemons
 # Cleanup test files if we succeeded
 if [[ "${OK}" -eq 0 ]]; then
 	rm -f "${CHARLIE_ETH_KEY}"
-	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{contract-addresses.json,monero-wallet-rpc.log}
+	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/monero-wallet-rpc.log
 	rm -f "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{net,eth}.key
 	rm -rf "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}/{wallet,libp2p-datastore,db}
 	rmdir "${SWAP_TEST_DATA_DIR}/"{alice,bob,charlie}

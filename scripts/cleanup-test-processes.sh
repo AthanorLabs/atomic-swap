@@ -21,6 +21,9 @@ fi
 echo "Stopping any monero-wallet-rpc instances"
 "${pkill_cmd[@]}" '/monero-wallet-rpc '
 
+echo "Stopping any bootnode instances"
+"${pkill_cmd[@]}" '/bootnode '
+
 echo "Stopping any monerod regest instances"
 if "${pkill_cmd[@]}" '/monerod .* --regtest '; then
 	sleep 2 # we don't want to exit the script while it is still running

@@ -368,7 +368,6 @@ func validateOrDeployContracts(c *cli.Context, envConf *common.Config, ec exteth
 		c.Context,
 		envConf.SwapCreatorAddr,
 		envConf.Env,
-		envConf.DataDir,
 		ec,
 	)
 	if err != nil {

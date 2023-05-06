@@ -42,7 +42,7 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 		Port:           cfg.Libp2pPort,
 		KeyFile:        cfg.Libp2pKeyFile,
 		Bootnodes:      cfg.Bootnodes,
-		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, cfg.EthereumChainID.Int64()),
+		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, cfg.EthereumChainID),
 		ListenIP:       cfg.HostListenIP,
 		IsRelayer:      false,
 		IsBootnodeOnly: true,

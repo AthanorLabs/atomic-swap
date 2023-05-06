@@ -141,7 +141,7 @@ func runBootnode(c *cli.Context) error {
 		Libp2pPort:      libp2pPort,
 		Libp2pKeyFile:   libp2pKeyFile,
 		RPCPort:         rpcPort,
-		EthereumChainID: config.EthereumChainID,
+		EthereumChainID: common.ChainIDFromEnv(config.Env),
 	})
 }
 
