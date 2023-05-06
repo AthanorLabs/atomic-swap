@@ -149,8 +149,8 @@ start-daemons() {
 		exit 1
 	fi
 
-  local contract_addr
-  contract_addr="$(./bin/swapcli version | grep '^swap creator address' | sed 's/.*: //')}"
+	local contract_addr
+	contract_addr="$(./bin/swapcli version | grep '^swap creator address' | sed 's/.*: //')}"
 	if [[ -z "${contract_addr}" ]]; then
 		echo "Failed to get Alice's deployed contract addresses"
 		stop-daemons
