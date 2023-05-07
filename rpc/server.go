@@ -52,6 +52,7 @@ type Server struct {
 // Config ...
 type Config struct {
 	Ctx             context.Context
+	Env             common.Environment
 	Address         string // "IP:port"
 	Net             Net
 	XMRTaker        XMRTaker
@@ -79,7 +80,13 @@ func NewServer(cfg *Config) (*Server, error) {
 	rpcServer.RegisterCodec(NewCodec(), "application/json")
 
 	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
-	err := rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon")
+	var swapCreatorAddr *ethcommon.Address
+	if cfg.ProtocolBackend != nil {
+		addr := cfg.ProtocolBackend.SwapCreatorAddr()
+		swapCreatorAddr = &addr
+	}
+	daemonService := NewDaemonService(serverCancel, cfg.Env, swapCreatorAddr)
+	err := rpcServer.RegisterService(daemonService, "daemon")
 	if err != nil {
 		return nil, err
 	}

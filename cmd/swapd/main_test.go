@@ -77,8 +77,14 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	// Ensure the daemon fully started before we cancel the context
+	// Ensure the daemon fully before we query the contract address
 	daemon.WaitForSwapdStart(t, rpcPort)
+
+	cli := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", rpcPort))
+	versionResp, err := cli.Version()
+	require.NoError(t, err)
+
+	// We check the contract code below, but we don't need the daemon for that
 	cancel()
 	wg.Wait()
 
@@ -86,13 +92,9 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		return
 	}
 
-	cli := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", rpcPort))
-	versionResp, err := cli.Version()
-	require.NoError(t, err)
-
 	ec, _ := tests.NewEthClient(t)
 	ecCtx := context.Background()
-	err = contracts.CheckSwapCreatorContractCode(ecCtx, ec, versionResp.SwapCreatorAddr)
+	err = contracts.CheckSwapCreatorContractCode(ecCtx, ec, *versionResp.SwapCreatorAddr)
 	require.NoError(t, err)
 }
 
