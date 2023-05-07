@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
@@ -30,6 +31,7 @@ func newServer(t *testing.T) *Server {
 
 	cfg := &Config{
 		Ctx:             ctx,
+		Env:             common.Development,
 		Address:         "127.0.0.1:0", // OS assigned port
 		Net:             new(mockNet),
 		ProtocolBackend: newMockProtocolBackend(),
