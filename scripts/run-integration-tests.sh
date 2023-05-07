@@ -142,15 +142,8 @@ start-daemons() {
 		"--data-dir=${SWAP_TEST_DATA_DIR}/alice" \
 		--deploy
 
-	CONTRACT_ADDR_FILE="${SWAP_TEST_DATA_DIR}/alice/contract-addresses.json"
-	if [[ ! -f "${CONTRACT_ADDR_FILE}" ]]; then
-		echo "Failed to get Alice's deployed contract address file"
-		stop-daemons
-		exit 1
-	fi
-
 	local contract_addr
-	contract_addr="$(./bin/swapcli version | grep '^swap creator address' | sed 's/.*: //')}"
+	contract_addr="$(./bin/swapcli version | grep '^swap creator address' | sed 's/.*: //')"
 	if [[ -z "${contract_addr}" ]]; then
 		echo "Failed to get Alice's deployed contract addresses"
 		stop-daemons
@@ -185,7 +178,7 @@ stop-daemons() {
 echo "running integration tests..."
 create-eth-keys
 start-daemons
-TESTS=integration CONTRACT_ADDR=${SWAP_CREATOR_ADDR} go test ./tests -v -count=1 -timeout=30m
+TESTS=integration go test ./tests -v -count=1 -timeout=30m
 OK="${?}"
 KEEP_TEST_DATA="${OK}" stop-daemons
 

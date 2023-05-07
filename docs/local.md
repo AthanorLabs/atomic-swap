@@ -99,11 +99,10 @@ example below:
 ```bash
 BOOT_NODE=/ip4/127.0.0.1/udp/9933/quic-v1/p2p/12D3KooWHRi24PVZ6TBnQJHdVyewDRcKFZtYV3qmB4KQo8iMyqik
 ```
-Now get the ethereum contract address that Alice deployed to. This can be pulled from the Alice's logs,
-the file ..., or if you have `jq` installed (available via `sudo apt install jq`), you can set a
-variable like this:
+Now get the ethereum contract address that Alice deployed to. This can be pulled
+from the Alice's logs, or from a `version` RPC request.
 ```bash
-CONTRACT_ADDR=$(jq -r .swapCreatorAddr "${TMPDIR-/tmp}"/xmrtaker-*/contract-addresses.json)
+CONTRACT_ADDR=$(./bin/swapcli version | grep '^swap creator address' | sed 's/.*: //')
 ```
 
 Now start Bob's swapd instance:
