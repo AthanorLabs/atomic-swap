@@ -479,7 +479,7 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 
 	require.Equal(t, conf.EnvConf.Env, versionResp.Env)
 	require.NotEmpty(t, versionResp.SwapdVersion)
-	require.Equal(t, conf.EnvConf.SwapCreatorAddr, versionResp.SwapCreatorAddr)
+	require.Equal(t, conf.EnvConf.SwapCreatorAddr, *versionResp.SwapCreatorAddr)
 	require.Equal(t, protocolVersion, versionResp.P2PVersion)
 }
 
