@@ -62,10 +62,14 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 	}
 
 	rpcServer, err := rpc.NewServer(&rpc.Config{
-		Ctx:     ctx,
-		Env:     cfg.Env,
-		Address: fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
-		Net:     host,
+		Ctx:             ctx,
+		Env:             cfg.Env,
+		Address:         fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
+		Net:             host,
+		XMRTaker:        nil,
+		XMRMaker:        nil,
+		ProtocolBackend: nil,
+		RecoveryDB:      nil,
 		Namespaces: map[string]struct{}{
 			rpc.DaemonNamespace: {},
 			rpc.NetNamespace:    {},

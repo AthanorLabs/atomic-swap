@@ -57,10 +57,10 @@ type Config struct {
 	Env             common.Environment
 	Address         string // "IP:port"
 	Net             Net
-	XMRTaker        XMRTaker
-	XMRMaker        XMRMaker
-	ProtocolBackend ProtocolBackend
-	RecoveryDB      RecoveryDB
+	XMRTaker        XMRTaker        // nil on bootnodes
+	XMRMaker        XMRMaker        // nil on bootnodes
+	ProtocolBackend ProtocolBackend // nil on bootnodes
+	RecoveryDB      RecoveryDB      // nil on bootnodes
 	Namespaces      map[string]struct{}
 	IsBootnodeOnly  bool
 }
@@ -83,7 +83,7 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
 	var swapCreatorAddr *ethcommon.Address
-	if cfg.ProtocolBackend != nil {
+	if !cfg.IsBootnodeOnly {
 		addr := cfg.ProtocolBackend.SwapCreatorAddr()
 		swapCreatorAddr = &addr
 	}
@@ -94,7 +94,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	}
 
 	var swapManager swap.Manager
-	if cfg.ProtocolBackend != nil {
+	if !cfg.IsBootnodeOnly {
 		swapManager = cfg.ProtocolBackend.SwapManager()
 	}
 
@@ -146,8 +146,9 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	SetupMetrics(serverCtx, reg, cfg.Net, cfg.ProtocolBackend, cfg.XMRMaker)
-
+	if !cfg.IsBootnodeOnly {
+		SetupMetrics(serverCtx, reg, cfg.Net, cfg.ProtocolBackend, cfg.XMRMaker)
+	}
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
