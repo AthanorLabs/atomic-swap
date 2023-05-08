@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/rpc/v2"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -152,8 +151,9 @@ func NewServer(cfg *Config) (*Server, error) {
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
-	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-
+	if !cfg.IsBootnodeOnly {
+		r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	}
 	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
