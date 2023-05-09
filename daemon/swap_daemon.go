@@ -149,6 +149,7 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 
 	rpcServer, err := rpc.NewServer(&rpc.Config{
 		Ctx:             ctx,
+		Env:             conf.EnvConf.Env,
 		Address:         fmt.Sprintf("127.0.0.1:%d", conf.RPCPort),
 		Net:             host,
 		XMRTaker:        xmrTaker,

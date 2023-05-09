@@ -18,13 +18,11 @@ import (
 func TestGetOrDeploySwapCreator_Deploy(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
-	tmpDir := t.TempDir()
 
 	_, err := getOrDeploySwapCreator(
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
-		tmpDir,
 		ec,
 	)
 	require.NoError(t, err)
@@ -33,14 +31,12 @@ func TestGetOrDeploySwapCreator_Deploy(t *testing.T) {
 func TestGetOrDeploySwapCreator_Get(t *testing.T) {
 	pk := tests.GetTakerTestKey(t)
 	ec := extethclient.CreateTestClient(t, pk)
-	tmpDir := t.TempDir()
 
 	// deploy and get address
 	address, err := getOrDeploySwapCreator(
 		context.Background(),
 		ethcommon.Address{},
 		common.Development,
-		tmpDir,
 		ec,
 	)
 	require.NoError(t, err)
@@ -49,7 +45,6 @@ func TestGetOrDeploySwapCreator_Get(t *testing.T) {
 		context.Background(),
 		address,
 		common.Development,
-		tmpDir,
 		ec,
 	)
 	require.NoError(t, err)

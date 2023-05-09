@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -78,8 +77,14 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	// Ensure the daemon fully started before we cancel the context
+	// Ensure the daemon fully before we query the contract address
 	daemon.WaitForSwapdStart(t, rpcPort)
+
+	cli := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", rpcPort))
+	versionResp, err := cli.Version()
+	require.NoError(t, err)
+
+	// We check the contract code below, but we don't need the daemon for that
 	cancel()
 	wg.Wait()
 
@@ -87,21 +92,9 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 		return
 	}
 
-	//
-	// Validate that --deploy created a contract address file.
-	// At some future point, we will ask the RPC endpoint
-	// what the contract addresses are instead of using this file.
-	//
-	data, err := os.ReadFile(path.Join(dataDir, contractAddressesFile))
-	require.NoError(t, err)
-	m := make(map[string]string)
-	require.NoError(t, json.Unmarshal(data, &m))
-	swapCreatorAddr, ok := m["swapCreatorAddr"]
-	require.True(t, ok)
-
 	ec, _ := tests.NewEthClient(t)
 	ecCtx := context.Background()
-	err = contracts.CheckSwapCreatorContractCode(ecCtx, ec, ethcommon.HexToAddress(swapCreatorAddr))
+	err = contracts.CheckSwapCreatorContractCode(ecCtx, ec, *versionResp.SwapCreatorAddr)
 	require.NoError(t, err)
 }
 
@@ -111,7 +104,7 @@ func TestDaemon_DevXMRMaker(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 
 	// We tested --deploy with the taker, so test passing the contract address here
-	swapCreatorAddr, err := deploySwapCreator(context.Background(), ec, key, t.TempDir())
+	swapCreatorAddr, err := deploySwapCreator(context.Background(), ec, key)
 	require.NoError(t, err)
 
 	flags := []string{
@@ -148,7 +141,7 @@ func TestDaemon_BadFlags(t *testing.T) {
 	ec, _ := tests.NewEthClient(t)
 	ctx, _ := newTestContext(t)
 
-	swapCreatorAddr, err := deploySwapCreator(ctx, ec, key, t.TempDir())
+	swapCreatorAddr, err := deploySwapCreator(ctx, ec, key)
 	require.NoError(t, err)
 
 	baseFlags := []string{

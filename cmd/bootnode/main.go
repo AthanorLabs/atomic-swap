@@ -135,13 +135,13 @@ func runBootnode(c *cli.Context) error {
 
 	rpcPort := uint16(c.Uint(flagRPCPort))
 	return bootnode.RunBootnode(c.Context, &bootnode.Config{
-		DataDir:         config.DataDir,
-		Bootnodes:       config.Bootnodes,
-		HostListenIP:    hostListenIP,
-		Libp2pPort:      libp2pPort,
-		Libp2pKeyFile:   libp2pKeyFile,
-		RPCPort:         rpcPort,
-		EthereumChainID: config.EthereumChainID,
+		Env:           config.Env,
+		DataDir:       config.DataDir,
+		Bootnodes:     config.Bootnodes,
+		HostListenIP:  hostListenIP,
+		Libp2pPort:    libp2pPort,
+		Libp2pKeyFile: libp2pKeyFile,
+		RPCPort:       rpcPort,
 	})
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/rpc/v2"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -54,12 +53,13 @@ type Server struct {
 // Config ...
 type Config struct {
 	Ctx             context.Context
+	Env             common.Environment
 	Address         string // "IP:port"
 	Net             Net
-	XMRTaker        XMRTaker
-	XMRMaker        XMRMaker
-	ProtocolBackend ProtocolBackend
-	RecoveryDB      RecoveryDB
+	XMRTaker        XMRTaker        // nil on bootnodes
+	XMRMaker        XMRMaker        // nil on bootnodes
+	ProtocolBackend ProtocolBackend // nil on bootnodes
+	RecoveryDB      RecoveryDB      // nil on bootnodes
 	Namespaces      map[string]struct{}
 	IsBootnodeOnly  bool
 }
@@ -81,13 +81,19 @@ func NewServer(cfg *Config) (*Server, error) {
 	rpcServer.RegisterCodec(NewCodec(), "application/json")
 
 	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
-	err := rpcServer.RegisterService(NewDaemonService(serverCancel, cfg.ProtocolBackend), "daemon")
+	var swapCreatorAddr *ethcommon.Address
+	if !cfg.IsBootnodeOnly {
+		addr := cfg.ProtocolBackend.SwapCreatorAddr()
+		swapCreatorAddr = &addr
+	}
+	daemonService := NewDaemonService(serverCancel, cfg.Env, swapCreatorAddr)
+	err := rpcServer.RegisterService(daemonService, "daemon")
 	if err != nil {
 		return nil, err
 	}
 
 	var swapManager swap.Manager
-	if cfg.ProtocolBackend != nil {
+	if !cfg.IsBootnodeOnly {
 		swapManager = cfg.ProtocolBackend.SwapManager()
 	}
 
@@ -139,13 +145,15 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	SetupMetrics(serverCtx, reg, cfg.Net, cfg.ProtocolBackend, cfg.XMRMaker)
-
+	if !cfg.IsBootnodeOnly {
+		SetupMetrics(serverCtx, reg, cfg.Net, cfg.ProtocolBackend, cfg.XMRMaker)
+	}
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
-	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-
+	if !cfg.IsBootnodeOnly {
+		r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	}
 	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})

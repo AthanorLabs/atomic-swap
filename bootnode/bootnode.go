@@ -9,9 +9,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpc"
 
@@ -23,26 +23,27 @@ var log = logging.Logger("bootnode")
 
 // Config provides the configuration for a bootnode.
 type Config struct {
-	DataDir         string
-	Bootnodes       []string
-	HostListenIP    string
-	Libp2pPort      uint16
-	Libp2pKeyFile   string
-	RPCPort         uint16
-	EthereumChainID *big.Int
+	Env           common.Environment
+	DataDir       string
+	Bootnodes     []string
+	HostListenIP  string
+	Libp2pPort    uint16
+	Libp2pKeyFile string
+	RPCPort       uint16
 }
 
 // RunBootnode assembles and runs a bootnode instance, blocking until the node is
 // shut down. Typically, shutdown happens because a signal handler cancels the
 // passed in context, or when the shutdown RPC method is called.
 func RunBootnode(ctx context.Context, cfg *Config) error {
+	chainID := common.ChainIDFromEnv(cfg.Env)
 	host, err := net.NewHost(&net.Config{
 		Ctx:            ctx,
 		DataDir:        cfg.DataDir,
 		Port:           cfg.Libp2pPort,
 		KeyFile:        cfg.Libp2pKeyFile,
 		Bootnodes:      cfg.Bootnodes,
-		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, cfg.EthereumChainID.Int64()),
+		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, chainID),
 		ListenIP:       cfg.HostListenIP,
 		IsRelayer:      false,
 		IsBootnodeOnly: true,
@@ -61,9 +62,14 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 	}
 
 	rpcServer, err := rpc.NewServer(&rpc.Config{
-		Ctx:     ctx,
-		Address: fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
-		Net:     host,
+		Ctx:             ctx,
+		Env:             cfg.Env,
+		Address:         fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
+		Net:             host,
+		XMRTaker:        nil,
+		XMRMaker:        nil,
+		ProtocolBackend: nil,
+		RecoveryDB:      nil,
 		Namespaces: map[string]struct{}{
 			rpc.DaemonNamespace: {},
 			rpc.NetNamespace:    {},
