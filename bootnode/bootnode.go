@@ -26,7 +26,7 @@ type Config struct {
 	Env           common.Environment
 	DataDir       string
 	Bootnodes     []string
-	HostListenIP  string
+	P2PListenIP   string
 	Libp2pPort    uint16
 	Libp2pKeyFile string
 	RPCPort       uint16
@@ -44,7 +44,7 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 		KeyFile:        cfg.Libp2pKeyFile,
 		Bootnodes:      cfg.Bootnodes,
 		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, chainID),
-		ListenIP:       cfg.HostListenIP,
+		ListenIP:       cfg.P2PListenIP,
 		IsRelayer:      false,
 		IsBootnodeOnly: true,
 	})

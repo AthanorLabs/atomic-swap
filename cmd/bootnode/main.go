@@ -138,7 +138,7 @@ func runBootnode(c *cli.Context) error {
 		Env:           config.Env,
 		DataDir:       config.DataDir,
 		Bootnodes:     config.Bootnodes,
-		HostListenIP:  hostListenIP,
+		P2PListenIP:   hostListenIP,
 		Libp2pPort:    libp2pPort,
 		Libp2pKeyFile: libp2pKeyFile,
 		RPCPort:       rpcPort,

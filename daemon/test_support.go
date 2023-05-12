@@ -19,6 +19,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/bootnode"
 	"github.com/athanorlabs/atomic-swap/common"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
@@ -69,6 +70,50 @@ func CreateTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 	}
 }
 
+// CreateTestBootnode creates a bootnode for unit tests that is automatically
+// cleaned up when the test completes. Returns the local RPC port and P2P
+// address for the node.
+func CreateTestBootnode(t *testing.T) (uint16, string) {
+	rpcPort, err := common.GetFreeTCPPort()
+	require.NoError(t, err)
+
+	// The bootnode uses an independent context from any swapd instances and
+	// will not exit until the end of the test. To shut it down early, you can
+	// use the shutdown RPC method on it.
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	t.Cleanup(func() {
+		cancel()
+		wg.Wait()
+	})
+
+	conf := &bootnode.Config{
+		Env:           common.Development,
+		DataDir:       t.TempDir(),
+		Bootnodes:     nil,
+		P2PListenIP:   "127.0.0.1",
+		Libp2pPort:    0,
+		Libp2pKeyFile: common.DefaultLibp2pKeyFileName,
+		RPCPort:       uint16(rpcPort),
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := bootnode.RunBootnode(ctx, conf) //nolint:govet
+		require.ErrorIs(t, err, context.Canceled)
+		t.Log("bootnode exited")
+	}()
+	WaitForSwapdStart(t, conf.RPCPort)
+
+	endpoint := fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort)
+	addresses, err := rpcclient.NewClient(ctx, endpoint).Addresses()
+	require.NoError(t, err)
+	require.NotEmpty(t, addresses)
+
+	return conf.RPCPort, addresses.Addrs[0]
+}
+
 // LaunchDaemons launches one or more swapd daemons and blocks until they are
 // started. If more than one config is passed, the bootnode settings of the
 // passed config are modified to make the first daemon the bootnode for the
@@ -76,33 +121,36 @@ func CreateTestConf(t *testing.T, ethKey *ecdsa.PrivateKey) *SwapdConfig {
 func LaunchDaemons(t *testing.T, timeout time.Duration, configs ...*SwapdConfig) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
+	// We'll use the bootnode(s) in the first config for any config that does
+	// not have the bootnodes field set. If the first config has no configured
+	// bootnodes, we create one.
+	require.NotEmpty(t, configs)
+	bootnodes := configs[0].EnvConf.Bootnodes
+	if len(bootnodes) == 0 {
+		_, node := CreateTestBootnode(t)
+		bootnodes = []string{node}
+	}
+
+	// ensure all swapd instances have exited before we let the test complete
 	var wg sync.WaitGroup
 	t.Cleanup(func() {
 		cancel()
 		wg.Wait()
 	})
 
-	var bootNodes []string // First daemon to launch has no bootnodes
-
 	for n, conf := range configs {
-		conf.EnvConf.Bootnodes = bootNodes
+		if len(conf.EnvConf.Bootnodes) == 0 {
+			conf.EnvConf.Bootnodes = bootnodes
+		}
 
 		wg.Add(1)
-		go func() {
+		go func(confIndex int) {
 			defer wg.Done()
 			err := RunSwapDaemon(ctx, conf)
 			require.ErrorIs(t, err, context.Canceled)
-		}()
+			t.Logf("swapd#%d exited", confIndex)
+		}(n)
 		WaitForSwapdStart(t, conf.RPCPort)
-
-		// Configure remaining daemons to use the first one a bootnode
-		if n == 0 {
-			c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
-			addresses, err := c.Addresses()
-			require.NoError(t, err)
-			require.Greater(t, len(addresses.Addrs), 1)
-			bootNodes = []string{addresses.Addrs[0]}
-		}
 	}
 
 	return ctx, cancel
