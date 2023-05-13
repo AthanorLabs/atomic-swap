@@ -86,7 +86,7 @@ func (*mockSwapManager) GetOngoingSwaps() ([]*swap.Info, error) {
 }
 
 func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
-	statusCh := make(chan types.Status, 1)
+	statusCh := types.NewStatusChannel()
 	statusCh <- types.CompletedSuccess
 
 	one := apd.New(1, 0)
@@ -153,9 +153,7 @@ func (m *mockXMRMaker) GetOngoingSwapState(_ types.Hash) common.SwapState {
 }
 
 func (*mockXMRMaker) MakeOffer(_ *types.Offer, _ bool) (*types.OfferExtra, error) {
-	offerExtra := &types.OfferExtra{
-		StatusCh: make(chan types.Status, 1),
-	}
+	offerExtra := types.NewOfferExtra(false)
 	offerExtra.StatusCh <- types.CompletedSuccess
 	return offerExtra, nil
 }

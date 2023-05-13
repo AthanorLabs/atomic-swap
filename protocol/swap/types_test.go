@@ -32,7 +32,7 @@ func Test_InfoMarshal(t *testing.T) {
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		200,
-		make(chan types.Status),
+		types.NewStatusChannel(),
 	)
 	err := info.StartTime.UnmarshalJSON([]byte("\"2023-02-20T17:29:43.471020297-05:00\""))
 	require.NoError(t, err)

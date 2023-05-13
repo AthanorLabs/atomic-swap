@@ -4,6 +4,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -249,4 +250,19 @@ func TestUnmarshalOffer_VersionTooNew(t *testing.T) {
 	}`, unsupportedVersion)
 	_, err := UnmarshalOffer([]byte(offerJSON))
 	require.ErrorContains(t, err, fmt.Sprintf("offer version %q not supported", unsupportedVersion))
+}
+
+func TestOfferExtra_JSON(t *testing.T) {
+	// Marshal test
+	extra := NewOfferExtra(true)
+	data, err := vjson.MarshalStruct(extra)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"useRelayer":true}`, string(data))
+
+	// Unmarshal test
+	extra = new(OfferExtra)
+	err = json.Unmarshal(data, extra)
+	require.NoError(t, err)
+	require.NotNil(t, extra.StatusCh)
+	require.True(t, extra.UseRelayer)
 }

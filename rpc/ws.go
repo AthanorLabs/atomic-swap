@@ -266,8 +266,12 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 	}
 }
 
-func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
-	offerID types.Hash, offerExtra *types.OfferExtra) error {
+func (s *wsServer) subscribeMakeOffer(
+	ctx context.Context,
+	conn *websocket.Conn,
+	offerID types.Hash,
+	offerExtra *types.OfferExtra,
+) error {
 	resp := &rpctypes.MakeOfferResponse{
 		PeerID:  s.ns.net.PeerID(),
 		OfferID: offerID,

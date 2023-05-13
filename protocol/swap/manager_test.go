@@ -38,7 +38,7 @@ func TestNewManager(t *testing.T) {
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
-		nil,
+		types.NewStatusChannel(),
 	)
 	db.EXPECT().PutSwap(infoA)
 	err = m.AddSwap(infoA)
@@ -54,7 +54,7 @@ func TestNewManager(t *testing.T) {
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		100,
-		nil,
+		types.NewStatusChannel(),
 	)
 	db.EXPECT().PutSwap(infoB)
 	err = m.AddSwap(infoB)
@@ -88,7 +88,7 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
-		nil,
+		types.NewStatusChannel(),
 	)
 
 	db.EXPECT().PutSwap(info)

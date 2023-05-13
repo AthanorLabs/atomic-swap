@@ -83,16 +83,15 @@ func TestRecoveryDB_SwapRelayerInfo(t *testing.T) {
 	rdb := newTestRecoveryDB(t)
 	offerID := types.Hash{5, 6, 7, 8}
 
-	info := &types.OfferExtra{
-		UseRelayer: true,
-	}
+	extra := types.NewOfferExtra(true)
 
-	err := rdb.PutSwapRelayerInfo(offerID, info)
+	err := rdb.PutSwapRelayerInfo(offerID, extra)
 	require.NoError(t, err)
 
 	res, err := rdb.GetSwapRelayerInfo(offerID)
 	require.NoError(t, err)
-	require.Equal(t, info, res)
+	require.True(t, res.UseRelayer)
+	require.NotNil(t, res.StatusCh)
 }
 
 func TestRecoveryDB_SwapPrivateKey(t *testing.T) {
@@ -165,13 +164,11 @@ func TestRecoveryDB_DeleteSwap(t *testing.T) {
 		SwapCreatorAddr: ethcommon.HexToAddress("0xd2b5d6252d0645e4cf4bb547e82a485f527befb7"),
 	}
 
-	info := &types.OfferExtra{
-		UseRelayer: true,
-	}
+	extra := types.NewOfferExtra(true)
 
 	err = rdb.PutContractSwapInfo(offerID, si)
 	require.NoError(t, err)
-	err = rdb.PutSwapRelayerInfo(offerID, info)
+	err = rdb.PutSwapRelayerInfo(offerID, extra)
 	require.NoError(t, err)
 	err = rdb.PutSwapPrivateKey(offerID, kp.SpendKey())
 	require.NoError(t, err)

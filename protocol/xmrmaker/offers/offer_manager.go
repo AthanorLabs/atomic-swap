@@ -15,8 +15,6 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-const statusChSize = 6 // the max number of stages a swap can potentially go through
-
 var (
 	log = logging.Logger("offers")
 
@@ -49,9 +47,7 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 	offers := make(map[types.Hash]*offerWithExtra)
 
 	for _, offer := range savedOffers {
-		extra := &types.OfferExtra{
-			StatusCh: make(chan types.Status, statusChSize),
-		}
+		extra := types.NewOfferExtra(false)
 
 		offers[offer.ID] = &offerWithExtra{
 			offer: offer,
@@ -101,10 +97,7 @@ func (m *Manager) AddOffer(
 		return nil, err
 	}
 
-	extra := &types.OfferExtra{
-		StatusCh:   make(chan types.Status, statusChSize),
-		UseRelayer: useRelayer,
-	}
+	extra := types.NewOfferExtra(useRelayer)
 
 	m.offers[id] = &offerWithExtra{
 		offer: offer,

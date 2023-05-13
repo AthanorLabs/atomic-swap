@@ -112,9 +112,6 @@ func newSwapStateFromStart(
 	// and we'll send our own after this function returns.
 	// see HandleInitiateMessage().
 	stage := types.KeysExchanged
-	if offerExtra.StatusCh == nil {
-		offerExtra.StatusCh = make(chan types.Status, 7)
-	}
 
 	if offerExtra.UseRelayer {
 		if err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {

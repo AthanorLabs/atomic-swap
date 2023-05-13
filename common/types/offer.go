@@ -174,12 +174,6 @@ func (o *Offer) validate() error {
 	return nil
 }
 
-// OfferExtra represents extra data that is passed when an offer is made.
-type OfferExtra struct {
-	StatusCh   chan Status `json:"-"`
-	UseRelayer bool        `json:"useRelayer,omitempty"`
-}
-
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before
 // attempting to deserialize the whole blob.
 func UnmarshalOffer(jsonData []byte) (*Offer, error) {
@@ -227,4 +221,44 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return o.validate()
+}
+
+// OfferExtra represents extra data that is passed when an offer is made.
+type OfferExtra struct {
+	StatusCh chan Status `json:"-"`
+
+	// UseRelayer forces the XMR maker to claim using the relayer even when he
+	// has enough funds to make the claim himself. Setting it to false will not
+	// prevent the relayer from being used if there are insufficient ETH funds
+	// to claim.
+	UseRelayer bool `json:"useRelayer,omitempty"`
+}
+
+// NewStatusChannel creates a status channel using the the correct size
+func NewStatusChannel() chan Status {
+	// The channel size should be large enough to handle the max number of
+	// stages a swap can potentially go through.
+	const statusChSize = 6
+	return make(chan Status, statusChSize)
+}
+
+// NewOfferExtra creates an OfferExtra instance. Use this method, instead of
+// creating objects directly, to ensure that the status channel is initialized
+// correctly.
+func NewOfferExtra(forceUseRelayer bool) *OfferExtra {
+	return &OfferExtra{
+		StatusCh:   NewStatusChannel(),
+		UseRelayer: forceUseRelayer,
+	}
+}
+
+// UnmarshalJSON provides custom unmarshalling of OfferExtra to ensure that the
+// StatusCh field is always initialized.
+func (o *OfferExtra) UnmarshalJSON(data []byte) error {
+	type _OfferExtra OfferExtra
+	if err := vjson.UnmarshalStruct(data, (*_OfferExtra)(o)); err != nil {
+		return err
+	}
+	o.StatusCh = NewStatusChannel()
+	return nil
 }

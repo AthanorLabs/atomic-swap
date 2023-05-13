@@ -178,7 +178,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	if err != nil {
 		// we can ignore the error; if the key doesn't exist,
 		// then no relayer was set for this swap.
-		relayerInfo = &types.OfferExtra{}
+		relayerInfo = types.NewOfferExtra(false)
 	}
 
 	ss, err := newSwapStateFromOngoing(

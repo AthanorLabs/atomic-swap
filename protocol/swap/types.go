@@ -18,8 +18,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
 
-const statusChSize = 6 // the max number of stages a swap can potentially go through
-
 var (
 	// CurInfoVersion is the latest supported version of a serialised Info struct
 	CurInfoVersion, _ = semver.NewVersion("0.3.0")
@@ -107,10 +105,6 @@ func (i *Info) StatusCh() <-chan types.Status {
 func (i *Info) SetStatus(s Status) {
 	i.Status = s
 	i.LastStatusUpdateTime = time.Now()
-	if i.statusCh == nil {
-		// this case only happens in tests.
-		return
-	}
 	i.statusCh <- s
 }
 
@@ -119,32 +113,47 @@ func (i *Info) IsTaker() bool {
 	return i.Provides == coins.ProvidesETH
 }
 
-// UnmarshalInfo deserializes a JSON Info struct, checking the version for compatibility
-// before attempting to deserialize the whole blob.
+// UnmarshalInfo unmarshalls the passed JSON into a freshly created Info object.
 func UnmarshalInfo(jsonData []byte) (*Info, error) {
-	ov := struct {
+	info := new(Info)
+	if err := json.Unmarshal(jsonData, info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+// UnmarshalJSON deserializes a JSON Info struct, checking the version for
+// compatibility and ensuring the status channel is always initialized.
+func (i *Info) UnmarshalJSON(jsonData []byte) error {
+	iv := struct {
 		Version *semver.Version `json:"version"`
 	}{}
-	if err := json.Unmarshal(jsonData, &ov); err != nil {
-		return nil, err
+	if err := json.Unmarshal(jsonData, &iv); err != nil {
+		return err
 	}
 
-	if ov.Version == nil {
-		return nil, errInfoVersionMissing
+	if iv.Version == nil {
+		return errInfoVersionMissing
 	}
 
-	if ov.Version.GreaterThan(CurInfoVersion) {
-		return nil, fmt.Errorf("info version %q not supported, latest is %q", ov.Version, CurInfoVersion)
+	if iv.Version.GreaterThan(CurInfoVersion) {
+		return fmt.Errorf("info version %q not supported, latest is %q", iv.Version, CurInfoVersion)
 	}
 
-	info := new(Info)
-	if err := vjson.UnmarshalStruct(jsonData, info); err != nil {
-		return nil, err
+	// Assuming any version less than the current version is forwards
+	// compatible. If that is not the case in the future, add code here to
+	// upgrade the older version to the current version when deserializing.
+	// (Or error if it is completely incompatible.)
+
+	// Unmarshal without recursion
+	type _Info Info
+	if err := vjson.UnmarshalStruct(jsonData, (*_Info)(i)); err != nil {
+		return err
 	}
 
-	info.statusCh = make(chan types.Status, statusChSize)
+	i.statusCh = types.NewStatusChannel()
 
 	// TODO: Are there additional sanity checks we can perform on the Provided and Received amounts
 	//       (or other fields) here when decoding the JSON?
-	return info, nil
+	return nil
 }
