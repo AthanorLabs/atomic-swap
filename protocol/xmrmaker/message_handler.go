@@ -85,8 +85,6 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 // taker's ETH, to be seen as included in a block by our endpoint. This is a
 // pre-requirement for validating the newSwap transaction, which should be done
 // after calling this method.
-//
-// TODO move this to protocol/
 func waitForNewSwapReceipt(
 	ctx context.Context,
 	ec *ethclient.Client,
