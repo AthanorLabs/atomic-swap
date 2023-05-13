@@ -8,7 +8,7 @@ export type JSONRPCResult<Data> = {
 }
 
 export const getPort = () : number => {
-    const port = Number(process.env.SWAPD_PORT)
+    const port = Number(import.meta.env.SWAPD_PORT)
     return isNaN(port) ? 5001 : port
 }
 
