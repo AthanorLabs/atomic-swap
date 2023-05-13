@@ -118,16 +118,6 @@ func (s *swapState) handleSendKeysMessage(msg *message.SendKeysMessage) (common.
 		return nil, fmt.Errorf("failed to lock ethereum asset in contract: %w", err)
 	}
 
-	// params, err := getNewSwapParametersFromTx(s.ctx, s.ETHClient().Raw(), txHash)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to get newSwap parameters from tx hash: %w", err)
-	// }
-
-	// receipt, err := s.waitForAndCheckNewSwapReceipt(txHash, params.cmtXMRMaker, params.cmtXMRTaker, params.nonce)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to wait for newSwap receipt: %w", err)
-	// }
-
 	// start goroutine to check that XMRMaker locks before t_0
 	go s.runT1ExpirationHandler()
 
