@@ -169,7 +169,7 @@ func newSwapStateFromOngoing(
 	ethSwapInfo *db.EthereumSwapInfo,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
-	if info.Status != types.ExpectingKeys && info.Status != types.ETHLocked && info.Status != types.ContractReady {
+	if info.Status != types.ETHLocked && info.Status != types.ContractReady {
 		return nil, errInvalidStageForRecovery
 	}
 
@@ -201,7 +201,7 @@ func newSwapStateFromOngoing(
 	s.xmrmakerPublicSpendKey = makerSk
 	s.xmrmakerPrivateViewKey = makerVk
 
-	if info.Status == types.ExpectingKeys || info.Status == types.ETHLocked {
+	if info.Status == types.ETHLocked {
 		go s.checkForXMRLock()
 	}
 
@@ -598,31 +598,12 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
-	providedAmt := s.providedAmount
-
-	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
+	log.Debugf("locking %s %s in contract", s.providedAmount.AsStandard(), s.providedAmount.StandardSymbol())
 
 	nonce := contracts.GenerateNewSwapNonce()
-	txHash, err := s.sender.NewSwap(
-		cmtXMRMaker,
-		cmtXMRTaker,
-		s.xmrmakerAddress,
-		big.NewInt(int64(s.SwapTimeout().Seconds())),
-		nonce,
-		providedAmt,
-	)
+	receipt, err := s.lockAndWaitForReceipt(cmtXMRMaker, cmtXMRTaker, nonce)
 	if err != nil {
-		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
-	}
-
-	err = s.Backend.RecoveryDB().PutNewSwapTxHash(s.OfferID(), txHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write newSwap tx hash to db: %w", err)
-	}
-
-	receipt, err := block.WaitForReceipt(s.ctx, s.ETHClient().Raw(), txHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get newSwap transaction receipt: %w", err)
+		return nil, fmt.Errorf("failed to lock asset: %w", err)
 	}
 
 	log.Infof("instantiated swap on-chain: amount=%s asset=%s %s",
@@ -681,6 +662,38 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	}
 
 	log.Infof("locked %s in swap contract, waiting for XMR to be locked", s.providedAmount.StandardSymbol())
+	return receipt, nil
+}
+
+func (s *swapState) lockAndWaitForReceipt(
+	cmtXMRMaker, cmtXMRTaker [32]byte,
+	nonce *big.Int,
+) (*ethtypes.Receipt, error) {
+	s.Backend.ETHClient().Lock()
+	defer s.Backend.ETHClient().Unlock()
+
+	txHash, err := s.sender.NewSwap(
+		cmtXMRMaker,
+		cmtXMRTaker,
+		s.xmrmakerAddress,
+		big.NewInt(int64(s.SwapTimeout().Seconds())),
+		nonce,
+		s.providedAmount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
+	}
+
+	err = s.Backend.RecoveryDB().PutNewSwapTxHash(s.OfferID(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write newSwap tx hash to db: %w", err)
+	}
+
+	receipt, err := block.WaitForReceipt(s.ctx, s.ETHClient().Raw(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newSwap transaction receipt: %w", err)
+	}
+
 	return receipt, nil
 }
 
