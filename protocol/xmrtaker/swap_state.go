@@ -24,6 +24,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -168,7 +169,7 @@ func newSwapStateFromOngoing(
 	ethSwapInfo *db.EthereumSwapInfo,
 	sk *mcrypto.PrivateKeyPair,
 ) (*swapState, error) {
-	if info.Status != types.ETHLocked && info.Status != types.ContractReady {
+	if info.Status != types.ExpectingKeys && info.Status != types.ETHLocked && info.Status != types.ContractReady {
 		return nil, errInvalidStageForRecovery
 	}
 
@@ -200,7 +201,7 @@ func newSwapStateFromOngoing(
 	s.xmrmakerPublicSpendKey = makerSk
 	s.xmrmakerPrivateViewKey = makerVk
 
-	if info.Status == types.ETHLocked {
+	if info.Status == types.ExpectingKeys || info.Status == types.ETHLocked {
 		go s.checkForXMRLock()
 	}
 
@@ -602,7 +603,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
 
 	nonce := contracts.GenerateNewSwapNonce()
-	receipt, err := s.sender.NewSwap(
+	txHash, err := s.sender.NewSwap(
 		cmtXMRMaker,
 		cmtXMRTaker,
 		s.xmrmakerAddress,
@@ -612,6 +613,16 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
+	}
+
+	err = s.Backend.RecoveryDB().PutNewSwapTxHash(s.OfferID(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write newSwap tx hash to db: %w", err)
+	}
+
+	receipt, err := block.WaitForReceipt(s.ctx, s.ETHClient().Raw(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newSwap transaction receipt: %w", err)
 	}
 
 	log.Infof("instantiated swap on-chain: amount=%s asset=%s %s",
@@ -669,7 +680,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	log.Infof("locked %s in swap contract, waiting for XMR to be locked", providedAmt.StandardSymbol())
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", s.providedAmount.StandardSymbol())
 	return receipt, nil
 }
 

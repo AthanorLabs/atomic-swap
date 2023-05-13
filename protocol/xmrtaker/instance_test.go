@@ -5,6 +5,7 @@ package xmrtaker
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/db"
@@ -85,4 +87,10 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 	inst.swapMu.Lock()
 	defer inst.swapMu.Unlock()
 	close(inst.swapStates[s.OfferID].done)
+}
+
+func TestNewSwapFunctionSignatureToTopic(t *testing.T) {
+	expected := "c41e46cf"
+	newSwapTopic := common.GetTopic(common.NewSwapFunctionSignature)
+	require.Equal(t, expected, fmt.Sprintf("%x", newSwapTopic[:4]))
 }

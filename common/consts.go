@@ -28,9 +28,10 @@ const (
 
 // SwapCreator.sol event signatures
 const (
-	ReadyEventSignature    = "Ready(bytes32)"
-	ClaimedEventSignature  = "Claimed(bytes32,bytes32)"
-	RefundedEventSignature = "Refunded(bytes32,bytes32)"
+	NewSwapFunctionSignature = "newSwap(bytes32,bytes32,address,uint256,uint256,address,uint256,uint256)"
+	ReadyEventSignature      = "Ready(bytes32)"
+	ClaimedEventSignature    = "Claimed(bytes32,bytes32)"
+	RefundedEventSignature   = "Refunded(bytes32,bytes32)"
 )
 
 // Ethereum chain IDs
