@@ -114,7 +114,7 @@ func UnmarshalInfo(jsonData []byte) (*Info, error) {
 }
 
 // UnmarshalJSON deserializes a JSON Info struct, checking the version for
-// compatibility and ensuring the status channel is always initialized.
+// compatibility.
 func (i *Info) UnmarshalJSON(jsonData []byte) error {
 	iv := struct {
 		Version *semver.Version `json:"version"`

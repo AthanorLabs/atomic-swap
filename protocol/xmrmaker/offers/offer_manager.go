@@ -10,10 +10,9 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/protocol/swap"
-
 	logging "github.com/ipfs/go-log"
+
+	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
 var (
@@ -37,7 +36,7 @@ type offerWithExtra struct {
 
 // NewManager creates a new offer manager. The passed in dataDir is the
 // directory where the recovery file is for each individual swap is stored.
-func NewManager(dataDir string, db Database, swapManager swap.Manager) (*Manager, error) {
+func NewManager(dataDir string, db Database) (*Manager, error) {
 	log.Infof("loading any saved offers from db")
 	// load offers from the database, if there are any
 	savedOffers, err := db.GetAllOffers()

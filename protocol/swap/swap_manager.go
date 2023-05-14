@@ -162,9 +162,8 @@ func (m *manager) GetOngoingSwap(offerID types.Hash) (*Info, error) {
 	return s, nil
 }
 
-// GetOngoingSwapSnapshot returns the ongoing swap's *Info, if there is one. The
-// returned Info structure of an active swap can be modified as the swap's state
-// changes and should only be accessed by a single go process.
+// GetOngoingSwapSnapshot returns a copy of the ongoing swap's Info, if the
+// offerID has an ongoing swap.
 func (m *manager) GetOngoingSwapSnapshot(offerID types.Hash) (*Info, error) {
 	m.RLock()
 	defer m.RUnlock()
@@ -174,6 +173,11 @@ func (m *manager) GetOngoingSwapSnapshot(offerID types.Hash) (*Info, error) {
 		return nil, errNoSwapWithOfferID
 	}
 
+	// We have the read lock above when making this copy, but the swapState
+	// instances don't use that lock when they modify the same Info structure
+	// from a different go process. At some point we should update the swapState
+	// instances to make all changes to their ongoing Info structure via this
+	// manager.
 	sc, err := s.DeepCopy()
 	if err != nil {
 		return nil, err

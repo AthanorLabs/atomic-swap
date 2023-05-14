@@ -90,7 +90,7 @@ func TestRecoveryDB_SwapRelayerInfo(t *testing.T) {
 
 	res, err := rdb.GetSwapRelayerInfo(offerID)
 	require.NoError(t, err)
-	require.True(t, res.UseRelayer)
+	require.Equal(t, extra, res)
 }
 
 func TestRecoveryDB_SwapPrivateKey(t *testing.T) {

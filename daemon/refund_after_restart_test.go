@@ -108,7 +108,7 @@ func TestXMRNotLockedAndETHRefundedAfterAliceRestarts(t *testing.T) {
 	ctx, cancel = LaunchDaemons(t, 3*time.Minute, aliceConf)
 
 	// This is a bug that we need to recreate Alice's websocket client here. Remove this
-	// codd when we fix https://github.com/AthanorLabs/atomic-swap/issues/353.
+	// code when we fix https://github.com/AthanorLabs/atomic-swap/issues/353.
 	ac, err = wsclient.NewWsClient(clientCtx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
 	require.NoError(t, err)
 
