@@ -81,16 +81,25 @@ func (*mockSwapManager) GetPastSwap(_ types.Hash) (*swap.Info, error) {
 	return &swap.Info{}, nil
 }
 
-func (*mockSwapManager) GetOngoingSwaps() ([]*swap.Info, error) {
+func (*mockSwapManager) GetOngoingSwap(_ types.Hash) (*swap.Info, error) {
+	return &swap.Info{}, nil
+}
+
+func (*mockSwapManager) GetOngoingSwapsSnapshot() ([]*swap.Info, error) {
 	return nil, nil
 }
 
-func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
-	statusCh := types.NewStatusChannel()
-	statusCh <- types.CompletedSuccess
+func (*mockSwapManager) GetOngoingSwapStatusCh(_ types.Hash) (chan types.Status, error) {
+	return nil, nil
+}
 
+func (*mockSwapManager) GetOngoingSwapOfferIDs() ([]*types.Hash, error) {
+	return nil, nil
+}
+
+func (*mockSwapManager) GetOngoingSwapSnapshot(id types.Hash) (*swap.Info, error) {
 	one := apd.New(1, 0)
-	return *swap.NewInfo(
+	return swap.NewInfo(
 		testPeerID,
 		id,
 		coins.ProvidesETH,
@@ -100,7 +109,6 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		1,
-		statusCh,
 	), nil
 }
 
@@ -113,6 +121,18 @@ func (*mockSwapManager) CompleteOngoingSwap(_ *swap.Info) error {
 }
 
 func (*mockSwapManager) HasOngoingSwap(_ types.Hash) bool {
+	panic("not implemented")
+}
+
+func (*mockSwapManager) GetStatusChan(_ types.Hash) <-chan types.Status {
+	panic("not implemented")
+}
+
+func (*mockSwapManager) DeleteStatusChan(_ types.Hash) {
+	panic("not implemented")
+}
+
+func (*mockSwapManager) PushNewStatus(_ types.Hash, status types.Status) {
 	panic("not implemented")
 }
 
@@ -154,7 +174,6 @@ func (m *mockXMRMaker) GetOngoingSwapState(_ types.Hash) common.SwapState {
 
 func (*mockXMRMaker) MakeOffer(_ *types.Offer, _ bool) (*types.OfferExtra, error) {
 	offerExtra := types.NewOfferExtra(false)
-	offerExtra.StatusCh <- types.CompletedSuccess
 	return offerExtra, nil
 }
 

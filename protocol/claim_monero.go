@@ -24,6 +24,7 @@ var (
 // SwapManager is the subset of the swap.Manager interface needed by ClaimMonero
 type SwapManager interface {
 	WriteSwapToDB(info *swap.Info) error
+	PushNewStatus(offerID types.Hash, status types.Status)
 }
 
 // GetClaimKeypair returns the private key pair required for a monero claim.
@@ -103,6 +104,7 @@ func ClaimMonero(
 // setSweepStatus sets the swap's status as `SweepingXMR` and writes it to the db.
 func setSweepStatus(info *swap.Info, sm SwapManager) error {
 	info.SetStatus(types.SweepingXMR)
+	sm.PushNewStatus(info.OfferID, types.SweepingXMR)
 	err := sm.WriteSwapToDB(info)
 	if err != nil {
 		return fmt.Errorf("failed to write swap to db: %w", err)

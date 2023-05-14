@@ -263,6 +263,3 @@ type XMRMaker interface {
 	ClearOffers([]types.Hash) error
 	GetMoneroBalance() (*mcrypto.Address, *wallet.GetBalanceResponse, error)
 }
-
-// SwapManager ...
-type SwapManager = swap.Manager

@@ -17,6 +17,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 const defaultSearchTime = time.Second * 12
@@ -37,12 +38,12 @@ type NetService struct {
 	net        Net
 	xmrtaker   XMRTaker
 	xmrmaker   XMRMaker
-	sm         SwapManager
+	sm         swap.Manager
 	isBootnode bool
 }
 
 // NewNetService ...
-func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm SwapManager, isBootnode bool) *NetService {
+func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm swap.Manager, isBootnode bool) *NetService {
 	return &NetService{
 		net:        net,
 		xmrtaker:   xmrtaker,
@@ -160,7 +161,7 @@ func (s *NetService) TakeOffer(
 		return errUnsupportedForBootnode
 	}
 
-	_, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount)
+	err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -168,13 +169,10 @@ func (s *NetService) TakeOffer(
 	return nil
 }
 
-func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
-	<-chan types.Status,
-	error,
-) {
+func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) error {
 	queryResp, err := s.net.Query(makerPeerID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var offer *types.Offer
@@ -185,12 +183,12 @@ func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, provides
 		}
 	}
 	if offer == nil {
-		return nil, errNoOfferWithID
+		return errNoOfferWithID
 	}
 
 	swapState, err := s.xmrtaker.InitiateProtocol(makerPeerID, providesAmount, offer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initiate protocol: %w", err)
+		return fmt.Errorf("failed to initiate protocol: %w", err)
 	}
 
 	skm := swapState.SendKeysMessage().(*message.SendKeysMessage)
@@ -201,15 +199,10 @@ func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, provides
 		if err = swapState.Exit(); err != nil {
 			log.Warnf("Swap exit failure: %s", err)
 		}
-		return nil, err
+		return err
 	}
 
-	info, err := s.sm.GetOngoingSwap(offerID)
-	if err != nil {
-		return nil, err
-	}
-
-	return info.StatusCh(), nil
+	return nil
 }
 
 // TakeOfferSyncResponse ...
@@ -228,7 +221,7 @@ func (s *NetService) TakeOfferSync(
 		return errUnsupportedForBootnode
 	}
 
-	if _, err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount); err != nil {
+	if err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount); err != nil {
 		return err
 	}
 
@@ -263,7 +256,7 @@ func (s *NetService) MakeOffer(
 		return errUnsupportedForBootnode
 	}
 
-	offerResp, _, err := s.makeOffer(req)
+	offerResp, err := s.makeOffer(req)
 	if err != nil {
 		return err
 	}
@@ -271,7 +264,7 @@ func (s *NetService) MakeOffer(
 	return nil
 }
 
-func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOfferResponse, *types.OfferExtra, error) {
+func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOfferResponse, error) {
 	offer := types.NewOffer(
 		coins.ProvidesXMR,
 		req.MinAmount,
@@ -280,13 +273,13 @@ func (s *NetService) makeOffer(req *rpctypes.MakeOfferRequest) (*rpctypes.MakeOf
 		req.EthAsset,
 	)
 
-	offerExtra, err := s.xmrmaker.MakeOffer(offer, req.UseRelayer)
+	_, err := s.xmrmaker.MakeOffer(offer, req.UseRelayer)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	return &rpctypes.MakeOfferResponse{
 		PeerID:  s.net.PeerID(),
 		OfferID: offer.ID,
-	}, offerExtra, nil
+	}, nil
 }

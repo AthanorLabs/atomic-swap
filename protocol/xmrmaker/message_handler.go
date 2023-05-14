@@ -52,7 +52,7 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 
 func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	s.nextExpectedEvent = EventNoneType
-	s.info.SetStatus(status)
+	s.UpdateStatus(status)
 }
 
 func (s *swapState) setNextExpectedEvent(event EventType) error {
@@ -72,7 +72,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 		panic("status corresponding to event cannot be UnknownStatus")
 	}
 
-	s.info.SetStatus(status)
+	s.UpdateStatus(status)
 	err := s.Backend.SwapManager().WriteSwapToDB(s.info)
 	if err != nil {
 		return err

@@ -11,6 +11,7 @@ import (
 	"github.com/ChainSafe/chaindb"
 
 	"github.com/athanorlabs/atomic-swap/common/types"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 
 	logging "github.com/ipfs/go-log"
 )
@@ -36,7 +37,7 @@ type offerWithExtra struct {
 
 // NewManager creates a new offer manager. The passed in dataDir is the
 // directory where the recovery file is for each individual swap is stored.
-func NewManager(dataDir string, db Database) (*Manager, error) {
+func NewManager(dataDir string, db Database, swapManager swap.Manager) (*Manager, error) {
 	log.Infof("loading any saved offers from db")
 	// load offers from the database, if there are any
 	savedOffers, err := db.GetAllOffers()
@@ -47,11 +48,9 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 	offers := make(map[types.Hash]*offerWithExtra)
 
 	for _, offer := range savedOffers {
-		extra := types.NewOfferExtra(false)
-
 		offers[offer.ID] = &offerWithExtra{
 			offer: offer,
-			extra: extra,
+			extra: types.NewOfferExtra(false),
 		}
 
 		log.Infof("loaded offer %s from database", offer.ID)
@@ -79,10 +78,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 }
 
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
-func (m *Manager) AddOffer(
-	offer *types.Offer,
-	useRelayer bool,
-) (*types.OfferExtra, error) {
+func (m *Manager) AddOffer(offer *types.Offer, useRelayer bool) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

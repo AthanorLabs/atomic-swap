@@ -270,7 +270,7 @@ func TestSwapState_HandleProtocolMessage_NotifyETHLocked_timeout(t *testing.T) {
 
 	go s.runT1ExpirationHandler()
 
-	for status := range s.info.StatusCh() {
+	for status := range s.SwapManager().GetStatusChan(s.OfferID()) {
 		if status == types.CompletedSuccess {
 			break
 		} else if !status.IsOngoing() {
@@ -319,7 +319,8 @@ func TestSwapState_handleRefund(t *testing.T) {
 
 	// runContractEventWatcher will trigger EventETHRefunded,
 	// which will then set the next expected event to EventExit.
-	for status := range s.info.StatusCh() {
+	statusCh := s.SwapManager().GetStatusChan(s.info.OfferID)
+	for status := range statusCh {
 		if !status.IsOngoing() {
 			break
 		}
@@ -376,7 +377,7 @@ func TestSwapState_Exit_Reclaim(t *testing.T) {
 
 	// runContractEventWatcher will trigger EventETHRefunded,
 	// which will then set the next expected event to EventExit.
-	for status := range s.info.StatusCh() {
+	for status := range s.SwapManager().GetStatusChan(s.info.OfferID) {
 		if !status.IsOngoing() {
 			require.Equal(t, types.CompletedRefund.String(), status.String())
 			break
@@ -418,7 +419,7 @@ func TestSwapState_Exit_Success(t *testing.T) {
 	max := coins.StrToDecimal("0.2")
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
-	s.info.SetStatus(types.CompletedSuccess)
+	s.UpdateStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
 
@@ -441,7 +442,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	_, err := b.MakeOffer(s.offer, false)
 	require.NoError(t, err)
 
-	s.info.SetStatus(types.CompletedRefund)
+	s.UpdateStatus(types.CompletedRefund)
 	err = s.Exit()
 	require.NoError(t, err)
 

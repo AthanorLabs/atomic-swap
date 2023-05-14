@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/db"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 )
 
 func Test_Manager(t *testing.T) {
@@ -28,7 +29,10 @@ func Test_Manager(t *testing.T) {
 	db.EXPECT().ClearAllOffers()
 
 	infoDir := t.TempDir()
-	mgr, err := NewManager(infoDir, db)
+	swapManager, err := swap.NewManager(swap.NewMockDatabase(gomock.NewController(t)))
+	require.NoError(t, err)
+
+	mgr, err := NewManager(infoDir, db, swapManager)
 	require.NoError(t, err)
 
 	for i := 0; i < numAdd; i++ {
@@ -76,7 +80,10 @@ func Test_Manager_NoErrorDeletingOfferNotOnDisk(t *testing.T) {
 	testDB, err := db.NewDatabase(&chaindb.Config{DataDir: dataDir})
 	require.NoError(t, err)
 
-	mgr, err := NewManager(dataDir, testDB)
+	swapManager, err := swap.NewManager(testDB)
+	require.NoError(t, err)
+
+	mgr, err := NewManager(dataDir, testDB, swapManager)
 	require.NoError(t, err)
 
 	offer := types.NewOffer(
@@ -100,7 +107,8 @@ func Test_Manager_NoErrorDeletingOfferNotOnDisk(t *testing.T) {
 	// because the code above did not succeed in deleting it from disk.
 	testDB, err = db.NewDatabase(&chaindb.Config{DataDir: dataDir})
 	require.NoError(t, err)
-	mgr, err = NewManager(dataDir, testDB)
+
+	mgr, err = NewManager(dataDir, testDB, swapManager)
 	require.NoError(t, err)
 
 	// Verify that the entry still exists after restart

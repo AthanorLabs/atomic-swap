@@ -61,8 +61,7 @@ type Info struct {
 	// (and after Timeout1), the ETH-taker is able to claim, but
 	// after this timeout, the ETH-taker can no longer claim, only
 	// the ETH-maker can refund.
-	Timeout2 *time.Time        `json:"timeout2,omitempty"`
-	statusCh chan types.Status `json:"-"`
+	Timeout2 *time.Time `json:"timeout2,omitempty"`
 }
 
 // NewInfo creates a new *Info from the given parameters.
@@ -76,7 +75,6 @@ func NewInfo(
 	ethAsset types.EthAsset,
 	status Status,
 	moneroStartHeight uint64,
-	statusCh chan types.Status,
 ) *Info {
 	info := &Info{
 		Version:              CurInfoVersion,
@@ -90,22 +88,15 @@ func NewInfo(
 		Status:               status,
 		LastStatusUpdateTime: time.Now(),
 		MoneroStartHeight:    moneroStartHeight,
-		statusCh:             statusCh,
 		StartTime:            time.Now(),
 	}
 	return info
 }
 
-// StatusCh returns the swap's status update channel.
-func (i *Info) StatusCh() <-chan types.Status {
-	return i.statusCh
-}
-
-// SetStatus ...
+// SetStatus updates the status and status modification timestamp
 func (i *Info) SetStatus(s Status) {
 	i.Status = s
 	i.LastStatusUpdateTime = time.Now()
-	i.statusCh <- s
 }
 
 // IsTaker returns true if the node is the xmr-taker in the swap.
@@ -151,9 +142,25 @@ func (i *Info) UnmarshalJSON(jsonData []byte) error {
 		return err
 	}
 
-	i.statusCh = types.NewStatusChannel()
-
 	// TODO: Are there additional sanity checks we can perform on the Provided and Received amounts
 	//       (or other fields) here when decoding the JSON?
 	return nil
+}
+
+// DeepCopy returns a deep copy of the Info data structure
+func (i *Info) DeepCopy() (*Info, error) {
+	// This is not the most efficient means of getting a deep copy, but for our
+	// needs it is fast enough and least prone to human error, as the structure
+	// has numerous nested pointer types.
+	jsonData, err := json.Marshal(i)
+	if err != nil {
+		return nil, err
+	}
+
+	clone := new(Info)
+	if err = clone.UnmarshalJSON(jsonData); err != nil {
+		return nil, err
+	}
+
+	return clone, nil
 }

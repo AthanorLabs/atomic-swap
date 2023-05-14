@@ -263,6 +263,5 @@ func TestOfferExtra_JSON(t *testing.T) {
 	extra = new(OfferExtra)
 	err = json.Unmarshal(data, extra)
 	require.NoError(t, err)
-	require.NotNil(t, extra.StatusCh)
 	require.True(t, extra.UseRelayer)
 }

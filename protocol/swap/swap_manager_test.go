@@ -38,7 +38,6 @@ func TestNewManager(t *testing.T) {
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
-		types.NewStatusChannel(),
 	)
 	db.EXPECT().PutSwap(infoA)
 	err = m.AddSwap(infoA)
@@ -54,7 +53,6 @@ func TestNewManager(t *testing.T) {
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		100,
-		types.NewStatusChannel(),
 	)
 	db.EXPECT().PutSwap(infoB)
 	err = m.AddSwap(infoB)
@@ -88,7 +86,6 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 		types.EthAssetETH,
 		types.ExpectingKeys,
 		100,
-		types.NewStatusChannel(),
 	)
 
 	db.EXPECT().PutSwap(info)
@@ -100,7 +97,7 @@ func TestManager_AddSwap_Ongoing(t *testing.T) {
 
 	s, err := m.GetOngoingSwap(types.Hash{})
 	require.NoError(t, err)
-	require.Equal(t, info, &s)
+	require.Equal(t, info, s)
 	require.NotNil(t, m.ongoing)
 
 	db.EXPECT().PutSwap(info)

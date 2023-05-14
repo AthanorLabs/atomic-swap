@@ -57,7 +57,7 @@ type Config struct {
 // NewInstance returns a new *xmrmaker.Instance.
 // It accepts an endpoint to a monero-wallet-rpc instance where account 0 contains XMRMaker's XMR.
 func NewInstance(cfg *Config) (*Instance, error) {
-	om, err := offers.NewManager(cfg.DataDir, cfg.Database)
+	om, err := offers.NewManager(cfg.DataDir, cfg.Database, cfg.Backend.SwapManager())
 	if err != nil {
 		return nil, err
 	}
@@ -84,12 +84,17 @@ func NewInstance(cfg *Config) (*Instance, error) {
 }
 
 func (inst *Instance) checkForOngoingSwaps() error {
-	swaps, err := inst.backend.SwapManager().GetOngoingSwaps()
+	ongoingIDs, err := inst.backend.SwapManager().GetOngoingSwapOfferIDs()
 	if err != nil {
 		return err
 	}
 
-	for _, s := range swaps {
+	for _, offerID := range ongoingIDs {
+		s, err := inst.backend.SwapManager().GetOngoingSwap(*offerID)
+		if err != nil {
+			return err
+		}
+
 		if s.Provides != coins.ProvidesXMR {
 			continue
 		}

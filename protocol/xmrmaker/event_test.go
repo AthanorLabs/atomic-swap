@@ -36,7 +36,7 @@ func TestSwapState_handleEvent_EventContractReady(t *testing.T) {
 
 	// runContractEventWatcher will trigger EventContractReady,
 	// which will then set the next expected event to EventExit.
-	for status := range s.info.StatusCh() {
+	for status := range s.SwapManager().GetStatusChan(s.OfferID()) {
 		if !status.IsOngoing() {
 			break
 		}
