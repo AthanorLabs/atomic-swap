@@ -12,6 +12,8 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 
@@ -456,14 +458,13 @@ func getNewSwapParametersFromTx(
 		return nil, err
 	}
 
-	newSwapInputs := make(map[string]any)
+	newSwapInputs := make(map[string]interface{})
 
 	err = m.Inputs.UnpackIntoMap(newSwapInputs, data[4:])
 	if err != nil {
 		return nil, err
 	}
 
-	owner := newSwapInputs["_owner"].(ethcommon.Address)
 	claimer := newSwapInputs["_claimer"].(ethcommon.Address)
 	cmtXMRMaker := newSwapInputs["_pubKeyClaim"].([32]byte)
 	cmtXMRTaker := newSwapInputs["_pubKeyRefund"].([32]byte)
@@ -471,9 +472,15 @@ func getNewSwapParametersFromTx(
 	value := newSwapInputs["_value"].(*big.Int)
 	nonce := newSwapInputs["_nonce"].(*big.Int)
 
+	signer := ethtypes.LatestSignerForChainID(tx.ChainId())
+	from, err := ethtypes.Sender(signer, tx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &newSwapParameters{
 		swapCreatorAddr: *tx.To(),
-		owner:           owner,
+		owner:           from,
 		claimer:         claimer,
 		cmtXMRMaker:     cmtXMRMaker,
 		cmtXMRTaker:     cmtXMRTaker,

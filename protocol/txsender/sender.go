@@ -84,8 +84,7 @@ func (s *privateKeySender) NewSwap(
 	nonce *big.Int,
 	amount coins.EthAssetAmount,
 ) (ethcommon.Hash, error) {
-	// s.ethClient.Lock()
-	// defer s.ethClient.Unlock()
+	// note: the caller must lock the ethclient.
 
 	value := amount.BigInt()
 
