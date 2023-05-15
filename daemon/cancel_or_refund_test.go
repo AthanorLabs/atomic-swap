@@ -76,7 +76,7 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 				t.Log("cancelling context of Alice's and Bob's servers")
 				return
 			}
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * 200)
 		}
 	}()
 
@@ -91,7 +91,7 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 					return
 				}
 			case <-ctx.Done():
-				t.Logf("Bob's context cancelled before she completed the swap [expected]")
+				t.Logf("Bob's context cancelled before he completed the swap [expected]")
 				return
 			}
 		}
