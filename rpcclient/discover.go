@@ -22,7 +22,7 @@ func (c *Client) Discover(provides string, searchTime uint64) ([]peer.ID, error)
 	}
 	res := &rpctypes.DiscoverResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -41,7 +41,7 @@ func (c *Client) QueryAll(provides coins.ProvidesCoin, searchTime uint64) ([]*rp
 	}
 	res := &rpctypes.QueryAllResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 

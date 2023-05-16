@@ -51,11 +51,11 @@ func NewClient(ctx context.Context, port uint16) *Client {
 	}
 }
 
-// Post makes a JSON-RPC call to the client's endpoint, serializing any passed request
+// post makes a JSON-RPC call to the client's endpoint, serializing any passed request
 // object and deserializing any passed response object from the POST response body. Nil
 // can be passed as the request or response when no data needs to be serialized or
 // deserialized respectively.
-func (c *Client) Post(method string, request any, response any) error {
+func (c *Client) post(method string, request any, response any) error {
 	data, err := json2.EncodeClientRequest(method, request)
 	if err != nil {
 		return err

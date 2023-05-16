@@ -15,7 +15,7 @@ func (c *Client) Peers() (*rpctypes.PeersResponse, error) {
 
 	res := &rpctypes.PeersResponse{}
 
-	if err := c.Post(method, nil, res); err != nil {
+	if err := c.post(method, nil, res); err != nil {
 		return nil, err
 	}
 

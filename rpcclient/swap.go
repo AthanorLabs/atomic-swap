@@ -22,7 +22,7 @@ func (c *Client) GetOngoingSwap(id *types.Hash) (*rpc.GetOngoingResponse, error)
 
 	res := &rpc.GetOngoingResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -40,7 +40,7 @@ func (c *Client) GetPastSwap(id *types.Hash) (*rpc.GetPastResponse, error) {
 
 	res := &rpc.GetPastResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -58,7 +58,7 @@ func (c *Client) GetStatus(id types.Hash) (*rpc.GetStatusResponse, error) {
 	}
 	res := &rpc.GetStatusResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +75,7 @@ func (c *Client) ClearOffers(offerIDs []types.Hash) error {
 		OfferIDs: offerIDs,
 	}
 
-	if err := c.Post(method, req, nil); err != nil {
+	if err := c.post(method, req, nil); err != nil {
 		return fmt.Errorf("failed to call %s: %w", method, err)
 	}
 
@@ -94,7 +94,7 @@ func (c *Client) Claim(offerID types.Hash) (*rpc.ManualTransactionResponse, erro
 
 	res := &rpc.ManualTransactionResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -113,7 +113,7 @@ func (c *Client) Refund(offerID types.Hash) (*rpc.ManualTransactionResponse, err
 
 	res := &rpc.ManualTransactionResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -127,7 +127,7 @@ func (c *Client) SuggestedExchangeRate() (*rpc.SuggestedExchangeRateResponse, er
 	)
 
 	res := &rpc.SuggestedExchangeRateResponse{}
-	if err := c.Post(method, nil, res); err != nil {
+	if err := c.post(method, nil, res); err != nil {
 		return nil, err
 	}
 
