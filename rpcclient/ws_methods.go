@@ -1,9 +1,7 @@
 // Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
-// Package wsclient provides client libraries for interacting with a local swapd instance
-// over web sockets.
-package wsclient
+package rpcclient
 
 import (
 	"context"
@@ -50,7 +48,8 @@ type wsClient struct {
 }
 
 // NewWsClient ...
-func NewWsClient(ctx context.Context, endpoint string) (*wsClient, error) { ///nolint:revive
+func NewWsClient(ctx context.Context, port uint16) (*wsClient, error) { ///nolint:revive
+	endpoint := fmt.Sprintf("ws://127.0.0.1:%d/ws", port)
 	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial WS endpoint: %w", err)

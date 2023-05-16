@@ -173,14 +173,9 @@ func NewServer(cfg *Config) (*Server, error) {
 	}, nil
 }
 
-// HttpURL returns the URL used for HTTP requests
-func (s *Server) HttpURL() string { //nolint:revive
-	return fmt.Sprintf("http://%s", s.httpServer.Addr)
-}
-
-// WsURL returns the URL used for websocket requests
-func (s *Server) WsURL() string {
-	return fmt.Sprintf("ws://%s/ws", s.httpServer.Addr)
+// Port returns the localhost port used for HTTP and websocket requests
+func (s *Server) Port() uint16 {
+	return uint16(s.listener.Addr().(*net.TCPAddr).Port)
 }
 
 // Start starts the JSON-RPC and Websocket server.
@@ -189,8 +184,8 @@ func (s *Server) Start() error {
 		return s.ctx.Err()
 	}
 
-	log.Infof("Starting RPC server on %s", s.HttpURL())
-	log.Infof("Starting websockets server on %s", s.WsURL())
+	log.Infof("Starting RPC server on %s", s.Port())
+	log.Infof("Starting websockets server on %s", s.Port())
 
 	serverErr := make(chan error, 1)
 	go func() {

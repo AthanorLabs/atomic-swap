@@ -4,7 +4,6 @@
 package daemon
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -42,11 +40,11 @@ func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
+	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
 	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 	require.NoError(t, err)
-	acHTTP := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", aliceConf.RPCPort))
+	acHTTP := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)

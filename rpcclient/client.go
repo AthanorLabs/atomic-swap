@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 // Package rpcclient provides client libraries for interacting with a local swapd instance using
-// the JSON-RPC remote procedure call protocol.
+// the JSON-RPC remote procedure call protocol and websockets.
 package rpcclient
 
 import (
@@ -44,10 +44,10 @@ type Client struct {
 
 // NewClient creates a new JSON-RPC client for the specified endpoint. The passed context
 // is used for the full lifetime of the client.
-func NewClient(ctx context.Context, endpoint string) *Client {
+func NewClient(ctx context.Context, port uint16) *Client {
 	return &Client{
 		ctx:      ctx,
-		endpoint: endpoint,
+		endpoint: fmt.Sprintf("http://127.0.0.1:%d", port),
 	}
 }
 

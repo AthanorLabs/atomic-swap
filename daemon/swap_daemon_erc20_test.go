@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -37,9 +35,9 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, aliceConf, bobConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
+	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
 	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 	require.NoError(t, err)
 
 	_, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
@@ -47,7 +45,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	time.Sleep(250 * time.Millisecond) // offer propagation time
 
 	// Have Alice query all the offer information back
-	aRPC := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", aliceConf.RPCPort))
+	aRPC := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 	peersWithOffers, err := aRPC.QueryAll(coins.ProvidesXMR, 3)
 	require.NoError(t, err)
 	require.Len(t, peersWithOffers, 1)
@@ -109,7 +107,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	//
 	// Check Bob's token balance via RPC method instead of doing it directly
 	//
-	bRPC := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", bobConf.RPCPort))
+	bRPC := rpcclient.NewClient(ctx, bobConf.RPCPort)
 	balances, err := bRPC.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAddr}})
 	require.NoError(t, err)
 	t.Logf("Balances: %#v", balances)

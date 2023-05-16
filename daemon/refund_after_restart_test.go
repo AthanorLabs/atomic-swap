@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +12,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -34,9 +33,9 @@ func TestXMRNotLockedAndETHRefundedAfterAliceRestarts(t *testing.T) {
 
 	// clients use a separate context and will work across server restarts
 	clientCtx := context.Background()
-	bc, err := wsclient.NewWsClient(clientCtx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
+	bc, err := rpcclient.NewWsClient(clientCtx, bobConf.RPCPort)
 	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(clientCtx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	ac, err := rpcclient.NewWsClient(clientCtx, aliceConf.RPCPort)
 	require.NoError(t, err)
 
 	// Bob makes an offer
@@ -109,7 +108,7 @@ func TestXMRNotLockedAndETHRefundedAfterAliceRestarts(t *testing.T) {
 
 	// This is a bug that we need to recreate Alice's websocket client here. Remove this
 	// code when we fix https://github.com/AthanorLabs/atomic-swap/issues/353.
-	ac, err = wsclient.NewWsClient(clientCtx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
+	ac, err = rpcclient.NewWsClient(clientCtx, aliceConf.RPCPort)
 	require.NoError(t, err)
 
 	aliceStatusCh, err = ac.SubscribeSwapStatus(makeResp.OfferID)

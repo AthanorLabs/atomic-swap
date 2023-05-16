@@ -27,7 +27,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpc"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
 
 const (
@@ -489,14 +488,12 @@ func main() {
 
 func newRRPClient(ctx *cli.Context) *rpcclient.Client {
 	swapdPort := ctx.Uint(flagSwapdPort)
-	endpoint := fmt.Sprintf("http://127.0.0.1:%d", swapdPort)
-	return rpcclient.NewClient(ctx.Context, endpoint)
+	return rpcclient.NewClient(ctx.Context, uint16(swapdPort))
 }
 
-func newWSClient(ctx *cli.Context) (wsclient.WsClient, error) {
+func newWSClient(ctx *cli.Context) (rpcclient.WsClient, error) {
 	swapdPort := ctx.Uint(flagSwapdPort)
-	endpoint := fmt.Sprintf("ws://127.0.0.1:%d/ws", swapdPort)
-	return wsclient.NewWsClient(ctx.Context, endpoint)
+	return rpcclient.NewWsClient(ctx.Context, uint16(swapdPort))
 }
 
 func runAddresses(ctx *cli.Context) error {
