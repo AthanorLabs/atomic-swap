@@ -33,8 +33,8 @@ func TestXMRNotLockedAndETHRefundedAfterAliceRestarts(t *testing.T) {
 
 	// clients use a separate context and will work across server restarts
 	clientCtx := context.Background()
-	bc := rpcclient.NewWsClient(clientCtx, bobConf.RPCPort)
-	ac := rpcclient.NewWsClient(clientCtx, aliceConf.RPCPort)
+	bc := rpcclient.NewClient(clientCtx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(clientCtx, aliceConf.RPCPort)
 
 	// Bob makes an offer
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, false)

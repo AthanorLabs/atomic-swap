@@ -38,16 +38,18 @@ var (
 // running on the local host of a single use system. TLS and authentication are not
 // currently supported.
 type Client struct {
-	ctx      context.Context
-	endpoint string
+	ctx        context.Context
+	endpoint   string
+	wsEndpoint string
 }
 
 // NewClient creates a new JSON-RPC client for the specified endpoint. The passed context
 // is used for the full lifetime of the client.
 func NewClient(ctx context.Context, port uint16) *Client {
 	return &Client{
-		ctx:      ctx,
-		endpoint: fmt.Sprintf("http://127.0.0.1:%d", port),
+		ctx:        ctx,
+		endpoint:   fmt.Sprintf("http://127.0.0.1:%d", port),
+		wsEndpoint: fmt.Sprintf("ws://127.0.0.1:%d/ws", port),
 	}
 }
 

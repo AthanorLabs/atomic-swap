@@ -90,42 +90,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 		}
 
 		return s.handleSigner(s.ctx, conn, params.OfferID, params.EthAddress, params.XMRAddress)
-	case rpctypes.SubscribeNewPeer:
-		return errUnimplemented
-	case rpctypes.NetDiscover:
-		if s.ns == nil {
-			return errNamespaceNotEnabled
-		}
 
-		params := new(rpctypes.DiscoverRequest)
-		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
-			return fmt.Errorf("failed to unmarshal parameters: %w", err)
-		}
-
-		resp := new(rpctypes.DiscoverResponse)
-		err := s.ns.Discover(nil, params, resp)
-		if err != nil {
-			return err
-		}
-
-		return writeResponse(conn, resp)
-	case rpctypes.NetQueryPeer:
-		if s.ns == nil {
-			return errNamespaceNotEnabled
-		}
-
-		params := new(rpctypes.QueryPeerRequest)
-		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {
-			return fmt.Errorf("failed to unmarshal parameters: %w", err)
-		}
-
-		resp := new(rpctypes.QueryPeerResponse)
-		err := s.ns.QueryPeer(nil, params, resp)
-		if err != nil {
-			return err
-		}
-
-		return writeResponse(conn, resp)
 	case rpctypes.SubscribeSwapStatus:
 		params := new(rpctypes.SubscribeSwapStatusRequest)
 		if err := vjson.UnmarshalStruct(req.Params, params); err != nil {

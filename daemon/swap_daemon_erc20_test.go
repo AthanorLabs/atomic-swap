@@ -35,22 +35,21 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, aliceConf, bobConf)
 
-	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
+	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
 	_, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
 	require.NoError(t, err)
 	time.Sleep(250 * time.Millisecond) // offer propagation time
 
 	// Have Alice query all the offer information back
-	aRPC := rpcclient.NewClient(ctx, aliceConf.RPCPort)
-	peersWithOffers, err := aRPC.QueryAll(coins.ProvidesXMR, 3)
+	peersWithOffers, err := ac.QueryAll(coins.ProvidesXMR, 3)
 	require.NoError(t, err)
 	require.Len(t, peersWithOffers, 1)
 	require.Len(t, peersWithOffers[0].Offers, 1)
 	peerID := peersWithOffers[0].PeerID
 	offer := peersWithOffers[0].Offers[0]
-	tokenInfo, err := aRPC.TokenInfo(offer.EthAsset.Address())
+	tokenInfo, err := ac.TokenInfo(offer.EthAsset.Address())
 	require.NoError(t, err)
 	providesAmt, err := exRate.ToERC20Amount(offer.MaxAmount, tokenInfo)
 	require.NoError(t, err)
@@ -105,8 +104,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	//
 	// Check Bob's token balance via RPC method instead of doing it directly
 	//
-	bRPC := rpcclient.NewClient(ctx, bobConf.RPCPort)
-	balances, err := bRPC.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAddr}})
+	balances, err := bc.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAddr}})
 	require.NoError(t, err)
 	t.Logf("Balances: %#v", balances)
 

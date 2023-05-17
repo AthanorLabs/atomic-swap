@@ -67,7 +67,7 @@ func TestSubscribeSwapStatus(t *testing.T) {
 	ctx := context.Background()
 	s, _ := newServer(t)
 
-	c := NewWsClient(ctx, s.Port())
+	c := NewClient(ctx, s.Port())
 
 	ch, err := c.SubscribeSwapStatus(testSwapID)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	ctx := context.Background()
 	s, cfg := newServer(t)
 
-	c := NewWsClient(ctx, s.Port())
+	c := NewClient(ctx, s.Port())
 
 	min := coins.StrToDecimal("0.1")
 	max := coins.StrToDecimal("1")
@@ -110,7 +110,7 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	t.Cleanup(func() {
 		cancel()
 	})
-	c := NewWsClient(cliCtx, s.Port())
+	c := NewClient(cliCtx, s.Port())
 
 	ch, err := c.TakeOfferAndSubscribe(testPeerID, testSwapID, apd.New(1, 0))
 	require.NoError(t, err)

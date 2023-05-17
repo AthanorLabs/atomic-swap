@@ -39,9 +39,6 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, cancel := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bws := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	aws := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-
 	// Use an independent context for these clients that will execute across multiple runs of the daemons
 	bc := rpcclient.NewClient(context.Background(), bobConf.RPCPort)
 	ac := rpcclient.NewClient(context.Background(), aliceConf.RPCPort)
@@ -49,10 +46,10 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	tokenAddr := GetMockTokens(t, aliceConf.EthereumClient)[MockTether]
 	tokenAsset := types.EthAsset(tokenAddr)
 
-	makeResp, bobStatusCh, err := bws.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
+	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
 	require.NoError(t, err)
 
-	aliceStatusCh, err := aws.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
+	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
 	require.NoError(t, err)
 
 	var statusWG sync.WaitGroup
@@ -125,10 +122,7 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	ctx, _ = LaunchDaemons(t, 5*time.Minute, bobConf, aliceConf)
 	t.Logf("daemons relaunched, checking swap status")
 
-	// Give alice a fresh client with a fresh context
-	aws = rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
-	aliceStatusCh, err = aws.SubscribeSwapStatus(makeResp.OfferID)
+	aliceStatusCh, err = ac.SubscribeSwapStatus(makeResp.OfferID)
 	require.NoError(t, err)
 	t.Logf("subscribed to Alice's swap status")
 

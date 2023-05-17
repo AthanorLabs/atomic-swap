@@ -4,57 +4,22 @@
 package rpcclient
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/gorilla/websocket"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/rpctypes"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
-
-	"github.com/gorilla/websocket"
-	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("rpcclient")
 
-// WsClient ...
-type WsClient interface {
-	Discover(provides string, searchTime uint64) ([]peer.ID, error)
-	Query(who peer.ID) (*rpctypes.QueryPeerResponse, error)
-	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
-	TakeOfferAndSubscribe(peerID peer.ID, offerID types.Hash, providesAmount *apd.Decimal) (
-		ch <-chan types.Status,
-		err error,
-	)
-	MakeOfferAndSubscribe(
-		min *apd.Decimal,
-		max *apd.Decimal,
-		exchangeRate *coins.ExchangeRate,
-		ethAsset types.EthAsset,
-		useRelayer bool,
-	) (*rpctypes.MakeOfferResponse, <-chan types.Status, error)
-}
-
-type wsClient struct {
-	ctx        context.Context
-	wsEndpoint string
-}
-
-var _ WsClient = &wsClient{}
-
-// NewWsClient ...
-func NewWsClient(ctx context.Context, port uint16) WsClient {
-	return &wsClient{
-		ctx:        ctx,
-		wsEndpoint: fmt.Sprintf("ws://127.0.0.1:%d/ws", port),
-	}
-}
-
-func (c *wsClient) wsConnect() (*websocket.Conn, error) {
+func (c *Client) wsConnect() (*websocket.Conn, error) {
 	conn, resp, err := websocket.DefaultDialer.DialContext(c.ctx, c.wsEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial WS endpoint: %w", err)
@@ -67,11 +32,11 @@ func (c *wsClient) wsConnect() (*websocket.Conn, error) {
 	return conn, nil
 }
 
-func (c *wsClient) writeJSON(conn *websocket.Conn, msg *rpctypes.Request) error {
+func (c *Client) writeJSON(conn *websocket.Conn, msg *rpctypes.Request) error {
 	return conn.WriteJSON(msg)
 }
 
-func (c *wsClient) read(conn *websocket.Conn) ([]byte, error) {
+func (c *Client) read(conn *websocket.Conn) ([]byte, error) {
 	_, message, err := conn.ReadMessage()
 	if err != nil {
 		return nil, err
@@ -80,113 +45,9 @@ func (c *wsClient) read(conn *websocket.Conn) ([]byte, error) {
 	return message, nil
 }
 
-func (c *wsClient) Discover(provides string, searchTime uint64) ([]peer.ID, error) {
-	conn, err := c.wsConnect()
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = conn.Close() }()
-
-	params := &rpctypes.DiscoverRequest{
-		Provides:   provides,
-		SearchTime: searchTime,
-	}
-
-	bz, err := vjson.MarshalStruct(params)
-	if err != nil {
-		return nil, err
-	}
-
-	req := &rpctypes.Request{
-		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  rpctypes.NetDiscover,
-		Params:  bz,
-		ID:      0,
-	}
-
-	if err = c.writeJSON(conn, req); err != nil {
-		return nil, err
-	}
-
-	message, err := c.read(conn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read websockets message: %s", err)
-	}
-
-	resp := new(rpctypes.Response)
-	err = vjson.UnmarshalStruct(message, resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if resp.Error != nil {
-		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
-	}
-
-	log.Debugf("received message over websockets: %s", message)
-	dresp := new(rpctypes.DiscoverResponse)
-	if err := vjson.UnmarshalStruct(resp.Result, dresp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
-	}
-
-	return dresp.PeerIDs, nil
-}
-
-func (c *wsClient) Query(id peer.ID) (*rpctypes.QueryPeerResponse, error) {
-	conn, err := c.wsConnect()
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = conn.Close() }()
-
-	params := &rpctypes.QueryPeerRequest{
-		PeerID: id,
-	}
-
-	bz, err := vjson.MarshalStruct(params)
-	if err != nil {
-		return nil, err
-	}
-
-	req := &rpctypes.Request{
-		JSONRPC: rpctypes.DefaultJSONRPCVersion,
-		Method:  rpctypes.NetQueryPeer,
-		Params:  bz,
-		ID:      0,
-	}
-
-	if err = c.writeJSON(conn, req); err != nil {
-		return nil, err
-	}
-
-	// read ID from connection
-	message, err := c.read(conn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read websockets message: %s", err)
-	}
-
-	resp := new(rpctypes.Response)
-	err = vjson.UnmarshalStruct(message, resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if resp.Error != nil {
-		return nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
-	}
-
-	log.Debugf("received message over websockets: %s", message)
-	dresp := new(rpctypes.QueryPeerResponse)
-	if err := vjson.UnmarshalStruct(resp.Result, dresp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal swap ID response: %s", err)
-	}
-
-	return dresp, nil
-}
-
 // SubscribeSwapStatus returns a channel that is written to each time the swap's status updates.
 // If there is no swap with the given ID, it returns an error.
-func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error) {
+func (c *Client) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error) {
 	params := &rpctypes.SubscribeSwapStatusRequest{
 		OfferID: id,
 	}
@@ -256,7 +117,9 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 	return respCh, nil
 }
 
-func (c *wsClient) TakeOfferAndSubscribe(
+// TakeOfferAndSubscribe calls the server-side net_takeOfferAndSubscribe method
+// to take and offer and get status updates over websockets.
+func (c *Client) TakeOfferAndSubscribe(
 	peerID peer.ID,
 	offerID types.Hash,
 	providesAmount *apd.Decimal,
@@ -319,7 +182,7 @@ func (c *wsClient) TakeOfferAndSubscribe(
 	return respCh, nil
 }
 
-func (c *wsClient) readTakeOfferResponse(conn *websocket.Conn) (types.Status, error) {
+func (c *Client) readTakeOfferResponse(conn *websocket.Conn) (types.Status, error) {
 	message, err := c.read(conn)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read websockets message: %s", err)
@@ -344,7 +207,9 @@ func (c *wsClient) readTakeOfferResponse(conn *websocket.Conn) (types.Status, er
 	return statusResp.Status, nil
 }
 
-func (c *wsClient) MakeOfferAndSubscribe(
+// MakeOfferAndSubscribe calls the server-side net_makeOfferAndSubscribe method
+// to make an offer and get status updates over websockets.
+func (c *Client) MakeOfferAndSubscribe(
 	min *apd.Decimal,
 	max *apd.Decimal,
 	exchangeRate *coins.ExchangeRate,
