@@ -50,7 +50,14 @@ func (sm *statusManager) DeleteStatusChan(offerID types.Hash) {
 
 // PushNewStatus adds a new status to the offer ID's channel
 func (sm *statusManager) PushNewStatus(offerID types.Hash, status types.Status) {
-	sm.getStatusChan(offerID) <- status
+	ch := sm.getStatusChan(offerID)
+	ch <- status
+	// If the status is not ongoing, existing subscribers will get the status
+	// via the channel since they already have a reference to it. New
+	// subscribers will get the final status from the past swaps map.
+	if !status.IsOngoing() {
+		sm.DeleteStatusChan(offerID)
+	}
 }
 
 // newStatusChannel creates a status channel using the the correct size
