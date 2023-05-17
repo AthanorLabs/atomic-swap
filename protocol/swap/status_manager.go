@@ -56,6 +56,11 @@ func (sm *statusManager) PushNewStatus(offerID types.Hash, status types.Status) 
 	// via the channel since they already have a reference to it. New
 	// subscribers will get the final status from the past swaps map.
 	if !status.IsOngoing() {
+		// We grabbed the status channel before calling IsOngoing to avoid a
+		// race condition where the status becomes complete after the check, but
+		// before we grab a reference to the channel. If the status was complete
+		// before we grabbed the channel, we created a new channel, which we
+		// remove below.
 		sm.DeleteStatusChan(offerID)
 	}
 }
