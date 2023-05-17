@@ -331,11 +331,10 @@ func TestDatabase_SwapTable_Update(t *testing.T) {
 
 	// infoB mostly the same as infoA (same ID, importantly), but with
 	// a couple updated fields.
-	infoB := new(swap.Info)
-	*infoB = *infoA
+	infoB, err := infoA.DeepCopy()
+	require.NoError(t, err)
 	infoB.Status = types.CompletedSuccess
-	endTime := time.Now()
-	infoB.EndTime = &endTime
+	infoB.MarkSwapComplete()
 
 	err = db.PutSwap(infoB)
 	require.NoError(t, err)
