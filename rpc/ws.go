@@ -148,7 +148,7 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, params.OfferID)
+		return s.subscribeSwapStatus(s.ctx, conn, params.OfferID)
 	case rpctypes.SubscribeMakeOffer:
 		if s.ns == nil {
 			return errNamespaceNotEnabled
@@ -237,38 +237,6 @@ func (s *wsServer) handleSigner(
 			}
 
 			txsInCh <- params.TxHash
-		}
-	}
-}
-
-func (s *wsServer) subscribeTakeOffer(
-	ctx context.Context,
-	conn *websocket.Conn,
-	offerID types.Hash,
-) error {
-
-	statusCh := s.sm.GetStatusChan(offerID)
-
-	for {
-		select {
-		case status, ok := <-statusCh:
-			if !ok {
-				return nil
-			}
-
-			resp := &rpctypes.SubscribeSwapStatusResponse{
-				Status: status,
-			}
-
-			if err := writeResponse(conn, resp); err != nil {
-				return err
-			}
-
-			if !status.IsOngoing() {
-				return nil
-			}
-		case <-ctx.Done():
-			return nil
 		}
 	}
 }
