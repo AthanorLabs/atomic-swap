@@ -450,7 +450,7 @@ func (s *swapState) SendKeysMessage() common.Message {
 	}
 }
 
-func (s *swapState) UpdateStatus(status types.Status) {
+func (s *swapState) updateStatus(status types.Status) {
 	s.info.SetStatus(status)
 	s.SwapManager().PushNewStatus(s.OfferID(), status)
 }

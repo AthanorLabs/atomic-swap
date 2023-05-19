@@ -196,8 +196,8 @@ func (m *manager) GetOngoingSwapOfferIDs() ([]*types.Hash, error) {
 }
 
 // GetOngoingSwapsSnapshot returns a copy of all ongoing swaps. If you need to
-// modify the result or read from its status channel, call `GetOngoingSwap` on
-// the offerID to get the "live" Info object.
+// modify the result, call `GetOngoingSwap` on the offerID to get the "live"
+// Info object.
 func (m *manager) GetOngoingSwapsSnapshot() ([]*Info, error) {
 	m.RLock()
 	defer m.RUnlock()

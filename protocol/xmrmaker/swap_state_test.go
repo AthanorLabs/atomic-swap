@@ -419,7 +419,7 @@ func TestSwapState_Exit_Success(t *testing.T) {
 	max := coins.StrToDecimal("0.2")
 	rate := coins.ToExchangeRate(coins.StrToDecimal("0.1"))
 	s.offer = types.NewOffer(coins.ProvidesXMR, min, max, rate, types.EthAssetETH)
-	s.UpdateStatus(types.CompletedSuccess)
+	s.updateStatus(types.CompletedSuccess)
 	err := s.Exit()
 	require.NoError(t, err)
 
@@ -442,7 +442,7 @@ func TestSwapState_Exit_Refunded(t *testing.T) {
 	_, err := b.MakeOffer(s.offer, false)
 	require.NoError(t, err)
 
-	s.UpdateStatus(types.CompletedRefund)
+	s.updateStatus(types.CompletedRefund)
 	err = s.Exit()
 	require.NoError(t, err)
 

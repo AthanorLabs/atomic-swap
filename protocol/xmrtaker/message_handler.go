@@ -40,7 +40,7 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 
 func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	s.nextExpectedEvent = EventNoneType
-	s.UpdateStatus(status)
+	s.updateStatus(status)
 }
 
 func (s *swapState) setNextExpectedEvent(event EventType) error {
@@ -61,7 +61,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	}
 
 	log.Debugf("setting status to %s", status)
-	s.UpdateStatus(status)
+	s.updateStatus(status)
 	return s.Backend.SwapManager().WriteSwapToDB(s.info)
 }
 
