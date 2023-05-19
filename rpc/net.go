@@ -205,47 +205,6 @@ func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, provides
 	return nil
 }
 
-// TakeOfferSyncResponse ...
-type TakeOfferSyncResponse struct {
-	Status types.Status `json:"status" validate:"required"`
-}
-
-// TakeOfferSync initiates a swap with the given peer by taking an offer they've made.
-// It synchronously waits until the swap is completed before returning its status.
-func (s *NetService) TakeOfferSync(
-	_ *http.Request,
-	req *rpctypes.TakeOfferRequest,
-	resp *TakeOfferSyncResponse,
-) error {
-	if s.isBootnode {
-		return errUnsupportedForBootnode
-	}
-
-	if err := s.takeOffer(req.PeerID, req.OfferID, req.ProvidesAmount); err != nil {
-		return err
-	}
-
-	const checkSwapSleepDuration = time.Millisecond * 100
-
-	for {
-		time.Sleep(checkSwapSleepDuration)
-
-		info, err := s.sm.GetPastSwap(req.OfferID)
-		if err != nil {
-			return err
-		}
-
-		if info == nil {
-			continue
-		}
-
-		resp.Status = info.Status
-		break
-	}
-
-	return nil
-}
-
 // MakeOffer creates and advertises a new swap offer.
 func (s *NetService) MakeOffer(
 	_ *http.Request,
