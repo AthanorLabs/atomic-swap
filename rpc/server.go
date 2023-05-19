@@ -184,8 +184,7 @@ func (s *Server) Start() error {
 		return s.ctx.Err()
 	}
 
-	log.Infof("Starting RPC server on %s", s.Port())
-	log.Infof("Starting websockets server on %s", s.Port())
+	log.Infof("Starting RPC/websockets server on 127.0.0.1:%d", s.Port())
 
 	serverErr := make(chan error, 1)
 	go func() {

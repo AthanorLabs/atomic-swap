@@ -40,10 +40,8 @@ func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 	acHTTP := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false

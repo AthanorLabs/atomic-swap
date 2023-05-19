@@ -491,7 +491,7 @@ func newRRPClient(ctx *cli.Context) *rpcclient.Client {
 	return rpcclient.NewClient(ctx.Context, uint16(swapdPort))
 }
 
-func newWSClient(ctx *cli.Context) (rpcclient.WsClient, error) {
+func newWSClient(ctx *cli.Context) rpcclient.WsClient {
 	swapdPort := ctx.Uint(flagSwapdPort)
 	return rpcclient.NewWsClient(ctx.Context, uint16(swapdPort))
 }
@@ -735,13 +735,9 @@ func runMake(ctx *cli.Context) error {
 	alwaysUseRelayer := ctx.Bool(flagUseRelayer)
 
 	if !ctx.Bool(flagDetached) {
-		wsc, err := newWSClient(ctx) //nolint:govet
-		if err != nil {
-			return err
-		}
-		defer wsc.Close()
+		wsc := newWSClient(ctx)
 
-		resp, statusCh, err := wsc.MakeOfferAndSubscribe(
+		resp, statusCh, err := wsc.MakeOfferAndSubscribe( //nolint:govet
 			min,
 			max,
 			exchangeRate,
@@ -789,11 +785,7 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	if !ctx.Bool(flagDetached) {
-		wsc, err := newWSClient(ctx)
-		if err != nil {
-			return err
-		}
-		defer wsc.Close()
+		wsc := newWSClient(ctx)
 
 		statusCh, err := wsc.TakeOfferAndSubscribe(peerID, offerID, providesAmount)
 		if err != nil {

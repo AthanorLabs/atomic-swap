@@ -6,7 +6,6 @@ package rpcclient
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -24,7 +23,6 @@ var log = logging.Logger("rpcclient")
 
 // WsClient ...
 type WsClient interface {
-	Close()
 	Discover(provides string, searchTime uint64) ([]peer.ID, error)
 	Query(who peer.ID) (*rpctypes.QueryPeerResponse, error)
 	SubscribeSwapStatus(id types.Hash) (<-chan types.Status, error)
@@ -42,15 +40,22 @@ type WsClient interface {
 }
 
 type wsClient struct {
-	wmu  sync.Mutex
-	rmu  sync.Mutex
-	conn *websocket.Conn
+	ctx        context.Context
+	wsEndpoint string
 }
 
+var _ WsClient = &wsClient{}
+
 // NewWsClient ...
-func NewWsClient(ctx context.Context, port uint16) (*wsClient, error) { ///nolint:revive
-	endpoint := fmt.Sprintf("ws://127.0.0.1:%d/ws", port)
-	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, endpoint, nil)
+func NewWsClient(ctx context.Context, port uint16) WsClient {
+	return &wsClient{
+		ctx:        ctx,
+		wsEndpoint: fmt.Sprintf("ws://127.0.0.1:%d/ws", port),
+	}
+}
+
+func (c *wsClient) wsConnect() (*websocket.Conn, error) {
+	conn, resp, err := websocket.DefaultDialer.DialContext(c.ctx, c.wsEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial WS endpoint: %w", err)
 	}
@@ -59,25 +64,15 @@ func NewWsClient(ctx context.Context, port uint16) (*wsClient, error) { ///nolin
 		return nil, err
 	}
 
-	return &wsClient{
-		conn: conn,
-	}, nil
+	return conn, nil
 }
 
-func (c *wsClient) Close() {
-	_ = c.conn.Close()
+func (c *wsClient) writeJSON(conn *websocket.Conn, msg *rpctypes.Request) error {
+	return conn.WriteJSON(msg)
 }
 
-func (c *wsClient) writeJSON(msg *rpctypes.Request) error {
-	c.wmu.Lock()
-	defer c.wmu.Unlock()
-	return c.conn.WriteJSON(msg)
-}
-
-func (c *wsClient) read() ([]byte, error) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
-	_, message, err := c.conn.ReadMessage()
+func (c *wsClient) read(conn *websocket.Conn) ([]byte, error) {
+	_, message, err := conn.ReadMessage()
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +81,12 @@ func (c *wsClient) read() ([]byte, error) {
 }
 
 func (c *wsClient) Discover(provides string, searchTime uint64) ([]peer.ID, error) {
+	conn, err := c.wsConnect()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = conn.Close() }()
+
 	params := &rpctypes.DiscoverRequest{
 		Provides:   provides,
 		SearchTime: searchTime,
@@ -103,11 +104,11 @@ func (c *wsClient) Discover(provides string, searchTime uint64) ([]peer.ID, erro
 		ID:      0,
 	}
 
-	if err = c.writeJSON(req); err != nil {
+	if err = c.writeJSON(conn, req); err != nil {
 		return nil, err
 	}
 
-	message, err := c.read()
+	message, err := c.read(conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
@@ -132,6 +133,12 @@ func (c *wsClient) Discover(provides string, searchTime uint64) ([]peer.ID, erro
 }
 
 func (c *wsClient) Query(id peer.ID) (*rpctypes.QueryPeerResponse, error) {
+	conn, err := c.wsConnect()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = conn.Close() }()
+
 	params := &rpctypes.QueryPeerRequest{
 		PeerID: id,
 	}
@@ -148,12 +155,12 @@ func (c *wsClient) Query(id peer.ID) (*rpctypes.QueryPeerResponse, error) {
 		ID:      0,
 	}
 
-	if err = c.writeJSON(req); err != nil {
+	if err = c.writeJSON(conn, req); err != nil {
 		return nil, err
 	}
 
 	// read ID from connection
-	message, err := c.read()
+	message, err := c.read(conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
@@ -196,17 +203,24 @@ func (c *wsClient) SubscribeSwapStatus(id types.Hash) (<-chan types.Status, erro
 		ID:      0,
 	}
 
-	if err = c.writeJSON(req); err != nil {
+	conn, err := c.wsConnect()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.writeJSON(conn, req); err != nil {
+		_ = conn.Close()
 		return nil, err
 	}
 
 	respCh := make(chan types.Status)
 
 	go func() {
+		defer func() { _ = conn.Close() }()
 		defer close(respCh)
 
 		for {
-			message, err := c.read()
+			message, err := c.read(conn)
 			if err != nil {
 				log.Warnf("failed to read websockets message: %s", err)
 				break
@@ -265,19 +279,27 @@ func (c *wsClient) TakeOfferAndSubscribe(
 		ID:      0,
 	}
 
-	if err = c.writeJSON(req); err != nil {
+	conn, err := c.wsConnect()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.writeJSON(conn, req); err != nil {
+		_ = conn.Close()
 		return nil, err
 	}
 
 	// read resp from connection to see if there's an immediate error
-	status, err := c.readTakeOfferResponse()
+	status, err := c.readTakeOfferResponse(conn)
 	if err != nil {
+		_ = conn.Close()
 		return nil, err
 	}
 
 	respCh := make(chan types.Status)
 
 	go func() {
+		defer func() { _ = conn.Close() }()
 		defer close(respCh)
 
 		for {
@@ -286,7 +308,7 @@ func (c *wsClient) TakeOfferAndSubscribe(
 				return
 			}
 
-			status, err = c.readTakeOfferResponse()
+			status, err = c.readTakeOfferResponse(conn)
 			if err != nil {
 				log.Warnf("%s", err)
 				break
@@ -297,8 +319,8 @@ func (c *wsClient) TakeOfferAndSubscribe(
 	return respCh, nil
 }
 
-func (c *wsClient) readTakeOfferResponse() (types.Status, error) {
-	message, err := c.read()
+func (c *wsClient) readTakeOfferResponse(conn *websocket.Conn) (types.Status, error) {
+	message, err := c.read(conn)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read websockets message: %s", err)
 	}
@@ -349,39 +371,51 @@ func (c *wsClient) MakeOfferAndSubscribe(
 		ID:      0,
 	}
 
-	if err = c.writeJSON(req); err != nil {
+	conn, err := c.wsConnect()
+	if err != nil {
+		_ = conn.Close()
+		return nil, nil, err
+	}
+
+	if err = c.writeJSON(conn, req); err != nil {
+		_ = conn.Close()
 		return nil, nil, err
 	}
 
 	// read ID from connection
-	message, err := c.read()
+	message, err := c.read(conn)
 	if err != nil {
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("failed to read websockets message: %s", err)
 	}
 
 	resp := new(rpctypes.Response)
 	err = vjson.UnmarshalStruct(message, resp)
 	if err != nil {
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Error != nil {
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
 	}
 
 	// read synchronous response (offer ID)
 	respData := new(rpctypes.MakeOfferResponse)
 	if err := vjson.UnmarshalStruct(resp.Result, respData); err != nil {
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("failed to unmarshal response: %s", err)
 	}
 
 	respCh := make(chan types.Status)
 
 	go func() {
+		defer func() { _ = conn.Close() }()
 		defer close(respCh)
 
 		for {
-			message, err := c.read()
+			message, err := c.read(conn)
 			if err != nil {
 				log.Warnf("failed to read websockets message: %s", err)
 				break

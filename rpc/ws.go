@@ -291,6 +291,7 @@ func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn
 	statusCh := s.backend.SwapManager().GetStatusChan(offerID)
 
 	if !s.sm.HasOngoingSwap(offerID) {
+		s.backend.SwapManager().DeleteStatusChan(offerID)
 		return s.writeSwapExitStatus(conn, offerID)
 	}
 

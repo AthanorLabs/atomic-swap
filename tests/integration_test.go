@@ -107,12 +107,7 @@ func mineMinXMRMakerBalance(t *testing.T, minBalance *coins.PiconeroAmount) {
 }
 
 func (s *IntegrationTestSuite) newSwapdWSClient(ctx context.Context, port uint16) rpcclient.WsClient {
-	wsc, err := rpcclient.NewWsClient(ctx, port)
-	require.NoError(s.T(), err)
-	s.T().Cleanup(func() {
-		wsc.Close()
-	})
-	return wsc
+	return rpcclient.NewWsClient(ctx, port)
 }
 
 func (s *IntegrationTestSuite) TestXMRTaker_Discover() {

@@ -67,15 +67,14 @@ func TestSubscribeSwapStatus(t *testing.T) {
 	ctx := context.Background()
 	s, _ := newServer(t)
 
-	c, err := NewWsClient(ctx, s.Port())
-	require.NoError(t, err)
+	c := NewWsClient(ctx, s.Port())
 
 	ch, err := c.SubscribeSwapStatus(testSwapID)
 	require.NoError(t, err)
 
 	select {
 	case status := <-ch:
-		require.Equal(t, types.CompletedSuccess, status)
+		require.Equal(t, types.CompletedSuccess.String(), status.String())
 	case <-time.After(testTimeout):
 		t.Fatal("test timed out")
 	}
@@ -85,8 +84,7 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	ctx := context.Background()
 	s, cfg := newServer(t)
 
-	c, err := NewWsClient(ctx, s.Port())
-	require.NoError(t, err)
+	c := NewWsClient(ctx, s.Port())
 
 	min := coins.StrToDecimal("0.1")
 	max := coins.StrToDecimal("1")
@@ -112,8 +110,7 @@ func TestSubscribeTakeOffer(t *testing.T) {
 	t.Cleanup(func() {
 		cancel()
 	})
-	c, err := NewWsClient(cliCtx, s.Port())
-	require.NoError(t, err)
+	c := NewWsClient(cliCtx, s.Port())
 
 	ch, err := c.TakeOfferAndSubscribe(testPeerID, testSwapID, apd.New(1, 0))
 	require.NoError(t, err)

@@ -39,10 +39,8 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, cancel := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bws, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	aws, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bws := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	aws := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 
 	// Use an independent context for these clients that will execute across multiple runs of the daemons
 	bc := rpcclient.NewClient(context.Background(), bobConf.RPCPort)
@@ -128,7 +126,7 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	t.Logf("daemons relaunched, checking swap status")
 
 	// Give alice a fresh client with a fresh context
-	aws, err = rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
+	aws = rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 	require.NoError(t, err)
 	aliceStatusCh, err = aws.SubscribeSwapStatus(makeResp.OfferID)
 	require.NoError(t, err)

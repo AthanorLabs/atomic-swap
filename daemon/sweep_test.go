@@ -36,10 +36,8 @@ func TestAliceStoppedAndRestartedDuringXMRSweep(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, cancel := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bws, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	aws, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bws := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	aws := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 
 	// Use an independent context for these clients that will execute across 2 runs of the daemons
 	bc := rpcclient.NewClient(context.Background(), bobConf.RPCPort)

@@ -35,10 +35,8 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, aliceConf, bobConf)
 
-	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 
 	_, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
 	require.NoError(t, err)

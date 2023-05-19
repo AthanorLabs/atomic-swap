@@ -115,10 +115,8 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
@@ -208,10 +206,8 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	timeout := 8 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false // Bob will use unsuccessfully use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
@@ -293,10 +289,8 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
-	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
+	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
@@ -398,11 +392,8 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
-	bc, err := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
-	require.NoError(t, err)
-	ac, err := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
-	require.NoError(t, err)
-
+	bc := rpcclient.NewWsClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewWsClient(ctx, aliceConf.RPCPort)
 	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
 	require.NoError(t, err)
