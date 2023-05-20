@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/protocol/swap"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
@@ -29,13 +30,13 @@ func checkOriginFunc(_ *http.Request) bool {
 
 type wsServer struct {
 	ctx     context.Context
-	sm      SwapManager
+	sm      swap.Manager
 	ns      *NetService
 	backend ProtocolBackend
 	taker   XMRTaker
 }
 
-func newWsServer(ctx context.Context, sm SwapManager, ns *NetService, backend ProtocolBackend,
+func newWsServer(ctx context.Context, sm swap.Manager, ns *NetService, backend ProtocolBackend,
 	taker XMRTaker) *wsServer {
 	s := &wsServer{
 		ctx:     ctx,
@@ -142,12 +143,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		ch, err := s.ns.takeOffer(params.PeerID, params.OfferID, params.ProvidesAmount)
+		err := s.ns.takeOffer(params.PeerID, params.OfferID, params.ProvidesAmount)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeTakeOffer(s.ctx, conn, ch)
+		return s.subscribeSwapStatus(s.ctx, conn, params.OfferID)
 	case rpctypes.SubscribeMakeOffer:
 		if s.ns == nil {
 			return errNamespaceNotEnabled
@@ -158,12 +159,12 @@ func (s *wsServer) handleRequest(conn *websocket.Conn, req *rpctypes.Request) er
 			return fmt.Errorf("failed to unmarshal parameters: %w", err)
 		}
 
-		offerResp, offerExtra, err := s.ns.makeOffer(params)
+		offerResp, err := s.ns.makeOffer(params)
 		if err != nil {
 			return err
 		}
 
-		return s.subscribeMakeOffer(s.ctx, conn, offerResp.OfferID, offerExtra)
+		return s.subscribeMakeOffer(s.ctx, conn, offerResp.OfferID)
 	default:
 		return errInvalidMethod
 	}
@@ -240,8 +241,22 @@ func (s *wsServer) handleSigner(
 	}
 }
 
-func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
-	statusCh <-chan types.Status) error {
+func (s *wsServer) subscribeMakeOffer(
+	ctx context.Context,
+	conn *websocket.Conn,
+	offerID types.Hash,
+) error {
+	resp := &rpctypes.MakeOfferResponse{
+		PeerID:  s.ns.net.PeerID(),
+		OfferID: offerID,
+	}
+
+	if err := writeResponse(conn, resp); err != nil {
+		return err
+	}
+
+	statusCh := s.backend.SwapManager().GetStatusChan(offerID)
+
 	for {
 		select {
 		case status, ok := <-statusCh:
@@ -266,53 +281,19 @@ func (s *wsServer) subscribeTakeOffer(ctx context.Context, conn *websocket.Conn,
 	}
 }
 
-func (s *wsServer) subscribeMakeOffer(ctx context.Context, conn *websocket.Conn,
-	offerID types.Hash, offerExtra *types.OfferExtra) error {
-	resp := &rpctypes.MakeOfferResponse{
-		PeerID:  s.ns.net.PeerID(),
-		OfferID: offerID,
+// subscribeSwapStatus writes the swap's status transitions to the websockets
+// connection when the state changes. When the swap completes, it writes the
+// final status and then closes the connection. This method is not intended for
+// simultaneous requests on the same swap. If more than one request is made
+// (including calls to net_[make|take]OfferAndSubscribe), only one of the
+// websocket connections will see any individual state transition.
+func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, offerID types.Hash) error {
+	statusCh := s.backend.SwapManager().GetStatusChan(offerID)
+
+	if !s.sm.HasOngoingSwap(offerID) {
+		return s.writeSwapExitStatus(conn, offerID)
 	}
 
-	if err := writeResponse(conn, resp); err != nil {
-		return err
-	}
-
-	for {
-		select {
-		case status, ok := <-offerExtra.StatusCh:
-			if !ok {
-				return nil
-			}
-
-			resp := &rpctypes.SubscribeSwapStatusResponse{
-				Status: status,
-			}
-
-			if err := writeResponse(conn, resp); err != nil {
-				return err
-			}
-
-			if !status.IsOngoing() {
-				return nil
-			}
-		case <-ctx.Done():
-			return nil
-		}
-	}
-}
-
-// subscribeSwapStatus writes the swap's stage to the connection every time it updates.
-// when the swap completes, it writes the final status then closes the connection.
-// example: `{"jsonrpc":"2.0", "method":"swap_subscribeStatus", "params": {"id": 0}, "id": 0}`
-func (s *wsServer) subscribeSwapStatus(ctx context.Context, conn *websocket.Conn, id types.Hash) error {
-	// we can ignore the error here, since the error will only be if the swap cannot be found
-	// as ongoing, in which case `writeSwapExitStatus` will look for it in the past swaps.
-	info, err := s.sm.GetOngoingSwap(id)
-	if err != nil {
-		return s.writeSwapExitStatus(conn, id)
-	}
-
-	statusCh := info.StatusCh()
 	for {
 		select {
 		case status, ok := <-statusCh:

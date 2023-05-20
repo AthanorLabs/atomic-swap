@@ -174,12 +174,6 @@ func (o *Offer) validate() error {
 	return nil
 }
 
-// OfferExtra represents extra data that is passed when an offer is made.
-type OfferExtra struct {
-	StatusCh   chan Status `json:"-"`
-	UseRelayer bool        `json:"useRelayer,omitempty"`
-}
-
 // UnmarshalOffer deserializes a JSON offer, checking the version for compatibility before
 // attempting to deserialize the whole blob.
 func UnmarshalOffer(jsonData []byte) (*Offer, error) {
@@ -227,4 +221,20 @@ func (o *Offer) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return o.validate()
+}
+
+// OfferExtra represents extra data that is passed when an offer is made.
+type OfferExtra struct {
+	// UseRelayer forces the XMR maker to claim using the relayer even when he
+	// has enough funds to make the claim himself. Setting it to false will not
+	// prevent the relayer from being used if there are insufficient ETH funds
+	// to claim.
+	UseRelayer bool `json:"useRelayer,omitempty"`
+}
+
+// NewOfferExtra creates an OfferExtra instance
+func NewOfferExtra(forceUseRelayer bool) *OfferExtra {
+	return &OfferExtra{
+		UseRelayer: forceUseRelayer,
+	}
 }

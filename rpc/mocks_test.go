@@ -5,19 +5,23 @@ package rpc
 
 import (
 	"context"
+	"testing"
 	"time"
 
+	"github.com/ChainSafe/chaindb"
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -67,32 +71,21 @@ func (*mockNet) CloseProtocolStream(_ types.Hash) {
 	panic("not implemented")
 }
 
-type mockSwapManager struct{}
+func mockSwapManager(t *testing.T) swap.Manager {
+	db, err := db.NewDatabase(&chaindb.Config{
+		DataDir:  t.TempDir(),
+		InMemory: true,
+	})
+	require.NoError(t, err)
 
-func (*mockSwapManager) WriteSwapToDB(_ *swap.Info) error {
-	return nil
-}
-
-func (*mockSwapManager) GetPastIDs() ([]types.Hash, error) {
-	panic("not implemented")
-}
-
-func (*mockSwapManager) GetPastSwap(_ types.Hash) (*swap.Info, error) {
-	return &swap.Info{}, nil
-}
-
-func (*mockSwapManager) GetOngoingSwaps() ([]*swap.Info, error) {
-	return nil, nil
-}
-
-func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
-	statusCh := make(chan types.Status, 1)
-	statusCh <- types.CompletedSuccess
+	sm, err := swap.NewManager(db)
+	require.NoError(t, err)
 
 	one := apd.New(1, 0)
-	return *swap.NewInfo(
+
+	sm.AddSwap(swap.NewInfo(
 		testPeerID,
-		id,
+		testSwapID,
 		coins.ProvidesETH,
 		one,
 		one,
@@ -100,20 +93,11 @@ func (*mockSwapManager) GetOngoingSwap(id types.Hash) (swap.Info, error) {
 		types.EthAssetETH,
 		types.CompletedSuccess,
 		1,
-		statusCh,
-	), nil
-}
+	))
 
-func (*mockSwapManager) AddSwap(_ *swap.Info) error {
-	panic("not implemented")
-}
+	sm.PushNewStatus(testSwapID, types.CompletedSuccess)
 
-func (*mockSwapManager) CompleteOngoingSwap(_ *swap.Info) error {
-	panic("not implemented")
-}
-
-func (*mockSwapManager) HasOngoingSwap(_ types.Hash) bool {
-	panic("not implemented")
+	return sm
 }
 
 type mockXMRTaker struct{}
@@ -153,10 +137,7 @@ func (m *mockXMRMaker) GetOngoingSwapState(_ types.Hash) common.SwapState {
 }
 
 func (*mockXMRMaker) MakeOffer(_ *types.Offer, _ bool) (*types.OfferExtra, error) {
-	offerExtra := &types.OfferExtra{
-		StatusCh: make(chan types.Status, 1),
-	}
-	offerExtra.StatusCh <- types.CompletedSuccess
+	offerExtra := types.NewOfferExtra(false)
 	return offerExtra, nil
 }
 
@@ -193,12 +174,12 @@ func (*mockSwapState) OfferID() types.Hash {
 }
 
 type mockProtocolBackend struct {
-	sm *mockSwapManager
+	sm swap.Manager
 }
 
-func newMockProtocolBackend() *mockProtocolBackend {
+func newMockProtocolBackend(t *testing.T) *mockProtocolBackend {
 	return &mockProtocolBackend{
-		sm: new(mockSwapManager),
+		sm: mockSwapManager(t),
 	}
 }
 

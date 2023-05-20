@@ -24,7 +24,7 @@ import (
 // SwapService handles information about ongoing or past swaps.
 type SwapService struct {
 	ctx      context.Context
-	sm       SwapManager
+	sm       swap.Manager
 	xmrtaker XMRTaker
 	xmrmaker XMRMaker
 	net      Net
@@ -35,7 +35,7 @@ type SwapService struct {
 // NewSwapService ...
 func NewSwapService(
 	ctx context.Context,
-	sm SwapManager,
+	sm swap.Manager,
 	xmrtaker XMRTaker,
 	xmrmaker XMRMaker,
 	net Net,
@@ -165,17 +165,17 @@ func (s *SwapService) GetOngoing(_ *http.Request, req *GetOngoingRequest, resp *
 	)
 
 	if req.OfferID == nil {
-		swaps, err = s.sm.GetOngoingSwaps()
+		swaps, err = s.sm.GetOngoingSwapsSnapshot()
 		if err != nil {
 			return err
 		}
 	} else {
-		info, err := s.sm.GetOngoingSwap(*req.OfferID) //nolint:govet
+		info, err := s.sm.GetOngoingSwapSnapshot(*req.OfferID) //nolint:govet
 		if err != nil {
 			return err
 		}
 
-		swaps = []*swap.Info{&info}
+		swaps = []*swap.Info{info}
 	}
 
 	resp.Swaps = make([]*OngoingSwap, len(swaps))
@@ -221,7 +221,7 @@ type GetStatusResponse struct {
 
 // GetStatus returns the status of the ongoing swap, if there is one.
 func (s *SwapService) GetStatus(_ *http.Request, req *GetStatusRequest, resp *GetStatusResponse) error {
-	info, err := s.sm.GetOngoingSwap(req.ID)
+	info, err := s.sm.GetOngoingSwapSnapshot(req.ID)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ type CancelResponse struct {
 
 // Cancel attempts to cancel the currently ongoing swap, if there is one.
 func (s *SwapService) Cancel(_ *http.Request, req *CancelRequest, resp *CancelResponse) error {
-	info, err := s.sm.GetOngoingSwap(req.OfferID)
+	info, err := s.sm.GetOngoingSwapSnapshot(req.OfferID)
 	if err != nil {
 		return fmt.Errorf("failed to get ongoing swap: %w", err)
 	}

@@ -30,7 +30,7 @@ type Metrics struct {
 
 func pastSwapsMetric(
 	factory promauto.Factory,
-	swapManager SwapManager,
+	swapManager swap.Manager,
 	status swap.Status,
 	statusLabel string,
 ) prometheus.GaugeFunc {
@@ -108,7 +108,7 @@ func SetupMetrics(
 				Help:      "The number of ongoing swaps",
 			},
 			func() float64 {
-				swaps, err := swapManager.GetOngoingSwaps()
+				swaps, err := swapManager.GetOngoingSwapsSnapshot()
 				if err != nil {
 					return float64(-1)
 				}

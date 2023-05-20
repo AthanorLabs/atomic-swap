@@ -84,12 +84,17 @@ func NewInstance(cfg *Config) (*Instance, error) {
 }
 
 func (inst *Instance) checkForOngoingSwaps() error {
-	swaps, err := inst.backend.SwapManager().GetOngoingSwaps()
+	ongoingIDs, err := inst.backend.SwapManager().GetOngoingSwapOfferIDs()
 	if err != nil {
 		return err
 	}
 
-	for _, s := range swaps {
+	for _, offerID := range ongoingIDs {
+		s, err := inst.backend.SwapManager().GetOngoingSwap(*offerID)
+		if err != nil {
+			return err
+		}
+
 		if s.Provides != coins.ProvidesXMR {
 			continue
 		}
@@ -178,7 +183,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 	if err != nil {
 		// we can ignore the error; if the key doesn't exist,
 		// then no relayer was set for this swap.
-		relayerInfo = &types.OfferExtra{}
+		relayerInfo = types.NewOfferExtra(false)
 	}
 
 	ss, err := newSwapStateFromOngoing(
