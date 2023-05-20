@@ -50,7 +50,7 @@ func deployTestERC20(t *testing.T) ethcommon.Address {
 	MineTransaction(t, ec.Raw(), erc20Tx)
 
 	// Query Charlie's Ethereum address
-	charlieCli := rpcclient.NewClient(ctx, defaultCharlieSwapdEndpoint)
+	charlieCli := rpcclient.NewClient(ctx, defaultCharlieSwapdPort)
 	balResp, err := charlieCli.Balances(nil)
 	require.NoError(t, err)
 	charlieAddr := balResp.EthAddress
@@ -67,7 +67,7 @@ func deployTestERC20(t *testing.T) ethcommon.Address {
 	}
 
 	// verify that the XMR Taker has exactly 1000 tokens
-	aliceCli := rpcclient.NewClient(ctx, defaultXMRTakerSwapdEndpoint)
+	aliceCli := rpcclient.NewClient(ctx, defaultXMRTakerSwapdPort)
 	balResp, err = aliceCli.Balances(tokenBalReq)
 	require.NoError(t, err)
 	require.Equal(t, "1000", balResp.TokenBalances[0].AsStandardString())

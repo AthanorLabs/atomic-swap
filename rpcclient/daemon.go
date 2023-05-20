@@ -9,7 +9,7 @@ func (c *Client) Shutdown() error {
 	const (
 		method = "daemon_shutdown"
 	)
-	if err := c.Post(method, nil, nil); err != nil {
+	if err := c.post(method, nil, nil); err != nil {
 		return err
 	}
 	return nil
@@ -21,7 +21,7 @@ func (c *Client) Version() (*rpc.VersionResponse, error) {
 		method = "daemon_version"
 	)
 	resp := &rpc.VersionResponse{}
-	if err := c.Post(method, nil, resp); err != nil {
+	if err := c.post(method, nil, resp); err != nil {
 		return nil, err
 	}
 	return resp, nil

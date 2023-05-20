@@ -109,8 +109,7 @@ func CreateTestBootnode(t *testing.T) (uint16, string) {
 	}()
 	WaitForSwapdStart(t, conf.RPCPort)
 
-	endpoint := fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort)
-	addresses, err := rpcclient.NewClient(ctx, endpoint).Addresses()
+	addresses, err := rpcclient.NewClient(ctx, conf.RPCPort).Addresses()
 	require.NoError(t, err)
 	require.NotEmpty(t, addresses)
 

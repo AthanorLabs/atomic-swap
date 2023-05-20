@@ -15,7 +15,7 @@ func (c *Client) GetOffers() (*rpc.GetOffersResponse, error) {
 
 	resp := &rpc.GetOffersResponse{}
 
-	if err := c.Post(method, nil, resp); err != nil {
+	if err := c.post(method, nil, resp); err != nil {
 		return nil, err
 	}
 

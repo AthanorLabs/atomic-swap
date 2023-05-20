@@ -27,7 +27,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpc"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 )
 
 const (
@@ -487,20 +486,13 @@ func main() {
 	}
 }
 
-func newRRPClient(ctx *cli.Context) *rpcclient.Client {
+func newClient(ctx *cli.Context) *rpcclient.Client {
 	swapdPort := ctx.Uint(flagSwapdPort)
-	endpoint := fmt.Sprintf("http://127.0.0.1:%d", swapdPort)
-	return rpcclient.NewClient(ctx.Context, endpoint)
-}
-
-func newWSClient(ctx *cli.Context) (wsclient.WsClient, error) {
-	swapdPort := ctx.Uint(flagSwapdPort)
-	endpoint := fmt.Sprintf("ws://127.0.0.1:%d/ws", swapdPort)
-	return wsclient.NewWsClient(ctx.Context, endpoint)
+	return rpcclient.NewClient(ctx.Context, uint16(swapdPort))
 }
 
 func runAddresses(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.Addresses()
 	if err != nil {
 		return err
@@ -517,7 +509,7 @@ func runAddresses(ctx *cli.Context) error {
 }
 
 func runPeers(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.Peers()
 	if err != nil {
 		return err
@@ -534,7 +526,7 @@ func runPeers(ctx *cli.Context) error {
 }
 
 func runBalances(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 
 	request := &rpctypes.BalancesRequest{}
 	tokens := ctx.StringSlice(flagToken)
@@ -571,7 +563,7 @@ func runBalances(ctx *cli.Context) error {
 }
 
 func runETHAddress(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	balances, err := c.Balances(nil)
 	if err != nil {
 		return err
@@ -586,7 +578,7 @@ func runETHAddress(ctx *cli.Context) error {
 }
 
 func runXMRAddress(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	balances, err := c.Balances(nil)
 	if err != nil {
 		return err
@@ -601,7 +593,7 @@ func runXMRAddress(ctx *cli.Context) error {
 }
 
 func runDiscover(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	provides := ctx.String(flagProvides)
 	peerIDs, err := c.Discover(provides, ctx.Uint64(flagSearchTime))
 	if err != nil {
@@ -624,7 +616,7 @@ func runQuery(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagPeerID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	res, err := c.Query(peerID)
 	if err != nil {
 		return err
@@ -647,7 +639,7 @@ func runQueryAll(ctx *cli.Context) error {
 
 	searchTime := ctx.Uint64(flagSearchTime)
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	peerOffers, err := c.QueryAll(provides, searchTime)
 	if err != nil {
 		return err
@@ -672,7 +664,7 @@ func runQueryAll(ctx *cli.Context) error {
 }
 
 func runMake(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 
 	min, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
@@ -738,13 +730,9 @@ func runMake(ctx *cli.Context) error {
 	alwaysUseRelayer := ctx.Bool(flagUseRelayer)
 
 	if !ctx.Bool(flagDetached) {
-		wsc, err := newWSClient(ctx) //nolint:govet
-		if err != nil {
-			return err
-		}
-		defer wsc.Close()
+		wsc := newClient(ctx)
 
-		resp, statusCh, err := wsc.MakeOfferAndSubscribe(
+		resp, statusCh, err := wsc.MakeOfferAndSubscribe( //nolint:govet
 			min,
 			max,
 			exchangeRate,
@@ -792,11 +780,7 @@ func runTake(ctx *cli.Context) error {
 	}
 
 	if !ctx.Bool(flagDetached) {
-		wsc, err := newWSClient(ctx)
-		if err != nil {
-			return err
-		}
-		defer wsc.Close()
+		wsc := newClient(ctx)
 
 		statusCh, err := wsc.TakeOfferAndSubscribe(peerID, offerID, providesAmount)
 		if err != nil {
@@ -815,7 +799,7 @@ func runTake(ctx *cli.Context) error {
 		return nil
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	if err := c.TakeOffer(peerID, offerID, providesAmount); err != nil {
 		return err
 	}
@@ -835,7 +819,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		offerID = &hash
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetOngoingSwap(offerID)
 	if err != nil {
 		return err
@@ -885,7 +869,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 		offerID = &hash
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetPastSwap(offerID)
 	if err != nil {
 		return err
@@ -930,7 +914,7 @@ func runCancel(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	fmt.Printf("Attempting to exit swap with id %s\n", offerID)
 	resp, err := c.Cancel(offerID)
 	if err != nil {
@@ -942,7 +926,7 @@ func runCancel(ctx *cli.Context) error {
 }
 
 func runClearOffers(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 
 	ids := ctx.String(flagOfferIDs)
 	if ids == "" {
@@ -973,7 +957,7 @@ func runClearOffers(ctx *cli.Context) error {
 }
 
 func runGetOffers(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetOffers()
 	if err != nil {
 		return err
@@ -1000,7 +984,7 @@ func runGetStatus(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetStatus(offerID)
 	if err != nil {
 		return err
@@ -1017,7 +1001,7 @@ func runClaim(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.Claim(offerID)
 	if err != nil {
 		return err
@@ -1033,7 +1017,7 @@ func runRefund(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.Refund(offerID)
 	if err != nil {
 		return err
@@ -1049,7 +1033,7 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 		return errNoDuration
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	err := c.SetSwapTimeout(uint64(duration))
 	if err != nil {
 		return err
@@ -1060,7 +1044,7 @@ func runSetSwapTimeout(ctx *cli.Context) error {
 }
 
 func runGetSwapTimeout(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetSwapTimeout()
 	if err != nil {
 		return err
@@ -1071,7 +1055,7 @@ func runGetSwapTimeout(ctx *cli.Context) error {
 }
 
 func runSuggestedExchangeRate(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.SuggestedExchangeRate()
 	if err != nil {
 		return err
@@ -1087,7 +1071,7 @@ func runSuggestedExchangeRate(ctx *cli.Context) error {
 func runGetVersions(ctx *cli.Context) error {
 	fmt.Printf("swapcli: %s\n", cliutil.GetVersion())
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.Version()
 	if err != nil {
 		return err
@@ -1102,7 +1086,7 @@ func runGetVersions(ctx *cli.Context) error {
 }
 
 func runShutdown(ctx *cli.Context) error {
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	err := c.Shutdown()
 	if err != nil {
 		return err
@@ -1116,7 +1100,7 @@ func runGetContractSwapInfo(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetContractSwapInfo(offerID)
 	if err != nil {
 		return err
@@ -1144,7 +1128,7 @@ func runGetSwapSecret(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	resp, err := c.GetSwapSecret(offerID)
 	if err != nil {
 		return err
@@ -1170,7 +1154,7 @@ func runTransferXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	req := &rpc.TransferXMRRequest{
 		To:     to,
 		Amount: amount,
@@ -1198,7 +1182,7 @@ func runSweepXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	request := &rpctypes.BalancesRequest{}
 	balances, err := c.Balances(request)
 	if err != nil {
@@ -1232,7 +1216,7 @@ func runTransferETH(ctx *cli.Context) error {
 		return err
 	}
 
-	c := newRRPClient(ctx)
+	c := newClient(ctx)
 	req := &rpc.TransferETHRequest{
 		To:     to,
 		Amount: amount,

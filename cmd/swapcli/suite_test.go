@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -34,7 +33,7 @@ func TestRunSwapcliWithDaemonTests(t *testing.T) {
 }
 
 func (s *swapCLITestSuite) rpcEndpoint() *rpcclient.Client {
-	return rpcclient.NewClient(context.Background(), fmt.Sprintf("http://127.0.0.1:%d", s.conf.RPCPort))
+	return rpcclient.NewClient(context.Background(), s.conf.RPCPort)
 }
 
 func (s *swapCLITestSuite) mockDaiAddr() ethcommon.Address {

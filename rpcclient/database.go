@@ -21,7 +21,7 @@ func (c *Client) GetContractSwapInfo(offerID types.Hash) (*rpc.GetContractSwapIn
 	}
 
 	res := &rpc.GetContractSwapInfoResponse{}
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +39,7 @@ func (c *Client) GetSwapSecret(offerID types.Hash) (*rpc.GetSwapSecretResponse, 
 	}
 
 	res := &rpc.GetSwapSecretResponse{}
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 

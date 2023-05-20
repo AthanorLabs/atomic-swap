@@ -19,7 +19,7 @@ func (c *Client) Cancel(offerID types.Hash) (types.Status, error) {
 	}
 	res := &rpc.CancelResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return 0, err
 	}
 
