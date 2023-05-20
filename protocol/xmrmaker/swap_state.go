@@ -112,9 +112,6 @@ func newSwapStateFromStart(
 	// and we'll send our own after this function returns.
 	// see HandleInitiateMessage().
 	stage := types.KeysExchanged
-	if offerExtra.StatusCh == nil {
-		offerExtra.StatusCh = make(chan types.Status, 7)
-	}
 
 	if offerExtra.UseRelayer {
 		if err := b.RecoveryDB().PutSwapRelayerInfo(offer.ID, offerExtra); err != nil {
@@ -146,7 +143,6 @@ func newSwapStateFromStart(
 		offer.EthAsset,
 		stage,
 		moneroStartHeight,
-		offerExtra.StatusCh,
 	)
 
 	if err = b.SwapManager().AddSwap(info); err != nil {
@@ -171,7 +167,8 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	offerExtra.StatusCh <- stage
+	s.SwapManager().PushNewStatus(offer.ID, stage)
+
 	return s, nil
 }
 
@@ -247,6 +244,7 @@ func checkIfAlreadyClaimed(
 func completeSwap(info *swap.Info, b backend.Backend, om *offers.Manager) error {
 	// set swap to completed
 	info.SetStatus(types.CompletedSuccess)
+	b.SwapManager().PushNewStatus(info.OfferID, types.CompletedSuccess)
 	err := b.SwapManager().CompleteOngoingSwap(info)
 	if err != nil {
 		return fmt.Errorf("failed to mark swap %s as completed: %s", info.OfferID, err)
@@ -450,6 +448,11 @@ func (s *swapState) SendKeysMessage() common.Message {
 		Secp256k1PublicKey: s.secp256k1Pub,
 		EthAddress:         s.ETHClient().Address(),
 	}
+}
+
+func (s *swapState) updateStatus(status types.Status) {
+	s.info.SetStatus(status)
+	s.SwapManager().PushNewStatus(s.OfferID(), status)
 }
 
 // ExpectedAmount returns the amount received, or expected to be received, at the end of the swap

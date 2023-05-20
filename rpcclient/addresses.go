@@ -15,7 +15,7 @@ func (c *Client) Addresses() (*rpctypes.AddressesResponse, error) {
 
 	res := &rpctypes.AddressesResponse{}
 
-	if err := c.Post(method, nil, res); err != nil {
+	if err := c.post(method, nil, res); err != nil {
 		return nil, err
 	}
 

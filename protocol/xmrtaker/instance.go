@@ -64,12 +64,17 @@ func NewInstance(cfg *Config) (*Instance, error) {
 }
 
 func (inst *Instance) checkForOngoingSwaps() error {
-	swaps, err := inst.backend.SwapManager().GetOngoingSwaps()
+	ongoingIDs, err := inst.backend.SwapManager().GetOngoingSwapOfferIDs()
 	if err != nil {
 		return err
 	}
 
-	for _, s := range swaps {
+	for _, offerID := range ongoingIDs {
+		s, err := inst.backend.SwapManager().GetOngoingSwap(*offerID)
+		if err != nil {
+			return err
+		}
+
 		if s.Provides != coins.ProvidesETH {
 			continue
 		}
@@ -171,7 +176,7 @@ func (inst *Instance) createOngoingSwap(s *swap.Info) error {
 }
 
 // completeSwap is called in the case where we find an ongoing swap in the db on startup,
-// and the swap already has the counterpary's swap secret stored.
+// and the swap already has the counterparty's swap secret stored.
 // In this case, we simply claim the XMR, as we have both secrets required.
 // It's unlikely for this case to ever be hit, unless the daemon was shut down in-between
 // us finding the counterparty's secret and claiming the XMR.

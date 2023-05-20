@@ -4,7 +4,6 @@
 package daemon
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -24,7 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test if Alice is able to call the Refund() RPC API (used by swapcli refund) immediately after locking her ETH.
+// Test if Alice is able to call the Refund() RPC API, used by swapcli refund,
+// immediately after locking her ETH.
 func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
@@ -42,14 +41,10 @@ func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
-	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	require.NoError(t, err)
-	acHTTP := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", aliceConf.RPCPort))
+	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
-	useRelayer := false
-	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
+	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, false)
 	require.NoError(t, err)
 
 	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
@@ -75,7 +70,7 @@ func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 
 					// call refund
 					t.Log("> Alice calling refund")
-					refundResp, err := acHTTP.Refund(makeResp.OfferID)
+					refundResp, err := ac.Refund(makeResp.OfferID)
 					require.NoError(t, err)
 
 					ec, err := ethclient.Dial(common.DefaultGanacheEndpoint)
@@ -87,7 +82,7 @@ func TestRunSwapDaemon_ManualRefund(t *testing.T) {
 					assert.Equal(t, uint64(1), receipt.Status)
 
 					// manually trigger exit, since the xmrtaker doesn't watch for Refunded events.
-					status, err := acHTTP.Cancel(makeResp.OfferID)
+					status, err := ac.Cancel(makeResp.OfferID)
 					require.NoError(t, err)
 					assert.Equal(t, types.CompletedRefund.String(), status.String())
 					return

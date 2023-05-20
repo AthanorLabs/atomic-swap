@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"path"
 	"sync"
 	"syscall"
 	"testing"
@@ -87,13 +88,15 @@ func CreateTestBootnode(t *testing.T) (uint16, string) {
 		wg.Wait()
 	})
 
+	dataDir := t.TempDir()
+
 	conf := &bootnode.Config{
 		Env:           common.Development,
 		DataDir:       t.TempDir(),
 		Bootnodes:     nil,
 		P2PListenIP:   "127.0.0.1",
 		Libp2pPort:    0,
-		Libp2pKeyFile: common.DefaultLibp2pKeyFileName,
+		Libp2pKeyFile: path.Join(dataDir, common.DefaultLibp2pKeyFileName),
 		RPCPort:       uint16(rpcPort),
 	}
 
@@ -106,8 +109,7 @@ func CreateTestBootnode(t *testing.T) (uint16, string) {
 	}()
 	WaitForSwapdStart(t, conf.RPCPort)
 
-	endpoint := fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort)
-	addresses, err := rpcclient.NewClient(ctx, endpoint).Addresses()
+	addresses, err := rpcclient.NewClient(ctx, conf.RPCPort).Addresses()
 	require.NoError(t, err)
 	require.NotEmpty(t, addresses)
 

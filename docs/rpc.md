@@ -237,38 +237,6 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 {"jsonrpc":"2.0","result":null,"id":"0"}
 ```
 
-### `net_takeOfferSync`
-
-Take an advertised swap offer. This call will initiate and execute an atomic swap. It will
-not return until the swap has completed, after which it will return whether the swap was
-successful or not. **Note:** You must be the ETH holder to take a swap.
-
-Parameters:
-- `peerID`: ID of the peer to swap with.
-- `offerID`: ID of the swap offer.
-- `providesAmount`: amount of ETH you will be providing. Must be between the offer's
-  `minimumAmount * exchangeRate` and `maximumAmount * exchangeRate`. For example, if the
-  offer has a minimum of 1 XMR and a maximum of 5 XMR and an exchange rate of 0.1, you
-  must provide between 0.1 ETH and 0.5 ETH.
-
-Returns:
-- `status`: the swap's status, one of `Success`, `Refunded`, or `Aborted`.
-
-Example:
-```bash
-curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
-'{"jsonrpc":"2.0","id":"0","method":"net_takeOfferSync","params":{
-  "peerID": "12D3KooWGBw6ScWiL6k3pKNT2LR9o6MVh5CtYj1X8E1rdKueYLjv",
-  "offerID":"0xa7429fdb7ce0c0b19bd2450cb6f8274aa9d86b3e5f9386279e95671c24fd8381",
-  "providesAmount": "0.03"
-  }
-}'
-```
-```json
-{"jsonrpc":"2.0","result":{"status":"Success"},"id":"0"}
-```
-
-
 ## `personal` namespace
 
 ### `personal_balances`

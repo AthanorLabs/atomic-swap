@@ -104,7 +104,6 @@ func newSwapStateFromStart(
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
 	stage := types.ExpectingKeys
-	statusCh := make(chan types.Status, 16)
 
 	moneroStartNumber, err := b.XMRClient().GetHeight()
 	if err != nil {
@@ -136,7 +135,6 @@ func newSwapStateFromStart(
 		ethAsset,
 		stage,
 		moneroStartNumber,
-		statusCh,
 	)
 	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
@@ -157,7 +155,8 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	statusCh <- stage
+	s.SwapManager().PushNewStatus(offerID, stage)
+
 	return s, nil
 }
 
@@ -316,6 +315,11 @@ func (s *swapState) SendKeysMessage() common.Message {
 		DLEqProof:          s.dleqProof.Proof(),
 		Secp256k1PublicKey: s.secp256k1Pub,
 	}
+}
+
+func (s *swapState) updateStatus(status types.Status) {
+	s.info.SetStatus(status)
+	s.SwapManager().PushNewStatus(s.OfferID(), status)
 }
 
 // ExpectedAmount returns the amount received, or expected to be received, at the end of the swap

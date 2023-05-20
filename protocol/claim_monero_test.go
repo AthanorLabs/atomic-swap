@@ -10,6 +10,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
@@ -27,6 +28,9 @@ type mockSwapManager struct{}
 
 func (*mockSwapManager) WriteSwapToDB(info *swap.Info) error {
 	return nil
+}
+
+func (*mockSwapManager) PushNewStatus(_ types.Hash, _ types.Status) {
 }
 
 func TestClaimMonero_NoTransferBack(t *testing.T) {

@@ -80,7 +80,7 @@ func TestDaemon_DevXMRTaker(t *testing.T) {
 	// Ensure the daemon fully before we query the contract address
 	daemon.WaitForSwapdStart(t, rpcPort)
 
-	cli := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", rpcPort))
+	cli := rpcclient.NewClient(ctx, rpcPort)
 	versionResp, err := cli.Version()
 	require.NoError(t, err)
 
@@ -218,7 +218,7 @@ func TestDaemon_PersistOffers(t *testing.T) {
 	wc.Close() // wallet file stays in place with mined monero
 
 	rpcPort := getFreePort(t)
-	rpcEndpoint := fmt.Sprintf("http://127.0.0.1:%d", rpcPort)
+	rpcEndpoint := rpcPort
 
 	flags := []string{
 		"testSwapd",

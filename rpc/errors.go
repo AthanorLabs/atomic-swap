@@ -13,7 +13,6 @@ var (
 	errUnsupportedForBootnode = errors.New("unsupported for bootnode")
 
 	// ws errors
-	errUnimplemented       = errors.New("unimplemented")
 	errInvalidMethod       = errors.New("invalid method")
 	errNamespaceNotEnabled = errors.New("namespace not enabled")
 )

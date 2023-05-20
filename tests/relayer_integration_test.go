@@ -23,7 +23,7 @@ func (s *IntegrationTestSuite) TestERC20_Success_ClaimRelayer() {
 
 func (s *IntegrationTestSuite) TestXMRMaker_DiscoverRelayer() {
 	ctx := context.Background()
-	c := rpcclient.NewClient(ctx, defaultXMRMakerSwapdEndpoint)
+	c := rpcclient.NewClient(ctx, defaultXMRMakerSwapdPort)
 
 	peerIDs, err := c.Discover("relayer", defaultDiscoverTimeout)
 	require.NoError(s.T(), err)
