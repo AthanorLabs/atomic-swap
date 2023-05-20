@@ -900,7 +900,11 @@ func runGetPastSwap(ctx *cli.Context) error {
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
 		fmt.Printf("End time: %s\n", endTime)
 		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
-		fmt.Printf("Received: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
+		fmt.Printf("Received: %s %s", info.ExpectedAmount.Text('f'), receivedCoin)
+		if info.RelayerFee != nil {
+			fmt.Printf(" (minus %s %s relayer fee)", coins.FmtWeiAsETH(info.RelayerFee), receivedCoin)
+		}
+		fmt.Printf("\n")
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
 	}

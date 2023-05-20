@@ -6,6 +6,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"sort"
 	"time"
@@ -60,6 +61,7 @@ type PastSwap struct {
 	EthAsset       types.EthAsset      `json:"ethAsset"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
+	RelayerFee     *big.Int            `json:"relayerFee"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 	Status         types.Status        `json:"status" validate:"required"`
 	StartTime      time.Time           `json:"startTime" validate:"required"`
@@ -113,6 +115,7 @@ func (s *SwapService) GetPast(_ *http.Request, req *GetPastRequest, resp *GetPas
 			EthAsset:       info.EthAsset,
 			ProvidedAmount: info.ProvidedAmount,
 			ExpectedAmount: info.ExpectedAmount,
+			RelayerFee:     info.RelayerFee,
 			ExchangeRate:   info.ExchangeRate,
 			Status:         info.Status,
 			StartTime:      info.StartTime,
