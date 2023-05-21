@@ -140,6 +140,14 @@ func (i *Info) MarkSwapComplete() {
 	i.EndTime = &now
 }
 
+// SetRelayerFee updates the RelayerFee field
+func (i *Info) SetRelayerFee(relayerFee *big.Int) {
+	i.rwMu.Lock()
+	defer i.rwMu.Unlock()
+
+	i.RelayerFee = relayerFee
+}
+
 // IsTaker returns true if the node is the xmr-taker in the swap.
 func (i *Info) IsTaker() bool {
 	return i.Provides == coins.ProvidesETH
