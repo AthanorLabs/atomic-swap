@@ -61,13 +61,18 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 		defer wg.Done()
 		for {
 			count, err := ec.PendingTransactionCount(ctx) //nolint:govet
-			require.NoError(t, err)
+			if err != nil {
+				t.Errorf("failed to get pending tx count: %s", err)
+				return
+			}
+
 			if count > 0 {
 				// the newSwap tx is in the mempool, shut down the nodes
 				cancel()
 				t.Log("cancelling context of Alice's and Bob's servers")
 				return
 			}
+
 			time.Sleep(time.Millisecond * 200)
 		}
 	}()
