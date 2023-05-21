@@ -91,6 +91,6 @@ func TestInstance_createOngoingSwap(t *testing.T) {
 
 func TestNewSwapFunctionSignatureToTopic(t *testing.T) {
 	expected := "c41e46cf"
-	newSwapTopic := common.GetTopic(common.NewSwapFunctionSignature)
+	newSwapTopic := common.GetTopic(contracts.NewSwapFunctionSignature)
 	require.Equal(t, expected, fmt.Sprintf("%x", newSwapTopic[:4]))
 }

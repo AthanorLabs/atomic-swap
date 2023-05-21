@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,8 +34,7 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	providesAmt, err := exRate.ToETH(minXMR)
 	require.NoError(t, err)
 
-	ec, err := ethclient.Dial("http://localhost:8545")
-	require.NoError(t, err)
+	ec, _ := tests.NewEthClient(t)
 
 	bobConf := CreateTestConf(t, tests.GetMakerTestKey(t))
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
@@ -56,10 +54,11 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
 	require.NoError(t, err)
 
-	var statusWG sync.WaitGroup
-	statusWG.Add(2)
+	var wg sync.WaitGroup
+	wg.Add(3)
 
 	go func() {
+		defer wg.Done()
 		for {
 			count, err := ec.PendingTransactionCount(ctx) //nolint:govet
 			require.NoError(t, err)
@@ -74,7 +73,7 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	}()
 
 	go func() {
-		defer statusWG.Done()
+		defer wg.Done()
 		for {
 			select {
 			case status := <-bobStatusCh:
@@ -91,7 +90,7 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	}()
 
 	go func() {
-		defer statusWG.Done()
+		defer wg.Done()
 		for {
 			select {
 			case status := <-aliceStatusCh:
@@ -106,7 +105,7 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 		}
 	}()
 
-	statusWG.Wait()
+	wg.Wait()
 	t.Logf("Both swaps cancelled")
 	if t.Failed() {
 		return
@@ -120,13 +119,12 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 
 	pastSwap, err := ac.GetPastSwap(&makeResp.OfferID)
 	require.NoError(t, err)
-	t.Logf("Alice past status: %s", pastSwap.Swaps[0].Status)
-	if pastSwap.Swaps[0].Status.String() != types.CompletedRefund.String() {
-		t.Errorf("Alice should have refunded the swap")
-	}
+	require.NotEmpty(t, pastSwap.Swaps)
+	require.Equal(t, types.CompletedRefund.String(), pastSwap.Swaps[0].Status.String(),
+		"Alice should have refunded the swap")
 
 	pastSwap, err = bc.GetPastSwap(&makeResp.OfferID)
 	require.NoError(t, err)
-	t.Logf("Bob past status: %s", pastSwap.Swaps[0].Status)
+	require.NotEmpty(t, pastSwap.Swaps)
 	require.Equal(t, types.CompletedAbort.String(), pastSwap.Swaps[0].Status.String())
 }

@@ -43,11 +43,6 @@ func TestEthereumPrivateKeyToAddress(t *testing.T) {
 	require.Equal(t, ethAddressHex, addr.String())
 }
 
-func TestGetTopic(t *testing.T) {
-	refundedTopic := ethcommon.HexToHash("0x007c875846b687732a7579c19bb1dade66cd14e9f4f809565e2b2b5e76c72b4f")
-	require.Equal(t, GetTopic(RefundedEventSignature), refundedTopic)
-}
-
 func TestMakeDir(t *testing.T) {
 	path := path.Join(t.TempDir(), "mainnet")
 	require.NoError(t, MakeDir(path))

@@ -282,13 +282,12 @@ func (inst *Instance) maybeCancelNewSwap(txHash ethcommon.Hash) (bool, error) {
 		return false, fmt.Errorf("failed to get cancel transaction receipt: %w", err)
 	}
 
-	if receipt.Status == 0 {
-		// this is okay, it means newSwap was included, and we can refund it in the calling function
+	if receipt.Status == ethtypes.ReceiptStatusFailed {
+		// this is okay, it means newSwap was included instead, and we can refund it in the calling function
 		log.Infof("failed to cancel swap, attempting to refund")
 		return false, nil
 	}
 
-	// TODO: check for receipt success; there's still a case newSwap might be included
 	log.Infof("cancelled newSwap tx %s successfully: %s", tx.Hash(), common.ReceiptInfo(receipt))
 	return true, nil
 }
@@ -442,7 +441,7 @@ func getNewSwapParametersFromTx(
 	ec *ethclient.Client,
 	txHash ethcommon.Hash,
 ) (*newSwapParameters, error) {
-	var newSwapTopic = common.GetTopic(common.NewSwapFunctionSignature)
+	var newSwapTopic = common.GetTopic(contracts.NewSwapFunctionSignature)
 
 	tx, _, err := ec.TransactionByHash(ctx, txHash)
 	if err != nil {

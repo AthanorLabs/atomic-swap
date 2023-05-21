@@ -40,7 +40,7 @@ import (
 
 const revertSwapCompleted = "swap is already completed"
 
-var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
+var claimedTopic = common.GetTopic(contracts.ClaimedEventSignature)
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
