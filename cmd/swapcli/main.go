@@ -1080,7 +1080,10 @@ func runGetVersions(ctx *cli.Context) error {
 	fmt.Printf("swapd: %s\n", resp.SwapdVersion)
 	fmt.Printf("p2p version: %s\n", resp.P2PVersion)
 	fmt.Printf("env: %s\n", resp.Env)
-	fmt.Printf("swap creator address: %s\n", resp.SwapCreatorAddr)
+	// Bootnodes don't have a contract address
+	if resp.SwapCreatorAddr != nil {
+		fmt.Printf("swap creator address: %s\n", resp.SwapCreatorAddr)
+	}
 
 	return nil
 }
