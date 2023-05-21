@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -48,19 +46,14 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, cancel := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bws, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
-	require.NoError(t, err)
-	aws, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	require.NoError(t, err)
-
 	// Use an independent context for these clients that will execute across multiple runs of the daemons
-	bc := rpcclient.NewClient(context.Background(), fmt.Sprintf("http://127.0.0.1:%d", bobConf.RPCPort))
-	ac := rpcclient.NewClient(context.Background(), fmt.Sprintf("http://127.0.0.1:%d", aliceConf.RPCPort))
+	bc := rpcclient.NewClient(context.Background(), bobConf.RPCPort)
+	ac := rpcclient.NewClient(context.Background(), aliceConf.RPCPort)
 
-	makeResp, bobStatusCh, err := bws.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, false)
+	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, false)
 	require.NoError(t, err)
 
-	aliceStatusCh, err := aws.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
+	aliceStatusCh, err := ac.TakeOfferAndSubscribe(makeResp.PeerID, makeResp.OfferID, providesAmt)
 	require.NoError(t, err)
 
 	var statusWG sync.WaitGroup
