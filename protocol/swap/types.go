@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -17,8 +18,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/common/vjson"
 )
-
-const statusChSize = 6 // the max number of stages a swap can potentially go through
 
 var (
 	// CurInfoVersion is the latest supported version of a serialised Info struct
@@ -63,8 +62,18 @@ type Info struct {
 	// (and after Timeout1), the ETH-taker is able to claim, but
 	// after this timeout, the ETH-taker can no longer claim, only
 	// the ETH-maker can refund.
-	Timeout2 *time.Time        `json:"timeout2,omitempty"`
-	statusCh chan types.Status `json:"-"`
+	Timeout2 *time.Time `json:"timeout2,omitempty"`
+
+	// rwMu handles synchronization when LastStatusUpdateTime, Timeout1,
+	// Timeout2 and EndTime are updated. This Info struct is modified by the
+	// maker or taker's swapState go process as the state of the swap
+	// progresses. The swapState go process does not need synchronization when
+	// reading its own changes, but it needs to grab a write lock when modifying
+	// the the structure. Readers from other go-processes only get copies of
+	// this structure. They exclusively use the DeepCopy method to get their
+	// copy, which grabs the read lock ensuring that they always capture the
+	// up-to-date state of this Info struct.
+	rwMu sync.RWMutex
 }
 
 // NewInfo creates a new *Info from the given parameters.
@@ -78,7 +87,6 @@ func NewInfo(
 	ethAsset types.EthAsset,
 	status Status,
 	moneroStartHeight uint64,
-	statusCh chan types.Status,
 ) *Info {
 	info := &Info{
 		Version:              CurInfoVersion,
@@ -92,26 +100,42 @@ func NewInfo(
 		Status:               status,
 		LastStatusUpdateTime: time.Now(),
 		MoneroStartHeight:    moneroStartHeight,
-		statusCh:             statusCh,
 		StartTime:            time.Now(),
+		EndTime:              nil,
+		Timeout1:             nil,
+		Timeout2:             nil,
+		rwMu:                 sync.RWMutex{},
 	}
 	return info
 }
 
-// StatusCh returns the swap's status update channel.
-func (i *Info) StatusCh() <-chan types.Status {
-	return i.statusCh
-}
-
-// SetStatus ...
+// SetStatus updates the status and status modification timestamp
 func (i *Info) SetStatus(s Status) {
+	i.rwMu.Lock()
+	defer i.rwMu.Unlock()
+
 	i.Status = s
 	i.LastStatusUpdateTime = time.Now()
-	if i.statusCh == nil {
-		// this case only happens in tests.
-		return
-	}
-	i.statusCh <- s
+}
+
+// SetTimeouts sets the 2 timeout fields, , grabbing the needed lock before
+// modifying fields.
+func (i *Info) SetTimeouts(t1 *time.Time, t2 *time.Time) {
+	i.rwMu.Lock()
+	defer i.rwMu.Unlock()
+
+	i.Timeout1 = t1
+	i.Timeout2 = t2
+}
+
+// MarkSwapComplete sets the EndTime field to the current wall time, grabbing the
+// needed lock before modifying fields.
+func (i *Info) MarkSwapComplete() {
+	i.rwMu.Lock()
+	defer i.rwMu.Unlock()
+
+	now := time.Now()
+	i.EndTime = &now
 }
 
 // IsTaker returns true if the node is the xmr-taker in the swap.
@@ -119,32 +143,66 @@ func (i *Info) IsTaker() bool {
 	return i.Provides == coins.ProvidesETH
 }
 
-// UnmarshalInfo deserializes a JSON Info struct, checking the version for compatibility
-// before attempting to deserialize the whole blob.
+// UnmarshalInfo unmarshalls the passed JSON into a freshly created Info object.
 func UnmarshalInfo(jsonData []byte) (*Info, error) {
-	ov := struct {
+	info := new(Info)
+	if err := json.Unmarshal(jsonData, info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+// UnmarshalJSON deserializes a JSON Info struct, checking the version for
+// compatibility.
+func (i *Info) UnmarshalJSON(jsonData []byte) error {
+	iv := struct {
 		Version *semver.Version `json:"version"`
 	}{}
-	if err := json.Unmarshal(jsonData, &ov); err != nil {
-		return nil, err
+	if err := json.Unmarshal(jsonData, &iv); err != nil {
+		return err
 	}
 
-	if ov.Version == nil {
-		return nil, errInfoVersionMissing
+	if iv.Version == nil {
+		return errInfoVersionMissing
 	}
 
-	if ov.Version.GreaterThan(CurInfoVersion) {
-		return nil, fmt.Errorf("info version %q not supported, latest is %q", ov.Version, CurInfoVersion)
+	if iv.Version.GreaterThan(CurInfoVersion) {
+		return fmt.Errorf("info version %q not supported, latest is %q", iv.Version, CurInfoVersion)
 	}
 
-	info := new(Info)
-	if err := vjson.UnmarshalStruct(jsonData, info); err != nil {
-		return nil, err
-	}
+	// Assuming any version less than the current version is forwards
+	// compatible. If that is not the case in the future, add code here to
+	// upgrade the older version to the current version when deserializing.
+	// (Or error if it is completely incompatible.)
 
-	info.statusCh = make(chan types.Status, statusChSize)
+	// Unmarshal without recursion
+	type _Info Info
+	if err := vjson.UnmarshalStruct(jsonData, (*_Info)(i)); err != nil {
+		return err
+	}
 
 	// TODO: Are there additional sanity checks we can perform on the Provided and Received amounts
 	//       (or other fields) here when decoding the JSON?
-	return info, nil
+	return nil
+}
+
+// DeepCopy returns a deep copy of the Info data structure
+func (i *Info) DeepCopy() (*Info, error) {
+	i.rwMu.RLock()
+	defer i.rwMu.RUnlock()
+
+	// This is not the most efficient means of getting a deep copy, but for our
+	// needs it is fast enough and least prone to human error, as the structure
+	// has numerous nested pointer types.
+	jsonData, err := json.Marshal(i)
+	if err != nil {
+		return nil, err
+	}
+
+	clone := new(Info)
+	if err = clone.UnmarshalJSON(jsonData); err != nil {
+		return nil, err
+	}
+
+	return clone, nil
 }

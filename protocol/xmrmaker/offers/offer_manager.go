@@ -10,12 +10,10 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 
-	"github.com/athanorlabs/atomic-swap/common/types"
-
 	logging "github.com/ipfs/go-log"
-)
 
-const statusChSize = 6 // the max number of stages a swap can potentially go through
+	"github.com/athanorlabs/atomic-swap/common/types"
+)
 
 var (
 	log = logging.Logger("offers")
@@ -49,13 +47,9 @@ func NewManager(dataDir string, db Database) (*Manager, error) {
 	offers := make(map[types.Hash]*offerWithExtra)
 
 	for _, offer := range savedOffers {
-		extra := &types.OfferExtra{
-			StatusCh: make(chan types.Status, statusChSize),
-		}
-
 		offers[offer.ID] = &offerWithExtra{
 			offer: offer,
-			extra: extra,
+			extra: types.NewOfferExtra(false),
 		}
 
 		log.Infof("loaded offer %s from database", offer.ID)
@@ -83,10 +77,7 @@ func (m *Manager) GetOffer(id types.Hash) (*types.Offer, *types.OfferExtra, erro
 }
 
 // AddOffer adds a new offer to the manager and returns its OffersExtra data
-func (m *Manager) AddOffer(
-	offer *types.Offer,
-	useRelayer bool,
-) (*types.OfferExtra, error) {
+func (m *Manager) AddOffer(offer *types.Offer, useRelayer bool) (*types.OfferExtra, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -101,10 +92,7 @@ func (m *Manager) AddOffer(
 		return nil, err
 	}
 
-	extra := &types.OfferExtra{
-		StatusCh:   make(chan types.Status, statusChSize),
-		UseRelayer: useRelayer,
-	}
+	extra := types.NewOfferExtra(useRelayer)
 
 	m.offers[id] = &offerWithExtra{
 		offer: offer,

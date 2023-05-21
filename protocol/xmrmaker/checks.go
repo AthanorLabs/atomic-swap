@@ -134,6 +134,5 @@ func (s *swapState) checkAndSetTimeouts(t1, t2 *big.Int) error {
 func (s *swapState) setTimeouts(t1, t2 *big.Int) {
 	s.t1 = time.Unix(t1.Int64(), 0)
 	s.t2 = time.Unix(t2.Int64(), 0)
-	s.info.Timeout1 = &s.t1
-	s.info.Timeout2 = &s.t2
+	s.info.SetTimeouts(&s.t1, &s.t2)
 }

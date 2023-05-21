@@ -1,7 +1,7 @@
 // Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
-package rpc
+package rpcclient
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
+	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
 var (
@@ -26,21 +26,21 @@ var (
 	testTimeout   = time.Second * 5
 )
 
-func newServer(t *testing.T) *Server {
+func newServer(t *testing.T) (*rpc.Server, *rpc.Config) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	cfg := &Config{
+	cfg := &rpc.Config{
 		Ctx:             ctx,
 		Env:             common.Development,
 		Address:         "127.0.0.1:0", // OS assigned port
 		Net:             new(mockNet),
-		ProtocolBackend: newMockProtocolBackend(),
+		ProtocolBackend: newMockProtocolBackend(t),
 		XMRTaker:        new(mockXMRTaker),
 		XMRMaker:        new(mockXMRMaker),
-		Namespaces:      AllNamespaces(),
+		Namespaces:      rpc.AllNamespaces(),
 	}
 
-	s, err := NewServer(cfg)
+	s, err := rpc.NewServer(cfg)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -60,31 +60,31 @@ func newServer(t *testing.T) *Server {
 		wg.Wait() // wait for the server to exit
 	})
 
-	return s
+	return s, cfg
 }
 
 func TestSubscribeSwapStatus(t *testing.T) {
-	s := newServer(t)
+	ctx := context.Background()
+	s, _ := newServer(t)
 
-	c, err := wsclient.NewWsClient(s.ctx, s.WsURL())
-	require.NoError(t, err)
+	c := NewClient(ctx, s.Port())
 
 	ch, err := c.SubscribeSwapStatus(testSwapID)
 	require.NoError(t, err)
 
 	select {
 	case status := <-ch:
-		require.Equal(t, types.CompletedSuccess, status)
+		require.Equal(t, types.CompletedSuccess.String(), status.String())
 	case <-time.After(testTimeout):
 		t.Fatal("test timed out")
 	}
 }
 
 func TestSubscribeMakeOffer(t *testing.T) {
-	s := newServer(t)
+	ctx := context.Background()
+	s, cfg := newServer(t)
 
-	c, err := wsclient.NewWsClient(s.ctx, s.WsURL())
-	require.NoError(t, err)
+	c := NewClient(ctx, s.Port())
 
 	min := coins.StrToDecimal("0.1")
 	max := coins.StrToDecimal("1")
@@ -92,6 +92,9 @@ func TestSubscribeMakeOffer(t *testing.T) {
 	offerResp, ch, err := c.MakeOfferAndSubscribe(min, max, exRate, types.EthAssetETH, false)
 	require.NoError(t, err)
 	require.NotEqual(t, offerResp.OfferID, testSwapID)
+
+	cfg.ProtocolBackend.SwapManager().PushNewStatus(offerResp.OfferID, types.CompletedSuccess)
+
 	select {
 	case status := <-ch:
 		require.Equal(t, types.CompletedSuccess, status)
@@ -101,14 +104,13 @@ func TestSubscribeMakeOffer(t *testing.T) {
 }
 
 func TestSubscribeTakeOffer(t *testing.T) {
-	s := newServer(t)
+	s, _ := newServer(t)
 
 	cliCtx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
 		cancel()
 	})
-	c, err := wsclient.NewWsClient(cliCtx, s.WsURL())
-	require.NoError(t, err)
+	c := NewClient(cliCtx, s.Port())
 
 	ch, err := c.TakeOfferAndSubscribe(testPeerID, testSwapID, apd.New(1, 0))
 	require.NoError(t, err)

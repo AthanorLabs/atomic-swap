@@ -29,7 +29,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
-	"github.com/athanorlabs/atomic-swap/rpcclient/wsclient"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -116,10 +115,8 @@ func TestRunSwapDaemon_SwapBobHasNoEth_AliceRelaysClaim(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
-	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	require.NoError(t, err)
+	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
@@ -209,10 +206,8 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	timeout := 8 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
-	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	require.NoError(t, err)
+	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false // Bob will use unsuccessfully use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
@@ -294,10 +289,8 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
-	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	require.NoError(t, err)
+	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 
 	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
@@ -399,11 +392,8 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf, charlieConf)
 
-	bc, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", bobConf.RPCPort))
-	require.NoError(t, err)
-	ac, err := wsclient.NewWsClient(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", aliceConf.RPCPort))
-	require.NoError(t, err)
-
+	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
+	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
 	useRelayer := false // Bob will use the relayer regardless, because he has no ETH
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, types.EthAssetETH, useRelayer)
 	require.NoError(t, err)
@@ -473,7 +463,7 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 	timeout := time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, conf)
 
-	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
+	c := rpcclient.NewClient(ctx, conf.RPCPort)
 	versionResp, err := c.Version()
 	require.NoError(t, err)
 
@@ -489,7 +479,7 @@ func TestRunSwapDaemon_RPC_Shutdown(t *testing.T) {
 	timeout := time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, conf)
 
-	c := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", conf.RPCPort))
+	c := rpcclient.NewClient(ctx, conf.RPCPort)
 	err := c.Shutdown()
 	require.NoError(t, err)
 

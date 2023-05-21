@@ -74,12 +74,17 @@ func NewInstance(cfg *Config) (*Instance, error) {
 }
 
 func (inst *Instance) checkForOngoingSwaps() error {
-	swaps, err := inst.backend.SwapManager().GetOngoingSwaps()
+	ongoingIDs, err := inst.backend.SwapManager().GetOngoingSwapOfferIDs()
 	if err != nil {
 		return err
 	}
 
-	for _, s := range swaps {
+	for _, offerID := range ongoingIDs {
+		s, err := inst.backend.SwapManager().GetOngoingSwap(*offerID)
+		if err != nil {
+			return err
+		}
+
 		if s.Provides != coins.ProvidesETH {
 			continue
 		}

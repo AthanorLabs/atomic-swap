@@ -52,7 +52,7 @@ func TestBootnode(t *testing.T) {
 	// Ensure the bootnode fully starts before some basic sanity checks
 	daemon.WaitForSwapdStart(t, rpcPort)
 
-	cli := rpcclient.NewClient(ctx, fmt.Sprintf("http://127.0.0.1:%d", rpcPort))
+	cli := rpcclient.NewClient(ctx, rpcPort)
 	versionResp, err := cli.Version()
 	require.NoError(t, err)
 	require.NotEmpty(t, versionResp.P2PVersion)
