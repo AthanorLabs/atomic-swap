@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
@@ -39,7 +38,7 @@ type Info struct {
 	Provides       coins.ProvidesCoin  `json:"provides" validate:"required"`
 	ProvidedAmount *apd.Decimal        `json:"providedAmount" validate:"required"`
 	ExpectedAmount *apd.Decimal        `json:"expectedAmount" validate:"required"`
-	RelayerFee     *big.Int            `json:"relayerFee,omitempty"`
+	RelayerFee     *apd.Decimal        `json:"relayerFee,omitempty"`
 	ExchangeRate   *coins.ExchangeRate `json:"exchangeRate" validate:"required"`
 	EthAsset       types.EthAsset      `json:"ethAsset"`
 	Status         Status              `json:"status" validate:"required"`
@@ -141,7 +140,7 @@ func (i *Info) MarkSwapComplete() {
 }
 
 // SetRelayerFee updates the RelayerFee field
-func (i *Info) SetRelayerFee(relayerFee *big.Int) {
+func (i *Info) SetRelayerFee(relayerFee *apd.Decimal) {
 	i.rwMu.Lock()
 	defer i.rwMu.Unlock()
 

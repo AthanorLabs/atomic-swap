@@ -242,7 +242,7 @@ func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 	}
 
 	// Save the relayer fee to the database
-	s.info.SetRelayerFee(coins.RelayerFeeWei)
+	s.info.SetRelayerFee(coins.RelayerFeeETH)
 	swapManager := s.SwapManager()
 	err = swapManager.WriteSwapToDB(s.info)
 	if err != nil {
