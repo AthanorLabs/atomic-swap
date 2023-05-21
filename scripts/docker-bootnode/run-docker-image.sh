@@ -10,7 +10,7 @@ SWAPD_ENV="${SWAPD_ENV:-"mainnet"}"
 # containers need to have a distinct mount dir.
 CONTAINER_NAME="${CONTAINER_NAME:-"bootnode-${SWAPD_ENV}"}"
 IMAGE_NAME="atomic-bootnode"
-VERSION="latest" # image tag
+VERSION="$(git describe --abbrev=0 --tags)" # image tag
 
 # Pre-create the mounted directory, or docker will create it with root as the
 # owner. We mount one directory above what swapd considers its "data-dir". Data
