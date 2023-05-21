@@ -8,7 +8,9 @@
   import Loader from './Loader.svelte'
 
   import { Button, Modal } from 'flowbite-svelte'
-  import { Badge, Label, Input, Helper, InputAddon, ButtonGroup } from 'flowbite-svelte'
+  import { Badge, Label, Input, Helper, InputAddon, ButtonGroup, Spinner } from 'flowbite-svelte'
+  
+  import { CheckSolid, XmarkSolid } from 'svelte-awesome-icons';
   
   import eth from '../assets/coins/eth.png'
   
@@ -21,6 +23,7 @@
   let isLoadingSwap = false
   let error = ''
   let swapError = ''
+  let swapStatus = ''
 
   $: willReceive =
     amountProvided && amountProvided > 0 && $selectedOffer?.exchangeRate
@@ -68,13 +71,22 @@
     }
 
     webSocket.onmessage = async (msg) => {
-      const { result, err } = JSON.parse(msg.data)
-      // if (!result) ...
+      const { result, error } = JSON.parse(msg.data)
+      if (error) {
+        console.error(error)
+        swapError = error.message
+        isSuccess = false
+        isLoadingSwap = false
+        getPeers()
+        return
+      }
+
       const { status } = result
-      console.log(status)      
+      swapStatus = status
       if (status === "Success") {
         isSuccess = true
         isLoadingSwap = false
+        getPeers()
       }
     }
 
@@ -99,34 +111,37 @@
     willReceive = 0
     isSuccess = false
     swapError = ''
+    swapStatus = ''
   }
 </script>
 
 {#if !!$selectedOffer}
-  <Modal bind:open={$selectedOffer} title="Swap Offer" size="xs"> 
+  <Modal bind:open={$selectedOffer} permanent="true" size="xs" class="{isLoadingSwap ? 'modal-hide-footer' : ''}"style="min-width: 300px;"> 
     <section class="container">
       {#if isLoadingSwap}
         <div class="flexBox justify-center align-center text-center">
-          <Loader />
-          <p style="margin: auto;">Swapping ...</p>
+          <Spinner size={10}/>
+          <p class="mt-5 m-auto">Swapping ...</p>
+          <p class="mt-1 m-auto">{swapStatus}</p>
         </div>
       {:else if isSuccess}
         <div class="flexBox text-center justify-center">
-          <svg style="margin: auto" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M18.707 7.293a1 1 0 0 1 0 1.414L11.414 16a2 2 0 0 1-2.828 0l-3.293-3.293a1 1 0 1 1 1.414-1.414L10 14.586l7.293-7.293a1 1 0 0 1 1.414 0z" fill="#000"/></svg>
+          <CheckSolid class="m-auto mb-3 w-16 h-16" style="color: #0c4;" />
           <p class="successMessage">
-            You received {willReceive}{$selectedOffer.provides}
+            You received <b>{willReceive} {$selectedOffer.provides}</b>
           </p>
         </div>
       {:else if !!swapError}
-        <div class="flexBox">
-          <span class="material-icons circleCross">error_outline</span>
+        <div class="flexBox text-center justify-center">
+          <XmarkSolid class="m-auto mb-3 w-16 h-16" style="color: #e40;" /> 
           <p class="errorMessage">
             {swapError}
           </p>
         </div>
       {:else}
       Offer ID
-      <Badge border color="blue" large>{$selectedOffer.offerID}</Badge>    
+      <br>
+      <Badge border color="blue" large>{$selectedOffer.offerID.slice(0,12)}...</Badge>    
       
       <div class='mt-4 mb-1'>
         <Label 
@@ -147,20 +162,21 @@
       {/if}
     </section>
 
-    <svelte:fragment slot='footer'>
+    <svelte:fragment slot="footer">
       {#if isSuccess}
-        <Button on:click={() => onReset(true)}>Done</Button>
+        <Button on:click={() => onReset(true)} class="w-full" gradient color="purpleToBlue">Done</Button>
       {:else if !!swapError}
-        <Button on:click={() => onReset(false)}>Back</Button>
+        <Button on:click={() => onReset(false)} class="w-full" gradient color="purpleToBlue">Back</Button>
       {:else if !isLoadingSwap}
-          <Button on:click={() => selectedOffer.set(null)} color='alternative'>CANCEL</Button>
-          <Button on:click={handleSendTakeOffer} disabled={isLoadingSwap || !!error || !willReceive} class="mr-2" gradient color="cyanToBlue" s>SWAP</Button>
+          <Button on:click={() => selectedOffer.set(null)} color='alternative' class="w-1/2">CANCEL</Button>
+          <Button on:click={handleSendTakeOffer} disabled={isLoadingSwap || !!error || !willReceive} class="w-1/2" gradient color="cyanToBlue" s>SWAP</Button>
       {/if}
     </svelte:fragment>
-        
   </Modal>
-
 {/if}
 
 <style>
+:global(.modal-hide-footer > div:last-of-type) {
+  display: none;
+}
 </style>

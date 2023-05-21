@@ -1,5 +1,6 @@
 <script lang="ts">
-    import type { Offer } from 'src/types'
+    import {onMount} from 'svelte';
+
     import { offers, selectedOffer, refreshOffers } from '../stores/offerStore'
     import { isLoadingPeers, getPeers } from '../stores/peerStore'
 
@@ -7,34 +8,20 @@
     import { Toolbar, ToolbarButton, ToolbarGroup } from 'flowbite-svelte';
     import { Heading } from 'flowbite-svelte'
 
+    import Identicon from './Identicon.svelte'
+
     import xmr from '../assets/coins/xmr.png'
     import eth from '../assets/coins/eth.png'
-    import { escape } from 'svelte/internal';
 
     $: sortedOffers = $offers
-    $: linearProgressClosed = !$isLoadingPeers
-    let sort: keyof Offer = 'id'
-    let sortDirection: Lowercase<keyof typeof SortValue> = 'ascending'
-
-    function handleSort() {
-        sortedOffers = $offers.sort((a, b) => {
-        const [aVal, bVal] = [a[sort], b[sort]][
-            sortDirection === 'ascending' ? 'slice' : 'reverse'
-        ]()
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-            return aVal.localeCompare(bVal)
-        }
-        return Number(aVal) - Number(bVal)
-        })
-    }
 </script>
 
 <div class="offers">
-    <Toolbar color="transparent" style="position:relative;">
+    <Toolbar color="none" style="position:relative;">
         <Heading tag="h5">
-            <img width="25" height="25" src={eth} style="display: inline; vertical-align: top;"/>
+            <img width="25" height="25" src={eth} alt="eth" style="display: inline; vertical-align: top;"/>
             <span>ETH / XMR</span>
-            <img width="25" height="25" src={xmr} style="display: inline; vertical-align: top;" />
+            <img width="25" height="25" src={xmr} alt="xmr" style="display: inline; vertical-align: top;" />
         </Heading>
 
         <ToolbarGroup slot="end">
@@ -50,7 +37,7 @@
       </Toolbar>
       <br>
     {#if sortedOffers.length > 0}
-    <Table class="offers" shadow>
+    <Table class="offers" divClass="relative overflow-x-auto sm:rounded-lg border">
     <TableHead>
         <TableHeadCell>Peer</TableHeadCell>
         <TableHeadCell>Offer Id</TableHeadCell>
@@ -59,12 +46,12 @@
         <TableHeadCell>Max</TableHeadCell>
         <TableHeadCell></TableHeadCell>
     </TableHead>
-    <TableBody class="divide-y">
+    <TableBody>
         {#each sortedOffers as offer (offer.offerID)}
         <TableBodyRow>
             <TableBodyCell>
-                <img src={'https://avatar.vercel.sh/'+offer.peerID} width="24" style="border-radius: 99px; display:inline;"/>
-                {offer.peerID.slice(-8)}
+                <Identicon peerAddress={offer.peerID}/>
+                <span style="display: inline;">{offer.peerID.slice(-8)}</span>
             </TableBodyCell>
             <TableBodyCell>{offer.offerID.slice(0,8)}</TableBodyCell>
             <TableBodyCell>{offer.exchangeRate}</TableBodyCell>
@@ -90,5 +77,8 @@
     margin: auto;
     margin-top: 60px;
     margin-bottom: 40px;
+}
+:global(.identicon > canvas) {
+    border-radius: 50%;
 }
 </style>

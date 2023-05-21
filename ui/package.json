@@ -26,6 +26,7 @@
     "ethers": "^6.3.0",
     "flowbite": "^1.6.5",
     "flowbite-svelte": "^0.34.12",
-    "identicon.js": "^2.3.3"
+    "identicon.js": "^2.3.3",
+    "svelte-awesome-icons": "^0.4.4"
   }
 }

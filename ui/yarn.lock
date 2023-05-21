@@ -158,6 +158,7 @@
     "@docsearch/css" "3.3.4"
     algoliasearch "^4.0.0"
 
+
 "@esbuild/android-arm64@0.17.19":
   version "0.17.19"
   resolved "https://registry.yarnpkg.com/@esbuild/android-arm64/-/android-arm64-0.17.19.tgz#bafb75234a5d3d1b690e7c2956a599345e84a2fd"
@@ -1117,6 +1118,11 @@ supports-preserve-symlinks-flag@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
+
+svelte-awesome-icons@^0.4.4:
+  version "0.4.4"
+  resolved "https://registry.yarnpkg.com/svelte-awesome-icons/-/svelte-awesome-icons-0.4.4.tgz#7a98a586bc1abfe08b370b1de26b888dcc8dd260"
+  integrity sha512-y3GK/5TjFaHcCu5O1Y5dx+T/833xMZt6jX5p/XONggH0uUVEr16UBrBHeVsLBQOdWSiz5A6O2kaq1n7SZO1Umw==
 
 svelte-heros-v2@^0.4.2:
   version "0.4.2"
