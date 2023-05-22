@@ -84,17 +84,19 @@ func (s *NetService) QueryAll(_ *http.Request, req *rpctypes.QueryAllRequest, re
 		return err
 	}
 
-	resp.PeersWithOffers = make([]*rpctypes.PeerWithOffers, len(peerIDs))
-	for i, p := range peerIDs {
-		resp.PeersWithOffers[i] = &rpctypes.PeerWithOffers{
-			PeerID: p,
-		}
+	resp.PeersWithOffers = make([]*rpctypes.PeerWithOffers, 0, len(peerIDs))
+	for _, p := range peerIDs {
 		msg, err := s.net.Query(p)
 		if err != nil {
 			log.Debugf("Failed to query peer ID %s", p)
 			continue
 		}
-		resp.PeersWithOffers[i].Offers = msg.Offers
+		if len(msg.Offers) > 0 {
+			resp.PeersWithOffers = append(resp.PeersWithOffers, &rpctypes.PeerWithOffers{
+				PeerID: p,
+				Offers: msg.Offers,
+			})
+		}
 	}
 
 	return nil
