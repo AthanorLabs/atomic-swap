@@ -896,9 +896,9 @@ func runGetPastSwap(ctx *cli.Context) error {
 			endTime = info.EndTime.Format(common.TimeFmtSecs)
 		}
 
-		receivedAmt := new(apd.Decimal)
-		*receivedAmt = *info.ExpectedAmount
+		receivedAmt := info.ExpectedAmount
 		if info.RelayerFee != nil {
+			receivedAmt = new(apd.Decimal)
 			_, err = coins.DecimalCtx().Sub(receivedAmt, info.ExpectedAmount, info.RelayerFee)
 			if err != nil {
 				return err
