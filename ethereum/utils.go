@@ -36,8 +36,13 @@ var (
 	// which case it will be nil we'll see panics when vetting the binaries.
 	SwapCreatorParsedABI, _ = SwapCreatorMetaData.GetAbi()
 
-	claimedTopic  = common.GetTopic(common.ClaimedEventSignature)
-	refundedTopic = common.GetTopic(common.RefundedEventSignature)
+	claimedTopic  = common.GetTopic(ClaimedEventSignature)
+	refundedTopic = common.GetTopic(RefundedEventSignature)
+
+	NewSwapFunctionSignature = SwapCreatorParsedABI.Methods["newSwap"].Sig //nolint:revive
+	ReadyEventSignature      = SwapCreatorParsedABI.Events["Ready"].Sig    //nolint:revive
+	ClaimedEventSignature    = SwapCreatorParsedABI.Events["Claimed"].Sig  //nolint:revive
+	RefundedEventSignature   = SwapCreatorParsedABI.Events["Refunded"].Sig //nolint:revive
 )
 
 // StageToString converts a contract Stage enum value to a string

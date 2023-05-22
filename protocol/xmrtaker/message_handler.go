@@ -235,7 +235,7 @@ func (s *swapState) handleNotifyXMRLock() error {
 	close(s.xmrLockedCh)
 	log.Info("XMR was locked successfully, setting contract to ready...")
 
-	if err := s.ready(); err != nil {
+	if err := s.setReady(); err != nil {
 		return fmt.Errorf("failed to call Ready: %w", err)
 	}
 

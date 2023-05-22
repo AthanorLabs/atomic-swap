@@ -39,9 +39,9 @@ import (
 )
 
 var (
-	readyTopic    = common.GetTopic(common.ReadyEventSignature)
-	claimedTopic  = common.GetTopic(common.ClaimedEventSignature)
-	refundedTopic = common.GetTopic(common.RefundedEventSignature)
+	readyTopic    = common.GetTopic(contracts.ReadyEventSignature)
+	claimedTopic  = common.GetTopic(contracts.ClaimedEventSignature)
+	refundedTopic = common.GetTopic(contracts.RefundedEventSignature)
 )
 
 type swapState struct {

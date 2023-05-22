@@ -14,6 +14,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -40,7 +41,7 @@ func lockXMRAndCheckForReadyLog(t *testing.T, s *swapState, xmrAddr *mcrypto.Add
 	require.NoError(t, err)
 	logReadyCh := make(chan ethtypes.Log)
 
-	readyTopic := common.GetTopic(common.ReadyEventSignature)
+	readyTopic := common.GetTopic(contracts.ReadyEventSignature)
 	readyWatcher := watcher.NewEventFilter(
 		s.Backend.Ctx(),
 		s.Backend.ETHClient().Raw(),

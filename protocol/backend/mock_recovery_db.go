@@ -98,6 +98,21 @@ func (mr *MockRecoveryDBMockRecorder) GetCounterpartySwapPrivateKey(arg0 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterpartySwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).GetCounterpartySwapPrivateKey), arg0)
 }
 
+// GetNewSwapTxHash mocks base method.
+func (m *MockRecoveryDB) GetNewSwapTxHash(arg0 common.Hash) (common.Hash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNewSwapTxHash", arg0)
+	ret0, _ := ret[0].(common.Hash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNewSwapTxHash indicates an expected call of GetNewSwapTxHash.
+func (mr *MockRecoveryDBMockRecorder) GetNewSwapTxHash(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNewSwapTxHash", reflect.TypeOf((*MockRecoveryDB)(nil).GetNewSwapTxHash), arg0)
+}
+
 // GetSwapPrivateKey mocks base method.
 func (m *MockRecoveryDB) GetSwapPrivateKey(arg0 common.Hash) (*mcrypto.PrivateSpendKey, error) {
 	m.ctrl.T.Helper()
@@ -168,6 +183,20 @@ func (m *MockRecoveryDB) PutCounterpartySwapPrivateKey(arg0 common.Hash, arg1 *m
 func (mr *MockRecoveryDBMockRecorder) PutCounterpartySwapPrivateKey(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutCounterpartySwapPrivateKey", reflect.TypeOf((*MockRecoveryDB)(nil).PutCounterpartySwapPrivateKey), arg0, arg1)
+}
+
+// PutNewSwapTxHash mocks base method.
+func (m *MockRecoveryDB) PutNewSwapTxHash(arg0, arg1 common.Hash) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PutNewSwapTxHash", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PutNewSwapTxHash indicates an expected call of PutNewSwapTxHash.
+func (mr *MockRecoveryDBMockRecorder) PutNewSwapTxHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutNewSwapTxHash", reflect.TypeOf((*MockRecoveryDB)(nil).PutNewSwapTxHash), arg0, arg1)
 }
 
 // PutSwapPrivateKey mocks base method.
