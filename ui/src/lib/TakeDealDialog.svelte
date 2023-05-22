@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { CancelResult } from '../types/Cancel'
   import type { NetTakeOfferSyncResult } from '../types/NetTakeOfferSync'
-  import { getCorrespondingToken, rpcRequest } from '../utils'
+  import { getCorrespondingToken, rpcRequest, getPort } from '../utils'
   import { selectedOffer } from '../stores/offerStore'
   import { getPeers } from '../stores/peerStore'
   //import { currentAccount, sign } from '../stores/metamask'
@@ -16,7 +16,7 @@
   
   let popupModal = true;
 
-  const WS_ADDRESS = 'ws://127.0.0.1:5001/ws'
+  const WS_ADDRESS = `ws://127.0.0.1:${getPort()}/ws`
 
   let amountProvided: number | null = null
   let isSuccess = false
