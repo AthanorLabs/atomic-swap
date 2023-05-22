@@ -896,13 +896,25 @@ func runGetPastSwap(ctx *cli.Context) error {
 			endTime = info.EndTime.Format(common.TimeFmtSecs)
 		}
 
+		receivedAmt := new(apd.Decimal)
+		*receivedAmt = *info.ExpectedAmount
+		if info.RelayerFee != nil {
+			_, err = coins.DecimalCtx().Sub(receivedAmt, info.ExpectedAmount, info.RelayerFee)
+			if err != nil {
+				return err
+			}
+		}
+
 		fmt.Printf("ID: %s\n", info.ID)
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
 		fmt.Printf("End time: %s\n", endTime)
 		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
-		fmt.Printf("Received: %s %s", info.ExpectedAmount.Text('f'), receivedCoin)
+		fmt.Printf("Received: %s %s", receivedAmt.Text('f'), receivedCoin)
 		if info.RelayerFee != nil {
-			fmt.Printf(" (minus %s %s relayer fee)", info.RelayerFee.Text('f'), receivedCoin)
+			fmt.Printf(" (%s %s - %s %s relayer fee)",
+				info.ExpectedAmount.Text('f'), receivedCoin,
+				info.RelayerFee.Text('f'), receivedCoin,
+			)
 		}
 		fmt.Printf("\n")
 		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
