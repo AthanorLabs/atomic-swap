@@ -53,6 +53,8 @@ type RecoveryDB interface {
 	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
 	PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error
 	GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error)
+	PutNewSwapTxHash(id types.Hash, txHash types.Hash) error
+	GetNewSwapTxHash(id types.Hash) (types.Hash, error)
 	DeleteSwap(id types.Hash) error
 }
 

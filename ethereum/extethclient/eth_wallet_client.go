@@ -55,6 +55,9 @@ type EthClient interface {
 	// does not need locking, as it locks internally
 	Transfer(ctx context.Context, to ethcommon.Address, amount *coins.WeiAmount) (ethcommon.Hash, error)
 
+	// attempts to cancel a transaction with the given nonce by sending a zero-value tx to ourselves
+	CancelTxWithNonce(ctx context.Context, nonce uint64, gasPrice *big.Int) (ethcommon.Hash, error)
+
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
 	LatestBlockTimestamp(ctx context.Context) (time.Time, error)
@@ -298,6 +301,30 @@ func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
 
+func (c *ethClient) CancelTxWithNonce(
+	ctx context.Context,
+	nonce uint64,
+	gasPrice *big.Int,
+) (ethcommon.Hash, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	tx := ethtypes.NewTransaction(nonce, c.ethAddress, big.NewInt(0), 21000, gasPrice, nil)
+
+	signer := ethtypes.LatestSignerForChainID(c.chainID)
+	signedTx, err := ethtypes.SignTx(tx, signer, c.ethPrivKey)
+	if err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to sign tx: %w", err)
+	}
+
+	err = c.ec.SendTransaction(ctx, signedTx)
+	if err != nil {
+		return ethcommon.Hash{}, fmt.Errorf("failed to send tx: %w", err)
+	}
+
+	return signedTx.Hash(), nil
+}
+
 func (c *ethClient) Transfer(
 	ctx context.Context,
 	to ethcommon.Address,
@@ -310,16 +337,6 @@ func (c *ethClient) Transfer(
 	if err != nil {
 		return ethcommon.Hash{}, fmt.Errorf("failed to get nonce: %w", err)
 	}
-
-	// TODO: why does this type not implement ethtypes.TxData? seems like a bug in geth
-	// txData := ethtypes.DynamicFeeTx{
-	// 	ChainID: c.chainID,
-	// 	Nonce:   nonce,
-	// 	Gas:     21000,
-	// 	To:      &to,
-	// 	Value:   amount.BigInt(),
-	// }
-	// tx := ethtypes.NewTx(txData)
 
 	gasPrice, err := c.ec.SuggestGasPrice(ctx)
 	if err != nil {
