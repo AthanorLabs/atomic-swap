@@ -26,13 +26,6 @@ const (
 	TimeFmtNSecs = "2006-01-02-15:04:05.999999999"
 )
 
-// SwapCreator.sol event signatures
-const (
-	ReadyEventSignature    = "Ready(bytes32)"
-	ClaimedEventSignature  = "Claimed(bytes32,bytes32)"
-	RefundedEventSignature = "Refunded(bytes32,bytes32)"
-)
-
 // Ethereum chain IDs
 const (
 	MainnetChainID = 1

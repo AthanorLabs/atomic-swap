@@ -40,7 +40,7 @@ func (s *swapState) HandleProtocolMessage(msg common.Message) error {
 
 func (s *swapState) clearNextExpectedEvent(status types.Status) {
 	s.nextExpectedEvent = EventNoneType
-	s.info.SetStatus(status)
+	s.updateStatus(status)
 }
 
 func (s *swapState) setNextExpectedEvent(event EventType) error {
@@ -61,7 +61,7 @@ func (s *swapState) setNextExpectedEvent(event EventType) error {
 	}
 
 	log.Debugf("setting status to %s", status)
-	s.info.SetStatus(status)
+	s.updateStatus(status)
 	return s.Backend.SwapManager().WriteSwapToDB(s.info)
 }
 
@@ -235,7 +235,7 @@ func (s *swapState) handleNotifyXMRLock() error {
 	close(s.xmrLockedCh)
 	log.Info("XMR was locked successfully, setting contract to ready...")
 
-	if err := s.ready(); err != nil {
+	if err := s.setReady(); err != nil {
 		return fmt.Errorf("failed to call Ready: %w", err)
 	}
 

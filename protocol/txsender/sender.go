@@ -39,7 +39,7 @@ type Sender interface {
 		timeoutDuration *big.Int,
 		nonce *big.Int,
 		amount coins.EthAssetAmount,
-	) (*ethtypes.Receipt, error)
+	) (ethcommon.Hash, error)
 	SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.Receipt, error)
 	Claim(swap *contracts.SwapCreatorSwap, secret [32]byte) (*ethtypes.Receipt, error)
 	Refund(swap *contracts.SwapCreatorSwap, secret [32]byte) (*ethtypes.Receipt, error)
@@ -83,9 +83,8 @@ func (s *privateKeySender) NewSwap(
 	timeoutDuration *big.Int,
 	nonce *big.Int,
 	amount coins.EthAssetAmount,
-) (*ethtypes.Receipt, error) {
-	s.ethClient.Lock()
-	defer s.ethClient.Unlock()
+) (ethcommon.Hash, error) {
+	// note: the caller must lock the ethclient.
 
 	value := amount.BigInt()
 
@@ -96,17 +95,17 @@ func (s *privateKeySender) NewSwap(
 	if amount.IsToken() {
 		txOpts, err := s.ethClient.TxOpts(s.ctx)
 		if err != nil {
-			return nil, err
+			return ethcommon.Hash{}, err
 		}
 
 		tx, err := s.erc20Contract.Approve(txOpts, s.swapCreatorAddr, value)
 		if err != nil {
-			return nil, fmt.Errorf("approve tx creation failed, %w", err)
+			return ethcommon.Hash{}, fmt.Errorf("approve tx creation failed, %w", err)
 		}
 
 		receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
 		if err != nil {
-			return nil, fmt.Errorf("approve failed, %w", err)
+			return ethcommon.Hash{}, fmt.Errorf("approve failed, %w", err)
 		}
 
 		log.Debugf("approve transaction included %s", common.ReceiptInfo(receipt))
@@ -116,7 +115,7 @@ func (s *privateKeySender) NewSwap(
 
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
 	if err != nil {
-		return nil, err
+		return ethcommon.Hash{}, err
 	}
 
 	// transfer ETH if we're not doing an ERC20 swap
@@ -128,16 +127,10 @@ func (s *privateKeySender) NewSwap(
 		amount.TokenAddress(), value, nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
-		return nil, err
+		return ethcommon.Hash{}, err
 	}
 
-	receipt, err := block.WaitForReceipt(s.ctx, s.ethClient.Raw(), tx.Hash())
-	if err != nil {
-		err = fmt.Errorf("new_swap failed, %w", err)
-		return nil, err
-	}
-
-	return receipt, nil
+	return tx.Hash(), nil
 }
 
 func (s *privateKeySender) SetReady(swap *contracts.SwapCreatorSwap) (*ethtypes.Receipt, error) {

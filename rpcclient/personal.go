@@ -21,7 +21,7 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 		Timeout: timeoutSeconds,
 	}
 
-	if err := c.Post(method, req, nil); err != nil {
+	if err := c.post(method, req, nil); err != nil {
 		return err
 	}
 
@@ -35,7 +35,7 @@ func (c *Client) GetSwapTimeout() (*rpc.GetSwapTimeoutResponse, error) {
 	)
 
 	swapTimeout := &rpc.GetSwapTimeoutResponse{}
-	if err := c.Post(method, nil, swapTimeout); err != nil {
+	if err := c.post(method, nil, swapTimeout); err != nil {
 		return nil, err
 	}
 
@@ -52,7 +52,7 @@ func (c *Client) TokenInfo(tokenAddr ethcommon.Address) (*coins.ERC20TokenInfo, 
 	request := &rpctypes.TokenInfoRequest{TokenAddr: tokenAddr}
 	tokenInfo := new(rpctypes.TokenInfoResponse)
 
-	if err := c.Post(method, request, tokenInfo); err != nil {
+	if err := c.post(method, request, tokenInfo); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func (c *Client) Balances(request *rpctypes.BalancesRequest) (*rpctypes.Balances
 	)
 
 	balances := &rpctypes.BalancesResponse{}
-	if err := c.Post(method, request, balances); err != nil {
+	if err := c.post(method, request, balances); err != nil {
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func (c *Client) TransferXMR(request *rpc.TransferXMRRequest) (*rpc.TransferXMRR
 	)
 
 	resp := new(rpc.TransferXMRResponse)
-	if err := c.Post(method, request, resp); err != nil {
+	if err := c.post(method, request, resp); err != nil {
 		return nil, err
 	}
 
@@ -94,7 +94,7 @@ func (c *Client) SweepXMR(request *rpc.SweepXMRRequest) (*rpc.SweepXMRResponse, 
 	)
 
 	resp := new(rpc.SweepXMRResponse)
-	if err := c.Post(method, request, resp); err != nil {
+	if err := c.post(method, request, resp); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func (c *Client) TransferETH(request *rpc.TransferETHRequest) (*rpc.TransferETHR
 	)
 
 	resp := new(rpc.TransferETHResponse)
-	if err := c.Post(method, request, resp); err != nil {
+	if err := c.post(method, request, resp); err != nil {
 		return nil, err
 	}
 

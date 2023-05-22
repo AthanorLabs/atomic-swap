@@ -18,6 +18,7 @@ const (
 	counterpartySwapPrivateKeyPrefix = "cspriv"
 	relayerInfoPrefix                = "relayer"
 	counterpartySwapKeysPrefix       = "cskeys"
+	newSwapTxHashPrefix              = "newswap"
 )
 
 // RecoveryDB contains information about ongoing swaps required for recovery
@@ -218,6 +219,31 @@ func (db *RecoveryDB) GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey
 	return info.PublicSpendKey, info.PrivateViewKey, nil
 }
 
+// PutNewSwapTxHash stores the newSwap transaction hash for the given swap ID.
+func (db *RecoveryDB) PutNewSwapTxHash(id types.Hash, txHash types.Hash) error {
+	key := getRecoveryDBKey(id, newSwapTxHashPrefix)
+	err := db.db.Put(key, txHash[:])
+	if err != nil {
+		return err
+	}
+
+	return db.db.Flush()
+}
+
+// GetNewSwapTxHash returns the newSwap transaction hash for the given swap ID.
+func (db *RecoveryDB) GetNewSwapTxHash(id types.Hash) (types.Hash, error) {
+	key := getRecoveryDBKey(id, newSwapTxHashPrefix)
+	value, err := db.db.Get(key)
+	if err != nil {
+		return types.Hash{}, err
+	}
+
+	var txHash types.Hash
+	copy(txHash[:], value)
+
+	return txHash, nil
+}
+
 // DeleteSwap deletes all recovery info from the db for the given swap.
 // TODO: this is currently unimplemented
 func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
@@ -232,6 +258,7 @@ func (db *RecoveryDB) deleteSwap(id types.Hash) error {
 		getRecoveryDBKey(id, swapPrivateKeyPrefix),
 		getRecoveryDBKey(id, counterpartySwapPrivateKeyPrefix),
 		getRecoveryDBKey(id, counterpartySwapKeysPrefix),
+		getRecoveryDBKey(id, newSwapTxHashPrefix),
 	}
 
 	for _, key := range keys {

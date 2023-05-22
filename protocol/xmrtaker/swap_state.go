@@ -24,6 +24,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
+	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -39,7 +40,7 @@ import (
 
 const revertSwapCompleted = "swap is already completed"
 
-var claimedTopic = common.GetTopic(common.ClaimedEventSignature)
+var claimedTopic = common.GetTopic(contracts.ClaimedEventSignature)
 
 // swapState is an instance of a swap. it holds the info needed for the swap,
 // and its current state.
@@ -104,7 +105,6 @@ func newSwapStateFromStart(
 	ethAsset types.EthAsset,
 ) (*swapState, error) {
 	stage := types.ExpectingKeys
-	statusCh := make(chan types.Status, 16)
 
 	moneroStartNumber, err := b.XMRClient().GetHeight()
 	if err != nil {
@@ -136,7 +136,6 @@ func newSwapStateFromStart(
 		ethAsset,
 		stage,
 		moneroStartNumber,
-		statusCh,
 	)
 	if err = b.SwapManager().AddSwap(info); err != nil {
 		return nil, err
@@ -157,7 +156,8 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	statusCh <- stage
+	s.SwapManager().PushNewStatus(offerID, stage)
+
 	return s, nil
 }
 
@@ -316,6 +316,11 @@ func (s *swapState) SendKeysMessage() common.Message {
 		DLEqProof:          s.dleqProof.Proof(),
 		Secp256k1PublicKey: s.secp256k1Pub,
 	}
+}
+
+func (s *swapState) updateStatus(status types.Status) {
+	s.info.SetStatus(status)
+	s.SwapManager().PushNewStatus(s.OfferID(), status)
 }
 
 // ExpectedAmount returns the amount received, or expected to be received, at the end of the swap
@@ -597,21 +602,12 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
-	providedAmt := s.providedAmount
-
-	log.Debugf("locking %s %s in contract", providedAmt.AsStandard(), providedAmt.StandardSymbol())
+	log.Debugf("locking %s %s in contract", s.providedAmount.AsStandard(), s.providedAmount.StandardSymbol())
 
 	nonce := contracts.GenerateNewSwapNonce()
-	receipt, err := s.sender.NewSwap(
-		cmtXMRMaker,
-		cmtXMRTaker,
-		s.xmrmakerAddress,
-		big.NewInt(int64(s.SwapTimeout().Seconds())),
-		nonce,
-		providedAmt,
-	)
+	receipt, err := s.lockAndWaitForReceipt(cmtXMRMaker, cmtXMRTaker, nonce)
 	if err != nil {
-		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
+		return nil, fmt.Errorf("failed to lock asset: %w", err)
 	}
 
 	log.Infof("instantiated swap on-chain: amount=%s asset=%s %s",
@@ -669,14 +665,46 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	log.Infof("locked %s in swap contract, waiting for XMR to be locked", providedAmt.StandardSymbol())
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", s.providedAmount.StandardSymbol())
 	return receipt, nil
 }
 
-// ready calls the Ready() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
+func (s *swapState) lockAndWaitForReceipt(
+	cmtXMRMaker, cmtXMRTaker [32]byte,
+	nonce *big.Int,
+) (*ethtypes.Receipt, error) {
+	s.Backend.ETHClient().Lock()
+	defer s.Backend.ETHClient().Unlock()
+
+	txHash, err := s.sender.NewSwap(
+		cmtXMRMaker,
+		cmtXMRTaker,
+		s.xmrmakerAddress,
+		big.NewInt(int64(s.SwapTimeout().Seconds())),
+		nonce,
+		s.providedAmount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
+	}
+
+	err = s.Backend.RecoveryDB().PutNewSwapTxHash(s.OfferID(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write newSwap tx hash to db: %w", err)
+	}
+
+	receipt, err := block.WaitForReceipt(s.ctx, s.ETHClient().Raw(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newSwap transaction receipt: %w", err)
+	}
+
+	return receipt, nil
+}
+
+// ready calls the setReady() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
-func (s *swapState) ready() error {
+func (s *swapState) setReady() error {
 	stage, err := s.SwapCreator().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return err

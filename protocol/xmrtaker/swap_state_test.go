@@ -112,6 +112,7 @@ func newBackendAndNet(t *testing.T) (backend.Backend, *mockNet) {
 	rdb.EXPECT().PutSwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutCounterpartySwapPrivateKey(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().PutCounterpartySwapKeys(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	rdb.EXPECT().PutNewSwapTxHash(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	rdb.EXPECT().DeleteSwap(gomock.Any()).Return(nil).AnyTimes()
 
 	net := new(mockNet)
@@ -252,7 +253,7 @@ func TestSwapState_HandleProtocolMessage_SendKeysMessage_Refund(t *testing.T) {
 	require.Equal(t, xmrmakerKeysAndProof.PrivateKeyPair.ViewKey().String(), s.xmrmakerPrivateViewKey.String())
 
 	// ensure we refund before t1
-	for status := range s.info.StatusCh() {
+	for status := range s.SwapManager().GetStatusChan(s.OfferID()) {
 		if status == types.CompletedRefund {
 			// check this is before t1
 			// TODO: remove the 10-second buffer, this is needed for now
@@ -346,7 +347,7 @@ func TestSwapState_NotifyXMRLock_Refund(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, EventETHClaimedType, s.nextExpectedEvent)
 
-	for status := range s.info.StatusCh() {
+	for status := range s.SwapManager().GetStatusChan(s.OfferID()) {
 		if status == types.CompletedRefund {
 			// check this is after t2
 			require.Less(t, s.t2, time.Now())
@@ -368,7 +369,7 @@ func TestExit_afterSendKeysMessage(t *testing.T) {
 	s.nextExpectedEvent = EventKeysReceivedType
 	err := s.Exit()
 	require.NoError(t, err)
-	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
+	info, err := s.SwapManager().GetPastSwap(s.OfferID())
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, info.Status)
 }
@@ -395,7 +396,7 @@ func TestExit_afterNotifyXMRLock(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
+	info, err := s.SwapManager().GetPastSwap(s.OfferID())
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedRefund, info.Status)
 }
@@ -422,7 +423,7 @@ func TestExit_afterNotifyClaimed(t *testing.T) {
 	err = s.Exit()
 	require.NoError(t, err)
 
-	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
+	info, err := s.SwapManager().GetPastSwap(s.OfferID())
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedRefund, info.Status)
 }
@@ -450,7 +451,7 @@ func TestExit_invalidNextMessageType(t *testing.T) {
 	err = s.Exit()
 	require.True(t, errors.Is(err, errUnexpectedEventType))
 
-	info, err := s.SwapManager().GetPastSwap(s.info.OfferID)
+	info, err := s.SwapManager().GetPastSwap(s.OfferID())
 	require.NoError(t, err)
 	require.Equal(t, types.CompletedAbort, info.Status)
 }

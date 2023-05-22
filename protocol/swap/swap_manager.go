@@ -15,7 +15,7 @@ import (
 	"github.com/ChainSafe/chaindb"
 )
 
-var errNoSwapWithID = errors.New("unable to find swap with given ID")
+var errNoSwapWithOfferID = errors.New("unable to find swap with given offer ID")
 
 // Manager tracks current and past swaps.
 type Manager interface {
@@ -23,10 +23,15 @@ type Manager interface {
 	WriteSwapToDB(info *Info) error
 	GetPastIDs() ([]types.Hash, error)
 	GetPastSwap(types.Hash) (*Info, error)
-	GetOngoingSwap(types.Hash) (Info, error)
-	GetOngoingSwaps() ([]*Info, error)
+	GetOngoingSwap(hash types.Hash) (*Info, error)
+	GetOngoingSwapSnapshot(types.Hash) (*Info, error)
+	GetOngoingSwapOfferIDs() ([]*types.Hash, error)
+	GetOngoingSwapsSnapshot() ([]*Info, error)
 	CompleteOngoingSwap(info *Info) error
 	HasOngoingSwap(types.Hash) bool
+	GetStatusChan(offerID types.Hash) <-chan types.Status
+	DeleteStatusChan(offerID types.Hash)
+	PushNewStatus(offerID types.Hash, status types.Status)
 }
 
 // manager implements Manager.
@@ -38,6 +43,7 @@ type manager struct {
 	sync.RWMutex
 	ongoing map[types.Hash]*Info
 	past    map[types.Hash]*Info
+	*statusManager
 }
 
 var _ Manager = (*manager)(nil)
@@ -62,9 +68,10 @@ func NewManager(db Database) (Manager, error) {
 	}
 
 	return &manager{
-		db:      db,
-		ongoing: ongoing,
-		past:    make(map[types.Hash]*Info),
+		db:            db,
+		ongoing:       ongoing,
+		past:          make(map[types.Hash]*Info),
+		statusManager: newStatusManager(),
 	}, nil
 }
 
@@ -140,30 +147,70 @@ func (m *manager) GetPastSwap(id types.Hash) (*Info, error) {
 	return s, nil
 }
 
-// GetOngoingSwap returns the ongoing swap's *Info, if there is one.
-func (m *manager) GetOngoingSwap(id types.Hash) (Info, error) {
+// GetOngoingSwap returns the ongoing swap's *Info, if there is one. The
+// returned Info structure of an active swap can be modified as the swap's state
+// changes and should only be read or written by a single go process.
+func (m *manager) GetOngoingSwap(offerID types.Hash) (*Info, error) {
 	m.RLock()
 	defer m.RUnlock()
-	s, has := m.ongoing[id]
+
+	s, has := m.ongoing[offerID]
 	if !has {
-		return Info{}, errNoSwapWithID
+		return nil, errNoSwapWithOfferID
 	}
 
-	return *s, nil
+	return s, nil
 }
 
-// GetOngoingSwaps returns all ongoing swaps.
-func (m *manager) GetOngoingSwaps() ([]*Info, error) {
+// GetOngoingSwapSnapshot returns a copy of the ongoing swap's Info, if the
+// offerID has an ongoing swap.
+func (m *manager) GetOngoingSwapSnapshot(offerID types.Hash) (*Info, error) {
 	m.RLock()
 	defer m.RUnlock()
-	swaps := make([]*Info, len(m.ongoing))
-	i := 0
-	for _, s := range m.ongoing {
-		sCopy := new(Info)
-		*sCopy = *s
-		swaps[i] = sCopy
-		i++
+
+	s, has := m.ongoing[offerID]
+	if !has {
+		return nil, errNoSwapWithOfferID
 	}
+
+	sc, err := s.DeepCopy()
+	if err != nil {
+		return nil, err
+	}
+
+	return sc, nil
+}
+
+// GetOngoingSwapOfferIDs returns a list of the offer IDs of all ongoing
+// swaps.
+func (m *manager) GetOngoingSwapOfferIDs() ([]*types.Hash, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	offerIDs := make([]*types.Hash, 0, len(m.ongoing))
+	for _, s := range m.ongoing {
+		offerIDs = append(offerIDs, &s.OfferID)
+	}
+
+	return offerIDs, nil
+}
+
+// GetOngoingSwapsSnapshot returns a copy of all ongoing swaps. If you need to
+// modify the result, call `GetOngoingSwap` on the offerID to get the "live"
+// Info object.
+func (m *manager) GetOngoingSwapsSnapshot() ([]*Info, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	swaps := make([]*Info, 0, len(m.ongoing))
+	for _, s := range m.ongoing {
+		sc, err := s.DeepCopy()
+		if err != nil {
+			return nil, err
+		}
+		swaps = append(swaps, sc)
+	}
+
 	return swaps, nil
 }
 
@@ -171,9 +218,10 @@ func (m *manager) GetOngoingSwaps() ([]*Info, error) {
 func (m *manager) CompleteOngoingSwap(info *Info) error {
 	m.Lock()
 	defer m.Unlock()
+
 	_, has := m.ongoing[info.OfferID]
 	if !has {
-		return errNoSwapWithID
+		return errNoSwapWithOfferID
 	}
 
 	now := time.Now()
@@ -190,6 +238,7 @@ func (m *manager) CompleteOngoingSwap(info *Info) error {
 func (m *manager) HasOngoingSwap(id types.Hash) bool {
 	m.RLock()
 	defer m.RUnlock()
+
 	_, has := m.ongoing[id]
 	return has
 }
@@ -197,7 +246,7 @@ func (m *manager) HasOngoingSwap(id types.Hash) bool {
 func (m *manager) getSwapFromDB(id types.Hash) (*Info, error) {
 	s, err := m.db.GetSwap(id)
 	if errors.Is(chaindb.ErrKeyNotFound, err) {
-		return nil, errNoSwapWithID
+		return nil, errNoSwapWithOfferID
 	}
 	if err != nil {
 		return nil, err

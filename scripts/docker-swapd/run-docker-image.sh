@@ -11,7 +11,7 @@ SWAPD_ETH_ENDPOINT="${SWAPD_ETH_ENDPOINT:-"https://rpc.sepolia.org/"}"
 # containers need to have a distinct mount dir.
 CONTAINER_NAME="${CONTAINER_NAME:-"swapd-${SWAPD_ENV}"}"
 IMAGE_NAME="atomic-swapd"
-VERSION="latest" # image tag
+VERSION="$(git describe --abbrev=0 --tags)" # image tag
 
 # We mount one directory above what swapd considers its "data-dir". Data
 # files will be created in ${DATA_MOUNT_DIR}/${SWAPD_ENV}.

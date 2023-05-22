@@ -53,6 +53,8 @@ type RecoveryDB interface {
 	GetSwapRelayerInfo(id types.Hash) (*types.OfferExtra, error)
 	PutCounterpartySwapKeys(id types.Hash, sk *mcrypto.PublicKey, vk *mcrypto.PrivateViewKey) error
 	GetCounterpartySwapKeys(id types.Hash) (*mcrypto.PublicKey, *mcrypto.PrivateViewKey, error)
+	PutNewSwapTxHash(id types.Hash, txHash types.Hash) error
+	GetNewSwapTxHash(id types.Hash) (types.Hash, error)
 	DeleteSwap(id types.Hash) error
 }
 
@@ -262,7 +264,7 @@ func (b *backend) ClearXMRDepositAddress(offerID types.Hash) {
 // HasOngoingSwapAsTaker returns nil if we have an ongoing swap with the given peer where
 // we're the xmrtaker, otherwise returns an error.
 func (b *backend) HasOngoingSwapAsTaker(remotePeer peer.ID) error {
-	swaps, err := b.swapManager.GetOngoingSwaps()
+	swaps, err := b.swapManager.GetOngoingSwapsSnapshot()
 	if err != nil {
 		return err
 	}
@@ -293,7 +295,7 @@ func (b *backend) HandleRelayClaimRequest(
 			return nil, fmt.Errorf("cannot relay taker-specific claim request; no ongoing swap for swap %s", *request.OfferID)
 		}
 
-		info, err := b.swapManager.GetOngoingSwap(*request.OfferID)
+		info, err := b.swapManager.GetOngoingSwapSnapshot(*request.OfferID)
 		if err != nil {
 			return nil, err
 		}

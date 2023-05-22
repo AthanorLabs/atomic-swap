@@ -20,7 +20,7 @@ func (c *Client) Query(who peer.ID) (*rpctypes.QueryPeerResponse, error) {
 	}
 	res := &rpctypes.QueryPeerResponse{}
 
-	if err := c.Post(method, req, res); err != nil {
+	if err := c.post(method, req, res); err != nil {
 		return nil, err
 	}
 
