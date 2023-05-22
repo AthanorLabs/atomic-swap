@@ -147,6 +147,10 @@
         <Label 
           for='default-input' class='block mb-2'>
           {getCorrespondingToken($selectedOffer.provides)} amount
+          <span>
+            (Min {$selectedOffer.exchangeRate * $selectedOffer.minAmount}
+            / Max {$selectedOffer.exchangeRate * $selectedOffer.maxAmount})
+          </span>
         </Label>
         <Input 
             bind:value={amountProvided}
@@ -158,6 +162,8 @@
         </Input>
         <Helper class="mt-2" color="red">{error}</Helper>
       </div>
+          
+     <p class="text-center pt-4">You will receive<br>{willReceive} XMR</p>
       
       {/if}
     </section>
