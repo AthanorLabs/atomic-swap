@@ -701,10 +701,10 @@ func (s *swapState) lockAndWaitForReceipt(
 	return receipt, nil
 }
 
-// ready calls the Ready() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
+// ready calls the setReady() method on the Swap contract, indicating to XMRMaker he has until time t_1 to
 // call Claim(). Ready() should only be called once XMRTaker sees XMRMaker lock his XMR.
 // If time t_0 has passed, there is no point of calling Ready().
-func (s *swapState) ready() error {
+func (s *swapState) setReady() error {
 	stage, err := s.SwapCreator().Swaps(s.ETHClient().CallOpts(s.ctx), s.contractSwapID)
 	if err != nil {
 		return err

@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"github.com/ChainSafe/chaindb"
+	ethereum "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log"
 
@@ -160,7 +160,7 @@ func (inst *Instance) refundOrCancelNewSwap(s *swap.Info, txHash ethcommon.Hash)
 
 	cancelled, err := inst.maybeCancelNewSwap(txHash)
 	if err != nil {
-		return fmt.Errorf("failed to maybe cancel newSwap: %w", err)
+		return err
 	}
 
 	if cancelled {
@@ -259,7 +259,7 @@ func (inst *Instance) refundOrCancelNewSwap(s *swap.Info, txHash ethcommon.Hash)
 func (inst *Instance) maybeCancelNewSwap(txHash ethcommon.Hash) (bool, error) {
 	tx, isPending, err := inst.backend.ETHClient().Raw().TransactionByHash(inst.backend.Ctx(), txHash)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get newSwap transaction: %w", err)
 	}
 
 	if !isPending {
@@ -277,12 +277,17 @@ func (inst *Instance) maybeCancelNewSwap(txHash ethcommon.Hash) (bool, error) {
 	}
 
 	log.Infof("submit cancel tx %s", cancelTx)
+
+	// TODO: if newSwap is included instead of the cancel tx (unlikely), block.WaitForReceipt will actually
+	// loop for 1 hour and block as there will never be a receipt for the cancel tx.
+	// we should probably poll for our account nonce to increase, and when it does, check for receipts
+	// on both txs to see which one was successful.
 	receipt, err := block.WaitForReceipt(inst.backend.Ctx(), inst.backend.ETHClient().Raw(), cancelTx)
-	if err != nil {
+	if err != nil && !errors.Is(err, ethereum.NotFound) {
 		return false, fmt.Errorf("failed to get cancel transaction receipt: %w", err)
 	}
 
-	if receipt.Status == ethtypes.ReceiptStatusFailed {
+	if errors.Is(err, ethereum.NotFound) || receipt.Status == ethtypes.ReceiptStatusFailed {
 		// this is okay, it means newSwap was included instead, and we can refund it in the calling function
 		log.Infof("failed to cancel swap, attempting to refund")
 		return false, nil
