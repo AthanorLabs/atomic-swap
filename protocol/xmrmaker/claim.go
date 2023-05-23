@@ -235,8 +235,20 @@ func (s *swapState) claimWithRelay() (*ethtypes.Receipt, error) {
 	if err != nil {
 		log.Warnf("failed to relay with DHT-advertised relayers: %s", err)
 		log.Infof("falling back to swap counterparty as relayer")
-		return s.relayClaimWithXMRTaker()
+		receipt, err = s.relayClaimWithXMRTaker()
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	// Save the relayer fee to the database
+	s.info.SetRelayerFee(coins.RelayerFeeETH)
+	swapManager := s.SwapManager()
+	err = swapManager.WriteSwapToDB(s.info)
+	if err != nil {
+		return nil, err
+	}
+
 	return receipt, nil
 }
 
