@@ -4,11 +4,10 @@
     export let size: number = 30
     export let peerAddress: string = ''
     var options = {
-      //foreground: [0, 0, 0, 255],               // rgba black
-      background: [240, 240, 240, 255],         // rgba white
-      margin: 0.2,                              // 20% margin
-      size,                                // 420px square
-      format: 'svg'                             // use SVG instead of PNG
+      background: [240, 240, 240, 255],
+      margin: 0.2,
+      size,
+      format: 'svg'
     };
     const source = `data:image/svg+xml;base64,${new Identicon(peerAddress, options).toString()}`
 </script>
@@ -21,4 +20,3 @@ img {
     display: inline;
 }
 </style>
-  
