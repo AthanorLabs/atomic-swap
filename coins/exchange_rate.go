@@ -104,7 +104,7 @@ func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenIn
 	}
 
 	if ExceedsDecimals(erc20Amount, token.NumDecimals) {
-		err := fmt.Errorf("%s XMR * %s ex-rate exceeds tokens's %d digit precision",
+		err := fmt.Errorf("%s XMR * %s ex-rate exceeds token's %d digit precision",
 			xmrAmount.Text('f'), r, token.NumDecimals)
 		return nil, err
 	}

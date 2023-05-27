@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
-	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/tests"
@@ -29,8 +28,7 @@ func TestBadMakeTakeValues(t *testing.T) {
 	minMaxAmt := coins.StrToDecimal("14.979329")
 	exRate := coins.StrToExchangeRate("13.3")
 
-	tokenAddr := GetMockTokens(t, aliceConf.EthereumClient)[MockTether]
-	tokenAsset := types.EthAsset(tokenAddr)
+	tokenAsset := getMockTetherAsset(t, aliceConf.EthereumClient)
 
 	_, err := bc.MakeOffer(minMaxAmt, minMaxAmt, exRate, tokenAsset, false)
 	require.Error(t, err)
