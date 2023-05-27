@@ -188,7 +188,7 @@ func newTestSwapStateWithERC20(t *testing.T, providesAmt *apd.Decimal) (*swapSta
 	tokenInfo, err := b.ETHClient().ERC20Info(b.Ctx(), addr)
 	require.NoError(t, err)
 
-	providesEthAssetAmt := coins.NewERC20TokenAmountFromDecimals(providesAmt, tokenInfo)
+	providesEthAssetAmt := coins.NewTokenAmountFromDecimals(providesAmt, tokenInfo)
 
 	exchangeRate := coins.ToExchangeRate(apd.New(1, 0)) // 100%
 	swapState, err := newSwapStateFromStart(b, testPeerID, types.Hash{}, false,

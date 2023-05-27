@@ -274,7 +274,7 @@ func newSwapState(
 			cancel()
 			return nil, err
 		}
-		providedAmt = coins.NewERC20TokenAmountFromDecimals(info.ProvidedAmount, tokenInfo)
+		providedAmt = coins.NewTokenAmountFromDecimals(info.ProvidedAmount, tokenInfo)
 	}
 
 	// note: if this is recovering an ongoing swap, this will only

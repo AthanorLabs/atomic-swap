@@ -114,19 +114,19 @@ func TestERC20TokenAmount(t *testing.T) {
 	tokenInfo := NewERC20TokenInfo(ethcommon.Address{}, numDecimals, "", "")
 
 	amount := StrToDecimal("33.999999999")
-	wei := NewERC20TokenAmountFromDecimals(amount, tokenInfo)
+	wei := NewTokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, amount.String(), wei.AsStandard().String())
 
 	amount = StrToDecimal("33.000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
+	wei = NewTokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, "33.000000005", wei.AsStandard().String())
 
 	amount = StrToDecimal("33.0000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
+	wei = NewTokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, "33.000000001", wei.AsStandard().String())
 
 	amount = StrToDecimal("999999999999999999.0000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
+	wei = NewTokenAmountFromDecimals(amount, tokenInfo)
 	assert.Equal(t, "999999999999999999.000000001", wei.AsStandard().String())
 
 	amountUint := int64(8181)
@@ -143,7 +143,7 @@ func TestNewERC20TokenAmountFromBigInt(t *testing.T) {
 
 func TestNewERC20TokenAmountFromDecimals(t *testing.T) {
 	stdAmount := StrToDecimal("0.19")
-	token := NewERC20TokenAmountFromDecimals(stdAmount, &ERC20TokenInfo{NumDecimals: 1})
+	token := NewTokenAmountFromDecimals(stdAmount, &ERC20TokenInfo{NumDecimals: 1})
 
 	// There's only one decimal place, so this is getting rounded to 2
 	// under the current implementation. It's not entirely clear what

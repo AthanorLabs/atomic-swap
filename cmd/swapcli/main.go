@@ -550,6 +550,7 @@ func runBalances(ctx *cli.Context) error {
 		fmt.Printf("Token: %s\n", tokenBalance.TokenInfo.Address)
 		fmt.Printf("Name: %q\n", tokenBalance.TokenInfo.Name)
 		fmt.Printf("Symbol: %q\n", tokenBalance.TokenInfo.Symbol)
+		fmt.Printf("Decimals: %d\n", tokenBalance.TokenInfo.NumDecimals)
 		fmt.Printf("Balance: %s\n", tokenBalance.AsStandard().Text('f'))
 		fmt.Println()
 	}

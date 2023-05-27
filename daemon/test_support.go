@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 	"net"
 	"path"
 	"sync"
@@ -17,22 +16,16 @@ import (
 	"testing"
 	"time"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/bootnode"
 	"github.com/athanorlabs/atomic-swap/common"
+	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 	"github.com/athanorlabs/atomic-swap/tests"
-)
-
-// map indexes for our mock tokens
-const (
-	MockDAI    = "DAI"
-	MockTether = "USDT"
 )
 
 // This file is only for test support. Use the build tag "prod" to prevent
@@ -183,57 +176,7 @@ func WaitForSwapdStart(t *testing.T, rpcPort uint16) {
 	t.Fatalf("giving up, swapd RPC port %d is not listening after %d seconds", rpcPort, maxSeconds)
 }
 
-// these variables are only for use by GetMockTokens
-var _mockTokens map[string]ethcommon.Address
-var _mockTokensMu sync.Mutex
-
-// GetMockTokens returns a symbol=>address map of our mock ERC20 tokens,
-// deploying them if they haven't already been deployed. Use the constants
-// defined earlier to access the map elements.
-func GetMockTokens(t *testing.T, ec extethclient.EthClient) map[string]ethcommon.Address {
-	_mockTokensMu.Lock()
-	defer _mockTokensMu.Unlock()
-
-	if _mockTokens == nil {
-		_mockTokens = make(map[string]ethcommon.Address)
-	}
-
-	calcSupply := func(numStdUnits int64, decimals int64) *big.Int {
-		return new(big.Int).Mul(big.NewInt(numStdUnits), new(big.Int).Exp(big.NewInt(10), big.NewInt(decimals), nil))
-	}
-
-	ctx := context.Background()
-	txOpts, err := ec.TxOpts(ctx)
-	require.NoError(t, err)
-
-	mockDaiAddr, mockDaiTx, _, err := contracts.DeployTestERC20(
-		txOpts,
-		ec.Raw(),
-		"Dai Stablecoin",
-		"DAI",
-		18,
-		ec.Address(),
-		calcSupply(1000, 18),
-	)
-	require.NoError(t, err)
-	tests.MineTransaction(t, ec.Raw(), mockDaiTx)
-	_mockTokens[MockDAI] = mockDaiAddr
-
-	txOpts, err = ec.TxOpts(ctx)
-	require.NoError(t, err)
-
-	mockTetherAddr, mockTetherTx, _, err := contracts.DeployTestERC20(
-		txOpts,
-		ec.Raw(),
-		"Tether USD",
-		"USDT",
-		6,
-		ec.Address(),
-		calcSupply(1000, 6),
-	)
-	require.NoError(t, err)
-	tests.MineTransaction(t, ec.Raw(), mockTetherTx)
-	_mockTokens[MockTether] = mockTetherAddr
-
-	return _mockTokens
+func getMockTetherAsset(t *testing.T, ec extethclient.EthClient) types.EthAsset {
+	token := contracts.GetMockTether(t, ec.Raw(), ec.PrivateKey())
+	return types.EthAsset(token.Address)
 }

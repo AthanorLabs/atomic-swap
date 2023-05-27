@@ -43,8 +43,7 @@ func TestAliceDoubleRestartAfterXMRLock(t *testing.T) {
 	bc := rpcclient.NewClient(context.Background(), bobConf.RPCPort)
 	ac := rpcclient.NewClient(context.Background(), aliceConf.RPCPort)
 
-	tokenAddr := GetMockTokens(t, aliceConf.EthereumClient)[MockTether]
-	tokenAsset := types.EthAsset(tokenAddr)
+	tokenAsset := getMockTetherAsset(t, aliceConf.EthereumClient)
 
 	makeResp, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
 	require.NoError(t, err)

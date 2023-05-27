@@ -23,7 +23,7 @@ func (s *swapCLITestSuite) Test_runBalances() {
 	args := []string{
 		"swapcli",
 		"balances",
-		fmt.Sprintf("--%s=%s", flagToken, s.mockDaiAddr().Hex()),
+		fmt.Sprintf("--%s=%s", flagToken, s.mockDAI.Address.Hex()),
 	}
 	err := cliApp().RunContext(context.Background(), args)
 	require.NoError(s.T(), err)

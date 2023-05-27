@@ -110,43 +110,50 @@ func (inst *Instance) HandleInitiateMessage(
 		return nil, errOfferIDNotSet
 	}
 
-	// TODO: If this is not ETH, we need quick/easy access to the number
-	//       of token decimal places. Should it be in the OfferExtra struct?
-	err := coins.ValidatePositive("providedAmount", coins.NumEtherDecimals, msg.ProvidedAmount)
-	if err != nil {
-		return nil, err
-	}
-
 	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
 		return nil, err
 	}
 
-	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	var maxDecimals uint8 = coins.NumEtherDecimals
+	var token *coins.ERC20TokenInfo
+	if offer.EthAsset.IsToken() {
+		token, err = inst.backend.ETHClient().ERC20Info(inst.backend.Ctx(), offer.EthAsset.Address())
+		if err != nil {
+			return nil, err
+		}
+		maxDecimals = token.NumDecimals
+	}
+
+	err = coins.ValidatePositive("providedAmount", maxDecimals, msg.ProvidedAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	if providedAmount.Cmp(offer.MinAmount) < 0 {
+	// The taker should not be giving us a combination of exchange rate + ETH
+	// asset provided amount that would result in fractional piconeros, but if
+	// they did, we catch it in the calculation below with an error, rejecting
+	// the take request.
+	providedAmtAsXMR, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	if providedAmtAsXMR.Cmp(offer.MinAmount) < 0 {
 		return nil, errAmountProvidedTooLow{msg.ProvidedAmount, offer.MinAmount}
 	}
 
-	if providedAmount.Cmp(offer.MaxAmount) > 0 {
+	if providedAmtAsXMR.Cmp(offer.MaxAmount) > 0 {
 		return nil, errAmountProvidedTooHigh{msg.ProvidedAmount, offer.MaxAmount}
 	}
 
-	providedPiconero := coins.MoneroToPiconero(providedAmount)
+	providedPiconero := coins.MoneroToPiconero(providedAmtAsXMR)
 
-	// check decimals if ERC20
-	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	expectedAmount, err := pcommon.GetEthAssetAmount(
-		inst.backend.Ctx(),
-		inst.backend.ETHClient(),
-		msg.ProvidedAmount,
-		offer.EthAsset,
-	)
-	if err != nil {
-		return nil, err
+	var expectedAmount coins.EthAssetAmount
+	if token == nil {
+		expectedAmount = coins.EtherToWei(msg.ProvidedAmount)
+	} else {
+		expectedAmount = coins.NewTokenAmountFromDecimals(msg.ProvidedAmount, token)
 	}
 
 	state, err := inst.initiate(takerPeerID, offer, offerExtra, providedPiconero, expectedAmount)

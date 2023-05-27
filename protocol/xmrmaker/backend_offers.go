@@ -23,8 +23,33 @@ func (inst *Instance) MakeOffer(
 		return nil, err
 	}
 
-	if useRelayer && o.EthAsset.IsToken() {
-		return nil, errRelayingWithNonEthAsset
+	if o.EthAsset.IsToken() {
+		if useRelayer {
+			return nil, errRelayingWithNonEthAsset
+		}
+
+		token, err := inst.backend.ETHClient().ERC20Info(inst.backend.Ctx(), o.EthAsset.Address()) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		// We limit exchange rates to 6 decimals and the min/max XMR amounts to
+		// 12 decimals when marshalling the offer. This means we can never
+		// exceed ETH's 18 decimals when multiplying min/max values by the
+		// exchange rate. Tokens can have far fewer decimals though, so we need
+		// additional checks. Calculating the exchange rate will give a good
+		// error message if the combined precision of the exchange rate and
+		// min/max values would exceed the token's precision.
+		_, err = o.ExchangeRate.ToERC20Amount(o.MinAmount, token)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = o.ExchangeRate.ToERC20Amount(o.MaxAmount, token)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	extra, err := inst.offerManager.AddOffer(o, useRelayer)

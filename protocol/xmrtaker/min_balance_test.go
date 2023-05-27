@@ -70,7 +70,7 @@ func Test_validateMinBalForTokenSwap(t *testing.T) {
 		Symbol:      "TK",
 	}
 	balanceWei := coins.EtherToWei(coins.StrToDecimal("0.5"))
-	tokenBalance := coins.NewERC20TokenAmountFromDecimals(coins.StrToDecimal("10"), tokenInfo)
+	tokenBalance := coins.NewTokenAmountFromDecimals(coins.StrToDecimal("10"), tokenInfo)
 	providesAmt := coins.StrToDecimal("5")
 	gasPriceWei := big.NewInt(35e9) // 35 GWei
 	err := validateMinBalForTokenSwap(balanceWei, tokenBalance, providesAmt, gasPriceWei)
@@ -85,7 +85,7 @@ func Test_validateMinBalForTokenSwap_InsufficientTokenBalance(t *testing.T) {
 		Symbol:      "TK",
 	}
 	balanceWei := coins.EtherToWei(coins.StrToDecimal("0.5"))
-	tokenBalance := coins.NewERC20TokenAmountFromDecimals(coins.StrToDecimal("10"), tokenInfo)
+	tokenBalance := coins.NewTokenAmountFromDecimals(coins.StrToDecimal("10"), tokenInfo)
 	providesAmt := coins.StrToDecimal("20")
 	gasPriceWei := big.NewInt(35e9) // 35 GWei
 	err := validateMinBalForTokenSwap(balanceWei, tokenBalance, providesAmt, gasPriceWei)
@@ -100,7 +100,7 @@ func Test_validateMinBalForTokenSwap_InsufficientETHBalance(t *testing.T) {
 		Symbol:      "TK",
 	}
 	balanceWei := coins.EtherToWei(coins.StrToDecimal("0.007"))
-	tokenBalance := coins.NewERC20TokenAmountFromDecimals(coins.StrToDecimal("10"), tokenInfo)
+	tokenBalance := coins.NewTokenAmountFromDecimals(coins.StrToDecimal("10"), tokenInfo)
 	providesAmt := coins.StrToDecimal("1")
 	gasPriceWei := big.NewInt(35e9) // 35 GWei
 	err := validateMinBalForTokenSwap(balanceWei, tokenBalance, providesAmt, gasPriceWei)

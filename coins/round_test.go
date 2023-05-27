@@ -32,3 +32,44 @@ func Test_roundToDecimalPlace(t *testing.T) {
 	assert.Equal(t, "0.0001", res.String())
 	assert.Equal(t, "0.00009", amt.String()) // input value unchanged
 }
+
+func Test_exceedsMaxDigitsAfterDecimal(t *testing.T) {
+	type testCase struct {
+		val      *apd.Decimal
+		decimals uint8
+		exceeds  bool
+	}
+
+	testCases := []testCase{
+		{
+			val:      StrToDecimal("1234567890"),
+			decimals: 0,
+			exceeds:  false,
+		},
+		{
+			val:      StrToDecimal("0.0000000000001"), // 13 decimal places
+			decimals: 12,
+			exceeds:  true,
+		},
+		{
+			val:      StrToDecimal("123456789.999999"), // 6 decimal places
+			decimals: 6,
+			exceeds:  false,
+		},
+		{
+			val:      StrToDecimal("123456789.999999"), // 6 decimal places
+			decimals: 5,
+			exceeds:  true,
+		},
+		{
+			val:      StrToDecimal("123.123400000000000000"), // only 4 non-zero decimal places
+			decimals: 4,
+			exceeds:  false,
+		},
+	}
+
+	for _, test := range testCases {
+		r := ExceedsDecimals(test.val, test.decimals)
+		require.Equal(t, test.exceeds, r)
+	}
+}

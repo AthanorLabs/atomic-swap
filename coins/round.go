@@ -20,3 +20,15 @@ func roundToDecimalPlace(result *apd.Decimal, n *apd.Decimal, decimalPlace uint8
 	_, _ = result.Reduce(result)
 	return nil
 }
+
+// ExceedsDecimals returns `true` if the the number, written without an
+// exponent, would require more digits after the decimal place than the passed
+// value `decimals`. Otherwise, `false` is returned.
+func ExceedsDecimals(val *apd.Decimal, maxDecimals uint8) bool {
+	// Reduce strips trailing zeros from the coefficient and subtracts them from
+	// the exponent. If the exponent is more negative than -`decimals`, we would
+	// require more digits after the decimal point than we have available to
+	// represent it.
+	_, _ = val.Reduce(val)
+	return val.Exponent < -int32(maxDecimals)
+}

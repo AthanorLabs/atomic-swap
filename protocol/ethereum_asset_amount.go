@@ -22,13 +22,23 @@ func GetEthAssetAmount(
 	amt *apd.Decimal, // in standard units
 	asset types.EthAsset,
 ) (coins.EthAssetAmount, error) {
-	if asset != types.EthAssetETH {
-		tokenInfo, err := ec.ERC20Info(ctx, asset.Address())
+	if asset.IsToken() {
+		token, err := ec.ERC20Info(ctx, asset.Address())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return coins.NewERC20TokenAmountFromDecimals(amt, tokenInfo), nil
+		if coins.ExceedsDecimals(amt, token.NumDecimals) {
+			return nil, fmt.Errorf("value can not be represented in the token's %d digits", token.NumDecimals)
+		}
+
+		return coins.NewTokenAmountFromDecimals(amt, token), nil
+	}
+
+	// The caller had the info to check this and probably did, but we do it
+	// again here for symmetry.
+	if coins.ExceedsDecimals(amt, coins.NumEtherDecimals) {
+		return nil, fmt.Errorf("value can not be represented in ETH's %d digits", coins.NumEtherDecimals)
 	}
 
 	return coins.EtherToWei(amt), nil

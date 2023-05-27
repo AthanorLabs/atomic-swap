@@ -29,8 +29,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 
 	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 
-	tokenAddr := GetMockTokens(t, aliceConf.EthereumClient)[MockTether]
-	tokenAsset := types.EthAsset(tokenAddr)
+	tokenAsset := getMockTetherAsset(t, aliceConf.EthereumClient)
 
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, aliceConf, bobConf)
@@ -104,7 +103,7 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	//
 	// Check Bob's token balance via RPC method instead of doing it directly
 	//
-	balances, err := bc.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAddr}})
+	balances, err := bc.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAsset.Address()}})
 	require.NoError(t, err)
 	t.Logf("Balances: %#v", balances)
 

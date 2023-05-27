@@ -305,11 +305,11 @@ func NewERC20TokenAmount(amount int64, tokenInfo *ERC20TokenInfo) *ERC20TokenAmo
 	}
 }
 
-// NewERC20TokenAmountFromDecimals converts some amount for a token in its
+// NewTokenAmountFromDecimals converts some amount for a token in its
 // standard form into the smallest denomination that the token supports. For
 // example, if amount is 1.99 and decimals is 4, the resulting value stored is
 // 19900
-func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, tokenInfo *ERC20TokenInfo) *ERC20TokenAmount {
+func NewTokenAmountFromDecimals(amount *apd.Decimal, tokenInfo *ERC20TokenInfo) *ERC20TokenAmount {
 	adjusted := new(apd.Decimal).Set(amount)
 	increaseExponent(adjusted, tokenInfo.NumDecimals)
 	// If we are rejecting token amounts that have too many decimal places on input, rounding

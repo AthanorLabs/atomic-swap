@@ -85,7 +85,7 @@ func (c *Client) post(method string, request any, response any) error {
 	}
 
 	if err = json2.DecodeClientResponse(httpResp.Body, response); err != nil {
-		return fmt.Errorf("failed to read %q response: %w", method, err)
+		return fmt.Errorf("%q failed: %w", method, err)
 	}
 
 	return nil
