@@ -54,7 +54,7 @@ func (r *ExchangeRate) MarshalText() ([]byte, error) {
 }
 
 // ToXMR converts an ETH amount to an XMR amount with the given exchange rate.
-// If the calculated value would result in fractional piconeros, an error is
+// If the calculated value would have fractional piconeros, an error is
 // returned.
 func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	xmrAmt := new(apd.Decimal)
@@ -73,7 +73,7 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 }
 
 // ToETH converts an XMR amount to an ETH amount with the given exchange rate.
-// If the result fractional wei, an error is returned.
+// If the calculated result would have fractional wei, an error is returned.
 func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	ethAmt := new(apd.Decimal)
 	_, err := decimalCtx.Mul(ethAmt, xmrAmount, r.Decimal())

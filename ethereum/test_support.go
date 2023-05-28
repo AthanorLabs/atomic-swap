@@ -75,7 +75,6 @@ func GetMockTether(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) *co
 	_mockTetherMu.Lock()
 	defer _mockTetherMu.Unlock()
 
-	// checking the length instead of nil in case a previous run failed
 	if _mockTether != nil {
 		mintTokens(t, ec, pk, _mockTether)
 		return _mockTether
@@ -119,7 +118,6 @@ func GetMockDAI(t *testing.T, ec *ethclient.Client, pk *ecdsa.PrivateKey) *coins
 	_mockDAIMu.Lock()
 	defer _mockDAIMu.Unlock()
 
-	// checking the length instead of nil in case a previous run failed
 	if _mockDAI != nil {
 		mintTokens(t, ec, pk, _mockDAI)
 		return _mockDAI

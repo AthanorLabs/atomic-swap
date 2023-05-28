@@ -1,7 +1,7 @@
 # Joining the Stagenet/Sepolia network
 
 Swaps can be performed on the Sepolia (Ethereum testnet) together with the
-Monero Stagenet networks. This document describes how to do stagenet swaps.
+Monero Stagenet network. This document describes how to do stagenet swaps.
 
 > Note: stagenet and mainnet swaps currently takes around 20 minutes due to the 2-minute block time and required 10 confirmations before funds can be spent.
 

@@ -130,10 +130,12 @@ func (inst *Instance) HandleInitiateMessage(
 		return nil, err
 	}
 
-	// The taker should not be giving us a combination of exchange rate + ETH
-	// asset provided amount that would result in fractional piconeros, but if
-	// they did, we catch it in the calculation below with an error, rejecting
-	// the take request.
+	// The calculation below will return an error if the provided amount, when
+	// represented in XMR, would require fractional piconeros. This can happen
+	// more easily than one might expect, as ToXMR is doing a division by the
+	// exchange rate. The taker also verifies that their provided amount will
+	// not result in fractional piconeros, so the issue will normally be caught
+	// before the taker ever contacts us.
 	providedAmtAsXMR, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
 	if err != nil {
 		return nil, err

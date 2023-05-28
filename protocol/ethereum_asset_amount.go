@@ -29,7 +29,7 @@ func GetEthAssetAmount(
 		}
 
 		if coins.ExceedsDecimals(amt, token.NumDecimals) {
-			return nil, fmt.Errorf("value can not be represented in the token's %d digits", token.NumDecimals)
+			return nil, fmt.Errorf("value can not be represented in the token's %d decimals", token.NumDecimals)
 		}
 
 		return coins.NewTokenAmountFromDecimals(amt, token), nil
@@ -38,7 +38,7 @@ func GetEthAssetAmount(
 	// The caller had the info to check this and probably did, but we do it
 	// again here for symmetry.
 	if coins.ExceedsDecimals(amt, coins.NumEtherDecimals) {
-		return nil, fmt.Errorf("value can not be represented in ETH's %d digits", coins.NumEtherDecimals)
+		return nil, fmt.Errorf("value can not be represented in ETH's %d decimals", coins.NumEtherDecimals)
 	}
 
 	return coins.EtherToWei(amt), nil
