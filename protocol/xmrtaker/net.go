@@ -42,22 +42,27 @@ func (inst *Instance) InitiateProtocol(
 		return nil, err
 	}
 
-	offerMinETH, err := offer.ExchangeRate.ToETH(offer.MinAmount)
+	providesAmtAsXMR, err := offer.ExchangeRate.ToXMR(providesAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	offerMaxETH, err := offer.ExchangeRate.ToETH(offer.MaxAmount)
-	if err != nil {
-		return nil, err
+	if providesAmtAsXMR.Cmp(offer.MinAmount) < 0 {
+		return nil, &errAmountProvidedTooLow{
+			providedAmtETH:   providesAmount,
+			providedAmtAsXMR: providesAmtAsXMR,
+			offerMinAmtXMR:   offer.MinAmount,
+			exchangeRate:     offer.ExchangeRate,
+		}
 	}
 
-	if offerMinETH.Cmp(providesAmount) > 0 {
-		return nil, errAmountProvidedTooLow{providesAmount, offerMinETH}
-	}
-
-	if offerMaxETH.Cmp(providesAmount) < 0 {
-		return nil, errAmountProvidedTooHigh{providesAmount, offerMaxETH}
+	if providesAmtAsXMR.Cmp(offer.MaxAmount) > 0 {
+		return nil, &errAmountProvidedTooHigh{
+			providedAmtETH:   providesAmount,
+			providedAmtAsXMR: providesAmtAsXMR,
+			offerMaxAmtXMR:   offer.MaxAmount,
+			exchangeRate:     offer.ExchangeRate,
+		}
 	}
 
 	err = validateMinBalance(
