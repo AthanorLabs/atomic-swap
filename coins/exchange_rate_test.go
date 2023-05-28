@@ -26,14 +26,14 @@ func TestExchangeRate_ToXMR_exceedsXMRPrecision(t *testing.T) {
 	ethAmount := StrToDecimal("3.1")
 
 	_, err := rate.ToXMR(ethAmount)
-	require.ErrorContains(t, err, "3.1 ETH / 0.333333 rate exceeds XMR's 12 digit precision")
+	require.ErrorContains(t, err, "3.1 ETH / 0.333333 exceeds XMR's 12 decimal precision")
 
 	// 6.6/0.666666 to 13 decimal places is 9.9000099000099 (900009 repeats indefinitely)
 	rate = StrToExchangeRate("0.666666")
 	ethAmount = StrToDecimal("6.6")
 
 	_, err = rate.ToXMR(ethAmount)
-	require.ErrorContains(t, err, "6.6 ETH / 0.666666 rate exceeds XMR's 12 digit precision")
+	require.ErrorContains(t, err, "6.6 ETH / 0.666666 exceeds XMR's 12 decimal precision")
 }
 
 func TestExchangeRate_ToXMR_fail(t *testing.T) {
@@ -71,7 +71,7 @@ func TestExchangeRate_ToERC20Amount_exceedsTokenPrecision(t *testing.T) {
 	xmrAmount := StrToDecimal("1.0000015")
 	rate := StrToExchangeRate("0.333333")
 	_, err := rate.ToERC20Amount(xmrAmount, token)
-	require.ErrorContains(t, err, "1.0000015 XMR * 0.333333 ex-rate exceeds token's 6 digit precision")
+	require.ErrorContains(t, err, "1.0000015 XMR * 0.333333 exceeds token's 6 decimal precision")
 }
 
 func TestExchangeRate_String(t *testing.T) {

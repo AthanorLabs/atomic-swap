@@ -64,7 +64,7 @@ func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
 	}
 
 	if ExceedsDecimals(xmrAmt, NumMoneroDecimals) {
-		err := fmt.Errorf("%s ETH / %s rate exceeds XMR's %d digit precision",
+		err := fmt.Errorf("%s ETH / %s exceeds XMR's %d decimal precision",
 			ethAmount.Text('f'), r, NumMoneroDecimals)
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (r *ExchangeRate) ToETH(xmrAmount *apd.Decimal) (*apd.Decimal, error) {
 	// rate was capped at 6 decimal places, you can't generate more than 18
 	// decimal places below, so the error below can't happen.
 	if ExceedsDecimals(ethAmt, NumEtherDecimals) {
-		err := fmt.Errorf("%s XMR * %s ex-rate exceeds ETH's %d digit precision",
+		err := fmt.Errorf("%s XMR * %s exceeds ETH's %d decimal precision",
 			xmrAmount.Text('f'), r, NumEtherDecimals)
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenIn
 	}
 
 	if ExceedsDecimals(erc20Amount, token.NumDecimals) {
-		err := fmt.Errorf("%s XMR * %s ex-rate exceeds token's %d digit precision",
+		err := fmt.Errorf("%s XMR * %s exceeds token's %d decimal precision",
 			xmrAmount.Text('f'), r, token.NumDecimals)
 		return nil, err
 	}

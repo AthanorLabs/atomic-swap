@@ -8,6 +8,7 @@ package rpcclient
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -80,11 +81,13 @@ func (c *Client) post(method string, request any, response any) error {
 
 	defer func() { _ = httpResp.Body.Close() }()
 
-	if response == nil {
-		return nil
+	// Even if the response is nil, we still need to parse the outer JSON-RPC
+	// shell to get any error that the server may have returned.
+	err = json2.DecodeClientResponse(httpResp.Body, response)
+	if response == nil && errors.Is(err, json2.ErrNullResult) {
+		err = nil
 	}
-
-	if err = json2.DecodeClientResponse(httpResp.Body, response); err != nil {
+	if err != nil {
 		return fmt.Errorf("%q failed: %w", method, err)
 	}
 
