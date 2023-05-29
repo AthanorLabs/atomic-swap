@@ -4,6 +4,7 @@
 package coins
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cockroachdb/apd/v3"
@@ -64,9 +65,15 @@ func (r *ExchangeRate) ToXMR(ethAssetAmt EthAssetAmount) (*apd.Decimal, error) {
 	}
 
 	if ExceedsDecimals(xmrAmt, NumMoneroDecimals) {
-		err := fmt.Errorf("%s %s / %s exceeds XMR's %d decimal precision",
-			ethAssetAmt.AsStdString(), ethAssetAmt.StdSymbol(), r, NumMoneroDecimals)
-		return nil, err
+		errMsg := fmt.Sprintf(
+			"%s %s / %s exceeds XMR's %d decimal precision",
+			ethAssetAmt.AsStdString(), ethAssetAmt.StdSymbol(), r, NumMoneroDecimals,
+		)
+		suggestedAltAmt := calcAltNumeratorAmount(ethAssetAmt.NumStdDecimals(), NumMoneroDecimals, r.Decimal(), xmrAmt)
+		if suggestedAltAmt != nil {
+			errMsg = fmt.Sprintf("%s, try %s", errMsg, suggestedAltAmt.Text('f'))
+		}
+		return nil, errors.New(errMsg)
 	}
 
 	return xmrAmt, nil
@@ -104,6 +111,9 @@ func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenIn
 	}
 
 	if ExceedsDecimals(erc20Amount, token.NumDecimals) {
+		// We could have a suggested value to try, like we have in ToXMR(...),
+		// but since this is multiplication and not division, the end user
+		// probably doesn't need the hint.
 		err := fmt.Errorf("%s XMR * %s exceeds token's %d decimal precision",
 			xmrAmount.Text('f'), r, token.NumDecimals)
 		return nil, err

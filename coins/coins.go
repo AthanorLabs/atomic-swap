@@ -128,6 +128,7 @@ type EthAssetAmount interface {
 	AsStdString() string
 	StdSymbol() string
 	IsToken() bool
+	NumStdDecimals() uint8
 	TokenAddress() ethcommon.Address
 }
 
@@ -244,6 +245,11 @@ func (a *WeiAmount) AsStdString() string {
 	return a.AsEther().Text('f')
 }
 
+// NumStdDecimals returns 18
+func (a *WeiAmount) NumStdDecimals() uint8 {
+	return NumEtherDecimals
+}
+
 // StdSymbol returns the string "ETH"
 func (a *WeiAmount) StdSymbol() string {
 	return "ETH"
@@ -319,7 +325,7 @@ func NewERC20TokenAmountFromBigInt(amount *big.Int, token *ERC20TokenInfo) *ERC2
 // may occur if the input value is too precise for the token's decimals.
 func NewTokenAmountFromDecimals(amount *apd.Decimal, token *ERC20TokenInfo) *ERC20TokenAmount {
 	if ExceedsDecimals(amount, token.NumDecimals) {
-		log.Warn("Converting amount=%s (digits=%d) to token amount required rounding",
+		log.Warnf("Converting amount=%s (digits=%d) to token amount required rounding",
 			amount.Text('f'), token.NumDecimals)
 		roundedAmt, err := roundToDecimalPlace(amount, token.NumDecimals)
 		if err != nil {
@@ -358,6 +364,12 @@ func (a *ERC20TokenAmount) AsStd() *apd.Decimal {
 // AsStdString returns the ERC20TokenAmount as a base10 string in standard units.
 func (a *ERC20TokenAmount) AsStdString() string {
 	return a.String()
+}
+
+// NumStdDecimals returns the max decimal precision of the token's standard
+// representation
+func (a *ERC20TokenAmount) NumStdDecimals() uint8 {
+	return a.TokenInfo.NumDecimals
 }
 
 // StdSymbol returns the token's symbol in a format that is safe to log and display

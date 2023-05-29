@@ -72,3 +72,89 @@ func Test_exceedsMaxDigitsAfterDecimal(t *testing.T) {
 		require.Equal(t, test.exceeds, r)
 	}
 }
+
+func TestExchangeRate_calcAltNumeratorAmount(t *testing.T) {
+	type testCase struct {
+		numeratorDecimals uint8
+		resultDecimals    uint8
+		numerator         *apd.Decimal
+		denominator       *apd.Decimal
+		expectedAltValue  *apd.Decimal
+	}
+
+	testCases := []*testCase{
+		{
+			//
+			// 30/20.5 = 1.46341[46341...] (repeats forever, so won't fit in 12 decimals)
+			//
+			// In order to back calculate the closest numerator that will work
+			// (fit within 6 decimals), we need to round the result at 5
+			// decimals (6 + -1), where the -1 was contributed by the
+			// denominator.
+			//
+			// 1.46341 * 20.5 = 29.999905
+			//
+			numeratorDecimals: 6,
+			resultDecimals:    12,
+			numerator:         StrToDecimal("30"),
+			denominator:       StrToDecimal("20.5"),
+			expectedAltValue:  StrToDecimal("29.999905"),
+		},
+		{
+			//
+			// Same as the previous example, but now the precision of the
+			// numerator is 18 decimals, so we can round at the full precision
+			// (12) of the result.
+			//
+			// 1.463414634146 *  20.5 = 29.999999999993
+			numeratorDecimals: 18,
+			resultDecimals:    12,
+			numerator:         StrToDecimal("30"),
+			denominator:       StrToDecimal("20.5"),
+			expectedAltValue:  StrToDecimal("29.999999999993"),
+		},
+		{
+			//
+			// 200/300 = 0.666666666666... (repeats 6 forever)
+			//
+			// This example is interesting, because the denominator, when reduced,
+			// is 3E2, allowing us to round the divided result at 8 decimal (2
+			// more decimal places that the precision of the numerator).
+			//
+			// 0.666667   * 300 = 200.0001   (naive answer, rounding at the numerator's precision)
+			// 0.66666667 * 300 = 200.000001 (true closest value)
+			//
+			numeratorDecimals: 6,
+			resultDecimals:    12,
+			numerator:         StrToDecimal("200"),
+			denominator:       StrToDecimal("300"),
+			expectedAltValue:  StrToDecimal("200.000001"),
+		},
+		{
+			//
+			// This is a case were we just return nil. The denominator has 6
+			// decimal places (what we cap exchange rates at), but the numerator
+			// is capped at 4 decimals. We can't just multiply any rounded
+			// result by the denominator and get an alternate numerator that
+			// fits in 4 decimals.
+			//
+			numeratorDecimals: 4,
+			resultDecimals:    12,
+			numerator:         StrToDecimal("0.1"),
+			denominator:       StrToDecimal("0.333333"),
+			expectedAltValue:  nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		result := new(apd.Decimal)
+		_, err := decimalCtx.Quo(result, tc.numerator, tc.denominator)
+		require.NoError(t, err)
+		altVal := calcAltNumeratorAmount(tc.numeratorDecimals, tc.resultDecimals, tc.denominator, result)
+		if tc.expectedAltValue == nil {
+			require.Nil(t, altVal)
+		} else {
+			require.Equal(t, tc.expectedAltValue.Text('f'), altVal.Text('f'))
+		}
+	}
+}

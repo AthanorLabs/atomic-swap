@@ -32,9 +32,10 @@ func TestBadMakeTakeValues(t *testing.T) {
 	minMaxXMRAmt := coins.StrToDecimal("14.979329")
 	exRate := coins.StrToExchangeRate("13.3")
 	mockTether := getMockTetherAsset(t, aliceConf.EthereumClient)
-	const expectedErr = `"net_makeOffer" failed: 14.979329 XMR * 13.3 exceeds token's 6 decimal precision`
+	expectedErr := `"net_makeOffer" failed: 14.979329 XMR * 13.3 exceeds token's 6 decimal precision`
 	_, err := bc.MakeOffer(minMaxXMRAmt, minMaxXMRAmt, exRate, mockTether, false)
 	require.ErrorContains(t, err, expectedErr)
+	t.Log(err)
 
 	// Now configure the MakeOffer to succeed, so we can fail some TakeOffer calls
 	minXMRAmt := coins.StrToDecimal("1")
@@ -51,5 +52,7 @@ func TestBadMakeTakeValues(t *testing.T) {
 	// 20.123456/13.3 = 1.51304[180451127819548872] (bracketed sequence repeats forever)
 	providesAmt = coins.StrToDecimal("20.123456")
 	err = ac.TakeOffer(makeResp.PeerID, makeResp.OfferID, providesAmt)
-	require.ErrorContains(t, err, `"net_takeOffer" failed: 20.123456 ETH / 13.3 exceeds XMR's 12 decimal precision`)
+	expectedErr = `"net_takeOffer" failed: 20.123456 "USDT" / 13.3 exceeds XMR's 12 decimal precision, try 20.123432`
+	require.ErrorContains(t, err, expectedErr)
+	t.Log(err)
 }
