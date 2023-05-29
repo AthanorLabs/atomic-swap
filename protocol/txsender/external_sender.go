@@ -132,7 +132,7 @@ func (s *ExternalSender) NewSwap(
 	tx := &Transaction{
 		To:    s.contractAddr,
 		Data:  input,
-		Value: amount.AsStandard(),
+		Value: amount.AsStd(),
 	}
 
 	s.Lock()

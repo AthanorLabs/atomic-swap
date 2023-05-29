@@ -130,13 +130,15 @@ func (inst *Instance) HandleInitiateMessage(
 		return nil, err
 	}
 
+	expectedAmount := coins.NewEthAssetAmount(msg.ProvidedAmount, token)
+
 	// The calculation below will return an error if the provided amount, when
 	// represented in XMR, would require fractional piconeros. This can happen
 	// more easily than one might expect, as ToXMR is doing a division by the
 	// exchange rate. The taker also verifies that their provided amount will
 	// not result in fractional piconeros, so the issue will normally be caught
 	// before the taker ever contacts us.
-	providedAmtAsXMR, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	providedAmtAsXMR, err := offer.ExchangeRate.ToXMR(expectedAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -150,13 +152,6 @@ func (inst *Instance) HandleInitiateMessage(
 	}
 
 	providedPiconero := coins.MoneroToPiconero(providedAmtAsXMR)
-
-	var expectedAmount coins.EthAssetAmount
-	if token == nil {
-		expectedAmount = coins.EtherToWei(msg.ProvidedAmount)
-	} else {
-		expectedAmount = coins.NewTokenAmountFromDecimals(msg.ProvidedAmount, token)
-	}
 
 	state, err := inst.initiate(takerPeerID, offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {

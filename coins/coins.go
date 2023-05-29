@@ -70,7 +70,8 @@ func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	// We do input validation and reject XMR values with more than 12 decimal
 	// places from external sources, so no rounding will happen with those
 	// values below.
-	if err := roundToDecimalPlace(pnAmt, pnAmt, 0); err != nil {
+	pnAmt, err := roundToDecimalPlace(pnAmt, 0)
+	if err != nil {
 		panic(err) // shouldn't be possible
 	}
 	return (*PiconeroAmount)(pnAmt)
@@ -123,10 +124,21 @@ func FmtPiconeroAsXMR(piconeros uint64) string {
 // EthAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthAssetAmount interface {
 	BigInt() *big.Int
-	AsStandard() *apd.Decimal
-	StandardSymbol() string
+	AsStd() *apd.Decimal
+	AsStdString() string
+	StdSymbol() string
 	IsToken() bool
 	TokenAddress() ethcommon.Address
+}
+
+// NewEthAssetAmount accepts an amount, in standard units, for ETH or a token and
+// returns a type implementing EthAssetAmount. If the token is nil, we assume
+// the asset is ETH.
+func NewEthAssetAmount(amount *apd.Decimal, token *ERC20TokenInfo) EthAssetAmount {
+	if token == nil {
+		return EtherToWei(amount)
+	}
+	return NewTokenAmountFromDecimals(amount, token)
 }
 
 // WeiAmount represents some amount of ETH in the smallest denomination (Wei)
@@ -183,7 +195,8 @@ func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	// We do input validation on provided amounts and prevent values with
 	// more than 18 decimal places, so no rounding happens with such values
 	// below.
-	if err := roundToDecimalPlace(weiAmt, weiAmt, 0); err != nil {
+	weiAmt, err := roundToDecimalPlace(weiAmt, 0)
+	if err != nil {
 		panic(err) // shouldn't be possible
 	}
 	return ToWeiAmount(weiAmt)
@@ -220,19 +233,19 @@ func (a *WeiAmount) AsEtherString() string {
 	return a.AsEther().Text('f')
 }
 
-// AsStandard is an alias for AsEther, returning the Wei amount as ETH
-func (a *WeiAmount) AsStandard() *apd.Decimal {
+// AsStd is an alias for AsEther, returning the Wei amount as ETH
+func (a *WeiAmount) AsStd() *apd.Decimal {
 	return a.AsEther()
 }
 
-// AsStandardString is an alias for AsEtherString, returning the Wei amount as
+// AsStdString is an alias for AsEtherString, returning the Wei amount as
 // an ETH string
-func (a *WeiAmount) AsStandardString() *apd.Decimal {
-	return a.AsEther()
+func (a *WeiAmount) AsStdString() string {
+	return a.AsEther().Text('f')
 }
 
-// StandardSymbol returns the string "ETH"
-func (a *WeiAmount) StandardSymbol() string {
+// StdSymbol returns the string "ETH"
+func (a *WeiAmount) StdSymbol() string {
 	return "ETH"
 }
 
@@ -308,8 +321,8 @@ func NewTokenAmountFromDecimals(amount *apd.Decimal, token *ERC20TokenInfo) *ERC
 	if ExceedsDecimals(amount, token.NumDecimals) {
 		log.Warn("Converting amount=%s (digits=%d) to token amount required rounding",
 			amount.Text('f'), token.NumDecimals)
-		roundedAmt := new(apd.Decimal)
-		if err := roundToDecimalPlace(roundedAmt, amount, token.NumDecimals); err != nil {
+		roundedAmt, err := roundToDecimalPlace(amount, token.NumDecimals)
+		if err != nil {
 			panic(err) // shouldn't be possible
 		}
 		amount = roundedAmt
@@ -337,18 +350,18 @@ func (a *ERC20TokenAmount) BigInt() *big.Int {
 	return new(big.Int).SetBytes(wholeTokenUnits.Coeff.Bytes())
 }
 
-// AsStandard returns the amount in standard units
-func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
+// AsStd returns the amount in standard units
+func (a *ERC20TokenAmount) AsStd() *apd.Decimal {
 	return a.Amount
 }
 
-// AsStandardString returns the ERC20TokenAmount as a base10 string in standard units.
-func (a *ERC20TokenAmount) AsStandardString() string {
+// AsStdString returns the ERC20TokenAmount as a base10 string in standard units.
+func (a *ERC20TokenAmount) AsStdString() string {
 	return a.String()
 }
 
-// StandardSymbol returns the token's symbol in a format that is safe to log and display
-func (a *ERC20TokenAmount) StandardSymbol() string {
+// StdSymbol returns the token's symbol in a format that is safe to log and display
+func (a *ERC20TokenAmount) StdSymbol() string {
 	return a.TokenInfo.SanitizedSymbol()
 }
 

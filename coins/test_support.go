@@ -27,6 +27,12 @@ func StrToDecimal(amount string) *apd.Decimal {
 	return a
 }
 
+// StrToETHAsset converts a string into the EthAssetAmount. Pass nil for the
+// token if the asset is ETH.
+func StrToETHAsset(amount string, optionalToken *ERC20TokenInfo) EthAssetAmount {
+	return NewEthAssetAmount(StrToDecimal(amount), nil)
+}
+
 // StrToExchangeRate converts strings to ExchangeRate for tests, panicking on error.
 func StrToExchangeRate(rate string) *ExchangeRate {
 	r := new(ExchangeRate)

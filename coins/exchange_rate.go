@@ -23,7 +23,7 @@ func CalcExchangeRate(xmrPrice *apd.Decimal, ethPrice *apd.Decimal) (*ExchangeRa
 	if err != nil {
 		return nil, err
 	}
-	if err = roundToDecimalPlace(rate, rate, MaxExchangeRateDecimals); err != nil {
+	if rate, err = roundToDecimalPlace(rate, MaxExchangeRateDecimals); err != nil {
 		return nil, err
 	}
 	return ToExchangeRate(rate), nil
@@ -56,16 +56,16 @@ func (r *ExchangeRate) MarshalText() ([]byte, error) {
 // ToXMR converts an ETH amount to an XMR amount with the given exchange rate.
 // If the calculated value would have fractional piconeros, an error is
 // returned.
-func (r *ExchangeRate) ToXMR(ethAmount *apd.Decimal) (*apd.Decimal, error) {
+func (r *ExchangeRate) ToXMR(ethAssetAmt EthAssetAmount) (*apd.Decimal, error) {
 	xmrAmt := new(apd.Decimal)
-	_, err := decimalCtx.Quo(xmrAmt, ethAmount, r.Decimal())
+	_, err := decimalCtx.Quo(xmrAmt, ethAssetAmt.AsStd(), r.Decimal())
 	if err != nil {
 		return nil, err
 	}
 
 	if ExceedsDecimals(xmrAmt, NumMoneroDecimals) {
-		err := fmt.Errorf("%s ETH / %s exceeds XMR's %d decimal precision",
-			ethAmount.Text('f'), r, NumMoneroDecimals)
+		err := fmt.Errorf("%s %s / %s exceeds XMR's %d decimal precision",
+			ethAssetAmt.AsStdString(), ethAssetAmt.StdSymbol(), r, NumMoneroDecimals)
 		return nil, err
 	}
 
@@ -109,7 +109,7 @@ func (r *ExchangeRate) ToERC20Amount(xmrAmount *apd.Decimal, token *ERC20TokenIn
 		return nil, err
 	}
 
-	return NewTokenAmountFromDecimals(erc20Amount, token).AsStandard(), nil
+	return NewTokenAmountFromDecimals(erc20Amount, token).AsStd(), nil
 }
 
 func (r *ExchangeRate) String() string {

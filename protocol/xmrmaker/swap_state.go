@@ -138,7 +138,7 @@ func newSwapStateFromStart(
 		offer.ID,
 		coins.ProvidesXMR,
 		providesAmount.AsMonero(),
-		desiredAmount.AsStandard(),
+		desiredAmount.AsStd(),
 		offer.ExchangeRate,
 		offer.EthAsset,
 		stage,

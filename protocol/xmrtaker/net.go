@@ -42,7 +42,9 @@ func (inst *Instance) InitiateProtocol(
 		return nil, err
 	}
 
-	providesAmtAsXMR, err := offer.ExchangeRate.ToXMR(providesAmount)
+	providedAssetAmount := coins.NewEthAssetAmount(providesAmount, token)
+
+	providesAmtAsXMR, err := offer.ExchangeRate.ToXMR(providedAssetAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +75,6 @@ func (inst *Instance) InitiateProtocol(
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	var providedAssetAmount coins.EthAssetAmount
-	if token == nil {
-		providedAssetAmount = coins.EtherToWei(providesAmount)
-	} else {
-		providedAssetAmount = coins.NewTokenAmountFromDecimals(providesAmount, token)
 	}
 
 	state, err := inst.initiate(makerPeerID, providedAssetAmount, offer.ExchangeRate, offer.EthAsset, offer.ID)

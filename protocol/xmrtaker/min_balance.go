@@ -71,11 +71,11 @@ func validateMinBalForTokenSwap(
 	providesAmt *apd.Decimal, // standard units
 	gasPriceWei *big.Int,
 ) error {
-	if tokenBalance.AsStandard().Cmp(providesAmt) < 0 {
+	if tokenBalance.AsStd().Cmp(providesAmt) < 0 {
 		return errTokenBalanceTooLow{
 			providedAmount: providesAmt,
-			tokenBalance:   tokenBalance.AsStandard(),
-			symbol:         tokenBalance.StandardSymbol(),
+			tokenBalance:   tokenBalance.AsStd(),
+			symbol:         tokenBalance.StdSymbol(),
 		}
 	}
 

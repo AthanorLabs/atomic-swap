@@ -70,13 +70,13 @@ func deployTestERC20(t *testing.T) ethcommon.Address {
 	aliceCli := rpcclient.NewClient(ctx, defaultXMRTakerSwapdPort)
 	balResp, err = aliceCli.Balances(tokenBalReq)
 	require.NoError(t, err)
-	require.Equal(t, "1000", balResp.TokenBalances[0].AsStandardString())
+	require.Equal(t, "1000", balResp.TokenBalances[0].AsStdString())
 
 	// verify that Charlie also has exactly 1000 tokens
 	balResp, err = charlieCli.Balances(tokenBalReq)
 	require.NoError(t, err)
 	require.NoError(t, err)
-	require.Equal(t, "1000", balResp.TokenBalances[0].AsStandardString())
+	require.Equal(t, "1000", balResp.TokenBalances[0].AsStdString())
 
 	return erc20Addr
 }

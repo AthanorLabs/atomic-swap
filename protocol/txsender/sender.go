@@ -110,7 +110,7 @@ func (s *privateKeySender) NewSwap(
 
 		log.Debugf("approve transaction included %s", common.ReceiptInfo(receipt))
 		log.Infof("%s %s approved for use by SwapCreator's new_swap",
-			amount.AsStandard().Text('f'), amount.StandardSymbol())
+			amount.AsStdString(), amount.StdSymbol())
 	}
 
 	txOpts, err := s.ethClient.TxOpts(s.ctx)
