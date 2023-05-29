@@ -119,7 +119,7 @@ func TestExchangeRate_calcAltNumeratorAmount(t *testing.T) {
 			//
 			// This example is interesting, because the denominator, when reduced,
 			// is 3E2, allowing us to round the divided result at 8 decimal (2
-			// more decimal places that the precision of the numerator).
+			// more decimal places than the precision of the numerator).
 			//
 			// 0.666667   * 300 = 200.0001   (naive answer, rounding at the numerator's precision)
 			// 0.66666667 * 300 = 200.000001 (true closest value)

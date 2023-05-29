@@ -86,7 +86,7 @@ func TestXMRTaker_InitiateProtocol(t *testing.T) {
 
 	// Provided under minAmount (0.00079 ETH / 0.08 = 0.009875 XMR)
 	_, s, err = initiate(a, coins.StrToDecimal("0.00079"), min, max)
-	expected = `provided ETH converted to XMR is under offer min of 0.1 XMR (0.00079 ETH / 0.08 = 0.00079)`
+	expected = `provided ETH converted to XMR is under offer min of 0.1 XMR (0.00079 ETH / 0.08 = 0.009875)`
 	require.ErrorContains(t, err, expected)
 	require.Equal(t, nil, s)
 }

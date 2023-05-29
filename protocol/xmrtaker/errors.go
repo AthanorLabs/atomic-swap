@@ -63,7 +63,7 @@ func (e errAmountProvidedTooLow) Error() string {
 		e.offerMinAmtXMR.Text('f'),
 		e.providedAmtETH.Text('f'),
 		e.exchangeRate,
-		e.providedAmtETH.Text('f'),
+		e.providedAmtAsXMR.Text('f'),
 	)
 }
 
