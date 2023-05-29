@@ -8,8 +8,8 @@ export type JSONRPCResult<Data> = {
 }
 
 export const getPort = () : number => {
-    const port = Number(process.env.SWAPD_PORT)
-    return isNaN(port) ? 5001 : port
+    const port = Number(import.meta.env.SWAPD_PORT)
+    return isNaN(port) ? 5000 : port
 }
 
 // Create a instance of axios to use the same base url.
