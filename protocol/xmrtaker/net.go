@@ -26,7 +26,7 @@ func (inst *Instance) InitiateProtocol(
 	providesAmount *apd.Decimal,
 	offer *types.Offer,
 ) (common.SwapState, error) {
-	var maxDecimals uint8 = coins.NumEtherDecimals
+	maxDecimals := uint8(coins.NumEtherDecimals)
 	var token *coins.ERC20TokenInfo
 	if offer.EthAsset.IsToken() {
 		var err error

@@ -3,7 +3,7 @@
 Swaps can be performed on the Sepolia (Ethereum testnet) together with the
 Monero Stagenet network. This document describes how to do stagenet swaps.
 
-> Note: stagenet and mainnet swaps currently takes around 20 minutes due to the 2-minute block time and required 10 confirmations before funds can be spent.
+> Note: stagenet and mainnet swaps currently take around 20 minutes due to the 2-minute block time and required 10 confirmations before funds can be spent.
 
 > Note: the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all your (testnet) funds. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
 

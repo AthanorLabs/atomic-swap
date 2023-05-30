@@ -115,7 +115,7 @@ func (inst *Instance) HandleInitiateMessage(
 		return nil, err
 	}
 
-	var maxDecimals uint8 = coins.NumEtherDecimals
+	maxDecimals := uint8(coins.NumEtherDecimals)
 	var token *coins.ERC20TokenInfo
 	if offer.EthAsset.IsToken() {
 		token, err = inst.backend.ETHClient().ERC20Info(inst.backend.Ctx(), offer.EthAsset.Address())

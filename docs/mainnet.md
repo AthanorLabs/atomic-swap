@@ -4,7 +4,7 @@ The swap operates on a maker/taker paradigm, where one party is a "market maker"
 
 Currently, due to protocol limitations, XMR holders who want ETH can only act as makers, and ETH holders who want XMR can only act as takers.
 
-> **Note:** a swap on mainnet currently take around 20-25 minutes due to block time.
+> **Note:** a swap on mainnet currently takes around 20-25 minutes due to block time.
 
 > **Note:** the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all funds in those accounts. It's recommended to only keep funds that will be used for a swap in those accounts. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
 
