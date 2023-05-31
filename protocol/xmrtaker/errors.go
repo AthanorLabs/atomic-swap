@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/apd/v3"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 var (
@@ -50,26 +52,34 @@ func errContractAddrMismatch(addr string) error {
 }
 
 type errAmountProvidedTooLow struct {
-	providedAmtETH *apd.Decimal
-	offerMinAmtETH *apd.Decimal
+	providedAmtETH   *apd.Decimal
+	providedAmtAsXMR *apd.Decimal
+	offerMinAmtXMR   *apd.Decimal
+	exchangeRate     *coins.ExchangeRate
 }
 
 func (e errAmountProvidedTooLow) Error() string {
-	return fmt.Sprintf("%s ETH provided is under offer minimum of %s ETH",
+	return fmt.Sprintf("provided ETH converted to XMR is under offer min of %s XMR (%s ETH / %s = %s)",
+		e.offerMinAmtXMR.Text('f'),
 		e.providedAmtETH.Text('f'),
-		e.offerMinAmtETH.Text('f'),
+		e.exchangeRate,
+		e.providedAmtAsXMR.Text('f'),
 	)
 }
 
 type errAmountProvidedTooHigh struct {
-	providedAmtETH *apd.Decimal
-	offerMaxETH    *apd.Decimal
+	providedAmtETH   *apd.Decimal
+	providedAmtAsXMR *apd.Decimal
+	offerMaxAmtXMR   *apd.Decimal
+	exchangeRate     *coins.ExchangeRate
 }
 
 func (e errAmountProvidedTooHigh) Error() string {
-	return fmt.Sprintf("%s ETH provided is over offer maximum of %s ETH",
+	return fmt.Sprintf("provided ETH converted to XMR is over offer max of %s XMR (%s ETH / %s = %s XMR)",
+		e.offerMaxAmtXMR.Text('f'),
 		e.providedAmtETH.Text('f'),
-		e.offerMaxETH.Text('f'),
+		e.exchangeRate,
+		e.providedAmtAsXMR.Text('f'),
 	)
 }
 

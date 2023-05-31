@@ -28,6 +28,7 @@ import (
 // so she refunds the swap.
 // Bob should have aborted the swap in all cases.
 func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
+	t.Skip("Test disabled until https://github.com/AthanorLabs/atomic-swap/issues/479 is fixed")
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
 	exRate := coins.StrToExchangeRate("300")

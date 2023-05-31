@@ -70,7 +70,8 @@ func MoneroToPiconero(xmrAmt *apd.Decimal) *PiconeroAmount {
 	// We do input validation and reject XMR values with more than 12 decimal
 	// places from external sources, so no rounding will happen with those
 	// values below.
-	if err := roundToDecimalPlace(pnAmt, pnAmt, 0); err != nil {
+	pnAmt, err := roundToDecimalPlace(pnAmt, 0)
+	if err != nil {
 		panic(err) // shouldn't be possible
 	}
 	return (*PiconeroAmount)(pnAmt)
@@ -123,10 +124,22 @@ func FmtPiconeroAsXMR(piconeros uint64) string {
 // EthAssetAmount represents an amount of an Ethereum asset (ie. ether or an ERC20)
 type EthAssetAmount interface {
 	BigInt() *big.Int
-	AsStandard() *apd.Decimal
-	StandardSymbol() string
+	AsStd() *apd.Decimal
+	AsStdString() string
+	StdSymbol() string
 	IsToken() bool
+	NumStdDecimals() uint8
 	TokenAddress() ethcommon.Address
+}
+
+// NewEthAssetAmount accepts an amount, in standard units, for ETH or a token and
+// returns a type implementing EthAssetAmount. If the token is nil, we assume
+// the asset is ETH.
+func NewEthAssetAmount(amount *apd.Decimal, token *ERC20TokenInfo) EthAssetAmount {
+	if token == nil {
+		return EtherToWei(amount)
+	}
+	return NewTokenAmountFromDecimals(amount, token)
 }
 
 // WeiAmount represents some amount of ETH in the smallest denomination (Wei)
@@ -183,7 +196,8 @@ func EtherToWei(ethAmt *apd.Decimal) *WeiAmount {
 	// We do input validation on provided amounts and prevent values with
 	// more than 18 decimal places, so no rounding happens with such values
 	// below.
-	if err := roundToDecimalPlace(weiAmt, weiAmt, 0); err != nil {
+	weiAmt, err := roundToDecimalPlace(weiAmt, 0)
+	if err != nil {
 		panic(err) // shouldn't be possible
 	}
 	return ToWeiAmount(weiAmt)
@@ -220,19 +234,24 @@ func (a *WeiAmount) AsEtherString() string {
 	return a.AsEther().Text('f')
 }
 
-// AsStandard is an alias for AsEther, returning the Wei amount as ETH
-func (a *WeiAmount) AsStandard() *apd.Decimal {
+// AsStd is an alias for AsEther, returning the Wei amount as ETH
+func (a *WeiAmount) AsStd() *apd.Decimal {
 	return a.AsEther()
 }
 
-// AsStandardString is an alias for AsEtherString, returning the Wei amount as
+// AsStdString is an alias for AsEtherString, returning the Wei amount as
 // an ETH string
-func (a *WeiAmount) AsStandardString() *apd.Decimal {
-	return a.AsEther()
+func (a *WeiAmount) AsStdString() string {
+	return a.AsEther().Text('f')
 }
 
-// StandardSymbol returns the string "ETH"
-func (a *WeiAmount) StandardSymbol() string {
+// NumStdDecimals returns 18
+func (a *WeiAmount) NumStdDecimals() uint8 {
+	return NumEtherDecimals
+}
+
+// StdSymbol returns the string "ETH"
+func (a *WeiAmount) StdSymbol() string {
 	return "ETH"
 }
 
@@ -283,50 +302,49 @@ func (t *ERC20TokenInfo) SanitizedSymbol() string {
 
 // ERC20TokenAmount represents some amount of an ERC20 token in the smallest denomination
 type ERC20TokenAmount struct {
-	Amount    *apd.Decimal    `json:"amount" validate:"required"` // in smallest non-divisible units of token
+	Amount    *apd.Decimal    `json:"amount" validate:"required"` // in standard units
 	TokenInfo *ERC20TokenInfo `json:"tokenInfo" validate:"required"`
 }
 
-// NewERC20TokenAmountFromBigInt converts some amount in the smallest token denomination into an ERC20TokenAmount.
-func NewERC20TokenAmountFromBigInt(amount *big.Int, tokenInfo *ERC20TokenInfo) *ERC20TokenAmount {
+// NewERC20TokenAmountFromBigInt converts some amount in the smallest token denomination
+// into an ERC20TokenAmount.
+func NewERC20TokenAmountFromBigInt(amount *big.Int, token *ERC20TokenInfo) *ERC20TokenAmount {
 	asDecimal := new(apd.Decimal)
 	asDecimal.Coeff.SetBytes(amount.Bytes())
+	decreaseExponent(asDecimal, token.NumDecimals)
+	_, _ = asDecimal.Reduce(asDecimal)
+
 	return &ERC20TokenAmount{
 		Amount:    asDecimal,
-		TokenInfo: tokenInfo,
+		TokenInfo: token,
 	}
 }
 
-// NewERC20TokenAmount converts some amount in the smallest token denomination into an ERC20TokenAmount.
-func NewERC20TokenAmount(amount int64, tokenInfo *ERC20TokenInfo) *ERC20TokenAmount {
-	return &ERC20TokenAmount{
-		Amount:    apd.New(amount, 0),
-		TokenInfo: tokenInfo,
+// NewTokenAmountFromDecimals converts an amount in standard units from
+// apd.Decimal into the ERC20TokenAmount type. During the conversion, rounding
+// may occur if the input value is too precise for the token's decimals.
+func NewTokenAmountFromDecimals(amount *apd.Decimal, token *ERC20TokenInfo) *ERC20TokenAmount {
+	if ExceedsDecimals(amount, token.NumDecimals) {
+		log.Warnf("Converting amount=%s (digits=%d) to token amount required rounding",
+			amount.Text('f'), token.NumDecimals)
+		roundedAmt, err := roundToDecimalPlace(amount, token.NumDecimals)
+		if err != nil {
+			panic(err) // shouldn't be possible
+		}
+		amount = roundedAmt
 	}
-}
 
-// NewERC20TokenAmountFromDecimals converts some amount for a token in its
-// standard form into the smallest denomination that the token supports. For
-// example, if amount is 1.99 and decimals is 4, the resulting value stored is
-// 19900
-func NewERC20TokenAmountFromDecimals(amount *apd.Decimal, tokenInfo *ERC20TokenInfo) *ERC20TokenAmount {
-	adjusted := new(apd.Decimal).Set(amount)
-	increaseExponent(adjusted, tokenInfo.NumDecimals)
-	// If we are rejecting token amounts that have too many decimal places on input, rounding
-	// below will never occur.
-	if err := roundToDecimalPlace(adjusted, adjusted, 0); err != nil {
-		panic(err) // this shouldn't be possible
-	}
 	return &ERC20TokenAmount{
-		Amount:    adjusted,
-		TokenInfo: tokenInfo,
+		Amount:    amount,
+		TokenInfo: token,
 	}
 }
 
 // BigInt returns the ERC20TokenAmount as a *big.Int
 func (a *ERC20TokenAmount) BigInt() *big.Int {
-	wholeTokenUnits := new(apd.Decimal)
-	cond, err := decimalCtx.Quantize(wholeTokenUnits, a.Amount, 0)
+	wholeTokenUnits := new(apd.Decimal).Set(a.Amount)
+	increaseExponent(wholeTokenUnits, a.TokenInfo.NumDecimals)
+	cond, err := decimalCtx.Quantize(wholeTokenUnits, wholeTokenUnits, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -334,24 +352,28 @@ func (a *ERC20TokenAmount) BigInt() *big.Int {
 		log.Warn("Converting ERC20TokenAmount=%s (digits=%d) to big.Int required rounding",
 			a.Amount, a.TokenInfo.NumDecimals)
 	}
+
 	return new(big.Int).SetBytes(wholeTokenUnits.Coeff.Bytes())
 }
 
-// AsStandard returns the amount in standard form
-func (a *ERC20TokenAmount) AsStandard() *apd.Decimal {
-	tokenAmt := new(apd.Decimal).Set(a.Amount)
-	decreaseExponent(tokenAmt, a.TokenInfo.NumDecimals)
-	_, _ = tokenAmt.Reduce(tokenAmt)
-	return tokenAmt
+// AsStd returns the amount in standard units
+func (a *ERC20TokenAmount) AsStd() *apd.Decimal {
+	return a.Amount
 }
 
-// AsStandardString returns the amount as a standard (decimal adjusted) string
-func (a *ERC20TokenAmount) AsStandardString() string {
-	return a.AsStandard().Text('f')
+// AsStdString returns the ERC20TokenAmount as a base10 string in standard units.
+func (a *ERC20TokenAmount) AsStdString() string {
+	return a.String()
 }
 
-// StandardSymbol returns the token's symbol in a format that is safe to log and display
-func (a *ERC20TokenAmount) StandardSymbol() string {
+// NumStdDecimals returns the max decimal precision of the token's standard
+// representation
+func (a *ERC20TokenAmount) NumStdDecimals() uint8 {
+	return a.TokenInfo.NumDecimals
+}
+
+// StdSymbol returns the token's symbol in a format that is safe to log and display
+func (a *ERC20TokenAmount) StdSymbol() string {
 	return a.TokenInfo.SanitizedSymbol()
 }
 
@@ -365,8 +387,7 @@ func (a *ERC20TokenAmount) TokenAddress() ethcommon.Address {
 	return a.TokenInfo.Address
 }
 
-// String returns the ERC20TokenAmount as a base10 string of the token's smallest,
-// non-divisible units.
+// String returns the ERC20TokenAmount as a base10 string in standard units.
 func (a *ERC20TokenAmount) String() string {
 	return a.Amount.Text('f')
 }

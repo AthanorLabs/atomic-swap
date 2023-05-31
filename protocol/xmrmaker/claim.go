@@ -38,7 +38,7 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("balance before claim: %s %s", balance.AsStandardString(), balance.StandardSymbol())
+		log.Infof("balance before claim: %s %s", balance.AsStdString(), balance.StdSymbol())
 	}
 
 	hasBalanceToClaim, err := checkForMinClaimBalance(s.ctx, s.ETHClient())
@@ -91,7 +91,7 @@ func (s *swapState) claimFunds() (*ethtypes.Receipt, error) {
 			return nil, err
 		}
 
-		log.Infof("balance after claim: %s %s", balance.AsStandardString(), balance.StandardSymbol())
+		log.Infof("balance after claim: %s %s", balance.AsStdString(), balance.StdSymbol())
 	}
 
 	return receipt, nil

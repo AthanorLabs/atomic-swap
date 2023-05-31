@@ -14,12 +14,11 @@ import (
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
 )
 
-// checkContract checks the contract's balance and Claim/Refund keys.
-// if the balance doesn't match what we're expecting to receive, or the public keys in the contract
-// aren't what we expect, we error and abort the swap.
+// checkContract checks the contract's balance and Claim/Refund keys. If the
+// balance doesn't match what we're expecting to receive, or the public keys in
+// the contract aren't what we expect, we error and abort the swap.
 func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 	tx, _, err := s.ETHClient().Raw().TransactionByHash(s.ctx, txHash)
 	if err != nil {
@@ -82,7 +81,7 @@ func (s *swapState) checkContract(txHash ethcommon.Hash) error {
 		return fmt.Errorf("swap value and event value don't match: got %v, expected %v", event.Value, s.contractSwap.Value)
 	}
 
-	expectedAmount, err := pcommon.GetEthAssetAmount(
+	expectedAmount, err := getEthAssetAmount(
 		s.ctx,
 		s.ETHClient(),
 		s.info.ExpectedAmount,

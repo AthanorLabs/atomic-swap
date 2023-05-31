@@ -15,6 +15,10 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 )
 
+var (
+	testExchangeRate = coins.StrToExchangeRate("0.08")
+)
+
 func newTestXMRTaker(t *testing.T) *Instance {
 	b := newBackend(t)
 	cfg := &Config{
@@ -37,7 +41,7 @@ func initiate(
 		coins.ProvidesETH,
 		minAmount,
 		maxAmount,
-		coins.ToExchangeRate(apd.New(1, 0)),
+		testExchangeRate,
 		types.EthAssetETH,
 	)
 	s, err := xmrtaker.InitiateProtocol(testPeerID, providesAmount, offer)
@@ -46,31 +50,43 @@ func initiate(
 
 func TestXMRTaker_InitiateProtocol(t *testing.T) {
 	a := newTestXMRTaker(t)
-	zero := new(apd.Decimal)
-	one := apd.New(1, 0)
+	min := coins.StrToDecimal("0.1")
+	max := coins.StrToDecimal("1")
 
-	// Provided between minAmount and maxAmount
-	offer, s, err := initiate(a, apd.New(1, -1), zero, one) // 0.1
+	// Provided between minAmount and maxAmount (0.05 ETH / 0.08 = 0.625 XMR)
+	offer, s, err := initiate(a, coins.StrToDecimal("0.05"), min, max)
+	require.NoError(t, err)
+	require.Equal(t, a.swapStates[offer.ID], s)
+
+	// Exact max is in range (0.08 ETH / 0.08 = 1 XMR)
+	offer, s, err = initiate(a, coins.StrToDecimal("0.08"), min, max)
+	require.NoError(t, err)
+	require.Equal(t, a.swapStates[offer.ID], s)
+
+	// Exact min is in range (0.008 ETH / 0.08 = 0.1 XMR)
+	offer, s, err = initiate(a, coins.StrToDecimal("0.008"), min, max)
 	require.NoError(t, err)
 	require.Equal(t, a.swapStates[offer.ID], s)
 
 	// Provided with too many decimals
-	_, s, err = initiate(a, apd.New(1, -50), zero, one) // 10^-50
-	require.Error(t, err)
+	_, s, err = initiate(a, apd.New(1, -50), min, max) // 10^-50
+	require.ErrorContains(t, err, `"providesAmount" has too many decimal points; found=50 max=18`)
 	require.Equal(t, nil, s)
 
 	// Provided with a negative number
-	_, s, err = initiate(a, apd.New(-1, 0), zero, one) // -1
-	require.Error(t, err)
+	_, s, err = initiate(a, coins.StrToDecimal("-1"), min, max)
+	require.ErrorContains(t, err, `"providesAmount" cannot be negative`)
 	require.Equal(t, nil, s)
 
-	// Provided over maxAmount
-	_, s, err = initiate(a, apd.New(2, 0), one, one) // 2
-	require.Error(t, err)
+	// Provided over maxAmount (0.09 ETH / 0.08 = 1.125 XMR)
+	_, s, err = initiate(a, coins.StrToDecimal("0.09"), min, max)
+	expected := `provided ETH converted to XMR is over offer max of 1 XMR (0.09 ETH / 0.08 = 1.125 XMR)`
+	require.ErrorContains(t, err, expected)
 	require.Equal(t, nil, s)
 
-	// Provided under minAmount
-	_, s, err = initiate(a, apd.New(1, -1), one, one) // 0.1
-	require.Error(t, err)
+	// Provided under minAmount (0.00079 ETH / 0.08 = 0.009875 XMR)
+	_, s, err = initiate(a, coins.StrToDecimal("0.00079"), min, max)
+	expected = `provided ETH converted to XMR is under offer min of 0.1 XMR (0.00079 ETH / 0.08 = 0.009875)`
+	require.ErrorContains(t, err, expected)
 	require.Equal(t, nil, s)
 }

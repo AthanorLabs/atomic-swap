@@ -1,7 +1,7 @@
 // Copyright 2023 The AthanorLabs/atomic-swap Authors
 // SPDX-License-Identifier: LGPL-3.0-only
 
-package protocol
+package xmrmaker
 
 import (
 	"context"
@@ -14,21 +14,29 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 )
 
-// GetEthAssetAmount converts the passed asset amt (in standard units) to
+// getEthAssetAmount converts the passed asset amt (in standard units) to
 // EthAssetAmount (ie WeiAmount or ERC20TokenAmount)
-func GetEthAssetAmount(
+func getEthAssetAmount(
 	ctx context.Context,
 	ec extethclient.EthClient,
 	amt *apd.Decimal, // in standard units
 	asset types.EthAsset,
 ) (coins.EthAssetAmount, error) {
-	if asset != types.EthAssetETH {
-		tokenInfo, err := ec.ERC20Info(ctx, asset.Address())
+	if asset.IsToken() {
+		token, err := ec.ERC20Info(ctx, asset.Address())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ERC20 info: %w", err)
 		}
 
-		return coins.NewERC20TokenAmountFromDecimals(amt, tokenInfo), nil
+		if coins.ExceedsDecimals(amt, token.NumDecimals) {
+			return nil, fmt.Errorf("value can not be represented in the token's %d decimals", token.NumDecimals)
+		}
+
+		return coins.NewTokenAmountFromDecimals(amt, token), nil
+	}
+
+	if coins.ExceedsDecimals(amt, coins.NumEtherDecimals) {
+		return nil, fmt.Errorf("value can not be represented in ETH's %d decimals", coins.NumEtherDecimals)
 	}
 
 	return coins.EtherToWei(amt), nil

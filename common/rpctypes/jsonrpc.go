@@ -39,5 +39,8 @@ type Error struct {
 
 // Error ...
 func (e *Error) Error() string {
-	return fmt.Sprintf("message=%s; code=%d; data=%v", e.Message, e.ErrorCode, e.Data)
+	if e.ErrorCode != 0 {
+		return fmt.Sprintf("message=%s; code=%d; data=%v", e.Message, e.ErrorCode, e.Data)
+	}
+	return e.Message
 }

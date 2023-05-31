@@ -110,44 +110,48 @@ func (inst *Instance) HandleInitiateMessage(
 		return nil, errOfferIDNotSet
 	}
 
-	// TODO: If this is not ETH, we need quick/easy access to the number
-	//       of token decimal places. Should it be in the OfferExtra struct?
-	err := coins.ValidatePositive("providedAmount", coins.NumEtherDecimals, msg.ProvidedAmount)
-	if err != nil {
-		return nil, err
-	}
-
 	offer, offerExtra, err := inst.offerManager.GetOffer(msg.OfferID)
 	if err != nil {
 		return nil, err
 	}
 
-	providedAmount, err := offer.ExchangeRate.ToXMR(msg.ProvidedAmount)
+	maxDecimals := uint8(coins.NumEtherDecimals)
+	var token *coins.ERC20TokenInfo
+	if offer.EthAsset.IsToken() {
+		token, err = inst.backend.ETHClient().ERC20Info(inst.backend.Ctx(), offer.EthAsset.Address())
+		if err != nil {
+			return nil, err
+		}
+		maxDecimals = token.NumDecimals
+	}
+
+	err = coins.ValidatePositive("providedAmount", maxDecimals, msg.ProvidedAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	if providedAmount.Cmp(offer.MinAmount) < 0 {
+	expectedAmount := coins.NewEthAssetAmount(msg.ProvidedAmount, token)
+
+	// The calculation below will return an error if the provided amount, when
+	// represented in XMR, would require fractional piconeros. This can happen
+	// more easily than one might expect, as ToXMR is doing a division by the
+	// exchange rate. The taker also verifies that their provided amount will
+	// not result in fractional piconeros, so the issue will normally be caught
+	// before the taker ever contacts us.
+	providedAmtAsXMR, err := offer.ExchangeRate.ToXMR(expectedAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	if providedAmtAsXMR.Cmp(offer.MinAmount) < 0 {
 		return nil, errAmountProvidedTooLow{msg.ProvidedAmount, offer.MinAmount}
 	}
 
-	if providedAmount.Cmp(offer.MaxAmount) > 0 {
+	if providedAmtAsXMR.Cmp(offer.MaxAmount) > 0 {
 		return nil, errAmountProvidedTooHigh{msg.ProvidedAmount, offer.MaxAmount}
 	}
 
-	providedPiconero := coins.MoneroToPiconero(providedAmount)
-
-	// check decimals if ERC20
-	// note: this is our counterparty's provided amount, ie. how much we're receiving
-	expectedAmount, err := pcommon.GetEthAssetAmount(
-		inst.backend.Ctx(),
-		inst.backend.ETHClient(),
-		msg.ProvidedAmount,
-		offer.EthAsset,
-	)
-	if err != nil {
-		return nil, err
-	}
+	providedPiconero := coins.MoneroToPiconero(providedAmtAsXMR)
 
 	state, err := inst.initiate(takerPeerID, offer, offerExtra, providedPiconero, expectedAmount)
 	if err != nil {

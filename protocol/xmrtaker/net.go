@@ -7,12 +7,11 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/fatih/color"
+
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
-	pcommon "github.com/athanorlabs/atomic-swap/protocol"
-
-	"github.com/fatih/color"
 )
 
 // Provides returns types.ProvidesETH
@@ -20,34 +19,52 @@ func (inst *Instance) Provides() coins.ProvidesCoin {
 	return coins.ProvidesETH
 }
 
-// InitiateProtocol is called when an RPC call is made from the user to initiate a swap.
+// InitiateProtocol is called when an RPC call is made from the user to take a swap.
 // The input units are ether that we will provide.
 func (inst *Instance) InitiateProtocol(
 	makerPeerID peer.ID,
 	providesAmount *apd.Decimal,
 	offer *types.Offer,
 ) (common.SwapState, error) {
-	err := coins.ValidatePositive("providesAmount", coins.NumEtherDecimals, providesAmount)
+	maxDecimals := uint8(coins.NumEtherDecimals)
+	var token *coins.ERC20TokenInfo
+	if offer.EthAsset.IsToken() {
+		var err error
+		token, err = inst.backend.ETHClient().ERC20Info(inst.backend.Ctx(), offer.EthAsset.Address())
+		if err != nil {
+			return nil, err
+		}
+		maxDecimals = token.NumDecimals
+	}
+
+	err := coins.ValidatePositive("providesAmount", maxDecimals, providesAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	offerMinETH, err := offer.ExchangeRate.ToETH(offer.MinAmount)
+	providedAssetAmount := coins.NewEthAssetAmount(providesAmount, token)
+
+	providesAmtAsXMR, err := offer.ExchangeRate.ToXMR(providedAssetAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	offerMaxETH, err := offer.ExchangeRate.ToETH(offer.MaxAmount)
-	if err != nil {
-		return nil, err
+	if providesAmtAsXMR.Cmp(offer.MinAmount) < 0 {
+		return nil, &errAmountProvidedTooLow{
+			providedAmtETH:   providesAmount,
+			providedAmtAsXMR: providesAmtAsXMR,
+			offerMinAmtXMR:   offer.MinAmount,
+			exchangeRate:     offer.ExchangeRate,
+		}
 	}
 
-	if offerMinETH.Cmp(providesAmount) > 0 {
-		return nil, errAmountProvidedTooLow{providesAmount, offerMinETH}
-	}
-
-	if offerMaxETH.Cmp(providesAmount) < 0 {
-		return nil, errAmountProvidedTooHigh{providesAmount, offerMaxETH}
+	if providesAmtAsXMR.Cmp(offer.MaxAmount) > 0 {
+		return nil, &errAmountProvidedTooHigh{
+			providedAmtETH:   providesAmount,
+			providedAmtAsXMR: providesAmtAsXMR,
+			offerMaxAmtXMR:   offer.MaxAmount,
+			exchangeRate:     offer.ExchangeRate,
+		}
 	}
 
 	err = validateMinBalance(
@@ -60,17 +77,7 @@ func (inst *Instance) InitiateProtocol(
 		return nil, err
 	}
 
-	providedAmount, err := pcommon.GetEthAssetAmount(
-		inst.backend.Ctx(),
-		inst.backend.ETHClient(),
-		providesAmount,
-		offer.EthAsset,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	state, err := inst.initiate(makerPeerID, providedAmount, offer.ExchangeRate, offer.EthAsset, offer.ID)
+	state, err := inst.initiate(makerPeerID, providedAssetAmount, offer.ExchangeRate, offer.EthAsset, offer.ID)
 	if err != nil {
 		return nil, err
 	}

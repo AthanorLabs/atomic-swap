@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,14 +30,16 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 
 	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
 
-	tokenAddr := GetMockTokens(t, aliceConf.EthereumClient)[MockTether]
-	tokenAsset := types.EthAsset(tokenAddr)
+	tokenAsset := getMockTetherAsset(t, aliceConf.EthereumClient)
 
 	timeout := 7 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, aliceConf, bobConf)
 
 	bc := rpcclient.NewClient(ctx, bobConf.RPCPort)
 	ac := rpcclient.NewClient(ctx, aliceConf.RPCPort)
+
+	bobStartTokenBal, err := bobConf.EthereumClient.ERC20Balance(ctx, tokenAsset.Address())
+	require.NoError(t, err)
 
 	_, bobStatusCh, err := bc.MakeOfferAndSubscribe(minXMR, maxXMR, exRate, tokenAsset, false)
 	require.NoError(t, err)
@@ -104,10 +107,12 @@ func TestRunSwapDaemon_ExchangesXMRForERC20Tokens(t *testing.T) {
 	//
 	// Check Bob's token balance via RPC method instead of doing it directly
 	//
-	balances, err := bc.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAddr}})
+	endBalances, err := bc.Balances(&rpctypes.BalancesRequest{TokenAddrs: []ethcommon.Address{tokenAsset.Address()}})
 	require.NoError(t, err)
-	t.Logf("Balances: %#v", balances)
+	require.NotEmpty(t, endBalances.TokenBalances)
 
-	require.NotEmpty(t, balances.TokenBalances)
-	require.Equal(t, providesAmt.Text('f'), balances.TokenBalances[0].AsStandardString())
+	delta := new(apd.Decimal)
+	_, err = coins.DecimalCtx().Sub(delta, endBalances.TokenBalances[0].Amount, bobStartTokenBal.Amount)
+	require.NoError(t, err)
+	require.Equal(t, providesAmt.Text('f'), delta.Text('f'))
 }

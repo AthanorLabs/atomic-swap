@@ -84,7 +84,7 @@ func TestWeiAmount(t *testing.T) {
 	wei := EtherToWei(amount)
 	assert.Equal(t, "33300000000000000000", wei.String())
 	assert.Equal(t, "33.3", wei.AsEther().String())
-	assert.Equal(t, "33.3", wei.AsStandard().String()) // alias for AsEther
+	assert.Equal(t, "33.3", wei.AsStdString())
 
 	amountUint := int64(8181)
 	WeiAmount := IntToWei(amountUint)
@@ -114,42 +114,37 @@ func TestERC20TokenAmount(t *testing.T) {
 	tokenInfo := NewERC20TokenInfo(ethcommon.Address{}, numDecimals, "", "")
 
 	amount := StrToDecimal("33.999999999")
-	wei := NewERC20TokenAmountFromDecimals(amount, tokenInfo)
-	assert.Equal(t, amount.String(), wei.AsStandard().String())
+	tokenAmt := NewTokenAmountFromDecimals(amount, tokenInfo)
+	assert.Equal(t, amount.String(), tokenAmt.AsStdString())
 
 	amount = StrToDecimal("33.000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
-	assert.Equal(t, "33.000000005", wei.AsStandard().String())
+	tokenAmt = NewTokenAmountFromDecimals(amount, tokenInfo)
+	assert.Equal(t, "33.000000005", tokenAmt.AsStdString())
 
 	amount = StrToDecimal("33.0000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
-	assert.Equal(t, "33.000000001", wei.AsStandard().String())
+	tokenAmt = NewTokenAmountFromDecimals(amount, tokenInfo)
+	assert.Equal(t, "33.000000001", tokenAmt.AsStdString())
 
 	amount = StrToDecimal("999999999999999999.0000000005")
-	wei = NewERC20TokenAmountFromDecimals(amount, tokenInfo)
-	assert.Equal(t, "999999999999999999.000000001", wei.AsStandard().String())
-
-	amountUint := int64(8181)
-	tokenAmt := NewERC20TokenAmount(amountUint, tokenInfo)
-	assert.Equal(t, amountUint, tokenAmt.BigInt().Int64())
+	tokenAmt = NewTokenAmountFromDecimals(amount, tokenInfo)
+	assert.Equal(t, "999999999999999999.000000001", tokenAmt.AsStdString())
 }
 
 func TestNewERC20TokenAmountFromBigInt(t *testing.T) {
 	bi := big.NewInt(4321)
-	token := NewERC20TokenAmountFromBigInt(bi, &ERC20TokenInfo{NumDecimals: 2})
-	assert.Equal(t, "4321", token.String())
-	assert.Equal(t, "43.21", token.AsStandard().String())
+	tokenAmt := NewERC20TokenAmountFromBigInt(bi, &ERC20TokenInfo{NumDecimals: 2})
+	assert.Equal(t, "43.21", tokenAmt.String())
+	assert.Equal(t, "43.21", tokenAmt.AsStdString())
+	assert.Equal(t, "4321", tokenAmt.BigInt().String())
 }
 
 func TestNewERC20TokenAmountFromDecimals(t *testing.T) {
 	stdAmount := StrToDecimal("0.19")
-	token := NewERC20TokenAmountFromDecimals(stdAmount, &ERC20TokenInfo{NumDecimals: 1})
+	token := NewTokenAmountFromDecimals(stdAmount, &ERC20TokenInfo{NumDecimals: 1})
 
 	// There's only one decimal place, so this is getting rounded to 2
-	// under the current implementation. It's not entirely clear what
-	// the ideal behavior is.
-	assert.Equal(t, "2", token.String())
-	assert.Equal(t, "0.2", token.AsStandard().String())
+	// under the current implementation
+	assert.Equal(t, "0.2", token.String())
 }
 
 func TestJSONMarshal(t *testing.T) {

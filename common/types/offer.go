@@ -152,14 +152,18 @@ func (o *Offer) validate() error {
 	// can't be used to complete the swap if the maker does not have sufficient
 	// ETH to make the claim themselves. While relayers are not used with ERC20
 	// swaps, we still want a minimum swap amount, so we use the same value.
-	relayerFeeAsXMR, err := o.ExchangeRate.ToXMR(coins.RelayerFeeETH)
+	minAmtAsETH, err := o.ExchangeRate.ToETH(o.MinAmount)
 	if err != nil {
 		return err
 	}
-	if o.MinAmount.Cmp(relayerFeeAsXMR) <= 0 {
+	if minAmtAsETH.Cmp(coins.RelayerFeeETH) <= 0 {
 		return fmt.Errorf(
-			"min amount must be greater than %s ETH when converted (%s XMR)",
-			coins.RelayerFeeETH.Text('f'), relayerFeeAsXMR.Text('f'))
+			"min amount must be greater than %s ETH when converted (%s XMR * %s = %s ETH)",
+			coins.RelayerFeeETH.Text('f'),
+			o.MaxAmount.Text('f'),
+			o.ExchangeRate,
+			minAmtAsETH.Text('f'),
+		)
 	}
 
 	if o.MaxAmount.Cmp(maxOfferValue) > 0 {

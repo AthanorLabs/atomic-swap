@@ -190,7 +190,7 @@ func (s *NetService) takeOffer(makerPeerID peer.ID, offerID types.Hash, provides
 
 	swapState, err := s.xmrtaker.InitiateProtocol(makerPeerID, providesAmount, offer)
 	if err != nil {
-		return fmt.Errorf("failed to initiate protocol: %w", err)
+		return err
 	}
 
 	skm := swapState.SendKeysMessage().(*message.SendKeysMessage)

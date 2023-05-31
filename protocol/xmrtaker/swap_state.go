@@ -121,7 +121,7 @@ func newSwapStateFromStart(
 		return nil, err
 	}
 
-	expectedAmount, err := exchangeRate.ToXMR(providedAmount.AsStandard())
+	expectedAmount, err := exchangeRate.ToXMR(providedAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func newSwapStateFromStart(
 		makerPeerID,
 		offerID,
 		coins.ProvidesETH,
-		providedAmount.AsStandard(),
+		providedAmount.AsStd(),
 		expectedAmount,
 		exchangeRate,
 		ethAsset,
@@ -274,7 +274,7 @@ func newSwapState(
 			cancel()
 			return nil, err
 		}
-		providedAmt = coins.NewERC20TokenAmountFromDecimals(info.ProvidedAmount, tokenInfo)
+		providedAmt = coins.NewTokenAmountFromDecimals(info.ProvidedAmount, tokenInfo)
 	}
 
 	// note: if this is recovering an ongoing swap, this will only
@@ -602,7 +602,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 
 	cmtXMRTaker := s.secp256k1Pub.Keccak256()
 	cmtXMRMaker := s.xmrmakerSecp256k1PublicKey.Keccak256()
-	log.Debugf("locking %s %s in contract", s.providedAmount.AsStandard(), s.providedAmount.StandardSymbol())
+	log.Debugf("locking %s %s in contract", s.providedAmount.AsStd(), s.providedAmount.StdSymbol())
 
 	nonce := contracts.GenerateNewSwapNonce()
 	receipt, err := s.lockAndWaitForReceipt(cmtXMRMaker, cmtXMRTaker, nonce)
@@ -665,7 +665,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 		return nil, err
 	}
 
-	log.Infof("locked %s in swap contract, waiting for XMR to be locked", s.providedAmount.StandardSymbol())
+	log.Infof("locked %s in swap contract, waiting for XMR to be locked", s.providedAmount.StdSymbol())
 	return receipt, nil
 }
 

@@ -1,8 +1,9 @@
 # Joining the Stagenet/Sepolia network
 
-Currently, an initial version of the swap is deployed onto the Sepolia (Ethereum testnet) and Monero Stagenet networks. To join the network and try out the swap, either as a maker or a taker, please see the following.
+Swaps can be performed on the Sepolia (Ethereum testnet) together with the
+Monero Stagenet network. This document describes how to do stagenet swaps.
 
-> Note: a swap on stagenet currently takes around 10-20 minutes due to block times.
+> Note: stagenet and mainnet swaps currently take around 20 minutes due to the 2-minute block time and required 10 confirmations before funds can be spent.
 
 > Note: the `swapd` process directly interacts with an unlocked Monero wallet and Ethereum private key. This is to allow for a smoother swap process that doesn't require any interaction from you once initiated. However, this effectively gives `swapd` access to all your (testnet) funds. In the future, there will be a mode that does not access your keys/wallet, but will require user interaction during a swap.
 
@@ -38,10 +39,18 @@ For Linux 64-bit, you can do:
    named `{DATA_DIR}/eth.key`. If you skip this step, a new wallet will be created for you
    that you can transfer Sepolia ether to or fund directly in the next step.
 
-6. Fund your Sepolia account using a faucet: 
+6a. Fund your Sepolia account using a faucet:
 - https://sepolia-faucet.pk910.de/
 - https://sepoliafaucet.com/
 - https://sepolia.dev/
+
+6b. Optional: Obtain some Sepolia ERC20 tokens
+
+This [unaffiliated project](https://github.com/bokkypoobah/WeenusTokenFaucet/blob/master/README.md)
+has deployed some Sepolia tokens of different decimal sizes that can be useful
+for testing. You can use MetaMask to send the contract address zero Sepolia ETH
+and the contract will grant you 1000 of its ERC20 tokens. You will pay gas fees
+that you should validate are sane before sending.
 
 7. Obtain a Sepolia JSON-RPC endpoint. If you don't want to sync your own node, you can find public ones here: https://sepolia.dev/
 
