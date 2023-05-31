@@ -1,4 +1,4 @@
-on: 
+on:
   pull_request:
     branches:
       - master
@@ -6,19 +6,24 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-macos:
+  integration-tests:
     strategy:
       matrix:
         go-version: [1.20.x]
-        platform: [macOS-12]
+        node-version: [16.x]
+        platform: [ubuntu-22.04]
     runs-on: ${{ matrix.platform }}
     steps:
       - id: go-cache-paths
         run: |
           echo "go-build=$(go env GOCACHE)"  >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      
+
       - uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
@@ -40,8 +45,21 @@ jobs:
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-mod
 
-      - name: Install brew dependencies
-        run: brew install coreutils
+      - name: Cache monero install
+        id: monero-install
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./monero-bin
+            ./monero-x86_64-linux-gnu-*
+          key: monero-install
+
+      - name: Install monero
+        if: steps.monero-install.outputs.cache-hit != 'true'
+        run: ./scripts/install-monero-linux.sh
 
       - name: Run build
         run: make build
+
+      - name: Run integration tests
+        run: ./scripts/run-integration-tests.sh
