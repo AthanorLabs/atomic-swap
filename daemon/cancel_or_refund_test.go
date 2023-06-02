@@ -28,7 +28,6 @@ import (
 // so she refunds the swap.
 // Bob should have aborted the swap in all cases.
 func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
-	t.Skip("Test disabled until https://github.com/AthanorLabs/atomic-swap/issues/479 is fixed")
 	minXMR := coins.StrToDecimal("1")
 	maxXMR := minXMR
 	exRate := coins.StrToExchangeRate("300")
@@ -41,6 +40,9 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	monero.MineMinXMRBalance(t, bobConf.MoneroClient, coins.MoneroToPiconero(maxXMR))
 
 	aliceConf := CreateTestConf(t, tests.GetTakerTestKey(t))
+	aliceAddr := aliceConf.EthereumClient.Address()
+	aliceStartNonce, err := aliceConf.EthereumClient.Raw().NonceAt(context.Background(), aliceAddr, nil)
+	require.NoError(t, err)
 
 	timeout := 7 * time.Minute
 	ctx, cancel := LaunchDaemons(t, timeout, bobConf, aliceConf)
@@ -61,13 +63,13 @@ func TestXMRTakerCancelOrRefundAfterKeyExchange(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for {
-			count, err := ec.PendingTransactionCount(ctx) //nolint:govet
+			aliceNonce, err := ec.PendingNonceAt(ctx, aliceAddr) //nolint:govet
 			if err != nil {
 				t.Errorf("failed to get pending tx count: %s", err)
 				return
 			}
 
-			if count > 0 {
+			if aliceNonce > aliceStartNonce {
 				// the newSwap tx is in the mempool, shut down the nodes
 				cancel()
 				t.Log("cancelling context of Alice's and Bob's servers")
