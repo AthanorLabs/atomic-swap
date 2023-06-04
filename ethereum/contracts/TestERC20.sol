@@ -6,7 +6,7 @@ import {ERC20} from "./ERC20.sol";
 
 // ERC20 token for testing purposes
 contract TestERC20 is ERC20 {
-    uint8 immutable private _decimals;
+    uint8 private immutable _decimals;
 
     constructor(
         string memory name,
@@ -42,7 +42,7 @@ contract TestERC20 is ERC20 {
     // You can send a zero-value transfer directly to the contract address to
     // get a 100 standard unit tokens.
     receive() external payable {
-        mint(msg.sender, 100 * 10**uint(_decimals));
+        mint(msg.sender, 100 * 10 ** uint(_decimals));
         if (msg.value > 0) {
             payable(msg.sender).transfer(msg.value);
         }
