@@ -47,7 +47,7 @@ const (
 	flagDetached       = "detached"
 	flagTo             = "to"
 	flagAmount         = "amount"
-	flagEnv            = "env"
+	flagGasLimit       = "gas-limit"
 )
 
 func cliApp() *cli.App {
@@ -355,7 +355,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "transfer-eth",
-				Usage:  "Transfer ETH from the swap wallet to another address.",
+				Usage:  "Transfer ETH from the swap wallet to an address.",
 				Action: runTransferETH,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -368,12 +368,16 @@ func cliApp() *cli.App {
 						Usage:    "Amount of ETH to send",
 						Required: true,
 					},
+					&cli.Uint64Flag{
+						Name:  flagGasLimit,
+						Usage: "Set the gas limit (required if transferring to contract, otherwise ignored)",
+					},
 					swapdPortFlag,
 				},
 			},
 			{
 				Name:   "sweep-eth",
-				Usage:  "Sweep all ETH from the swap wallet to another address.",
+				Usage:  "Sweep all ETH from the swap wallet to a non-contract address.",
 				Action: runSweepETH,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -670,12 +674,12 @@ func runQueryAll(ctx *cli.Context) error {
 func runMake(ctx *cli.Context) error {
 	c := newClient(ctx)
 
-	min, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMinAmount)
+	min, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
 		return err
 	}
 
-	max, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMaxAmount)
+	max, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagMaxAmount)
 	if err != nil {
 		return err
 	}
@@ -686,7 +690,7 @@ func runMake(ctx *cli.Context) error {
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
 	}
 
-	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
+	exchangeRateDec, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagExchangeRate)
 	if err != nil {
 		return err
 	}
@@ -778,7 +782,7 @@ func runTake(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	providesAmount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagProvidesAmount)
+	providesAmount, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -1175,7 +1179,7 @@ func runTransferXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	amount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagAmount)
+	amount, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagAmount)
 	if err != nil {
 		return err
 	}
@@ -1242,10 +1246,17 @@ func runTransferETH(ctx *cli.Context) error {
 		return err
 	}
 
+	var gasLimit *uint64
+	if ctx.IsSet(flagGasLimit) {
+		gasLimit = new(uint64)
+		*gasLimit = ctx.Uint64(flagGasLimit)
+	}
+
 	c := newClient(ctx)
 	req := &rpc.TransferETHRequest{
-		To:     *to,
-		Amount: amount,
+		To:       *to,
+		Amount:   amount,
+		GasLimit: gasLimit,
 	}
 
 	fmt.Printf("Transferring %s ETH to %s and waiting for confirmation\n", amount, to)
@@ -1274,9 +1285,7 @@ func runSweepETH(ctx *cli.Context) error {
 
 	fmt.Printf("Sweeping %s ETH to %s and waiting block for confirmation\n", balances.WeiBalance.AsEtherString(), to)
 
-	resp, err := c.SweepETH(&rpc.SweepETHRequest{
-		To: *to,
-	})
+	resp, err := c.SweepETH(&rpc.SweepETHRequest{To: *to})
 	if err != nil {
 		return err
 	}

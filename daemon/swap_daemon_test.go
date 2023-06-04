@@ -50,7 +50,7 @@ func minimumFundAlice(t *testing.T, aliceAddr ethcommon.Address, providesAmt *ap
 	fundAmt := new(apd.Decimal)
 	_, err = coins.DecimalCtx().Add(fundAmt, providesAmt, coins.NewWeiAmount(gasCostWei).AsEther())
 	require.NoError(t, err)
-	_, err = ec.Transfer(ctx, aliceAddr, coins.EtherToWei(fundAmt))
+	_, err = ec.Transfer(ctx, aliceAddr, coins.EtherToWei(fundAmt), nil)
 	require.NoError(t, err)
 
 	bal, err := ec.Balance(ctx)

@@ -228,7 +228,7 @@ func (*mockProtocolBackend) SweepXMR(_ *mcrypto.Address) ([]string, error) {
 	panic("not implemented")
 }
 
-func (*mockProtocolBackend) TransferETH(_ ethcommon.Address, _ *coins.WeiAmount) (*ethtypes.Receipt, error) {
+func (*mockProtocolBackend) TransferETH(_ ethcommon.Address, _ *coins.WeiAmount, _ *uint64) (*ethtypes.Receipt, error) {
 	panic("not implemented")
 }
 

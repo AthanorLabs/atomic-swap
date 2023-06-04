@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/MarinX/monerorpc/wallet"
+	"github.com/cockroachdb/apd/v3"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/monero"
 )
 
@@ -68,6 +71,39 @@ func (s *swapCLITestSuite) Test_runRunETHTransfer() {
 	bobBal, err = bobEC.Balance(context.Background())
 	require.NoError(s.T(), err)
 	require.True(s.T(), bobBal.Decimal().IsZero())
+}
+
+func (s *swapCLITestSuite) Test_runRunETHTransfer_toContract() {
+	ctx := context.Background()
+	ec := s.aliceConf.EthereumClient
+	zeroETH := new(apd.Decimal)
+	token := contracts.GetMockTether(s.T(), ec.Raw(), ec.PrivateKey())
+
+	startTokenBal, err := ec.ERC20Balance(ctx, token.Address)
+	require.NoError(s.T(), err)
+
+	// transfer zero ETH to the token address. We'll fail the 1st attempt by not
+	// setting the gas limit.
+	args := []string{
+		"swapcli",
+		"transfer-eth",
+		s.aliceSwapdPortFlag(),
+		fmt.Sprintf("--%s=%s", flagTo, token.Address),
+		fmt.Sprintf("--%s=%s", flagAmount, zeroETH),
+	}
+	err = cliApp().RunContext(context.Background(), args)
+	require.ErrorContains(s.T(), err, "gas limit is required when transferring to a contract")
+
+	// 2nd attempt with the gas limit set will succeed
+	args = append(args, fmt.Sprintf("--%s=%d", flagGasLimit, 2*params.TxGas))
+	err = cliApp().RunContext(context.Background(), args)
+	require.NoError(s.T(), err)
+
+	// our test token contract mints you 100 standard token units when sending
+	// it a zero value transaction.
+	endTokenBal, err := ec.ERC20Balance(ctx, token.Address)
+	require.NoError(s.T(), err)
+	require.Greater(s.T(), endTokenBal.AsStd().Cmp(startTokenBal.AsStd()), 0)
 }
 
 func (s *swapCLITestSuite) Test_runRunXMRTransfer() {

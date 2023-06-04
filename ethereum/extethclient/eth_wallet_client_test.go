@@ -9,12 +9,14 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common"
+	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
@@ -34,14 +36,36 @@ func Test_ethClient_Transfer(t *testing.T) {
 
 	transferAmt := coins.EtherToWei(coins.StrToDecimal("0.123456789012345678"))
 
-	receipt, err := senderEC.Transfer(ctx, receiverEC.Address(), transferAmt)
+	receipt, err := senderEC.Transfer(ctx, receiverEC.Address(), transferAmt, nil)
 	require.NoError(t, err)
-	require.Equal(t, receipt.GasUsed, uint64(TransferGas))
+	require.Equal(t, receipt.GasUsed, params.TxGas)
 
 	// balance is exactly equal to the transferred amount
 	receiverBal, err := receiverEC.Balance(ctx)
 	require.NoError(t, err)
 	require.Equal(t, receiverBal.AsEtherString(), transferAmt.AsEtherString())
+}
+
+func Test_ethClient_Transfer_toContract(t *testing.T) {
+	ctx := context.Background()
+	pk := tests.GetTestKeyByIndex(t, 0)
+	ec := CreateTestClient(t, pk)
+
+	token := contracts.GetMockTether(t, ec.Raw(), pk)
+	startTokenBal, err := ec.ERC20Balance(ctx, token.Address)
+	require.NoError(t, err)
+
+	zero := new(coins.WeiAmount)
+	gasLimit := params.TxGas * 2
+
+	_, err = ec.Transfer(ctx, token.Address, zero, &gasLimit)
+	require.NoError(t, err)
+
+	// our test token contract mints you 100 standard token units when sending
+	// it a zero value transaction.
+	endTokenBal, err := ec.ERC20Balance(ctx, token.Address)
+	require.NoError(t, err)
+	require.Greater(t, endTokenBal.AsStd().Cmp(startTokenBal.AsStd()), 0)
 }
 
 func Test_ethClient_Sweep(t *testing.T) {
@@ -61,12 +85,12 @@ func Test_ethClient_Sweep(t *testing.T) {
 	destEC := CreateTestClient(t, sweepDestKey)
 
 	// fund the sweep source account with 0.5 ETH
-	_, err = funderEC.Transfer(ctx, sourceEC.Address(), srcBal)
+	_, err = funderEC.Transfer(ctx, sourceEC.Address(), srcBal, nil)
 	require.NoError(t, err)
 
 	receipt, err := sourceEC.Sweep(ctx, destEC.Address())
 	require.NoError(t, err)
-	require.Equal(t, receipt.GasUsed, uint64(TransferGas))
+	require.Equal(t, receipt.GasUsed, params.TxGas)
 
 	fees := new(big.Int).Mul(receipt.EffectiveGasPrice, big.NewInt(int64(receipt.GasUsed)))
 	expectedDestBal := coins.NewWeiAmount(new(big.Int).Sub(srcBal.BigInt(), fees))

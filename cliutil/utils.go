@@ -137,24 +137,39 @@ func GetVersion() string {
 	return version.String()
 }
 
-// ReadUnsignedDecimalFlag reads a string flag and parses it into an *apd.Decimal.
+// ReadUnsignedDecimalFlag reads a string flag and parses it into an
+// *apd.Decimal, verifying that the value is >= 0.
 func ReadUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
 	s := ctx.String(flagName)
 	if s == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
 	}
-	bf, _, err := new(apd.Decimal).SetString(s)
+
+	d, _, err := new(apd.Decimal).SetString(s)
 	if err != nil {
 		return nil, fmt.Errorf("invalid value %q for flag --%s", s, flagName)
 	}
-	if bf.IsZero() {
-		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
-	}
-	if bf.Negative {
+
+	if d.Negative {
 		return nil, fmt.Errorf("value of flag --%s cannot be negative", flagName)
 	}
 
-	return bf, nil
+	return d, nil
+}
+
+// ReadPositiveUnsignedDecimalFlag reads a string flag and parses it into an
+// *apd.Decimal, verifying that the value is strictly > 0.
+func ReadPositiveUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, error) {
+	d, err := ReadUnsignedDecimalFlag(ctx, flagName)
+	if err != nil {
+		return nil, err
+	}
+
+	if d.IsZero() {
+		return nil, fmt.Errorf("value of flag --%s cannot be zero", flagName)
+	}
+
+	return d, nil
 }
 
 // ReadETHAddress reads a string flag and parses to an ethereum Address type

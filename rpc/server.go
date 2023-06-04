@@ -240,7 +240,7 @@ type ProtocolBackend interface {
 	ETHClient() extethclient.EthClient
 	TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error)
 	SweepXMR(to *mcrypto.Address) ([]string, error)
-	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (*ethtypes.Receipt, error)
+	TransferETH(to ethcommon.Address, amount *coins.WeiAmount, gasLimit *uint64) (*ethtypes.Receipt, error)
 	SweepETH(to ethcommon.Address) (*ethtypes.Receipt, error)
 }
 

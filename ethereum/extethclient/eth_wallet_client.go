@@ -8,6 +8,7 @@ package extethclient
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -52,8 +54,14 @@ type EthClient interface {
 	Unlock() // Unlock the wallet after a transaction is complete
 
 	// Transfer transfers ETH to the given address, nonce Lock()/Unlock()
-	// handling is done internally
-	Transfer(ctx context.Context, to ethcommon.Address, amount *coins.WeiAmount) (*ethtypes.Receipt, error)
+	// handling is done internally. The gasLimit field when the destination
+	// address is not a contract.
+	Transfer(
+		ctx context.Context,
+		to ethcommon.Address,
+		amount *coins.WeiAmount,
+		gasLimit *uint64,
+	) (*ethtypes.Receipt, error)
 
 	// Sweep transfers all funds to the given address, nonce Lock()/Unlock()
 	// handling is done internally. Dust may be left is sending to a contract
@@ -73,16 +81,6 @@ type EthClient interface {
 	Close()
 	Raw() *ethclient.Client
 }
-
-const (
-	// TransferGas is the exact amount of gas used to do an account to account transfer
-	TransferGas = 21000
-
-	// TransferContractGas is a reasonable upper limit for the gas that most
-	// contracts try to stay under when receiving a transfer directly to the
-	// contract address.
-	TransferContractGas = 23000
-)
 
 type ethClient struct {
 	endpoint   string
@@ -319,10 +317,14 @@ func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
 
+// Transfer transfers ETH to the given address, nonce Lock()/Unlock() handling
+// is done internally. The gasLimit parameter is required when transferring to a
+// contract and ignored otherwise.
 func (c *ethClient) Transfer(
 	ctx context.Context,
 	to ethcommon.Address,
 	amount *coins.WeiAmount,
+	gasLimit *uint64,
 ) (*ethtypes.Receipt, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -337,14 +339,18 @@ func (c *ethClient) Transfer(
 		return nil, fmt.Errorf("failed to get gas price: %w", err)
 	}
 
-	isContract, err := c.isContractAddress(to)
+	isContract, err := c.isContractAddress(ctx, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine if dest address is contract: %w", err)
 	}
 
-	gasLimit := uint64(TransferGas)
-	if isContract {
-		gasLimit = TransferContractGas
+	if !isContract {
+		gasLimit = new(uint64)
+		*gasLimit = params.TxGas
+	} else {
+		if gasLimit == nil {
+			return nil, errors.New("gas limit is required when transferring to a contract")
+		}
 	}
 
 	return transfer(&transferConfig{
@@ -353,7 +359,7 @@ func (c *ethClient) Transfer(
 		pk:       c.ethPrivKey,
 		destAddr: to,
 		amount:   amount,
-		gasLimit: gasLimit,
+		gasLimit: *gasLimit,
 		gasPrice: coins.NewWeiAmount(gasPrice),
 		nonce:    nonce,
 	})
@@ -373,23 +379,16 @@ func (c *ethClient) Sweep(ctx context.Context, to ethcommon.Address) (*ethtypes.
 		return nil, fmt.Errorf("failed to get gas price: %w", err)
 	}
 
-	isContract, err := c.isContractAddress(to)
+	isContract, err := c.isContractAddress(ctx, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine if dest address is contract: %w", err)
 	}
 
-	// If it is a regular address, we can do a clean sweep to a zero balance,
-	// because we know the exact fees ahead of time. Sweeping to contract
-	// address uses a minimum of 21000 gas, but may not use the full 23000 gas
-	// units that we set aside for the transfer. Because of this, sweeps to
-	// contracts will, unfortunately, leave some dust behind.
+	// Sweeping to a contract address is problematic, as any overestimation of
+	// the needed gas leaves non-spendable dust in the wallet. If someone has a
+	// use-case in the future, we can add the feature.
 	if isContract {
-		log.Warnf("leftover dust is expected when sweeping to a contract")
-	}
-
-	gasLimit := uint64(TransferGas)
-	if isContract {
-		gasLimit = TransferContractGas
+		return nil, errors.New("sweeping to contract addresses is not currently supported")
 	}
 
 	balance, err := c.Balance(ctx)
@@ -397,11 +396,11 @@ func (c *ethClient) Sweep(ctx context.Context, to ethcommon.Address) (*ethtypes.
 		return nil, fmt.Errorf("failed to determine balance: %w", err)
 	}
 
-	fees := coins.NewWeiAmount(new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit))))
+	fees := coins.NewWeiAmount(new(big.Int).Mul(gasPrice, big.NewInt(int64(params.TxGas))))
 
 	if balance.Cmp(fees) <= 0 {
 		return nil, fmt.Errorf("balance of %s ETH too small for fees (%d gas * %s gas-price = %s ETH",
-			balance.AsEtherString(), gasLimit, coins.NewWeiAmount(gasPrice).AsEtherString(), fees.AsEtherString())
+			balance.AsEtherString(), params.TxGas, coins.NewWeiAmount(gasPrice).AsEtherString(), fees.AsEtherString())
 	}
 
 	amount := coins.NewWeiAmount(new(big.Int).Sub(balance.BigInt(), fees.BigInt()))
@@ -412,7 +411,7 @@ func (c *ethClient) Sweep(ctx context.Context, to ethcommon.Address) (*ethtypes.
 		pk:       c.ethPrivKey,
 		destAddr: to,
 		amount:   amount,
-		gasLimit: gasLimit,
+		gasLimit: params.TxGas,
 		gasPrice: coins.NewWeiAmount(gasPrice),
 		nonce:    nonce,
 	})
@@ -434,14 +433,14 @@ func (c *ethClient) CancelTxWithNonce(
 		pk:       c.ethPrivKey,
 		destAddr: c.ethAddress,                      // ourself
 		amount:   coins.NewWeiAmount(big.NewInt(0)), // zero ETH
-		gasLimit: TransferGas,
+		gasLimit: params.TxGas,
 		gasPrice: coins.NewWeiAmount(gasPrice),
 		nonce:    nonce,
 	})
 }
 
-func (c *ethClient) isContractAddress(addr ethcommon.Address) (bool, error) {
-	bytecode, err := c.Raw().CodeAt(context.Background(), addr, nil)
+func (c *ethClient) isContractAddress(ctx context.Context, addr ethcommon.Address) (bool, error) {
+	bytecode, err := c.Raw().CodeAt(ctx, addr, nil)
 	if err != nil {
 		return false, err
 	}

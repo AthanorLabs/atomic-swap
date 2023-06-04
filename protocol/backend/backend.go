@@ -100,7 +100,7 @@ type Backend interface {
 	// transfer helpers
 	TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error)
 	SweepXMR(to *mcrypto.Address) ([]string, error)
-	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (*ethtypes.Receipt, error)
+	TransferETH(to ethcommon.Address, amount *coins.WeiAmount, gasLimit *uint64) (*ethtypes.Receipt, error)
 	SweepETH(to ethcommon.Address) (*ethtypes.Receipt, error)
 }
 
@@ -413,8 +413,12 @@ func (b *backend) SweepXMR(to *mcrypto.Address) ([]string, error) {
 	return txIDs, nil
 }
 
-func (b *backend) TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (*ethtypes.Receipt, error) {
-	return b.ethClient.Transfer(b.ctx, to, amount)
+func (b *backend) TransferETH(
+	to ethcommon.Address,
+	amount *coins.WeiAmount,
+	gasLimit *uint64,
+) (*ethtypes.Receipt, error) {
+	return b.ethClient.Transfer(b.ctx, to, amount, gasLimit)
 }
 
 func (b *backend) SweepETH(to ethcommon.Address) (*ethtypes.Receipt, error) {

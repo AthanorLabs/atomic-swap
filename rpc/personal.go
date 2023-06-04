@@ -167,20 +167,22 @@ func (s *PersonalService) SweepXMR(_ *http.Request, req *SweepXMRRequest, resp *
 	return nil
 }
 
-// TransferETHRequest ...
+// TransferETHRequest is JSON-RPC request object for TransferETH
 type TransferETHRequest struct {
-	To     ethcommon.Address `json:"to" validate:"required"`
-	Amount *apd.Decimal      `json:"amount" validate:"required"`
+	To       ethcommon.Address `json:"to" validate:"required"`
+	Amount   *apd.Decimal      `json:"amount" validate:"required"`
+	GasLimit *uint64           `json:"gasLimit,omitempty"`
 }
 
-// TransferETHResponse ...
+// TransferETHResponse is JSON-RPC response object for TransferETH
 type TransferETHResponse struct {
-	TxHash ethcommon.Hash `json:"txHash"`
+	TxHash   ethcommon.Hash `json:"txHash"`
+	GasLimit *uint64        `json:"gasLimit,omitempty"`
 }
 
 // TransferETH transfers ETH from the swapd wallet.
 func (s *PersonalService) TransferETH(_ *http.Request, req *TransferETHRequest, resp *TransferETHResponse) error {
-	receipt, err := s.pb.TransferETH(req.To, coins.EtherToWei(req.Amount))
+	receipt, err := s.pb.TransferETH(req.To, coins.EtherToWei(req.Amount), req.GasLimit)
 	if err != nil {
 		return err
 	}
@@ -189,17 +191,18 @@ func (s *PersonalService) TransferETH(_ *http.Request, req *TransferETHRequest, 
 	return nil
 }
 
-// SweepETHRequest is the request to sweep all ETH from the current wallet to the specified address.
+// SweepETHRequest is JSON-RPC request object for SweepETH
 type SweepETHRequest struct {
-	To ethcommon.Address `json:"to" validate:"required"`
+	To       ethcommon.Address `json:"to" validate:"required"`
+	GasLimit *uint64           `json:"gasLimit,omitempty"`
 }
 
-// SweepETHResponse contains the transaction hash of the sweeping ETH transfer.
+// SweepETHResponse is JSON-RPC response object for SweepETH
 type SweepETHResponse struct {
 	TxHash ethcommon.Hash `json:"txHash"` // Hash of sweep transfer transaction
 }
 
-// SweepETH transfers ETH from the swapd wallet.
+// SweepETH sweeps all ETH out of the swapd wallet.
 func (s *PersonalService) SweepETH(_ *http.Request, req *SweepETHRequest, resp *SweepETHResponse) error {
 	receipt, err := s.pb.SweepETH(req.To)
 	if err != nil {
