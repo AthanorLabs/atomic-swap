@@ -1,10 +1,14 @@
-on: 
+on:
   pull_request:
     branches:
       - master
   push:
     branches:
       - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
@@ -18,7 +22,7 @@ jobs:
         run: |
           echo "go-build=$(go env GOCACHE)"  >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      
+
       - uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
@@ -55,7 +59,7 @@ jobs:
 
       - name: Run build
         run: make build
-        
+
       - name: Run unit tests
         env:
           ETH_MAINNET_ENDPOINT: ${{ secrets.ETH_MAINNET_ENDPOINT }}
