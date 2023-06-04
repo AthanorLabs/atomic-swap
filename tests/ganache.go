@@ -41,6 +41,7 @@ var testPackages = []struct {
 	{"daemon", 2},
 	{"ethereum", 16},
 	{"ethereum/block", 2},
+	{"ethereum/extethclient", 2},
 	{"net", 2},
 	{"protocol", 1},
 	{"protocol/backend", 2},

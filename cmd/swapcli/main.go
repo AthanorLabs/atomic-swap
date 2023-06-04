@@ -337,11 +337,6 @@ func cliApp() *cli.App {
 						Usage:    "Amount of XMR to send",
 						Required: true,
 					},
-					&cli.StringFlag{
-						Name:  flagEnv,
-						Usage: "Environment to use. Options are [mainnet, stagenet, dev]. Default = mainnet.",
-						Value: "mainnet",
-					},
 					swapdPortFlag,
 				},
 			},
@@ -352,13 +347,8 @@ func cliApp() *cli.App {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     flagTo,
-						Usage:    "Address to send XMR to",
+						Usage:    "Address to sweep the XMR to",
 						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  flagEnv,
-						Usage: "Environment to use. Options are [mainnet, stagenet, dev]. Default = mainnet.",
-						Value: "mainnet",
 					},
 					swapdPortFlag,
 				},
@@ -376,6 +366,19 @@ func cliApp() *cli.App {
 					&cli.StringFlag{
 						Name:     flagAmount,
 						Usage:    "Amount of ETH to send",
+						Required: true,
+					},
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "sweep-eth",
+				Usage:  "Sweep all ETH from the swap wallet to another address.",
+				Action: runSweepETH,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagTo,
+						Usage:    "Address to sweep the ETH to",
 						Required: true,
 					},
 					swapdPortFlag,
@@ -1159,10 +1162,13 @@ func runGetSwapSecret(ctx *cli.Context) error {
 }
 
 func runTransferXMR(ctx *cli.Context) error {
-	env, err := common.NewEnv(ctx.String(flagEnv))
+	c := newClient(ctx)
+
+	verResp, err := c.Version()
 	if err != nil {
 		return err
 	}
+	env := verResp.Env
 
 	to, err := mcrypto.NewAddress(ctx.String(flagTo), env)
 	if err != nil {
@@ -1174,7 +1180,6 @@ func runTransferXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	c := newClient(ctx)
 	req := &rpc.TransferXMRRequest{
 		To:     to,
 		Amount: amount,
@@ -1192,17 +1197,19 @@ func runTransferXMR(ctx *cli.Context) error {
 }
 
 func runSweepXMR(ctx *cli.Context) error {
-	env, err := common.NewEnv(ctx.String(flagEnv))
+	c := newClient(ctx)
+
+	verResp, err := c.Version()
 	if err != nil {
 		return err
 	}
+	env := verResp.Env
 
 	to, err := mcrypto.NewAddress(ctx.String(flagTo), env)
 	if err != nil {
 		return err
 	}
 
-	c := newClient(ctx)
 	request := &rpctypes.BalancesRequest{}
 	balances, err := c.Balances(request)
 	if err != nil {
@@ -1225,12 +1232,11 @@ func runSweepXMR(ctx *cli.Context) error {
 }
 
 func runTransferETH(ctx *cli.Context) error {
-	ok := ethcommon.IsHexAddress(ctx.String(flagTo))
-	if !ok {
-		return fmt.Errorf("invalid address: %s", ctx.String(flagTo))
+	to, err := cliutil.ReadETHAddress(ctx, flagTo)
+	if err != nil {
+		return err
 	}
 
-	to := ethcommon.HexToAddress(ctx.String(flagTo))
 	amount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagAmount)
 	if err != nil {
 		return err
@@ -1238,11 +1244,11 @@ func runTransferETH(ctx *cli.Context) error {
 
 	c := newClient(ctx)
 	req := &rpc.TransferETHRequest{
-		To:     to,
+		To:     *to,
 		Amount: amount,
 	}
 
-	fmt.Printf("Transferring %s ETH to %s\n", amount, to)
+	fmt.Printf("Transferring %s ETH to %s and waiting for confirmation\n", amount, to)
 	resp, err := c.TransferETH(req)
 	if err != nil {
 		return err
@@ -1250,6 +1256,32 @@ func runTransferETH(ctx *cli.Context) error {
 
 	fmt.Printf("Transferred %s ETH to %s\n", amount, to)
 	fmt.Printf("Transaction ID: %s\n", resp.TxHash)
+	return nil
+}
+
+func runSweepETH(ctx *cli.Context) error {
+	to, err := cliutil.ReadETHAddress(ctx, flagTo)
+	if err != nil {
+		return err
+	}
+
+	c := newClient(ctx)
+	request := &rpctypes.BalancesRequest{}
+	balances, err := c.Balances(request)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Sweeping %s ETH to %s and waiting block for confirmation\n", balances.WeiBalance.AsEtherString(), to)
+
+	resp, err := c.SweepETH(&rpc.SweepETHRequest{
+		To: *to,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Sweep complete, transaction ID: %s\n", resp.TxHash)
 	return nil
 }
 

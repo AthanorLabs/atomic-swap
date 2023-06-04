@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/ChainSafe/chaindb"
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -282,7 +282,7 @@ func (inst *Instance) maybeCancelNewSwap(txHash ethcommon.Hash) (bool, error) {
 	// loop for 1 hour and block as there will never be a receipt for the cancel tx.
 	// we should probably poll for our account nonce to increase, and when it does, check for receipts
 	// on both txs to see which one was successful.
-	receipt, err := block.WaitForReceipt(inst.backend.Ctx(), inst.backend.ETHClient().Raw(), cancelTx)
+	receipt, err := block.WaitForReceipt(inst.backend.Ctx(), inst.backend.ETHClient().Raw(), cancelTx.TxHash)
 	if err != nil && !errors.Is(err, ethereum.NotFound) {
 		return false, fmt.Errorf("failed to get cancel transaction receipt: %w", err)
 	}

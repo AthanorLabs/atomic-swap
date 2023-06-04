@@ -12,6 +12,7 @@ import (
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2ptest "github.com/libp2p/go-libp2p/core/test"
 	ma "github.com/multiformats/go-multiaddr"
@@ -227,6 +228,10 @@ func (*mockProtocolBackend) SweepXMR(_ *mcrypto.Address) ([]string, error) {
 	panic("not implemented")
 }
 
-func (*mockProtocolBackend) TransferETH(_ ethcommon.Address, _ *coins.WeiAmount) (ethcommon.Hash, error) {
+func (*mockProtocolBackend) TransferETH(_ ethcommon.Address, _ *coins.WeiAmount) (*ethtypes.Receipt, error) {
+	panic("not implemented")
+}
+
+func (*mockProtocolBackend) SweepETH(_ ethcommon.Address) (*ethtypes.Receipt, error) {
 	panic("not implemented")
 }

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	logging "github.com/ipfs/go-log"
@@ -154,6 +155,23 @@ func ReadUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.Decimal, e
 	}
 
 	return bf, nil
+}
+
+// ReadETHAddress reads a string flag and parses to an ethereum Address type
+func ReadETHAddress(ctx *cli.Context, flagName string) (*ethcommon.Address, error) {
+	s := ctx.String(flagName)
+	if s == "" {
+		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
+	}
+
+	ok := ethcommon.IsHexAddress(s)
+	if !ok {
+		return nil, fmt.Errorf("invalid ETH address: %q", s)
+	}
+
+	to := ethcommon.HexToAddress(s)
+
+	return &to, nil
 }
 
 // ExpandBootnodes expands the boot nodes passed on the command line that

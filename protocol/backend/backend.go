@@ -14,6 +14,7 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -99,7 +100,8 @@ type Backend interface {
 	// transfer helpers
 	TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error)
 	SweepXMR(to *mcrypto.Address) ([]string, error)
-	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (types.Hash, error)
+	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (*ethtypes.Receipt, error)
+	SweepETH(to ethcommon.Address) (*ethtypes.Receipt, error)
 }
 
 type backend struct {
@@ -411,6 +413,10 @@ func (b *backend) SweepXMR(to *mcrypto.Address) ([]string, error) {
 	return txIDs, nil
 }
 
-func (b *backend) TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (types.Hash, error) {
+func (b *backend) TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (*ethtypes.Receipt, error) {
 	return b.ethClient.Transfer(b.ctx, to, amount)
+}
+
+func (b *backend) SweepETH(to ethcommon.Address) (*ethtypes.Receipt, error) {
+	return b.ethClient.Sweep(b.ctx, to)
 }

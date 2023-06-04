@@ -180,11 +180,32 @@ type TransferETHResponse struct {
 
 // TransferETH transfers ETH from the swapd wallet.
 func (s *PersonalService) TransferETH(_ *http.Request, req *TransferETHRequest, resp *TransferETHResponse) error {
-	txHash, err := s.pb.TransferETH(req.To, coins.EtherToWei(req.Amount))
+	receipt, err := s.pb.TransferETH(req.To, coins.EtherToWei(req.Amount))
 	if err != nil {
 		return err
 	}
 
-	resp.TxHash = txHash
+	resp.TxHash = receipt.TxHash
+	return nil
+}
+
+// SweepETHRequest is the request to sweep all ETH from the current wallet to the specified address.
+type SweepETHRequest struct {
+	To ethcommon.Address `json:"to" validate:"required"`
+}
+
+// SweepETHResponse contains the transaction hash of the sweeping ETH transfer.
+type SweepETHResponse struct {
+	TxHash ethcommon.Hash `json:"txHash"` // Hash of sweep transfer transaction
+}
+
+// SweepETH transfers ETH from the swapd wallet.
+func (s *PersonalService) SweepETH(_ *http.Request, req *SweepETHRequest, resp *SweepETHResponse) error {
+	receipt, err := s.pb.SweepETH(req.To)
+	if err != nil {
+		return err
+	}
+
+	resp.TxHash = receipt.TxHash
 	return nil
 }
