@@ -4,17 +4,17 @@ go 1.20
 
 require (
 	filippo.io/edwards25519 v1.0.0
-	github.com/ChainSafe/chaindb v0.1.5-0.20221010190531-f900218c88f8
-	github.com/MarinX/monerorpc v1.0.5
+	github.com/ChainSafe/chaindb v0.1.5
+	github.com/MarinX/monerorpc v1.0.6
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/athanorlabs/go-dleq v0.1.0
 	github.com/athanorlabs/go-p2p-net v0.2.1
 	github.com/btcsuite/btcd/btcutil v1.1.3
-	github.com/cockroachdb/apd/v3 v3.1.2
+	github.com/cockroachdb/apd/v3 v3.2.0
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
-	github.com/ethereum/go-ethereum v1.11.6
+	github.com/ethereum/go-ethereum v1.12.0
 	github.com/fatih/color v1.15.0
-	github.com/go-playground/validator/v10 v10.13.0
+	github.com/go-playground/validator/v10 v10.14.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -26,8 +26,8 @@ require (
 	github.com/multiformats/go-multiaddr v0.9.0
 	github.com/prometheus/client_golang v1.15.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/stretchr/testify v1.8.2
-	github.com/urfave/cli/v2 v2.25.3
+	github.com/stretchr/testify v1.8.4
+	github.com/urfave/cli/v2 v2.25.5
 	golang.org/x/crypto v0.9.0
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
 	golang.org/x/sys v0.8.0
@@ -54,6 +54,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/deckarep/golang-set/v2 v2.3.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.4 // indirect
+	github.com/dgraph-io/badger/v4 v4.1.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -63,6 +64,7 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gabstv/httpdigest v0.0.0-20230306144402-1057ac3638b3 // indirect
 	github.com/getsentry/sentry-go v0.21.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -76,8 +78,10 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.1 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
+	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20230510103437-eeec1cb781c3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -118,7 +122,7 @@ require (
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/miekg/dns v1.1.54 // indirect
