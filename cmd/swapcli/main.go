@@ -1265,8 +1265,7 @@ func runTransferETH(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Transferred %s ETH to %s\n", amount, to)
-	fmt.Printf("Transaction ID: %s\n", resp.TxHash)
+	fmt.Printf("Success. Transaction ID: %s\n", resp.TxHash)
 	return nil
 }
 
