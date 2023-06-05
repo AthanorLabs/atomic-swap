@@ -29,6 +29,12 @@ import (
 	"github.com/athanorlabs/atomic-swap/rpc"
 )
 
+const (
+	// databaseDirName is the name of the folder, located in the swapd's
+	// data-dir, for the current and past swap information.
+	databaseDirName = "swap-db"
+)
+
 var log = logging.Logger("daemon")
 
 // SwapdConfig provides startup parameters for swapd.
@@ -63,7 +69,7 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	// Initialize the database first, so the defer statement that closes it
 	// will get executed last.
 	sdb, err := db.NewDatabase(&chaindb.Config{
-		DataDir: path.Join(conf.EnvConf.DataDir, "db"),
+		DataDir: path.Join(conf.EnvConf.DataDir, databaseDirName),
 	})
 	if err != nil {
 		return err
