@@ -52,32 +52,36 @@ func errContractAddrMismatch(addr string) error {
 }
 
 type errAmountProvidedTooLow struct {
-	providedAmtETH   *apd.Decimal
+	providedAmtETH   coins.EthAssetAmount
 	providedAmtAsXMR *apd.Decimal
 	offerMinAmtXMR   *apd.Decimal
 	exchangeRate     *coins.ExchangeRate
 }
 
 func (e errAmountProvidedTooLow) Error() string {
-	return fmt.Sprintf("provided ETH converted to XMR is under offer min of %s XMR (%s ETH / %s = %s)",
+	return fmt.Sprintf("provided %s converted to XMR is under offer min of %s XMR (%s %s / %s = %s)",
+		e.providedAmtETH.StdSymbol(),
 		e.offerMinAmtXMR.Text('f'),
-		e.providedAmtETH.Text('f'),
+		e.providedAmtETH.AsStdString(),
+		e.providedAmtETH.StdSymbol(),
 		e.exchangeRate,
 		e.providedAmtAsXMR.Text('f'),
 	)
 }
 
 type errAmountProvidedTooHigh struct {
-	providedAmtETH   *apd.Decimal
+	providedAmtETH   coins.EthAssetAmount
 	providedAmtAsXMR *apd.Decimal
 	offerMaxAmtXMR   *apd.Decimal
 	exchangeRate     *coins.ExchangeRate
 }
 
 func (e errAmountProvidedTooHigh) Error() string {
-	return fmt.Sprintf("provided ETH converted to XMR is over offer max of %s XMR (%s ETH / %s = %s XMR)",
+	return fmt.Sprintf("provided %s converted to XMR is over offer max of %s XMR (%s %s / %s = %s XMR)",
+		e.providedAmtETH.StdSymbol(),
 		e.offerMaxAmtXMR.Text('f'),
-		e.providedAmtETH.Text('f'),
+		e.providedAmtETH.AsStdString(),
+		e.providedAmtETH.StdSymbol(),
 		e.exchangeRate,
 		e.providedAmtAsXMR.Text('f'),
 	)
