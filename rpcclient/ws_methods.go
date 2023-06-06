@@ -195,7 +195,7 @@ func (c *Client) readTakeOfferResponse(conn *websocket.Conn) (types.Status, erro
 	}
 
 	if resp.Error != nil {
-		return 0, fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return 0, fmt.Errorf("%s error: %w", rpctypes.SubscribeTakeOffer, resp.Error)
 	}
 
 	log.Debugf("received message over websockets: %s", message)
@@ -263,7 +263,7 @@ func (c *Client) MakeOfferAndSubscribe(
 
 	if resp.Error != nil {
 		_ = conn.Close()
-		return nil, nil, fmt.Errorf("websocket server returned error: %w", resp.Error)
+		return nil, nil, fmt.Errorf("%s error: %w", req.Method, resp.Error)
 	}
 
 	// read synchronous response (offer ID)
