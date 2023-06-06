@@ -51,7 +51,7 @@ func (inst *Instance) InitiateProtocol(
 
 	if providesAmtAsXMR.Cmp(offer.MinAmount) < 0 {
 		return nil, &errAmountProvidedTooLow{
-			providedAmtETH:   providesAmount,
+			providedAmtETH:   providedAssetAmount,
 			providedAmtAsXMR: providesAmtAsXMR,
 			offerMinAmtXMR:   offer.MinAmount,
 			exchangeRate:     offer.ExchangeRate,
@@ -60,7 +60,7 @@ func (inst *Instance) InitiateProtocol(
 
 	if providesAmtAsXMR.Cmp(offer.MaxAmount) > 0 {
 		return nil, &errAmountProvidedTooHigh{
-			providedAmtETH:   providesAmount,
+			providedAmtETH:   providedAssetAmount,
 			providedAmtAsXMR: providesAmtAsXMR,
 			offerMaxAmtXMR:   offer.MaxAmount,
 			exchangeRate:     offer.ExchangeRate,
