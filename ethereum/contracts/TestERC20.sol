@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC20} from "./ERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // ERC20 token for testing purposes
 contract TestERC20 is ERC20 {
@@ -41,12 +41,14 @@ contract TestERC20 is ERC20 {
         // To change the approve amount you first have to reduce the addresses
         // allowance to zero to prevent an attack described here:
         // https://docs.google.com/document/d/1YLPtQxZu1UAvO9cZ1O2RPXBbT0mooh4DYKjA_jp-RLM/edit
-        require(amount == 0 || allowance(owner, spender) == 0);
+        require(
+            amount == 0 || allowance(owner, spender) == 0,
+            "approve allowance must be set to zero before updating"
+        );
 
         _approve(owner, spender, amount);
         return true;
     }
-
 
     function transferInternal(address from, address to, uint256 value) public {
         _transfer(from, to, value);

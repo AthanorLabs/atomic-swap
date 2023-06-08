@@ -5,10 +5,10 @@ package contracts
 // gas limit. We use these values to estimate minimum required balances.
 const (
 	MaxNewSwapETHGas   = 50639
-	MaxNewSwapTokenGas = 86218
+	MaxNewSwapTokenGas = 87369
 	MaxSetReadyGas     = 32054
 	MaxClaimETHGas     = 43349
-	MaxClaimTokenGas   = 47522
+	MaxClaimTokenGas   = 48416
 	MaxRefundETHGas    = 43132
 	MaxRefundTokenGas  = 47294
 	MaxTokenApproveGas = 47000 // 46223 with our contract
@@ -16,6 +16,6 @@ const (
 
 // constants that are interesting to track, but not used by swaps
 const (
-	maxSwapCreatorDeployGas = 1139623
-	maxTestERC20DeployGas   = 905727 // using long token names or symbols will increase this
+	maxSwapCreatorDeployGas = 1200523
+	maxTestERC20DeployGas   = 932655 // using long token names or symbols will increase this
 )

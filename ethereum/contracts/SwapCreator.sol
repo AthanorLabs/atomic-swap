@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.19;
 
-import {IERC20} from "./IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Secp256k1} from "./Secp256k1.sol";
 
 contract SwapCreator is Secp256k1 {
+    using SafeERC20 for IERC20;
+
     // Swap state is PENDING when the swap is first created and funded
     // Alice sets Stage to READY when she sees the funds locked on the other chain.
     // this prevents Bob from withdrawing funds without locking funds on the other chain first
@@ -144,7 +147,7 @@ contract SwapCreator is Secp256k1 {
         } else {
             // transfer ERC-20 token into this contract
             // WARN: fee-on-transfer tokens are not supported
-            IERC20(_asset).transferFrom(msg.sender, address(this), _value);
+            IERC20(_asset).safeTransferFrom(msg.sender, address(this), _value);
         }
 
         if (_pubKeyClaim == 0 || _pubKeyRefund == 0) revert InvalidSwapKey();
@@ -204,7 +207,7 @@ contract SwapCreator is Secp256k1 {
             // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing.
-            IERC20(_swap.asset).transfer(_swap.claimer, _swap.value);
+            IERC20(_swap.asset).safeTransfer(_swap.claimer, _swap.value);
         }
     }
 
@@ -241,11 +244,11 @@ contract SwapCreator is Secp256k1 {
             // WARN: this will FAIL for fee-on-transfer or rebasing tokens if the token
             // transfer reverts (i.e. if this contract does not contain _swap.value tokens),
             // exposing Bob's secret while giving him nothing.
-            IERC20(_relaySwap.swap.asset).transfer(
+            IERC20(_relaySwap.swap.asset).safeTransfer(
                 _relaySwap.swap.claimer,
                 _relaySwap.swap.value - _relaySwap.fee
             );
-            IERC20(_relaySwap.swap.asset).transfer(_relayer, _relaySwap.fee);
+            IERC20(_relaySwap.swap.asset).safeTransfer(_relayer, _relaySwap.fee);
         }
     }
 
