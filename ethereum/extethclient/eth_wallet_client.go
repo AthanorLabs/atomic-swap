@@ -301,6 +301,14 @@ func (c *ethClient) LatestBlockTimestamp(ctx context.Context) (time.Time, error)
 	return time.Unix(int64(hdr.Time), 0), nil
 }
 
+// Lock is used for 2 purposes:
+//  1. Nonce synchronization: Any time you do a transaction, the lock should be
+//     grabbed before sending the transaction to the mempool and not released until
+//     after the transaction has been mined into a block (receipt is returned).
+//  2. Transactions that must be done together atomically. In our case, the token
+//     approve(...) call and TransferFrom(...) call made by the SwapCreator
+//     contract must be performed as one atomic unit without another `approve` call
+//     made in the middle.
 func (c *ethClient) Lock() {
 	c.mu.Lock()
 }

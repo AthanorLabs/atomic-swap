@@ -84,6 +84,8 @@ func (h *Host) receiveInitiateResponse(stream libp2pnetwork.Stream, s SwapState)
 
 		err := s.HandleProtocolMessage(msg)
 		if err != nil {
+			// todo: shorten this error and raise the level to ERROR
+			// 2023-06-08T00:12:42.499-0500	WARN	net	net/initiate.go:87	failed to handle protocol message: err=failed to handle EventKeysReceivedType: failed to lock ethereum asset in contract: failed to lock asset: failed to instantiate swap on-chain: new_swap tx creation failed, VM Exception while processing transaction: revert
 			log.Warnf("failed to handle protocol message: err=%s", err)
 			return
 		}

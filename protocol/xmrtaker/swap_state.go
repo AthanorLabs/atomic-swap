@@ -24,7 +24,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/db"
 	"github.com/athanorlabs/atomic-swap/dleq"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/watcher"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net/message"
@@ -673,29 +672,31 @@ func (s *swapState) lockAndWaitForReceipt(
 	cmtXMRMaker, cmtXMRTaker [32]byte,
 	nonce *big.Int,
 ) (*ethtypes.Receipt, error) {
-	s.Backend.ETHClient().Lock()
-	defer s.Backend.ETHClient().Unlock()
 
-	txHash, err := s.sender.NewSwap(
+	// We need a callback to save the TX hash, as we've seen NewSwap
+	// transactions stay in the mempool for hours before getting included in a
+	// block. We want to ensure that the NewSwap TX hash gets stored to the
+	// database even if the NewSwap function call returns an error, because it
+	// failed to get a TX receipt.
+	saveNewSwapTxCallback := func(txHash ethcommon.Hash) error {
+		err := s.Backend.RecoveryDB().PutNewSwapTxHash(s.OfferID(), txHash)
+		if err != nil {
+			return fmt.Errorf("failed to write newSwap tx hash to db: %w", err)
+		}
+		return nil
+	}
+
+	receipt, err := s.sender.NewSwap(
 		cmtXMRMaker,
 		cmtXMRTaker,
 		s.xmrmakerAddress,
 		big.NewInt(int64(s.SwapTimeout().Seconds())),
 		nonce,
 		s.providedAmount,
+		saveNewSwapTxCallback,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate swap on-chain: %w", err)
-	}
-
-	err = s.Backend.RecoveryDB().PutNewSwapTxHash(s.OfferID(), txHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write newSwap tx hash to db: %w", err)
-	}
-
-	receipt, err := block.WaitForReceipt(s.ctx, s.ETHClient().Raw(), txHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get newSwap transaction receipt: %w", err)
 	}
 
 	return receipt, nil
