@@ -8,6 +8,7 @@ package extethclient
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/athanorlabs/atomic-swap/coins"
@@ -25,7 +27,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/ethereum/block"
 )
 
-var log = logging.Logger("extethclient")
+var log = logging.Logger("ethereum/extethclient")
 
 // EthClient provides management of a private key and other convenience functions layered
 // on top of the go-ethereum client. You can still access the raw go-ethereum client via
@@ -51,12 +53,26 @@ type EthClient interface {
 	Lock()   // Lock the wallet so only one transaction runs at at time
 	Unlock() // Unlock the wallet after a transaction is complete
 
-	// transfers ETH to the given address
-	// does not need locking, as it locks internally
-	Transfer(ctx context.Context, to ethcommon.Address, amount *coins.WeiAmount) (ethcommon.Hash, error)
+	// Transfer transfers ETH to the given address, nonce Lock()/Unlock()
+	// handling is done internally. The gasLimit field when the destination
+	// address is not a contract.
+	Transfer(
+		ctx context.Context,
+		to ethcommon.Address,
+		amount *coins.WeiAmount,
+		gasLimit *uint64,
+	) (*ethtypes.Receipt, error)
 
-	// attempts to cancel a transaction with the given nonce by sending a zero-value tx to ourselves
-	CancelTxWithNonce(ctx context.Context, nonce uint64, gasPrice *big.Int) (ethcommon.Hash, error)
+	// Sweep transfers all funds to the given address, nonce Lock()/Unlock()
+	// handling is done internally. Dust may be left is sending to a contract
+	// address, otherwise the balance afterward will be zero.
+	Sweep(ctx context.Context, to ethcommon.Address) (*ethtypes.Receipt, error)
+
+	// CancelTxWithNonce attempts to cancel a transaction with the given nonce
+	// by sending a zero-value tx to ourselves. Since the nonce is fixed, no
+	// locking is done. You can even intentionally run this method to fail some
+	// other method that has the lock and is waiting for a receipt.
+	CancelTxWithNonce(ctx context.Context, nonce uint64, gasPrice *big.Int) (*ethtypes.Receipt, error)
 
 	WaitForReceipt(ctx context.Context, txHash ethcommon.Hash) (*ethtypes.Receipt, error)
 	WaitForTimestamp(ctx context.Context, ts time.Time) error
@@ -301,62 +317,136 @@ func (c *ethClient) Raw() *ethclient.Client {
 	return c.ec
 }
 
-func (c *ethClient) CancelTxWithNonce(
-	ctx context.Context,
-	nonce uint64,
-	gasPrice *big.Int,
-) (ethcommon.Hash, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	tx := ethtypes.NewTransaction(nonce, c.ethAddress, big.NewInt(0), 21000, gasPrice, nil)
-
-	signer := ethtypes.LatestSignerForChainID(c.chainID)
-	signedTx, err := ethtypes.SignTx(tx, signer, c.ethPrivKey)
-	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to sign tx: %w", err)
-	}
-
-	err = c.ec.SendTransaction(ctx, signedTx)
-	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to send tx: %w", err)
-	}
-
-	return signedTx.Hash(), nil
-}
-
+// Transfer transfers ETH to the given address, nonce Lock()/Unlock() handling
+// is done internally. The gasLimit parameter is required when transferring to a
+// contract and ignored otherwise.
 func (c *ethClient) Transfer(
 	ctx context.Context,
 	to ethcommon.Address,
 	amount *coins.WeiAmount,
-) (ethcommon.Hash, error) {
+	gasLimit *uint64,
+) (*ethtypes.Receipt, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	nonce, err := c.ec.NonceAt(ctx, c.ethAddress, nil)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to get nonce: %w", err)
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 
 	gasPrice, err := c.ec.SuggestGasPrice(ctx)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to get gas price: %w", err)
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
 	}
 
-	tx := ethtypes.NewTransaction(nonce, to, amount.BigInt(), 21000, gasPrice, nil)
-
-	signer := ethtypes.LatestSignerForChainID(c.chainID)
-	signedTx, err := ethtypes.SignTx(tx, signer, c.ethPrivKey)
+	isContract, err := c.isContractAddress(ctx, to)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to sign tx: %w", err)
+		return nil, fmt.Errorf("failed to determine if dest address is contract: %w", err)
 	}
 
-	err = c.ec.SendTransaction(ctx, signedTx)
+	if !isContract {
+		gasLimit = new(uint64)
+		*gasLimit = params.TxGas
+	} else {
+		if gasLimit == nil {
+			return nil, errors.New("gas limit is required when transferring to a contract")
+		}
+	}
+
+	return transfer(&transferConfig{
+		ctx:      ctx,
+		ec:       c.ec,
+		pk:       c.ethPrivKey,
+		destAddr: to,
+		amount:   amount,
+		gasLimit: *gasLimit,
+		gasPrice: coins.NewWeiAmount(gasPrice),
+		nonce:    nonce,
+	})
+}
+
+func (c *ethClient) Sweep(ctx context.Context, to ethcommon.Address) (*ethtypes.Receipt, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	nonce, err := c.ec.NonceAt(ctx, c.ethAddress, nil)
 	if err != nil {
-		return ethcommon.Hash{}, fmt.Errorf("failed to send transaction: %w", err)
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 
-	return signedTx.Hash(), nil
+	gasPrice, err := c.ec.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	isContract, err := c.isContractAddress(ctx, to)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine if dest address is contract: %w", err)
+	}
+
+	// Sweeping to a contract address is problematic, as any overestimation of
+	// the needed gas leaves non-spendable dust in the wallet. If someone has a
+	// use-case in the future, we can add the feature.
+	if isContract {
+		return nil, errors.New("sweeping to contract addresses is not currently supported")
+	}
+
+	balance, err := c.Balance(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine balance: %w", err)
+	}
+
+	fees := coins.NewWeiAmount(new(big.Int).Mul(gasPrice, big.NewInt(int64(params.TxGas))))
+
+	if balance.Cmp(fees) <= 0 {
+		return nil, fmt.Errorf("balance of %s ETH too small for fees (%d gas * %s gas-price = %s ETH",
+			balance.AsEtherString(), params.TxGas, coins.NewWeiAmount(gasPrice).AsEtherString(), fees.AsEtherString())
+	}
+
+	amount := coins.NewWeiAmount(new(big.Int).Sub(balance.BigInt(), fees.BigInt()))
+
+	return transfer(&transferConfig{
+		ctx:      ctx,
+		ec:       c.ec,
+		pk:       c.ethPrivKey,
+		destAddr: to,
+		amount:   amount,
+		gasLimit: params.TxGas,
+		gasPrice: coins.NewWeiAmount(gasPrice),
+		nonce:    nonce,
+	})
+}
+
+// CancelTxWithNonce attempts to cancel a transaction with the given nonce
+// by sending a zero-value tx to ourselves. Since the nonce is fixed, no
+// locking is done. You can even intentionally run this method to fail some
+// other method that has the lock and is waiting for a receipt.
+func (c *ethClient) CancelTxWithNonce(
+	ctx context.Context,
+	nonce uint64,
+	gasPrice *big.Int,
+) (*ethtypes.Receipt, error) {
+	// no locking, nonce is fixed and we are not protecting it
+	return transfer(&transferConfig{
+		ctx:      ctx,
+		ec:       c.ec,
+		pk:       c.ethPrivKey,
+		destAddr: c.ethAddress,                      // ourself
+		amount:   coins.NewWeiAmount(big.NewInt(0)), // zero ETH
+		gasLimit: params.TxGas,
+		gasPrice: coins.NewWeiAmount(gasPrice),
+		nonce:    nonce,
+	})
+}
+
+func (c *ethClient) isContractAddress(ctx context.Context, addr ethcommon.Address) (bool, error) {
+	bytecode, err := c.Raw().CodeAt(ctx, addr, nil)
+	if err != nil {
+		return false, err
+	}
+
+	isContract := len(bytecode) > 0
+	return isContract, nil
 }
 
 func validateChainID(env common.Environment, chainID *big.Int) error {

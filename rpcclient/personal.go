@@ -114,3 +114,17 @@ func (c *Client) TransferETH(request *rpc.TransferETHRequest) (*rpc.TransferETHR
 
 	return resp, nil
 }
+
+// SweepETH calls personal_sweepETH
+func (c *Client) SweepETH(request *rpc.SweepETHRequest) (*rpc.SweepETHResponse, error) {
+	const (
+		method = "personal_sweepETH"
+	)
+
+	resp := new(rpc.SweepETHResponse)
+	if err := c.post(method, request, resp); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}

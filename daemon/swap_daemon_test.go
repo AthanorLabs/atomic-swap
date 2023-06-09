@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"sync"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +22,6 @@ import (
 	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
-	"github.com/athanorlabs/atomic-swap/ethereum/block"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
 	"github.com/athanorlabs/atomic-swap/monero"
 	"github.com/athanorlabs/atomic-swap/net"
@@ -32,66 +29,31 @@ import (
 	"github.com/athanorlabs/atomic-swap/tests"
 )
 
-const (
-	// transferGas is the amount of gas to perform a standard ETH transfer
-	transferGas = 21000
-)
-
 func init() {
 	cliutil.SetLogLevels("debug")
 }
 
-func privKeyToAddr(privKey *ecdsa.PrivateKey) ethcommon.Address {
-	return crypto.PubkeyToAddress(*privKey.Public().(*ecdsa.PublicKey))
-}
-
-func transfer(t *testing.T, fromKey *ecdsa.PrivateKey, toAddress ethcommon.Address, ethAmount *apd.Decimal) {
-	ctx := context.Background()
-	ec, chainID := tests.NewEthClient(t)
-	fromAddress := privKeyToAddr(fromKey)
-
-	gasPrice, err := ec.SuggestGasPrice(ctx)
-	require.NoError(t, err)
-
-	nonce, err := ec.PendingNonceAt(ctx, fromAddress)
-	require.NoError(t, err)
-
-	weiAmount := coins.EtherToWei(ethAmount).BigInt()
-
-	tx := ethtypes.NewTx(&ethtypes.LegacyTx{
-		Nonce:    nonce,
-		To:       &toAddress,
-		Value:    weiAmount,
-		Gas:      transferGas,
-		GasPrice: gasPrice,
-	})
-	signedTx, err := ethtypes.SignTx(tx, ethtypes.LatestSignerForChainID(chainID), fromKey)
-	require.NoError(t, err)
-
-	err = ec.SendTransaction(ctx, signedTx)
-	require.NoError(t, err)
-	_, err = block.WaitForReceipt(ctx, ec, signedTx.Hash())
-	require.NoError(t, err)
-}
-
 // minimumFundAlice gives Alice enough ETH to do everything but relay a claim
-func minimumFundAlice(t *testing.T, ec extethclient.EthClient, providesAmt *apd.Decimal) {
+func minimumFundAlice(t *testing.T, aliceAddr ethcommon.Address, providesAmt *apd.Decimal) {
+	ctx := context.Background()
 	fundingKey := tests.GetTakerTestKey(t)
+	ec := extethclient.CreateTestClient(t, fundingKey)
 
 	const (
 		aliceGasRation = contracts.MaxNewSwapETHGas + contracts.MaxSetReadyGas + contracts.MaxRefundETHGas
 	)
 	// We give Alice enough gas money to refund if needed, but not enough to
 	// relay a claim
-	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(context.Background())
+	suggestedGasPrice, err := ec.Raw().SuggestGasPrice(ctx)
 	require.NoError(t, err)
 	gasCostWei := new(big.Int).Mul(suggestedGasPrice, big.NewInt(aliceGasRation))
 	fundAmt := new(apd.Decimal)
 	_, err = coins.DecimalCtx().Add(fundAmt, providesAmt, coins.NewWeiAmount(gasCostWei).AsEther())
 	require.NoError(t, err)
-	transfer(t, fundingKey, ec.Address(), fundAmt)
+	_, err = ec.Transfer(ctx, aliceAddr, coins.EtherToWei(fundAmt), nil)
+	require.NoError(t, err)
 
-	bal, err := ec.Balance(context.Background())
+	bal, err := ec.Balance(ctx)
 	require.NoError(t, err)
 	t.Logf("Alice's start balance is: %s ETH", bal.AsEtherString())
 }
@@ -201,7 +163,7 @@ func TestRunSwapDaemon_NoRelayersAvailable_Refund(t *testing.T) {
 	aliceEthKey, err := crypto.GenerateKey() // Alice has non-ganache key that we fund
 	require.NoError(t, err)
 	aliceConf := CreateTestConf(t, aliceEthKey)
-	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
+	minimumFundAlice(t, aliceConf.EthereumClient.Address(), providesAmt)
 
 	timeout := 8 * time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, bobConf, aliceConf)
@@ -278,7 +240,7 @@ func TestRunSwapDaemon_CharlieRelays(t *testing.T) {
 	aliceEthKey, err := crypto.GenerateKey() // Alice gets a key without enough funds to relay
 	require.NoError(t, err)
 	aliceConf := CreateTestConf(t, aliceEthKey)
-	minimumFundAlice(t, aliceConf.EthereumClient, providesAmt)
+	minimumFundAlice(t, aliceConf.EthereumClient.Address(), providesAmt)
 
 	// Charlie can safely use the taker key, as Alice is not using it.
 	charlieConf := CreateTestConf(t, tests.GetTakerTestKey(t))

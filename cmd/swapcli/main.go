@@ -47,7 +47,7 @@ const (
 	flagDetached       = "detached"
 	flagTo             = "to"
 	flagAmount         = "amount"
-	flagEnv            = "env"
+	flagGasLimit       = "gas-limit"
 )
 
 func cliApp() *cli.App {
@@ -337,11 +337,6 @@ func cliApp() *cli.App {
 						Usage:    "Amount of XMR to send",
 						Required: true,
 					},
-					&cli.StringFlag{
-						Name:  flagEnv,
-						Usage: "Environment to use. Options are [mainnet, stagenet, dev]. Default = mainnet.",
-						Value: "mainnet",
-					},
 					swapdPortFlag,
 				},
 			},
@@ -352,20 +347,15 @@ func cliApp() *cli.App {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     flagTo,
-						Usage:    "Address to send XMR to",
+						Usage:    "Address to sweep the XMR to",
 						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  flagEnv,
-						Usage: "Environment to use. Options are [mainnet, stagenet, dev]. Default = mainnet.",
-						Value: "mainnet",
 					},
 					swapdPortFlag,
 				},
 			},
 			{
 				Name:   "transfer-eth",
-				Usage:  "Transfer ETH from the swap wallet to another address.",
+				Usage:  "Transfer ETH from the swap wallet to an address.",
 				Action: runTransferETH,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -376,6 +366,23 @@ func cliApp() *cli.App {
 					&cli.StringFlag{
 						Name:     flagAmount,
 						Usage:    "Amount of ETH to send",
+						Required: true,
+					},
+					&cli.Uint64Flag{
+						Name:  flagGasLimit,
+						Usage: "Set the gas limit (required if transferring to contract, otherwise ignored)",
+					},
+					swapdPortFlag,
+				},
+			},
+			{
+				Name:   "sweep-eth",
+				Usage:  "Sweep all ETH from the swap wallet to a non-contract address.",
+				Action: runSweepETH,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     flagTo,
+						Usage:    "Address to sweep the ETH to",
 						Required: true,
 					},
 					swapdPortFlag,
@@ -667,12 +674,12 @@ func runQueryAll(ctx *cli.Context) error {
 func runMake(ctx *cli.Context) error {
 	c := newClient(ctx)
 
-	min, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMinAmount)
+	min, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagMinAmount)
 	if err != nil {
 		return err
 	}
 
-	max, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagMaxAmount)
+	max, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagMaxAmount)
 	if err != nil {
 		return err
 	}
@@ -683,7 +690,7 @@ func runMake(ctx *cli.Context) error {
 		ethAsset = types.EthAsset(ethcommon.HexToAddress(ethAssetStr))
 	}
 
-	exchangeRateDec, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagExchangeRate)
+	exchangeRateDec, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagExchangeRate)
 	if err != nil {
 		return err
 	}
@@ -775,7 +782,7 @@ func runTake(ctx *cli.Context) error {
 		return errInvalidFlagValue(flagOfferID, err)
 	}
 
-	providesAmount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagProvidesAmount)
+	providesAmount, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagProvidesAmount)
 	if err != nil {
 		return err
 	}
@@ -1159,7 +1166,9 @@ func runGetSwapSecret(ctx *cli.Context) error {
 }
 
 func runTransferXMR(ctx *cli.Context) error {
-	env, err := common.NewEnv(ctx.String(flagEnv))
+	c := newClient(ctx)
+
+	env, err := queryEnv(c)
 	if err != nil {
 		return err
 	}
@@ -1169,12 +1178,11 @@ func runTransferXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	amount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagAmount)
+	amount, err := cliutil.ReadPositiveUnsignedDecimalFlag(ctx, flagAmount)
 	if err != nil {
 		return err
 	}
 
-	c := newClient(ctx)
 	req := &rpc.TransferXMRRequest{
 		To:     to,
 		Amount: amount,
@@ -1186,13 +1194,14 @@ func runTransferXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Transferred %s XMR to %s\n", amount, to)
-	fmt.Printf("Transaction ID: %s\n", resp.TxID)
+	fmt.Printf("Success, TX ID: %s\n", resp.TxID)
 	return nil
 }
 
 func runSweepXMR(ctx *cli.Context) error {
-	env, err := common.NewEnv(ctx.String(flagEnv))
+	c := newClient(ctx)
+
+	env, err := queryEnv(c)
 	if err != nil {
 		return err
 	}
@@ -1202,7 +1211,6 @@ func runSweepXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	c := newClient(ctx)
 	request := &rpctypes.BalancesRequest{}
 	balances, err := c.Balances(request)
 	if err != nil {
@@ -1219,37 +1227,67 @@ func runSweepXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Transferred %s XMR to %s\n", balances.PiconeroBalance.AsMoneroString(), to)
-	fmt.Printf("Transaction IDs: %s\n", resp.TxIDs)
+	fmt.Printf("Success, TX ID(s): %s\n", resp.TxIDs)
 	return nil
 }
 
 func runTransferETH(ctx *cli.Context) error {
-	ok := ethcommon.IsHexAddress(ctx.String(flagTo))
-	if !ok {
-		return fmt.Errorf("invalid address: %s", ctx.String(flagTo))
+	to, err := cliutil.ReadETHAddress(ctx, flagTo)
+	if err != nil {
+		return err
 	}
 
-	to := ethcommon.HexToAddress(ctx.String(flagTo))
 	amount, err := cliutil.ReadUnsignedDecimalFlag(ctx, flagAmount)
 	if err != nil {
 		return err
 	}
 
-	c := newClient(ctx)
-	req := &rpc.TransferETHRequest{
-		To:     to,
-		Amount: amount,
+	var gasLimit *uint64
+	if ctx.IsSet(flagGasLimit) {
+		gasLimit = new(uint64)
+		*gasLimit = ctx.Uint64(flagGasLimit)
 	}
 
-	fmt.Printf("Transferring %s ETH to %s\n", amount, to)
+	c := newClient(ctx)
+	req := &rpc.TransferETHRequest{
+		To:       to,
+		Amount:   amount,
+		GasLimit: gasLimit,
+	}
+
+	fmt.Printf("Transferring %s ETH to %s and waiting for confirmation\n", amount, to)
 	resp, err := c.TransferETH(req)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Transferred %s ETH to %s\n", amount, to)
-	fmt.Printf("Transaction ID: %s\n", resp.TxHash)
+	printSuccessWithETHTxHash(c, resp.TxHash)
+
+	return nil
+}
+
+func runSweepETH(ctx *cli.Context) error {
+	to, err := cliutil.ReadETHAddress(ctx, flagTo)
+	if err != nil {
+		return err
+	}
+
+	c := newClient(ctx)
+	request := &rpctypes.BalancesRequest{}
+	balances, err := c.Balances(request)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Sweeping %s ETH to %s and waiting block for confirmation\n", balances.WeiBalance.AsEtherString(), to)
+
+	resp, err := c.SweepETH(&rpc.SweepETHRequest{To: to})
+	if err != nil {
+		return err
+	}
+
+	printSuccessWithETHTxHash(c, resp.TxHash)
+
 	return nil
 }
 

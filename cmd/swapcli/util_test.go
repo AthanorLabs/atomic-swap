@@ -9,7 +9,7 @@ import (
 )
 
 func (s *swapCLITestSuite) Test_lookupToken() {
-	c := s.rpcEndpoint()
+	c := s.aliceClient()
 
 	// First call triggers a lookup (assuming not cached yet)
 	token1, err := lookupToken(c, s.mockDaiAddr())
@@ -30,7 +30,7 @@ func (s *swapCLITestSuite) Test_lookupToken() {
 }
 
 func (s *swapCLITestSuite) Test_ethAssetSymbol() {
-	c := s.rpcEndpoint()
+	c := s.aliceClient()
 	symbol, err := ethAssetSymbol(c, types.EthAssetETH)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), symbol, "ETH")
@@ -41,7 +41,7 @@ func (s *swapCLITestSuite) Test_ethAssetSymbol() {
 }
 
 func (s *swapCLITestSuite) Test_providedAndReceivedSymbols() {
-	c := s.rpcEndpoint()
+	c := s.bobClient()
 
 	// 2nd parameter says we are the maker
 	providedSym, receivedSym, err := providedAndReceivedSymbols(c, coins.ProvidesXMR, types.EthAssetETH)
@@ -58,7 +58,7 @@ func (s *swapCLITestSuite) Test_providedAndReceivedSymbols() {
 }
 
 func (s *swapCLITestSuite) Test_printOffer() {
-	c := s.rpcEndpoint()
+	c := s.aliceClient()
 
 	o := types.NewOffer(
 		coins.ProvidesXMR,

@@ -17,6 +17,7 @@ import (
 	"github.com/MarinX/monerorpc/wallet"
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -239,7 +240,8 @@ type ProtocolBackend interface {
 	ETHClient() extethclient.EthClient
 	TransferXMR(to *mcrypto.Address, amount *coins.PiconeroAmount) (string, error)
 	SweepXMR(to *mcrypto.Address) ([]string, error)
-	TransferETH(to ethcommon.Address, amount *coins.WeiAmount) (types.Hash, error)
+	TransferETH(to ethcommon.Address, amount *coins.WeiAmount, gasLimit *uint64) (*ethtypes.Receipt, error)
+	SweepETH(to ethcommon.Address) (*ethtypes.Receipt, error)
 }
 
 // XMRTaker ...
