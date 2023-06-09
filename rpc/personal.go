@@ -193,8 +193,7 @@ func (s *PersonalService) TransferETH(_ *http.Request, req *TransferETHRequest, 
 
 // SweepETHRequest is JSON-RPC request object for SweepETH
 type SweepETHRequest struct {
-	To       ethcommon.Address `json:"to" validate:"required"`
-	GasLimit *uint64           `json:"gasLimit,omitempty"`
+	To ethcommon.Address `json:"to" validate:"required"`
 }
 
 // SweepETHResponse is JSON-RPC response object for SweepETH
