@@ -14,9 +14,12 @@ fi
 
 compile-contract() {
 	local solidity_file_name="${1:?}"
-	local solidity_type_name="$(basename "${solidity_file_name%.sol}")" # strips leading path and extension
 	local go_type_name="${2:?}"
 	local go_file_name="${3:?}"
+
+	# strip leading path and extension from to get the solidity type name
+	local solidity_type_name
+	solidity_type_name="$(basename "${solidity_file_name%.sol}")"
 
 	echo "Generating go bindings for ${solidity_type_name}"
 
