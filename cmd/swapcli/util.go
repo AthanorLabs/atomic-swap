@@ -7,6 +7,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/rpcclient"
 )
@@ -123,4 +124,30 @@ func printOffer(c *rpcclient.Client, o *types.Offer, index int, indent string) e
 	fmt.Printf("%sTaker Min: %s %s\n", indent, minTake.Text('f'), receivedCoin)
 	fmt.Printf("%sTaker Max: %s %s\n", indent, maxTake.Text('f'), receivedCoin)
 	return nil
+}
+
+func queryEnv(c *rpcclient.Client) (common.Environment, error) {
+	verResp, err := c.Version()
+	if err != nil {
+		return common.Undefined, err
+	}
+	return verResp.Env, nil
+}
+
+func printSuccessWithETHTxHash(c *rpcclient.Client, txHash ethcommon.Hash) {
+	env, err := queryEnv(c)
+	if err != nil {
+		// Not ideal, but all it means is that we'll print the transaction
+		// ID without an etherscan URL.
+		fmt.Printf("error obtaining environment: %s\n", err)
+	}
+
+	switch env {
+	case common.Mainnet:
+		fmt.Printf("Success: https://etherscan.io/tx/%s\n", txHash)
+	case common.Stagenet:
+		fmt.Printf("Success: https://sepolia.etherscan.io/tx/%s\n", txHash)
+	default:
+		fmt.Printf("Success, TX Hash: %s\n", txHash)
+	}
 }

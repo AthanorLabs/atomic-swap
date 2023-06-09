@@ -173,20 +173,18 @@ func ReadPositiveUnsignedDecimalFlag(ctx *cli.Context, flagName string) (*apd.De
 }
 
 // ReadETHAddress reads a string flag and parses to an ethereum Address type
-func ReadETHAddress(ctx *cli.Context, flagName string) (*ethcommon.Address, error) {
+func ReadETHAddress(ctx *cli.Context, flagName string) (ethcommon.Address, error) {
 	s := ctx.String(flagName)
 	if s == "" {
-		return nil, fmt.Errorf("flag --%s cannot be empty", flagName)
+		return ethcommon.Address{}, fmt.Errorf("flag --%s cannot be empty", flagName)
 	}
 
 	ok := ethcommon.IsHexAddress(s)
 	if !ok {
-		return nil, fmt.Errorf("invalid ETH address: %q", s)
+		return ethcommon.Address{}, fmt.Errorf("invalid ETH address: %q", s)
 	}
 
-	to := ethcommon.HexToAddress(s)
-
-	return &to, nil
+	return ethcommon.HexToAddress(s), nil
 }
 
 // ExpandBootnodes expands the boot nodes passed on the command line that

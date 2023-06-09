@@ -1168,11 +1168,10 @@ func runGetSwapSecret(ctx *cli.Context) error {
 func runTransferXMR(ctx *cli.Context) error {
 	c := newClient(ctx)
 
-	verResp, err := c.Version()
+	env, err := queryEnv(c)
 	if err != nil {
 		return err
 	}
-	env := verResp.Env
 
 	to, err := mcrypto.NewAddress(ctx.String(flagTo), env)
 	if err != nil {
@@ -1195,19 +1194,17 @@ func runTransferXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Transferred %s XMR to %s\n", amount, to)
-	fmt.Printf("Transaction ID: %s\n", resp.TxID)
+	fmt.Printf("Success, TX ID: %s\n", resp.TxID)
 	return nil
 }
 
 func runSweepXMR(ctx *cli.Context) error {
 	c := newClient(ctx)
 
-	verResp, err := c.Version()
+	env, err := queryEnv(c)
 	if err != nil {
 		return err
 	}
-	env := verResp.Env
 
 	to, err := mcrypto.NewAddress(ctx.String(flagTo), env)
 	if err != nil {
@@ -1230,8 +1227,7 @@ func runSweepXMR(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Transferred %s XMR to %s\n", balances.PiconeroBalance.AsMoneroString(), to)
-	fmt.Printf("Transaction IDs: %s\n", resp.TxIDs)
+	fmt.Printf("Success, TX ID(s): %s\n", resp.TxIDs)
 	return nil
 }
 
@@ -1254,7 +1250,7 @@ func runTransferETH(ctx *cli.Context) error {
 
 	c := newClient(ctx)
 	req := &rpc.TransferETHRequest{
-		To:       *to,
+		To:       to,
 		Amount:   amount,
 		GasLimit: gasLimit,
 	}
@@ -1265,7 +1261,8 @@ func runTransferETH(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Success. Transaction ID: %s\n", resp.TxHash)
+	printSuccessWithETHTxHash(c, resp.TxHash)
+
 	return nil
 }
 
@@ -1284,12 +1281,13 @@ func runSweepETH(ctx *cli.Context) error {
 
 	fmt.Printf("Sweeping %s ETH to %s and waiting block for confirmation\n", balances.WeiBalance.AsEtherString(), to)
 
-	resp, err := c.SweepETH(&rpc.SweepETHRequest{To: *to})
+	resp, err := c.SweepETH(&rpc.SweepETHRequest{To: to})
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Sweep complete, transaction ID: %s\n", resp.TxHash)
+	printSuccessWithETHTxHash(c, resp.TxHash)
+
 	return nil
 }
 
