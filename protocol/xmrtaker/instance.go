@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/ChainSafe/chaindb"
+	"github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -271,8 +272,14 @@ func (inst *Instance) maybeCancelNewSwap(txHash ethcommon.Hash) (bool, error) {
 	// just double the gas price for now, this is higher than needed for a replacement tx though
 	gasPrice := new(big.Int).Mul(tx.GasPrice(), big.NewInt(2))
 	receipt, err := inst.backend.ETHClient().CancelTxWithNonce(inst.backend.Ctx(), tx.Nonce(), gasPrice)
-	if err != nil {
-		return false, fmt.Errorf("failed to cancel newSwap tx: %w", err)
+	if err != nil && !errors.Is(err, ethereum.NotFound) {
+		return false, fmt.Errorf("failed to get cancel transaction receipt: %w", err)
+	}
+
+	if errors.Is(err, ethereum.NotFound) {
+		// this is okay, it means newSwap was included instead, and we can refund it in the calling function
+		log.Infof("failed to cancel swap, attempting to refund")
+		return false, nil
 	}
 
 	log.Infof("cancelled newSwap tx %s successfully: %s", tx.Hash(), common.ReceiptInfo(receipt))
