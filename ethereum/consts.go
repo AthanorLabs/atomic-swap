@@ -16,6 +16,6 @@ const (
 
 // constants that are interesting to track, but not used by swaps
 const (
-	maxSwapCreatorDeployGas = 1200523
+	maxSwapCreatorDeployGas = 1200859
 	maxTestERC20DeployGas   = 932655 // using long token names or symbols will increase this
 )
