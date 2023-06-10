@@ -606,7 +606,7 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	nonce := contracts.GenerateNewSwapNonce()
 	receipt, err := s.lockAndWaitForReceipt(cmtXMRMaker, cmtXMRTaker, nonce)
 	if err != nil {
-		return nil, fmt.Errorf("failed to lock asset: %w", err)
+		return nil, err
 	}
 
 	log.Infof("instantiated swap on-chain: amount=%s asset=%s %s",
