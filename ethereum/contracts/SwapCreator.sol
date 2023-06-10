@@ -37,13 +37,20 @@ contract SwapCreator is Secp256k1 {
         // sign a RelaySwap object that `claimRelayer` will accept the signature
         // for.
         address payable claimer;
-        // pubKeyClaim is the keccak256 hash of the expected public key derived
-        // from the secret `s_b`. This public key is a point on the secp256k1
-        // curve.
+        // pubKeyClaim is the Keccak-256 hash of the expected public key derived
+        // from the secret that Bob sends when claiming. This public key is a
+        // point on the secp256k1 curve. Bob gives Alice this public key hash
+        // and proves that he already knows the secret associated with it, and
+        // that the secret also forms a valid point on the ed25519 curve,
+        // off-chain before Alice initiates the swap on-chain.
         bytes32 pubKeyClaim;
-        // pubKeyRefund is the keccak256 hash of the expected public key derived
-        // from the secret `s_a`. this public key is a point on the secp256k1
-        // curve.
+        // pubKeyRefund is the Keccak-256 hash of the expected public key
+        // derived from the secret Alice sends if refunding. In successful
+        // swaps, Alice never reveals the secret. This public key is a point on
+        // the secp256k1 curve. Alice proves to Bob that she already knows the
+        // secret associated with this public key, and that the secret also
+        // forms a valid point on the ed25519 curve, off-chain before starting
+        // the swap on-chain.
         bytes32 pubKeyRefund;
         // timeout1 is the block timestamp before which Alice can call
         // either `setReady` or `refund`.
@@ -54,9 +61,9 @@ contract SwapCreator is Secp256k1 {
         // asset is address(0) for ETH swaps, or an ERC-20 address if Alice is
         // providing tokens for XMR.
         address asset;
-        // value is a wei amount that Alice locked in the contract, if asset is
-        // the zero address, otherwise it a unit amount for the token that Alice
-        // locked.
+        // value is a wei amount that Alice locked in the contract if the asset
+        // field is address(0), otherwise it is a unit amount for the token that
+        // Alice locked.
         uint256 value;
         // nonce is a random value chosen by Alice
         uint256 nonce;
@@ -64,7 +71,7 @@ contract SwapCreator is Secp256k1 {
 
     // RelaySwap contains additional information required for relayed claim
     // transactions. This entire structure is encoded and signed by the swap
-    // claimer, and the signature is passed to the `claimRelayer` function.
+    // claimer, and the signature is passed to `claimRelayer`.
     struct RelaySwap {
         // the swap that is being claimed
         Swap swap;
