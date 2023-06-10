@@ -5,13 +5,18 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Secp256k1} from "./Secp256k1.sol";
 
+// SwapCreator facilitates swapping between Alice, a party that has ETH or an
+// ERC-20 token that she wants to exchange cross-chain for Monero (XMR), and
+// Bob, a party that has XMR and wishes to exchange it for Alice's ETH or token.
 contract SwapCreator is Secp256k1 {
     using SafeERC20 for IERC20;
 
-    // Swap state is PENDING when the swap is first created and funded
-    // Alice sets Stage to READY when she sees the funds locked on the other chain.
-    // this prevents Bob from withdrawing funds without locking funds on the other chain first
-    // Stage is set to COMPLETED upon the swap value being claimed or refunded.
+    // The swap Stage is PENDING when `newSwap` is called to create and fund the
+    // swap. Alice sets Stage to READY, via `setReady`, after verifying that
+    // funds are locked on the other chain. Bob cannot claim the swap funds
+    // until Alice sets the swap Stage to READY. The Stage is set to COMPLETED
+    // when Bob claims directly via `claim` or indirectly via `claimRelayer`, or
+    // by Alice calling `refund`.
     enum Stage {
         INVALID,
         PENDING,
@@ -19,45 +24,57 @@ contract SwapCreator is Secp256k1 {
         COMPLETED
     }
 
+    // swaps maps from a swap ID to the swap's current Stage
+    mapping(bytes32 => Stage) public swaps;
+
+    // Swap stores the initial swap configuration, the hash of which forms the
+    // swap ID.
     struct Swap {
-        // the swap initiator, Alice
-        // address allowed to refund the ether for this swap
+        // owner is the address of Alice, who initiates the swap by calling
+        // `newSwap`. Only the owner is allowed to call `setReady` or `refund`.
         address payable owner;
-        // address allowed to claim the ether for this swap, Bob
+        // claimer is the address of Bob. Only the claimer can call `claim` or
+        // sign a RelaySwap object that `claimRelayer` will accept the signature
+        // for.
         address payable claimer;
-        // the keccak256 hash of the expected public key derived from the secret `s_b`.
-        // this public key is a point on the secp256k1 curve
+        // pubKeyClaim is the keccak256 hash of the expected public key derived
+        // from the secret `s_b`. This public key is a point on the secp256k1
+        // curve.
         bytes32 pubKeyClaim;
-        // the keccak256 hash of the expected public key derived from the secret `s_a`.
-        // this public key is a point on the secp256k1 curve
+        // pubKeyRefund is the keccak256 hash of the expected public key derived
+        // from the secret `s_a`. this public key is a point on the secp256k1
+        // curve.
         bytes32 pubKeyRefund;
-        // timestamp before which Alice can call either `setReady` or `refund`
+        // timeout1 is the block timestamp before which Alice can call
+        // either `setReady` or `refund`.
         uint256 timeout1;
-        // timestamp after which Bob cannot claim, only Alice can refund
+        // timeout2 is the block timestamp after which Bob cannot claim, and
+        // after which Alice can refund if Bob did not claim.
         uint256 timeout2;
-        // the asset being swapped: equal to address(0) for ETH, or an ERC-20 token address
+        // asset is address(0) for ETH swaps, or an ERC-20 address if Alice is
+        // providing tokens for XMR.
         address asset;
-        // the value of this swap
+        // value is a wei amount that Alice locked in the contract, if asset is
+        // the zero address, otherwise it a unit amount for the token that Alice
+        // locked.
         uint256 value;
-        // choose random
+        // nonce is a random value chosen by Alice
         uint256 nonce;
     }
 
-    // RelaySwap contains additional information required for relayed transactions.
-    // This entire structure is encoded and signed by the swap claimer, and the signature is
-    // passed to the `claimRelayer` function.
+    // RelaySwap contains additional information required for relayed claim
+    // transactions. This entire structure is encoded and signed by the swap
+    // claimer, and the signature is passed to the `claimRelayer` function.
     struct RelaySwap {
-        // the swap the transaction is for
+        // the swap that is being claimed
         Swap swap;
         // the fee, in wei, paid to the relayer
         uint256 fee;
         // hash of (relayer's payout address || 4-byte salt)
         bytes32 relayerHash;
-        // address of the swap contract this transaction is meant for
+        // address of the swap contract that the swap is on
         address swapCreator;
     }
-
-    mapping(bytes32 => Stage) public swaps;
 
     event New(
         bytes32 swapID,
@@ -72,65 +89,82 @@ contract SwapCreator is Secp256k1 {
     event Claimed(bytes32 indexed swapID, bytes32 indexed s);
     event Refunded(bytes32 indexed swapID, bytes32 indexed s);
 
-    // returned when trying to initiate a swap with a zero value
+    // thrown when the value parameter to `newSwap` is zero
     error ZeroValue();
 
-    // returned when the pubKeyClaim or pubKeyRefund parameters for `newSwap` are zero
+    // thrown when either of the pubKeyClaim or pubKeyRefund parameters passed
+    // to `newSwap` are zero
     error InvalidSwapKey();
 
-    // returned when the claimer parameter for `newSwap` is the zero address
+    // thrown when the claimer parameter for `newSwap` is the zero address
     error InvalidClaimer();
 
-    // returned when the timeout1 or timeout2 parameters for `newSwap` are zero
+    // thrown when the timeout1 or timeout2 parameters for `newSwap` are zero
     error InvalidTimeout();
 
-    // returned when the ether sent with a `newSwap` transaction does not match the value parameter
+    // thrown when the ether sent with a `newSwap` transaction does not match
+    // the value parameter
     error InvalidValue();
 
-    // returned when trying to initiate a swap with an ID that already exists
+    // thrown when trying to initiate a swap with an ID that already exists
     error SwapAlreadyExists();
 
-    // returned when trying to call `setReady` on a swap that is not in the PENDING stage
+    // thrown when trying to call `setReady` on a swap that is not in the
+    // PENDING stage
     error SwapNotPending();
 
-    // returned when the caller of `setReady` or `refund` is not the swap owner
+    // thrown when the caller of `setReady` or `refund` is not the swap owner
     error OnlySwapOwner();
 
-    // returned when the signer of the relayed transaction is not the swap's claimer
+    // thrown when the signer of the relayed transaction is not the swap's
+    // claimer
     error OnlySwapClaimer();
 
-    // returned when trying to call `claim` or `refund` on an invalid swap
+    // thrown when trying to call `claim` or `refund` on an invalid swap
     error InvalidSwap();
 
-    // returned when trying to call `claim` or `refund` on a swap that's already completed
+    // thrown when trying to call `claim` or `refund` on a swap that's already
+    // completed
     error SwapCompleted();
 
-    // returned when trying to call `claim` on a swap that's not set to ready or the first timeout has not been reached
+    // thrown when trying to call `claim` on a swap that's not set to ready or
+    // the first timeout has not been reached
     error TooEarlyToClaim();
 
-    // returned when trying to call `claim` on a swap where the second timeout has been reached
+    // thrown when trying to call `claim` on a swap where the second timeout has been reached
     error TooLateToClaim();
 
-    // returned when it's the counterparty's turn to claim and refunding is not allowed
+    // thrown when it's the counterparty's turn to claim and refunding is not allowed
     error NotTimeToRefund();
 
-    // returned when the provided secret does not match the expected public key
+    // thrown when the provided secret does not match the expected public key
     error InvalidSecret();
 
-    // returned when the signature of a `RelaySwap` is invalid
+    // thrown when the signature of a `RelaySwap` is invalid
     error InvalidSignature();
 
-    // returned when the SwapCreator address is a `RelaySwap` is not the addres of this contract
+    // thrown when the SwapCreator address is a `RelaySwap` is not the address
+    // of this contract
     error InvalidContractAddress();
 
-    // returned when the hash of the relayer address and salt passed to `claimRelayer`
-    // does not match the relayer hash in `RelaySwap`
+    // thrown when the hash of the relayer address and salt passed to
+    // `claimRelayer` does not match the relayer hash in `RelaySwap`
     error InvalidRelayerAddress();
 
-    // newSwap creates a new Swap instance with the given parameters.
-    // it returns the swap's ID.
-    // _timeoutDuration0: duration between the current timestamp and timeout1
-    // _timeoutDuration1: duration between timeout1 and timeout2
+    // `newSwap` creates a new Swap instance using the passed parameters and
+    // locks Alice's ETH or ERC-20 asset in the contract. On success, the swap
+    // ID is returned.
+    //
+    // Note that the 2 values below are used to calculate the swap's timeouts
+    // and don't represent the swap's timeouts directly:
+    //
+    //   _timeoutDuration1:
+    //      duration, in seconds, between the current block timestamp and
+    //      timeout1
+    //
+    //   _timeoutDuration2:
+    //      duration, in seconds, between timeout1 and timeout2
+    //
     function newSwap(
         bytes32 _pubKeyClaim,
         bytes32 _pubKeyRefund,
@@ -168,7 +202,7 @@ contract SwapCreator is Secp256k1 {
 
         bytes32 swapID = keccak256(abi.encode(swap));
 
-        // make sure this isn't overriding an existing swap
+        // ensure that we are not overriding an existing swap
         if (swaps[swapID] != Stage.INVALID) revert SwapAlreadyExists();
 
         emit New(
@@ -184,7 +218,8 @@ contract SwapCreator is Secp256k1 {
         return swapID;
     }
 
-    // Alice should call setReady() before timeout1 once she verifies the XMR has been locked
+    // Alice should call `setReady` before timeout1 and after verifying that Bob
+    // locked his XMR.
     function setReady(Swap memory _swap) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         if (swaps[swapID] != Stage.PENDING) revert SwapNotPending();
@@ -193,14 +228,15 @@ contract SwapCreator is Secp256k1 {
         emit Ready(swapID);
     }
 
-    // Bob can call claim if either of these hold true:
+    // Bob can call `claim` if either of these hold true:
     // (1) Alice has set the swap to `ready` and it's before timeout1
-    // (2) It is between timeout0 and timeout1
+    // (2) It is between timeout1 and timeout2
     function claim(Swap memory _swap, bytes32 _secret) public {
         if (msg.sender != _swap.claimer) revert OnlySwapClaimer();
         _claim(_swap, _secret);
 
-        // send ether to swap claimer
+        // Send ETH to swap claimer if token asset address is zero, otherwise
+        // send the ERC-20 token amount.
         if (_swap.asset == address(0)) {
             _swap.claimer.transfer(_swap.value);
         } else {
@@ -211,8 +247,8 @@ contract SwapCreator is Secp256k1 {
         }
     }
 
-    // Anyone can call claimRelayer if they receive a signed _relaySwap object
-    // from Bob. The same rules for when Bob can call claim() apply here when a
+    // Anyone can call `claimRelayer` if they receive a signed _relaySwap object
+    // from Bob. The same rules for when Bob can call `claim` apply here when a
     // 3rd party relays a claim for Bob. This version of claiming transfers a
     // _relaySwap.fee to _relayer. To prevent front-running, while not requiring
     // Bob to know the relayer's payout address, Bob only signs a salted hash of
@@ -265,9 +301,9 @@ contract SwapCreator is Secp256k1 {
         swaps[swapID] = Stage.COMPLETED;
     }
 
-    // Alice can claim a refund:
-    // - Until timeout1 unless she calls setReady
-    // - After timeout2
+    // Alice can `refund` her locked ethereum asset:
+    // - Until timeout1, unless she called `setReady`
+    // - After timeout2, independent of whether she called `setReady`
     function refund(Swap memory _swap, bytes32 _secret) public {
         bytes32 swapID = keccak256(abi.encode(_swap));
         Stage swapStage = swaps[swapID];
@@ -287,7 +323,7 @@ contract SwapCreator is Secp256k1 {
         if (_swap.asset == address(0)) {
             _swap.owner.transfer(_swap.value);
         } else {
-            IERC20(_swap.asset).transfer(_swap.owner, _swap.value);
+            IERC20(_swap.asset).safeTransfer(_swap.owner, _swap.value);
         }
     }
 
