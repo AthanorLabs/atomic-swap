@@ -111,8 +111,8 @@ func (s *ExternalSender) approve(
 
 // NewSwap prompts the external sender to sign a new_swap transaction
 func (s *ExternalSender) NewSwap(
-	pubKeyClaim [32]byte,
-	pubKeyRefund [32]byte,
+	claimCommitment [32]byte,
+	refundCommitment [32]byte,
 	claimer ethcommon.Address,
 	timeoutDuration *big.Int,
 	nonce *big.Int,
@@ -124,7 +124,7 @@ func (s *ExternalSender) NewSwap(
 		return nil, errors.New("external sender does not support ERC20 token swaps")
 	}
 
-	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
+	input, err := s.abi.Pack("new_swap", claimCommitment, refundCommitment, claimer, timeoutDuration,
 		amount.TokenAddress(), amount.BigInt(), nonce)
 	if err != nil {
 		return nil, err

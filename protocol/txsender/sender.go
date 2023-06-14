@@ -36,8 +36,8 @@ type Sender interface {
 	SetSwapCreator(*contracts.SwapCreator)
 	SetSwapCreatorAddr(ethcommon.Address)
 	NewSwap(
-		pubKeyClaim [32]byte,
-		pubKeyRefund [32]byte,
+		claimCommitment [32]byte,
+		refundCommitment [32]byte,
 		claimer ethcommon.Address,
 		timeoutDuration *big.Int,
 		nonce *big.Int,
@@ -81,8 +81,8 @@ func (s *privateKeySender) SetSwapCreator(contract *contracts.SwapCreator) {
 func (s *privateKeySender) SetSwapCreatorAddr(_ ethcommon.Address) {}
 
 func (s *privateKeySender) NewSwap(
-	pubKeyClaim [32]byte,
-	pubKeyRefund [32]byte,
+	claimCommitment [32]byte,
+	refundCommitment [32]byte,
 	claimer ethcommon.Address,
 	timeoutDuration *big.Int,
 	nonce *big.Int,
@@ -114,7 +114,7 @@ func (s *privateKeySender) NewSwap(
 		txOpts.Value = value
 	}
 
-	tx, err := s.swapCreator.NewSwap(txOpts, pubKeyClaim, pubKeyRefund, claimer, timeoutDuration, timeoutDuration,
+	tx, err := s.swapCreator.NewSwap(txOpts, claimCommitment, refundCommitment, claimer, timeoutDuration, timeoutDuration,
 		amount.TokenAddress(), value, nonce)
 	if err != nil {
 		err = fmt.Errorf("new_swap tx creation failed, %w", err)
@@ -130,7 +130,7 @@ func (s *privateKeySender) NewSwap(
 		return nil, fmt.Errorf("NewSwap tx %s failed waiting for receipt, %w", tx.Hash(), err)
 	}
 
-	log.Infof("NewSwap TX succeeded, %s", common.ReceiptInfo(receipt))
+	log.Infof("newSwap TX succeeded, %s", common.ReceiptInfo(receipt))
 
 	return receipt, nil
 }

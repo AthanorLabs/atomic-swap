@@ -84,7 +84,7 @@ func (h *Host) receiveInitiateResponse(stream libp2pnetwork.Stream, s SwapState)
 
 		err := s.HandleProtocolMessage(msg)
 		if err != nil {
-			log.Errorf("failed to handle protocol message: err=%s", err)
+			log.Errorf("failed to handle protocol message: %s", err)
 			return
 		}
 	case <-time.After(initiateResponseTimeout):

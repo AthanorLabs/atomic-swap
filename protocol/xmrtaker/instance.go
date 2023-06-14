@@ -195,15 +195,15 @@ func (inst *Instance) refundOrCancelNewSwap(s *swap.Info, txHash ethcommon.Hash)
 	}
 
 	swap := contracts.SwapCreatorSwap{
-		Owner:        params.owner,
-		Claimer:      params.claimer,
-		PubKeyClaim:  params.cmtXMRMaker,
-		PubKeyRefund: params.cmtXMRTaker,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        params.asset,
-		Value:        params.value,
-		Nonce:        params.nonce,
+		Owner:            params.owner,
+		Claimer:          params.claimer,
+		ClaimCommitment:  params.cmtXMRMaker,
+		RefundCommitment: params.cmtXMRTaker,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            params.asset,
+		Value:            params.value,
+		Nonce:            params.nonce,
 	}
 
 	// our secret value
@@ -464,8 +464,8 @@ func getNewSwapParametersFromTx(
 	}
 
 	claimer := newSwapInputs["_claimer"].(ethcommon.Address)
-	cmtXMRMaker := newSwapInputs["_pubKeyClaim"].([32]byte)
-	cmtXMRTaker := newSwapInputs["_pubKeyRefund"].([32]byte)
+	cmtXMRMaker := newSwapInputs["_claimCommitment"].([32]byte)
+	cmtXMRTaker := newSwapInputs["_refundCommitment"].([32]byte)
 	asset := newSwapInputs["_asset"].(ethcommon.Address)
 	value := newSwapInputs["_value"].(*big.Int)
 	nonce := newSwapInputs["_nonce"].(*big.Int)

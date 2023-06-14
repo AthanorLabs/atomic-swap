@@ -642,15 +642,15 @@ func (s *swapState) lockAsset() (*ethtypes.Receipt, error) {
 	s.setTimeouts(t1, t2)
 
 	s.contractSwap = &contracts.SwapCreatorSwap{
-		Owner:        s.ETHClient().Address(),
-		Claimer:      s.xmrmakerAddress,
-		PubKeyClaim:  cmtXMRMaker,
-		PubKeyRefund: cmtXMRTaker,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        ethcommon.Address(s.info.EthAsset),
-		Value:        s.providedAmount.BigInt(),
-		Nonce:        nonce,
+		Owner:            s.ETHClient().Address(),
+		Claimer:          s.xmrmakerAddress,
+		ClaimCommitment:  cmtXMRMaker,
+		RefundCommitment: cmtXMRTaker,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            ethcommon.Address(s.info.EthAsset),
+		Value:            s.providedAmount.BigInt(),
+		Nonce:            nonce,
 	}
 
 	ethInfo := &db.EthereumSwapInfo{

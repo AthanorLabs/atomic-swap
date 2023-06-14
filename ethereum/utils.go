@@ -120,8 +120,8 @@ func (s *SwapCreatorRelaySwap) Hash() types.Hash {
 	args, err := arguments.Pack(
 		s.Swap.Owner,
 		s.Swap.Claimer,
-		s.Swap.PubKeyClaim,
-		s.Swap.PubKeyRefund,
+		s.Swap.ClaimCommitment,
+		s.Swap.RefundCommitment,
 		s.Swap.Timeout1,
 		s.Swap.Timeout2,
 		s.Swap.Asset,
@@ -192,8 +192,8 @@ func (sfs *SwapCreatorSwap) SwapID() types.Hash {
 	args, err := arguments.Pack(
 		sfs.Owner,
 		sfs.Claimer,
-		sfs.PubKeyClaim,
-		sfs.PubKeyRefund,
+		sfs.ClaimCommitment,
+		sfs.RefundCommitment,
 		sfs.Timeout1,
 		sfs.Timeout2,
 		sfs.Asset,

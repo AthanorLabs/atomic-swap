@@ -56,15 +56,15 @@ func TestValidateRelayerFee(t *testing.T) {
 
 	for _, tc := range testCases {
 		swap := contracts.SwapCreatorSwap{
-			Owner:        ethcommon.Address{},
-			Claimer:      ethcommon.Address{},
-			PubKeyClaim:  [32]byte{},
-			PubKeyRefund: [32]byte{},
-			Timeout1:     new(big.Int),
-			Timeout2:     new(big.Int),
-			Asset:        ethcommon.Address{},
-			Value:        tc.value,
-			Nonce:        new(big.Int),
+			Owner:            ethcommon.Address{},
+			Claimer:          ethcommon.Address{},
+			ClaimCommitment:  [32]byte{},
+			RefundCommitment: [32]byte{},
+			Timeout1:         new(big.Int),
+			Timeout2:         new(big.Int),
+			Asset:            ethcommon.Address{},
+			Value:            tc.value,
+			Nonce:            new(big.Int),
 		}
 
 		request := &message.RelayClaimRequest{
