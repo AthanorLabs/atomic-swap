@@ -11,7 +11,7 @@ SWAPD_ENV="${SWAPD_ENV:-"mainnet"}"
 CONTAINER_NAME="${CONTAINER_NAME:-"bootnode-${SWAPD_ENV}"}"
 IMAGE_NAME="atomic-bootnode"
 VERSION="$(git describe --abbrev=0 --tags)" # image tag
-DATA_MOUNT_DIR="${HOME}/.atomicswap/bootnode/docker"
+DATA_MOUNT_DIR="${HOME}/.atomicswap/docker"
 
 env_args=()
 

@@ -15,8 +15,15 @@ if [[ "${cmd}" == 'bootnode' ]]; then
 		exit 1
 	fi
 
-	# ensure the volume files are owned by the atomic user
-	chown -R atomic.atomic "/data"
+	data_dir="/data/bootnode"
+
+	# create the directory if it does not exist
+	if [[ ! -d "${data_dir}" ]]; then
+		mkdir --mode=700 "${data_dir}"
+	fi
+
+	# ensure the files are owned by the atomic user
+	chown -R atomic.atomic "${data_dir}"
 fi
 
 # Run bootnode and swapcli commands as the atomic user for reduced
