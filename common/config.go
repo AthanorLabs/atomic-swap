@@ -133,7 +133,7 @@ func BootnodeConfig() *Config {
 		EthEndpoint:     "",
 		MoneroNodes:     nil,
 		SwapCreatorAddr: ethcommon.Address{},
-		Bootnodes:       nil,
+		Bootnodes:       publicBootnodes,
 	}
 }
 
