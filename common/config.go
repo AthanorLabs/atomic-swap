@@ -4,7 +4,6 @@
 package common
 
 import (
-	"math/big"
 	"os"
 	"path"
 	"time"
@@ -25,6 +24,25 @@ const (
 
 var homeDir, _ = os.UserHomeDir()
 var baseDir = path.Join(homeDir, ".atomicswap")
+
+// publicBootnodes are bootnodes with public IP addresses and they used in every
+// environment other than development
+var publicBootnodes = []string{
+	"/ip4/109.105.198.218/tcp/9909/p2p/12D3KooWRbAV4AU75JXVUedmwakiM1yzzDzDCdmZWzGdXGQ4Yqdv",
+	"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWHZ2G9XscjDGvG7p8uPBoYerDc9kWYnc8oJFGfFxS6gfq",
+	//"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWGzExs5zqebnDvqkUAKaiUuxF3DNbrfJ4prbfkxjXb366",
+	"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
+	"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
+	"/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz",
+	"/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu",
+	"/ip4/185.130.46.66/tcp/9909/p2p/12D3KooWDKf2FJG1AWTJthbs7fcCcsQa26f4pmCR25cktRg2X2aY",
+	"/ip4/31.220.60.19/tcp/9909/p2p/12D3KooWLksqqtzwA4Epg5eCxA2EaJ3Q34RW554HSqUDp2bgromP",
+	//"/ip4/67.205.131.11/tcp/9900/p2p/12D3KooWJxA1tPLugao43gPvE4rCcgG7xwQ4dhbLCUQehAiohJk2",
+	"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
+	//"/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLidMFT3WJaBK7cEzmpDEcuRcNTux89SVrZmEiGLhTWoe",
+	"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
+	"/ip4/93.95.228.200/tcp/9909/p2p/12D3KooWJParpZ1zHDspoV4kogkBsHKrGxMeq3UGFxQUm6TZPojn",
+}
 
 // MoneroNode represents the host and port of monerod's RPC endpoint
 type MoneroNode struct {
@@ -67,15 +85,7 @@ func MainnetConfig() *Config {
 			},
 		},
 		SwapCreatorAddr: ethcommon.HexToAddress("0xa55aa5557ec22e85804729bc6935029bb84cf16a"),
-		Bootnodes: []string{
-			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
-			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
-			"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWED1Y5nfno34Qhz2Xj9ubmwi4hv2qd676pH6Jb7ui36CR",
-			"/ip4/109.105.198.218/tcp/9909/p2p/12D3KooWRbAV4AU75JXVUedmwakiM1yzzDzDCdmZWzGdXGQ4Yqdv",
-			"/ip4/185.130.46.66/tcp/9909/p2p/12D3KooWDKf2FJG1AWTJthbs7fcCcsQa26f4pmCR25cktRg2X2aY",
-			"/ip4/93.95.228.200/tcp/9909/p2p/12D3KooWJParpZ1zHDspoV4kogkBsHKrGxMeq3UGFxQUm6TZPojn",
-			"/ip4/31.220.60.19/tcp/9909/p2p/12D3KooWLksqqtzwA4Epg5eCxA2EaJ3Q34RW554HSqUDp2bgromP",
-		},
+		Bootnodes:       publicBootnodes,
 	}
 }
 
@@ -100,15 +110,7 @@ func StagenetConfig() *Config {
 			},
 		},
 		SwapCreatorAddr: ethcommon.HexToAddress("0xbf2B7a6dCE5598Cf002B3507a8D62cf2C35cE5c6"),
-		Bootnodes: []string{
-			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWHZ2G9XscjDGvG7p8uPBoYerDc9kWYnc8oJFGfFxS6gfq",
-			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWGzExs5zqebnDvqkUAKaiUuxF3DNbrfJ4prbfkxjXb366",
-			"/ip4/67.207.89.83/tcp/9900/p2p/12D3KooWLidMFT3WJaBK7cEzmpDEcuRcNTux89SVrZmEiGLhTWoe",
-			"/ip4/67.205.131.11/tcp/9900/p2p/12D3KooWJxA1tPLugao43gPvE4rCcgG7xwQ4dhbLCUQehAiohJk2",
-			"/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz",
-			"/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu",
-			"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
-		},
+		Bootnodes:       publicBootnodes,
 	}
 }
 
@@ -124,6 +126,18 @@ func DevelopmentConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
+	}
+}
+
+// BootnodeConfig is environment for bootnodes, which act across multiple environments
+func BootnodeConfig() *Config {
+	return &Config{
+		Env:             Bootnode,
+		DataDir:         path.Join(baseDir, "bootnode"),
+		EthEndpoint:     "",
+		MoneroNodes:     nil,
+		SwapCreatorAddr: ethcommon.Address{},
+		Bootnodes:       nil,
 	}
 }
 
@@ -154,6 +168,8 @@ func ConfigDefaultsForEnv(env Environment) *Config {
 		return StagenetConfig()
 	case Development:
 		return DevelopmentConfig()
+	case Bootnode:
+		return BootnodeConfig()
 	default:
 		panic("invalid environment")
 	}
@@ -186,16 +202,19 @@ func DefaultMoneroPortFromEnv(env Environment) uint {
 	}
 }
 
-// ChainIDFromEnv returns the expected chainID that we should find on the
+// ChainNameFromEnv returns the expected chainID that we should find on the
 // ethereum endpoint when running int the passed environment.
-func ChainIDFromEnv(env Environment) *big.Int {
+func ChainNameFromEnv(env Environment) string {
 	switch env {
 	case Development:
-		return big.NewInt(GanacheChainID)
+		return "Ganache"
 	case Stagenet:
-		return big.NewInt(SepoliaChainID)
+		return "Sepolia"
 	case Mainnet:
-		return big.NewInt(MainnetChainID)
+		return "Mainnet"
+	case Bootnode:
+		// bootnodes work across chains, so they get their own name
+		return "Bootnode"
 	default:
 		panic("invalid environment")
 	}

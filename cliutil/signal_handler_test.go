@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 func TestDaemon_signalHandler(_ *testing.T) {

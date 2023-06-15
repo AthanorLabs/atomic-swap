@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"sync"
 	"syscall"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/coins"
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/ethereum/extethclient"
@@ -421,7 +421,6 @@ func TestRunSwapDaemon_CharlieIsBroke_AliceRelays(t *testing.T) {
 // Tests the version and shutdown RPC methods
 func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 	conf := CreateTestConf(t, tests.GetMakerTestKey(t))
-	protocolVersion := fmt.Sprintf("%s/%d", net.ProtocolID, conf.EthereumClient.ChainID())
 	timeout := time.Minute
 	ctx, _ := LaunchDaemons(t, timeout, conf)
 
@@ -432,7 +431,7 @@ func TestRunSwapDaemon_RPC_Version(t *testing.T) {
 	require.Equal(t, conf.EnvConf.Env, versionResp.Env)
 	require.NotEmpty(t, versionResp.SwapdVersion)
 	require.Equal(t, conf.EnvConf.SwapCreatorAddr, *versionResp.SwapCreatorAddr)
-	require.Equal(t, protocolVersion, versionResp.P2PVersion)
+	require.Equal(t, net.ChainProtocolID(common.Development), versionResp.P2PVersion)
 }
 
 // Tests the shutdown RPC method

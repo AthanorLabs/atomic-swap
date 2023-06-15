@@ -8,12 +8,13 @@ package net
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
 	p2pnet "github.com/athanorlabs/go-p2p-net"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -26,9 +27,14 @@ import (
 )
 
 const (
-	// ProtocolID is the base atomic swap network protocol ID prefix. The full ID
-	// includes the chain ID at the end.
-	ProtocolID          = "/atomic-swap/0.3"
+	baseProtocolID = "/atomic-swap"
+
+	// p2pAPIVersion needs to be incremented every time:
+	// * fields that the p2p APIs exchange, like offers, change in a breaking way
+	// * changes to the API itself, like adding/removing methods
+	// * the swapCreator contract changes
+	p2pAPIVersion = 2
+
 	maxMessageSize      = 1 << 17
 	maxRelayMessageSize = 2048
 	connectionTimeout   = time.Second * 5
@@ -75,22 +81,30 @@ type Host struct {
 
 // Config holds the initialization parameters for the NewHost constructor.
 type Config struct {
-	Ctx            context.Context
-	DataDir        string
-	Port           uint16
-	KeyFile        string
-	Bootnodes      []string
-	ProtocolID     string
-	ListenIP       string
-	IsRelayer      bool
-	IsBootnodeOnly bool
+	Ctx       context.Context
+	Env       common.Environment
+	DataDir   string
+	Port      uint16
+	KeyFile   string
+	Bootnodes []string
+	ListenIP  string
+	IsRelayer bool
+}
+
+// ChainProtocolID returns the chain versioned p2p protocol ID that includes the
+// Ethereum chain name being used. The streams that communicate between peers
+// use this prefix. All provided values advertised in the DHT also use this
+// prefix.
+func ChainProtocolID(env common.Environment) string {
+	return fmt.Sprintf("%s/%s/%d", baseProtocolID, common.ChainNameFromEnv(env), p2pAPIVersion)
 }
 
 // NewHost returns a new Host.
 // The host implemented in this package is swap-specific; ie. it supports swap-specific
 // messages (initiate and query).
 func NewHost(cfg *Config) (*Host, error) {
-	if cfg.IsBootnodeOnly && cfg.IsRelayer {
+	isBootnode := cfg.Env == common.Bootnode
+	if isBootnode && cfg.IsRelayer {
 		return nil, errBootnodeCannotRelay
 	}
 
@@ -98,7 +112,7 @@ func NewHost(cfg *Config) (*Host, error) {
 		ctx:        cfg.Ctx,
 		h:          nil, // set below
 		isRelayer:  cfg.IsRelayer,
-		isBootnode: cfg.IsBootnodeOnly,
+		isBootnode: isBootnode,
 		swaps:      make(map[types.Hash]*swap),
 	}
 
@@ -109,7 +123,7 @@ func NewHost(cfg *Config) (*Host, error) {
 		Port:                     cfg.Port,
 		KeyFile:                  cfg.KeyFile,
 		Bootnodes:                cfg.Bootnodes,
-		ProtocolID:               cfg.ProtocolID,
+		ProtocolID:               ChainProtocolID(cfg.Env),
 		ListenIP:                 cfg.ListenIP,
 		AdvertisedNamespacesFunc: h.advertisedNamespaces,
 	})
@@ -117,7 +131,6 @@ func NewHost(cfg *Config) (*Host, error) {
 		return nil, err
 	}
 
-	log.Debugf("using base protocol %s", cfg.ProtocolID)
 	return h, nil
 }
 

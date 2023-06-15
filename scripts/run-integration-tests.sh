@@ -43,7 +43,7 @@ CHARLIE_RPC_PORT=5002
 start-bootnode() {
 	local flags=(
 		"--rpc-port=${BOOTNODE_RPC_PORT}"
-		--env=dev
+		"--libp2p-ip=127.0.0.1"
 		"--log-level=${LOG_LEVEL}"
 	)
 	local log_file="${SWAP_TEST_DATA_DIR}/bootnode.log"

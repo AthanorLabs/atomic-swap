@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
+	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 )
@@ -96,14 +97,14 @@ func basicTestConfig(t *testing.T) *Config {
 	})
 
 	return &Config{
-		Ctx:        ctx,
-		DataDir:    tmpDir,
-		Port:       0, // OS randomized libp2p port
-		KeyFile:    path.Join(tmpDir, "node.key"),
-		Bootnodes:  nil,
-		ProtocolID: "/testid",
-		ListenIP:   "127.0.0.1",
-		IsRelayer:  false,
+		Ctx:       ctx,
+		Env:       common.Development,
+		DataDir:   tmpDir,
+		Port:      0, // OS randomized libp2p port
+		KeyFile:   path.Join(tmpDir, "node.key"),
+		Bootnodes: nil,
+		ListenIP:  "127.0.0.1",
+		IsRelayer: false,
 	}
 }
 

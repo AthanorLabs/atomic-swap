@@ -16,14 +16,13 @@ import (
 	"github.com/athanorlabs/atomic-swap/rpc"
 
 	"github.com/hashicorp/go-multierror"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("bootnode")
 
 // Config provides the configuration for a bootnode.
 type Config struct {
-	Env           common.Environment
 	DataDir       string
 	Bootnodes     []string
 	P2PListenIP   string
@@ -36,17 +35,15 @@ type Config struct {
 // shut down. Typically, shutdown happens because a signal handler cancels the
 // passed in context, or when the shutdown RPC method is called.
 func RunBootnode(ctx context.Context, cfg *Config) error {
-	chainID := common.ChainIDFromEnv(cfg.Env)
 	host, err := net.NewHost(&net.Config{
-		Ctx:            ctx,
-		DataDir:        cfg.DataDir,
-		Port:           cfg.Libp2pPort,
-		KeyFile:        cfg.Libp2pKeyFile,
-		Bootnodes:      cfg.Bootnodes,
-		ProtocolID:     fmt.Sprintf("%s/%d", net.ProtocolID, chainID),
-		ListenIP:       cfg.P2PListenIP,
-		IsRelayer:      false,
-		IsBootnodeOnly: true,
+		Ctx:       ctx,
+		Env:       common.Bootnode,
+		DataDir:   cfg.DataDir,
+		Port:      cfg.Libp2pPort,
+		KeyFile:   cfg.Libp2pKeyFile,
+		Bootnodes: cfg.Bootnodes,
+		ListenIP:  cfg.P2PListenIP,
+		IsRelayer: false,
 	})
 	if err != nil {
 		return err
@@ -63,7 +60,7 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 
 	rpcServer, err := rpc.NewServer(&rpc.Config{
 		Ctx:             ctx,
-		Env:             cfg.Env,
+		Env:             common.Bootnode,
 		Address:         fmt.Sprintf("127.0.0.1:%d", cfg.RPCPort),
 		Net:             host,
 		XMRTaker:        nil,
@@ -74,7 +71,6 @@ func RunBootnode(ctx context.Context, cfg *Config) error {
 			rpc.DaemonNamespace: {},
 			rpc.NetNamespace:    {},
 		},
-		IsBootnodeOnly: true,
 	})
 	if err != nil {
 		return err

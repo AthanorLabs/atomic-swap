@@ -14,7 +14,7 @@ import (
 	"path"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
 	"github.com/athanorlabs/atomic-swap/cliutil"
@@ -299,6 +299,10 @@ func getEnvConfig(c *cli.Context, devXMRMaker bool, devXMRTaker bool) (*common.C
 	env, err := common.NewEnv(c.String(flagEnv))
 	if err != nil {
 		return nil, err
+	}
+
+	if env == common.Bootnode {
+		return nil, fmt.Errorf("%q is not a valid environment for swapd", env.String())
 	}
 
 	if devXMRMaker || devXMRTaker {

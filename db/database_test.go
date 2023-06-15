@@ -10,7 +10,7 @@ import (
 
 	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 

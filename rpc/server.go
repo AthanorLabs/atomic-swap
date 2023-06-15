@@ -21,7 +21,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -62,7 +62,6 @@ type Config struct {
 	ProtocolBackend ProtocolBackend // nil on bootnodes
 	RecoveryDB      RecoveryDB      // nil on bootnodes
 	Namespaces      map[string]struct{}
-	IsBootnodeOnly  bool
 }
 
 // AllNamespaces returns a map with all RPC namespaces set for usage in the config.
@@ -81,9 +80,11 @@ func NewServer(cfg *Config) (*Server, error) {
 	rpcServer := rpc.NewServer()
 	rpcServer.RegisterCodec(NewCodec(), "application/json")
 
+	isBootnode := cfg.Env == common.Bootnode
+
 	serverCtx, serverCancel := context.WithCancel(cfg.Ctx)
 	var swapCreatorAddr *ethcommon.Address
-	if !cfg.IsBootnodeOnly {
+	if !isBootnode {
 		addr := cfg.ProtocolBackend.SwapCreatorAddr()
 		swapCreatorAddr = &addr
 	}
@@ -94,7 +95,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	}
 
 	var swapManager swap.Manager
-	if !cfg.IsBootnodeOnly {
+	if !isBootnode {
 		swapManager = cfg.ProtocolBackend.SwapManager()
 	}
 
@@ -106,7 +107,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		case DatabaseNamespace:
 			err = rpcServer.RegisterService(NewDatabaseService(cfg.RecoveryDB), DatabaseNamespace)
 		case NetNamespace:
-			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, swapManager, cfg.IsBootnodeOnly)
+			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, swapManager, isBootnode)
 			err = rpcServer.RegisterService(netService, NetNamespace)
 		case PersonalName:
 			err = rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), PersonalName)
@@ -146,13 +147,13 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, err
 	}
 
-	if !cfg.IsBootnodeOnly {
+	if !isBootnode {
 		SetupMetrics(serverCtx, reg, cfg.Net, cfg.ProtocolBackend, cfg.XMRMaker)
 	}
 	r := mux.NewRouter()
 	r.Handle("/", rpcServer)
 	r.Handle("/ws", wsServer)
-	if !cfg.IsBootnodeOnly {
+	if !isBootnode {
 		r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	}
 	headersOk := handlers.AllowedHeaders([]string{"content-type", "username", "password"})

@@ -187,6 +187,14 @@ func TestDaemon_BadFlags(t *testing.T) {
 			},
 			expectErr: fmt.Sprintf("unknown command %q", flagContractAddress),
 		},
+		{
+			description: "using bootnode environment",
+			extraFlags: []string{
+				// last flag wins, so this will override
+				fmt.Sprintf("--%s=%s", flagEnv, common.Bootnode),
+			},
+			expectErr: `"bootnode" is not a valid environment for swapd`,
+		},
 	}
 
 	for _, tc := range testCases {
