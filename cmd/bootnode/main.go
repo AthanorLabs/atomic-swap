@@ -29,7 +29,7 @@ const (
 	flagLibp2pPort = "libp2p-port"
 	flagBootnodes  = "bootnodes"
 	flagRPCPort    = "rpc-port"
-	flagLibp2pIP   = "bind-ip"
+	flagLibp2pIP   = "libp2p-ip"
 )
 
 var log = logging.Logger("cmd")
