@@ -11,6 +11,10 @@ SWAPD_ENV="${SWAPD_ENV:-"mainnet"}"
 CONTAINER_NAME="${CONTAINER_NAME:-"bootnode-${SWAPD_ENV}"}"
 IMAGE_NAME="atomic-bootnode"
 VERSION="$(git describe --abbrev=0 --tags)" # image tag
+
+# Pre-create the mounted directory, or docker will create it with root as the
+# owner. We mount one directory above what swapd considers its "data-dir". Data
+# files will be created in ${DATA_MOUNT_DIR}/bootnode.
 DATA_MOUNT_DIR="${HOME}/.atomicswap/docker"
 
 env_args=()
