@@ -46,3 +46,12 @@ compile-contract SwapCreator.sol SwapCreator swap_creator
 compile-contract TestERC20.sol TestERC20 erc20_token
 compile-contract @openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol IERC20 ierc20
 compile-contract AggregatorV3Interface.sol AggregatorV3Interface aggregator_v3_interface
+
+# etherscan lets you upload solidity sources in "standard JSON input" format.
+# With solc 0.8.20+, using the "--metadata --metadata-literal" flags, we can
+# strip out a bunch of fields from the output metadata to get an input file that
+# etherscan accepts. etherscan should accept the ".settings.compilationTarget"
+# field, but the field was only introduced in solc 0.8.20. Try adding it back
+# later.
+jq 'del( .output, .compiler, .settings.compilationTarget, .version, .sources[] .license )' \
+	ethereum/abi/SwapCreator_meta.json >ethereum/abi/SwapCreator_etherscan.json

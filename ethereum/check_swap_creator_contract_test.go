@@ -78,7 +78,6 @@ func TestSepoliaContract(t *testing.T) {
 }
 
 func TestMainnetContract(t *testing.T) {
-	t.Skip("XXXX DEPLOY NEW CONTRACT AND REMOVE THIS BEFORE MERGING XXXX")
 	ctx := context.Background()
 	ec := tests.NewEthMainnetClient(t)
 	mainnetConf := common.MainnetConfig()
