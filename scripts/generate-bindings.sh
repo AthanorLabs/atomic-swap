@@ -24,6 +24,7 @@ compile-contract() {
 	echo "Generating go bindings for ${solidity_type_name}"
 
 	"${SOLC_BIN}" --optimize --optimize-runs=200 \
+		--metadata --metadata-literal \
 		--base-path "ethereum/contracts" \
 		--abi "ethereum/contracts/${solidity_file_name}" \
 		-o ethereum/abi/ --overwrite
