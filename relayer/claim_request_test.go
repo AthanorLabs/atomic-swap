@@ -20,15 +20,15 @@ import (
 
 func createTestSwap(claimer ethcommon.Address) *contracts.SwapCreatorSwap {
 	return &contracts.SwapCreatorSwap{
-		Owner:        ethcommon.Address{0x1},
-		Claimer:      claimer,
-		PubKeyClaim:  [32]byte{0x1},
-		PubKeyRefund: [32]byte{0x1},
-		Timeout1:     big.NewInt(time.Now().Add(30 * time.Minute).Unix()),
-		Timeout2:     big.NewInt(time.Now().Add(60 * time.Minute).Unix()),
-		Asset:        ethcommon.Address(types.EthAssetETH),
-		Value:        big.NewInt(1e18),
-		Nonce:        big.NewInt(1),
+		Owner:            ethcommon.Address{0x1},
+		Claimer:          claimer,
+		ClaimCommitment:  [32]byte{0x1},
+		RefundCommitment: [32]byte{0x1},
+		Timeout1:         big.NewInt(time.Now().Add(30 * time.Minute).Unix()),
+		Timeout2:         big.NewInt(time.Now().Add(60 * time.Minute).Unix()),
+		Asset:            ethcommon.Address(types.EthAssetETH),
+		Value:            big.NewInt(1e18),
+		Nonce:            big.NewInt(1),
 	}
 }
 

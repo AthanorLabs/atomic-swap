@@ -14,7 +14,7 @@ lint-shell:
 
 .PHONY: lint-solidity
 lint-solidity: 
-	"$$(npm config get prefix)/bin/solhint" $$(find ethereum -name '*.sol')
+	"$$(npm config get prefix)/bin/solhint" $$(find ethereum -name '*.sol' -not -path '**/@openzeppelin/**')
 
 .PHONY: lint
 lint: lint-go lint-shell lint-solidity
@@ -30,7 +30,8 @@ format-shell:
 
 .PHONY: format-solidity
 format-solidity:
-	"$$(npm config get prefix)/bin/prettier" --print-width 100 --write $$(find ethereum -name '*.sol')
+	"$$(npm config get prefix)/bin/prettier" --print-width 100 --write \
+		$$(find ethereum -name '*.sol' -not -path '**/@openzeppelin/**')
 
 .PHONY: format
 format: format-go format-shell format-solidity

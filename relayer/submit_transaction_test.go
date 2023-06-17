@@ -88,15 +88,15 @@ func Test_ValidateAndSendTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	swap := contracts.SwapCreatorSwap{
-		Owner:        relayerAddr,
-		Claimer:      claimerAddr,
-		PubKeyClaim:  cmt,
-		PubKeyRefund: refundKey,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        types.EthAssetETH.Address(),
-		Value:        value,
-		Nonce:        nonce,
+		Owner:            relayerAddr,
+		Claimer:          claimerAddr,
+		ClaimCommitment:  cmt,
+		RefundCommitment: refundKey,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            types.EthAssetETH.Address(),
+		Value:            value,
+		Nonce:            nonce,
 	}
 
 	// set contract to Ready

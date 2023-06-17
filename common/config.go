@@ -66,7 +66,7 @@ func MainnetConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xa55aa5557ec22e85804729bc6935029bb84cf16a"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x377ed3a60007048DF00135637521170628De89E5"),
 		Bootnodes: []string{
 			"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWGpCLC4y42rf6aR3cguVFJAruzFXT6mUEyp7C32jTsyJd",
 			"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWDCE2ukB1Sw88hmLFk5BZRRViyYLeuAKPuu59nYyFWAec",
@@ -99,7 +99,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xbf2B7a6dCE5598Cf002B3507a8D62cf2C35cE5c6"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x377ed3a60007048DF00135637521170628De89E5"),
 		Bootnodes: []string{
 			"/ip4/134.122.115.208/tcp/9900/p2p/12D3KooWHZ2G9XscjDGvG7p8uPBoYerDc9kWYnc8oJFGfFxS6gfq",
 			"/ip4/143.198.123.27/tcp/9900/p2p/12D3KooWGzExs5zqebnDvqkUAKaiUuxF3DNbrfJ4prbfkxjXb366",
