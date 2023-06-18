@@ -107,7 +107,7 @@ func Test_validateMinBalForTokenSwap_InsufficientETHBalance(t *testing.T) {
 	// Amount in check below is truncated, so minor adjustments in the
 	// expected gas won't break the test. The full message looks like:
 	// "balance of 0.007 ETH is under required amount of 0.00743302 ETH"
-	require.ErrorContains(t, err, `balance of 0.007 ETH is under required amount of 0.0074`)
+	require.ErrorContains(t, err, `balance of 0.007 ETH is under required amount of 0.0075`)
 }
 
 func Test_validateMinBalanceETH(t *testing.T) {

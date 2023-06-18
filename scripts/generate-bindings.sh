@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+set -e
+
 # Use the project root (one directory above this script) as the current working directory:
 PROJECT_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
-cd "${PROJECT_ROOT}" || exit 1
+cd "${PROJECT_ROOT}"
 
 ABIGEN="$(go env GOPATH)/bin/abigen"
 
@@ -11,14 +13,27 @@ if [[ -z "${SOLC_BIN}" ]]; then
 fi
 
 compile-contract() {
-	local solidity_type_name="${1:?}"
+	local solidity_file_name="${1:?}"
 	local go_type_name="${2:?}"
 	local go_file_name="${3:?}"
 
+	# strip leading path and extension from to get the solidity type name
+	local solidity_type_name
+	solidity_type_name="$(basename "${solidity_file_name%.sol}")"
+
 	echo "Generating go bindings for ${solidity_type_name}"
 
-	"${SOLC_BIN}" --optimize --optimize-runs=200 --abi "ethereum/contracts/${solidity_type_name}.sol" -o ethereum/abi/ --overwrite
-	"${SOLC_BIN}" --optimize --optimize-runs=200 --bin "ethereum/contracts/${solidity_type_name}.sol" -o ethereum/bin/ --overwrite
+	"${SOLC_BIN}" --optimize --optimize-runs=200 \
+		--metadata --metadata-literal \
+		--base-path "ethereum/contracts" \
+		--abi "ethereum/contracts/${solidity_file_name}" \
+		-o ethereum/abi/ --overwrite
+	"${SOLC_BIN}" --optimize --optimize-runs=200 \
+		--base-path ethereum/contracts \
+		--include-path . \
+		--bin "ethereum/contracts/${solidity_file_name}" \
+		-o ethereum/bin/ --overwrite
+
 	"${ABIGEN}" \
 		--abi "ethereum/abi/${solidity_type_name}.abi" \
 		--bin "ethereum/bin/${solidity_type_name}.bin" \
@@ -27,7 +42,16 @@ compile-contract() {
 		--out "ethereum/${go_file_name}.go"
 }
 
-compile-contract SwapCreator SwapCreator swap_creator
-compile-contract TestERC20 TestERC20 erc20_token
-compile-contract IERC20Metadata IERC20 ierc20
-compile-contract AggregatorV3Interface AggregatorV3Interface aggregator_v3_interface
+compile-contract SwapCreator.sol SwapCreator swap_creator
+compile-contract TestERC20.sol TestERC20 erc20_token
+compile-contract @openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol IERC20 ierc20
+compile-contract AggregatorV3Interface.sol AggregatorV3Interface aggregator_v3_interface
+
+# etherscan lets you upload solidity sources in "standard JSON input" format.
+# With solc 0.8.20+, using the "--metadata --metadata-literal" flags, we can
+# strip out a bunch of fields from the output metadata to get an input file that
+# etherscan accepts. etherscan should accept the ".settings.compilationTarget"
+# field, but the field was only introduced in solc 0.8.20. Try adding it back
+# later.
+jq 'del( .output, .compiler, .settings.compilationTarget, .version, .sources[] .license )' \
+	ethereum/abi/SwapCreator_meta.json >ethereum/abi/SwapCreator_etherscan.json

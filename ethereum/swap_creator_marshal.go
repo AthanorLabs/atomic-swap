@@ -15,29 +15,29 @@ import (
 // swap is the same as the auto-generated SwapCreatorSwap type, but with some type
 // adjustments and annotations for JSON marshalling.
 type swap struct {
-	Owner        common.Address `json:"owner" validate:"required"`
-	Claimer      common.Address `json:"claimer" validate:"required"`
-	PubKeyClaim  types.Hash     `json:"pubKeyClaim" validate:"required"`
-	PubKeyRefund types.Hash     `json:"pubKeyRefund" validate:"required"`
-	Timeout1     *big.Int       `json:"timeout1" validate:"required"`
-	Timeout2     *big.Int       `json:"timeout2" validate:"required"`
-	Asset        common.Address `json:"asset"`
-	Value        *big.Int       `json:"value" validate:"required"`
-	Nonce        *big.Int       `json:"nonce" validate:"required"`
+	Owner            common.Address `json:"owner" validate:"required"`
+	Claimer          common.Address `json:"claimer" validate:"required"`
+	ClaimCommitment  types.Hash     `json:"claimCommitment" validate:"required"`
+	RefundCommitment types.Hash     `json:"refundCommitment" validate:"required"`
+	Timeout1         *big.Int       `json:"timeout1" validate:"required"`
+	Timeout2         *big.Int       `json:"timeout2" validate:"required"`
+	Asset            common.Address `json:"asset"`
+	Value            *big.Int       `json:"value" validate:"required"`
+	Nonce            *big.Int       `json:"nonce" validate:"required"`
 }
 
 // MarshalJSON provides JSON marshalling for SwapCreatorSwap
 func (sfs *SwapCreatorSwap) MarshalJSON() ([]byte, error) {
 	return vjson.MarshalStruct(&swap{
-		Owner:        sfs.Owner,
-		Claimer:      sfs.Claimer,
-		PubKeyClaim:  sfs.PubKeyClaim,
-		PubKeyRefund: sfs.PubKeyRefund,
-		Timeout1:     sfs.Timeout1,
-		Timeout2:     sfs.Timeout2,
-		Asset:        sfs.Asset,
-		Value:        sfs.Value,
-		Nonce:        sfs.Nonce,
+		Owner:            sfs.Owner,
+		Claimer:          sfs.Claimer,
+		ClaimCommitment:  sfs.ClaimCommitment,
+		RefundCommitment: sfs.RefundCommitment,
+		Timeout1:         sfs.Timeout1,
+		Timeout2:         sfs.Timeout2,
+		Asset:            sfs.Asset,
+		Value:            sfs.Value,
+		Nonce:            sfs.Nonce,
 	})
 }
 
@@ -48,15 +48,15 @@ func (sfs *SwapCreatorSwap) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*sfs = SwapCreatorSwap{
-		Owner:        s.Owner,
-		Claimer:      s.Claimer,
-		PubKeyClaim:  s.PubKeyClaim,
-		PubKeyRefund: s.PubKeyRefund,
-		Timeout1:     s.Timeout1,
-		Timeout2:     s.Timeout2,
-		Asset:        s.Asset,
-		Value:        s.Value,
-		Nonce:        s.Nonce,
+		Owner:            s.Owner,
+		Claimer:          s.Claimer,
+		ClaimCommitment:  s.ClaimCommitment,
+		RefundCommitment: s.RefundCommitment,
+		Timeout1:         s.Timeout1,
+		Timeout2:         s.Timeout2,
+		Asset:            s.Asset,
+		Value:            s.Value,
+		Nonce:            s.Nonce,
 	}
 	return nil
 }

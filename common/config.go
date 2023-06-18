@@ -81,7 +81,7 @@ func MainnetConfig() *Config {
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xa55aa5557ec22e85804729bc6935029bb84cf16a"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x377ed3a60007048DF00135637521170628De89E5"),
 		Bootnodes:       publicBootnodes,
 	}
 }
@@ -106,7 +106,7 @@ func StagenetConfig() *Config {
 				Port: 38081,
 			},
 		},
-		SwapCreatorAddr: ethcommon.HexToAddress("0xbf2B7a6dCE5598Cf002B3507a8D62cf2C35cE5c6"),
+		SwapCreatorAddr: ethcommon.HexToAddress("0x377ed3a60007048DF00135637521170628De89E5"),
 		Bootnodes:       publicBootnodes,
 	}
 }

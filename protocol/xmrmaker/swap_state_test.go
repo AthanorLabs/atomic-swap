@@ -101,15 +101,15 @@ func newTestSwap(
 	require.NoError(t, err)
 
 	contractSwap := &contracts.SwapCreatorSwap{
-		Owner:        ethAddr,
-		Claimer:      ethAddr,
-		PubKeyClaim:  claimKey,
-		PubKeyRefund: refundKey,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        ethcommon.Address(asset),
-		Value:        amount,
-		Nonce:        nonce,
+		Owner:            ethAddr,
+		Claimer:          ethAddr,
+		ClaimCommitment:  claimKey,
+		RefundCommitment: refundKey,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            ethcommon.Address(asset),
+		Value:            amount,
+		Nonce:            nonce,
 	}
 
 	return contractSwap, contractSwapID, tx.Hash()

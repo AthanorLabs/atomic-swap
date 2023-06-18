@@ -72,10 +72,10 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 	owner := crypto.PubkeyToAddress(pk.PublicKey)
 	claimer := common.EthereumPrivateKeyToAddress(tests.GetMakerTestKey(t))
 
-	var pubKeyClaim, pubKeyRefund [32]byte
-	_, err := rand.Read(pubKeyClaim[:])
+	var claimCommitment, refundCommitment [32]byte
+	_, err := rand.Read(claimCommitment[:])
 	require.NoError(t, err)
-	_, err = rand.Read(pubKeyRefund[:])
+	_, err = rand.Read(refundCommitment[:])
 	require.NoError(t, err)
 
 	nonce, err := rand.Prime(rand.Reader, 256)
@@ -91,8 +91,8 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 
 	tx, err := swapCreator.NewSwap(
 		txOpts,
-		pubKeyClaim,
-		pubKeyRefund,
+		claimCommitment,
+		refundCommitment,
 		claimer,
 		defaultTimeoutDuration,
 		defaultTimeoutDuration,
@@ -127,15 +127,15 @@ func testNewSwap(t *testing.T, asset types.EthAsset, erc20Contract *TestERC20) {
 
 	// validate that off-chain swapID calculation matches the on-chain value
 	swap := SwapCreatorSwap{
-		Owner:        owner,
-		Claimer:      claimer,
-		PubKeyClaim:  pubKeyClaim,
-		PubKeyRefund: pubKeyRefund,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        asset.Address(),
-		Value:        value,
-		Nonce:        nonce,
+		Owner:            owner,
+		Claimer:          claimer,
+		ClaimCommitment:  claimCommitment,
+		RefundCommitment: refundCommitment,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            asset.Address(),
+		Value:            value,
+		Nonce:            nonce,
 	}
 
 	// validate our off-net calculation of the SwapID
@@ -189,15 +189,15 @@ func TestSwapCreator_Claim_vec(t *testing.T) {
 	require.NoError(t, err)
 
 	swap := SwapCreatorSwap{
-		Owner:        addr,
-		Claimer:      addr,
-		PubKeyClaim:  cmt,
-		PubKeyRefund: dummySwapKey,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        ethcommon.Address(types.EthAssetETH),
-		Value:        defaultSwapValue,
-		Nonce:        nonce,
+		Owner:            addr,
+		Claimer:          addr,
+		ClaimCommitment:  cmt,
+		RefundCommitment: dummySwapKey,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            ethcommon.Address(types.EthAssetETH),
+		Value:            defaultSwapValue,
+		Nonce:            nonce,
 	}
 
 	// set contract to Ready
@@ -272,15 +272,15 @@ func testClaim(t *testing.T, asset types.EthAsset, newLogIndex int, value *big.I
 	require.NoError(t, err)
 
 	swap := SwapCreatorSwap{
-		Owner:        addr,
-		Claimer:      addr,
-		PubKeyClaim:  cmt,
-		PubKeyRefund: dummySwapKey,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        asset.Address(),
-		Value:        value,
-		Nonce:        nonce,
+		Owner:            addr,
+		Claimer:          addr,
+		ClaimCommitment:  cmt,
+		RefundCommitment: dummySwapKey,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            asset.Address(),
+		Value:            value,
+		Nonce:            nonce,
 	}
 
 	// ensure we can't claim before setting contract to Ready
@@ -365,15 +365,15 @@ func testRefundBeforeT1(t *testing.T, asset types.EthAsset, erc20Contract *TestE
 	require.NoError(t, err)
 
 	swap := SwapCreatorSwap{
-		Owner:        addr,
-		Claimer:      addr,
-		PubKeyClaim:  dummySwapKey,
-		PubKeyRefund: cmt,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        asset.Address(),
-		Value:        defaultSwapValue,
-		Nonce:        nonce,
+		Owner:            addr,
+		Claimer:          addr,
+		ClaimCommitment:  dummySwapKey,
+		RefundCommitment: cmt,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            asset.Address(),
+		Value:            defaultSwapValue,
+		Nonce:            nonce,
 	}
 
 	// now let's try to refund
@@ -454,15 +454,15 @@ func testRefundAfterT2(t *testing.T, asset types.EthAsset, erc20Contract *TestER
 	// ensure we can't refund between T1 and T2
 	<-time.After(time.Until(time.Unix(t1.Int64()+1, 0)))
 	swap := SwapCreatorSwap{
-		Owner:        addr,
-		Claimer:      addr,
-		PubKeyClaim:  dummySwapKey,
-		PubKeyRefund: cmt,
-		Timeout1:     t1,
-		Timeout2:     t2,
-		Asset:        asset.Address(),
-		Value:        defaultSwapValue,
-		Nonce:        nonce,
+		Owner:            addr,
+		Claimer:          addr,
+		ClaimCommitment:  dummySwapKey,
+		RefundCommitment: cmt,
+		Timeout1:         t1,
+		Timeout2:         t2,
+		Asset:            asset.Address(),
+		Value:            defaultSwapValue,
+		Nonce:            nonce,
 	}
 
 	secret := proof.Secret()
@@ -533,15 +533,15 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 		addrSwap := crypto.PubkeyToAddress(*sc.walletKey.Public().(*ecdsa.PublicKey))
 
 		sc.swap = SwapCreatorSwap{
-			Owner:        addrSwap,
-			Claimer:      addrSwap,
-			PubKeyClaim:  res.Secp256k1PublicKey().Keccak256(),
-			PubKeyRefund: dummySwapKey, // no one calls refund in this test
-			Timeout1:     nil,          // timeouts initialised when swap is created
-			Timeout2:     nil,
-			Asset:        ethcommon.Address(types.EthAssetETH),
-			Value:        defaultSwapValue,
-			Nonce:        big.NewInt(int64(i)),
+			Owner:            addrSwap,
+			Claimer:          addrSwap,
+			ClaimCommitment:  res.Secp256k1PublicKey().Keccak256(),
+			RefundCommitment: dummySwapKey, // no one calls refund in this test
+			Timeout1:         nil,          // timeouts initialised when swap is created
+			Timeout2:         nil,
+			Asset:            ethcommon.Address(types.EthAssetETH),
+			Value:            defaultSwapValue,
+			Nonce:            big.NewInt(int64(i)),
 		}
 	}
 
@@ -559,8 +559,8 @@ func TestSwapCreator_MultipleSwaps(t *testing.T) {
 			auth.Value = sc.swap.Value
 			tx, err := swapCreator.NewSwap(
 				auth,
-				sc.swap.PubKeyClaim,
-				sc.swap.PubKeyRefund,
+				sc.swap.ClaimCommitment,
+				sc.swap.RefundCommitment,
 				sc.swap.Claimer,
 				defaultTimeoutDuration,
 				defaultTimeoutDuration,

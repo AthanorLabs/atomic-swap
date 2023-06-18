@@ -111,22 +111,23 @@ func (s *ExternalSender) approve(
 
 // NewSwap prompts the external sender to sign a new_swap transaction
 func (s *ExternalSender) NewSwap(
-	pubKeyClaim [32]byte,
-	pubKeyRefund [32]byte,
+	claimCommitment [32]byte,
+	refundCommitment [32]byte,
 	claimer ethcommon.Address,
 	timeoutDuration *big.Int,
 	nonce *big.Int,
 	amount coins.EthAssetAmount,
-) (ethcommon.Hash, error) {
+	saveNewSwapTxCallback func(txHash ethcommon.Hash) error,
+) (*ethtypes.Receipt, error) {
 	// TODO: Add ERC20 token support and approve new_swap for the token transfer
 	if amount.IsToken() {
-		return ethcommon.Hash{}, errors.New("external sender does not support ERC20 token swaps")
+		return nil, errors.New("external sender does not support ERC20 token swaps")
 	}
 
-	input, err := s.abi.Pack("new_swap", pubKeyClaim, pubKeyRefund, claimer, timeoutDuration,
+	input, err := s.abi.Pack("new_swap", claimCommitment, refundCommitment, claimer, timeoutDuration,
 		amount.TokenAddress(), amount.BigInt(), nonce)
 	if err != nil {
-		return ethcommon.Hash{}, err
+		return nil, err
 	}
 
 	tx := &Transaction{
@@ -142,11 +143,15 @@ func (s *ExternalSender) NewSwap(
 	var txHash ethcommon.Hash
 	select {
 	case <-time.After(transactionTimeout):
-		return ethcommon.Hash{}, errTransactionTimeout
+		return nil, errTransactionTimeout
 	case txHash = <-s.in:
 	}
 
-	return txHash, nil
+	if err := saveNewSwapTxCallback(txHash); err != nil {
+		return nil, err
+	}
+
+	return block.WaitForReceipt(s.ctx, s.ec, txHash)
 }
 
 // SetReady prompts the external sender to sign a set_ready transaction
@@ -199,10 +204,5 @@ func (s *ExternalSender) sendAndReceive(input []byte, to ethcommon.Address) (*et
 	case txHash = <-s.in:
 	}
 
-	receipt, err := block.WaitForReceipt(s.ctx, s.ec, txHash)
-	if err != nil {
-		return nil, err
-	}
-
-	return receipt, nil
+	return block.WaitForReceipt(s.ctx, s.ec, txHash)
 }
