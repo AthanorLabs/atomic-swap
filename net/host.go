@@ -117,6 +117,9 @@ func NewHost(cfg *Config) (*Host, error) {
 		swaps:      make(map[types.Hash]*swap),
 	}
 
+	baseProtocolID := ChainProtocolID(cfg.Env)
+	log.Debugf("using base protocol %s", baseProtocolID)
+
 	var err error
 	h.h, err = p2pnet.NewHost(&p2pnet.Config{
 		Ctx:                      cfg.Ctx,
@@ -124,7 +127,7 @@ func NewHost(cfg *Config) (*Host, error) {
 		Port:                     cfg.Port,
 		KeyFile:                  cfg.KeyFile,
 		Bootnodes:                cfg.Bootnodes,
-		ProtocolID:               ChainProtocolID(cfg.Env),
+		ProtocolID:               baseProtocolID,
 		ListenIP:                 cfg.ListenIP,
 		AdvertisedNamespacesFunc: h.advertisedNamespaces,
 	})

@@ -202,6 +202,7 @@ func DefaultMoneroPortFromEnv(env Environment) uint {
 // ChainNameFromEnv returns the expected chainID that we should find on the
 // ethereum endpoint when running int the passed environment.
 func ChainNameFromEnv(env Environment) string {
+	//nolint:goconst
 	switch env {
 	case Development:
 		return "ganache"
