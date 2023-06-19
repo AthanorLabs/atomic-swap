@@ -25,7 +25,7 @@ const (
 var homeDir, _ = os.UserHomeDir()
 var baseDir = path.Join(homeDir, ".atomicswap")
 
-// publicBootnodes are bootnodes with public IP addresses and they used in every
+// publicBootnodes are bootnodes with public IP addresses that are used in every
 // environment other than development.
 var publicBootnodes = []string{
 	"/ip4/109.105.198.218/tcp/9909/p2p/12D3KooWMYfJHQAjL1F6EVk2s9CJvsEvdYMW8CD7uBMs15sdFJzd",
@@ -204,14 +204,14 @@ func DefaultMoneroPortFromEnv(env Environment) uint {
 func ChainNameFromEnv(env Environment) string {
 	switch env {
 	case Development:
-		return "Ganache"
+		return "ganache"
 	case Stagenet:
-		return "Sepolia"
+		return "sepolia"
 	case Mainnet:
-		return "Mainnet"
+		return "mainnet"
 	case Bootnode:
 		// bootnodes work across chains, so they get their own name
-		return "Bootnode"
+		return "bootnode"
 	default:
 		panic("invalid environment")
 	}

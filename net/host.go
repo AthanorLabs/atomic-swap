@@ -30,7 +30,7 @@ const (
 	baseProtocolID = "/atomic-swap"
 
 	// p2pAPIVersion needs to be incremented every time:
-	// * fields that the p2p APIs exchange, like offers, change in a breaking way
+	// * types that the p2p APIs exchange, such as offers, change in a breaking way
 	// * changes to the API itself, like adding/removing methods
 	// * the swapCreator contract changes
 	p2pAPIVersion = 2
@@ -91,10 +91,11 @@ type Config struct {
 	IsRelayer bool
 }
 
-// ChainProtocolID returns the chain versioned p2p protocol ID that includes the
-// Ethereum chain name being used. The streams that communicate between peers
-// use this prefix. All provided values advertised in the DHT also use this
-// prefix.
+// ChainProtocolID returns the versioned p2p protocol ID that includes the
+// Ethereum chain name being used. The streams that are opened between peers use
+// this prefix. All provided values advertised in the DHT also use this prefix.
+// Note that dedicated bootnodes don't have a chain name and don't open p2p
+// streams, so they just use the word "bootnode" in place of a chain name.
 func ChainProtocolID(env common.Environment) string {
 	return fmt.Sprintf("%s/%s/%d", baseProtocolID, common.ChainNameFromEnv(env), p2pAPIVersion)
 }
