@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/cockroachdb/apd/v3"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 const (

@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	relayProtocolID = "/relay/0"
+	relayProtocolID = "/relay"
 
-	relayerQueryProtocolID = "/relayerquery/0"
+	relayerQueryProtocolID = "/relayerquery"
 
 	// RelayerProvidesStr is the DHT namespace advertised by nodes willing to relay
 	// claims for arbitrary XMR makers.

@@ -15,7 +15,7 @@ import (
 	"github.com/ChainSafe/chaindb"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/hashicorp/go-multierror"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/athanorlabs/atomic-swap/common"
 	"github.com/athanorlabs/atomic-swap/db"
@@ -63,9 +63,6 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 		panic("swap creator address not specified")
 	}
 
-	ec := conf.EthereumClient
-	chainID := ec.ChainID()
-
 	// Initialize the database first, so the defer statement that closes it
 	// will get executed last.
 	sdb, err := db.NewDatabase(&chaindb.Config{
@@ -91,14 +88,14 @@ func RunSwapDaemon(ctx context.Context, conf *SwapdConfig) (err error) {
 	}
 
 	host, err := net.NewHost(&net.Config{
-		Ctx:        ctx,
-		DataDir:    conf.EnvConf.DataDir,
-		Port:       conf.Libp2pPort,
-		KeyFile:    conf.Libp2pKeyfile,
-		Bootnodes:  conf.EnvConf.Bootnodes,
-		ProtocolID: fmt.Sprintf("%s/%d", net.ProtocolID, chainID.Int64()),
-		ListenIP:   hostListenIP,
-		IsRelayer:  conf.IsRelayer,
+		Ctx:       ctx,
+		Env:       conf.EnvConf.Env,
+		DataDir:   conf.EnvConf.DataDir,
+		Port:      conf.Libp2pPort,
+		KeyFile:   conf.Libp2pKeyfile,
+		Bootnodes: conf.EnvConf.Bootnodes,
+		ListenIP:  hostListenIP,
+		IsRelayer: conf.IsRelayer,
 	})
 	if err != nil {
 		return err

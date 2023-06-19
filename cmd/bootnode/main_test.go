@@ -32,7 +32,7 @@ func TestBootnode(t *testing.T) {
 
 	flags := []string{
 		"bootnode",
-		fmt.Sprintf("--%s=dev", flagEnv),
+		fmt.Sprintf("--%s=127.0.0.1", flagLibp2pIP),
 		fmt.Sprintf("--%s=debug", cliutil.FlagLogLevel),
 		fmt.Sprintf("--%s=%s", flagDataDir, dataDir),
 		fmt.Sprintf("--%s=%d", flagRPCPort, rpcPort),

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	swapID = "/swap/0"
+	swapID = "/swap"
 )
 
 // Initiate attempts to initiate a swap with the given peer by sending a SendKeysMessage,

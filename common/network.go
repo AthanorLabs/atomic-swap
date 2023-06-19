@@ -20,6 +20,8 @@ const (
 	Stagenet
 	// Development is for testing with a local monerod in regtest mode and Ganache simulating ethereum
 	Development
+	// Bootnode should only be used by bootnodes, which provide a chain independent service
+	Bootnode
 )
 
 // String ...
@@ -31,6 +33,8 @@ func (env Environment) String() string {
 		return "stagenet"
 	case Development:
 		return "dev"
+	case Bootnode:
+		return "bootnode"
 	}
 
 	return "undefined"
@@ -45,6 +49,8 @@ func NewEnv(envStr string) (Environment, error) {
 		return Stagenet, nil
 	case "dev":
 		return Development, nil
+	case "bootnode":
+		return Bootnode, nil
 	default:
 		return Undefined, fmt.Errorf(`unknown environment %q, expected "mainnet", "stagenet" or "dev"`, envStr)
 	}

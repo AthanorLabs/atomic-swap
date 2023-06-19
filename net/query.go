@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	queryProtocolID = "/query/0"
+	queryProtocolID = "/query"
 )
 
 func (h *Host) handleQueryStream(stream libp2pnetwork.Stream) {

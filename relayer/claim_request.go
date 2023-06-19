@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	contracts "github.com/athanorlabs/atomic-swap/ethereum"
 	"github.com/athanorlabs/atomic-swap/net/message"

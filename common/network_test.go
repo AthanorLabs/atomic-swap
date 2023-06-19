@@ -14,6 +14,7 @@ func TestNewEnv(t *testing.T) {
 		"mainnet":  Mainnet,
 		"stagenet": Stagenet,
 		"dev":      Development,
+		"bootnode": Bootnode,
 	}
 
 	for strVal, expectedResult := range expected {

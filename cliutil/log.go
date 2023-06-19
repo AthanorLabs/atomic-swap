@@ -6,7 +6,7 @@ package cliutil
 import (
 	"fmt"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 )
 

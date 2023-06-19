@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 // SignalHandler handles OS signals and shuts down the program if necessary.

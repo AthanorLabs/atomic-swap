@@ -16,7 +16,7 @@ import (
 	"github.com/athanorlabs/atomic-swap/cliutil"
 	"github.com/athanorlabs/atomic-swap/common"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,7 +29,7 @@ const (
 	flagLibp2pPort = "libp2p-port"
 	flagBootnodes  = "bootnodes"
 	flagRPCPort    = "rpc-port"
-	flagEnv        = "env"
+	flagLibp2pIP   = "libp2p-ip"
 )
 
 var log = logging.Logger("cmd")
@@ -46,7 +46,7 @@ func cliApp() *cli.App {
 			&cli.StringFlag{
 				Name:  flagDataDir,
 				Usage: "Path to store swap artifacts",
-				Value: "{HOME}/.atomicswap/{ENV}/bootnode", // For --help only, actual default replaces variables
+				Value: "{HOME}/.atomicswap/bootnode", // For --help only, actual default replaces variables
 			},
 			&cli.StringFlag{
 				Name:  flagLibp2pKey,
@@ -72,10 +72,9 @@ func cliApp() *cli.App {
 				EnvVars: []string{"SWAPD_RPC_PORT"},
 			},
 			&cli.StringFlag{
-				Name:    flagEnv,
-				Usage:   "Environment to use: one of mainnet, stagenet, or dev. Default: mainnet",
-				EnvVars: []string{"SWAPD_ENV"},
-				Value:   "mainnet",
+				Name:  flagLibp2pIP,
+				Usage: "Libp2p bind IP, can set to 127.0.0.1 for testing",
+				Value: "0.0.0.0",
 			},
 			&cli.StringFlag{
 				Name:    cliutil.FlagLogLevel,
@@ -109,7 +108,7 @@ func runBootnode(c *cli.Context) error {
 		return err
 	}
 
-	config, err := getEnvConfig(c)
+	config, err := getBootnodeConfig(c)
 	if err != nil {
 		return err
 	}
@@ -126,33 +125,21 @@ func runBootnode(c *cli.Context) error {
 		libp2pKeyFile = path.Join(config.DataDir, common.DefaultLibp2pKeyFileName)
 	}
 
-	libp2pPort := uint16(c.Uint(flagLibp2pPort))
-
-	hostListenIP := "0.0.0.0"
-	if config.Env == common.Development {
-		hostListenIP = "127.0.0.1"
-	}
+	log.Infof("starting bootnode")
 
 	rpcPort := uint16(c.Uint(flagRPCPort))
 	return bootnode.RunBootnode(c.Context, &bootnode.Config{
-		Env:           config.Env,
 		DataDir:       config.DataDir,
 		Bootnodes:     config.Bootnodes,
-		P2PListenIP:   hostListenIP,
-		Libp2pPort:    libp2pPort,
+		P2PListenIP:   c.String(flagLibp2pIP),
+		Libp2pPort:    uint16(c.Uint(flagLibp2pPort)),
 		Libp2pKeyFile: libp2pKeyFile,
 		RPCPort:       rpcPort,
 	})
 }
 
-func getEnvConfig(c *cli.Context) (*common.Config, error) {
-	env, err := common.NewEnv(c.String(flagEnv))
-	if err != nil {
-		return nil, err
-	}
-	log.Infof("starting bootnode, environment: %s", env)
-
-	conf := common.ConfigDefaultsForEnv(env)
+func getBootnodeConfig(c *cli.Context) (*common.Config, error) {
+	conf := common.BootnodeConfig()
 
 	// cfg.DataDir already has a default set, so only override if the user explicitly set the flag
 	if c.IsSet(flagDataDir) {
@@ -162,8 +149,7 @@ func getEnvConfig(c *cli.Context) (*common.Config, error) {
 		}
 	}
 
-	conf.DataDir = path.Join(conf.DataDir, "bootnode")
-	if err = common.MakeDir(conf.DataDir); err != nil {
+	if err := common.MakeDir(conf.DataDir); err != nil {
 		return nil, err
 	}
 

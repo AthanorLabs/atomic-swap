@@ -84,7 +84,6 @@ func CreateTestBootnode(t *testing.T) (uint16, string) {
 	dataDir := t.TempDir()
 
 	conf := &bootnode.Config{
-		Env:           common.Development,
 		DataDir:       t.TempDir(),
 		Bootnodes:     nil,
 		P2PListenIP:   "127.0.0.1",

@@ -14,8 +14,8 @@ VERSION="$(git describe --abbrev=0 --tags)" # image tag
 
 # Pre-create the mounted directory, or docker will create it with root as the
 # owner. We mount one directory above what swapd considers its "data-dir". Data
-# files will be created in ${DATA_MOUNT_DIR}/${SWAPD_ENV}.
-DATA_MOUNT_DIR="${HOME}/.atomicswap/bootnode/docker"
+# files will be created in ${DATA_MOUNT_DIR}/bootnode.
+DATA_MOUNT_DIR="${HOME}/.atomicswap/docker"
 
 env_args=()
 
@@ -30,7 +30,6 @@ add_env_arg() {
 	fi
 }
 
-add_env_arg SWAPD_ENV
 add_env_arg SWAPD_RPC_PORT
 add_env_arg SWAPD_LIBP2P_PORT
 add_env_arg SWAPD_BOOTNODES
