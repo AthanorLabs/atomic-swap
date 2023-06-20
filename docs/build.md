@@ -19,49 +19,46 @@ echo "export PATH=$PATH:/usr/local/go/bin" >> .profile
 source .profile
 ```
 
-### 2. Clone the repo
+### 2a. Build without cloning the repo (option 1)
+
+If this is your first time testing the software and you don't have an up-to-date
+installation of `monero-wallet-rpc` in your path, you may want to skip to 2b
+(option 2), as the repo has a script, `scripts/install-monero-linux.sh`, for
+installing the latest monero tools to a `monero-bin` subfolder.
+
+Install the atomic swap binaries to a subfolder named `bin`. If you adjust the
+install directory to something else, make sure to also adjust documented sample
+commands accordingly:
+```bash
+GOBIN=${PWD}/bin go install -tags=prod github.com/athanorlabs/atomic-swap/cmd/...@latest
+```
+
+### 2b. Build from a cloned repo (option 2)
+
+Clone the repo, put it on the commit hash of the most recent release, and build
+the binaries:
 ```bash
 git clone https://github.com/athanorlabs/atomic-swap.git
 cd atomic-swap
 
-# Optional: Check out the exact source code of the latest release
+# Check out the exact source code of the latest release
 git checkout "$(git describe --abbrev=0 --tags)"
-```
 
-### 3. Finally, build the repo
-
-#### Option 1: Build the latest released/tagged version.
-```bash
 make build-release
 ```
-This option, and the ones below, all create `swapd` and `swapcli` binaries in
-a `bin` subfolder.
 
-#### Option 2: Build release binaries without checking out the repo
+Note that `build-release` always builds the latest tagged release, not the
+currently checked out code, so the `git checkout` command above is not required
+for the correct binaries. If you want to build the checked out code as-is, use
+`make build` or `make build-all` (the latter includes the `bootnode`
+executable), as you'll see in the next example.
 
-The make-target in "Option 1" uses "go install", a command that can be run
-without checking out the source code. If you just want the release binaries in a
-subfolder named "bin", you can use:
-```bash
-GOBIN=${PWD}/bin go install -tags=prod github.com/athanorlabs/atomic-swap/cmd/...@latest
-```
-Note: `swapd` depends on `monero-wallet-rpc`. If you are not using
-`scripts/install-monero-linux.sh` to install it, you'll need to ensure [that the
-latest version of `monero-wallet-rpc`](https://www.getmonero.org/downloads/#cli)
-is either in your path or in a folder named `monero-bin` of the directory that
-`swapd` is started from.
-
-#### Option 3: Use the latest, bleeding edge code
-
-If you just want to run the latest, bleeding edge code that is not always compatible
-with the previous release, you can do this:
+If you wish to build the bleeding edge code that is not always compatible with
+the previous release, do:
 ```bash
 git checkout master && git pull
 make build
 ```
-
-Note: If you wish to run a bootnode (see [here](./bootnode.md)), pass
-`build-all` instead of `build` as the target for `make`.
 
 ## Docker
 
