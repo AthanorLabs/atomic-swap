@@ -45,9 +45,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 Discover peers on the network via DHT that have active swap offers.
 
 Parameters:
-- `provides` (optional): one of `ETH` or `XMR`, depending on which offer you are searching
+- `provides`: (optional) one of `ETH` or `XMR`, depending on which offer you are searching
   for. **Note**: Currently only `XMR` offers are supported. Default is `XMR`.
-- `searchTime` (optional): time in seconds to perform the search. Default is 12s.
+- `searchTime`: (optional) time in seconds to perform the search. Default is 12s.
 
 Returns:
 - `peers`: list of lists of peers's multiaddresses. A peer may have multiple multiaddresses, so the nested list pertains to a single peer.
@@ -79,9 +79,9 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
 Discover peers on the network via DHT that have active swap offers and gets all their swap offers.
 
 Parameters:
-- `provides` (optional): one of `ETH` or `XMR`, depending on which offer you are searching
+- `provides`: (optional) one of `ETH` or `XMR`, depending on which offer you are searching
   for. **Note**: Currently only `XMR` offers are supported. Default is `XMR`.
-- `searchTime` (optional): duration in seconds for which to perform the search. Default is 12s.
+- `searchTime`: (optional) duration in seconds for which to perform the search. Default is 12s.
 
 Returns:
 - `peersWithOffers`: list of peers's multiaddresses and their current offers.
@@ -510,6 +510,38 @@ curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
     "info": "the ETH provider has locked their ether, but no XMR has been locked",
     "startTime": "2023-02-20T23:52:28.826764666Z"
   },
+  "id": "0"
+}
+```
+
+### `swap_clearOffers`
+
+Clears one or more offers if offer IDs are passed, or all offers if no offer IDs
+are passed. This method is only for removing offers that have not been taken,
+use `swap_cancel` to cancel an active swap.
+
+Parameters:
+- `id`: id of the swap to get the stage of
+- `offerIDs`: (optional) Array of offer IDs to clear, or empty to clear all offers
+
+Returns:
+- null
+
+Example:
+```bash
+curl -s -X POST http://127.0.0.1:5000 -H 'Content-Type: application/json' -d \
+'{"jsonrpc":"2.0","id":"0","method":"swap_clearOffers",
+  "params": {
+    "offerIds": [
+      "0xd66041fd63512c18ff6554c8b4c608be40c8eaa95e29e08af08cf632c7040595"
+    ]
+  }
+}' | jq
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "result": null,
   "id": "0"
 }
 ```
