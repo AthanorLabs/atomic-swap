@@ -6,7 +6,7 @@ RUN go install -tags=prod \
     github.com/athanorlabs/atomic-swap/cmd/swapcli@"${VERSION}"
 RUN /go/bin/bootnode --version
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates gosu
 
 COPY --from=builder /go/bin/ /usr/local/bin/

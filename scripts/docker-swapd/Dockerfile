@@ -14,7 +14,7 @@ RUN go install -tags=prod \
     github.com/athanorlabs/atomic-swap/cmd/swapcli@"${VERSION}"
 RUN /go/bin/swapd --version
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates gosu
 
 # /usr/local/bin has swapd, swapcli, monero-wallet-rpc and
