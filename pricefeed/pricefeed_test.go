@@ -38,6 +38,7 @@ func TestGetETHUSDPrice_dev(t *testing.T) {
 }
 
 func TestGetXMRUSDPrice_mainnet(t *testing.T) {
+	t.Skip("Chainlink XMR priceed is down: https://github.com/AthanorLabs/atomic-swap/issues/492")
 	ec := tests.NewEthMainnetClient(t)
 
 	feed, err := GetXMRUSDPrice(context.Background(), ec)

@@ -85,6 +85,12 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 		return nil, err
 	}
 
+	// Temporary hack to return a better error until the issue is resolved.
+	switch chainID.Uint64() {
+	case common.MainnetChainID, common.SepoliaChainID:
+		return nil, errors.New("https://github.com/AthanorLabs/atomic-swap/issues/492")
+	}
+
 	switch chainID.Uint64() {
 	case common.MainnetChainID:
 		// No extra work to do
