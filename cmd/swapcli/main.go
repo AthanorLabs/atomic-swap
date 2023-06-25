@@ -169,11 +169,13 @@ func cliApp() *cli.App {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     flagMinAmount,
+						Aliases:  []string{"min"},
 						Usage:    "Minimum amount to be swapped, in XMR",
 						Required: true,
 					},
 					&cli.StringFlag{
 						Name:     flagMaxAmount,
+						Aliases:  []string{"max"},
 						Usage:    "Maximum amount to be swapped, in XMR",
 						Required: true,
 					},
@@ -184,15 +186,16 @@ func cliApp() *cli.App {
 					},
 					&cli.BoolFlag{
 						Name:  flagDetached,
-						Usage: "Exit immediately instead of subscribing to notifications about the swap's status",
+						Usage: "Exit immediately without subscribing to status notifications",
 					},
 					&cli.StringFlag{
 						Name:  flagToken,
-						Usage: "Use to pass the ethereum ERC20 token address to receive instead of ETH",
+						Usage: "Ethereum ERC20 token address to receive instead of ETH",
 					},
 					&cli.BoolFlag{
-						Name:  flagUseRelayer,
-						Usage: "Use the relayer even if the receiving account has enough ETH to claim",
+						Name:   flagUseRelayer,
+						Usage:  "Use the relayer even if the receiving account has enough ETH to claim",
+						Hidden: true, // useful for testing, but no clear end-user use case for the flag
 					},
 					swapdPortFlag,
 				},
@@ -215,12 +218,13 @@ func cliApp() *cli.App {
 					},
 					&cli.StringFlag{
 						Name:     flagProvidesAmount,
+						Aliases:  []string{"pa"},
 						Usage:    "Amount of coin to send in the swap",
 						Required: true,
 					},
 					&cli.BoolFlag{
 						Name:  flagDetached,
-						Usage: "Exit immediately instead of subscribing to notifications about the swap's status",
+						Usage: "Exit immediately without subscribing to status notifications",
 					},
 					swapdPortFlag,
 				},
@@ -251,7 +255,7 @@ func cliApp() *cli.App {
 			},
 			{
 				Name:   "cancel",
-				Usage:  "Cancel a ongoing swap if possible. Depending on the swap stage, this may not be possible.",
+				Usage:  "Cancel ongoing swap, if possible at the current swap stage.",
 				Action: runCancel,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -308,8 +312,8 @@ func cliApp() *cli.App {
 				},
 			},
 			{
-				Name:    "suggested-exchange-rate",
-				Aliases: []string{"price-feed"},
+				Name:    "price-feed",
+				Aliases: []string{"suggested-exchange-rate"},
 				Usage:   "Returns the current mainnet exchange rate based on ETH/USD and XMR/USD price feeds.",
 				Action:  runSuggestedExchangeRate,
 				Flags:   []cli.Flag{swapdPortFlag},
