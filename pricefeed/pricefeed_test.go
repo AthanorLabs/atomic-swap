@@ -6,7 +6,6 @@ package pricefeed
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log/v2"
@@ -17,7 +16,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("pricefeed", "debug")
+	_ = logging.SetLogLevel("pricefeed", "debug")
 }
 
 func newOptimismClient(t *testing.T) *ethclient.Client {
@@ -31,11 +30,7 @@ func newOptimismClient(t *testing.T) *ethclient.Client {
 }
 
 func TestGetETHUSDPrice_nonDev(t *testing.T) {
-	for i, ec := range []*ethclient.Client{tests.NewEthSepoliaClient(t), newOptimismClient(t)} {
-		if i > 0 {
-			// Make sure we don't exceed the per second rate limit of the free endpoint
-			time.Sleep(time.Second)
-		}
+	for _, ec := range []*ethclient.Client{tests.NewEthSepoliaClient(t), newOptimismClient(t)} {
 		feed, err := GetETHUSDPrice(context.Background(), ec)
 		require.NoError(t, err)
 		t.Logf("%s is $%s (updated: %s)", feed.Description, feed.Price, feed.UpdatedAt)
@@ -54,11 +49,7 @@ func TestGetETHUSDPrice_dev(t *testing.T) {
 }
 
 func TestGetXMRUSDPrice_nonDev(t *testing.T) {
-	for i, ec := range []*ethclient.Client{tests.NewEthSepoliaClient(t), newOptimismClient(t)} {
-		if i > 0 {
-			// Make sure we don't exceed the per second rate limit of the free endpoint
-			time.Sleep(time.Second)
-		}
+	for _, ec := range []*ethclient.Client{tests.NewEthSepoliaClient(t), newOptimismClient(t)} {
 		feed, err := GetXMRUSDPrice(context.Background(), ec)
 		require.NoError(t, err)
 		t.Logf("%s is $%s (updated: %s)", feed.Description, feed.Price, feed.UpdatedAt)
