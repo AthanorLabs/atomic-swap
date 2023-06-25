@@ -179,7 +179,7 @@ func cliApp() *cli.App {
 					},
 					&cli.StringFlag{
 						Name:     flagExchangeRate,
-						Usage:    "Desired exchange rate of XMR:ETH, eg. --exchange-rate=0.1 means 10XMR = 1ETH",
+						Usage:    "Desired exchange rate of XMR/ETH, eg. --exchange-rate=0.08 means 1 XMR = 0.08 ETH",
 						Required: true,
 					},
 					&cli.BoolFlag{
@@ -853,7 +853,7 @@ func runGetOngoingSwap(ctx *cli.Context) error {
 		fmt.Printf("Start time: %s\n", info.StartTime.Format(common.TimeFmtSecs))
 		fmt.Printf("Provided: %s %s\n", info.ProvidedAmount.Text('f'), providedCoin)
 		fmt.Printf("Receiving: %s %s\n", info.ExpectedAmount.Text('f'), receivedCoin)
-		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+		fmt.Printf("Exchange Rate: %s XMR/ETH\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
 		fmt.Printf("Time status was last updated: %s\n", info.LastStatusUpdateTime.Format(common.TimeFmtSecs))
 		if info.Timeout1 != nil && info.Timeout2 != nil {
@@ -925,7 +925,7 @@ func runGetPastSwap(ctx *cli.Context) error {
 			)
 		}
 		fmt.Printf("\n")
-		fmt.Printf("Exchange Rate: %s ETH/XMR\n", info.ExchangeRate)
+		fmt.Printf("Exchange Rate: %s XMR/ETH\n", info.ExchangeRate)
 		fmt.Printf("Status: %s\n", info.Status)
 	}
 
