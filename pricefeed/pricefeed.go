@@ -21,17 +21,16 @@ import (
 )
 
 const (
-	// mainnetEndpoint is a mainnet ethereum endpoint, from
-	// https://chainlist.org/chain/1, which stagenet users get pointed at for
-	// price feeds, as Sepolia doesn't have an XMR feed. Mainnet users will use
-	// the same ethereum endpoint that they use for other swap transactions.
-	mainnetEndpoint = "https://eth-rpc.gateway.pokt.network"
+	// optimismEndpoint is an RPC endpoint for optimism mainnet. Note that we
+	// tried https://mainnet.optimism.io first, but it is severely rate limited
+	// to around 2 requests/second.
+	optimismEndpoint = "https://1rpc.io/op"
 
-	// https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
-	chainlinkETHToUSDProxy = "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419"
+	// https://data.chain.link/optimism/mainnet/crypto-usd/eth-usd
+	chainlinkETHToUSDProxy = "0x13e3ee699d1909e989722e753853ae30b17e08c5"
 
-	// https://data.chain.link/ethereum/mainnet/crypto-usd/xmr-usd
-	chainlinkXMRToUSDProxy = "0xfa66458cce7dd15d8650015c4fce4d278271618f"
+	// https://data.chain.link/optimism/mainnet/crypto-usd/xmr-usd
+	chainlinkXMRToUSDProxy = "0x2a8d91686a048e98e6ccf1a89e82f40d14312672"
 )
 
 var (
@@ -55,11 +54,10 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 	}
 
 	switch chainID.Uint64() {
-	case common.MainnetChainID:
+	case common.OpMainnetChainID:
 		// No extra work to do
-	case common.SepoliaChainID:
-		// Push stagenet/sepolia users to a mainnet endpoint
-		ec, err = ethclient.Dial(mainnetEndpoint)
+	case common.MainnetChainID, common.SepoliaChainID:
+		ec, err = ethclient.Dial(optimismEndpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -85,18 +83,12 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 		return nil, err
 	}
 
-	// Temporary hack to return a better error until the issue is resolved.
 	switch chainID.Uint64() {
-	case common.MainnetChainID, common.SepoliaChainID:
-		return nil, errors.New("https://github.com/AthanorLabs/atomic-swap/issues/492")
-	}
-
-	switch chainID.Uint64() {
-	case common.MainnetChainID:
+	case common.OpMainnetChainID:
 		// No extra work to do
-	case common.SepoliaChainID:
+	case common.MainnetChainID, common.SepoliaChainID:
 		// Push stagenet/sepolia users to a mainnet endpoint
-		ec, err = ethclient.Dial(mainnetEndpoint)
+		ec, err = ethclient.Dial(optimismEndpoint)
 		if err != nil {
 			return nil, err
 		}
