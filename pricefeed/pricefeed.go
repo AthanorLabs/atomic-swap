@@ -46,7 +46,6 @@ type PriceFeed struct {
 }
 
 // GetETHUSDPrice returns the current ETH/USD price from the Chainlink oracle.
-// It errors if the chain ID is not the Ethereum mainnet.
 func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
@@ -76,7 +75,6 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 }
 
 // GetXMRUSDPrice returns the current XMR/USD price from the Chainlink oracle.
-// It errors if the chain ID is not the Ethereum mainnet.
 func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, error) {
 	chainID, err := ec.ChainID(ctx)
 	if err != nil {
