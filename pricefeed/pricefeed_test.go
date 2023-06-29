@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,18 +16,28 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("pricefeed", "debug")
+	_ = logging.SetLogLevel("pricefeed", "debug")
 }
 
-func TestGetETHUSDPrice_mainnet(t *testing.T) {
-	ec := tests.NewEthMainnetClient(t)
-
-	feed, err := GetETHUSDPrice(context.Background(), ec)
+func newOptimismClient(t *testing.T) *ethclient.Client {
+	ec, err := ethclient.Dial(optimismEndpoint)
 	require.NoError(t, err)
-	t.Logf("%s is $%s (updated: %s)", feed.Description, feed.Price, feed.UpdatedAt)
-	assert.Equal(t, "ETH / USD", feed.Description)
-	assert.False(t, feed.Price.Negative)
-	assert.False(t, feed.Price.IsZero())
+	t.Cleanup(func() {
+		ec.Close()
+	})
+
+	return ec
+}
+
+func TestGetETHUSDPrice_nonDev(t *testing.T) {
+	for _, ec := range []*ethclient.Client{tests.NewEthSepoliaClient(t), newOptimismClient(t)} {
+		feed, err := GetETHUSDPrice(context.Background(), ec)
+		require.NoError(t, err)
+		t.Logf("%s is $%s (updated: %s)", feed.Description, feed.Price, feed.UpdatedAt)
+		assert.Equal(t, "ETH / USD", feed.Description)
+		assert.False(t, feed.Price.Negative)
+		assert.False(t, feed.Price.IsZero())
+	}
 }
 
 func TestGetETHUSDPrice_dev(t *testing.T) {
@@ -37,16 +48,15 @@ func TestGetETHUSDPrice_dev(t *testing.T) {
 	assert.Equal(t, "1234.12345678", feed.Price.String())
 }
 
-func TestGetXMRUSDPrice_mainnet(t *testing.T) {
-	t.Skip("Chainlink XMR price feed is down: https://github.com/AthanorLabs/atomic-swap/issues/492")
-	ec := tests.NewEthMainnetClient(t)
-
-	feed, err := GetXMRUSDPrice(context.Background(), ec)
-	require.NoError(t, err)
-	t.Logf("%s is $%s (updated: %s)", feed.Description, feed.Price, feed.UpdatedAt)
-	assert.Equal(t, "XMR / USD", feed.Description)
-	assert.False(t, feed.Price.Negative)
-	assert.False(t, feed.Price.IsZero())
+func TestGetXMRUSDPrice_nonDev(t *testing.T) {
+	for _, ec := range []*ethclient.Client{tests.NewEthSepoliaClient(t), newOptimismClient(t)} {
+		feed, err := GetXMRUSDPrice(context.Background(), ec)
+		require.NoError(t, err)
+		t.Logf("%s is $%s (updated: %s)", feed.Description, feed.Price, feed.UpdatedAt)
+		assert.Equal(t, "XMR / USD", feed.Description)
+		assert.False(t, feed.Price.Negative)
+		assert.False(t, feed.Price.IsZero())
+	}
 }
 
 func TestGetXMRUSDPrice_dev(t *testing.T) {

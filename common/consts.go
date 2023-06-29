@@ -28,8 +28,9 @@ const (
 
 // Ethereum chain IDs
 const (
-	MainnetChainID = 1
-	SepoliaChainID = 11155111
-	GanacheChainID = 1337
-	HardhatChainID = 31337
+	MainnetChainID   = 1
+	OpMainnetChainID = 10 // Optimism
+	SepoliaChainID   = 11155111
+	GanacheChainID   = 1337
+	HardhatChainID   = 31337
 )
