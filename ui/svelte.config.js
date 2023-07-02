@@ -1,11 +1,12 @@
+import { vitePreprocess } from "@sveltejs/kit/vite";
 import preprocess from "svelte-preprocess";
-import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
-export default {
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
   // Consult https://svelte.dev/docs#compile-time-svelte-preprocess
   // for more information about preprocessors
   preprocess: [
-    vitePreprocess(),
+    vitePreprocess({}),
     /*
     preprocess({
       postcss: true,
@@ -13,3 +14,5 @@ export default {
     */
   ],
 };
+
+export default config;

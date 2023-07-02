@@ -37,7 +37,7 @@
       </Toolbar>
       <br>
     {#if sortedOffers.length > 0}
-    <Table class="offers" divClass="relative overflow-x-auto sm:rounded-lg border">
+    <Table class="offers" divClass="relative overflow-x-auto sm:rounded-lg" shadow>
     <TableHead>
         <TableHeadCell>Peer</TableHeadCell>
         <TableHeadCell>Offer Id</TableHeadCell>
