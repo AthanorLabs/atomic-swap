@@ -22,7 +22,8 @@
 		],
 		"moduleResolution": "node",
 		"module": "esnext",
-		"target": "esnext"
+		"target": "esnext",
+		"ignoreDeprecations": "5.0"
 	},
 	"include": [
 		"ambient.d.ts",

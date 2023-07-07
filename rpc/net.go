@@ -18,6 +18,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const defaultSearchTime = time.Second * 12
@@ -70,6 +72,46 @@ func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *rpctypes.A
 // Peers returns the peers that this node is currently connected to.
 func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.PeersResponse) error {
 	resp.Addrs = s.net.ConnectedPeers()
+	return nil
+}
+
+// GetPairs returns all currently available pairs from offers of all peers
+func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rpctypes.PairsResponse) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
+
+	peerIDs, err := s.discover(req)
+	if err != nil {
+		return err
+	}
+
+	addrs := make(map[ethcommon.Address]int)
+	pairs := make([]*types.Pair, 0, 100)
+
+	for _, p := range peerIDs {
+		msg, err := s.net.Query(p)
+		if err != nil {
+			log.Debugf("Failed to query peer ID %s", p)
+			continue
+		}
+		if len(msg.Offers) > 0 {
+			for _, o := range msg.Offers {
+				address := o.EthAsset.Address()
+				index, exists := addrs[address]
+				var pair *types.Pair
+				if !exists {
+					addrs[address] = index
+					pairs = append(pairs, types.NewPair())
+				} else {
+					pair = pairs[index]
+				}
+				pair.AddOffer(o)
+			}
+		}
+	}
+
+	resp.Pairs = pairs
 	return nil
 }
 

@@ -147,3 +147,9 @@ type AddressesResponse struct {
 type PeersResponse struct {
 	Addrs []string `json:"addresses" validate:"dive,required"`
 }
+
+type PairsRequest = DiscoverRequest
+
+type PairsResponse struct {
+	Pairs []*types.Pair
+}

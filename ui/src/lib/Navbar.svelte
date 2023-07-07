@@ -44,9 +44,4 @@
 </Navbar>
 
 <style>
-    .connected {
-        width: 8px; height: 8px;
-        background: rgb(82, 246, 49);
-        border-radius: 999px;
-    }
 </style>

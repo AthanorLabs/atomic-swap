@@ -1,16 +1,21 @@
 <script lang="ts">
   import unknown from '../assets/coins/unknown.svg'
   
-  let url = unknown
   export let size: number = 32
-  export let ticker: string = null
+  export let ticker: String = ''
+  $: ticker, load()
+  $: url = unknown
 
-  if (ticker) {
-    url = new URL(`../assets/coins/${ticker.toLowerCase()}@2x.png`, import.meta.url).href
+  async function load() {
+    if (ticker) {
+      const path = await import(`../assets/coins/${ticker.toLowerCase()}@2x.png`)
+      url = path.default
+    }
   }
 </script>
 
-<img class="token-icon" width={size} height={size} src={url} alt="token-icon" onerror={ `this.src='${unknown}'`}/>
+
+<img class="token-icon" width={size} height={size} src={url || unknown} alt="token-icon" onerror={ `this.src='${unknown}'`}/>
 
 <style>
 .token-icon {

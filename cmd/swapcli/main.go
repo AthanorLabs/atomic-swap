@@ -77,6 +77,20 @@ func cliApp() *cli.App {
 				},
 			},
 			{
+				Name:    "pairs",
+				Aliases: []string{"p"},
+				Usage:   "List active pairs",
+				Action:  runPairs,
+				Flags: []cli.Flag{
+					swapdPortFlag,
+					&cli.Uint64Flag{
+						Name:  flagSearchTime,
+						Usage: "Duration of time to search for, in seconds",
+						Value: defaultDiscoverSearchTimeSecs,
+					},
+				},
+			},
+			{
 				Name:    "balances",
 				Aliases: []string{"b"},
 				Usage:   "Show our Monero and Ethereum account balances",
@@ -533,6 +547,40 @@ func runPeers(ctx *cli.Context) error {
 	if len(resp.Addrs) == 0 {
 		fmt.Println("[none]")
 	}
+	return nil
+}
+
+func runPairs(ctx *cli.Context) error {
+	searchTime := ctx.Uint64(flagSearchTime)
+
+	c := newClient(ctx)
+	resp, err := c.Pairs(searchTime)
+	if err != nil {
+		return err
+	}
+
+	for i, a := range resp.Pairs {
+		var verified string
+		if a.Verified {
+			verified = "Yes"
+		} else {
+			verified = "No"
+		}
+
+		fmt.Printf("Pair %d:\n", i+1)
+		fmt.Printf("  Name: %s\n", &a.Asset)
+		fmt.Printf("  Token: %s\n", a.Asset.Address())
+		fmt.Printf("  Verified: %s\n", verified)
+		fmt.Printf("  Offers: %d\n", a.Offers)
+		fmt.Printf("  Liquidity XMR: %f\n", a.LiquidityXMR)
+		fmt.Printf("  Liquidity ETH: %f\n", a.LiquidityETH)
+		fmt.Println()
+	}
+
+	if len(resp.Pairs) == 0 {
+		fmt.Println("[none]")
+	}
+
 	return nil
 }
 
