@@ -7,12 +7,11 @@ package backend
 import (
 	reflect "reflect"
 
-	common "github.com/ethereum/go-ethereum/common"
-	gomock "github.com/golang/mock/gomock"
-
 	types "github.com/athanorlabs/atomic-swap/common/types"
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
 	db "github.com/athanorlabs/atomic-swap/db"
+	common "github.com/ethereum/go-ethereum/common"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockRecoveryDB is a mock of RecoveryDB interface.
