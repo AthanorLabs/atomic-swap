@@ -106,7 +106,10 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 				} else {
 					pair = pairs[index]
 				}
-				pair.AddOffer(o)
+				err = pair.AddOffer(o)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
