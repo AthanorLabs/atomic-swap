@@ -4,6 +4,7 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -37,19 +38,31 @@ type Net interface {
 
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
+	ctx        context.Context
 	net        Net
 	xmrtaker   XMRTaker
 	xmrmaker   XMRMaker
+	pb         ProtocolBackend
 	sm         swap.Manager
 	isBootnode bool
 }
 
 // NewNetService ...
-func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm swap.Manager, isBootnode bool) *NetService {
+func NewNetService(
+	ctx context.Context,
+	net Net,
+	xmrtaker XMRTaker,
+	xmrmaker XMRMaker,
+	pb ProtocolBackend,
+	sm swap.Manager,
+	isBootnode bool,
+) *NetService {
 	return &NetService{
+		ctx:        ctx,
 		net:        net,
 		xmrtaker:   xmrtaker,
 		xmrmaker:   xmrmaker,
+		pb:         pb,
 		sm:         sm,
 		isBootnode: isBootnode,
 	}
@@ -89,6 +102,15 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 	addrs := make(map[ethcommon.Address]int)
 	pairs := make([]*types.Pair, 0, 100)
 
+	addrs[ethcommon.Address{}] = 0 // ETH/XMR pair is always first
+	pairs = append(pairs, types.NewPair(types.EthAsset{}))
+	pairs[0].Verified = true
+	pairs[0].Token = coins.ERC20TokenInfo{
+		NumDecimals: 18,
+		Name:        "Ether",
+		Symbol:      "ETH",
+	}
+
 	for _, p := range peerIDs {
 		msg, err := s.net.Query(p)
 		if err != nil {
@@ -99,9 +121,17 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 			for _, o := range msg.Offers {
 				address := o.EthAsset.Address()
 				index, exists := addrs[address]
-				pair := types.NewPair()
+				pair := types.NewPair(o.EthAsset)
 				if !exists {
 					addrs[address] = index
+					if pair.EthAsset.IsToken() {
+						tokenInfo, tokenInfoErr := s.pb.ETHClient().ERC20Info(s.ctx, address)
+						if tokenInfoErr != nil {
+							log.Debugf("Error while reading token info: %s", tokenInfoErr)
+							continue
+						}
+						pair.Token = *tokenInfo
+					}
 					pairs = append(pairs, pair)
 				} else {
 					pair = pairs[index]
@@ -112,6 +142,11 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 				}
 			}
 		}
+	}
+
+	// Remove ETH/XMR pair if there is no offer
+	if pairs[0].Offers <= 0 {
+		pairs = pairs[1:]
 	}
 
 	resp.Pairs = pairs

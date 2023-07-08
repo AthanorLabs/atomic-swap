@@ -5,26 +5,30 @@ package types
 
 import (
 	"github.com/cockroachdb/apd/v3"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/athanorlabs/atomic-swap/coins"
 )
 
 // Pair represents a pair (Such as ETH / XMR)
 type Pair struct {
-	LiquidityETH *apd.Decimal      `json:"liquidityEth" validate:"required"`
-	LiquidityXMR *apd.Decimal      `json:"liquidityXmr" validate:"required"`
-	Asset        EthAsset          `json:"asset"`
-	Address      ethcommon.Address `json:"address"`
-	Offers       uint64            `json:"offers" validate:"required"`
-	Verified     bool              `json:"verified" valdate:"required"`
+	LiquidityETH *apd.Decimal         `json:"liquidityEth" validate:"required"`
+	LiquidityXMR *apd.Decimal         `json:"liquidityXmr" validate:"required"`
+	EthAsset     EthAsset             `json:"ethAsset" validate:"required"`
+	Token        coins.ERC20TokenInfo `json:"token" validate:"required"`
+	Offers       uint64               `json:"offers" validate:"required"`
+	Verified     bool                 `json:"verified" valdate:"required"`
 }
 
 // NewPair creates and returns a Pair
-func NewPair() *Pair {
+func NewPair(EthAsset EthAsset) *Pair {
 	pair := &Pair{
 		LiquidityETH: apd.New(0, 0),
 		LiquidityXMR: apd.New(0, 0),
+		EthAsset:     EthAsset,
+
+		// Always set to false for now until the verified-list
+		// is implemented
+		Verified: false,
 	}
 	return pair
 }
@@ -48,11 +52,6 @@ func (pair *Pair) AddOffer(o *Offer) error {
 	}
 
 	pair.Offers++
-	pair.Address = o.EthAsset.Address()
-
-	// Always set to false for now until the verified-list
-	// is implemented
-	pair.Verified = false
 
 	return nil
 }

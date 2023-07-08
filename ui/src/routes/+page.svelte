@@ -8,7 +8,7 @@
   let value = '';
 
   $: filteredPairs = $pairs.filter(
-    (item) => item.asset.toLowerCase().indexOf(value.toLowerCase()) !== -1
+    (item) => item.token.symbol.toLowerCase().indexOf(value.toLowerCase()) !== -1
   );
 </script>
 
@@ -55,12 +55,12 @@
       <TableHeadCell></TableHeadCell>
     </TableHead>
     <TableBody class="divide-y">
-      {#each filteredPairs as pair (pair.asset)}
+      {#each filteredPairs as pair (pair.token.symbol)}
       <TableBodyRow>
         <TableBodyCell>
-          <TokenIcon size="32" ticker={pair.asset} />
+          <TokenIcon size="32" ticker={pair.token.symbol} />
           <div class="ticker">
-            <p>{pair.asset}</p>
+            <p>{pair.token.symbol}</p>
             {#if pair.verified}
               <Badge color="green">Verified</Badge>
             {:else}
@@ -70,14 +70,14 @@
         </TableBodyCell>
         <TableBodyCell>
           <ButtonGroup>
-            <Button style="border-radius: 5px 0 0 5px;" size="xs">{pair.liquidityEth.toLocaleString()} {pair.asset}</Button>
+            <Button style="border-radius: 5px 0 0 5px;" size="xs">{pair.liquidityEth.toLocaleString()} {pair.token.symbol}</Button>
             <Button style="border-radius: 0px 5px 5px 0;" size="xs">{pair.liquidityXmr.toLocaleString()} XMR</Button>
           </ButtonGroup>
         </TableBodyCell>
         <TableBodyCell>{pair.offers}</TableBodyCell>
         <TableBodyCell>
           <ButtonGroup>
-            <Button href="/offers/{pair.asset.toLocaleLowerCase()}" color="light" size="xs">SEE OFFERS</Button>
+            <Button href="/offers/{pair.ethAsset.toLocaleLowerCase()}" color="light" size="xs">SEE OFFERS</Button>
           </ButtonGroup>
         </TableBodyCell>
       </TableBodyRow>

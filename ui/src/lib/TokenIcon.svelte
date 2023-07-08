@@ -8,8 +8,10 @@
 
   async function load() {
     if (ticker) {
-      const path = await import(`../assets/coins/${ticker.toLowerCase()}@2x.png`)
-      url = path.default
+      try {
+        const path = await import(`../assets/coins/${ticker.toLowerCase()}@2x.png`)
+        url = path.default
+      } catch (e) {}
     }
   }
 </script>

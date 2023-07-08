@@ -568,8 +568,8 @@ func runPairs(ctx *cli.Context) error {
 		}
 
 		fmt.Printf("Pair %d:\n", i+1)
-		fmt.Printf("  Name: %s\n", &a.Asset)
-		fmt.Printf("  Token: %s\n", a.Asset.Address())
+		fmt.Printf("  Name: %s\n", a.Token.Symbol)
+		fmt.Printf("  Token: %s\n", a.Token.Address)
 		fmt.Printf("  Verified: %s\n", verified)
 		fmt.Printf("  Offers: %d\n", a.Offers)
 		fmt.Printf("  Liquidity XMR: %f\n", a.LiquidityXMR)

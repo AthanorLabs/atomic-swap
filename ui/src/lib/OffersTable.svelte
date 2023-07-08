@@ -13,22 +13,20 @@
 
     import xmr from '../assets/coins/xmr.png'
     
-    import type { Offer } from '../types'
+    import type { Offer, TokenInfo } from '../types'
 
     export let offers: Offer[]
     $: sortedOffers = offers
     $: count = offers ? offers.length : 0
-    $: asset = offers && offers.length > 0 ? offers[0].ethAsset : null 
+    export let tokenInfo: TokenInfo
 
 </script>
 
 <div class="offers">
     <Toolbar color="none" style="position:relative;">
         <Heading tag="h5">
-            
-            <TokenIcon size={25} ticker={asset} />
-            
-            <span>{asset} / XMR</span>
+            <TokenIcon size={25} ticker={tokenInfo.symbol} />
+            <span>{tokenInfo.symbol} / XMR</span>
             <img width="25" height="25" src={xmr} alt="xmr" style="display: inline; vertical-align: top;" />
         </Heading>
 

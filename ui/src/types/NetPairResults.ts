@@ -1,5 +1,11 @@
 export interface Pair {
-    asset: String,
+    ethAsset: String,
+    token: {
+        address: String,
+        decimals: Number,
+        name: String,
+        symbol: String,
+    },
     verified: Boolean,
     offers: Number,
     liquidityXmr: Number,
