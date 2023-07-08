@@ -4,20 +4,23 @@
 package types
 
 import (
-	"github.com/athanorlabs/atomic-swap/coins"
 	"github.com/cockroachdb/apd/v3"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+
+	"github.com/athanorlabs/atomic-swap/coins"
 )
 
+// Pair represents a pair (Such as ETH / XMR)
 type Pair struct {
-	LiquidityETH *apd.Decimal      `json:"liquidityETH" validate:"required"`
-	LiquidityXMR *apd.Decimal      `json:"liquidityXMR" validate:"required"`
+	LiquidityETH *apd.Decimal      `json:"liquidityEth" validate:"required"`
+	LiquidityXMR *apd.Decimal      `json:"liquidityXmr" validate:"required"`
 	Asset        EthAsset          `json:"asset"`
 	Address      ethcommon.Address `json:"address"`
 	Offers       uint64            `json:"offers" validate:"required"`
 	Verified     bool              `json:"verified" valdate:"required"`
 }
 
+// NewPair creates and returns a Pair
 func NewPair() *Pair {
 	pair := &Pair{
 		LiquidityETH: apd.New(0, 0),
@@ -44,7 +47,7 @@ func (pair *Pair) AddOffer(o *Offer) error {
 		return err
 	}
 
-	pair.Offers += 1
+	pair.Offers++
 	pair.Address = o.EthAsset.Address()
 
 	// Always set to false for now until the verified-list

@@ -75,7 +75,7 @@ func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.Peers
 	return nil
 }
 
-// GetPairs returns all currently available pairs from offers of all peers
+// Pairs returns all currently available pairs from offers of all peers
 func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rpctypes.PairsResponse) error {
 	if s.isBootnode {
 		return errUnsupportedForBootnode
@@ -99,10 +99,10 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 			for _, o := range msg.Offers {
 				address := o.EthAsset.Address()
 				index, exists := addrs[address]
-				var pair *types.Pair
+				pair := types.NewPair()
 				if !exists {
 					addrs[address] = index
-					pairs = append(pairs, types.NewPair())
+					pairs = append(pairs, pair)
 				} else {
 					pair = pairs[index]
 				}

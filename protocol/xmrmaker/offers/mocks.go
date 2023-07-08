@@ -7,9 +7,10 @@ package offers
 import (
 	reflect "reflect"
 
-	types "github.com/athanorlabs/atomic-swap/common/types"
 	common "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
+
+	types "github.com/athanorlabs/atomic-swap/common/types"
 )
 
 // MockDatabase is a mock of Database interface.

@@ -2,8 +2,8 @@ export interface Pair {
     asset: String,
     verified: Boolean,
     offers: Number,
-    liquidityXMR: Number,
-    liquidityETH: Number,
+    liquidityXmr: Number,
+    liquidityEth: Number,
 }
 
 export interface NetPairResults {

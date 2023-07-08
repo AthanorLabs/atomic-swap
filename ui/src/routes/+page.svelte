@@ -70,8 +70,8 @@
         </TableBodyCell>
         <TableBodyCell>
           <ButtonGroup>
-            <Button style="border-radius: 5px 0 0 5px;" size="xs">{pair.liquidityETH.toLocaleString()} {pair.asset}</Button>
-            <Button style="border-radius: 0px 5px 5px 0;" size="xs">{pair.liquidityXMR.toLocaleString()} XMR</Button>
+            <Button style="border-radius: 5px 0 0 5px;" size="xs">{pair.liquidityEth.toLocaleString()} {pair.asset}</Button>
+            <Button style="border-radius: 0px 5px 5px 0;" size="xs">{pair.liquidityXmr.toLocaleString()} XMR</Button>
           </ButtonGroup>
         </TableBodyCell>
         <TableBodyCell>{pair.offers}</TableBodyCell>
