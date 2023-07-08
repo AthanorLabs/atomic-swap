@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install npm formatting/linting tools
-        run: npm install --global --save-dev prettier prettier-plugin-solidity solhint
+        run: npm install --global --save-dev prettier@2.8.8 prettier-plugin-solidity solhint
 
       # shellcheck should already be installed, but it doesn't hurt
       - name: Install apt formatting/linting tools

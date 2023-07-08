@@ -101,7 +101,7 @@ The solidity formatting uses an npm executable named `prettier` which, for solid
 needs a plugin called `prettier-plugin-solidity`. For solidity linting, we use the
 `solhint` program.
 ```
-npm install --global --save-dev prettier prettier-plugin-solidity
+npm install --global --save-dev prettier@2.8.8 prettier-plugin-solidity
 npm install --global --save-dev solhint
 ```
 
