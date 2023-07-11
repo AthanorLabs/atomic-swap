@@ -21,10 +21,8 @@ jobs:
           go-version: '1.20.x'
       - uses: actions/checkout@v3
 
-      # Temporarily locking prettier at 2.8.8. See:
-      # https://github.com/AthanorLabs/atomic-swap/issues/501
       - name: Install npm formatting/linting tools
-        run: npm install --global --save-dev prettier@2.8.8 prettier-plugin-solidity solhint
+        run: npm install --global --save-dev prettier prettier-plugin-solidity solhint
 
       # shellcheck should already be installed, but it doesn't hurt
       - name: Install apt formatting/linting tools
