@@ -8,6 +8,7 @@ package pricefeed
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
@@ -21,10 +22,10 @@ import (
 )
 
 const (
-	// optimismEndpoint is an RPC endpoint for optimism mainnet. Note that we
+	// fallbackOptimismEndpoint is an RPC endpoint for optimism mainnet. Note that we
 	// tried https://mainnet.optimism.io first, but it is severely rate limited
 	// to around 2 requests/second.
-	optimismEndpoint = "https://1rpc.io/op"
+	fallbackOptimismEndpoint = "https://optimism.blockpi.network/v1/rpc/public"
 
 	// https://data.chain.link/optimism/mainnet/crypto-usd/eth-usd
 	chainlinkETHToUSDProxy = "0x13e3ee699d1909e989722e753853ae30b17e08c5"
@@ -45,6 +46,14 @@ type PriceFeed struct {
 	UpdatedAt   time.Time
 }
 
+func getOptimismEndpoint() string {
+	endpoint := os.Getenv("ETH_OPTIMISM_ENDPOINT")
+	if endpoint == "" {
+		endpoint = fallbackOptimismEndpoint
+	}
+	return endpoint
+}
+
 // GetETHUSDPrice returns the current ETH/USD price from the Chainlink oracle.
 func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, error) {
 	chainID, err := ec.ChainID(ctx)
@@ -56,7 +65,7 @@ func GetETHUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 	case common.OpMainnetChainID:
 		// No extra work to do
 	case common.MainnetChainID, common.SepoliaChainID:
-		ec, err = ethclient.Dial(optimismEndpoint)
+		ec, err = ethclient.Dial(getOptimismEndpoint())
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +95,7 @@ func GetXMRUSDPrice(ctx context.Context, ec *ethclient.Client) (*PriceFeed, erro
 		// No extra work to do
 	case common.MainnetChainID, common.SepoliaChainID:
 		// Push stagenet/sepolia users to a mainnet endpoint
-		ec, err = ethclient.Dial(optimismEndpoint)
+		ec, err = ethclient.Dial(getOptimismEndpoint())
 		if err != nil {
 			return nil, err
 		}
