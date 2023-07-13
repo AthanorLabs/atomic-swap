@@ -20,7 +20,7 @@ func init() {
 }
 
 func newOptimismClient(t *testing.T) *ethclient.Client {
-	ec, err := ethclient.Dial(optimismEndpoint)
+	ec, err := ethclient.Dial(getOptimismEndpoint())
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ec.Close()
