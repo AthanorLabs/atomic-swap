@@ -15,7 +15,7 @@ export const getPairs = () => {
     return rpcRequest<NetPairResults>('net_pairs', { searchTime: 3 })
         .then(({ result }) => {
             pairs.set(result.Pairs)
-            liquidity.set(result.Pairs.reduce((acc, a) => acc += Number(a.liquidityXmr), 0))
+            liquidity.set(result.Pairs.reduce((acc, a) => acc += Number(a.reportedLiquidityXmr), 0))
             offers.set(result.Pairs.reduce((acc, a) => acc += a.offers, 0))
         })
         .catch(console.error)

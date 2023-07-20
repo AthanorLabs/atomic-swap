@@ -572,8 +572,7 @@ func runPairs(ctx *cli.Context) error {
 		fmt.Printf("  Token: %s\n", a.Token.Address)
 		fmt.Printf("  Verified: %s\n", verified)
 		fmt.Printf("  Offers: %d\n", a.Offers)
-		fmt.Printf("  Liquidity XMR: %f\n", a.LiquidityXMR)
-		fmt.Printf("  Liquidity ETH: %f\n", a.LiquidityETH)
+		fmt.Printf("  Reported Liquidity XMR: %f\n", a.ReportedLiquidityXMR)
 		fmt.Println()
 	}
 

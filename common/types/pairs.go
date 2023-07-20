@@ -11,20 +11,18 @@ import (
 
 // Pair represents a pair (Such as ETH / XMR)
 type Pair struct {
-	LiquidityETH *apd.Decimal         `json:"liquidityEth" validate:"required"`
-	LiquidityXMR *apd.Decimal         `json:"liquidityXmr" validate:"required"`
-	EthAsset     EthAsset             `json:"ethAsset" validate:"required"`
-	Token        coins.ERC20TokenInfo `json:"token" validate:"required"`
-	Offers       uint64               `json:"offers" validate:"required"`
-	Verified     bool                 `json:"verified" valdate:"required"`
+	ReportedLiquidityXMR *apd.Decimal         `json:"reportedLiquidityXmr" validate:"required"`
+	EthAsset             EthAsset             `json:"ethAsset" validate:"required"`
+	Token                coins.ERC20TokenInfo `json:"token" validate:"required"`
+	Offers               uint64               `json:"offers" validate:"required"`
+	Verified             bool                 `json:"verified" valdate:"required"`
 }
 
 // NewPair creates and returns a Pair
 func NewPair(EthAsset EthAsset) *Pair {
 	pair := &Pair{
-		LiquidityETH: apd.New(0, 0),
-		LiquidityXMR: apd.New(0, 0),
-		EthAsset:     EthAsset,
+		ReportedLiquidityXMR: apd.New(0, 0),
+		EthAsset:             EthAsset,
 
 		// Always set to false for now until the verified-list
 		// is implemented
@@ -35,18 +33,7 @@ func NewPair(EthAsset EthAsset) *Pair {
 
 // AddOffer adds an offer to a pair
 func (pair *Pair) AddOffer(o *Offer) error {
-	_, err := coins.DecimalCtx().Add(pair.LiquidityXMR, pair.LiquidityXMR, o.MaxAmount)
-	if err != nil {
-		return err
-	}
-
-	// Max Amount converted in ETH/Token
-	MaxAmountETH, err := o.ExchangeRate.ToETH(o.MaxAmount)
-	if err != nil {
-		return err
-	}
-
-	_, err = coins.DecimalCtx().Add(pair.LiquidityETH, pair.LiquidityETH, MaxAmountETH)
+	_, err := coins.DecimalCtx().Add(pair.ReportedLiquidityXMR, pair.ReportedLiquidityXMR, o.MaxAmount)
 	if err != nil {
 		return err
 	}

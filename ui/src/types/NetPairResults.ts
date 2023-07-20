@@ -8,8 +8,7 @@ export interface Pair {
     },
     verified: Boolean,
     offers: Number,
-    liquidityXmr: Number,
-    liquidityEth: Number,
+    reportedLiquidityXmr: Number,
 }
 
 export interface NetPairResults {
