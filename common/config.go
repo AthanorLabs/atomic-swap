@@ -65,20 +65,16 @@ func MainnetConfig() *Config {
 		EthEndpoint: "", // No mainnet default (permissionless URLs are not reliable)
 		MoneroNodes: []*MoneroNode{
 			{
-				Host: "node.sethforprivacy.com",
-				Port: 18089,
+				Host: "xmr-node.cakewallet.com",
+				Port: DefaultMoneroDaemonMainnetPort,
 			},
 			{
-				Host: "xmr-node.cakewallet.com",
+				Host: "node.community.rino.io",
 				Port: DefaultMoneroDaemonMainnetPort,
 			},
 			{
 				Host: "node.monerodevs.org",
 				Port: 18089,
-			},
-			{
-				Host: "node.community.rino.io",
-				Port: DefaultMoneroDaemonMainnetPort,
 			},
 		},
 		SwapCreatorAddr: ethcommon.HexToAddress("0x377ed3a60007048DF00135637521170628De89E5"),
@@ -94,16 +90,12 @@ func StagenetConfig() *Config {
 		EthEndpoint: "https://rpc.sepolia.org/",
 		MoneroNodes: []*MoneroNode{
 			{
-				Host: "node.sethforprivacy.com",
-				Port: 38089,
+				Host: "stagenet.community.rino.io",
+				Port: 38081,
 			},
 			{
 				Host: "node.monerodevs.org",
 				Port: 38089,
-			},
-			{
-				Host: "stagenet.community.rino.io",
-				Port: 38081,
 			},
 		},
 		SwapCreatorAddr: ethcommon.HexToAddress("0x377ed3a60007048DF00135637521170628De89E5"),
