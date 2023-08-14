@@ -21,11 +21,7 @@ func (c *Client) SetSwapTimeout(timeoutSeconds uint64) error {
 		Timeout: timeoutSeconds,
 	}
 
-	if err := c.post(method, req, nil); err != nil {
-		return err
-	}
-
-	return nil
+	return c.post(method, req, nil)
 }
 
 // GetSwapTimeout calls personal_getSwapTimeout.

@@ -9,10 +9,7 @@ func (c *Client) Shutdown() error {
 	const (
 		method = "daemon_shutdown"
 	)
-	if err := c.post(method, nil, nil); err != nil {
-		return err
-	}
-	return nil
+	return c.post(method, nil, nil)
 }
 
 // Version returns version & misc info about swapd and its dependencies

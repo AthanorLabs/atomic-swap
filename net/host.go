@@ -171,11 +171,7 @@ func (h *Host) Start() error {
 	}
 
 	// Note: Start() is non-blocking
-	if err := h.h.Start(); err != nil {
-		return err
-	}
-
-	return nil
+	return h.h.Start()
 }
 
 // Stop stops the host.

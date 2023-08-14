@@ -23,9 +23,5 @@ func (c *Client) TakeOffer(peerID peer.ID, offerID types.Hash, providesAmount *a
 		ProvidesAmount: providesAmount,
 	}
 
-	if err := c.post(method, req, nil); err != nil {
-		return err
-	}
-
-	return nil
+	return c.post(method, req, nil)
 }

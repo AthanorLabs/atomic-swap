@@ -132,11 +132,7 @@ func (db *Database) purgeInvalidOffer(id []byte, encodedOffer string, reasonErr 
 		return err
 	}
 	log.Warnf("removing invalid offer's swap entry: %s", swapEncoded)
-	if err := db.swapTable.Del(id[:]); err != nil {
-		return err
-	}
-
-	return nil
+	return db.swapTable.Del(id[:])
 }
 
 // GetAllOffers returns all offers in the database.

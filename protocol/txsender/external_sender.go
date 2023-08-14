@@ -85,12 +85,12 @@ func (s *ExternalSender) SetSwapCreatorAddr(addr ethcommon.Address) {
 }
 
 // OngoingCh returns the channel of outgoing transactions to be signed and submitted
-func (s *ExternalSender) OngoingCh(id types.Hash) <-chan *Transaction {
+func (s *ExternalSender) OngoingCh(_ types.Hash) <-chan *Transaction {
 	return s.out
 }
 
 // IncomingCh returns the channel of incoming transaction hashes that have been signed and submitted
-func (s *ExternalSender) IncomingCh(id types.Hash) chan<- ethcommon.Hash {
+func (s *ExternalSender) IncomingCh(_ types.Hash) chan<- ethcommon.Hash {
 	return s.in
 }
 
