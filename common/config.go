@@ -28,7 +28,7 @@ var baseDir = path.Join(homeDir, ".atomicswap")
 // publicBootnodes are bootnodes with public IP addresses that are used in every
 // environment other than development.
 var publicBootnodes = []string{
-	"/ip4/109.105.198.218/tcp/9909/p2p/12D3KooWMYfJHQAjL1F6EVk2s9CJvsEvdYMW8CD7uBMs15sdFJzd",
+	"/ip4/104.194.157.27/tcp/9909/p2p/12D3KooWMYfJHQAjL1F6EVk2s9CJvsEvdYMW8CD7uBMs15sdFJzd",
 	"/ip4/134.122.115.208/tcp/9909/p2p/12D3KooWCAMMJMDV99GQA78MiaGgnqNmZSD1FAo5uHaZUbeqL4XR",
 	"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWD7JjjRyohDPPm8TMT8v8dEfwoVHxfBN2ytZHpS9VJ3Vz",
 	"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
