@@ -294,11 +294,7 @@ func (s *wsServer) writeSwapExitStatus(conn *websocket.Conn, id types.Hash) erro
 		Status: info.Status,
 	}
 
-	if err := writeResponse(conn, resp); err != nil {
-		return err
-	}
-
-	return nil
+	return writeResponse(conn, resp)
 }
 
 func writeResponse(conn *websocket.Conn, result interface{}) error {

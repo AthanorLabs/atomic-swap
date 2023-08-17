@@ -165,7 +165,7 @@ func getPackageKeys(t *testing.T, packageName string) []string {
 		startIndex += pkg.numKeys
 	}
 	t.Fatalf("Package %q does not have reserved test keys", packageName)
-	panic("unreachable code")
+	return nil // unreachable
 }
 
 func getPackageTestKey(t *testing.T, pkgName string, index int) *ecdsa.PrivateKey {
