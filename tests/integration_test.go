@@ -137,7 +137,7 @@ func (s *IntegrationTestSuite) TestXMRMaker_Pairs() {
 		coins.StrToDecimal("1"),
 		coins.StrToDecimal("2"),
 		coins.StrToExchangeRate("200"),
-		types.EthAsset(s.testToken),
+		s.testToken,
 		false)
 
 	require.NoError(s.T(), err)

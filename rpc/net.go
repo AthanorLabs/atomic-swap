@@ -144,16 +144,16 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 		}
 	}
 
-	pairs_array := make([]*types.Pair, 0, len(pairs))
+	pairsArray := make([]*types.Pair, 0, len(pairs))
 	for _, pair := range pairs {
 		if pair.EthAsset.IsETH() {
-			pairs_array = append([]*types.Pair{pair}, pairs_array...)
+			pairsArray = append([]*types.Pair{pair}, pairsArray...)
 		} else {
-			pairs_array = append(pairs_array, pair)
+			pairsArray = append(pairsArray, pair)
 		}
 	}
 
-	resp.Pairs = pairs_array
+	resp.Pairs = pairsArray
 	return nil
 }
 
