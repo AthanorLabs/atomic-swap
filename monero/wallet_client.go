@@ -43,20 +43,20 @@ const (
 // WalletClient represents a monero-wallet-rpc client.
 type WalletClient interface {
 	GetAccounts() (*wallet.GetAccountsResponse, error)
-	GetAddress(idx uint64) (*wallet.GetAddressResponse, error)
+	GetAddress(idx uint32) (*wallet.GetAddressResponse, error)
 	PrimaryAddress() *mcrypto.Address
-	GetBalance(idx uint64) (*wallet.GetBalanceResponse, error)
+	GetBalance(idx uint32) (*wallet.GetBalanceResponse, error)
 	Transfer(
 		ctx context.Context,
 		to *mcrypto.Address,
-		accountIdx uint64,
+		accountIdx uint32,
 		amount *coins.PiconeroAmount,
 		numConfirmations uint64,
 	) (*wallet.Transfer, error)
 	SweepAll(
 		ctx context.Context,
 		to *mcrypto.Address,
-		accountIdx uint64,
+		accountIdx uint32,
 		numConfirmations uint64,
 	) ([]*wallet.Transfer, error)
 	CreateWalletConf(walletNamePrefix string) *WalletClientConf
@@ -124,7 +124,7 @@ type waitForReceiptRequest struct {
 	Ctx              context.Context
 	TxID             string
 	NumConfirmations uint64
-	AccountIdx       uint64
+	AccountIdx       uint32
 }
 
 type walletClient struct {
@@ -221,7 +221,7 @@ func (c *walletClient) GetAccounts() (*wallet.GetAccountsResponse, error) {
 	return c.wRPC.GetAccounts(&wallet.GetAccountsRequest{})
 }
 
-func (c *walletClient) GetBalance(idx uint64) (*wallet.GetBalanceResponse, error) {
+func (c *walletClient) GetBalance(idx uint32) (*wallet.GetBalanceResponse, error) {
 	if err := c.refresh(); err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func (c *walletClient) waitForReceipt(req *waitForReceiptRequest) (*wallet.Trans
 func (c *walletClient) Transfer(
 	ctx context.Context,
 	to *mcrypto.Address,
-	accountIdx uint64,
+	accountIdx uint32,
 	amount *coins.PiconeroAmount,
 	numConfirmations uint64,
 ) (*wallet.Transfer, error) {
@@ -318,7 +318,7 @@ func (c *walletClient) Transfer(
 func (c *walletClient) SweepAll(
 	ctx context.Context,
 	to *mcrypto.Address,
-	accountIdx uint64,
+	accountIdx uint32,
 	numConfirmations uint64,
 ) ([]*wallet.Transfer, error) {
 	addrResp, err := c.GetAddress(accountIdx)
@@ -532,7 +532,7 @@ func (c *walletClient) generateFromKeys(
 	return nil
 }
 
-func (c *walletClient) GetAddress(idx uint64) (*wallet.GetAddressResponse, error) {
+func (c *walletClient) GetAddress(idx uint32) (*wallet.GetAddressResponse, error) {
 	return c.wRPC.GetAddress(&wallet.GetAddressRequest{
 		AccountIndex: idx,
 	})

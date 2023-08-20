@@ -160,7 +160,7 @@ func (o *Offer) validate() error {
 		return fmt.Errorf(
 			"min amount must be greater than %s ETH when converted (%s XMR * %s = %s ETH)",
 			coins.RelayerFeeETH.Text('f'),
-			o.MaxAmount.Text('f'),
+			o.MinAmount.Text('f'),
 			o.ExchangeRate,
 			minAmtAsETH.Text('f'),
 		)

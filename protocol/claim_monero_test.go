@@ -26,7 +26,7 @@ var (
 
 type mockSwapManager struct{}
 
-func (*mockSwapManager) WriteSwapToDB(info *swap.Info) error {
+func (*mockSwapManager) WriteSwapToDB(_ *swap.Info) error {
 	return nil
 }
 

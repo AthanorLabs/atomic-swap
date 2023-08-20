@@ -53,7 +53,6 @@ linters:
   enable:
     - bidichk
     - bodyclose
-    - depguard
     - errcheck
     - exportloopref
     - goconst

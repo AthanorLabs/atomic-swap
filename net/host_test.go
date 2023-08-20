@@ -37,10 +37,7 @@ func (*mockMakerHandler) GetOffers() []*types.Offer {
 	return []*types.Offer{}
 }
 
-func (h *mockMakerHandler) HandleInitiateMessage(
-	_ peer.ID,
-	msg *message.SendKeysMessage,
-) (s SwapState, err error) {
+func (h *mockMakerHandler) HandleInitiateMessage(_ peer.ID, _ *message.SendKeysMessage) (s SwapState, err error) {
 	if (h.id != types.Hash{}) {
 		return &mockSwapState{h.id}, nil
 	}

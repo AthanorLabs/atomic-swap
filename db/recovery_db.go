@@ -246,7 +246,7 @@ func (db *RecoveryDB) GetNewSwapTxHash(id types.Hash) (types.Hash, error) {
 
 // DeleteSwap deletes all recovery info from the db for the given swap.
 // TODO: this is currently unimplemented
-func (db *RecoveryDB) DeleteSwap(id types.Hash) error {
+func (db *RecoveryDB) DeleteSwap(_ types.Hash) error {
 	return nil
 }
 
