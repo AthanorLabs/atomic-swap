@@ -129,6 +129,55 @@ func (s *IntegrationTestSuite) TestXMRMaker_Discover() {
 	require.Equal(s.T(), 0, len(peerIDs))
 }
 
+func (s *IntegrationTestSuite) TestXMRMaker_Pairs() {
+	ctx := context.Background()
+	bc := rpcclient.NewClient(ctx, defaultXMRMakerSwapdPort)
+
+	_, err := bc.MakeOffer(
+		coins.StrToDecimal("1"),
+		coins.StrToDecimal("2"),
+		coins.StrToExchangeRate("200"),
+		types.EthAsset(s.testToken),
+		false)
+
+	require.NoError(s.T(), err)
+
+	_, err = bc.MakeOffer(
+		coins.StrToDecimal("1"),
+		coins.StrToDecimal("2"),
+		coins.StrToExchangeRate("200"),
+		types.EthAssetETH,
+		false)
+
+	require.NoError(s.T(), err)
+
+	_, err = bc.MakeOffer(
+		coins.StrToDecimal("1"),
+		coins.StrToDecimal("2"),
+		coins.StrToExchangeRate("200"),
+		types.EthAssetETH,
+		false)
+
+	require.NoError(s.T(), err)
+
+	// Give offer advertisement time to propagate
+	require.NoError(s.T(), common.SleepWithContext(ctx, time.Second))
+
+	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdPort)
+	pairs, err := ac.Pairs(3)
+	fmt.Printf("%+v", pairs.Pairs)
+
+	require.Equal(s.T(), len(pairs.Pairs), 2)
+
+	p1 := pairs.Pairs[0]
+	p2 := pairs.Pairs[1]
+
+	require.Equal(s.T(), p1.Offers, uint64(2))
+	require.Equal(s.T(), p2.Offers, uint64(1))
+
+	require.NoError(s.T(), err)
+}
+
 func (s *IntegrationTestSuite) TestXMRTaker_Query() {
 	s.testXMRTakerQuery(types.EthAssetETH)
 }

@@ -149,7 +149,9 @@ type PeersResponse struct {
 }
 
 // PairsRequest ...
-type PairsRequest = DiscoverRequest
+type PairsRequest struct {
+	SearchTime uint64 `json:"searchTime"` // in seconds
+}
 
 // PairsResponse ...
 type PairsResponse struct {

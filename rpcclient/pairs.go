@@ -14,7 +14,6 @@ func (c *Client) Pairs(searchTime uint64) (*rpctypes.PairsResponse, error) {
 	)
 
 	req := &rpctypes.PairsRequest{
-		Provides:   "",
 		SearchTime: searchTime,
 	}
 

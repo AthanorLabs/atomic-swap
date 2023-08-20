@@ -94,22 +94,15 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 		return errUnsupportedForBootnode
 	}
 
-	peerIDs, err := s.discover(req)
+	peerIDs, err := s.discover(&rpctypes.DiscoverRequest{
+		Provides:   "",
+		SearchTime: req.SearchTime,
+	})
 	if err != nil {
 		return err
 	}
 
-	addrs := make(map[ethcommon.Address]int)
-	pairs := make([]*types.Pair, 0, 100)
-
-	addrs[ethcommon.Address{}] = 0 // ETH/XMR pair is always first
-	pairs = append(pairs, types.NewPair(types.EthAsset{}))
-	pairs[0].Verified = true
-	pairs[0].Token = coins.ERC20TokenInfo{
-		NumDecimals: 18,
-		Name:        "Ether",
-		Symbol:      "ETH",
-	}
+	pairs := make(map[ethcommon.Address]*types.Pair)
 
 	for _, p := range peerIDs {
 		msg, err := s.net.Query(p)
@@ -117,39 +110,50 @@ func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rp
 			log.Debugf("Failed to query peer ID %s", p)
 			continue
 		}
-		if len(msg.Offers) > 0 {
-			for _, o := range msg.Offers {
-				address := o.EthAsset.Address()
-				index, exists := addrs[address]
-				pair := types.NewPair(o.EthAsset)
-				if !exists {
-					addrs[address] = index
-					if pair.EthAsset.IsToken() {
-						tokenInfo, tokenInfoErr := s.pb.ETHClient().ERC20Info(s.ctx, address)
-						if tokenInfoErr != nil {
-							log.Debugf("Error while reading token info: %s", tokenInfoErr)
-							continue
-						}
-						pair.Token = *tokenInfo
+
+		if len(msg.Offers) == 0 {
+			continue
+		}
+
+		for _, o := range msg.Offers {
+			address := o.EthAsset.Address()
+			pair, exists := pairs[address]
+
+			if !exists {
+				pair = types.NewPair(o.EthAsset)
+				if pair.EthAsset.IsToken() {
+					tokenInfo, tokenInfoErr := s.pb.ETHClient().ERC20Info(s.ctx, address)
+					if tokenInfoErr != nil {
+						log.Debugf("Error while reading token info: %s", tokenInfoErr)
+						continue
 					}
-					pairs = append(pairs, pair)
+					pair.Token = *tokenInfo
 				} else {
-					pair = pairs[index]
+					pair.Token.Name = "Ether"
+					pair.Token.Symbol = "ETH"
+					pair.Token.NumDecimals = 18
+					pair.Verified = true
 				}
-				err = pair.AddOffer(o)
-				if err != nil {
-					return err
-				}
+				pairs[address] = pair
+			}
+
+			err = pair.AddOffer(o)
+			if err != nil {
+				return err
 			}
 		}
 	}
 
-	// Remove ETH/XMR pair if there is no offer
-	if pairs[0].Offers <= 0 {
-		pairs = pairs[1:]
+	pairs_array := make([]*types.Pair, 0, len(pairs))
+	for _, pair := range pairs {
+		if pair.EthAsset.IsETH() {
+			pairs_array = append([]*types.Pair{pair}, pairs_array...)
+		} else {
+			pairs_array = append(pairs_array, pair)
+		}
 	}
 
-	resp.Pairs = pairs
+	resp.Pairs = pairs_array
 	return nil
 }
 
