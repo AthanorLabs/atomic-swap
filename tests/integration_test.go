@@ -165,7 +165,6 @@ func (s *IntegrationTestSuite) TestXMRMaker_Pairs() {
 
 	ac := rpcclient.NewClient(ctx, defaultXMRTakerSwapdPort)
 	pairs, err := ac.Pairs(3)
-	fmt.Printf("%+v", pairs.Pairs)
 
 	require.Equal(s.T(), len(pairs.Pairs), 2)
 
