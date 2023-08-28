@@ -147,3 +147,13 @@ type AddressesResponse struct {
 type PeersResponse struct {
 	Addrs []string `json:"addresses" validate:"dive,required"`
 }
+
+// PairsRequest ...
+type PairsRequest struct {
+	SearchTime uint64 `json:"searchTime"` // in seconds
+}
+
+// PairsResponse ...
+type PairsResponse struct {
+	Pairs []*types.Pair
+}

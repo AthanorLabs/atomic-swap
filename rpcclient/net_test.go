@@ -4,6 +4,7 @@
 package rpcclient
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
@@ -15,7 +16,12 @@ import (
 )
 
 func TestNet_Discover(t *testing.T) {
-	ns := rpc.NewNetService(new(mockNet), new(mockXMRTaker), nil, mockSwapManager(t), false)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	ns := rpc.NewNetService(ctx, new(mockNet), new(mockXMRTaker), nil, new(mockProtocolBackend), mockSwapManager(t), false)
 
 	req := &rpctypes.DiscoverRequest{
 		Provides: "",
@@ -29,7 +35,12 @@ func TestNet_Discover(t *testing.T) {
 }
 
 func TestNet_Query(t *testing.T) {
-	ns := rpc.NewNetService(new(mockNet), new(mockXMRTaker), nil, mockSwapManager(t), false)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	ns := rpc.NewNetService(ctx, new(mockNet), new(mockXMRTaker), nil, new(mockProtocolBackend), mockSwapManager(t), false)
 
 	req := &rpctypes.QueryPeerRequest{
 		PeerID: "12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",
@@ -43,7 +54,12 @@ func TestNet_Query(t *testing.T) {
 }
 
 func TestNet_TakeOffer(t *testing.T) {
-	ns := rpc.NewNetService(new(mockNet), new(mockXMRTaker), nil, mockSwapManager(t), false)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	ns := rpc.NewNetService(ctx, new(mockNet), new(mockXMRTaker), nil, new(mockProtocolBackend), mockSwapManager(t), false)
 
 	req := &rpctypes.TakeOfferRequest{
 		PeerID:         "12D3KooWDqCzbjexHEa8Rut7bzxHFpRMZyDRW1L6TGkL1KY24JH5",

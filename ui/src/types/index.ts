@@ -3,6 +3,7 @@ import type { Currency } from "./NetQueryPeerResults"
 export type { NetAddressesResult } from "./NetAddressResult"
 export type { NetDiscoverResult } from "./NetDiscoverResults"
 export type { OfferRaw, NetQueryPeerResult, Currency } from "./NetQueryPeerResults"
+export type { TokenInfo } from "./PersonalTokenInfoResult"
 
 export interface Offer {
     peerID: String

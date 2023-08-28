@@ -4,6 +4,7 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -18,6 +19,8 @@ import (
 	"github.com/athanorlabs/atomic-swap/common/types"
 	"github.com/athanorlabs/atomic-swap/net/message"
 	"github.com/athanorlabs/atomic-swap/protocol/swap"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const defaultSearchTime = time.Second * 12
@@ -35,19 +38,31 @@ type Net interface {
 
 // NetService is the RPC service prefixed by net_.
 type NetService struct {
+	ctx        context.Context
 	net        Net
 	xmrtaker   XMRTaker
 	xmrmaker   XMRMaker
+	pb         ProtocolBackend
 	sm         swap.Manager
 	isBootnode bool
 }
 
 // NewNetService ...
-func NewNetService(net Net, xmrtaker XMRTaker, xmrmaker XMRMaker, sm swap.Manager, isBootnode bool) *NetService {
+func NewNetService(
+	ctx context.Context,
+	net Net,
+	xmrtaker XMRTaker,
+	xmrmaker XMRMaker,
+	pb ProtocolBackend,
+	sm swap.Manager,
+	isBootnode bool,
+) *NetService {
 	return &NetService{
+		ctx:        ctx,
 		net:        net,
 		xmrtaker:   xmrtaker,
 		xmrmaker:   xmrmaker,
+		pb:         pb,
 		sm:         sm,
 		isBootnode: isBootnode,
 	}
@@ -70,6 +85,75 @@ func (s *NetService) Addresses(_ *http.Request, _ *interface{}, resp *rpctypes.A
 // Peers returns the peers that this node is currently connected to.
 func (s *NetService) Peers(_ *http.Request, _ *interface{}, resp *rpctypes.PeersResponse) error {
 	resp.Addrs = s.net.ConnectedPeers()
+	return nil
+}
+
+// Pairs returns all currently available pairs from offers of all peers
+func (s *NetService) Pairs(_ *http.Request, req *rpctypes.PairsRequest, resp *rpctypes.PairsResponse) error {
+	if s.isBootnode {
+		return errUnsupportedForBootnode
+	}
+
+	peerIDs, err := s.discover(&rpctypes.DiscoverRequest{
+		Provides:   "",
+		SearchTime: req.SearchTime,
+	})
+	if err != nil {
+		return err
+	}
+
+	pairs := make(map[ethcommon.Address]*types.Pair)
+
+	for _, p := range peerIDs {
+		msg, err := s.net.Query(p)
+		if err != nil {
+			log.Debugf("Failed to query peer ID %s", p)
+			continue
+		}
+
+		if len(msg.Offers) == 0 {
+			continue
+		}
+
+		for _, o := range msg.Offers {
+			address := o.EthAsset.Address()
+			pair, exists := pairs[address]
+
+			if !exists {
+				pair = types.NewPair(o.EthAsset)
+				if pair.EthAsset.IsToken() {
+					tokenInfo, tokenInfoErr := s.pb.ETHClient().ERC20Info(s.ctx, address)
+					if tokenInfoErr != nil {
+						log.Debugf("Error while reading token info: %s", tokenInfoErr)
+						continue
+					}
+					pair.Token = *tokenInfo
+				} else {
+					pair.Token.Name = "Ether"
+					pair.Token.Symbol = "ETH"
+					pair.Token.NumDecimals = 18
+					pair.Verified = true
+				}
+				pairs[address] = pair
+			}
+
+			err = pair.AddOffer(o)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	pairsArray := make([]*types.Pair, 0, len(pairs))
+	for _, pair := range pairs {
+		if pair.EthAsset.IsETH() {
+			pairsArray = append([]*types.Pair{pair}, pairsArray...)
+		} else {
+			pairsArray = append(pairsArray, pair)
+		}
+	}
+
+	resp.Pairs = pairsArray
 	return nil
 }
 

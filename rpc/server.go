@@ -107,7 +107,15 @@ func NewServer(cfg *Config) (*Server, error) {
 		case DatabaseNamespace:
 			err = rpcServer.RegisterService(NewDatabaseService(cfg.RecoveryDB), DatabaseNamespace)
 		case NetNamespace:
-			netService = NewNetService(cfg.Net, cfg.XMRTaker, cfg.XMRMaker, swapManager, isBootnode)
+			netService = NewNetService(
+				serverCtx,
+				cfg.Net,
+				cfg.XMRTaker,
+				cfg.XMRMaker,
+				cfg.ProtocolBackend,
+				swapManager,
+				isBootnode,
+			)
 			err = rpcServer.RegisterService(netService, NetNamespace)
 		case PersonalName:
 			err = rpcServer.RegisterService(NewPersonalService(serverCtx, cfg.XMRMaker, cfg.ProtocolBackend), PersonalName)

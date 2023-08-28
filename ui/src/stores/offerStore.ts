@@ -1,8 +1,9 @@
 import { rpcRequest } from '../utils';
-import { derived, Readable, writable } from 'svelte/store';
+import { derived, writable } from 'svelte/store';
+import type { Readable } from 'svelte/store'
 import { peers } from './peerStore'
-import type { NetQueryPeerResult, Offer } from 'src/types';
-import { intToHexString } from 'src/utils';
+import type { NetQueryPeerResult, Offer } from '../types';
+import { intToHexString } from '../utils';
 
 export const isLoadingOffers = writable(false)
 export const selectedOffer = writable<Offer | undefined>()
@@ -10,8 +11,7 @@ export const selectedOffer = writable<Offer | undefined>()
 export const offers = derived<Readable<string[]>, Offer[]>(
     peers,
     ($peers, set) => {
-        refreshOffers($peers)
-            .then(off => set(off))
+        refreshOffers($peers).then(off => set(off))
     },
     []
 )
@@ -27,12 +27,16 @@ export const refreshOffers = ($peers: string[]) =>
 export const getOffers = async (peerAddress: string) => {
     isLoadingOffers.set(true)
     return rpcRequest<NetQueryPeerResult | undefined>('net_queryPeer', { "peerID": peerAddress })
-        .then(({ result }): Offer[] =>
-            result?.offers.map(offer => ({
+        .then(({ result }): Offer[] => {
+            return result?.offers.map(offer => ({
                 peerID: peerAddress,
                 ...offer
             })) || []
-        )
+        })
         .catch(console.error)
         .finally(() => isLoadingOffers.set(false))
 }
+
+
+
+

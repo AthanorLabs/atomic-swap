@@ -1,4 +1,4 @@
-export type Currency = 'ETH' | 'XMR'
+export type Currency = String
 
 export interface OfferRaw {
     offerID: String
