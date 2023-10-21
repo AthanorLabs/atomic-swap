@@ -1,4 +1,4 @@
-FROM golang:1.20 as builder
+FROM golang:1.21 as builder
 
 # Download monero-wallet-rpc. We need bzip2 to unpack the tar file.
 RUN apt-get update && apt-get install -y bzip2

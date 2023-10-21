@@ -188,8 +188,8 @@ func (m *manager) GetOngoingSwapOfferIDs() ([]*types.Hash, error) {
 	defer m.RUnlock()
 
 	offerIDs := make([]*types.Hash, 0, len(m.ongoing))
-	for _, s := range m.ongoing {
-		offerIDs = append(offerIDs, &s.OfferID)
+	for i := range m.ongoing {
+		offerIDs = append(offerIDs, &m.ongoing[i].OfferID)
 	}
 
 	return offerIDs, nil

@@ -54,7 +54,7 @@ that you should validate are sane before sending.
 
 7. Obtain a Sepolia JSON-RPC endpoint. If you don't want to sync your own node, you can find public ones here: https://sepolia.dev/
 
-8. Install go 1.20+. See [build instructions](./build.md) for more details.
+8. Install go 1.21+. See [build instructions](./build.md) for more details.
 
 9. Clone and build the atomic-swap binaries:
 ```bash

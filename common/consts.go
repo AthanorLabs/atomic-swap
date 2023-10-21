@@ -15,6 +15,8 @@ const (
 )
 
 // Ganache deterministic ethereum private wallet keys for the maker and taker in dev environments.
+//
+//nolint:gosec // don't flag hardcoded credentials
 const (
 	DefaultPrivKeyXMRTaker = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d" // index 0
 	DefaultPrivKeyXMRMaker = "6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1" // index 1

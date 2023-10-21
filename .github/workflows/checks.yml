@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
       - uses: actions/checkout@v3
 
       - name: Install npm formatting/linting tools
@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
       - uses: actions/checkout@v3
 
       - name: Generate mocks and verify no changes
@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.20.x'
+          go-version: '1.21.x'
       - uses: actions/checkout@v3
 
       - name: Run go vet
