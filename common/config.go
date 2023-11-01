@@ -31,14 +31,9 @@ var publicBootnodes = []string{
 	"/ip4/104.194.157.27/tcp/9909/p2p/12D3KooWMYfJHQAjL1F6EVk2s9CJvsEvdYMW8CD7uBMs15sdFJzd",
 	"/ip4/134.122.115.208/tcp/9909/p2p/12D3KooWCAMMJMDV99GQA78MiaGgnqNmZSD1FAo5uHaZUbeqL4XR",
 	"/ip4/143.198.123.27/tcp/9909/p2p/12D3KooWD7JjjRyohDPPm8TMT8v8dEfwoVHxfBN2ytZHpS9VJ3Vz",
-	"/ip4/161.35.110.210/tcp/9900/p2p/12D3KooWS8iKxqsGTiL3Yc1VaAfg99U5km1AE7bWYQiuavXj3Yz6",
-	"/ip4/164.92.103.159/tcp/9900/p2p/12D3KooWSNQF1eNyapxC2zA3jJExgLX7jWhEyw8B3k7zMW5ZRvQz",
-	"/ip4/164.92.123.10/tcp/9900/p2p/12D3KooWG8z9fXVTB72XL8hQbahpfEjutREL9vbBQ4FzqtDKzTBu",
 	"/ip4/185.130.46.66/tcp/9909/p2p/12D3KooWDKf2FJG1AWTJthbs7fcCcsQa26f4pmCR25cktRg2X2aY",
-	"/ip4/31.220.60.19/tcp/9909/p2p/12D3KooWSvfyLUVoHqSdKpAaD45cHEq5Kqe759LMvS3Bq7y1XBuo",
 	"/ip4/67.205.131.11/tcp/9909/p2p/12D3KooWPnZyeGvsDgpQtMCUKdSiFi5K1pxk6NR6gNo5nGhFCseK",
 	"/ip4/67.207.89.83/tcp/9909/p2p/12D3KooWGQ7L8ruTKtvLDwDyrVv5DdjPnLB7HeTdpsLGiWPi6oqw",
-	"/ip4/93.95.228.200/tcp/9909/p2p/12D3KooWJParpZ1zHDspoV4kogkBsHKrGxMeq3UGFxQUm6TZPojn",
 }
 
 // MoneroNode represents the host and port of monerod's RPC endpoint
