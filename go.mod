@@ -8,7 +8,7 @@ require (
 	github.com/MarinX/monerorpc v1.0.7
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/athanorlabs/go-dleq v0.1.0
-	github.com/athanorlabs/go-p2p-net v0.3.1-0.20231210033046-13ef86a8318f
+	github.com/athanorlabs/go-p2p-net v0.4.0
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cockroachdb/apd/v3 v3.2.1
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
